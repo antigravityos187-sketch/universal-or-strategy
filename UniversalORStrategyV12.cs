@@ -389,6 +389,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private string _accountPrefix = "Apex"; // Default prefix for Apex accounts
         private Thread reaperThread;
         private volatile bool isReaperRunning;
+        private volatile bool isFlattenRunning; // V12.8: Guard to pause Reaper during flatten
         private ConcurrentDictionary<string, int> expectedPositions; // AccountName -> Expected Quantity (+ long, - short)
         private int simaAccountCount = 0; // Cached count of detected Apex accounts
         private DateTime lastReaperLog = DateTime.MinValue;
@@ -8460,10 +8461,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // V12.1: Skip Master account if its order was already placed by the caller
                 if (acct == this.Account) continue;
 
-                // V12.2: Skip accounts disabled in Fleet Manager UI
-                if (activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) && !isActive)
+                // V12.8: Skip accounts NOT registered or disabled in Fleet Manager UI
+                if (!activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) || !isActive)
                 {
-                    Print($"[DISPATCH] ⏩ SKIPPING {acct.Name} - Account Disabled in Fleet");
+                    Print($"[DISPATCH] ⏩ SKIPPING {acct.Name} - Account not enabled in Fleet");
                     continue;
                 }
 
@@ -8589,7 +8590,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     simaAccountCount++;
                     expectedPositions[acct.Name] = 0; // Initialize expected position as flat
                     accountDailyProfit[acct.Name] = 0; // Initialize daily profit
-                    activeFleetAccounts[acct.Name] = true; // V12 SIMA: Default to ACTIVE (User can disable via Fleet Manager)
+                    activeFleetAccounts[acct.Name] = false; // V12.8 SIMA: Default to INACTIVE — wait for Fleet Manager / IPC to enable
                     
                     // V12.7: Always subscribe to execution updates for fleet bracket management
                     // (Also used by ComplianceHub for P/L tracking)
@@ -8600,7 +8601,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                     else
                     {
-                        Print($"[SIMA] #{simaAccountCount}: {acct.Name} | Connected: {acct.Connection?.Status == ConnectionStatus.Connected} | Fleet: ACTIVE");
+                        Print($"[SIMA] #{simaAccountCount}: {acct.Name} | Connected: {acct.Connection?.Status == ConnectionStatus.Connected} | Fleet: INACTIVE (awaiting IPC enable)");
                     }
                 }
             }
@@ -8817,8 +8818,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     if (acct.Name.IndexOf(AccountPrefix, StringComparison.OrdinalIgnoreCase) < 0) continue;
                     if (acct == this.Account) continue; // local already done
 
-                    // Fleet Manager toggle
-                    if (activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) && !isActive)
+                    // V12.8: Fleet Manager toggle — skip if account NOT registered or explicitly disabled
+                    if (!activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) || !isActive)
                     {
                         fleetSkip++;
                         continue;
@@ -8906,13 +8907,22 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
             }
 
+            isFlattenRunning = true; // V12.8: Guard for Reaper
             Print("[SIMA] ══════ GLOBAL FLATTEN START ══════");
             int flattenCount = 0;
+            int skipCount = 0;
 
             foreach (Account acct in Account.All)
             {
                 if (acct.Name.IndexOf(AccountPrefix, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
+                    // V12.8: Respect Fleet Manager selection — skip accounts NOT registered or disabled
+                    if (!activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) || !isActive)
+                    {
+                        skipCount++;
+                        continue;
+                    }
+
                     try
                     {
                         // Collect instruments with open positions on this account
@@ -8942,7 +8952,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
             }
 
-            Print($"[SIMA] ══════ GLOBAL FLATTEN COMPLETE: {flattenCount} accounts flattened ══════");
+            isFlattenRunning = false; // V12.8: Release Reaper guard
+            Print($"[SIMA] ══════ GLOBAL FLATTEN COMPLETE: {flattenCount} flattened, {skipCount} skipped (disabled) ══════");
         }
 
         /// <summary>
@@ -8994,6 +9005,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     Thread.Sleep(ReaperIntervalMs);
                     if (!isReaperRunning) break;
+
+                    // V12.8: Pause auditing while a flatten is actively running to prevent race conditions
+                    if (isFlattenRunning) continue;
 
                     AuditApexPositions();
                 }
@@ -9099,8 +9113,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (e == null) return;
 
-            // Log that a fill occurred (Safe access)
-            Print(string.Format("[COMPLIANCE] Execution Update received for account."));
+            // V12.8: Suppress per-execution logging during mass flatten to prevent UI freeze
+            if (!isFlattenRunning && EnableComplianceHub)
+                Print(string.Format("[COMPLIANCE] Execution Update received for account."));
 
             // V12.7: Check if this fill is for a fleet entry with deferred brackets
             try
@@ -9149,8 +9164,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print($"[SIMA V12.7] Error in fleet bracket submission: {ex.Message}");
             }
 
-            // Update the compliance log with latest balances
-            LogApexPerformance();
+            // Update the compliance log with latest balances (only if ComplianceHub is on and not mass-flattening)
+            if (EnableComplianceHub && !isFlattenRunning)
+                LogApexPerformance();
         }
 
         /// <summary>
