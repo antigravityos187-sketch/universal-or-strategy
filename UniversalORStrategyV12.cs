@@ -8498,7 +8498,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     simaAccountCount++;
                     expectedPositions[acct.Name] = 0; // Initialize expected position as flat
                     accountDailyProfit[acct.Name] = 0; // Initialize daily profit
-                    activeFleetAccounts[acct.Name] = false; // SAFETY: Default to INACTIVE (Must be enabled via UI)
+                    activeFleetAccounts[acct.Name] = true; // V12 SIMA: Default to ACTIVE (User can disable via Fleet Manager)
                     
                     // V12.1: Subscribe to execution updates for P/L tracking
                     if (EnableComplianceHub)
@@ -8508,13 +8508,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                     else
                     {
-                        Print($"[SIMA] #{simaAccountCount}: {acct.Name} | Connected: {acct.Connection?.Status == ConnectionStatus.Connected}");
+                        Print($"[SIMA] #{simaAccountCount}: {acct.Name} | Connected: {acct.Connection?.Status == ConnectionStatus.Connected} | Fleet: ACTIVE");
                     }
                 }
             }
 
             Print("[SIMA] ───────────────────────────────────────────────────");
-            Print($"[SIMA] TOTAL ACCOUNTS DETECTED: {simaAccountCount}");
+            Print($"[SIMA] TOTAL ACCOUNTS DETECTED: {simaAccountCount} | ALL ACTIVE by default");
+            Print("[SIMA] Use Fleet Manager to disable specific accounts");
             Print("[SIMA] ═══════════════════════════════════════════════════");
         }
 
