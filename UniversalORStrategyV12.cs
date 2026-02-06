@@ -7700,9 +7700,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string myFull = Instrument.FullName.ToUpper();
                     string target = targetSymbol.Trim().ToUpper();
 
-                    bool isForMe = target == "GLOBAL" || 
+                    bool isForMe = target == "GLOBAL" ||
                                    target == "ON" || target == "OFF" ||  // V12.4: Mode toggle commands (SET_RMA_MODE|ON)
-                                   mySym == target || 
+                                   target == "RMA" || target == "ORB" || target == "OR" || target == "MOMO" || // V12.6: Mode-switch keywords are global
+                                   mySym == target ||
                                    mySym.StartsWith(target) || // "MES" matches "MES 03-26"
                                    target.StartsWith(mySym) || // "GC" matches "GC/MGC"
                                    myFull.Contains(target) ||
@@ -8002,6 +8003,22 @@ namespace NinjaTrader.NinjaScript.Strategies
                             bool active = parts[2] == "1";
                             activeFleetAccounts[acctName] = active;
                             Print($"[V12.2] TOGGLE_ACCOUNT: {acctName} | Active={active}");
+                        }
+                    }
+                    // V12.6: SET_SIMA|ON or SET_SIMA|OFF - Remote SIMA toggle from external panel
+                    else if (action == "SET_SIMA")
+                    {
+                        if (parts.Length > 1)
+                        {
+                            bool enable = parts[1].Trim().ToUpper() == "ON";
+                            EnableSIMA = enable;
+                            Print($"V12.6: SET_SIMA = {enable}");
+
+                            // Re-enumerate accounts when enabling to ensure fleet is populated
+                            if (enable && simaAccountCount == 0)
+                            {
+                                EnumerateApexAccounts();
+                            }
                         }
                     }
                     // V12.2: Diagnostic command to check fleet state
