@@ -7699,12 +7699,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string action = parts[0];
                     string targetSymbol = parts.Length > 1 ? parts[1] : "Global";
 
+                    // V12.9: Global commands bypass symbol filter entirely — these are account/fleet-level, not instrument-level
+                    bool isGlobalCommand = action == "TOGGLE_ACCOUNT" || action == "SET_SIMA" ||
+                                           action == "GET_FLEET" || action == "DIAG_FLEET";
+
                     // V10.3: Robust Symbol Matching (Matches MGC to GC/MGC, MES to ES/MES, etc.)
                     string mySym = Instrument.MasterInstrument.Name.ToUpper();
                     string myFull = Instrument.FullName.ToUpper();
                     string target = targetSymbol.Trim().ToUpper();
 
-                    bool isForMe = target == "GLOBAL" ||
+                    bool isForMe = isGlobalCommand ||  // V12.9: SIMA/Fleet commands always pass through
+                                   target == "GLOBAL" ||
                                    target == "ON" || target == "OFF" ||  // V12.4: Mode toggle commands (SET_RMA_MODE|ON)
                                    target == "RMA" || target == "ORB" || target == "OR" || target == "MOMO" || // V12.6: Mode-switch keywords are global
                                    mySym == target ||
@@ -7716,13 +7721,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                                    (target == "MGC" && mySym.Contains("GC"));   // Robustness for MGC/GC
 
                     // V12.2: Global IPC Diagnostic Log
-                    Print(string.Format("V12 IPC: Received '{0}' for '{1}'. For Me? {2} (My Symbol: {3})", 
-                        action, target, isForMe, mySym));
+                    Print(string.Format("V12 IPC: Received '{0}' for '{1}'. For Me? {2} (My Symbol: {3}){4}",
+                        action, target, isForMe, mySym, isGlobalCommand ? " [GLOBAL CMD]" : ""));
 
                     if (!isForMe)
                     {
                         // Quiet ignore if it's clearly for another instrument
-                        continue; 
+                        continue;
                     }
 
                     Print(string.Format("{0:HH:mm:ss} | IPC Executing {1} for {2}", DateTime.Now, action, Instrument.MasterInstrument.Name));
