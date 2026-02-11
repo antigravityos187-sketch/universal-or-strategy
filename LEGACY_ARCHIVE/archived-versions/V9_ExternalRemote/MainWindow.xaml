@@ -1,0 +1,306 @@
+<Window x:Class="V9_ExternalRemote.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="V9 Master Hub Remote" 
+        Height="450" Width="300"
+        ResizeMode="CanResizeWithGrip"
+        WindowStyle="None" 
+        AllowsTransparency="True" 
+        Background="Transparent"
+        Topmost="True"
+        BorderThickness="1"
+        BorderBrush="#44FFFFFF">
+    
+    <Window.Resources>
+        <Style x:Key="GlassButton" TargetType="Button">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#44FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="12" Background="#DD101015" Padding="15">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="15" Opacity="0.5" ShadowDepth="2"/>
+        </Border.Effect>
+        
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/> <!-- Title Bar -->
+                <RowDefinition Height="Auto"/> <!-- System Status -->
+                <RowDefinition Height="*"/>    <!-- Main Controls -->
+                <RowDefinition Height="Auto"/> <!-- Footer Info -->
+            </Grid.RowDefinitions>
+
+            <!-- Title Bar & Symbol Selection -->
+            <Grid Grid.Row="0" MouseDown="TitleBar_MouseDown" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="V9 MASTER" Foreground="Cyan" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                
+                <Grid Grid.Column="1" Margin="10,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Input & Add -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,5,0">
+                        <TextBox x:Name="SymbolInput" Text="MES" Width="35" Background="#11FFFFFF" Foreground="White" BorderThickness="0" TextAlignment="Center" FontSize="10" VerticalAlignment="Center" KeyDown="SymbolInput_KeyDown"/>
+                        <Button Content="+" Click="SetSymbol_Click" FontSize="10" Margin="2,0" Padding="4,0" Style="{StaticResource GlassButton}" ToolTip="Add Symbol"/>
+                    </StackPanel>
+
+                    <!-- Watchlist Tabs -->
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" PanningMode="HorizontalOnly">
+                        <StackPanel x:Name="WatchlistPanel" Orientation="Horizontal"/>
+                    </ScrollViewer>
+                </Grid>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="" FontFamily="Segoe MDL2 Assets" Background="Transparent" Foreground="#66FFFFFF" BorderThickness="0" Click="Close_Click" Margin="5,0"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Status Indicators -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,15,0,20">
+                <Border Width="8" Height="8" CornerRadius="4" Background="#FF00FF00" Margin="0,0,5,0" x:Name="HubStatusLed"/>
+                <TextBlock Text="HUB CONNECTED" Foreground="#AAFFFFFF" FontSize="9" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                
+                <Border Width="8" Height="8" CornerRadius="4" Background="#FFFFFF00" Margin="0,0,5,0" x:Name="TosStatusLed"/>
+                <TextBlock Text="TOS RTD: OK" Foreground="#AAFFFFFF" FontSize="9" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Interactive Flags & Data (Concept 53/55) -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="60"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Stretch">
+                    <!-- TOS Live Data Display -->
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="LAST" Foreground="#66FFFFFF" FontSize="8"/>
+                            <TextBlock x:Name="LastPriceTxt" Text="0.00" Foreground="White" FontSize="20" FontWeight="Bold"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                            <TextBlock Text="9/15/30 | 65/200 EMA" Foreground="#66FFFFFF" FontSize="8" HorizontalAlignment="Right"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBlock x:Name="Ema9Txt" Text="0.0" Foreground="#8800FF00" FontSize="9" Margin="0,0,3,0"/>
+                                <TextBlock x:Name="Ema15Txt" Text="0.0" Foreground="#88FF6600" FontSize="9" Margin="0,0,3,0"/>
+                                <TextBlock x:Name="Ema30Txt" Text="0.0" Foreground="#88FFFF00" FontSize="9" Margin="0,0,6,0"/>
+                                <TextBlock x:Name="Ema65Txt" Text="0.0" Foreground="#8800FFFF" FontSize="9" Margin="0,0,3,0"/>
+                                <TextBlock x:Name="Ema200Txt" Text="0.0" Foreground="#88FF00FF" FontSize="9"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- V9.12 OR Range Display (Restored) -->
+                    <Grid Margin="0,0,0,5">
+                        <StackPanel>
+                            <TextBlock Text="PRIMARY OR (5M)" Foreground="#66FFFFFF" FontSize="8"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="OrHighTxt" Text="0.00" Foreground="Lime" FontSize="12" FontWeight="Bold"/>
+                                <TextBlock Text=" : " Foreground="#22FFFFFF" FontSize="12"/>
+                                <TextBlock x:Name="OrLowTxt" Text="0.00" Foreground="Red" FontSize="12" FontWeight="Bold"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,5">
+                        <StackPanel>
+                            <TextBlock Text="15M ALIGN (NY)" Foreground="#66FFFFFF" FontSize="8"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="Or15HighTxt" Text="0.00" Foreground="#AA00FF00" FontSize="12" FontWeight="Bold"/>
+                                <TextBlock Text=" : " Foreground="#22FFFFFF" FontSize="12"/>
+                                <TextBlock x:Name="Or15LowTxt" Text="0.00" Foreground="#AAFF0000" FontSize="12" FontWeight="Bold"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Text="1H MARKET DIRECTION" Foreground="#66FFFFFF" FontSize="8"/>
+                            <Border x:Name="Trend1hBorder" Background="#11FFFFFF" CornerRadius="4" Padding="5,2">
+                                <TextBlock x:Name="Trend1hVal" Text="--- (INITIALIZING)" Foreground="Gray" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- V9.12 Strategy Selectors -->
+                    <UniformGrid Columns="3" Margin="0,0,0,10">
+                        <Button Style="{StaticResource GlassButton}" Content="RMA" FontSize="9" Height="22" Click="Rma_Click" Margin="1" x:Name="BtnRma"/>
+                        <Button Style="{StaticResource GlassButton}" Content="MOMO" FontSize="9" Height="22" Click="Momo_Click" Margin="1" x:Name="BtnMomo"/>
+                        <Button Style="{StaticResource GlassButton}" Content="TREND" FontSize="9" Height="22" Click="Trend_Click" Margin="1" x:Name="BtnTrend"/>
+                        <Button Style="{StaticResource GlassButton}" Content="FFMA" FontSize="9" Height="22" Click="Ffma_Click" Margin="1" x:Name="BtnFfma"/>
+                        <Button Style="{StaticResource GlassButton}" Content="RETEST" FontSize="9" Height="22" Click="Retest_Click" Margin="1" x:Name="BtnRetest"/>
+                        <Button Style="{StaticResource GlassButton}" Content="OR" FontSize="9" Height="22" Background="#2200FFFF" Foreground="Cyan" Margin="1" ToolTip="OR Mode" IsEnabled="False"/>
+                    </UniformGrid>
+
+                    <!-- V10.3: OR Breakout Buttons -->
+                    <Grid Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Style="{StaticResource GlassButton}" Content="OR LONG" Background="#2200FFFF" Foreground="Cyan" FontSize="11" FontWeight="Bold" Height="28" Click="OrLong_Click" Margin="0,0,2,0"/>
+                        <Button Grid.Column="1" Style="{StaticResource GlassButton}" Content="OR SHORT" Background="#22FF00FF" Foreground="Magenta" FontSize="11" FontWeight="Bold" Height="28" Click="OrShort_Click" Margin="2,0,0,0"/>
+                    </Grid>
+
+                    <Button Style="{StaticResource GlassButton}" Content="LONG" Background="#2200FF00" FontSize="16" FontWeight="Bold" Height="35" Click="Long_Click" Margin="0,0,0,5"/>
+                    <Button Style="{StaticResource GlassButton}" Content="SHORT" Background="#22FF0000" FontSize="16" FontWeight="Bold" Height="35" Click="Short_Click" Margin="0,0,0,8"/>
+                    
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Style="{StaticResource GlassButton}" Content="25%" Background="#22FFFF00" FontSize="10" Height="25" Click="Trim25_Click" Margin="0,0,2,0"/>
+                        <Button Grid.Column="1" Style="{StaticResource GlassButton}" Content="50%" Background="#22FF6600" FontSize="10" Height="25" Click="Trim50_Click" Margin="2,0,2,0"/>
+                        <Button Grid.Column="2" Style="{StaticResource GlassButton}" Content="BE+1" Background="#2200FFFF" FontSize="10" Height="25" Click="BEPlus1_Click" Margin="2,0,0,0"/>
+                    </Grid>
+
+                    <Button Style="{StaticResource GlassButton}" Content="FLATTEN" Background="#22FFFFFF" Height="28" Click="Flatten_Click" Margin="0,0,0,5"/>
+
+                    <!-- V10.5: Target Management Buttons with Menus -->
+                    <UniformGrid Columns="5" Margin="0,0,0,5">
+                        <!-- T1 Button with Menu -->
+                        <Button x:Name="BtnT1" Style="{StaticResource GlassButton}" Content="T1" Background="#2200FF00" FontSize="9" Height="22" Click="T1_Click" Margin="1" ToolTip="T1 Actions">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Fill at Market" Click="T1_Market_Click"/>
+                                    <MenuItem Header="Move to 1pt" Click="T1_1pt_Click"/>
+                                    <MenuItem Header="Move to 2pt" Click="T1_2pt_Click"/>
+                                    <MenuItem Header="Move to Now" Click="T1_Now_Click"/>
+                                    <MenuItem Header="Move to BE" Click="T1_BE_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="Cancel Order" Click="T1_Cancel_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                        <!-- T2 Button with Menu -->
+                        <Button x:Name="BtnT2" Style="{StaticResource GlassButton}" Content="T2" Background="#22FFFF00" FontSize="9" Height="22" Click="T2_Click" Margin="1" ToolTip="T2 Actions">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Fill at Market" Click="T2_Market_Click"/>
+                                    <MenuItem Header="Move to 1pt" Click="T2_1pt_Click"/>
+                                    <MenuItem Header="Move to 2pt" Click="T2_2pt_Click"/>
+                                    <MenuItem Header="Move to Now" Click="T2_Now_Click"/>
+                                    <MenuItem Header="Move to BE" Click="T2_BE_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="Cancel Order" Click="T2_Cancel_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                        <!-- T3 Button with Menu -->
+                        <Button x:Name="BtnT3" Style="{StaticResource GlassButton}" Content="T3" Background="#22FF6600" FontSize="9" Height="22" Click="T3_Click" Margin="1" ToolTip="T3 Actions">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Fill at Market" Click="T3_Market_Click"/>
+                                    <MenuItem Header="Move to 1pt" Click="T3_1pt_Click"/>
+                                    <MenuItem Header="Move to 2pt" Click="T3_2pt_Click"/>
+                                    <MenuItem Header="Move to Now" Click="T3_Now_Click"/>
+                                    <MenuItem Header="Move to BE" Click="T3_BE_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="Cancel Order" Click="T3_Cancel_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                        <!-- T4 Button (simple close) -->
+                        <Button Style="{StaticResource GlassButton}" Content="T4" Background="#22FF0000" FontSize="9" Height="22" Click="CloseT4_Click" Margin="1" ToolTip="Close T4"/>
+                        <!-- RUN Button with Menu -->
+                        <Button x:Name="BtnRun" Style="{StaticResource GlassButton}" Content="RUN" Background="#22FFFFFF" FontSize="9" Height="22" Click="Run_Click" Margin="1" ToolTip="Runner Actions">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Close at Market" Click="Run_Close_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="Stop to BE" Click="RunBE_Click"/>
+                                    <MenuItem Header="Stop to 1pt" Click="Run1pt_Click"/>
+                                    <MenuItem Header="Stop to 2pt" Click="Run2pt_Click"/>
+                                    <MenuItem Header="Lock 50%" Click="Run50_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                    </UniformGrid>
+
+                    <!-- V10.4: Advanced Runner Controls -->
+                    <UniformGrid Columns="5" Margin="0,0,0,8">
+                        <Button Style="{StaticResource GlassButton}" Content="BE" Background="#2200FFFF" Foreground="Cyan" FontSize="8" Height="22" Click="RunBE_Click" Margin="1" ToolTip="Stop to Breakeven"/>
+                        <Button Style="{StaticResource GlassButton}" Content="1PT" Background="#2200FF00" Foreground="Lime" FontSize="8" Height="22" Click="Run1pt_Click" Margin="1" ToolTip="Lock Entry+1pt"/>
+                        <Button Style="{StaticResource GlassButton}" Content="2PT" Background="#22008800" Foreground="#88FF88" FontSize="8" Height="22" Click="Run2pt_Click" Margin="1" ToolTip="Lock Entry+2pt"/>
+                        <Button Style="{StaticResource GlassButton}" Content="50%" Background="#22FF6600" Foreground="Orange" FontSize="8" Height="22" Click="Run50_Click" Margin="1" ToolTip="Lock 50% Profit"/>
+                        <Button Style="{StaticResource GlassButton}" Content="OFF" Background="#22666666" Foreground="#AAAAAA" FontSize="8" Height="22" Click="RunOff_Click" Margin="1" ToolTip="Disable Trailing"/>
+                    </UniformGrid>
+
+                    <!-- V9.12 Target Status -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Border x:Name="LedT1" Width="10" Height="5" CornerRadius="2" Background="#33FFFFFF" Margin="2,0" ToolTip="T1"/>
+                        <Border x:Name="LedT2" Width="10" Height="5" CornerRadius="2" Background="#33FFFFFF" Margin="2,0" ToolTip="T2"/>
+                        <Border x:Name="LedT3" Width="10" Height="5" CornerRadius="2" Background="#33FFFFFF" Margin="2,0" ToolTip="T3"/>
+                        <Border x:Name="LedT4" Width="10" Height="5" CornerRadius="2" Background="#33FFFFFF" Margin="2,0" ToolTip="T4"/>
+                        <Border x:Name="LedBE" Width="10" Height="5" CornerRadius="2" Background="#33FFFFFF" Margin="2,0" ToolTip="BE Active"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- MTF Flags (Concept 55) -->
+                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                    <TextBlock Text="MTF FLAGS" Foreground="#22FFFFFF" FontSize="7" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                    <Border x:Name="Flag5m" Background="#11FFFFFF" Height="30" CornerRadius="4" Margin="0,0,0,5">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="5M" Foreground="#44FFFFFF" FontSize="7" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="Flag5mVal" Text="---" Foreground="White" FontSize="10" HorizontalAlignment="Center" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="Flag15m" Background="#11FFFFFF" Height="30" CornerRadius="4" Margin="0,0,0,5">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="15M" Foreground="#44FFFFFF" FontSize="7" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="Flag15mVal" Text="---" Foreground="White" FontSize="10" HorizontalAlignment="Center" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="Flag1h" Background="#11FFFFFF" Height="30" CornerRadius="4" Margin="0,0,0,5">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="1H" Foreground="#44FFFFFF" FontSize="7" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="Flag1hVal" Text="---" Foreground="White" FontSize="10" HorizontalAlignment="Center" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- Signal Border Glow (Concept 54) -->
+            <Border Grid.RowSpan="4" x:Name="GlowBorder" BorderThickness="2" BorderBrush="Transparent" CornerRadius="12" IsHitTestVisible="False"/>
+
+            <!-- Footer / Mode Toggle -->
+            <Grid Grid.Row="3" Margin="0,10,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox x:Name="GhostModeCheck" VerticalAlignment="Center" Checked="GhostMode_Changed" Unchecked="GhostMode_Changed"/>
+                    <TextBlock Text="GHOST OVERLAY" Foreground="#66FFFFFF" FontSize="10" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                </StackPanel>
+                <TextBlock Text="v10.5" x:Name="VersionText" Foreground="#44FFFFFF" FontSize="9" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

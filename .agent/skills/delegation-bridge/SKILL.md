@@ -96,26 +96,23 @@ Route file I/O and routine tasks to Gemini Flash 3.0 (200x cheaper than Opus, 40
 
 ---
 
-## Delegation Priority Chain
+## Delegation Priority Chain (Expert / Execution Desk)
 
-**Configured in**: `.agent/config/ai_capabilities.json`
+The bridge uses a multi-tier "Zero-Cost" strategy to minimize overhead.
 
-```
-Priority 1: Gemini Flash 3.0 (via MCP)
-├─ Cost: $0.075/M input, $0.30/M output
-├─ Speed: Fastest
-└─ Best for: All file I/O, deployment, docs
+### 🏆 Tier 1: OpenRouter Free Pool (Preferred)
+- **Cost**: $0.00 (Zero-Cost Execution Desk)
+- **Models**: `glm-4.5-air:free`, `step-3-5-flash:free`, `mistral-small-24b`, `gemini-2.0-flash-exp:free`
+- **Usage**: Primary endpoint for all automated file I/O, docs, and routine analysis.
 
-Priority 2: Claude Haiku 4.5 (if MCP unavailable)
-├─ Cost: $0.25/M input, $1.25/M output
-├─ Speed: Fast
-└─ Best for: Fallback file operations
+### 🥈 Tier 2: Gemini Flash 3.0 (Cursor / AG Fallback)
+- **Cost**: Near-Zero (requires API Key)
+- **Model**: `gemini-3-flash-preview`
+- **Usage**: Used only if the OpenRouter Free Pool is rate-limited or fails.
 
-Priority 3: Current AI (last resort)
-├─ Cost: Varies (expensive if Opus/Sonnet)
-├─ Speed: Depends on model
-└─ Best for: When delegation unavailable
-```
+### 🥉 Tier 3: Current AI (Last Resort)
+- **Cost**: Expensive (Opus/Sonnet credits)
+- **Usage**: Used only if all delegation tiers fail.
 
 ---
 

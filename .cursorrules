@@ -1,0 +1,32 @@
+# UNIVERSAL OR STRATEGY V12.11 MASTER ARCHITECTURE (DNA)
+
+## 1. Core Implementation Pattern: SIMA
+- **Protocol:** Single-Instance Multi-Account.
+- **Master:** One strategy instance on one chart.
+- **Fleet:** Up to 20 Apex accounts managed via `ExecuteSmartDispatchEntry`.
+- **Identity:** Accounts matched via `AccountPrefix` (default: "Apex").
+
+## 2. Key Execution Logic
+- **CIT (Chase-If-Touch):** Dynamically adjusts entry Limit orders if price touches but does not fill. Adjustment distance: `ChaseIfTouchPoints`.
+- **RMA (Risk Managed Entry):** 
+    - ATR-based position sizing.
+    - Deferred bracket submission: Entry Fill must trigger before Slopes/Targets are placed for follower accounts.
+- **50/50 Rule:** 
+    - Profit Target 1 (T1): 50% of position (fixed ticks or ATR).
+    - Profit Target 2 (T2): 50% of position (Runner).
+
+## 3. Safety and Compliance
+- **Reaper Audit:** Parallel thread running every 1000ms to verify all account positions match the Master instance.
+- **Consistency Lock (30% Rule):** Prevents one trade from taking more than 30% of total profit (Standard Edition requirement).
+- **Daily Profit Cap:** Auto-stops strategy upon reaching specific P/L target.
+
+## 4. UI Design System
+- **Palette:** 
+  - Background: #050508 (Deep Black/Blue)
+  - Accent: #22d3ee (Cyan)
+- **Panel:** Vertical sidebar with six persisted modes (ORB, RMA, RETEST, MOMO, FFMA, TREND).
+- **Control:** IPC-based communication between Panel and Strategy.
+
+## 5. Technical Anchors
+- **Trend/RMA Split:** Entries anchored to EMA 9 and EMA 15.
+- **Stop Management:** Dynamic ATR, PT, and OR-based stops handled in `CalculateStopPriceForMode`.

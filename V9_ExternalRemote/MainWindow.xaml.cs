@@ -1,13 +1,16 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Windows.Controls; // For Button
-using System.Windows; // For Thickness, etc.
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Linq;
 
 namespace V9_ExternalRemote
 {
@@ -16,61 +19,40 @@ namespace V9_ExternalRemote
         private string hubIp = "127.0.0.1";
         private int hubPort = 5000;
         private TcpClient client;
-        private TosRtdClient _rtdClient;
-        
-        // Multi-Symbol Logic
-        private Dictionary<string, SymbolData> _symbolCache = new Dictionary<string, SymbolData>();
-        private string _activeSymbol = "MES"; // Currently DISPLAYED symbol
-        
-        public class SymbolData
-        {
-            public string Last { get; set; } = "...";
-            public string Ema9 { get; set; } = "---";
-            public string Ema15 { get; set; } = "---";
-            public string Ema30 { get; set; } = "---";
-            public string Ema65 { get; set; } = "---";
-            public string Ema200 { get; set; } = "---";
-            public string OrHigh { get; set; } = "---";
-            public string OrLow { get; set; } = "---";
-            public string Or15High { get; set; } = "---";
-            public string Or15Low { get; set; } = "---";
-            public string Flag5m { get; set; } = "---";
-            public string Flag15m { get; set; } = "---";
-            public string Flag1h { get; set; } = "---";
-            public double LastVal { get; set; } = 0;
-            public Button TabButton { get; set; }
-        }
-
-        private string _logPath = "v9_remote_log.txt";
-        private V9_ExternalRemote_TCP_Server _server;
+        private TosRtdClient _tosRtd;
+        private ExcelRtdReader? _excelReader;
+        private string _activeSymbol = "MES";
+        public ObservableCollection<SymbolData> Symbols { get; set; } = new ObservableCollection<SymbolData>();
 
         public MainWindow()
         {
             InitializeComponent();
+            this.DataContext = this;
             
             // Global Safety: Prevent "disappearing" app on any unhandled error
             AppDomain.CurrentDomain.UnhandledException += (s, e) => {
                 MessageBox.Show("V9 Remote Error: " + e.ExceptionObject.ToString());
             };
 
-            // V9_010 FINAL: NinjaTrader is now the Server. WPF app is the Client.
-            // Disabling internal server to prevent port conflict.
-            /*
-            try
-            {
-                _server = new V9_ExternalRemote_TCP_Server(hubPort);
-                _server.Start();
-                LogToFile($"TCP Server started on port {hubPort}");
-            }
-            catch (Exception ex)
-            {
-                LogToFile($"Failed to start TCP Server: {ex.Message}");
-                MessageBox.Show("Failed to start Hub Server: " + ex.Message);
-            }
-            */
-
             InitializeTosRtd();
-            HubStatusLed.Background = Brushes.Gray; // Neutral until first command
+            InitializeExcelBridge();
+            ConnectToHub();
+            StartDataBroadcast();
+        }
+
+        private void StartDataBroadcast()
+        {
+            var timer = new System.Windows.Threading.DispatcherTimer();
+            timer.Interval = TimeSpan.FromSeconds(1);
+            timer.Tick += async (s, e) => {
+                foreach (var symbol in Symbols)
+                {
+                    // Format: DATA|SYMBOL|LAST|EMA9|EMA15|EMA30|ORH|ORL
+                    string cmd = $"DATA|{symbol.Symbol}|{symbol.LastPrice}|{symbol.Ema9}|{symbol.Ema15}|{symbol.Ema30}|{symbol.OrHigh}|{symbol.OrLow}";
+                    await SendCommand(cmd);
+                }
+            };
+            timer.Start();
         }
 
         private void SymbolInput_KeyDown(object sender, KeyEventArgs e)
@@ -83,265 +65,139 @@ namespace V9_ExternalRemote
 
         private void InitializeTosRtd()
         {
-            LogToFile($"--- REMOTE APP START ({DateTime.Now}) ---");
-            LogToFile($"APP DIRECTORY: {AppDomain.CurrentDomain.BaseDirectory}");
-            _rtdClient = new TosRtdClient(this.Dispatcher);
-            
-            _rtdClient.OnDataUpdate += (key, value) => {
+            _tosRtd = new TosRtdClient(this.Dispatcher);
+            // Force heartbeat logic
+            var timer = new System.Windows.Threading.DispatcherTimer();
+            timer.Interval = TimeSpan.FromSeconds(2);
+            timer.Tick += (s, e) => {
+                if (_tosRtd.IsConnected) _tosRtd.Heartbeat();
+            };
+            timer.Start();
+
+            _tosRtd.OnConnectionStatusChanged += (connected) => {
+                this.Dispatcher.BeginInvoke(new Action(() => {
+                    TosStatusLed.Background = connected ? Brushes.Lime : Brushes.Yellow;
+                }));
+            };
+            _tosRtd.OnDataUpdate += (key, value) => {
                 UpdatePriceDisplay(key, value);
             };
-
-            _rtdClient.OnConnectionStatusChanged += (connected) => {
-                this.Dispatcher.Invoke(() => {
-                    TosStatusLed.Background = connected ? Brushes.Lime : Brushes.Red;
-                    LogToFile($"TOS STATUS: {(connected ? "CONNECTED" : "DISCONNECTED")}");
-                });
-            };
-
-            _rtdClient.Start();
             
-            // Initial subscription
-            SubscribeToSymbol(_activeSymbol);
+            _tosRtd.Start();
+            
+            if (_tosRtd.IsConnected)
+            {
+                SubscribeToSymbol(_activeSymbol);
+            }
+        }
+
+        private void InitializeExcelBridge()
+        {
+            // Path to Excel workbook with TOS RTD formulas
+            string excelPath = System.IO.Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, 
+                "TOS_RTD_Bridge.xlsx");
+            
+            // Also try the source directory if not found in bin
+            if (!System.IO.File.Exists(excelPath))
+            {
+                excelPath = @"C:\WSGTA\universal-or-strategy\V9_ExternalRemote\TOS_RTD_Bridge.xlsx";
+            }
+
+            _excelReader = new ExcelRtdReader(
+                excelPath,
+                OnExcelDataReceived,
+                msg => { if (_tosRtd != null) _tosRtd.Log(msg); else Console.WriteLine(msg); }
+            );
+
+            // Try to connect (will fail gracefully if Excel/file not ready)
+            _excelReader.Connect();
+        }
+
+        private void OnExcelDataReceived(string symbol, string dataType, double ema9, double ema15)
+        {
+            this.Dispatcher.BeginInvoke(new Action(() => {
+                // Find or create symbol data
+                var data = Symbols.FirstOrDefault(s => s.Symbol == symbol);
+                if (data == null)
+                {
+                    data = new SymbolData { Symbol = symbol };
+                    Symbols.Add(data);
+                }
+
+                // Update EMA values from Excel
+                data.Ema9 = ema9.ToString("F2");
+                data.Ema15 = ema15.ToString("F2");
+            }));
         }
 
         private void SubscribeToSymbol(string symbol)
         {
-            // Normalize
-            symbol = symbol.ToUpper();
-            if (_symbolCache.ContainsKey(symbol))
-            {
-                SwitchToSymbol(symbol);
-                return;
-            }
-
-            LogToFile($"Adding symbol: {symbol}");
-
-            // Create Data Entry
-            var data = new SymbolData();
-            
-            // Create UI Tab
-            var btn = new Button
-            {
-                Content = symbol,
-                FontSize = 9,
-                Margin = new Thickness(0, 0, 2, 0),
-                Padding = new Thickness(5, 2, 5, 2),
-                Background = Brushes.Transparent,
-                Foreground = Brushes.Gray,
-                BorderThickness = new Thickness(0)
-            };
-            
-            // Style hack: apply basic props, we'll handle active state manually
-            btn.Click += (s, e) => SwitchToSymbol(symbol);
-            
-            data.TabButton = btn;
-            _symbolCache[symbol] = data;
-            WatchlistPanel.Children.Add(btn);
-
-            // Subscribe
-            string exchange = GetExchange(symbol);
-            string fullSymbol = $"/{symbol}:{exchange}";
-            
-            LogToFile($"Subscribing all studies for {symbol}. Full={fullSymbol}");
-
-            // Correct Mapping based on Shotgun Discovery:
-            // CUSTOM4  -> EMA9
-            // CUSTOM6  -> EMA15
-            // CUSTOM10 -> OR HIGH
-            // CUSTOM12 -> OR LOW (Assumed based on pattern, though not seen in snippets yet)
-
-            // ALL subscriptions must use fullSymbol (e.g., /MES:XCME)
-            // The "loading" issue is now handled by the "Sticky Data" filter in UpdatePriceDisplay.
-
-            _rtdClient.Subscribe($"{symbol}:LAST", new object[] { "LAST", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:EMA9", new object[] { "Custom1", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:EMA15", new object[] { "Custom2", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:EMA30", new object[] { "CUSTOM8", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:EMA65", new object[] { "CUSTOM19", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:EMA200", new object[] { "CUSTOM18", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:ORHIGH", new object[] { "CUSTOM9", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:ORLOW", new object[] { "CUSTOM11", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:OR15HIGH", new object[] { "CUSTOM13", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:OR15LOW", new object[] { "CUSTOM15", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:FLAG5M", new object[] { "CUSTOM14", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:FLAG15M", new object[] { "CUSTOM16", fullSymbol });
-            _rtdClient.Subscribe($"{symbol}:FLAG1H", new object[] { "CUSTOM20", fullSymbol });
-
-            // Safety catch: Try XNYM for metals if XCEC fails (Gold/Silver have odd routing sometimes)
-            // But log indicated MGC worked on XCEC for Discovery. Sticking to plan.
-
-            SwitchToSymbol(symbol);
-        }
-
-        private void SwitchToSymbol(string symbol)
-        {
-            _activeSymbol = symbol;
-            
-            // Update Tabs UI
-            foreach (var kvp in _symbolCache)
-            {
-                if (kvp.Value.TabButton != null)
-                {
-                    bool isActive = kvp.Key == symbol;
-                    kvp.Value.TabButton.Foreground = isActive ? Brushes.Cyan : Brushes.Gray;
-                    kvp.Value.TabButton.FontWeight = isActive ? FontWeights.Bold : FontWeights.Normal;
-                }
-            }
-
-            // Refresh Main Display from Cache
-            if (_symbolCache.TryGetValue(symbol, out var data))
-            {
-                LastPriceTxt.Text = data.Last;
-                Ema9Txt.Text = data.Ema9;
-                Ema15Txt.Text = data.Ema15;
-                Ema30Txt.Text = data.Ema30;
-                Ema65Txt.Text = data.Ema65;
-                Ema200Txt.Text = data.Ema200;
-                OrHighTxt.Text = data.OrHigh;
-                OrLowTxt.Text = data.OrLow;
-                Flag5mVal.Text = data.Flag5m;
-                Flag15mVal.Text = data.Flag15m;
-                Flag1hVal.Text = data.Flag1h;
-            }
-        }
-
-        private void UpdatePriceDisplay(string key, object value)
-        {
-            this.Dispatcher.Invoke(() =>
-            {
-                try
-                {
-                    if (value == null) return;
-                    string valStr = value.ToString();
-                    
-                    // Trace every single update at the UI level
-                    LogToFile($"UI RECV: {key} = {valStr}"); 
-                    
-                    if (key.Contains("DISCO"))
-                    {
-                         LogToFile($"DISCOVERY: {key} = {valStr}");
-                    }
-
-                    if (valStr == "#N/A" || string.IsNullOrWhiteSpace(valStr) || valStr.ToLower().Contains("loading")) return;
-
-                    // Parse Key: SYMBOL:FIELD
-                    string[] parts = key.Split(':');
-                    if (parts.Length < 2) return;
-                    
-                    string symbol = parts[0];
-                    string field = parts[1];
-
-                    if (!_symbolCache.ContainsKey(symbol)) return;
-                    var data = _symbolCache[symbol];
-
-                    if (!double.TryParse(valStr, out double val)) return;
-                    
-                    // Specific check for 0.00 - indicators like EMA/OR rarely hit exactly zero.
-                    // If it's 0.00, it might be an uninitialized state in TOS.
-                    if (val == 0 && (field != "LAST")) return; 
-
-                    string fmtVal = val.ToString("F2");
-
-                    // Update Cache
-                    if (field == "LAST") { data.Last = fmtVal; data.LastVal = val; }
-                    else if (field == "EMA9") data.Ema9 = fmtVal;
-                    else if (field == "EMA15") data.Ema15 = fmtVal;
-                    else if (field == "EMA30") data.Ema30 = fmtVal;
-                    else if (field == "EMA65") data.Ema65 = fmtVal;
-                    else if (field == "EMA200") data.Ema200 = fmtVal;
-                    else if (field == "ORHIGH") data.OrHigh = fmtVal;
-                    else if (field == "ORLOW") data.OrLow = fmtVal;
-                    else if (field == "OR15HIGH") data.Or15High = fmtVal;
-                    else if (field == "OR15LOW") data.Or15Low = fmtVal;
-                    else if (field == "FLAG5M") data.Flag5m = fmtVal;
-                    else if (field == "FLAG15M") data.Flag15m = fmtVal;
-                    else if (field == "FLAG1H") data.Flag1h = fmtVal;
-
-                    // Update UI ONLY if active
-                    if (symbol == _activeSymbol)
-                    {
-                         if (field == "LAST") LastPriceTxt.Text = fmtVal;
-                         else if (field == "EMA9") Ema9Txt.Text = fmtVal;
-                          else if (field == "EMA15") Ema15Txt.Text = fmtVal;
-                          else if (field == "EMA30") Ema30Txt.Text = fmtVal;
-                          else if (field == "EMA65") Ema65Txt.Text = fmtVal;
-                          else if (field == "EMA200") Ema200Txt.Text = fmtVal;
-                          else if (field == "ORHIGH") OrHighTxt.Text = fmtVal;
-                          else if (field == "ORLOW") OrLowTxt.Text = fmtVal;
-                          else if (field == "OR15HIGH") Or15HighTxt.Text = fmtVal;
-                          else if (field == "OR15LOW") Or15LowTxt.Text = fmtVal;
-                          else if (field == "FLAG5M") UpdateFlag(Flag5m, Flag5mVal, val);
-                          else if (field == "FLAG15M") UpdateFlag(Flag15m, Flag15mVal, val);
-                          else if (field == "FLAG1H") Update1HTrend(val);
-                    }
-                    
-                    // MTF Logic (simplified for now, attached to active symbol mostly or global)
-                    // For now, let's skip complex MTF flag parsing unless it's strictly required
-                }
-                catch { }
-            });
-        }
-        
-        private static readonly Brush RedFlag = new SolidColorBrush(Color.FromArgb(60, 255, 0, 0));
-        private static readonly Brush GreenFlag = new SolidColorBrush(Color.FromArgb(60, 0, 255, 0));
-
-        private void Update1HTrend(double level)
-        {
             try
             {
-                double lastPrice = 0;
-                double.TryParse(LastPriceTxt.Text, out lastPrice);
+                string rawSymbol = symbol.TrimStart('/').ToUpper();
                 
-                // Update the Flag Cluster (Right Sidebar)
-                Flag1hVal.Text = level.ToString("F2");
-                Flag1h.Background = (lastPrice > level) ? GreenFlag : RedFlag;
+                // Check if already subscribed
+                if (Symbols.Any(s => s.Symbol == rawSymbol)) return;
 
-                // Update the Central Multi-Row Indicator
-                if (lastPrice > level)
+                // Create new symbol data row
+                var symbolData = new SymbolData { Symbol = rawSymbol };
+                Symbols.Add(symbolData);
+
+                // Smart Symbol Translation for TOS RTD
+                string tosRoot = rawSymbol;
+                string tosMonth = "";
+                if (rawSymbol.Length > 3 && char.IsDigit(rawSymbol[rawSymbol.Length - 1]))
                 {
-                    Trend1hVal.Text = "BULLISH (UP)";
-                    Trend1hVal.Foreground = Brushes.Lime;
-                    Trend1hBorder.Background = new SolidColorBrush(Color.FromArgb(40, 0, 255, 0));
+                    tosRoot = rawSymbol.Substring(0, rawSymbol.StartsWith("MES") || rawSymbol.StartsWith("MNQ") ? 3 : 2);
+                    tosMonth = rawSymbol.Replace(tosRoot, "");
+                }
+
+                string exchange = GetExchange(rawSymbol);
+                
+                // Possible TOS formats: /MES:XCME, /MES[H26]:XCME, /MESH26:XCME
+                List<string> possibleTOSNames = new List<string>();
+                if (!string.IsNullOrEmpty(tosMonth))
+                {
+                    possibleTOSNames.Add("/" + tosRoot + "[" + tosMonth + "]");
+                    possibleTOSNames.Add("/" + tosRoot + tosMonth);
                 }
                 else
                 {
-                    Trend1hVal.Text = "BEARISH (DOWN)";
-                    Trend1hVal.Foreground = Brushes.Red;
-                    Trend1hBorder.Background = new SolidColorBrush(Color.FromArgb(40, 255, 0, 0));
+                    possibleTOSNames.Add("/" + rawSymbol);
                 }
+
+                foreach (var tosName in possibleTOSNames)
+                {
+                    string baseKey = tosName + ":" + exchange;
+                    symbolData.InterestKeys.Add(baseKey);
+
+                    // Subscribe to Core Fields
+                    _tosRtd.Subscribe(baseKey + ":LAST", new object[] { "LAST", tosName });
+                    _tosRtd.Subscribe(baseKey + ":BID", new object[] { "BID", tosName });
+                    _tosRtd.Subscribe(baseKey + ":ASK", new object[] { "ASK", tosName });
+                    
+                    // Subscribe to Custom Columns
+                    string[] customFields = { "CUSTOM4", "CUSTOM6", "CUSTOM7", "CUSTOM8", "CUSTOM10" };
+                    foreach (var f in customFields)
+                    {
+                        string fullKey = baseKey + ":" + f;
+                        symbolData.InterestKeys.Add(fullKey);
+                        _tosRtd.Subscribe(fullKey, new object[] { f, tosName });
+                    }
+                }
+                
+                _tosRtd.Log($"Subscribed to {possibleTOSNames.Count} variants for {rawSymbol}");
+
             }
             catch { }
         }
 
-        private void UpdateFlag(System.Windows.Controls.Border flagBorder, System.Windows.Controls.TextBlock flagText, double level)
+        private void ClearPriceDisplay()
         {
-            try
-            {
-                double lastPrice = 0;
-                double.TryParse(LastPriceTxt.Text, out lastPrice);
-                
-                flagText.Text = level.ToString("F2");
-                
-                // Color logic: Green if price is above, Red if below
-                flagBorder.Background = (lastPrice > level) ? GreenFlag : RedFlag;
-            }
-            catch { }
+            // No longer clearing individual textboxes as we use per-symbol rows
         }
 
-        private void SetSymbol_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(SymbolInput.Text)) return;
-                
-                string newSym = SymbolInput.Text.Trim().ToUpper();
-                SubscribeToSymbol(newSym);
-                TriggerGlow(Brushes.Cyan);
-                SymbolInput.Text = ""; // Clear input after adding
-            }
-            catch { }
-        }
-        
         private string GetExchange(string symbol)
         {
             // Map common futures roots to their exchanges based on successful Shotgun Test V3 results
@@ -367,48 +223,110 @@ namespace V9_ExternalRemote
             return "XCME";
         }
 
-        private async Task<bool> TestHubConnection()
+        private void UpdatePriceDisplay(string key, object? value)
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    if (value == null) return;
+                    string valStr = value.ToString() ?? "";
+                    if (valStr.Contains("N/A") || string.IsNullOrWhiteSpace(valStr)) return;
+
+                    double val = 0;
+                    if (!double.TryParse(valStr, out val)) return;
+
+                    // Find which symbol this update belongs to using InterestKeys
+                    foreach (var data in Symbols)
+                    {
+                        bool isMatch = false;
+                        foreach (var ik in data.InterestKeys)
+                        {
+                            if (key.StartsWith(ik)) { isMatch = true; break; }
+                        }
+                        
+                        if (!isMatch) continue;
+
+                        // Map fields based on shotgun keys and common names
+                        if (key.EndsWith(":LAST")) data.LastPrice = val.ToString("F2");
+                        else if (key.EndsWith(":BID")) data.BidPrice = val.ToString("F2");
+                        else if (key.EndsWith(":ASK")) data.AskPrice = val.ToString("F2");
+
+                        // EMA9 - CUSTOM4
+                        if (key.EndsWith("CUSTOM4")) data.Ema9 = val.ToString("F2");
+                        else if (key.EndsWith("CUSTOM6")) data.Ema15 = val.ToString("F2");
+                        else if (key.EndsWith("CUSTOM10")) data.Ema30 = val.ToString("F2");
+                        else if (key.EndsWith("CUSTOM7")) data.OrHigh = val.ToString("F2");
+                        else if (key.EndsWith("CUSTOM8")) data.OrLow = val.ToString("F2");
+                        
+                        // MTF Flags Logic (Fallback names if not using CUSTOM)
+                        else if (key.Contains("EMA9_5M")) data.Flag5m = GetFlagBrush(val, data.LastPrice);
+                        else if (key.Contains("EMA9_15M")) data.Flag15m = GetFlagBrush(val, data.LastPrice);
+                        else if (key.Contains("EMA9_60M")) data.Flag60m = GetFlagBrush(val, data.LastPrice);
+
+                        // Log successful hits for indicators
+                        if (key.Contains("CUSTOM"))
+                        {
+                             System.IO.File.AppendAllText("v9_shotgun_hits.txt", $"HIT: {key} = {val}\n");
+                        }
+                    }
+                }
+                catch { }
+            });
+        }
+
+        private static readonly Brush RedFlag = new SolidColorBrush(Color.FromArgb(60, 255, 0, 0));
+        private static readonly Brush GreenFlag = new SolidColorBrush(Color.FromArgb(60, 0, 255, 0));
+
+        private Brush GetFlagBrush(double level, string lastPriceStr)
+        {
+            double lastPrice = 0;
+            double.TryParse(lastPriceStr, out lastPrice);
+            return (lastPrice > level) ? GreenFlag : RedFlag;
+        }
+
+        private void SetSymbol_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                using (var testClient = new TcpClient())
-                {
-                    var connectTask = testClient.ConnectAsync(hubIp, hubPort);
-                    if (await Task.WhenAny(connectTask, Task.Delay(500)) == connectTask)
-                    {
-                        await connectTask;
-                        return true;
-                    }
-                    return false;
-                }
+                if (string.IsNullOrEmpty(SymbolInput.Text)) return;
+                
+                _activeSymbol = SymbolInput.Text.Trim().ToUpper();
+                SubscribeToSymbol(_activeSymbol);
+                TriggerGlow(Brushes.Cyan);
             }
-            catch { return false; }
+            catch { }
+        }
+
+        private async void ConnectToHub()
+        {
+            try
+            {
+                client = new TcpClient();
+                await client.ConnectAsync(hubIp, hubPort);
+                HubStatusLed.Background = Brushes.Lime;
+            }
+            catch (Exception)
+            {
+                HubStatusLed.Background = Brushes.Red;
+            }
         }
 
         private async Task SendCommand(string cmd)
         {
+            if (client == null || !client.Connected)
+            {
+                ConnectToHub();
+                if (client == null || !client.Connected) return;
+            }
+
             try
             {
-                using (TcpClient quickClient = new TcpClient())
-                {
-                    // High-speed timeout for local connection
-                    var connectTask = quickClient.ConnectAsync(hubIp, hubPort);
-                    if (await Task.WhenAny(connectTask, Task.Delay(1000)) != connectTask)
-                    {
-                        throw new Exception("Timeout");
-                    }
-                    
-                    await connectTask;
-                    
-                    byte[] data = Encoding.UTF8.GetBytes(cmd);
-                    await quickClient.GetStream().WriteAsync(data, 0, data.Length);
-                    
-                    HubStatusLed.Background = Brushes.Lime;
-                }
+                byte[] data = Encoding.UTF8.GetBytes(cmd);
+                await client.GetStream().WriteAsync(data, 0, data.Length);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                LogToFile($"CMD FAIL: {cmd} | {ex.Message}");
                 HubStatusLed.Background = Brushes.Red;
             }
         }
@@ -420,7 +338,6 @@ namespace V9_ExternalRemote
 
         private void Close_Click(object sender, RoutedEventArgs e)
         {
-            _server?.Stop();
             Close();
         }
 
@@ -436,263 +353,19 @@ namespace V9_ExternalRemote
             TriggerGlow(Brushes.Red);
         }
 
+        private async void EmaEntry_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string tag)
+            {
+                // Tag format: "SIDE|LEVEL" (e.g., "LONG|EMA30")
+                await SendCommand($"ENTRY|{_activeSymbol}|{tag}|1");
+                TriggerGlow(tag.StartsWith("LONG") ? Brushes.Lime : Brushes.Red);
+            }
+        }
+
         private async void Flatten_Click(object sender, RoutedEventArgs e)
         {
-            await SendCommand($"FLATTEN|{_activeSymbol}");
-            TriggerGlow(Brushes.White);
-        }
-
-        private async void Trim25_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"TRIM_25|{_activeSymbol}");
-            TriggerGlow(Brushes.Yellow);
-        }
-
-        private async void Trim50_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"TRIM_50|{_activeSymbol}");
-            TriggerGlow(Brushes.Orange);
-        }
-
-        private async void BEPlus1_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"BE_PLUS_1|{_activeSymbol}");
-            TriggerGlow(Brushes.Cyan);
-        }
-
-        // V10.3: OR Breakout Entry Handlers
-        private async void OrLong_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"OR_LONG|{_activeSymbol}");
-            TriggerGlow(Brushes.Cyan);
-        }
-
-        private async void OrShort_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"OR_SHORT|{_activeSymbol}");
-            TriggerGlow(Brushes.Magenta);
-        }
-
-        // V10.5: Button clicks open context menu
-        private void T1_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.ContextMenu != null)
-            {
-                btn.ContextMenu.PlacementTarget = btn;
-                btn.ContextMenu.IsOpen = true;
-            }
-        }
-
-        private void T2_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.ContextMenu != null)
-            {
-                btn.ContextMenu.PlacementTarget = btn;
-                btn.ContextMenu.IsOpen = true;
-            }
-        }
-
-        private void T3_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.ContextMenu != null)
-            {
-                btn.ContextMenu.PlacementTarget = btn;
-                btn.ContextMenu.IsOpen = true;
-            }
-        }
-
-        private void Run_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.ContextMenu != null)
-            {
-                btn.ContextMenu.PlacementTarget = btn;
-                btn.ContextMenu.IsOpen = true;
-            }
-        }
-
-        // V10.5: T1 Target Actions
-        private async void T1_Market_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T1_MARKET|{_activeSymbol}");
-            TriggerGlow(Brushes.LimeGreen);
-        }
-
-        private async void T1_1pt_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T1_1PT|{_activeSymbol}");
-            TriggerGlow(Brushes.LimeGreen);
-        }
-
-        private async void T1_2pt_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T1_2PT|{_activeSymbol}");
-            TriggerGlow(Brushes.LimeGreen);
-        }
-
-        private async void T1_Now_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T1_NOW|{_activeSymbol}");
-            TriggerGlow(Brushes.LimeGreen);
-        }
-
-        private async void T1_BE_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T1_BE|{_activeSymbol}");
-            TriggerGlow(Brushes.LimeGreen);
-        }
-
-        private async void T1_Cancel_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T1_CANCEL|{_activeSymbol}");
-            TriggerGlow(Brushes.Gray);
-        }
-
-        // V10.5: T2 Target Actions
-        private async void T2_Market_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T2_MARKET|{_activeSymbol}");
-            TriggerGlow(Brushes.Yellow);
-        }
-
-        private async void T2_1pt_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T2_1PT|{_activeSymbol}");
-            TriggerGlow(Brushes.Yellow);
-        }
-
-        private async void T2_2pt_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T2_2PT|{_activeSymbol}");
-            TriggerGlow(Brushes.Yellow);
-        }
-
-        private async void T2_Now_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T2_NOW|{_activeSymbol}");
-            TriggerGlow(Brushes.Yellow);
-        }
-
-        private async void T2_BE_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T2_BE|{_activeSymbol}");
-            TriggerGlow(Brushes.Yellow);
-        }
-
-        private async void T2_Cancel_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T2_CANCEL|{_activeSymbol}");
-            TriggerGlow(Brushes.Gray);
-        }
-
-        // V10.5: T3 Target Actions
-        private async void T3_Market_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T3_MARKET|{_activeSymbol}");
-            TriggerGlow(Brushes.Orange);
-        }
-
-        private async void T3_1pt_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T3_1PT|{_activeSymbol}");
-            TriggerGlow(Brushes.Orange);
-        }
-
-        private async void T3_2pt_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T3_2PT|{_activeSymbol}");
-            TriggerGlow(Brushes.Orange);
-        }
-
-        private async void T3_Now_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T3_NOW|{_activeSymbol}");
-            TriggerGlow(Brushes.Orange);
-        }
-
-        private async void T3_BE_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T3_BE|{_activeSymbol}");
-            TriggerGlow(Brushes.Orange);
-        }
-
-        private async void T3_Cancel_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"T3_CANCEL|{_activeSymbol}");
-            TriggerGlow(Brushes.Gray);
-        }
-
-        // V10.5: T4/RUN Handlers
-        private async void CloseT4_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"CLOSE_T4|{_activeSymbol}");
-            TriggerGlow(Brushes.OrangeRed);
-        }
-
-        private async void Run_Close_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"CLOSE_T4|{_activeSymbol}");
-            TriggerGlow(Brushes.OrangeRed);
-        }
-
-        // V10.4: Advanced Runner Control Handlers
-        private async void RunBE_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"RUN_BE|{_activeSymbol}");
-            TriggerGlow(Brushes.Cyan);
-        }
-
-        private async void Run1pt_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"RUN_1PT|{_activeSymbol}");
-            TriggerGlow(Brushes.Lime);
-        }
-
-        private async void Run2pt_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"RUN_2PT|{_activeSymbol}");
-            TriggerGlow(Brushes.Green);
-        }
-
-        private async void Run50_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"RUN_50|{_activeSymbol}");
-            TriggerGlow(Brushes.Orange);
-        }
-
-        private async void RunOff_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"RUN_OFF|{_activeSymbol}");
-            TriggerGlow(Brushes.Gray);
-        }
-
-        private async void Rma_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"MODE_RMA|{_activeSymbol}");
-            TriggerGlow(Brushes.SandyBrown);
-        }
-
-        private async void Momo_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"MODE_MOMO|{_activeSymbol}");
-            TriggerGlow(Brushes.MediumPurple);
-        }
-
-        private async void Trend_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"EXEC_TREND|{_activeSymbol}");
-            TriggerGlow(Brushes.Teal);
-        }
-
-        private async void Ffma_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"MODE_FFMA|{_activeSymbol}");
-            TriggerGlow(Brushes.DeepSkyBlue);
-        }
-
-        private async void Retest_Click(object sender, RoutedEventArgs e)
-        {
-            await SendCommand($"EXEC_RETEST|{_activeSymbol}");
-            TriggerGlow(Brushes.Gold);
+            await SendCommand("FLATTEN|ALL|0");
         }
 
         private void GhostMode_Changed(object sender, RoutedEventArgs e)
@@ -700,6 +373,7 @@ namespace V9_ExternalRemote
             if (GhostModeCheck.IsChecked == true)
             {
                 this.Opacity = 0.5;
+                // In a real WPF app, you'd use Win32 SetWindowLong to make it click-through
             }
             else
             {
@@ -713,14 +387,40 @@ namespace V9_ExternalRemote
             await Task.Delay(500);
             GlowBorder.BorderBrush = Brushes.Transparent;
         }
+    }
 
-        private void LogToFile(string msg)
+    public class SymbolData : INotifyPropertyChanged
+    {
+        private string _lastPrice = "0.00";
+        private string _bidPrice = "0.00";
+        private string _askPrice = "0.00";
+        private string _ema9 = "0.0";
+        private string _ema15 = "0.0";
+        private string _ema30 = "0.0";
+        private string _orHigh = "0.00";
+        private string _orLow = "0.00";
+        private Brush _flag5m = Brushes.Gray;
+        private Brush _flag15m = Brushes.Gray;
+        private Brush _flag60m = Brushes.Gray;
+
+        public string Symbol { get; set; }
+        public List<string> InterestKeys { get; set; } = new List<string>();
+        public string LastPrice { get => _lastPrice; set { _lastPrice = value; OnPropertyChanged(); } }
+        public string BidPrice { get => _bidPrice; set { _bidPrice = value; OnPropertyChanged(); } }
+        public string AskPrice { get => _askPrice; set { _askPrice = value; OnPropertyChanged(); } }
+        public string Ema9 { get => _ema9; set { _ema9 = value; OnPropertyChanged(); } }
+        public string Ema15 { get => _ema15; set { _ema15 = value; OnPropertyChanged(); } }
+        public string Ema30 { get => _ema30; set { _ema30 = value; OnPropertyChanged(); } }
+        public string OrHigh { get => _orHigh; set { _orHigh = value; OnPropertyChanged(); } }
+        public string OrLow { get => _orLow; set { _orLow = value; OnPropertyChanged(); } }
+        public Brush Flag5m { get => _flag5m; set { _flag5m = value; OnPropertyChanged(); } }
+        public Brush Flag15m { get => _flag15m; set { _flag15m = value; OnPropertyChanged(); } }
+        public Brush Flag60m { get => _flag60m; set { _flag60m = value; OnPropertyChanged(); } }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
-            try
-            {
-                System.IO.File.AppendAllText(_logPath, $"{DateTime.Now:HH:mm:ss.fff} | {msg}\r\n");
-            }
-            catch { }
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
     }
 }

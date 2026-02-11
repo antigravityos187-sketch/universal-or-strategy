@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
+using System.Threading.Tasks;
 
 namespace V9_ExternalRemote
 {
@@ -24,8 +25,8 @@ namespace V9_ExternalRemote
         private Dictionary<int, string> _topicMap = new Dictionary<int, string>();
         private int _nextTopicId = 1;
 
-        public event Action<string, object> OnDataUpdate;
-        public event Action<bool> OnConnectionStatusChanged;
+        public event Action<string, object?>? OnDataUpdate;
+        public event Action<bool>? OnConnectionStatusChanged;
 
         public TosRtdClient(Dispatcher dispatcher)
         {
@@ -56,9 +57,9 @@ namespace V9_ExternalRemote
                 Log("Connected to RTD Server.");
                 OnConnectionStatusChanged?.Invoke(true);
 
-                // Polling Fallback: Force RefreshData every 2 seconds if callbacks fail
+                // Polling Fallback: Force RefreshData every 500ms if callbacks fail
                 var timer = new System.Windows.Threading.DispatcherTimer();
-                timer.Interval = TimeSpan.FromSeconds(2);
+                timer.Interval = TimeSpan.FromMilliseconds(500); 
                 timer.Tick += (s, e) => {
                     if (_isConnected) TriggerUpdate(); 
                 };
@@ -82,9 +83,7 @@ namespace V9_ExternalRemote
                 string flatTopics = string.Join(", ", topics);
                 Log($"Subscribing ID {topicId}: [{flatTopics}] -> Key: {key}");
                 
-                bool getNewValues = true;
-                // MUST pass by ref for COM interop to work correctly with dynamic/IDispatch
-                _rtdServer.ConnectData(topicId, ref topics, ref getNewValues);
+                _rtdServer.ConnectData(topicId, topics, true);
                 
                 _topicMap[topicId] = key;
                 return topicId;
@@ -138,9 +137,16 @@ namespace V9_ExternalRemote
             public void Disconnect() { }
         }
 
-        public void TriggerUpdate()
+        public void TriggerUpdate(int delayMs = 0)
         {
-            _dispatcher.BeginInvoke(new Action(ProcessUpdates));
+            if (delayMs > 0)
+            {
+                Task.Delay(delayMs).ContinueWith(_ => _dispatcher.BeginInvoke(new Action(ProcessUpdates)));
+            }
+            else
+            {
+                _dispatcher.BeginInvoke(new Action(ProcessUpdates));
+            }
         }
 
         private void ProcessUpdates()
@@ -154,69 +160,59 @@ namespace V9_ExternalRemote
 
                 if (topicCount > 0 && data != null)
                 {
-                    Log($"Processing {topicCount} updates..."); 
+                    bool hasLoading = false;
+                    Array? dataArray = data as Array;
                     
-                    // Handle multi-dimensional array from RTD
-                    if (data is object[,] multiData)
+                    // Handle 2D Array [ID, Value]
+                    if (dataArray != null && dataArray.Rank == 2)
                     {
-                        for (int i = 0; i < topicCount; i++)
+                        int rows = dataArray.GetLength(0); // Should be 2 (ID and Value)
+                        int cols = dataArray.GetLength(1); // Should be topicCount
+                        
+                        // Debug log every few cycles
+                        if (DateTime.Now.Second % 5 == 0 && DateTime.Now.Millisecond < 100)
+                            Log($"Refreshing {topicCount} topics (2D Array: {rows}x{cols})");
+
+                        for (int i = 0; i < cols; i++)
                         {
-                            try 
+                            try
                             {
-                                object rawId = multiData[0, i];
+                                object? rawId = dataArray.GetValue(0, i);
                                 if (rawId == null) continue;
                                 int topicId = Convert.ToInt32(rawId);
-                                object value = multiData[1, i];
+                                object? value = dataArray.GetValue(1, i);
 
                                 string valueStr = value?.ToString() ?? "null";
-                                Log($"Update ID {topicId} = {valueStr}");
                                 
-                                // SHOTGUN TEST HELPER: Log successful data (not N/A) to file
-                                if (valueStr != "N/A" && valueStr != "null" && valueStr != "#N/A" && _topicMap.ContainsKey(topicId))
-                                {
-                                    string key = _topicMap[topicId];
-                                    // Log every successful value for debugging
-                                    Log($"RECV: {key} = {valueStr}");
-                                }
+                                // Check for Loading or invalid states
+                                if (valueStr.Contains("Loading") || valueStr == "0" || string.IsNullOrEmpty(valueStr))
+                                    hasLoading = true;
 
                                 if (_topicMap.ContainsKey(topicId))
-                                    OnDataUpdate?.Invoke(_topicMap[topicId], value);
+                                {
+                                    string key = _topicMap[topicId];
+                                    
+                                    // SHOTGUN LOG: Log everything to hits for debugging CUSTOM fields
+                                    if (valueStr != "N/A" && valueStr != "null" && valueStr != "#N/A" && !valueStr.Contains("Loading"))
+                                    {
+                                         System.IO.File.AppendAllText("v9_shotgun_hits.txt", $"RECEIVED: {key} = {valueStr}\n");
+                                    }
+
+                                    OnDataUpdate?.Invoke(key, value);
+                                }
                             }
-                            catch (Exception ex) { Log("Item Error 1: " + ex.Message); }
+                            catch (Exception ex) { Log("Item Error: " + ex.Message); }
                         }
-                    }
-                    // Handle 1D array if returned differently (fallback)
-                    else if (data is Array arr && arr.Rank == 2)
-                    {
-                         for (int i = 0; i < topicCount; i++)
-                         {
-                             try
-                             {
-                                 object rawId = arr.GetValue(0, i);
-                                 if (rawId == null) continue;
-                                 int topicId = Convert.ToInt32(rawId);
-                                 object value = arr.GetValue(1, i);
-
-                                 string valueStr = value?.ToString() ?? "null";
-                                 Log($"Update ID {topicId} = {valueStr}");
-                                 
-                                 // SHOTGUN TEST HELPER: Log successful data (not N/A) to file
-                                 if (valueStr != "N/A" && valueStr != "null" && valueStr != "#N/A" && _topicMap.ContainsKey(topicId))
-                                 {
-                                     string key = _topicMap[topicId];
-                                     System.IO.File.AppendAllText("v9_shotgun_results.txt",
-                                         $"✓ SUCCESS: {key} = {valueStr}\r\n");
-                                 }
-
-                                 if (_topicMap.ContainsKey(topicId))
-                                    OnDataUpdate?.Invoke(_topicMap[topicId], value);
-                             }
-                             catch (Exception ex) { Log("Item Error 2: " + ex.Message); }
-                         }
                     }
                     else
                     {
-                        Log($"Unknown Data Type: {data.GetType().Name}");
+                        Log($"Unexpected Data Rank: {dataArray.Rank}");
+                    }
+
+                    // FAST RETRY: If we got "Loading..." or empty values, kick off another check in 100ms
+                    if (hasLoading)
+                    {
+                        TriggerUpdate(100);
                     }
                 }
             }
@@ -242,7 +238,7 @@ namespace V9_ExternalRemote
                 _rtdServer?.ServerTerminate();
             } 
             catch {}
-            _rtdServer = null;
+            _rtdServer = null!;
             _isConnected = false;
         }
 

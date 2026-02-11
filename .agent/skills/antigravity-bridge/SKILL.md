@@ -9,22 +9,22 @@ description: Manages context handoff from Antigravity IDE to external CLI agents
 Enables seamless task delegation from the Antigravity IDE to external CLI agents (like Claude CLI) by providing absolute path resolution to the "brain" artifacts (plans, tasks, etc.).
 
 ## The "Brain" Gap
-Antigravity stores reasoning context in:
-`<appDataDir>\brain\<conversation-id>`
+Antigravity stores repository-specific reasoning context in:
+`./.agent/brain/`
 
-External CLI agents cannot "see" this directory by default. This skill bridges that gap.
+This "Universal Brain" ensures that plans and tasks are portable across any platform (Antigravity, Cursor, CLI).
 
 ## Protocol: The MISSION BRIEF
 
-When handoff is requested, generate a structured prompt for the external agent using absolute paths.
+When handoff is requested, generate a structured prompt for the external agent using relative repository paths.
 
 ### Template
 ```markdown
 ### 🤖 EXPERT CODER MISSION: [Task Name]
 
 **PLANNING REFERENCE (READ THESE FIRST):**
-1. **Plan:** [Absolute Path to implementation_plan.md]
-2. **Task List:** [Absolute Path to task.md]
+1. **Plan:** [Relative Path: ./.agent/brain/implementation_plan.md]
+2. **Task List:** [Relative Path: ./.agent/brain/task.md]
 
 **THE MISSION:**
 [High-level goal]

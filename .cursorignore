@@ -1,0 +1,13 @@
+# Cursor Ignore - Universal OR Strategy
+# Prevents 1M Line Diff Errors
+
+bin/
+obj/
+.git/
+.vs/
+*.csv
+*.zip
+*.bak
+.agent/state/
+LEGACY_ARCHIVE/
+node_modules/

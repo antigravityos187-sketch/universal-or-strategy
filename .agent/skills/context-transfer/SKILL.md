@@ -1,5 +1,5 @@
 name: context-transfer
-description: Standardized protocol for generating session handoff prompts using Gemini Flash delegation. Ensures zero context loss when switching IDEs, terminal agents, or hitting usage limits.
+description: Standardized protocol for generating session handoff prompts using Gemini Flash delegation. Incorporates Proactive Mission Handoff (PMH) for seamless transition and continuous project momentum.
 
 # Context Transfer Sub-Agent
 
@@ -84,8 +84,16 @@ Type: Context Continuity Specialist
 - [Issue 1]
 - [Issue 2]
 
-## Next Action
-[Specific first step to take in new conversation]
+## Next Action (Proactive Mission Handoff - PMH)
+[MUST include a specific "Mission Brief" prompt for the next agent/session here]
+
+```text
+# MISSION: [Task Name]
+**Context**: [Relevant Paths/Files]
+**Objectives**:
+1. [Step 1]
+2. [Step 2]
+```
 
 ---
 

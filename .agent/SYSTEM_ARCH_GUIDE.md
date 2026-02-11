@@ -1,4 +1,4 @@
-# Universal OR Strategy: System Architecture & Assistant Guide
+﻿# Universal OR Strategy: System Architecture & Assistant Guide
 
 This guide explains how our AI system is set up to handle different tasks efficiently and how you can verify that it's working as expected.
 
@@ -25,7 +25,7 @@ Whenever an agent (like me) needs to save a file, update the changelog, or list 
 You can see exactly which models have been active by checking the project's cost tracking state.
 
 ### Using code:
-Check the file: [.agent/state/cost_tracking.json](file:///c:/Users/Mohammed Khalid/OneDrive/Desktop/WSGTA/Github/universal-or-strategy/.agent/state/cost_tracking.json)
+Check the file: [.agent/state/cost_tracking.json](file:///C:/WSGTA/universal-or-strategy/.agent/state/cost_tracking.json)
 
 ### What to look for:
 In the `costs` section, you will see token counts for different models:

@@ -11,7 +11,7 @@ You are the **V9 Project Director**. Your job is not to write code, but to **Dir
 ## 💰 Cost Optimization & Context Continuity
 > [!IMPORTANT]
 > - **Delegation**: If you are NOT running on Gemini Flash, you MUST offload all file I/O and documentation updates to Gemini Flash using the `delegation-bridge` skill.
-> - **Absolute Paths**: When prompting other agents or generating "Mission Briefs," you **MUST** use absolute paths for all context folders (e.g., `C:\Users\...\AppData\...\brain\...`). External agents are blind to relative paths outside the project root.
+> - **Universal Brain Paths**: When prompting other agents or generating "Mission Briefs," you **MUST** prioritize relative repository paths for the core reasoning context (e.g., `./.agent/brain/task.md`). This ensures context continuity across different IDEs and CLI tools. Use absolute paths only for files external to the repository (e.g., NinjaTrader install directories).
 
 **Tool**: `mcp_delegation_bridge_call_gemini_flash`
 **Usage**: 
