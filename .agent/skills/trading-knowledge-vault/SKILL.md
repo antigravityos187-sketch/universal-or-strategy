@@ -144,6 +144,18 @@ BEFORE implementing ANY data integration:
 - [ ] Rule: Always use `TriggerCustomEvent` to process external signal queues.
 - [ ] Benefit: Decouples command processing from market data frequency.
 
+#### 8. The Blank Artifact Trap (Local File Execution)
+**What Happened:**
+- Created HTML artifacts relying on external React/Babel libraries (CDN).
+- Local browsers (`file://` protocol) often hang or block runtime compilation, resulting in a blank dark screen.
+- Fixed by using "Vanilla/Pure JS" for instant, dependency-free rendering.
+
+**Prevention Protocol:**
+- [ ] Check: Am I using runtime compilers (e.g., Babel CDN)? (Rule: DO NOT USE FOR LOCAL FILES).
+- [ ] Check: Are all `<style>` and `<script>` tags properly closed? (Rule: Causes silent failure if not).
+- [ ] Check: Are template literals (backticks) clean and unnested?
+- [ ] Test: View file locally in browser before final handoff.
+
 ---
 
 ### Trading Setups (Proven Patterns)
@@ -275,7 +287,11 @@ BEFORE going live:
    - [ ] Is this a direct connection (App <-> Data Source)?
    - [ ] Are there ZERO Excel dependencies?
 
-5. Check Apex Compliance vault entry
+7. Check Web Artifact Design (The Blank Screen Lesson)
+   - [ ] Am I using Pure/Vanilla JS (No runtime compilers)?
+   - [ ] Have I verified all tags are closed?
+
+8. Check Apex Compliance vault entry
    - [ ] Do I track daily loss in real-time?
    - [ ] Do I auto-disable at limits?
 ```

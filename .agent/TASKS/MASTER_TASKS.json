@@ -567,6 +567,34 @@
       "notes": "Senior-level intervention for V10 stability."
     },
     {
+      "id": "V12_001",
+      "title": "Restore Risk Manager UI (Compliance Hub)",
+      "status": "pending",
+      "priority": "high",
+      "assigned_model": "opus_4.5",
+      "preferred_ide": "cursor",
+      "dependencies": [],
+      "sub_tasks": [
+        {
+          "task": "Implement BroadcastIPC in UniversalORStrategyV12.cs",
+          "status": "pending"
+        },
+        {
+          "task": "Implement BroadcastComplianceSummary in strategy",
+          "status": "pending"
+        },
+        {
+          "task": "Add Risk Manager UI section to V12StandardPanel.cs",
+          "status": "pending"
+        },
+        {
+          "task": "Implement compliance data parsing in indicator",
+          "status": "pending"
+        }
+      ],
+      "notes": "Restores real-time compliance monitoring on the side panel."
+    },
+    {
       "id": "CLEANUP_001",
       "title": "Archive Old Versions",
       "status": "pending",

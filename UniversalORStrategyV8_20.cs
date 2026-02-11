@@ -745,8 +745,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Update last known price for UI events
                 lastKnownPrice = Close[0];
 
-                // V8.20: Reduced log volume - OR buildings and updates are handled via DrawORBox and UpdateDisplay
-
                 // V8.2 FIX: Process pending TREND entry (deferred from button click)
                 if (pendingTRENDEntry)
                 {
@@ -3068,8 +3066,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (shouldUpdate)
                         {
                             UpdateStopOrder(entryName, pos, trendStop, pos.CurrentTrailLevel);
-                            // Print(FormatString("TREND E1 TRAIL: Stop moved to {0:F2} (EMA9={1:F2} - {2}xATR)",
-                            //    trendStop, ema9Live, TRENDEntry2ATRMultiplier));
+                            Print(FormatString("TREND E1 TRAIL: Stop moved to {0:F2} (EMA9={1:F2} - {2}xATR)",
+                                trendStop, ema9Live, TRENDEntry2ATRMultiplier));
                         }
                     }
                     continue; // Skip normal trailing logic for TREND E1
@@ -3295,11 +3293,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                         newTrailLevel = 1;
                     }
                 }
-
-                // V8.20: Check if stop price actually changed by more than 1 tick before updating
-                // This prevents redundant "micro-updates" that saturate the order system
-                if (Math.Abs(newStopPrice - pos.CurrentStopPrice) < tickSize * 0.9)
-                    continue;
 
                 // Update stop if needed
                 if (newStopPrice != pos.CurrentStopPrice)
@@ -4622,9 +4615,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (!uiCreated) return;
 
-            // V8.20: Throttle UI updates to 500ms (2x per second) to prevent UI thread saturation
+            // V8.12: Throttle UI updates to prevent freeze during high volatility
+            // Only update if at least 250ms have passed since the last update
             DateTime now = DateTime.Now;
-            if ((now - lastUIUpdate).TotalMilliseconds < 500)
+            if ((now - lastUIUpdate).TotalMilliseconds < 250)
                 return;
             lastUIUpdate = now;
 

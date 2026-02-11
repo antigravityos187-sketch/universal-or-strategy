@@ -21,9 +21,12 @@ description: Enforces safe file versioning practices for NinjaTrader strategy de
 9. **ALWAYS verify Branch & Commit** - Use `git status` and `git log -1` at the very start.
 10. **ALWAYS sync Local to Remote** - Desktop Agent `git push`, CLI Agent `git pull`.
 11. **ALWAYS Re-stitch after Git Operations** - Git `reset`, `stash`, or `checkout` often "sever" hard links by replacing files. You MUST run `setup-symlinks.ps1` immediately after any destructive Git command to reconnect NinjaTrader to the repository.
-12. **The Path Master Protocol**: When delegating to subagents, always specify the absolute path to the core strategy file: `c:\Users\Mohammed Khalid\OneDrive\Desktop\WSGTA\Github\universal-or-strategy\UniversalORStrategyV12.cs`.
+12. **The Path Master Protocol**: When delegating to subagents, always specify the path to the core strategy file using relative repository paths for portability: `./UniversalORStrategyV12.cs`.
 13. **Environment Selection (Local-First)**: When working on NinjaTrader code, ALWAYS select the **"Local"** environment in the IDE toggle. This ensures changes propagate through Hard Links instantly. Use the **"Cloud"** environment ONLY for isolated research or documentation tasks that do not require immediate compilation.
-14. **Hybrid Resilience Protocol (Credit/Tool Migration)**: If migrating to Cloud/Web-based agents (e.g., due to credit limits or local CLI failure), you MUST perform a `git push origin main` first. The migrating agent MUST be instructed to `git pull` as their first step. Upon return to local development, you MUST `git pull` and run `setup-symlinks.ps1` to re-sync the NinjaTrader folder.
+14. **Ghost Prevention (OneDrive Ban)**: NEVER deploy code to anything inside a `OneDrive` folder. NinjaTrader's auto-scanner deadlocks if it sees duplicate scripts in the Local and Cloud document paths.
+15. **Mandatory Ghost Audit**: Before any major deployment, ensure `C:\Users\Mohammed Khalid\OneDrive\Documents\NinjaTrader 8\bin` is EMPTY.
+16. **Hybrid Resilience Protocol (Credit/Tool Migration)**: If migrating to Cloud-based agents (e.g., due to credit limits or local CLI failure), you MUST perform a `git push origin main` first. The migrating agent MUST be instructed to `git pull` as their first step. Upon return to local development, you MUST `git pull` and run `setup-symlinks.ps1` to re-sync the NinjaTrader folder.
+17. **MCP Protocol Hardening (Antigravity/Cursor)**: ALWAYS use Python-based bridges (`delegation_bridge.py`, `openrouter_chat.py`) and absolute Windows paths with escaped backslashes in `mcp_config.json`. NEVER migrate to experimental Node.js bridges in this environment without a full Sandbox verification.
 
 ## File Naming Convention
 

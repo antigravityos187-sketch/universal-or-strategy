@@ -1,4 +1,4 @@
-# AGENT.md - AI Assistant Context File (V10.0 Production)
+﻿# AGENT.md - AI Assistant Context File (V10.0 Production)
 
 This file provides context for ALL AI assistants (Claude, Gemini, Grok, DeepSeek, etc.) working on this codebase.
 
@@ -9,6 +9,21 @@ This file provides context for ALL AI assistants (Claude, Gemini, Grok, DeepSeek
 **Purpose**: Live funded trading on Apex accounts using Rithmic data feed.
 
 **User Profile**: Mo - Non-coder trader who needs complete, compilable code with clear instructions.
+
+**CORE PILLAR**: **ELIMINATE GUESSWORK WITH A PASSION**. Technical certainty is the foundation of all work. See `.agent/protocols/anti_guesswork_pillar.md`.
+
+---
+
+## Agent Roles & Protocols
+
+### 1. Project Director (Codex 5.2)
+- **Responsibility**: System Architecture, High-Level Planning, Mission Dispatch.
+- **Scope**: Holds the "Long Term Memory" of the project. Monitors verifying artifacts.
+- **Protocol**: **One Mission Per Agent**. The Director does not write code directly; they dispatch specific missions to sub-agents.
+
+### 2. V12 Restoration Lead (Sub-Agent)
+- **Responsibility**: Executing specific code restoration tasks.
+- **Scope**: Limited to the specific files mentioned in the Mission Brief.
 
 ---
 
@@ -52,13 +67,19 @@ This file provides context for ALL AI assistants (Claude, Gemini, Grok, DeepSeek
 |---------|-------|------|------|
 | Targets | 2 (T1, T2) | 2 (T1, T2) | 4 (T1, T2, T3, Runner) |
 | Trailing | Fixed ATR | Fixed ATR | Frequency-based adaptive |
-| Copy Trading | ❌ | ✅ | ❌ (standalone) |
+| Copy Trading | âŒ | âœ… | âŒ (standalone) |
 | UI | Vertical stack | Vertical stack | Dropdown menus |
 | Entry Types | OR, RMA | OR, RMA | OR, RMA, TREND |
 
 ---
 
-## Code Standards
+## Code Standards (Anti-Guesswork Mandatory)
+
+### For Mo (Non-Coder)
+1. **ALWAYS** provide complete, compilable code blocks
+2. **ALWAYS** specify exact file location (region, method name)
+3. **NEVER Guess**: If path or state is unclear, audit first.
+4. **ALWAYS** show before/after when modifying existing code
 
 ### For Mo (Non-Coder)
 1. **ALWAYS** provide complete, compilable code blocks
@@ -101,7 +122,7 @@ This file provides context for ALL AI assistants (Claude, Gemini, Grok, DeepSeek
 ### Deployment Locations
 ```
 1. Project Repository:
-   c:\Users\Mohammed Khalid\OneDrive\Desktop\WSGTA\Github\universal-or-strategy\
+   C:\WSGTA\universal-or-strategy\
 
 2. NinjaTrader Strategies Folder:
    C:\Users\Mohammed Khalid\Documents\NinjaTrader 8\bin\Custom\Strategies\
@@ -120,10 +141,10 @@ Both files must have:
 All skills are located in `.agent/skills/` directory (37 total, organized into 8 categories).
 
 **Quick Reference:**
-- 🔍 **Search by task**: See [skills_catalog.md](.agent/skills/skills_catalog.md)
-- 📋 **Organized by category**: Core Infrastructure, Code Development, NinjaTrader Trading, Documents, File Mgmt, UI/Design, Analytics, Utilities
-- 💰 **Cost comparison**: Which skills save money vs which require Opus
-- 🔗 **Dependency graph**: Which skills work together
+- ðŸ” **Search by task**: See [skills_catalog.md](.agent/skills/skills_catalog.md)
+- ðŸ“‹ **Organized by category**: Core Infrastructure, Code Development, NinjaTrader Trading, Documents, File Mgmt, UI/Design, Analytics, Utilities
+- ðŸ’° **Cost comparison**: Which skills save money vs which require Opus
+- ðŸ”— **Dependency graph**: Which skills work together
 
 **Essential Skills for This Project:**
 1. **delegation-bridge** - Route file I/O to Gemini Flash (save 99% on deployment)
@@ -140,10 +161,10 @@ All skills are located in `.agent/skills/` directory (37 total, organized into 8
 
 ### Model Hierarchy
 ```
-Haiku ($0.25/M)   → Routine file operations, simple tasks
-Sonnet ($3/M)     → Coordination, context gathering
-Opus ($15/M)      → Code work and critical logic
-Opus Thinking     → Manual switch only (emergencies)
+Haiku ($0.25/M)   â†’ Routine file operations, simple tasks
+Sonnet ($3/M)     â†’ Coordination, context gathering
+Opus ($15/M)      â†’ Code work and critical logic
+Opus Thinking     â†’ Manual switch only (emergencies)
 ```
 
 ### Available Sub-Agent Skills (Haiku)
@@ -181,7 +202,7 @@ Located in `.agent/skills/` folder:
    - **See**: [opus-deployment-guide](.agent/skills/opus-deployment-guide/SKILL.md) for setup
 
 2. **Option 2: Haiku Handoff** - No setup required
-   - Opus returns code → Copy/paste to Claude Code CLI → Haiku deploys
+   - Opus returns code â†’ Copy/paste to Claude Code CLI â†’ Haiku deploys
    - Cost: $0.004 per deployment
    - Time: 2 minutes (manual copy/paste)
    - **See**: [opus-deployment-guide](.agent/skills/opus-deployment-guide/SKILL.md)
@@ -299,25 +320,25 @@ Before any production deployment:
 
 ```
 universal-or-strategy/
-├── UniversalORStrategyV8.cs ← V8.0 baseline
-├── UniversalORStrategyV8_2.cs ← V8.2 current (4 targets + frequency trailing)
-├── UniversalORStrategyV7.cs ← V7.0 copy trading (Master)
-├── UniversalORSlaveV7.cs ← V7.0 slave copier
-├── SignalBroadcaster.cs ← Shared signal broadcaster
-├── UniversalORStrategyV5.cs ← V5.13 standalone
-├── archived-versions/ (V4, V5.x, V6 FAILED)
-├── Order_Management.xlsx ← SINGLE SOURCE OF TRUTH
-├── .agent/
-│   ├── skills/ (sub-agent skills)
-│   ├── context/ (session tracking)
-│   ├── rules/ (workspace rules)
-│   └── UNANSWERED_QUESTIONS.md
-├── CHANGELOG.md (all version history)
-├── PLAN.md (development roadmap)
-├── QUICK_REFERENCE.md (common Q&A)
-├── AGENT.md (this file - AI context)
-├── README.md (project overview)
-└── MILESTONE_*.md (version summaries)
+â”œâ”€â”€ UniversalORStrategyV8.cs â† V8.0 baseline
+â”œâ”€â”€ UniversalORStrategyV8_2.cs â† V8.2 current (4 targets + frequency trailing)
+â”œâ”€â”€ UniversalORStrategyV7.cs â† V7.0 copy trading (Master)
+â”œâ”€â”€ UniversalORSlaveV7.cs â† V7.0 slave copier
+â”œâ”€â”€ SignalBroadcaster.cs â† Shared signal broadcaster
+â”œâ”€â”€ UniversalORStrategyV5.cs â† V5.13 standalone
+â”œâ”€â”€ archived-versions/ (V4, V5.x, V6 FAILED)
+â”œâ”€â”€ Order_Management.xlsx â† SINGLE SOURCE OF TRUTH
+â”œâ”€â”€ .agent/
+â”‚   â”œâ”€â”€ skills/ (sub-agent skills)
+â”‚   â”œâ”€â”€ context/ (session tracking)
+â”‚   â”œâ”€â”€ rules/ (workspace rules)
+â”‚   â””â”€â”€ UNANSWERED_QUESTIONS.md
+â”œâ”€â”€ CHANGELOG.md (all version history)
+â”œâ”€â”€ PLAN.md (development roadmap)
+â”œâ”€â”€ QUICK_REFERENCE.md (common Q&A)
+â”œâ”€â”€ AGENT.md (this file - AI context)
+â”œâ”€â”€ README.md (project overview)
+â””â”€â”€ MILESTONE_*.md (version summaries)
 ```
 
 ---
@@ -334,8 +355,19 @@ Ask Mo for:
 Provide Mo with:
 1. Summary of changes made
 2. What was tested and results
-3. Next steps recommended
+3. Next steps recommended (include a specific Mission Brief prompt for the next logical step)
 4. Any risks or concerns
+
+### Proactive Mission Handoff (PMH) Protocol
+**CRITICAL**: Every task completion MUST conclude with a "Mission Brief" prompt ready for the next logical step or agent. This ensures process efficiency and continuous learning.
+- **Format**: Mission Title, Context, Objectives, and Execution steps.
+- **Goal**: Minimize handoff friction and maximize follow-through.
+
+### Context Integrity Protocol (CIP)
+**CRITICAL**: Agents MUST NOT guess when reading large files (>20k tokens).
+- **Red Light Rule**: If a token limit error occurs, STOP and REPORT immediately.
+- **Surgical Research**: Use `grep_search` and chunked reading (`view_file` with ranges) for files over 2,000 lines.
+- **Honesty**: It is mandatory to say "I don't know" or "I can't see this yet" rather than hallucinating.
 
 ### Code Changes
 1. Always show the complete method/region being changed
@@ -419,12 +451,12 @@ The `.agent/skills/` folder contains specialized knowledge files that AI assista
 
 ### Universal Compatibility
 This file uses AGENT.md naming (not CLAUDE.md) to work with all AI models:
-- ✅ Claude (Anthropic)
-- ✅ Gemini (Google)
-- ✅ Grok (xAI)
-- ✅ DeepSeek
-- ✅ GPT (OpenAI)
-- ✅ Any future AI models
+- âœ… Claude (Anthropic)
+- âœ… Gemini (Google)
+- âœ… Grok (xAI)
+- âœ… DeepSeek
+- âœ… GPT (OpenAI)
+- âœ… Any future AI models
 
 ### How to Use This File
 1. Read this file to understand project context

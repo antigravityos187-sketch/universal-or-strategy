@@ -159,7 +159,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         public static event EventHandler<TrailUpdateSignal> OnTrailUpdate;
 
         /// <summary>
-        /// Fired when Master executes target management action
+        /// Fired when Master updates trailing stop update request (v5.12)
         /// </summary>
         public static event EventHandler<TargetActionSignal> OnTargetAction;
 

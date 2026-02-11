@@ -1,4 +1,4 @@
-name: docs-manager
+﻿name: docs-manager
 description: Portability-focused documentation protocol for maintaining CHANGELOG.md, milestones, and README. Uses Gemini Flash delegation for zero-cost doc updates and consistent state across IDEs.
 
 # Documentation Manager Sub-Agent
@@ -55,11 +55,11 @@ Type: Documentation & State Maintenance
 - Feature details
 
 ### Test Results
-- ✅ Test 1 passed
-- ✅ Test 2 passed
+- âœ… Test 1 passed
+- âœ… Test 2 passed
 
 ### Production Status
-- ✅ **READY FOR LIVE TRADING**
+- âœ… **READY FOR LIVE TRADING**
 
 ### Files
 - `Filename.cs` - Main file
@@ -87,7 +87,7 @@ Example: `MILESTONE_V8_2_UI_HORIZONTAL_SUMMARY.md`
 # Milestone: V8.2 UI Horizontal Layout
 
 **Date**: YYYY-MM-DD
-**Status**: ✅ Complete / 🚧 In Progress / ❌ Failed
+**Status**: âœ… Complete / ðŸš§ In Progress / âŒ Failed
 
 ## Summary
 Brief description of what this milestone achieved.
@@ -97,7 +97,7 @@ Brief description of what this milestone achieved.
 - File-by-file breakdown
 
 ## Test Results
-- ✅ What was tested
+- âœ… What was tested
 - Results and verification
 
 ## Files Modified
@@ -122,7 +122,7 @@ Brief description of what this milestone achieved.
 - Preserve existing content
 
 ## Locations
-- **CHANGELOG.md**: `c:\Users\Mohammed Khalid\OneDrive\Desktop\WSGTA\Github\universal-or-strategy\CHANGELOG.md`
+- **CHANGELOG.md**: `C:\WSGTA\universal-or-strategy\CHANGELOG.md`
 - **Milestones**: Same directory as CHANGELOG
 - **README.md**: Same directory as CHANGELOG
 
@@ -146,7 +146,7 @@ Brief description of what this milestone achieved.
 - **Proportional Scaling**: Buttons scale with panel width
 
 ### Changed
-- Grid structure from 18 rows × 1 column to 8 rows × multi-column
+- Grid structure from 18 rows Ã— 1 column to 8 rows Ã— multi-column
 - Button layout from vertical stack to horizontal rows
 
 ### Files Modified
@@ -156,7 +156,7 @@ Brief description of what this milestone achieved.
 ```
 3. Insert at top
 4. Save
-5. Report: "✓ Changelog updated with V8_2_UI_HORIZONTAL entry"
+5. Report: "âœ“ Changelog updated with V8_2_UI_HORIZONTAL entry"
 
 ### Creating Milestone
 **User**: "Create milestone summary for V8_2 UI redesign"
@@ -164,7 +164,7 @@ Brief description of what this milestone achieved.
 1. Create `MILESTONE_V8_2_UI_HORIZONTAL_SUMMARY.md`
 2. Fill with structure above
 3. Add to changelog as milestone entry
-4. Report: "✓ Milestone summary created and changelog updated"
+4. Report: "âœ“ Milestone summary created and changelog updated"
 
 ## Integration with Other Skills
 - **file-manager**: After creating new files, docs-manager updates changelog

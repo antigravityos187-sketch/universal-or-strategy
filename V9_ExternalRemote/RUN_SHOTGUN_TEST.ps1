@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Launches the V9_ExternalRemote.exe application after closing any existing instances.
 
@@ -7,9 +7,9 @@
   Finally, it displays a message box with instructions to the user.
 #>
 
-# Path to the V9_Milestone_FINAL.exe executable
-$ExecutablePath = "c:\Users\Mohammed Khalid\OneDrive\Desktop\WSGTA\Github\universal-or-strategy\V9_ExternalRemote\bin\Release\net6.0-windows\V9_Milestone_FINAL.exe"
-$ProcessName = "V9_Milestone_FINAL"
+# Path to the V9_ExternalRemote.exe executable
+$ExecutablePath = "C:\WSGTA\universal-or-strategy\V9_ExternalRemote\bin\Release\net6.0-windows\V9_ExternalRemote.exe"
+$ProcessName = "V9_ExternalRemote"
 
 Write-Host "Closing any existing instances of '$ProcessName.exe'..."
 
@@ -40,11 +40,6 @@ catch {
 Write-Host "Launching V9.0.12 from '$ExecutablePath'..."
 
 try {
-    $fileInfo = Get-Item $ExecutablePath
-    Write-Host "Executable Found: $($fileInfo.FullName)"
-    Write-Host "Created: $($fileInfo.CreationTime)"
-    Write-Host "Last Modified: $($fileInfo.LastWriteTime)"
-    
     Start-Process -FilePath $ExecutablePath -WorkingDirectory (Split-Path -Path $ExecutablePath -Parent)
     Write-Host "Application launched successfully!"
 }
@@ -55,8 +50,8 @@ catch {
 
 # Display instructions
 Add-Type -AssemblyName PresentationFramework
-$message = "V9.1.6 MGC EMA Alignment Ready!" + [Environment]::NewLine + [Environment]::NewLine +
-"Next Steps:" + [Environment]::NewLine +
+$message = "V9.0.12 MGC Shotgun Test Launched!" + [Environment]::NewLine + [Environment]::NewLine +
+"ðŸ“ Next Steps:" + [Environment]::NewLine +
 "1. Type 'MGC_TEST' in the symbol input box" + [Environment]::NewLine +
 "2. Press Enter or click 'Set Symbol'" + [Environment]::NewLine +
 "3. Wait 30-40 seconds for test to complete" + [Environment]::NewLine +

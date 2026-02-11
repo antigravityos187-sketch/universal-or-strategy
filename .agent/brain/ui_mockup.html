@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Double Horizon Dashboard V12.11 Mockup</title>
+    <style>
+        body {
+            background-color: #0a0a0c;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0a0a0c 100%);
+        }
+
+        .dashboard-container {
+            width: 320px;
+            background: rgba(13, 17, 23, 0.95);
+            border: 1px solid #22d3ee;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+            padding: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .title {
+            font-size: 10px;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .version {
+            font-size: 10px;
+            color: #22d3ee;
+            font-weight: bold;
+        }
+
+        .instrument-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .symbol {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .price {
+            font-size: 20px;
+            color: #22d3ee;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .compliance-section {
+            background: rgba(34, 211, 238, 0.05);
+            border: 1px solid rgba(34, 211, 238, 0.1);
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .section-label {
+            font-size: 9px;
+            color: #22d3ee;
+            margin-bottom: 8px;
+            display: block;
+            font-weight: bold;
+        }
+
+        .selector-label {
+            font-size: 11px;
+            color: #8b949e;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        select {
+            width: 100%;
+            background: #0d1117;
+            color: #ffffff;
+            border: 1px solid #30363d;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:focus {
+            border-color: #22d3ee;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-label {
+            color: #8b949e;
+            font-size: 9px;
+        }
+
+        .metric-value {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .alert-box {
+            margin-top: 12px;
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: center;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        .alert-warning {
+            background: rgba(255, 165, 0, 0.15);
+            color: #ffa500;
+            border: 1px solid #ffa500;
+        }
+
+        .alert-danger {
+            background: rgba(255, 68, 68, 0.15);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 127, 0.15);
+            color: #00ff7f;
+            border: 1px solid #00ff7f;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+
+        .footer-note {
+            font-size: 8px;
+            color: #484f58;
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <span class="title">Double Horizon Dashboard</span>
+            <span class="version">V12.11</span>
+        </div>
+
+        <div class="instrument-row">
+            <span class="symbol">MGC 04-26</span>
+            <span class="price">2045.30</span>
+        </div>
+
+        <div class="compliance-section">
+            <span class="section-label">APEX COMPLIANCE HUB</span>
+            
+            <span class="selector-label">Account Focus:</span>
+            <select>
+                <option value="auto">Auto (At-Risk: APEX_123)</option>
+                <option value="acct1">APEX_123 (Rithmic)</option>
+                <option value="acct2">APEX_456 (Rithmic)</option>
+                <option value="acct3">APEX_789 (Rithmic)</option>
+            </select>
+
+            <div class="metric-grid">
+                <div class="metric-item">
+                    <span class="metric-label">TRADES TODAY</span>
+                    <span class="metric-value">14 / 20</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">TRADING DAYS</span>
+                    <span class="metric-value">7 / 10</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">MAX DRAWDOWN</span>
+                    <span class="metric-value">$840 / $2500</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">TOTAL PROFIT</span>
+                    <span class="metric-value">$1,420</span>
+                </div>
+            </div>
+
+            <div class="alert-box alert-warning">
+                ⚠️ DD BUFFER: $160 TO LIMIT
+            </div>
+
+            <div class="alert-box alert-danger">
+                🚫 CONSISTENCY: 34% (LIMIT 30%)
+            </div>
+
+            <div class="alert-box alert-success" style="animation: none;">
+                ✓ PAYOUT ELIGIBLE: IN 3 DAYS
+            </div>
+        </div>
+
+        <div class="footer-note">
+            CLEAN MASTER V12.11 ENGINE ACTIVE
+        </div>
+    </div>
+
+</body>
+</html>

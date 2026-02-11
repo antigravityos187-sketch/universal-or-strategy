@@ -11,7 +11,7 @@ namespace V9_ExternalControl
     {
         private StatusFileReader _statusReader;
         private DispatcherTimer _refreshTimer;
-        private const string REPO_ROOT = @"c:\Users\Mohammed Khalid\OneDrive\Desktop\WSGTA\Github\universal-or-strategy";
+        private const string REPO_ROOT = @"C:\WSGTA\universal-or-strategy";
 
         public MainWindow()
         {

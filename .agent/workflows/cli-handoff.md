@@ -10,7 +10,7 @@ Use this workflow when you need to delegate coding tasks from Antigravity IDE to
 
 1. **Locate the Mission Context**:
    - Identify the absolute path to your current conversation's "brain" directory.
-   - Example: `C:\Users\Mohammed Khalid\.gemini\antigravity\brain\ffa42e18-55f9-4f60-84b6-82230d4ade03`
+   - Example: `./.agent/brain/task.md`
 
 2. **Generate the Mission Brief**:
    - Ask Antigravity to "Generate a Mission Brief for the CLI agent".

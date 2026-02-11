@@ -843,3 +843,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
    - `ReducedRiskPerTrade`
    - `StopThresholdPoints`
    - `T1ContractPercent`, `T2ContractPercent`, `T3ContractPercent`
+
+- [2026-02-08 23:00] Deployed UniversalORStrategyV12.cs via Bridge
+
+- [2026-02-08 23:03] Deployed UniversalORStrategyV12.Sima.cs via Bridge
+
+- [2026-02-08 23:03] Deployed UniversalORStrategyV12.Reaper.cs via Bridge
+
+- [2026-02-08 23:03] Deployed V12StandardPanel_V12_001.cs via Bridge

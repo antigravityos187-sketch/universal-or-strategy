@@ -568,6 +568,7 @@ Before deploying any strategy:
 - [ ] BarsRequiredToPlot check in OnBarUpdate
 - [ ] Memory stable after 1+ hour test
 - [ ] Execution speed < 50ms for entries
+- [ ] Environment Audit: `bin\Custom` is LOCAL only (No OneDrive ghosts)
 - [ ] Delegated Deployment: Verified `call_gemini_flash` usage for save/deploy
 - [ ] Continuity Verified: Updated `.agent/PROJECT_STATE.md`
 
