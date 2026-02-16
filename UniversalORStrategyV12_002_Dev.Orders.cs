@@ -58,6 +58,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (entryOrders.TryGetValue(entryName, out var entryOrder) && entryOrder == order && !pos.EntryFilled)
                         {
                             pos.EntryFilled = true;
+                            if (!pos.IsFollower)
+                            {
+                                int masterFillQty = filled > 0 ? filled : quantity;
+                                SymmetryGuardOnMasterFill(entryName, pos, averageFillPrice, masterFillQty, time.ToUniversalTime());
+                            }
 
                             // Store intended entry price for slippage calculation
                             double intendedEntryPrice = pos.EntryPrice;
@@ -160,8 +165,23 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (target1Orders.TryGetValue(kvp.Key, out var t1Order) && t1Order == order)
                         {
                             PositionInfo pos = kvp.Value;
-                            pos.T1Filled = true;
-                            pos.RemainingContracts -= pos.T1Contracts;
+                            // V12.1101E [SK-01/A-1]: First-Writer-Wins guard — prevents double-decrement
+                            // if OnOrderUpdate + OnExecutionUpdate both fire for the same T1 fill.
+                            bool alreadyProcessed;
+                            lock (stateLock)
+                            {
+                                alreadyProcessed = pos.T1Filled;
+                                if (!alreadyProcessed)
+                                {
+                                    pos.T1Filled = true;
+                                    pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - pos.T1Contracts);
+                                }
+                            }
+                            if (alreadyProcessed)
+                            {
+                                Print(string.Format("[1101E GUARD] T1 already processed for {0} — skipping duplicate OnOrderUpdate fill", kvp.Key));
+                                break;
+                            }
                             // V8.11: Added entry name to logging
                             Print(string.Format("T1 FILLED ({0}): {1} contracts @ {2:F2} | Remaining: {3}",
                                 kvp.Key, pos.T1Contracts, averageFillPrice, pos.RemainingContracts));
@@ -183,8 +203,22 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (target2Orders.TryGetValue(kvp.Key, out var t2Order) && t2Order == order)
                         {
                             PositionInfo pos = kvp.Value;
-                            pos.T2Filled = true;
-                            pos.RemainingContracts -= pos.T2Contracts;
+                            // V12.1101E [SK-01/A-1]: First-Writer-Wins guard — T2
+                            bool alreadyProcessed;
+                            lock (stateLock)
+                            {
+                                alreadyProcessed = pos.T2Filled;
+                                if (!alreadyProcessed)
+                                {
+                                    pos.T2Filled = true;
+                                    pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - pos.T2Contracts);
+                                }
+                            }
+                            if (alreadyProcessed)
+                            {
+                                Print(string.Format("[1101E GUARD] T2 already processed for {0} — skipping duplicate OnOrderUpdate fill", kvp.Key));
+                                break;
+                            }
                             // V8.11: Added entry name to logging
                             Print(string.Format("T2 FILLED ({0}): {1} contracts @ {2:F2} | Remaining: {3}",
                                 kvp.Key, pos.T2Contracts, averageFillPrice, pos.RemainingContracts));
@@ -206,8 +240,22 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (target3Orders.TryGetValue(kvp.Key, out var t3Order) && t3Order == order)
                         {
                             PositionInfo pos = kvp.Value;
-                            pos.T3Filled = true;
-                            pos.RemainingContracts -= pos.T3Contracts;
+                            // V12.1101E [SK-01/A-1]: First-Writer-Wins guard — T3
+                            bool alreadyProcessed;
+                            lock (stateLock)
+                            {
+                                alreadyProcessed = pos.T3Filled;
+                                if (!alreadyProcessed)
+                                {
+                                    pos.T3Filled = true;
+                                    pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - pos.T3Contracts);
+                                }
+                            }
+                            if (alreadyProcessed)
+                            {
+                                Print(string.Format("[1101E GUARD] T3 already processed for {0} — skipping duplicate OnOrderUpdate fill", kvp.Key));
+                                break;
+                            }
                             // V8.11: Added entry name to logging
                             Print(string.Format("T3 FILLED ({0}): {1} contracts @ {2:F2} | Remaining: {3} (T4 runner)",
                                 kvp.Key, pos.T3Contracts, averageFillPrice, pos.RemainingContracts));
@@ -349,6 +397,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // V8.11: Stop order cancelled - check for pending replacement
                 // V12.13: Extended to also match "S_" prefix (replacement stops from CreateNewStopOrder)
+                // V14 GHOST FIX: Added check for RemainingContracts > 0 to prevent ghost stop resurrection
                 if ((orderName.StartsWith("Stop_") || orderName.StartsWith("S_")) && orderState == OrderState.Cancelled)
                 {
                     // V8.30: Thread-safe snapshot iteration with TryRemove
@@ -358,12 +407,21 @@ namespace NinjaTrader.NinjaScript.Strategies
                         PendingStopReplacement pending = kvp.Value;
 
                         // V8.24 FIX: REMOVED recursive 'Contains' check. STRICT object match only.
-                        if (activePositions.ContainsKey(entryName) && pending.OldOrder == order)
+                        if (activePositions.TryGetValue(entryName, out var pos) && pending.OldOrder == order)
                         {
-                            Print(string.Format("STOP CANCELLED (confirmed): {0} | Creating replacement...", entryName));
+                            // V14 GHOST FIX: CRITICAL CHECK
+                            // Only create replacement if we actually hold a position!
+                            if (pos.RemainingContracts > 0)
+                            {
+                                Print(string.Format("STOP CANCELLED (confirmed): {0} | Creating replacement...", entryName));
 
-                            // Create the replacement stop
-                            CreateNewStopOrder(entryName, pending.Quantity, pending.StopPrice, pending.Direction);
+                                // Create the replacement stop
+                                CreateNewStopOrder(entryName, pending.Quantity, pending.StopPrice, pending.Direction);
+                            }
+                            else
+                            {
+                                Print(string.Format("V14 GHOST FIX: Stop cancelled for FLAT position {0}. Discarding replacement.", entryName));
+                            }
 
                             // V8.30: Thread-safe removal with count decrement
                             if (pendingStopReplacements.TryRemove(entryName, out _))
@@ -657,6 +715,19 @@ namespace NinjaTrader.NinjaScript.Strategies
                         Print("Cleanup complete - Strategy still running, ready for new entries.");
                     }
                 }
+
+                // V14 ADAPTIVE VISIBILITY: Broadcast current position size to panel
+                // This allows the panel to hide/show T1-T5 buttons based on trade size
+                // V14 FIX: Use State check instead of Connection.Status to avoid CS0120
+                if (State == State.Realtime)
+                {
+                    int totalQuantity = 0;
+                    if (Position != null) totalQuantity = Position.Quantity; 
+                    
+                    // V14 FIX: Use SendResponseToRemote (from UI.cs) instead of direct panel reference
+                    // This works because the Panel is a TCP Client connected to this strategy
+                    SendResponseToRemote($"SYNC_TARGET_STATE|{totalQuantity}");
+                }
             }
             catch (Exception ex)
             {
@@ -745,6 +816,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (!stopOrders.ContainsKey(entryName)) return;
             if (pos.RemainingContracts <= 0) return;
+            // V12.41: No trailing/updates before entry fill is confirmed
+            if (!pos.EntryFilled) return;
 
             try
             {
@@ -791,6 +864,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 else
                 {
                     // No existing stop to cancel, create new one directly
+                    // V12.41: Pass the entry name for stricter validation
                     CreateNewStopOrder(entryName, pos.RemainingContracts, pos.CurrentStopPrice, pos.Direction);
                 }
             }
@@ -807,6 +881,26 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             try
             {
+                // V12.41 ZOMBIE GUARD: Block stop creation if position is flat or entry not filled
+                if (activePositions.TryGetValue(entryName, out var targetPos))
+                {
+                    if (targetPos.RemainingContracts <= 0)
+                    {
+                        Print(string.Format("[STOP_GUARD] BLOCKED zombie stop for {0} - Position is FLAT (Remaining=0)", entryName));
+                        return;
+                    }
+                    if (!targetPos.EntryFilled)
+                    {
+                        Print(string.Format("[STOP_GUARD] BLOCKED early stop for {0} - Fill not yet confirmed", entryName));
+                        return;
+                    }
+                }
+                else
+                {
+                    Print(string.Format("[STOP_GUARD] BLOCKED orphan stop for {0} - No tracking record found", entryName));
+                    return;
+                }
+
                 // V8.31: Check if a working stop already exists for this entry to prevent duplicates
                 if (stopOrders.TryGetValue(entryName, out var existingStop))
                 {
@@ -863,7 +957,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private double ValidateStopPrice(MarketPosition direction, double desiredStopPrice)
         {
-            double currentPrice = Close[0];
+            // V12.41: Use real-time price instead of stale bar Close[0]
+            double currentPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
+            double tickSize = Instrument.MasterInstrument.TickSize;
             double minDistance = 2 * tickSize;
 
             if (direction == MarketPosition.Long)
@@ -892,708 +988,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         #endregion
 
-        #region Trailing Stops
 
-        private void ManageTrailingStops()
-        {
-            DateTime now = DateTime.Now;
+        // V12.46: Trailing Stops region moved to Trailing.cs
 
-            // V8.30: Adaptive throttle calculation - adjusts based on tick frequency
-            tickCountInLastSecond++;
-            if ((now - lastTickCountReset).TotalSeconds >= 1)
-            {
-                // Adjust throttle based on tick frequency
-                if (tickCountInLastSecond > 50)
-                    adaptiveThrottleMs = Math.Min(500, adaptiveThrottleMs + 50); // Increase throttle under load
-                else if (tickCountInLastSecond < 20)
-                    adaptiveThrottleMs = Math.Max(100, adaptiveThrottleMs - 25); // Decrease throttle when calm
-
-                tickCountInLastSecond = 0;
-                lastTickCountReset = now;
-            }
-
-            // V8.30: Use adaptive throttle instead of fixed 100ms
-            if ((now - lastStopManagementTime).TotalMilliseconds < adaptiveThrottleMs)
-                return;
-
-            lastStopManagementTime = now;
-
-            // V8.30: Clean up stale pending replacements (5-second timeout)
-            CleanupStalePendingReplacements();
-
-            // V8.30: Circuit breaker check - pause trailing when too many pending replacements
-            if (circuitBreakerActive)
-            {
-                if ((now - circuitBreakerActivatedTime).TotalSeconds > 2)
-                {
-                    circuitBreakerActive = false;
-                    Print("V8.30: Circuit breaker RESET - trailing stops resumed");
-                }
-                else
-                {
-                    return; // Skip trailing stop updates while circuit breaker is active
-                }
-            }
-
-            // V8.30: Thread-safe snapshot iteration - prevents "Collection was modified" exception
-            var positionSnapshot = activePositions.ToArray();
-            foreach (var kvp in positionSnapshot)
-            {
-                string entryName = kvp.Key;
-                PositionInfo pos = kvp.Value;
-
-                // V8.30: Verify position still exists (may have been removed by callback thread)
-                if (!activePositions.ContainsKey(entryName)) continue;
-
-                if (!pos.EntryFilled || !pos.BracketSubmitted) continue;
-
-                // Increment tick counter on every call
-                pos.TicksSinceEntry++;
-
-                // Update extreme price
-                if (pos.Direction == MarketPosition.Long)
-                    pos.ExtremePriceSinceEntry = Math.Max(pos.ExtremePriceSinceEntry, Close[0]);
-                else
-                    pos.ExtremePriceSinceEntry = Math.Min(pos.ExtremePriceSinceEntry, Close[0]);
-
-                // V8.2: TREND Entry 1 - starts with fixed 2pt stop, switches to EMA9 trail when price crosses EMA
-                if (pos.IsTRENDTrade && pos.IsTRENDEntry1)
-                {
-                    // V8.2: Use stored ema9 instance
-                    double tickPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
-                    double ema9Live = ema9 != null ? ema9[0] : Close[0];
-                    double currentPrice = tickPrice;
-                    
-                    // Check if price has crossed EMA9 in our favor
-                    bool priceInFavor = pos.Direction == MarketPosition.Long
-                        ? currentPrice > ema9Live  // LONG: price above EMA9
-                        : currentPrice < ema9Live; // SHORT: price below EMA9
-
-                    // If not yet trailing and price crossed EMA in our favor, activate trailing
-                    if (!pos.Entry1TrailActivated && priceInFavor)
-                    {
-                        pos.Entry1TrailActivated = true;
-                        Print(string.Format("TREND E1: Switching to EMA9 trail (Price={0:F2} crossed EMA9={1:F2})",
-                            currentPrice, ema9Live));
-                    }
-
-                    // If trailing is activated, manage the EMA9 trail
-                    if (pos.Entry1TrailActivated)
-                    {
-                        double trendStop = pos.Direction == MarketPosition.Long
-                            ? ema9Live - (currentATR * TRENDEntry1ATRMultiplier)  // V8.31: Uses E1 specific multiplier
-                            : ema9Live + (currentATR * TRENDEntry1ATRMultiplier);
-
-                        bool shouldUpdate = pos.Direction == MarketPosition.Long
-                            ? trendStop > pos.CurrentStopPrice
-                            : trendStop < pos.CurrentStopPrice;
-
-                        if (shouldUpdate)
-                        {
-                            UpdateStopOrder(entryName, pos, trendStop, pos.CurrentTrailLevel);
-                            // Print(string.Format("TREND E1 TRAIL: Stop moved to {0:F2} (EMA9={1:F2} - {2}xATR)",
-                            //    trendStop, ema9Live, TRENDEntry2ATRMultiplier));
-                        }
-                    }
-                    continue; // Skip normal trailing logic for TREND E1
-                }
-
-                // V8.2: TREND Entry 2 uses EMA15 trailing stop (1.1x ATR from live EMA15)
-                if (pos.IsTRENDTrade && pos.IsTRENDEntry2 && !pos.IsRMATrade)
-                {
-                    // V8.2: Use stored ema15 instance
-                    double ema15Live = ema15 != null ? ema15[0] : Close[0];
-                    
-                    double trendStop = pos.Direction == MarketPosition.Long
-                        ? ema15Live - (currentATR * TRENDEntry2ATRMultiplier)
-                        : ema15Live + (currentATR * TRENDEntry2ATRMultiplier);
-
-                    bool shouldUpdate = pos.Direction == MarketPosition.Long
-                        ? trendStop > pos.CurrentStopPrice
-                        : trendStop < pos.CurrentStopPrice;
-
-                    if (shouldUpdate)
-                    {
-                        UpdateStopOrder(entryName, pos, trendStop, pos.CurrentTrailLevel);
-                        Print(string.Format("TREND E2 TRAIL: Stop moved to {0:F2} (EMA15={1:F2} - {2}xATR)", 
-                            trendStop, ema15Live, TRENDEntry2ATRMultiplier));
-                    }
-                    continue; // Skip normal trailing logic for TREND E2
-                }
-
-                // V8.4: RETEST trade - Phase 1: Wait for price to cross 9 EMA, Phase 2: Trail at 9 EMA
-                if (pos.IsRetestTrade && !pos.IsRMATrade)
-                {
-                    double tickPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
-                    double ema9Live = ema9 != null ? ema9[0] : Close[0];
-                    double currentPrice = tickPrice;
-
-                    // Phase 1: Wait for price to cross EMA9 in our favor
-                    if (!pos.RetestTrailActivated)
-                    {
-                        bool priceInFavor = pos.Direction == MarketPosition.Long
-                            ? currentPrice > ema9Live  // LONG: price above EMA9
-                            : currentPrice < ema9Live; // SHORT: price below EMA9
-
-                        if (priceInFavor)
-                        {
-                            pos.RetestTrailActivated = true;
-                            Print(string.Format("RETEST: Switching to EMA9 trail (Price={0:F2} crossed EMA9={1:F2})",
-                                currentPrice, ema9Live));
-                        }
-                        // Stay at fixed stop until price crosses EMA
-                        continue;
-                    }
-
-                    // Phase 2: Trail at 9 EMA - 1.1x ATR (locked in, only moves favorably)
-                    double retestStop = pos.Direction == MarketPosition.Long
-                        ? ema9Live - (currentATR * RetestATRMultiplier)
-                        : ema9Live + (currentATR * RetestATRMultiplier);
-
-                    // Only update if better than current stop
-                    bool shouldUpdate = pos.Direction == MarketPosition.Long
-                        ? retestStop > pos.CurrentStopPrice
-                        : retestStop < pos.CurrentStopPrice;
-
-                    if (shouldUpdate)
-                    {
-                        UpdateStopOrder(entryName, pos, retestStop, pos.CurrentTrailLevel);
-                        Print(string.Format("RETEST TRAIL: Stop moved to {0:F2} (EMA9={1:F2} - {2}xATR)",
-                            retestStop, ema9Live, RetestATRMultiplier));
-                    }
-                    continue; // Skip normal trailing logic for RETEST
-                }
-
-                double profitPoints = pos.Direction == MarketPosition.Long
-                    ? pos.ExtremePriceSinceEntry - pos.EntryPrice
-                    : pos.EntryPrice - pos.ExtremePriceSinceEntry;
-
-                double newStopPrice = pos.CurrentStopPrice;
-                int newTrailLevel = pos.CurrentTrailLevel;
-
-                // MANUAL BREAKEVEN - Check FIRST before automatic trailing
-                // This allows user to "arm" breakeven early and it auto-triggers when price reaches threshold
-                if (pos.ManualBreakevenArmed && !pos.ManualBreakevenTriggered)
-                {
-                    double beThreshold = pos.EntryPrice + (BreakEvenOffsetTicks * tickSize);
-                    bool thresholdReached = false;
-
-                    if (pos.Direction == MarketPosition.Long)
-                    {
-                        thresholdReached = Close[0] >= beThreshold;
-                    }
-                    else // Short
-                    {
-                        beThreshold = pos.EntryPrice - (BreakEvenOffsetTicks * tickSize);
-                        thresholdReached = Close[0] <= beThreshold;
-                    }
-
-                    if (thresholdReached)
-                    {
-                        // Move stop to breakeven + buffer
-                        double manualBEStop = pos.Direction == MarketPosition.Long
-                            ? pos.EntryPrice + (BreakEvenOffsetTicks * tickSize)
-                            : pos.EntryPrice - (BreakEvenOffsetTicks * tickSize);
-
-                        // Only move if it's better than current stop
-                        bool shouldMove = pos.Direction == MarketPosition.Long
-                            ? manualBEStop > pos.CurrentStopPrice
-                            : manualBEStop < pos.CurrentStopPrice;
-
-                        if (shouldMove)
-                        {
-                            newStopPrice = manualBEStop;
-                            newTrailLevel = 1; // Same as automatic breakeven
-                            pos.ManualBreakevenTriggered = true;
-                            Print(string.Format("â˜… MANUAL BREAKEVEN TRIGGERED: {0} â†’ Stop moved to {1:F2} (Entry + {2} tick)", 
-                                entryName, manualBEStop, BreakEvenOffsetTicks));
-                        }
-                    }
-                }
-
-                // v5.13 FREQUENCY CONTROL: Determine if we should check trailing based on current level
-                // BE (level 0-1) and T3 (level 4) = every tick
-                // T1 (level 2) and T2 (level 3) = every OTHER tick
-                
-                bool shouldCheckTrailing = true; // Default: check every tick
-                
-                // Determine current active level based on profit
-                if (profitPoints >= Trail3TriggerPoints && pos.T1Filled && pos.T2Filled)
-                {
-                    // At T3 level (5+ points) - Check EVERY tick
-                    shouldCheckTrailing = true;
-                }
-                else if (profitPoints >= Trail2TriggerPoints && pos.T1Filled)
-                {
-                    // At T2 level (4-4.99 points) - Check every OTHER tick
-                    shouldCheckTrailing = (pos.TicksSinceEntry % 2 == 0);
-                }
-                else if (profitPoints >= Trail1TriggerPoints)
-                {
-                    // At T1 level (3-3.99 points) - Check every OTHER tick
-                    shouldCheckTrailing = (pos.TicksSinceEntry % 2 == 0);
-                }
-                else
-                {
-                    // At BE level or below (0-2.99 points) - Check EVERY tick
-                    shouldCheckTrailing = true;
-                }
-
-                // Only proceed with trailing logic if frequency check passes
-                if (!shouldCheckTrailing)
-                    continue;
-
-                // Trail 3 (highest priority) - At 5 points, trail by 1 point
-                // V8.22: Strictly profit based (no target dependencies)
-                if (profitPoints >= Trail3TriggerPoints)
-                {
-                    double trail3Stop = pos.Direction == MarketPosition.Long
-                        ? pos.ExtremePriceSinceEntry - Trail3DistancePoints
-                        : pos.ExtremePriceSinceEntry + Trail3DistancePoints;
-
-                    if (pos.Direction == MarketPosition.Long && trail3Stop > pos.CurrentStopPrice)
-                    {
-                        newStopPrice = trail3Stop;
-                        newTrailLevel = 4; // Level 4 = Trail 3
-                    }
-                    else if (pos.Direction == MarketPosition.Short && trail3Stop < pos.CurrentStopPrice)
-                    {
-                        newStopPrice = trail3Stop;
-                        newTrailLevel = 4;
-                    }
-                }
-                // Trail 2 - At 4 points, trail by 1.5 points
-                else if (profitPoints >= Trail2TriggerPoints && pos.CurrentTrailLevel < 3)
-                {
-                    double trail2Stop = pos.Direction == MarketPosition.Long
-                        ? pos.ExtremePriceSinceEntry - Trail2DistancePoints
-                        : pos.ExtremePriceSinceEntry + Trail2DistancePoints;
-
-                    if (pos.Direction == MarketPosition.Long && trail2Stop > pos.CurrentStopPrice)
-                    {
-                        newStopPrice = trail2Stop;
-                        newTrailLevel = 3; // Level 3 = Trail 2
-                    }
-                    else if (pos.Direction == MarketPosition.Short && trail2Stop < pos.CurrentStopPrice)
-                    {
-                        newStopPrice = trail2Stop;
-                        newTrailLevel = 3;
-                    }
-                }
-                // Trail 1 - At 3 points, trail by 2 points
-                else if (profitPoints >= Trail1TriggerPoints && pos.CurrentTrailLevel < 2)
-                {
-                    double trail1Stop = pos.Direction == MarketPosition.Long
-                        ? pos.ExtremePriceSinceEntry - Trail1DistancePoints
-                        : pos.ExtremePriceSinceEntry + Trail1DistancePoints;
-
-                    if (pos.Direction == MarketPosition.Long && trail1Stop > pos.CurrentStopPrice)
-                    {
-                        newStopPrice = trail1Stop;
-                        newTrailLevel = 2; // Level 2 = Trail 1
-                    }
-                    else if (pos.Direction == MarketPosition.Short && trail1Stop < pos.CurrentStopPrice)
-                    {
-                        newStopPrice = trail1Stop;
-                        newTrailLevel = 2;
-                    }
-                }
-                // Break-even - At 2 points, move to BE +1 tick
-                else if (profitPoints >= BreakEvenTriggerPoints && pos.CurrentTrailLevel < 1)
-                {
-                    double beStop = pos.Direction == MarketPosition.Long
-                        ? pos.EntryPrice + (BreakEvenOffsetTicks * tickSize)
-                        : pos.EntryPrice - (BreakEvenOffsetTicks * tickSize);
-
-                    if (pos.Direction == MarketPosition.Long && beStop > pos.CurrentStopPrice)
-                    {
-                        newStopPrice = beStop;
-                        newTrailLevel = 1;
-                    }
-                    else if (pos.Direction == MarketPosition.Short && beStop < pos.CurrentStopPrice)
-                    {
-                        newStopPrice = beStop;
-                        newTrailLevel = 1;
-                    }
-                }
-
-                // V8.21: Check if stop price actually changed by more than 1 tick before updating
-                // This prevents redundant "micro-updates" that saturate the order system
-                if (Math.Abs(newStopPrice - pos.CurrentStopPrice) < tickSize * 0.9)
-                    continue;
-
-                // Update stop if needed
-                if (newStopPrice != pos.CurrentStopPrice)
-                {
-                    UpdateStopOrder(entryName, pos, newStopPrice, newTrailLevel);
-                }
-            }
-
-            // V12.10: FLEET SYMMETRY SYNC PASS
-            // When SIMA is enabled, force followers to match the Leader's trail level.
-            // Followers calculate stops relative to their OWN entry prices but are triggered
-            // by the Leader's profit progress. This prevents slippage-induced desync.
-            if (EnableSIMA)
-            {
-                // Phase 1: Find the highest trail level among leader positions, by direction
-                int leaderLongMaxLevel = 0;
-                int leaderShortMaxLevel = 0;
-
-                foreach (var kvp in positionSnapshot)
-                {
-                    PositionInfo ldr = kvp.Value;
-                    if (ldr.IsFollower || !ldr.EntryFilled || !ldr.BracketSubmitted) continue;
-
-                    if (ldr.Direction == MarketPosition.Long)
-                        leaderLongMaxLevel = Math.Max(leaderLongMaxLevel, ldr.CurrentTrailLevel);
-                    else if (ldr.Direction == MarketPosition.Short)
-                        leaderShortMaxLevel = Math.Max(leaderShortMaxLevel, ldr.CurrentTrailLevel);
-                }
-
-                // V12.12: Diagnostic â€” log leader trail levels for fleet sync visibility
-                if (leaderLongMaxLevel > 0 || leaderShortMaxLevel > 0)
-                    Print($"[SIMA] Fleet Sync: Leader trail levels â€” Long={leaderLongMaxLevel}, Short={leaderShortMaxLevel}");
-
-                // Phase 2: Sync lagging followers UP to the leader's level
-                if (leaderLongMaxLevel > 0 || leaderShortMaxLevel > 0)
-                {
-                    foreach (var kvp in positionSnapshot)
-                    {
-                        string entryName2 = kvp.Key;
-                        PositionInfo fol = kvp.Value;
-
-                        if (!fol.IsFollower) continue;
-                        if (!fol.EntryFilled || !fol.BracketSubmitted) continue;
-                        if (!activePositions.ContainsKey(entryName2)) continue;
-
-                        int targetLevel = (fol.Direction == MarketPosition.Long)
-                            ? leaderLongMaxLevel
-                            : leaderShortMaxLevel;
-
-                        // V12.12: Guard â€” skip if no leader exists for this direction (targetLevel==0)
-                        if (targetLevel == 0) continue;
-
-                        // Only sync UP â€” never regress a follower already at a higher level
-                        if (fol.CurrentTrailLevel >= targetLevel) continue;
-
-                        double syncStopPrice = CalculateStopForLevel(fol, targetLevel);
-
-                        // Only move if it's a more protective stop
-                        bool isBetter = (fol.Direction == MarketPosition.Long)
-                            ? syncStopPrice > fol.CurrentStopPrice
-                            : syncStopPrice < fol.CurrentStopPrice;
-
-                        if (isBetter)
-                        {
-                            UpdateStopOrder(entryName2, fol, syncStopPrice, targetLevel);
-                            Print(string.Format("FLEET SYNC: {0} synced to Level {1} -> Stop {2:F2} (Leader advanced)",
-                                entryName2, targetLevel, syncStopPrice));
-                        }
-                    }
-                }
-            }
-        }
-
-        // V8.30: Clean up stale pending replacements that are older than 5 seconds
-        // Prevents memory leak and ensures positions remain protected
-        private void CleanupStalePendingReplacements()
-        {
-            DateTime now = DateTime.Now;
-
-            // V8.30: Safe iteration with snapshot
-            foreach (var kvp in pendingStopReplacements.ToArray())
-            {
-                if ((now - kvp.Value.CreatedTime).TotalSeconds > 5)
-                {
-                    if (pendingStopReplacements.TryRemove(kvp.Key, out var pending))
-                    {
-                        Interlocked.Decrement(ref pendingReplacementCount);
-                        Print(string.Format("V8.30: Stale pending replacement REMOVED for {0} (>5sec old)", kvp.Key));
-
-                        // If position still exists and needs protection, create emergency stop
-                        if (activePositions.TryGetValue(kvp.Key, out var pos) && pos.EntryFilled && pos.RemainingContracts > 0)
-                        {
-                            Print(string.Format("V8.30: Creating EMERGENCY replacement stop for {0}", kvp.Key));
-                            CreateNewStopOrder(kvp.Key, pending.Quantity, pending.StopPrice, pending.Direction);
-                        }
-                    }
-                }
-            }
-        }
-
-        // V10 Bridge: Wrapper for IPC MoveStopsToBreakevenPlusOne
-        private void ChangeStop(string entryName, double newStopPrice)
-        {
-            if (activePositions.TryGetValue(entryName, out PositionInfo pos))
-            {
-                UpdateStopOrder(entryName, pos, newStopPrice, 1); // 1 = BE level
-            }
-        }
-
-        private void UpdateStopOrder(string entryName, PositionInfo pos, double newStopPrice, int newTrailLevel)
-        {
-            // V8.30: Thread-safe check using TryGetValue
-            if (!stopOrders.TryGetValue(entryName, out var currentStop)) return;
-
-            Order newStop = null;
-
-            try
-            {
-                double validatedStopPrice = ValidateStopPrice(pos.Direction, newStopPrice);
-
-                // V8.30: Thread-safe update using TryGetValue to avoid TOCTOU race
-                if (pendingStopReplacements.TryGetValue(entryName, out var existingPending))
-                {
-                    // Update the pending replacement atomically (pending is a reference type)
-                    existingPending.StopPrice = validatedStopPrice;
-                    existingPending.Quantity = pos.RemainingContracts;
-                    pos.CurrentStopPrice = validatedStopPrice;
-                    pos.CurrentTrailLevel = newTrailLevel;
-                    return;
-                }
-
-                // V8.11 FIX: Store pending replacement BEFORE cancelling
-                // V8.12 FIX: Also handle CancelPending and PendingSubmit states to prevent race condition
-                // V8.30: Added CreatedTime for timeout support and circuit breaker tracking
-                if (currentStop != null && (currentStop.OrderState == OrderState.CancelPending || currentStop.OrderState == OrderState.Submitted))
-                {
-                    // Order is already being cancelled or submitted - queue the new stop price
-                    var newPending = new PendingStopReplacement
-                    {
-                        EntryName = entryName,
-                        Quantity = pos.RemainingContracts,
-                        StopPrice = validatedStopPrice,
-                        Direction = pos.Direction,
-                        OldOrder = currentStop,
-                        CreatedTime = DateTime.Now  // V8.30: Timeout support
-                    };
-
-                    // V8.30: Thread-safe add or update
-                    if (pendingStopReplacements.TryAdd(entryName, newPending))
-                    {
-                        // V8.30: Track count for circuit breaker
-                        int currentCount = Interlocked.Increment(ref pendingReplacementCount);
-                        if (currentCount >= CIRCUIT_BREAKER_THRESHOLD && !circuitBreakerActive)
-                        {
-                            circuitBreakerActive = true;
-                            circuitBreakerActivatedTime = DateTime.Now;
-                            Print(string.Format("V8.30: CIRCUIT BREAKER ACTIVATED - {0} pending replacements (threshold: {1})",
-                                currentCount, CIRCUIT_BREAKER_THRESHOLD));
-                        }
-                    }
-                    else if (pendingStopReplacements.TryGetValue(entryName, out var pending))
-                    {
-                        // Just update the pending price
-                        pending.StopPrice = validatedStopPrice;
-                    }
-
-                    pos.CurrentStopPrice = validatedStopPrice;
-                    pos.CurrentTrailLevel = newTrailLevel;
-                    Print(string.Format("V8.12: Stop update queued for {0} (current state: {1})", entryName, currentStop.OrderState));
-                    return;
-                }
-
-                if (currentStop != null && (currentStop.OrderState == OrderState.Working || currentStop.OrderState == OrderState.Accepted))
-                {
-                    var newPending = new PendingStopReplacement
-                    {
-                        EntryName = entryName,
-                        Quantity = pos.RemainingContracts,
-                        StopPrice = validatedStopPrice,
-                        Direction = pos.Direction,
-                        OldOrder = currentStop,
-                        CreatedTime = DateTime.Now  // V8.30: Timeout support
-                    };
-
-                    // V8.30: Thread-safe add
-                    if (pendingStopReplacements.TryAdd(entryName, newPending))
-                    {
-                        int currentCount = Interlocked.Increment(ref pendingReplacementCount);
-                        if (currentCount >= CIRCUIT_BREAKER_THRESHOLD && !circuitBreakerActive)
-                        {
-                            circuitBreakerActive = true;
-                            circuitBreakerActivatedTime = DateTime.Now;
-                            Print(string.Format("V8.30: CIRCUIT BREAKER ACTIVATED - {0} pending replacements", currentCount));
-                        }
-                    }
-
-                    if (pos.ExecutingAccount != null)
-                    {
-                        pos.ExecutingAccount.Cancel(new[] { currentStop });
-                    }
-                    else
-                    {
-                        CancelOrder(currentStop);
-                    }
-                    pos.CurrentStopPrice = validatedStopPrice;
-                    pos.CurrentTrailLevel = newTrailLevel;
-
-                    string levelName = newTrailLevel <= 0 ? "Initial" : (newTrailLevel == 1 ? "BE" : "T" + (newTrailLevel - 1));
-                    Print(string.Format("STOP UPDATED: {0} â†’ {1:F2} (Level: {2})", entryName, validatedStopPrice, levelName));
-                    return;
-                }
-
-                // No existing stop or not in a cancellable state - create directly
-                if (pos.ExecutingAccount != null)
-                {
-                    newStop = pos.ExecutingAccount.CreateOrder(Instrument, pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover, 
-                        OrderType.StopMarket, TimeInForce.Gtc, pos.RemainingContracts, 0, validatedStopPrice, "Stop_" + entryName, "Stop_" + entryName, null);
-                    pos.ExecutingAccount.Submit(new[] { newStop });
-                    stopOrders[entryName] = newStop;
-                }
-                else
-                {
-                    // V12.3: Truncate signal name to stay under 50-char NinjaTrader limit
-                    string suffix = (DateTime.Now.Ticks % 100000000).ToString();
-                    string stopSigName = "S_" + entryName + "_" + suffix;
-                    if (stopSigName.Length > 50) stopSigName = stopSigName.Substring(0, 50);
-                    OrderAction stopExitAction = pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
-                    newStop = SubmitOrderUnmanaged(0, stopExitAction, OrderType.StopMarket, pos.RemainingContracts, 0, validatedStopPrice, "", stopSigName);
-
-                    if (newStop != null) stopOrders[entryName] = newStop;
-                }
-
-                if (newStop == null)
-                {
-                    Print(string.Format("âš ï¸ CRITICAL ERROR: Stop order submission returned NULL for {0}!", entryName));
-                    Print(string.Format("âš ï¸ POSITION UNPROTECTED: {0} {1} contracts @ {2:F2}",
-                        pos.Direction == MarketPosition.Long ? "LONG" : "SHORT",
-                        pos.RemainingContracts,
-                        pos.EntryPrice));
-                    Print(string.Format("âš ï¸ Attempted stop price: {0:F2} | Current price: {1:F2}", validatedStopPrice, Close[0]));
-
-                    Print(string.Format("âš ï¸ Attempting emergency flatten for {0}...", entryName));
-                    FlattenPositionByName(entryName);
-                    return;
-                }
-
-                stopOrders[entryName] = newStop;
-                pos.CurrentStopPrice = validatedStopPrice;
-                pos.CurrentTrailLevel = newTrailLevel;
-
-                string levelName2 = newTrailLevel == 1 ? "BE" : "T" + (newTrailLevel - 1);
-                Print(string.Format("STOP UPDATED: {0} â†’ {1:F2} (Level: {2})", entryName, validatedStopPrice, levelName2));
-
-            }
-            catch (Exception ex)
-            {
-                Print(string.Format("âš ï¸ ERROR UpdateStopOrder for {0}: {1}", entryName, ex.Message));
-                Print(string.Format("âš ï¸ POSITION MAY BE UNPROTECTED: {0} contracts", pos.RemainingContracts));
-                
-                // Attempt emergency flatten
-                try
-                {
-                    Print(string.Format("âš ï¸ Attempting emergency flatten for {0}...", entryName));
-                    FlattenPositionByName(entryName);
-                }
-                catch (Exception flattenEx)
-                {
-                    Print(string.Format("âš ï¸âš ï¸ EMERGENCY FLATTEN FAILED: {0}", flattenEx.Message));
-                }
-            }
-        }
-
-        // V12.10: Fleet Symmetry â€” calculates the correct stop price for a given trail level
-        // using the position's own entry/extreme prices. Pure calculation, no side effects.
-        private double CalculateStopForLevel(PositionInfo pos, int level)
-        {
-            bool isLong = (pos.Direction == MarketPosition.Long);
-            switch (level)
-            {
-                case 1: // Breakeven
-                    return isLong
-                        ? pos.EntryPrice + (BreakEvenOffsetTicks * tickSize)
-                        : pos.EntryPrice - (BreakEvenOffsetTicks * tickSize);
-                case 2: // Trail 1
-                    return isLong
-                        ? pos.ExtremePriceSinceEntry - Trail1DistancePoints
-                        : pos.ExtremePriceSinceEntry + Trail1DistancePoints;
-                case 3: // Trail 2
-                    return isLong
-                        ? pos.ExtremePriceSinceEntry - Trail2DistancePoints
-                        : pos.ExtremePriceSinceEntry + Trail2DistancePoints;
-                case 4: // Trail 3
-                    return isLong
-                        ? pos.ExtremePriceSinceEntry - Trail3DistancePoints
-                        : pos.ExtremePriceSinceEntry + Trail3DistancePoints;
-                default:
-                    return pos.CurrentStopPrice; // No change
-            }
-        }
-
-        private void OnBreakevenButtonClick()
-        {
-            try
-            {
-                if (activePositions.Count == 0)
-                {
-                    Print("BREAKEVEN: No active positions");
-                    return;
-                }
-
-                // V8.30: Thread-safe snapshot iteration for UI button handler
-                var posSnapshot = activePositions.ToArray();
-
-                // Check if any positions are already triggered (can't toggle after trigger)
-                bool anyTriggered = false;
-                foreach (var kvp in posSnapshot)
-                {
-                    if (kvp.Value.ManualBreakevenTriggered)
-                    {
-                        anyTriggered = true;
-                        break;
-                    }
-                }
-
-                if (anyTriggered)
-                {
-                    Print("BREAKEVEN: Already triggered - cannot toggle");
-                    return;
-                }
-
-                // Check current state - if any armed, disarm all; if none armed, arm all
-                bool anyArmed = false;
-                foreach (var kvp in posSnapshot)
-                {
-                    if (kvp.Value.ManualBreakevenArmed)
-                    {
-                        anyArmed = true;
-                        break;
-                    }
-                }
-
-                // Toggle: if armed, disarm; if disarmed, arm
-                foreach (var kvp in posSnapshot)
-                {
-                    if (!activePositions.ContainsKey(kvp.Key)) continue;
-                    PositionInfo pos = kvp.Value;
-                    if (pos.EntryFilled && !pos.ManualBreakevenTriggered)
-                    {
-                        if (anyArmed)
-                        {
-                            // Disarm
-                            pos.ManualBreakevenArmed = false;
-                            Print(string.Format("BREAKEVEN DISARMED: {0}", kvp.Key));
-                        }
-                        else
-                        {
-                            // Arm
-                            pos.ManualBreakevenArmed = true;
-                            Print(string.Format("BREAKEVEN ARMED: {0} - Will trigger at Entry + {1} tick(s)",
-                                kvp.Key, BreakEvenOffsetTicks));
-                        }
-                    }
-                }
-
-                UpdateDisplay();
-            }
-            catch (Exception ex)
-            {
-                Print("ERROR OnBreakevenButtonClick: " + ex.Message);
-            }
-        }
-
-        #endregion
 
         #region Position Sync
 
@@ -1862,8 +1259,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     CleanupPosition(key);
                 }
-
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
@@ -1985,6 +1380,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // V8.17 EMERGENCY FIX: Move removal to TOP to prevent recursion
             // V8.30: Use atomic TryRemove for thread-safe removal
             if (!activePositions.TryRemove(entryName, out _)) return;
+            SymmetryGuardForgetEntry(entryName);
 
             int cancelledStops = 0;
             int cancelledTargets = 0;
@@ -2056,8 +1452,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print(string.Format("CLEANUP SUMMARY for {0}: Stops={1} Targets={2} Entries={3}", 
                     entryName, cancelledStops, cancelledTargets, cancelledEntries));
             }
-
-            UpdateDisplay();
         }
 
         /// <summary>
@@ -2150,6 +1544,23 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 string orderName = execution.Order.Name;
                 if (string.IsNullOrEmpty(orderName)) return;
+
+                // V12.Hardening: Dedup guard — prevent double-decrement if OnOrderUpdate + OnExecutionUpdate both fire for same fill
+                if (!string.IsNullOrEmpty(executionId))
+                {
+                    lock (executionDeduplicateLock)
+                    {
+                        if (!processedExecutionIds.Add(executionId))
+                        {
+                            Print(string.Format("[DEDUP] Skipping duplicate execution {0} for {1}", executionId, orderName));
+                            return;
+                        }
+                        // Bounded pruning: keep at most MaxProcessedExecutionIds entries
+                        processedExecutionIdQueue.Enqueue(executionId);
+                        while (processedExecutionIdQueue.Count > MaxProcessedExecutionIds)
+                            processedExecutionIds.Remove(processedExecutionIdQueue.Dequeue());
+                    }
+                }
 
                 // V12.12: Compliance tracking for single-account mode
                 if (EnableComplianceHub && !EnableSIMA)
@@ -2245,11 +1656,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (pos.RemainingContracts <= 0)
                         {
                             activePositions.TryRemove(entryName, out _);
+                            SymmetryGuardForgetEntry(entryName);
                             entryOrders.TryRemove(entryName, out _);
                             Print(string.Format("Position {0} fully closed by stop.", entryName));
                         }
-
-                        UpdateDisplay();
                     }
                 }
 
@@ -2261,9 +1671,24 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string entryName = extractEntryName(orderName, "T1_");
                     if (!string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos))
                     {
-                        // Decrement RemainingContracts by the filled quantity
-                        pos.RemainingContracts -= quantity;
-                        pos.T1Filled = true;
+                        // V12.1101E [SK-01/A-1]: First-Writer-Wins guard — mirror of OnOrderUpdate guard.
+                        // If OnOrderUpdate already decremented for this fill, skip the decrement here.
+                        bool alreadyProcessed;
+                        lock (stateLock)
+                        {
+                            alreadyProcessed = pos.T1Filled;
+                            if (!alreadyProcessed)
+                            {
+                                pos.T1Filled = true;
+                                pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - quantity);
+                            }
+                        }
+                        if (alreadyProcessed)
+                        {
+                            Print(string.Format("[1101E GUARD] T1 already processed for {0} — skipping duplicate OnExecutionUpdate fill", entryName));
+                            target1Orders.TryRemove(entryName, out _);
+                            return;
+                        }
 
                         Print(string.Format("TARGET FILLED: {0} @ {1:F2}. Reducing stop. Remaining: {2}",
                             quantity, price, pos.RemainingContracts));
@@ -2285,11 +1710,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                                 }
                             }
                             activePositions.TryRemove(entryName, out _);
+                            SymmetryGuardForgetEntry(entryName);
                         }
 
                         // Remove T1 order reference
                         target1Orders.TryRemove(entryName, out _);
-                        UpdateDisplay();
                     }
                 }
 
@@ -2301,9 +1726,23 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string entryName = extractEntryName(orderName, "T2_");
                     if (!string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos))
                     {
-                        // Decrement RemainingContracts by the filled quantity
-                        pos.RemainingContracts -= quantity;
-                        pos.T2Filled = true;
+                        // V12.1101E [SK-01/A-1]: First-Writer-Wins guard — T2
+                        bool alreadyProcessed;
+                        lock (stateLock)
+                        {
+                            alreadyProcessed = pos.T2Filled;
+                            if (!alreadyProcessed)
+                            {
+                                pos.T2Filled = true;
+                                pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - quantity);
+                            }
+                        }
+                        if (alreadyProcessed)
+                        {
+                            Print(string.Format("[1101E GUARD] T2 already processed for {0} — skipping duplicate OnExecutionUpdate fill", entryName));
+                            target2Orders.TryRemove(entryName, out _);
+                            return;
+                        }
 
                         Print(string.Format("TARGET FILLED: {0} @ {1:F2}. Reducing stop. Remaining: {2}",
                             quantity, price, pos.RemainingContracts));
@@ -2325,11 +1764,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                                 }
                             }
                             activePositions.TryRemove(entryName, out _);
+                            SymmetryGuardForgetEntry(entryName);
                         }
 
                         // Remove T2 order reference
                         target2Orders.TryRemove(entryName, out _);
-                        UpdateDisplay();
                     }
                 }
 
@@ -2341,9 +1780,23 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string entryName = extractEntryName(orderName, "T3_");
                     if (!string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos))
                     {
-                        // Decrement RemainingContracts by the filled quantity
-                        pos.RemainingContracts -= quantity;
-                        pos.T3Filled = true;
+                        // V12.1101E [SK-01/A-1]: First-Writer-Wins guard — T3
+                        bool alreadyProcessed;
+                        lock (stateLock)
+                        {
+                            alreadyProcessed = pos.T3Filled;
+                            if (!alreadyProcessed)
+                            {
+                                pos.T3Filled = true;
+                                pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - quantity);
+                            }
+                        }
+                        if (alreadyProcessed)
+                        {
+                            Print(string.Format("[1101E GUARD] T3 already processed for {0} — skipping duplicate OnExecutionUpdate fill", entryName));
+                            target3Orders.TryRemove(entryName, out _);
+                            return;
+                        }
 
                         Print(string.Format("TARGET FILLED: {0} @ {1:F2}. Reducing stop. Remaining: {2}",
                             quantity, price, pos.RemainingContracts));
@@ -2365,11 +1818,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                                 }
                             }
                             activePositions.TryRemove(entryName, out _);
+                            SymmetryGuardForgetEntry(entryName);
                         }
 
                         // Remove T3 order reference
                         target3Orders.TryRemove(entryName, out _);
-                        UpdateDisplay();
                     }
                 }
 
@@ -2421,9 +1874,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                             }
 
                             activePositions.TryRemove(entryName, out _);
+                            SymmetryGuardForgetEntry(entryName);
                         }
-
-                        UpdateDisplay();
                     }
                 }
             }
@@ -2567,56 +2019,5 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         #endregion
 
-        #region Stop Management Helpers (V11)
-
-        /// <summary>
-        /// Moves all active position stops to Breakeven + Offset Points.
-        /// If offset is 0, it is pure breakeven.
-        /// </summary>
-        private void MoveStopsToBreakevenWithOffset(double offsetPoints)
-        {
-            try
-            {
-                foreach (var kvp in activePositions.ToArray())
-                {
-                    PositionInfo pos = kvp.Value;
-                    string entryName = kvp.Key;
-
-                    if (!pos.EntryFilled || pos.RemainingContracts <= 0) continue;
-
-                    double newStopPrice;
-                    if (pos.Direction == MarketPosition.Long)
-                        newStopPrice = pos.EntryPrice + offsetPoints;
-                    else
-                        newStopPrice = pos.EntryPrice - offsetPoints;
-
-                    // Round to tick size
-                    newStopPrice = Instrument.MasterInstrument.RoundToTickSize(newStopPrice);
-
-                    // Only move stop if it's a better price (profit-protecting direction)
-                    bool isBetter = (pos.Direction == MarketPosition.Long && newStopPrice > pos.CurrentStopPrice)
-                                 || (pos.Direction == MarketPosition.Short && newStopPrice < pos.CurrentStopPrice);
-
-                    if (!isBetter)
-                    {
-                        Print(string.Format("BE+{0}: Stop already better for {1}. Current={2:F2}, Request={3:F2}",
-                            offsetPoints, entryName, pos.CurrentStopPrice, newStopPrice));
-                        continue;
-                    }
-
-                    // V12.10: Use UpdateStopOrder for proper Master/Follower routing
-                    // (ChangeOrder only works for Master â€” followers were silently skipped)
-                    UpdateStopOrder(entryName, pos, newStopPrice, 1);
-                    pos.ManualBreakevenTriggered = true;
-                    Print(string.Format("BE+{0} MOVED: {1} Stop -> {2:F2}", offsetPoints, entryName, newStopPrice));
-                }
-            }
-            catch (Exception ex)
-            {
-                Print("ERROR MoveStopsToBreakevenWithOffset: " + ex.Message);
-            }
-        }
-
-        #endregion
     }
 }

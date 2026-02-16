@@ -67,7 +67,7 @@ namespace NinjaTrader.NinjaScript.Indicators
                 T3Val = "3.0"; T3Type = "ATR";
                 T4Val = "4.0"; T4Type = "ATR";
                 T5Val = "5.0"; T5Type = "ATR";
-                STR = "$150"; StopType = "ATR"; MAX = "$1200"; CIT = "0";
+                STR = "1.1"; StopType = "ATR"; MAX = "$1200"; CIT = "0";
             }
 
             public string ToLine()
@@ -113,7 +113,6 @@ namespace NinjaTrader.NinjaScript.Indicators
             public int ActiveCount { get; set; }
             public Dictionary<string, V12ModeSettings> Slots { get; set; }
             public Dictionary<string, int> LastUsedCountPerMode { get; set; } // V12.18: Sticky count per mode
-            public V12GlobalSettings Global { get; set; } // V12.23: Mode-independent global settings
 
             public V12FullConfig()
             {
@@ -121,7 +120,6 @@ namespace NinjaTrader.NinjaScript.Indicators
                 ActiveCount = 3;
                 Slots = new Dictionary<string, V12ModeSettings>();
                 LastUsedCountPerMode = new Dictionary<string, int>();
-                Global = new V12GlobalSettings();
             }
 
             /// <summary>Build composite key: e.g. "ORB_3"</summary>
@@ -143,25 +141,6 @@ namespace NinjaTrader.NinjaScript.Indicators
             {
                 string key = MakeKey(mode, count);
                 Slots[key] = settings;
-            }
-        }
-
-        /// <summary>V12.23: Global settings that persist across all modes (not per mode+count)</summary>
-        public class V12GlobalSettings
-        {
-            public string TrailDistance { get; set; } = "1.0";
-            public string BeBufferTicks { get; set; } = "2";
-
-            public string ToLine() => $"{TrailDistance}|{BeBufferTicks}";
-
-            public static V12GlobalSettings FromLine(string line)
-            {
-                var s = new V12GlobalSettings();
-                if (string.IsNullOrEmpty(line)) return s;
-                var parts = line.Split('|');
-                if (parts.Length >= 1) s.TrailDistance = parts[0];
-                if (parts.Length >= 2) s.BeBufferTicks = parts[1];
-                return s;
             }
         }
 
@@ -201,6 +180,8 @@ namespace NinjaTrader.NinjaScript.Indicators
 
         // Selected Target Count (3 default)
         private int selectedTargetCount = 3;
+        // V12.45: Last SYNCED count per mode (only written on SyncAll_Click, not on button click)
+        private Dictionary<string, int> lastSyncedCountPerMode = new Dictionary<string, int>();
 
         // Selected Config Mode
         private string selectedConfigMode = "ORB";
@@ -222,14 +203,18 @@ namespace NinjaTrader.NinjaScript.Indicators
         private Button retestButton, rmaButton;
         private int retestCycleState = 0;        // 0=RETEST, 1=RET+, 2=RET-
         private bool isRmaModeActive = false;    // RMA chart-click mode toggle
-        private bool isFfmaArmed = false;        // V12.24: FFMA Smart Toggle state (false=MNL, true=AUTO)
-        private Button momoButton, ffmaButton;
+        private Button momoButton, ffmaButton, ffmaManualButton, mButton;
         private Button trendButton, trendRmaToggle, retestRmaToggle;
         private Button t1Button, t2Button, t3Button, t4Button, t5Button;
         private Button trim50Button, beButton, trailButton;
-        private TextBox trailDistInput, beBufferInput;
+        private TextBox trailDistInput, beOffsetInput;
         private Button flattenButton, cancelButton;
         private TextBlock lastPriceText;
+
+        // V12.27: Contextual UI - Grid references for visibility control
+        private Grid execRetestRow;   // Retest + R toggle row
+        private Grid execTrendRow;    // Trend + R toggle row
+        private Grid manualEntryRow;  // Direction + Price + Submit row
 
         // UI Components - Section 1.5: Risk Manager
         private TextBlock complianceSummaryText;
@@ -382,6 +367,9 @@ namespace NinjaTrader.NinjaScript.Indicators
             }
             else if (State == State.Terminated)
             {
+                // V12.42: Final save before shutdown for crash safety
+                try { SaveConfig(); } catch { }
+
                 if (ChartControl != null)
                 {
                     ChartControl.Dispatcher.InvokeAsync(RemovePanel);
@@ -569,8 +557,6 @@ namespace NinjaTrader.NinjaScript.Indicators
                     }
                 }
 
-                panelCreated = true;
-                
                 // Glow Timer
                 glowTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
                 glowTimer.Tick += (s, e) =>
@@ -584,8 +570,11 @@ namespace NinjaTrader.NinjaScript.Indicators
 
                 Print("V12 STANDARD: Panel Created Successfully (Ghost Architecture)");
 
-                // Load saved configuration
+                // V12.42: Load saved configuration BEFORE panelCreated=true
+                // This prevents TextChanged/SelectionChanged handlers from firing SaveConfig
+                // with partially-loaded state during ApplySettings
                 LoadConfig();
+                panelCreated = true; // V12.42: AFTER LoadConfig - event handlers now safe
             }
             catch (Exception ex)
             {
@@ -642,7 +631,7 @@ namespace NinjaTrader.NinjaScript.Indicators
                 T4Type = (svT4Type?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "ATR",
                 T5Val = svT5Val?.Text ?? "5.0",
                 T5Type = (svT5Type?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "ATR",
-                STR = strVal?.Text ?? "$150",
+                STR = strVal?.Text ?? "1.1",
                 StopType = (svStrType?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "ATR",
                 MAX = maxVal?.Text ?? "$1200",
                 CIT = citVal?.Text ?? "0"
@@ -657,7 +646,7 @@ namespace NinjaTrader.NinjaScript.Indicators
             isApplyingSettings = true; // Prevent auto-save during UI updates
             try
             {
-                if (strVal != null) strVal.Text = settings.STR ?? "$150";
+                if (strVal != null) strVal.Text = settings.STR ?? "1.1";
                 if (maxVal != null) maxVal.Text = settings.MAX ?? "$1200";
                 if (citVal != null) citVal.Text = settings.CIT ?? "0";
 
@@ -677,6 +666,9 @@ namespace NinjaTrader.NinjaScript.Indicators
                 selectedTargetCount = settings.TargetCount > 0 ? settings.TargetCount : 3;
                 UpdateTargetCountVisual(selectedTargetCount);
                 UpdateTargetVisibility(selectedTargetCount);
+
+                // V12.27: Contextual UI - filter buttons/dropdown for active mode
+                UpdateContextualUI(selectedConfigMode);
             }
             finally
             {
@@ -697,23 +689,24 @@ namespace NinjaTrader.NinjaScript.Indicators
                 fullConfig.ActiveCount = selectedTargetCount;
                 fullConfig.SetSettings(selectedConfigMode, selectedTargetCount, CaptureCurrentSettings());
 
-                // V12.23: Persist global settings (mode-independent)
-                if (fullConfig.Global == null) fullConfig.Global = new V12GlobalSettings();
-                fullConfig.Global.TrailDistance = trailDistInput?.Text ?? "1.0";
-                fullConfig.Global.BeBufferTicks = beBufferInput?.Text ?? "2";
-
                 // Write text file: header + all dictionary entries
                 var sb = new StringBuilder();
                 sb.AppendLine($"ActiveMode={fullConfig.ActiveMode}");
                 sb.AppendLine($"ActiveCount={fullConfig.ActiveCount}");
-                sb.AppendLine($"GLOBAL={fullConfig.Global.ToLine()}");
+
+                // V14 FIX: Persist LastUsedCountPerMode so modes remember their count on reload
+                foreach (var kvp in fullConfig.LastUsedCountPerMode)
+                {
+                    sb.AppendLine($"LASTCOUNT_{kvp.Key}={kvp.Value}");
+                }
+
                 foreach (var kvp in fullConfig.Slots)
                 {
                     sb.AppendLine($"{kvp.Key}={kvp.Value.ToLine()}");
                 }
                 
                 File.WriteAllText(ConfigFilePath, sb.ToString());
-                Print($"V12 TOTAL RECALL: Saved {fullConfig.Slots.Count} slots (active: {selectedConfigMode}_{selectedTargetCount})");
+                Print($"V12 TOTAL RECALL: Saved {fullConfig.Slots.Count} slots, {fullConfig.LastUsedCountPerMode.Count} sticky counts (active: {selectedConfigMode}_{selectedTargetCount})");
             }
             catch (Exception ex)
             {
@@ -750,17 +743,19 @@ namespace NinjaTrader.NinjaScript.Indicators
                         int.TryParse(val, out int ac);
                         fullConfig.ActiveCount = ac > 0 ? ac : 3;
                     }
-                    else if (key == "GLOBAL")
+                    else if (key.StartsWith("LASTCOUNT_"))
                     {
-                        // V12.23: Global settings (mode-independent)
-                        fullConfig.Global = V12GlobalSettings.FromLine(val);
+                        // V14 FIX: Restore sticky count per mode
+                        string modeKey = key.Substring(10); // Remove "LASTCOUNT_" prefix
+                        if (int.TryParse(val, out int lastCount) && lastCount > 0)
+                            fullConfig.LastUsedCountPerMode[modeKey] = lastCount;
                     }
                     else if (key.Contains("_"))
                     {
                         // TOTAL RECALL format: e.g. "ORB_3=..."
                         fullConfig.Slots[key] = V12ModeSettings.FromLine(val);
                     }
-                    else
+                    else if (key != "GLOBAL") // Skip stale/corrupt entries
                     {
                         // LEGACY format: bare mode name e.g. "ORB=..."
                         // Parse settings and store with default count from TargetCount field
@@ -773,7 +768,16 @@ namespace NinjaTrader.NinjaScript.Indicators
 
                 // Restore active mode + count
                 string activeMode = fullConfig.ActiveMode ?? "ORB";
-                int activeCount = fullConfig.ActiveCount > 0 ? fullConfig.ActiveCount : 3;
+                
+                // V14 FIX: Use the mode's sticky count (LastUsedCountPerMode) if available,
+                // otherwise fall back to ActiveCount. This ensures mode-specific target counts
+                // are correctly restored on reload (e.g., RMA remembers count=2, ORB remembers count=4).
+                int activeCount;
+                if (fullConfig.LastUsedCountPerMode.ContainsKey(activeMode))
+                    activeCount = fullConfig.LastUsedCountPerMode[activeMode];
+                else
+                    activeCount = fullConfig.ActiveCount > 0 ? fullConfig.ActiveCount : 3;
+                
                 selectedConfigMode = activeMode;
                 selectedTargetCount = activeCount;
 
@@ -782,15 +786,15 @@ namespace NinjaTrader.NinjaScript.Indicators
 
                 // Apply active mode+count settings to UI
                 ApplySettings(fullConfig.GetSettings(activeMode, activeCount));
+                
+                // V14 FIX: Also update count chip visuals to show the restored count
+                UpdateTargetCountVisual(activeCount);
 
-                // V12.23: Restore global settings (mode-independent)
-                if (fullConfig.Global != null)
-                {
-                    if (trailDistInput != null) trailDistInput.Text = fullConfig.Global.TrailDistance ?? "1.0";
-                    if (beBufferInput != null) beBufferInput.Text = fullConfig.Global.BeBufferTicks ?? "2";
-                }
+                // V12.45: Seed lastSyncedCountPerMode from persisted data so mode-switch logic works on reload
+                foreach (var kvp in fullConfig.LastUsedCountPerMode)
+                    lastSyncedCountPerMode[kvp.Key] = kvp.Value;
 
-                Print($"V12 TOTAL RECALL: Loaded {fullConfig.Slots.Count} slots, active: {activeMode}_{activeCount}");
+                Print($"V12 TOTAL RECALL: Loaded {fullConfig.Slots.Count} slots, {fullConfig.LastUsedCountPerMode.Count} sticky counts, active: {activeMode}_{activeCount}");
             }
             catch (Exception ex)
             {
@@ -832,6 +836,13 @@ namespace NinjaTrader.NinjaScript.Indicators
 
         private void UpdateTargetCountVisual(int count)
         {
+            // V14 FIX: Must run on UI thread � may be called from TCP background thread
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() => UpdateTargetCountVisual(count));
+                return;
+            }
+
             foreach (var btn in new[] { cnt1, cnt2, cnt3, cnt4, cnt5 })
             {
                 if (btn == null) continue;
@@ -1509,6 +1520,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             // Row 3: Direction + Price + Submit + Close (SHIFTED DOWN)
             Grid row3 = new Grid { Margin = new Thickness(0, 1, 0, 1) };
+            manualEntryRow = row3; // V12.27: Store reference for contextual visibility
             row3.HorizontalAlignment = HorizontalAlignment.Stretch; // V12.21: Fluid
             row3.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // V12.21: Fluid Auto width
             row3.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -1579,9 +1591,9 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             // RETEST row with R toggle
             // V12.3: Locked to 36px to match TRAIL input for perfect center-line
-            Grid retestRow = new Grid { Margin = new Thickness(0, 2, 0, 0) };
-            retestRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            retestRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) }); // SYNC: Matches TrailDistInput
+            execRetestRow = new Grid { Margin = new Thickness(0, 2, 0, 0) }; // V12.27: Store reference for contextual UI
+            execRetestRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            execRetestRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) }); // SYNC: Matches TrailDistInput
             
             retestButton = CreateButton("RETEST", double.NaN, OrangeBg, OrangeFg, OrangeBorder);
             retestButton.Click += (s, e) =>
@@ -1598,7 +1610,7 @@ namespace NinjaTrader.NinjaScript.Indicators
                 TriggerGlow(OrangeFg);
             };
             Grid.SetColumn(retestButton, 0);
-            retestRow.Children.Add(retestButton);
+            execRetestRow.Children.Add(retestButton);
             
             retestRmaToggle = CreateButton("R", 36, PurpleFg, TextPrimary, PurpleFg); // SYNC: Matches TrailDistInput
             retestRmaToggle.Margin = new Thickness(2, 0, 0, 0);
@@ -1609,18 +1621,34 @@ namespace NinjaTrader.NinjaScript.Indicators
                 SendCommand(isRetestRmaToggle ? "MODE_RETEST_RMA" : "MODE_RETEST_STD");
             };
             Grid.SetColumn(retestRmaToggle, 1);
-            retestRow.Children.Add(retestRmaToggle);
-            leftCol.Children.Add(retestRow);
+            execRetestRow.Children.Add(retestRmaToggle);
+            leftCol.Children.Add(execRetestRow);
 
-            // RMA button — V12.24: Simple one-shot mode selector (strategy manages armed state)
+            // RMA button
             rmaButton = CreateButton("RMA", double.NaN, PurpleFg, TextPrimary, PurpleFg);
             rmaButton.Margin = new Thickness(0, 2, 0, 0);
             rmaButton.Click += (s, e) =>
             {
-                ResetExecutionMode();
-                SendCommand("SET_RMA_MODE|ON");
-                SelectConfigMode("RMA", modeRmaButton);
-                SendCommand("SYNC_MODE|RMA");
+                isRmaModeActive = !isRmaModeActive;
+                if (isRmaModeActive)
+                {
+                    rmaButton.Background = PurpleFg;
+                    rmaButton.Foreground = Brushes.White;
+                    rmaButton.Content = "RMA ON";
+                    SendCommand("SET_RMA_MODE|ON");
+                    
+                    // V12.2: Switch config mode to RMA when activated
+                    SelectConfigMode("RMA", modeRmaButton);
+                    // V12.2: Sync external app to RMA mode
+                    SendCommand("SYNC_MODE|RMA");
+                }
+                else
+                {
+                    rmaButton.Background = Brushes.Transparent;
+                    rmaButton.Foreground = PurpleFg;
+                    rmaButton.Content = "RMA";
+                    SendCommand("SET_RMA_MODE|OFF");
+                }
                 TriggerGlow(PurpleFg);
             };
             leftCol.Children.Add(rmaButton);
@@ -1640,43 +1668,43 @@ namespace NinjaTrader.NinjaScript.Indicators
             leftCol.Children.Add(momoButton);
 
 
-            // V12.24: FFMA Smart Toggle — Default=MNL (muted), Armed=AUTO (pink)
-            ffmaButton = CreateButton("FFMA", double.NaN, BtnBg, PinkFg, PinkBorder);
+            // V12.27: FFMA Auto button (strategy arms and auto-enters on conditions)
+            ffmaButton = CreateButton("A.FFMA", double.NaN, PinkBg, PinkFg, PinkBorder);
             ffmaButton.Margin = new Thickness(0, 2, 0, 0);
-            ffmaButton.Click += (s, e) =>
-            {
-                bool arming = !isFfmaArmed;  // Capture desired state before ResetExecutionMode clears it
-                ResetExecutionMode();         // Clears all modes including isFfmaArmed
+            ffmaButton.Click += (s, e) => { 
+                SendCommand("MODE_FFMA"); 
+                ResetExecutionMode(); // V12.20: One Click = One Order
+                TriggerGlow(PinkFg); 
+                // V12.2: Switch config mode when entry button clicked
                 SelectConfigMode("FFMA", modeFfmaButton);
                 SendCommand("SYNC_MODE|FFMA");
-
-                if (arming)
-                {
-                    // Arm AUTO mode: enable FFMA reversal scanner
-                    isFfmaArmed = true;
-                    ffmaButton.Content = "AUTO";
-                    ffmaButton.Background = PinkBg;
-                    ffmaButton.Foreground = Brushes.White;
-                    SendCommand("MODE_FFMA");
-                    TriggerGlow(PinkFg);
-                }
-                else
-                {
-                    // MNL mode: fire immediate market entry via FFMA DNA
-                    ffmaButton.Content = "FFMA";
-                    ffmaButton.Background = BtnBg;
-                    ffmaButton.Foreground = PinkFg;
-                    SendCommand("MODE_M");
-                    TriggerGlow(OrangeFg);
-                }
             };
             leftCol.Children.Add(ffmaButton);
 
+            // V12.27: FFMA Manual button (instant market order, direction toward 9 EMA)
+            ffmaManualButton = CreateButton("M.FFMA", double.NaN, PinkBg, PinkFg, PinkBorder);
+            ffmaManualButton.Margin = new Thickness(0, 2, 0, 0);
+            ffmaManualButton.Click += (s, e) => {
+                SendCommand("FFMA_MANUAL_MARKET");
+                ResetExecutionMode();
+                TriggerGlow(PinkFg);
+                SelectConfigMode("FFMA", modeFfmaButton);
+                SendCommand("SYNC_MODE|FFMA");
+            };
+            leftCol.Children.Add(ffmaManualButton);
+
+
+            // MNL (M) button
+            mButton = CreateButton("MNL", double.NaN, OrangeBg, OrangeFg, OrangeBorder);
+            mButton.Margin = new Thickness(0, 2, 0, 0);
+            mButton.Click += (s, e) => { SendCommand("MODE_M"); TriggerGlow(OrangeFg); };
+            leftCol.Children.Add(mButton);
+
             // TREND row with R toggle
             // V12.3: Locked to 36px to match TRAIL/RETEST for perfect center-line
-            Grid trendRow = new Grid { Margin = new Thickness(0, 2, 0, 0) };
-            trendRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            trendRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) }); // SYNC: Matches TrailDistInput
+            execTrendRow = new Grid { Margin = new Thickness(0, 2, 0, 0) }; // V12.27: Store reference for contextual UI
+            execTrendRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            execTrendRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) }); // SYNC: Matches TrailDistInput
             
             trendButton = CreateButton("TREND", double.NaN, BtnBg, TextPrimary, BtnBorder);
             trendButton.Click += (s, e) =>
@@ -1690,7 +1718,7 @@ namespace NinjaTrader.NinjaScript.Indicators
                 SendCommand("SYNC_MODE|TREND");
             };
             Grid.SetColumn(trendButton, 0);
-            trendRow.Children.Add(trendButton);
+            execTrendRow.Children.Add(trendButton);
 
             
             trendRmaToggle = CreateButton("R", 36, PurpleFg, TextPrimary, PurpleFg); // SYNC: Matches TrailDistInput
@@ -1703,8 +1731,8 @@ namespace NinjaTrader.NinjaScript.Indicators
                 SendCommand(isTrendRmaToggle ? "MODE_TREND_RMA" : "MODE_TREND_STD");
             };
             Grid.SetColumn(trendRmaToggle, 1);
-            trendRow.Children.Add(trendRmaToggle);
-            leftCol.Children.Add(trendRow);
+            execTrendRow.Children.Add(trendRmaToggle);
+            leftCol.Children.Add(execTrendRow);
 
             Grid.SetColumn(leftCol, 0);
             mainGrid.Children.Add(leftCol);
@@ -1713,28 +1741,34 @@ namespace NinjaTrader.NinjaScript.Indicators
             // -------------------------------------------------------------------------------
             StackPanel rightCol = new StackPanel { Margin = new Thickness(1, 0, 0, 0), HorizontalAlignment = HorizontalAlignment.Stretch };
 
-            // T1 button
+            // T1 button with dropdown menu
             t1Button = CreateButton("T1", double.NaN, GreenBg, GreenFg, GreenBorder);
-            t1Button.Click += (s, e) => { SendCommand("CLOSE_T1"); TriggerGlow(GreenFg); };
+            AttachTargetDropdown(t1Button, 1, GreenFg);
             rightCol.Children.Add(t1Button);
 
-            // T2 button
+            // T2 button with dropdown menu
             t2Button = CreateButton("T2", double.NaN, YellowBg, YellowFg, YellowBorder);
             t2Button.Margin = new Thickness(0, 2, 0, 0);
-            t2Button.Click += (s, e) => { SendCommand("CLOSE_T2"); TriggerGlow(YellowFg); };
+            AttachTargetDropdown(t2Button, 2, YellowFg);
             rightCol.Children.Add(t2Button);
 
-            // T3 button
+            // T3 button with dropdown menu
             t3Button = CreateButton("T3", double.NaN, OrangeBg, OrangeFg, OrangeBorder);
             t3Button.Margin = new Thickness(0, 2, 0, 0);
-            t3Button.Click += (s, e) => { SendCommand("CLOSE_T3"); TriggerGlow(OrangeFg); };
+            AttachTargetDropdown(t3Button, 3, OrangeFg);
             rightCol.Children.Add(t3Button);
 
-            // T4 button
+            // T4 button with dropdown menu
             t4Button = CreateButton("T4", double.NaN, RedBg, RedFg, RedBorder);
             t4Button.Margin = new Thickness(0, 2, 0, 0);
-            t4Button.Click += (s, e) => { SendCommand("CLOSE_T4"); TriggerGlow(RedFg); };
+            AttachTargetDropdown(t4Button, 4, RedFg);
             rightCol.Children.Add(t4Button);
+
+            // V14: T5 button with dropdown menu (NEW)
+            t5Button = CreateButton("T5", double.NaN, PinkBg, PinkFg, PinkBorder);
+            t5Button.Margin = new Thickness(0, 2, 0, 0);
+            AttachTargetDropdown(t5Button, 5, PinkFg);
+            rightCol.Children.Add(t5Button);
 
 
 
@@ -1744,23 +1778,23 @@ namespace NinjaTrader.NinjaScript.Indicators
             trim50Button.Click += (s, e) => { SendCommand("TRIM_50"); TriggerGlow(OrangeFg); };
             rightCol.Children.Add(trim50Button);
 
-            // V12.23: BE row — Input + Button (matches TRAIL row layout)
+            // BE row: Input (ticks offset) + Button � mirrors TRAIL row layout
             Grid beRow = new Grid { Margin = new Thickness(0, 2, 0, 0) };
-            beRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+            beRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) }); // SYNC: Matches trailDistInput width
             beRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            beBufferInput = CreateTextBox(0, "2");
-            beBufferInput.Height = 22;
-            beBufferInput.FontSize = 10;
-            beBufferInput.ToolTip = "BE Buffer (Ticks)";
-            Grid.SetColumn(beBufferInput, 0);
-            beRow.Children.Add(beBufferInput);
+            beOffsetInput = CreateTextBox(0, "2");
+            beOffsetInput.Height = 22;
+            beOffsetInput.FontSize = 10;
+            beOffsetInput.ToolTip = "BE offset in ticks (e.g., 2 = move stop +2 ticks above entry)";
+            Grid.SetColumn(beOffsetInput, 0);
+            beRow.Children.Add(beOffsetInput);
 
             beButton = CreateButton("BE", double.NaN, CyanBg, CyanFg, CyanBorder);
             beButton.Margin = new Thickness(2, 0, 0, 0);
             beButton.Click += (s, e) =>
             {
-                string ticks = beBufferInput?.Text ?? "2";
+                string ticks = beOffsetInput?.Text ?? "2";
                 SendCommand($"BE_CUSTOM|{ticks}");
                 TriggerGlow(CyanFg);
             };
@@ -2071,7 +2105,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             // LEFT COLUMN: Modes
             StackPanel modeColumn = new StackPanel { Margin = new Thickness(0, 0, 1, 0), HorizontalAlignment = HorizontalAlignment.Stretch };
-            modeOrbButton = CreateModeChip("ORB", true, -1);
+            modeOrbButton = CreateModeChip("ORB", false, -1); // V12.42: No hardcoded default - LoadConfig sets active
             modeRmaButton = CreateModeChip("RMA", false, -1);
             modeRetestButton = CreateModeChip("RETEST", false, -1);
             modeMomoButton = CreateModeChip("MOMO", false, -1);
@@ -2095,10 +2129,7 @@ namespace NinjaTrader.NinjaScript.Indicators
             cnt4 = CreateCountChip("4", 4);
             cnt5 = CreateCountChip("5", 5);
 
-            // Default: 3 selected
-            cnt3.Background = CyanBg;
-            cnt3.Foreground = CyanFg;
-            cnt3.BorderBrush = CyanBorder;
+            // V12.42: No hardcoded default - LoadConfig calls UpdateTargetCountVisual to set active count
 
             countColumn.Children.Add(cnt1);
             countColumn.Children.Add(cnt2);
@@ -2158,7 +2189,7 @@ namespace NinjaTrader.NinjaScript.Indicators
             t5Row = svRow4;  // Store reference for visibility control
             stack.Children.Add(svRow4);
 
-            // STR: $150  MAX: $1200
+            // STR: 1.1 ATR  MAX: $1200
             // V12: Force explicit width so Star columns work inside StackPanel
             // V12 TOTAL RECALL: Fixed-width grid to prevent STR/MAX stretching
             Grid riskRow = new Grid { Margin = new Thickness(0, 0, 0, 3) };
@@ -2172,7 +2203,7 @@ namespace NinjaTrader.NinjaScript.Indicators
             Grid.SetColumn(strLabel, 0);
             riskRow.Children.Add(strLabel);
 
-            strVal = CreateTextBox(33, "$150"); strVal.Height = 20; strVal.FontSize = 9; strVal.Foreground = OrangeFg;
+            strVal = CreateTextBox(33, "1.1"); strVal.Height = 20; strVal.FontSize = 9; strVal.Foreground = OrangeFg; // V12.25: Aligned with V12ModeSettings constructor (was "$150")
             
             // Stop Type Dropdown
             svStrType = CreateCombo(40, new[] { "ATR", "Ticks", "Pts", "OR" }); 
@@ -2272,8 +2303,10 @@ namespace NinjaTrader.NinjaScript.Indicators
             // V12 TOTAL RECALL: Save current mode+count combo before switching
             if (fullConfig == null) fullConfig = new V12FullConfig();
             fullConfig.SetSettings(selectedConfigMode, selectedTargetCount, CaptureCurrentSettings());
-            // V12.18: Save current count as sticky for the OLD mode
-            fullConfig.LastUsedCountPerMode[selectedConfigMode] = selectedTargetCount;
+            // V12.45: Save SYNCED count (not clicked count) as sticky for the OLD mode
+            if (lastSyncedCountPerMode.ContainsKey(selectedConfigMode))
+                fullConfig.LastUsedCountPerMode[selectedConfigMode] = lastSyncedCountPerMode[selectedConfigMode];
+            // else: don't overwrite — keep whatever was previously persisted
 
             // Switch to new mode
             selectedConfigMode = mode;
@@ -2305,6 +2338,9 @@ namespace NinjaTrader.NinjaScript.Indicators
             ApplySettings(fullConfig.GetSettings(mode, stickyCount));
             SendCommand($"SET_TARGETS|{stickyCount}");
 
+            // V12.27: Contextual UI - filter buttons/dropdown for active mode
+            UpdateContextualUI(mode);
+
             // Persist the change
             SaveConfig();
         }
@@ -2317,6 +2353,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             // Switch count
             selectedTargetCount = count;
+            // V12.45: Removed sticky write here — count is only committed on SyncAll_Click
             SendCommand($"SET_TARGETS|{count}");
 
             foreach (var btn in new[] { cnt1, cnt2, cnt3, cnt4, cnt5 })
@@ -2338,14 +2375,16 @@ namespace NinjaTrader.NinjaScript.Indicators
             SaveConfig();
         }
 
-        private void UpdateTargetVisibility(int count)
+        public void UpdateTargetVisibility(int count)
         {
-            // T1 always visible (count >= 1)
-            // T2 visible if count >= 2
-            // T3 visible if count >= 3
-            // T4 visible if count >= 4
-            // T5 visible if count >= 5
+            // V14 FIX: Must run on UI thread � called from TCP background thread via SYNC_TARGET_STATE
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() => UpdateTargetVisibility(count));
+                return;
+            }
 
+            // Config section (Section 3) - Enable/disable inputs and show/hide rows
             if (svT2Val != null) svT2Val.IsEnabled = count >= 2;
             if (svT2Type != null) svT2Type.IsEnabled = count >= 2;
             if (svT3Val != null) svT3Val.IsEnabled = count >= 3;
@@ -2355,15 +2394,115 @@ namespace NinjaTrader.NinjaScript.Indicators
             if (svT5Val != null) svT5Val.IsEnabled = count >= 5;
             if (svT5Type != null) svT5Type.IsEnabled = count >= 5;
 
-            // Show/hide rows based on count
+            // Show/hide config rows based on count
+            if (t2Row != null) t2Row.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed;
             if (t3Row != null) t3Row.Visibility = count >= 3 ? Visibility.Visible : Visibility.Collapsed;
             if (t4Row != null) t4Row.Visibility = count >= 4 ? Visibility.Visible : Visibility.Collapsed;
             if (t5Row != null) t5Row.Visibility = count >= 5 ? Visibility.Visible : Visibility.Collapsed;
+
+            // V14: Execution section (Section 1) - Show/hide target buttons
+            // T1 always visible (every config has at least 1 target)
+            if (t1Button != null) t1Button.Visibility = Visibility.Visible;
+            
+            // T2-T5 visibility based on selected count
+            if (t2Button != null) t2Button.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+            if (t3Button != null) t3Button.Visibility = count >= 3 ? Visibility.Visible : Visibility.Collapsed;
+            if (t4Button != null) t4Button.Visibility = count >= 4 ? Visibility.Visible : Visibility.Collapsed;
+            if (t5Button != null) t5Button.Visibility = count >= 5 ? Visibility.Visible : Visibility.Collapsed;
+            
+            Print($"V14: UpdateTargetVisibility({count}) - Execution buttons: T1=V, T2={count>=2}, T3={count>=3}, T4={count>=4}, T5={count>=5}");
         }
 
         #endregion
 
         #region UI Helpers
+
+        private void UpdateContextualUI(string mode)
+        {
+            // V12.27: Must run on UI thread
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() => UpdateContextualUI(mode));
+                return;
+            }
+
+            string upperMode = mode.ToUpper();
+
+            // Hide all contextual entry buttons by default
+            if (execRetestRow != null) execRetestRow.Visibility = Visibility.Collapsed;
+            if (execTrendRow != null) execTrendRow.Visibility = Visibility.Collapsed;
+            if (rmaButton != null) rmaButton.Visibility = Visibility.Collapsed;
+            if (momoButton != null) momoButton.Visibility = Visibility.Collapsed;
+            if (ffmaButton != null) ffmaButton.Visibility = Visibility.Collapsed;
+            if (ffmaManualButton != null) ffmaManualButton.Visibility = Visibility.Collapsed;
+            if (mButton != null) mButton.Visibility = Visibility.Collapsed;
+            if (orLongButton != null) orLongButton.Visibility = Visibility.Collapsed;
+            if (orShortButton != null) orShortButton.Visibility = Visibility.Collapsed;
+
+            // V12.27: Default manual entry row visible (hidden only for FFMA)
+            if (manualEntryRow != null) manualEntryRow.Visibility = Visibility.Visible;
+
+            // Show elements relevant to the active mode
+            switch (upperMode)
+            {
+                case "ORB":
+                    if (orLongButton != null) orLongButton.Visibility = Visibility.Visible;
+                    if (orShortButton != null) orShortButton.Visibility = Visibility.Visible;
+                    break;
+                case "RMA":
+                    if (rmaButton != null) rmaButton.Visibility = Visibility.Visible;
+                    break;
+                case "RETEST":
+                    if (execRetestRow != null) execRetestRow.Visibility = Visibility.Visible;
+                    break;
+                case "MOMO":
+                    if (momoButton != null) momoButton.Visibility = Visibility.Visible;
+                    break;
+                case "FFMA":
+                    if (ffmaButton != null) ffmaButton.Visibility = Visibility.Visible;
+                    if (ffmaManualButton != null) ffmaManualButton.Visibility = Visibility.Visible;
+                    // V12.27: FFMA hides manual entry row � M.FFMA auto-detects direction
+                    if (manualEntryRow != null) manualEntryRow.Visibility = Visibility.Collapsed;
+                    break;
+                case "TREND":
+                    if (execTrendRow != null) execTrendRow.Visibility = Visibility.Visible;
+                    break;
+                case "MNL":
+                    if (mButton != null) mButton.Visibility = Visibility.Visible;
+                    break;
+                default:
+                    if (orLongButton != null) orLongButton.Visibility = Visibility.Visible;
+                    if (orShortButton != null) orShortButton.Visibility = Visibility.Visible;
+                    break;
+            }
+
+            // V12.27: Update dropdown items based on active mode
+            if (directionCombo != null)
+            {
+                isApplyingSettings = true; // Prevent auto-save during dropdown rebuild
+                try
+                {
+                    directionCombo.Items.Clear();
+                    if (upperMode == "ORB")
+                    {
+                        directionCombo.Items.Add(new ComboBoxItem { Content = "OR LONG" });
+                        directionCombo.Items.Add(new ComboBoxItem { Content = "OR SHORT" });
+                    }
+                    else
+                    {
+                        directionCombo.Items.Add(new ComboBoxItem { Content = "LONG" });
+                        directionCombo.Items.Add(new ComboBoxItem { Content = "SHORT" });
+                    }
+                    directionCombo.SelectedIndex = 0;
+                }
+                finally
+                {
+                    isApplyingSettings = false;
+                }
+            }
+
+            Print($"V12.27: Contextual UI updated for mode: {mode}");
+        }
 
         private Border CreateSectionBorder()
         {
@@ -2412,6 +2551,98 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             if (!double.IsNaN(width)) btn.Width = width;
             return btn;
+        }
+
+        /// <summary>
+        /// V14: Creates a context menu for target buttons with Liquidate + Move options
+        /// </summary>
+        /// <param name="targetNum">Target number (1-5)</param>
+        /// <param name="glowColor">Color to trigger glow effect</param>
+        /// <summary>
+        /// V14 FIX: Attach context menu AND wire click to open it with explicit PlacementTarget.
+        /// NinjaTrader's WPF hosting sometimes swallows ContextMenu popups that lack a PlacementTarget.
+        /// </summary>
+        private void AttachTargetDropdown(Button btn, int targetNum, SolidColorBrush glowColor)
+        {
+            ContextMenu menu = CreateTargetContextMenu(targetNum, glowColor);
+            menu.PlacementTarget = btn;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            btn.ContextMenu = menu;
+            btn.Click += (s, e) =>
+            {
+                if (btn.ContextMenu != null)
+                {
+                    btn.ContextMenu.PlacementTarget = btn;
+                    btn.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                    btn.ContextMenu.IsOpen = true;
+                }
+            };
+        }
+
+        private ContextMenu CreateTargetContextMenu(int targetNum, SolidColorBrush glowColor)
+        {
+            ContextMenu menu = new ContextMenu
+            {
+                Background = BgSlate,
+                BorderBrush = BorderSlate,
+                Foreground = TextPrimary
+            };
+
+            // Option 1: Liquidate at Market
+            MenuItem closeItem = new MenuItem
+            {
+                Header = $"Liquidate T{targetNum} at Market",
+                Foreground = RedFg,
+                Background = BgSlate,
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 10
+            };
+            closeItem.Click += (s, e) =>
+            {
+                SendCommand($"CLOSE_T{targetNum}");
+                TriggerGlow(glowColor);
+                Print($"V14: Liquidate T{targetNum} requested");
+            };
+            menu.Items.Add(closeItem);
+
+            // Separator
+            menu.Items.Add(new Separator { Background = BorderSlate });
+
+            // Option 2: Move to +1pt
+            MenuItem move1PtItem = new MenuItem
+            {
+                Header = $"Move T{targetNum} to +1pt",
+                Foreground = GreenFg,
+                Background = BgSlate,
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 10
+            };
+            move1PtItem.Click += (s, e) =>
+            {
+                SendCommand($"MOVE_TARGET|T{targetNum}|1pt");
+                TriggerGlow(CyanAccent);
+                Print($"V14: Move T{targetNum} to +1pt requested");
+            };
+            menu.Items.Add(move1PtItem);
+
+            // Option 3: Move to +2pt
+            MenuItem move2PtItem = new MenuItem
+            {
+                Header = $"Move T{targetNum} to +2pt",
+                Foreground = YellowFg,
+                Background = BgSlate,
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 10
+            };
+            move2PtItem.Click += (s, e) =>
+            {
+                SendCommand($"MOVE_TARGET|T{targetNum}|2pt");
+                TriggerGlow(CyanAccent);
+                Print($"V14: Move T{targetNum} to +2pt requested");
+            };
+            menu.Items.Add(move2PtItem);
+
+            return menu;
         }
 
         private Button CreateDashedButton(string text, Brush fg)
@@ -2502,7 +2733,7 @@ namespace NinjaTrader.NinjaScript.Indicators
             };
 
             // Auto-save on text change
-            tb.TextChanged += (s, e) => { if (panelCreated) SaveConfig(); };
+            tb.TextChanged += (s, e) => { if (panelCreated && !isApplyingSettings) SaveConfig(); }; // V12.42: Match combo guard
 
             if (width > 0) tb.Width = width;
             return tb;
@@ -2517,8 +2748,8 @@ namespace NinjaTrader.NinjaScript.Indicators
                 BorderBrush = BtnBorder,
                 BorderThickness = new Thickness(1),
                 FontFamily = new FontFamily("Consolas"),
-                FontSize = 9, // V12: Slightly larger for readability
-                Height = 20   // V12: Standardized height
+                FontSize = 10,
+                // Remove VerticalContentAlignment - let default handle it
             };
 
             if (width > 0) combo.Width = width;
@@ -2548,7 +2779,7 @@ namespace NinjaTrader.NinjaScript.Indicators
             }
         }
 
-        // V12.20: "One Click = One Order" — Reset all execution mode toggles after any order dispatch
+        // V12.20: "One Click = One Order" � Reset all execution mode toggles after any order dispatch
         // Trading Rule: Every single trade requires a fresh click of the mode button.
         private void ResetExecutionMode()
         {
@@ -2559,14 +2790,6 @@ namespace NinjaTrader.NinjaScript.Indicators
                 SendCommand("SET_RMA_MODE|OFF");
             }
             UpdateRmaButtonVisual(false);
-
-            // V12.24: Reset FFMA Smart Toggle
-            if (isFfmaArmed)
-            {
-                isFfmaArmed = false;
-                SendCommand("FFMA_DISARM");
-            }
-            UpdateFfmaButtonVisual(false);
 
             // Reset RETEST cycle
             retestCycleState = 0;
@@ -2588,7 +2811,7 @@ namespace NinjaTrader.NinjaScript.Indicators
                 if (retestRmaToggle != null) retestRmaToggle.Opacity = 0.5;
             }
 
-            Print("V12.20: ResetExecutionMode — all modes reset including R toggles (One Click = One Order)");
+            Print("V12.20: ResetExecutionMode � all modes reset including R toggles (One Click = One Order)");
         }
 
         // V12.14: Helper to sync RMA button visual from IPC state
@@ -2609,25 +2832,6 @@ namespace NinjaTrader.NinjaScript.Indicators
             }
         }
 
-        // V12.24: Helper to sync FFMA Smart Toggle visual
-        private void UpdateFfmaButtonVisual(bool armed)
-        {
-            if (ffmaButton == null) return;
-            isFfmaArmed = armed;
-            if (armed)
-            {
-                ffmaButton.Content = "AUTO";
-                ffmaButton.Background = PinkBg;
-                ffmaButton.Foreground = Brushes.White;
-            }
-            else
-            {
-                ffmaButton.Content = "FFMA";
-                ffmaButton.Background = BtnBg;
-                ffmaButton.Foreground = PinkFg;
-            }
-        }
-
         #endregion
 
         #region Event Handlers
@@ -2636,11 +2840,36 @@ namespace NinjaTrader.NinjaScript.Indicators
         {
             string direction = (directionCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "OR LONG";
             string price = priceInput.Text;
+            string mode = selectedConfigMode?.ToUpper() ?? "ORB";
 
-            string cmd = direction.Contains("LONG") ? "OR_LONG" : "OR_SHORT";
-            cmd += $"|{activeSymbol}";
-            if (!string.IsNullOrEmpty(price) && price != "0.00")
-                cmd += $"|{price}";
+            // V12.27: Mode-aware manual entry command routing
+            string cmd;
+            if (mode == "TREND")
+            {
+                // TREND manual: 100% risk allocation at manual price
+                string dir = direction.Contains("LONG") ? "LONG" : "SHORT";
+                cmd = $"TREND_MANUAL_LIMIT|{dir}|{price}";
+            }
+            else if (mode == "RETEST")
+            {
+                // RETEST manual: Limit order at manual price with RMA targets
+                string dir = direction.Contains("LONG") ? "LONG" : "SHORT";
+                cmd = $"RETEST_MANUAL_LIMIT|{dir}|{price}";
+            }
+            else if (mode == "FFMA")
+            {
+                // FFMA manual: Limit order at manual price
+                string dir = direction.Contains("LONG") ? "LONG" : "SHORT";
+                cmd = $"FFMA_MANUAL_LIMIT|{dir}|{price}";
+            }
+            else
+            {
+                // ORB/RMA/MOMO: Original OR LONG/SHORT behavior
+                cmd = direction.Contains("LONG") ? "OR_LONG" : "OR_SHORT";
+                cmd += $"|{activeSymbol}";
+                if (!string.IsNullOrEmpty(price) && price != "0.00")
+                    cmd += $"|{price}";
+            }
 
             SendCommand(cmd);
             TriggerGlow(GreenFg);
@@ -2658,6 +2887,10 @@ namespace NinjaTrader.NinjaScript.Indicators
             ComboBoxItem selected = leaderAccountCombo.SelectedItem as ComboBoxItem;
             if (selected != null && selected.Tag is string accountName)
             {
+                // V12.25: Inform the strategy of the new leader account
+                SendCommand($"SET_LEADER_ACCOUNT|{accountName}");
+                Print($"V12.25: Leader Account changed ? {accountName}");
+                
                 // Sync the Native Chart Trader to this account
                 SyncChartTraderAccount(accountName);
             }
@@ -2733,9 +2966,15 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append($"CIT:{citVal.Text};");
 
             SendCommand(sb.ToString());
-            // PanelWidth = 250; // V12: Restored to 250 for proper alignment
-            // IpcPort = 5000;
-            // AutoConnect = true;
+
+            // V12.45: Commit current count to sticky memory ONLY on explicit sync
+            if (fullConfig != null)
+            {
+                fullConfig.LastUsedCountPerMode[selectedConfigMode] = selectedTargetCount;
+                lastSyncedCountPerMode[selectedConfigMode] = selectedTargetCount;
+            }
+            SaveConfig();
+            Print($"V12.45: SYNC committed → {selectedConfigMode} sticky count = {selectedTargetCount}");
         }
 
         #endregion
@@ -2911,29 +3150,50 @@ namespace NinjaTrader.NinjaScript.Indicators
         }
 
         // V12.14: Auto-reconnect after unexpected disconnect
+        // V12.1101E [B-8]: Refactored to non-recursive — reuses a single timer object via .Change()
+        // instead of Dispose + new Timer on each failure. Prevents timer object accumulation and
+        // eliminates recursive call stack growth under sustained disconnection.
+        private readonly object _reconnectLock = new object();
+
         private void ScheduleReconnect()
         {
-            if (isShuttingDown) return;
+            if (isShuttingDown || isConnected) return;
 
-            reconnectTimer?.Dispose();
-            reconnectTimer = new System.Threading.Timer(_ =>
+            lock (_reconnectLock)
             {
-                if (isShuttingDown || isConnected) return;
-                Print("V12.14: Auto-reconnect attempting...");
-                try
+                if (reconnectTimer != null)
                 {
-                    ConnectToStrategy();
-                    if (isConnected)
-                        Print("V12.14: Auto-reconnect SUCCESS");
-                    else
+                    // Reset the existing timer to fire again in 3 s — no new allocation needed
+                    reconnectTimer.Change(3000, Timeout.Infinite);
+                    return;
+                }
+
+                // First time: create the timer once; subsequent reconnect calls reuse it via .Change()
+                reconnectTimer = new System.Threading.Timer(_ =>
+                {
+                    if (isShuttingDown || isConnected) return;
+
+                    Print("V12.14: Auto-reconnect attempting...");
+                    try
+                    {
+                        ConnectToStrategy();
+                        if (isConnected)
+                        {
+                            Print("V12.14: Auto-reconnect SUCCESS");
+                            lock (_reconnectLock) { reconnectTimer = null; }
+                        }
+                        else
+                        {
+                            ScheduleReconnect();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Print($"V12.14: Auto-reconnect failed - {ex.Message}");
                         ScheduleReconnect();
-                }
-                catch (Exception ex)
-                {
-                    Print($"V12.14: Auto-reconnect failed - {ex.Message}");
-                    ScheduleReconnect();
-                }
-            }, null, 3000, Timeout.Infinite);
+                    }
+                }, null, 3000, Timeout.Infinite);
+            }
         }
 
         private void ProcessStrategyResponse(string response)
@@ -2976,13 +3236,6 @@ namespace NinjaTrader.NinjaScript.Indicators
                         }
                         else if (parts[0] == "TREND" && parts.Length > 1)
                             UpdateTrendIndicator(parts[1]);
-                        else if (parts[0] == "FFMA_DISARMED")
-                        {
-                            // V12.24: Strategy disarmed FFMA after execution — reset toggle visual
-                            isFfmaArmed = false;
-                            UpdateFfmaButtonVisual(false);
-                            Print("V12.24: FFMA toggle reset via FFMA_DISARMED");
-                        }
                         else if (parts[0] == "REQUEST_FLEET_STATE")
                         {
                             // V12.3: Strategy requests current fleet state after reconnect
@@ -2991,6 +3244,29 @@ namespace NinjaTrader.NinjaScript.Indicators
                                 SendCommand($"TOGGLE_ACCOUNT|{acctName}|1");
                             }
                             Print($"V12 STD: Fleet state sent - {selectedFleetAccounts.Count} accounts active");
+                        }
+                        else if (parts[0] == "SYNC_TARGET_STATE" && parts.Length > 1)
+                        {
+                            // V14 ADAPTIVE VISIBILITY: Receive live position size and update button visibility
+                            if (int.TryParse(parts[1], out int qty))
+                            {
+                                Print($"V14: SYNC_TARGET_STATE Received -> {qty}");
+                                // UpdateTargetVisibility now auto-dispatches to UI thread internally
+                                UpdateTargetVisibility(qty);
+                                // Also update the count chip visuals (UpdateTargetVisibility handles its own dispatch)
+                                UpdateTargetCountVisual(qty);
+                            }
+                        }
+                        // V12.43: Handle lightweight RMA deactivation from strategy (replaces old CONFIG clobber)
+                        else if (parts[0] == "SET_RMA_MODE" && parts.Length > 1)
+                        {
+                            bool rmaOn = parts[1].Trim().ToUpper() == "ON";
+                            if (isRmaModeActive != rmaOn)
+                            {
+                                isRmaModeActive = rmaOn;
+                                UpdateRmaButtonVisual(isRmaModeActive);
+                                Print($"V12.43: RMA mode synced from strategy -> {isRmaModeActive}");
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -3116,71 +3392,85 @@ namespace NinjaTrader.NinjaScript.Indicators
         private void ParseConfig(string data)
         {
             Print($"V12.14 DBG: ParseConfig input = [{data}]");
-            foreach (string pair in data.Split(';'))
+            
+            // V14 FIX: Suppress auto-save while ParseConfig updates UI fields.
+            // Without this, every CONFIG broadcast from the strategy overwrites TextBoxes,
+            // triggers TextChanged ? SaveConfig(), and permanently destroys saved settings.
+            bool wasSuppressed = isApplyingSettings;
+            isApplyingSettings = true;
+            try
             {
-                string[] kv = pair.Split(':');
-                if (kv.Length != 2) continue;
-
-                string key = kv[0].Trim().ToUpper();
-                string value = kv[1].Trim();
-
-                switch (key)
+                foreach (string pair in data.Split(';'))
                 {
-                    case "T1": if (svT1Val != null) svT1Val.Text = value; break;
-                    case "T2": if (svT2Val != null) svT2Val.Text = value; break;
-                    case "T3": if (svT3Val != null) svT3Val.Text = value; break;
-                    case "STR": if (strVal != null) strVal.Text = value; break;
-                    case "MAX": if (maxVal != null) maxVal.Text = value; break;
-                    case "CIT": if (citVal != null) citVal.Text = value; break;
-                    case "STRTYPE": if (svStrType != null) SelectComboByValue(svStrType, value); break;
-                    case "COUNT":
-                        if (int.TryParse(value, out int count))
-                        {
-                            // Update Visuals without sending command loop
-                            selectedTargetCount = count;
-                            UpdateTargetCountVisual(count);
-                            UpdateTargetVisibility(count);
-                        }
-                        break;
-                    // V12.5: Handle MODE sync from Strategy broadcast
-                    case "MODE":
-                        string incomingMode = value.ToUpper();
-                        if (incomingMode != selectedConfigMode.ToUpper())
-                        {
-                            selectedConfigMode = incomingMode;
-                            Button modeBtn = GetModeButton(incomingMode);
-                            if (modeBtn != null)
+                    string[] kv = pair.Split(':');
+                    if (kv.Length != 2) continue;
+
+                    string key = kv[0].Trim().ToUpper();
+                    string value = kv[1].Trim();
+
+                    switch (key)
+                    {
+                        // V12.43: Guard against zero/empty clobbering from stale strategy broadcasts
+                        case "T1": if (svT1Val != null && !string.IsNullOrEmpty(value) && value != "0") svT1Val.Text = value; break;
+                        case "T2": if (svT2Val != null && !string.IsNullOrEmpty(value) && value != "0") svT2Val.Text = value; break;
+                        case "T3": if (svT3Val != null && !string.IsNullOrEmpty(value) && value != "0") svT3Val.Text = value; break;
+                        case "STR": if (strVal != null && !string.IsNullOrEmpty(value) && value != "0") strVal.Text = value; break;
+                        case "MAX": if (maxVal != null && !string.IsNullOrEmpty(value) && value != "0") maxVal.Text = value; break;
+                        case "CIT": if (citVal != null) citVal.Text = value; break;
+                        case "STRTYPE": if (svStrType != null) SelectComboByValue(svStrType, value); break;
+                        case "COUNT":
+                            if (int.TryParse(value, out int count))
                             {
-                                HighlightModeButton(modeBtn);
-                                // Load mode-specific settings if we have them
-                                if (fullConfig != null)
-                                {
-                                    ApplySettings(fullConfig.GetSettings(incomingMode, selectedTargetCount));
-                                }
+                                // Update Visuals without sending command loop
+                                selectedTargetCount = count;
+                                UpdateTargetCountVisual(count);
+                                UpdateTargetVisibility(count);
                             }
-                            Print(string.Format("V12.5: MODE Synced -> {0}", incomingMode));
-                        }
-                        break;
-                    // V12.20-C: Bidirectional sync for TREND/RETEST RMA toggles
-                    case "TRMA":
-                        bool trmaState = value == "1";
-                        if (isTrendRmaToggle != trmaState)
-                        {
-                            isTrendRmaToggle = trmaState;
-                            if (trendRmaToggle != null) trendRmaToggle.Opacity = trmaState ? 1.0 : 0.5;
-                            Print(string.Format("V12.20: TRMA Synced -> {0}", trmaState ? "RMA" : "STD"));
-                        }
-                        break;
-                    case "RRMA":
-                        bool rrmaState = value == "1";
-                        if (isRetestRmaToggle != rrmaState)
-                        {
-                            isRetestRmaToggle = rrmaState;
-                            if (retestRmaToggle != null) retestRmaToggle.Opacity = rrmaState ? 1.0 : 0.5;
-                            Print(string.Format("V12.20: RRMA Synced -> {0}", rrmaState ? "RMA" : "STD"));
-                        }
-                        break;
+                            break;
+                        // V12.5: Handle MODE sync from Strategy broadcast
+                        case "MODE":
+                            string incomingMode = value.ToUpper();
+                            if (incomingMode != selectedConfigMode.ToUpper())
+                            {
+                                selectedConfigMode = incomingMode;
+                                Button modeBtn = GetModeButton(incomingMode);
+                                if (modeBtn != null)
+                                {
+                                    HighlightModeButton(modeBtn);
+                                    // Load mode-specific settings if we have them
+                                    if (fullConfig != null)
+                                    {
+                                        ApplySettings(fullConfig.GetSettings(incomingMode, selectedTargetCount));
+                                    }
+                                }
+                                Print(string.Format("V12.5: MODE Synced -> {0}", incomingMode));
+                            }
+                            break;
+                        // V12.20-C: Bidirectional sync for TREND/RETEST RMA toggles
+                        case "TRMA":
+                            bool trmaState = value == "1";
+                            if (isTrendRmaToggle != trmaState)
+                            {
+                                isTrendRmaToggle = trmaState;
+                                if (trendRmaToggle != null) trendRmaToggle.Opacity = trmaState ? 1.0 : 0.5;
+                                Print(string.Format("V12.20: TRMA Synced -> {0}", trmaState ? "RMA" : "STD"));
+                            }
+                            break;
+                        case "RRMA":
+                            bool rrmaState = value == "1";
+                            if (isRetestRmaToggle != rrmaState)
+                            {
+                                isRetestRmaToggle = rrmaState;
+                                if (retestRmaToggle != null) retestRmaToggle.Opacity = rrmaState ? 1.0 : 0.5;
+                                Print(string.Format("V12.20: RRMA Synced -> {0}", rrmaState ? "RMA" : "STD"));
+                            }
+                            break;
+                    }
                 }
+            }
+            finally
+            {
+                isApplyingSettings = wasSuppressed;
             }
         }
 

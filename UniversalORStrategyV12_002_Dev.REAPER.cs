@@ -1,7 +1,9 @@
-// V12.12 FLEET SYMMETRY & SAFETY HARDENING - Reaper (Safety Hub) Module
+// V12.17 THREADING FIX: Reaper (Safety Hub) Module
 // REAPER Module (Extracted)
+// FIX: acct.Flatten() calls moved from background thread → strategy thread via TriggerCustomEvent
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using NinjaTrader.Cbi;
@@ -12,6 +14,9 @@ namespace NinjaTrader.NinjaScript.Strategies
     public partial class UniversalORStrategyV12_002_Dev : Strategy
     {
         #region V12 REAPER Audit Logic
+
+        // V12.17: Queue for flatten requests marshaled from background thread → strategy thread
+        private ConcurrentQueue<string> _reaperFlattenQueue = new ConcurrentQueue<string>();
 
         /// <summary>
         /// V12 SIMA: Start the Reaper audit background thread
@@ -65,6 +70,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                     // V12.8: Pause auditing while a flatten is actively running to prevent race conditions
                     if (isFlattenRunning) continue;
+
+                    // V12.Hardening: Only audit in live/realtime — skip historical replay
+                    if (State != State.Realtime) continue;
 
                     AuditApexPositions();
                 }
@@ -140,16 +148,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                             if (AutoFlattenDesync)
                             {
                                 if (shouldLog)
-                                    Print($"[REAPER] 💀 AUTO-FLATTENING {acct.Name} - Emergency Re-sync!");
-                                try
-                                {
-                                    acct.Flatten(new[] { Instrument });
-                                    expectedPositions[acct.Name] = 0;
-                                }
-                                catch (Exception ex)
-                                {
-                                    Print($"[REAPER] ✗ FAILED to flatten {acct.Name}: {ex.Message}");
-                                }
+                                    Print($"[REAPER] 💀 QUEUING FLATTEN for {acct.Name} - Emergency Re-sync!");
+                                // V12.17 FIX: Queue flatten for strategy thread (was: acct.Flatten() on background thread = DEADLOCK)
+                                _reaperFlattenQueue.Enqueue(acct.Name);
+                                try { TriggerCustomEvent(o => ProcessReaperFlattenQueue(), null); } catch { }
                             }
                         }
                         else
@@ -202,16 +204,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                             if (AutoFlattenDesync)
                             {
                                 if (shouldLog)
-                                    Print($"[REAPER] AUTO-FLATTENING {Account.Name} (Master) - Emergency Re-sync!");
-                                try
-                                {
-                                    Account.Flatten(new[] { Instrument });
-                                    expectedPositions[Account.Name] = 0;
-                                }
-                                catch (Exception ex)
-                                {
-                                    Print($"[REAPER] FAILED to flatten {Account.Name} (Master): {ex.Message}");
-                                }
+                                    Print($"[REAPER] QUEUING FLATTEN for {Account.Name} (Master) - Emergency Re-sync!");
+                                // V12.17 FIX: Queue flatten for strategy thread (was: Account.Flatten() on background thread = DEADLOCK)
+                                _reaperFlattenQueue.Enqueue(Account.Name);
+                                try { TriggerCustomEvent(o => ProcessReaperFlattenQueue(), null); } catch { }
                             }
                         }
                         else
@@ -230,6 +226,51 @@ namespace NinjaTrader.NinjaScript.Strategies
                 else
                     Print($"[REAPER] Heartbeat: {activeCount}/{auditedCount} accounts with positions.");
                 lastReaperLog = DateTime.Now;
+            }
+        }
+
+        /// <summary>
+        /// V12.17 FIX: Processes queued flatten requests on the strategy thread.
+        /// Called via TriggerCustomEvent from the Reaper background thread.
+        /// This is the SAFE way to call Account.Flatten() — same pattern as IPC.
+        /// </summary>
+        private void ProcessReaperFlattenQueue()
+        {
+            string accountName;
+            while (_reaperFlattenQueue.TryDequeue(out accountName))
+            {
+                try
+                {
+                    // Find the account by name
+                    Account targetAcct = null;
+                    foreach (Account acct in Account.All)
+                    {
+                        if (acct.Name == accountName)
+                        {
+                            targetAcct = acct;
+                            break;
+                        }
+                    }
+
+                    // Also check if it's the Master account
+                    if (targetAcct == null && Account.Name == accountName)
+                        targetAcct = Account;
+
+                    if (targetAcct != null)
+                    {
+                        targetAcct.Flatten(new[] { Instrument });
+                        expectedPositions[accountName] = 0;
+                        Print($"[REAPER] ✓ MARSHAL-FLATTEN executed on strategy thread for {accountName}");
+                    }
+                    else
+                    {
+                        Print($"[REAPER] ✗ Could not find account '{accountName}' for marshal-flatten");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Print($"[REAPER] ✗ MARSHAL-FLATTEN FAILED for {accountName}: {ex.Message}");
+                }
             }
         }
 

@@ -74,9 +74,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 else if (anchorStr == "MANUAL") currentRmaAnchor = RmaAnchorType.Manual;
 
                 Print("IPC SET ANCHOR: " + anchorStr);
-
-                // Refresh UI to show selected anchor (Green Highlight)
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
@@ -93,7 +90,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         ///   - Signal = RMA/OR/MOMO: All accounts get RMA targets.
         /// Accounts use FIXED brackets (Path B) for zero trail lag.
         /// </summary>
-        private void ExecuteSmartDispatchEntry(string tradeType, OrderAction action, int quantity, double entryPrice, OrderType entryOrderType = OrderType.Market)
+        private void ExecuteSmartDispatchEntry(string tradeType, OrderAction action, int quantity, double entryPrice, OrderType entryOrderType = OrderType.Market, params string[] masterEntryNames)
         {
             // V12.2: Diagnostic logging for copy trading troubleshooting
             Print($"[DISPATCH] ExecuteSmartDispatchEntry called: {tradeType} | EnableSIMA={EnableSIMA} | OrderType={entryOrderType}");
@@ -128,6 +125,15 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             int trendCount = 0;
             int rmaCount = 0;
+            string symmetryDispatchId = SymmetryGuardBeginDispatch(tradeType, action, quantity, entryPrice);
+            if (masterEntryNames != null)
+            {
+                foreach (string masterEntryName in masterEntryNames)
+                {
+                    if (!string.IsNullOrEmpty(masterEntryName))
+                        SymmetryGuardRegisterMasterEntry(symmetryDispatchId, masterEntryName);
+                }
+            }
 
             for (int i = 0; i < fleet.Count; i++)
             {
@@ -169,16 +175,23 @@ namespace NinjaTrader.NinjaScript.Strategies
                 double stopPrice = (action == OrderAction.Buy) ? entryPrice - stopDist : entryPrice + stopDist;
                 double t1TargetPrice = (action == OrderAction.Buy) ? entryPrice + t1Price : entryPrice - t1Price;
                 double t2TargetPrice = (action == OrderAction.Buy) ? entryPrice + t2Dist : entryPrice - t2Dist;
+                double t3TargetPrice = (action == OrderAction.Buy) ? entryPrice + t3Dist : entryPrice - t3Dist;
 
                 // Rounding
                 stopPrice = Instrument.MasterInstrument.RoundToTickSize(stopPrice);
                 t1TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t1TargetPrice);
                 t2TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t2TargetPrice);
+                t3TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t3TargetPrice);
+
+                // V12.40 FLEET PARITY: Use same distribution as Master
+                int ft1, ft2, ft3, ft4;
+                GetTargetDistribution(quantity, out ft1, out ft2, out ft3, out ft4);
 
                 try
                 {
                     string ocoId = tradeType + "_" + DateTime.Now.Ticks + "_" + i;
                     string fleetEntryName = "Fleet_" + acct.Name + "_" + tradeType + "_" + i;
+                    SymmetryGuardRegisterFollower(symmetryDispatchId, fleetEntryName);
 
                     // V12.3: Entry uses caller-specified order type (Limit for RMA, Market for MOMO/TREND)
                     double limitPx = (entryOrderType == OrderType.Limit) ? entryPrice : 0;
@@ -198,6 +211,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
 
                     // V12.1: Track Follower Position for Active Trailing Stop Management
+                    // V12.40: Full 4-target distribution — mirrors Master exactly
                     PositionInfo fleetPos = new PositionInfo
                     {
                         SignalName = fleetEntryName,
@@ -209,7 +223,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                         CurrentStopPrice = stopPrice,
                         Target1Price = t1TargetPrice,
                         Target2Price = t2TargetPrice,
-                        Target3Price = t2TargetPrice, // Simplified for followers
+                        Target3Price = t3TargetPrice,
+                        T1Contracts = ft1,
+                        T2Contracts = ft2,
+                        T3Contracts = ft3,
+                        T4Contracts = ft4,
                         ExecutingAccount = acct,
                         IsFollower = true,
                         IsRMATrade = true,          // Enforce Point-Based Trailing for all followers
@@ -250,8 +268,25 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <summary>
         /// V12 SIMA: Enumerate and log all connected accounts matching the AccountPrefix
         /// </summary>
+        /// <summary>
+        /// V12.1101E [A-4]: Idempotent unsubscribe — removes all SIMA event handlers before
+        /// re-subscribing. Prevents handler accumulation on repeated SIMA toggle cycles.
+        /// </summary>
+        private void UnsubscribeFromFleetAccounts()
+        {
+            foreach (Account acct in Account.All)
+            {
+                if (acct.Name.IndexOf(AccountPrefix, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    acct.ExecutionUpdate -= OnAccountExecutionUpdate;
+                    acct.OrderUpdate     -= OnAccountOrderUpdate;
+                }
+            }
+        }
+
         private void EnumerateApexAccounts()
         {
+            UnsubscribeFromFleetAccounts(); // V12.1101E [A-4]: Always unsub first — idempotent guard against handler accumulation
             simaAccountCount = 0;
             Print("[SIMA] ═══════════════════════════════════════════════════");
             Print("[SIMA] V12.12 - Fleet Symmetry & Safety Hardening Initializing");
@@ -327,8 +362,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                             TimeInForce.Gtc, quantity, 0, 0, "", signalName, null);
                         acct.Submit(new[] { order });
 
-                        int delta = (action == OrderAction.Buy || action == OrderAction.BuyToCover) ? quantity : -quantity;
-                        expectedPositions.AddOrUpdate(acct.Name, delta, (k, v) => v + delta);
+                        // V12.1101E [A-5]: Only update expected position tracker AFTER successful submit —
+                        // prevents ghost deltas from accumulating when CreateOrder/Submit throws.
+                        if (order != null)
+                        {
+                            int delta = (action == OrderAction.Buy || action == OrderAction.BuyToCover) ? quantity : -quantity;
+                            expectedPositions.AddOrUpdate(acct.Name, delta, (k, v) => v + delta);
+                        }
 
                         successCount++;
                     }
@@ -374,9 +414,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                         double stopPrice = action == OrderAction.Buy ? currentPrice - stopPoints : currentPrice + stopPoints;
                         double targetPrice = action == OrderAction.Buy ? currentPrice + targetPoints : currentPrice - targetPoints;
 
-                        // Round to nearest tick
-                        stopPrice = Math.Round(stopPrice / tickSize) * tickSize;
-                        targetPrice = Math.Round(targetPrice / tickSize) * tickSize;
+                        // Round to nearest tick (V12.Hardening: guard against tickSize == 0)
+                        if (tickSize > 0)
+                        {
+                            stopPrice  = Math.Round(stopPrice  / tickSize) * tickSize;
+                            targetPrice = Math.Round(targetPrice / tickSize) * tickSize;
+                        }
 
                         // 2. Create Bracket
                         string ocoId = action.ToString() + "_" + DateTime.Now.Ticks;
@@ -426,17 +469,25 @@ namespace NinjaTrader.NinjaScript.Strategies
                 double stopDist = Math.Min(currentATR * RMAStopATRMultiplier, MaximumStop);
                 double t1Dist = Target1FixedPoints;
                 double t2Dist = currentATR * RMAT1ATRMultiplier;
+                double t3Dist = currentATR * RMAT2ATRMultiplier;
 
                 double stopPrice = (direction == MarketPosition.Long) ? price - stopDist : price + stopDist;
                 double t1Price = (direction == MarketPosition.Long) ? price + t1Dist : price - t1Dist;
                 double t2Price = (direction == MarketPosition.Long) ? price + t2Dist : price - t2Dist;
+                double t3Price = (direction == MarketPosition.Long) ? price + t3Dist : price - t3Dist;
 
                 stopPrice = Instrument.MasterInstrument.RoundToTickSize(stopPrice);
                 t1Price = Instrument.MasterInstrument.RoundToTickSize(t1Price);
                 t2Price = Instrument.MasterInstrument.RoundToTickSize(t2Price);
+                t3Price = Instrument.MasterInstrument.RoundToTickSize(t3Price);
+
+                // V12.40 FLEET PARITY: Calculate distribution for both Master and Fleet
+                int rt1, rt2, rt3, rt4;
+                GetTargetDistribution(qty, out rt1, out rt2, out rt3, out rt4);
 
                 string baseSignal = "RMA_" + DateTime.Now.Ticks;
                 OrderAction entryAction = (direction == MarketPosition.Long) ? OrderAction.Buy : OrderAction.SellShort;
+                string symmetryDispatchId = SymmetryGuardBeginDispatch("RMA", entryAction, qty, price);
                 OrderAction exitAction = (direction == MarketPosition.Long) ? OrderAction.Sell : OrderAction.BuyToCover;
 
                 Print($"[SIMA RMA V2] {direction} @ {price} | Stop: {stopPrice} | T1: {t1Price} | T2: {t2Price} | Qty: {qty}");
@@ -448,6 +499,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Order entryOrder = SubmitOrderUnmanaged(0, entryAction, OrderType.Limit, qty, price, 0, "", localKey);
                 if (entryOrder != null)
                 {
+                    SymmetryGuardRegisterMasterEntry(symmetryDispatchId, localKey);
                     entryOrders[localKey] = entryOrder;
 
                     PositionInfo pos = new PositionInfo
@@ -523,6 +575,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     try
                     {
                         string fleetKey = acct.Name + "_RMA_" + baseSignal;
+                        SymmetryGuardRegisterFollower(symmetryDispatchId, fleetKey);
                         string ocoId = fleetKey;
 
                         // V12.10: Submit ENTRY ONLY — brackets deferred until fill (unified with leader)
@@ -533,6 +586,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                         // Register in unified dictionaries so CIT + trailing works for this account
                         entryOrders[fleetKey] = fEntry;
+                        // V12.40: Full 4-target distribution — mirrors Master exactly
                         activePositions[fleetKey] = new PositionInfo
                         {
                             SignalName = fleetKey,
@@ -544,7 +598,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                             CurrentStopPrice = stopPrice,
                             Target1Price = t1Price,
                             Target2Price = t2Price,
-                            Target3Price = t2Price,
+                            Target3Price = t3Price,
+                            T1Contracts = rt1,
+                            T2Contracts = rt2,
+                            T3Contracts = rt3,
+                            T4Contracts = rt4,
                             EntryFilled = false,
                             IsRMATrade = true,
                             IsFollower = true,

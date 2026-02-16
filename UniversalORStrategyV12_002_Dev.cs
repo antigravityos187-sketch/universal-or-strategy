@@ -1,4 +1,4 @@
-﻿// V12.12 FLEET SYMMETRY & SAFETY HARDENING - Single-Instance Multi-Account Copy Trading Engine
+// V12.12 FLEET SYMMETRY & SAFETY HARDENING - Single-Instance Multi-Account Copy Trading Engine
 // Based on UniversalORStrategyV10_3.cs (BUILD 1702)
 // SIMA Architecture: One strategy instance on Master account broadcasts to all Apex accounts
 //
@@ -50,6 +50,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private double sessionRange;
         private bool isInORWindow;
         private bool orComplete;
+        private bool retestFiredThisSession;  // V12.1101E [B-2]: Latch — prevent multiple RETEST entries per session
         private DateTime orStartDateTime;
         private DateTime orEndDateTime;
         private DateTime sessionStartDateTime;
@@ -61,6 +62,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private double tickSize;
         private double pointValue;
         private int minContracts;
+        private int maxContracts;  // V12.1101E [B-9]: Upper bound from MESMaximum/MGCMaximum — prevents runaway ATR sizer
 
         // ATR Indicator for RMA
         private ATR atrIndicator;
@@ -87,8 +89,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // V8.7: RSI indicator for FFMA trades
         private RSI rsiIndicator;
 
-        // V12.2: ATR Sizing & Risk Management
-        private double MaxRiskAmount = 200.0;
+        // V12.2: ATR Sizing & Risk Management (MaxRiskAmount is Properties.cs passthrough to RiskPerTrade)
         private ConcurrentDictionary<string, bool> activeFleetAccounts = new ConcurrentDictionary<string, bool>();
 
         // Position tracking - multi-target system
@@ -105,9 +106,14 @@ namespace NinjaTrader.NinjaScript.Strategies
         // V8.30: Replaced Dictionary with ConcurrentDictionary for thread-safe access
         private ConcurrentDictionary<string, PendingStopReplacement> pendingStopReplacements;
 
+        // V12.Hardening: Execution dedup guard — prevents double-decrement from OnOrderUpdate + OnExecutionUpdate
+        private readonly HashSet<string> processedExecutionIds = new HashSet<string>();
+        private readonly Queue<string> processedExecutionIdQueue = new Queue<string>(); // For bounded pruning
+        private readonly object executionDeduplicateLock = new object();
+        private const int MaxProcessedExecutionIds = 500;
+
         // RMA Mode tracking
         private volatile bool isRMAModeActive;
-        private volatile bool isRKeyHeld;
         private volatile bool isRMAButtonClicked;  // One-shot mode from button
 
         // V8.2: TREND Mode tracking
@@ -172,7 +178,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         private ConcurrentBag<TcpClient> connectedClients;
 
         // V12 SIMA: Multi-Account Execution Engine
-        private string _accountPrefix = "Apex"; // Default prefix for Apex accounts
         private Thread reaperThread;
         private volatile bool isReaperRunning;
         private volatile bool isFlattenRunning; // V12.8: Guard to pause Reaper during flatten
@@ -180,9 +185,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private int simaAccountCount = 0; // Cached count of detected Apex accounts
         private DateTime lastReaperLog = DateTime.MinValue;
 
-        // V12.1 Properties (Internal Variables)
-        private bool ReaperAuditEnabled = true;
-        private int ReaperIntervalMs = 1000;
+        // V12.1 SIMA Internal (ReaperAuditEnabled, ReaperIntervalMs now in Properties.cs)
 
         // V12.1: Apex Compliance Tracking
         private ConcurrentDictionary<string, double> accountDailyProfit = new ConcurrentDictionary<string, double>();
@@ -214,7 +217,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             public int T2Contracts;   // v5.13: 30% - 0.5x ATR
             public int T3Contracts;   // v5.13: 30% - 1.0x ATR
             public int T4Contracts;   // v5.13: 20% - Runner/Trail
-            public int RemainingContracts;
+            public volatile int RemainingContracts; // V12.1101E [SK-08]: volatile — written from OnOrderUpdate, OnExecutionUpdate, OnBarUpdate threads
             public double EntryPrice;
             public double InitialStopPrice;
             public double CurrentStopPrice;
@@ -300,307 +303,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         #endregion
 
-        #region Enums
-
-        public enum ORTimeframeType
-        {
-            Minutes_1 = 1,
-            Minutes_5 = 5,
-            Minutes_10 = 10,
-            Minutes_15 = 15
-        }
-
-        #endregion
-
-        #region Properties - Session Settings
-
-        [NinjaScriptProperty]
-        [Display(Name = "IPC Port", Description = "TCP Port for V9 Remote (Default: 5000)", Order = 0, GroupName = "1. Session Settings")]
-        public int IpcPort { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Session Start", Description = "Trading session start time (OR begins here)", Order = 1, GroupName = "1. Session Settings")]
-        [PropertyEditor("NinjaTrader.Gui.Tools.TimeEditorKey")]
-        public DateTime SessionStart { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Session End", Description = "Trading session end time (box ends here)", Order = 2, GroupName = "1. Session Settings")]
-        [PropertyEditor("NinjaTrader.Gui.Tools.TimeEditorKey")]
-        public DateTime SessionEnd { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "OR Timeframe", Description = "Duration of Opening Range window", Order = 3, GroupName = "1. Session Settings")]
-        public ORTimeframeType ORTimeframe { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Time Zone", Description = "Time zone for session times", Order = 4, GroupName = "1. Session Settings")]
-        [TypeConverter(typeof(TimeZoneConverter))]
-        public string SelectedTimeZone { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Display P/L in Points", Description = "If true, shows unrealized P/L in points. If false, shows currency ($).", Order = 5, GroupName = "1. Session Settings")]
-        public bool DisplayProfitInPoints { get; set; }
-
-        #endregion
-
-        #region Properties - Risk Management
-
-        public double RiskPerTrade { get; set; }
-
-        [Browsable(false)]
-        public double ReducedRiskPerTrade { get; set; }
-
-        [Browsable(false)]
-        public double StopThresholdPoints { get; set; }
-
-        public int MESMinimum { get; set; }
-
-        [Browsable(false)]
-        public int MESMaximum { get; set; }
-
-        public int MGCMinimum { get; set; }
-
-        [Browsable(false)]
-        public int MGCMaximum { get; set; }
-
-        #endregion
-
-        #region Properties - Stop Loss
-
-        public double StopMultiplier { get; set; }
-
-        public double MinimumStop { get; set; }
-
-        public double MaximumStop { get; set; }
-
-        #endregion
-
-        #region Properties - Profit Targets
-
-        [Range(0.25, 5.0)]
-        public double Target1FixedPoints { get; set; }
-
-        public double Target2Multiplier { get; set; }
-
-        public double Target3Multiplier { get; set; }
-
-        public int T1ContractPercent { get; set; }
-
-        public int T2ContractPercent { get; set; }
-
-        public int T3ContractPercent { get; set; }
-
-        public int T4ContractPercent { get; set; }
-
-        #endregion
-
-        #region Properties - Trailing Stops
-
-        public double BreakEvenTriggerPoints { get; set; }
-
-        private int BreakEvenOffsetTicks = 2; // V12.23: Panel is source of truth, no longer in properties window
-
-        public double Trail1TriggerPoints { get; set; }
-
-        public double Trail1DistancePoints { get; set; }
-
-        public double Trail2TriggerPoints { get; set; }
-
-        public double Trail2DistancePoints { get; set; }
-
-        public double Trail3TriggerPoints { get; set; }
-
-        public double Trail3DistancePoints { get; set; }
-
-        #endregion
-
-        #region Properties - Display
-
-        [NinjaScriptProperty]
-        [Display(Name = "Show Mid Line", Description = "Show middle line in OR box", Order = 1, GroupName = "6. Display")]
-        public bool ShowMidLine { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Box Opacity (%)", Description = "Transparency of OR box (0-100)", Order = 2, GroupName = "6. Display")]
-        [Range(0, 100)]
-        public int BoxOpacity { get; set; }
-
-        #endregion
-
-        #region Properties - RMA Settings
-
-        [NinjaScriptProperty]
-        [Display(Name = "RMA Enabled", Description = "Enable RMA (Shift+Click) entry mode", Order = 1, GroupName = "7. RMA Settings")]
-        public bool RMAEnabled { get; set; }
-
-        [Range(1, 100)]
-        public int RMAATRPeriod { get; set; }
-
-        [Range(0.1, 5.0)]
-        public double RMAStopATRMultiplier { get; set; }
-
-        [Range(0.1, 5.0)]
-        public double RMAT1ATRMultiplier { get; set; }
-
-        [Range(0.1, 5.0)]
-        public double RMAT2ATRMultiplier { get; set; }
-
-        #endregion
-
-        // V12 SIMA: "8. Copy Trading" group removed - use EnableSIMA in "13. SIMA Settings" instead
-
-        #region Properties - TREND Settings (V8.2)
-
-        [NinjaScriptProperty]
-        [Display(Name = "TREND Enabled", Description = "Enable TREND (9/15 EMA) entry mode", Order = 1, GroupName = "9. TREND Settings")]
-        public bool TRENDEnabled { get; set; }
-
-        [Range(0.5, 3.0)]
-        public double TRENDEntry1ATRMultiplier { get; set; }
-
-        [Range(0.5, 3.0)]
-        public double TRENDEntry2ATRMultiplier { get; set; }
-
-        #endregion
-
-        #region Properties - RETEST Settings (V8.4)
-
-        [NinjaScriptProperty]
-        [Display(Name = "RETEST Enabled", Description = "Enable RETEST entry mode (limit at OR High/Low)", Order = 1, GroupName = "10. RETEST Settings")]
-        public bool RetestEnabled { get; set; }
-
-        [Range(0.5, 3.0)]
-        public double RetestATRMultiplier { get; set; }
-
-        #endregion
-
-        #region Properties - MOMO Settings (V8.6)
-
-        [NinjaScriptProperty]
-        [Display(Name = "MOMO Enabled", Description = "Enable MOMO (click-to-stop) entry mode", Order = 1, GroupName = "11. MOMO Settings")]
-        public bool MOMOEnabled { get; set; }
-
-        [Range(0.25, 5.0)]
-        public double MOMOStopPoints { get; set; }
-
-        #endregion
-
-        #region Properties - FFMA Settings (V8.7)
-
-        [NinjaScriptProperty]
-        [Display(Name = "FFMA Enabled", Description = "Enable FFMA (mean reversion) entry mode", Order = 1, GroupName = "12. FFMA Settings")]
-        public bool FFMAEnabled { get; set; }
-
-        [Range(1.0, 50.0)]
-        public double FFMAEMADistance { get; set; }
-
-        [Range(50, 100)]
-        public int FFMARSIOverbought { get; set; }
-
-        [Range(0, 50)]
-        public int FFMARSIOversold { get; set; }
-
-        #endregion
-
-        #region Properties - SIMA Settings (V12)
-
-        [NinjaScriptProperty]
-        [Display(Name = "Account Prefix", Description = "Only trade accounts containing this string (e.g., 'Apex')", Order = 1, GroupName = "13. SIMA Settings")]
-        public string AccountPrefix { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Enable SIMA", Description = "When ON, commands broadcast to ALL matching accounts. When OFF, single-account mode.", Order = 2, GroupName = "13. SIMA Settings")]
-        public bool EnableSIMA { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Enable Path B (Fixed Brackets)", Description = "When ON, all trades use fixed stops/targets across the fleet.", Order = 5, GroupName = "13. SIMA Settings")]
-        public bool EnablePathB { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Auto-Flatten Desync", Description = "When ON, Reaper will automatically flatten accounts that don't match expected position.", Order = 6, GroupName = "13. SIMA Settings")]
-        public bool AutoFlattenDesync { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Path B Stop (Points)", Description = "Fixed stop distance for Path B trades", Order = 7, GroupName = "13. SIMA Settings")]
-        [Range(0.25, 100.0)]
-        public double PathBStopPoints { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Path B Target (Points)", Description = "Fixed target distance for Path B trades", Order = 8, GroupName = "13. SIMA Settings")]
-        [Range(0.25, 100.0)]
-        public double PathBTargetPoints { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Chase If Touch (Points)", Description = "Distance to chase limit orders if price touches them (set to 0 to disable)", Order = 9, GroupName = "13. SIMA Settings")]
-        public string ChaseIfTouchPoints { get; set; }
-#endregion
-
-        #region Properties - Apex Compliance (V12)
-
-        [NinjaScriptProperty]
-        [Display(Name = "Enable Compliance Hub", Description = "Log performance and track Apex payout rules", Order = 1, GroupName = "14. Apex Compliance")]
-        public bool EnableComplianceHub { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Consistency Threshold (%)", Description = "Maximum percentage a single day can contribute to total profit (Default 30%)", Order = 2, GroupName = "14. Apex Compliance")]
-        [Range(10, 50)]
-        public int ConsistencyThreshold { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Enable Consistency Lock", Description = "Automatically prevent trading on accounts that hit their consistency limit for the day", Order = 3, GroupName = "14. Apex Compliance")]
-        public bool EnableConsistencyLock { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Max Daily Profit ($) Cap", Description = "Stop trading an account for the day if it reaches this profit amount (to guard consistency)", Order = 4, GroupName = "14. Apex Compliance")]
-        [Range(100, 10000)]
-        public double MaxDailyProfitCap { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Payout Min Days", Description = "Minimum unique trading days required for payout eligibility", Order = 5, GroupName = "14. Apex Compliance")]
-        [Range(1, 30)]
-        public int PayoutMinTradingDays { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Payout Min Profit ($)", Description = "Minimum total profit required for payout eligibility", Order = 6, GroupName = "14. Apex Compliance")]
-        [Range(0, 100000)]
-        public double PayoutMinProfit { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Trailing Drawdown Limit ($)", Description = "Trailing drawdown threshold in dollars for buffer warnings", Order = 7, GroupName = "14. Apex Compliance")]
-        [Range(0, 100000)]
-        public double TrailingDrawdownLimit { get; set; }
-
-        [NinjaScriptProperty]
-        [Display(Name = "Trailing DD Warning Buffer ($)", Description = "Warn when within this buffer of trailing drawdown", Order = 8, GroupName = "14. Apex Compliance")]
-        [Range(0, 1000)]
-        public double TrailingDrawdownWarningBuffer { get; set; }
-
-        #endregion
-
-        #region Time Zone Converter
-
-        public class TimeZoneConverter : TypeConverter
-        {
-            public override bool GetStandardValuesSupported(ITypeDescriptorContext context) => true;
-            public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
-
-            public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
-            {
-                return new StandardValuesCollection(new[] { "Eastern", "Central", "Mountain", "Pacific", "UTC" });
-            }
-
-            public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-            {
-                return sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
-            }
-
-            public override object ConvertFrom(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value)
-            {
-                return value is string str ? str : base.ConvertFrom(context, culture, value);
-            }
-        }
-
-        #endregion
+        // V12.46: Enums, Properties, and TimeZoneConverter moved to Properties.cs
 
         #region OnStateChange
 
@@ -655,6 +358,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Trailing stop defaults
                 BreakEvenTriggerPoints = 2.0;
+                BreakEvenOffsetTicks = 2;              // BE stop offset in ticks (0 = exact entry)
                 Trail1TriggerPoints = 3.0;
                 Trail1DistancePoints = 2.0;
                 Trail2TriggerPoints = 4.0;
@@ -749,6 +453,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Add 5-min data series for ATR (index 1)
                 AddDataSeries(BarsPeriodType.Minute, 5);
+
+                // V12.002: Run Risk Logic Audit (The Testing Rig) on startup
+                ExecuteRiskLogicAudit();
             }
             else if (State == State.DataLoaded)
             {
@@ -758,26 +465,35 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 string symbol = Instrument.MasterInstrument.Name;
                 if (symbol.Contains("MES") || symbol.Contains("ES"))
+                {
                     minContracts = MESMinimum;
+                    maxContracts = MESMaximum; // V12.1101E [B-9]: Upper bound for ATR sizer
+                }
                 else if (symbol.Contains("MGC") || symbol.Contains("GC"))
+                {
                     minContracts = MGCMinimum;
+                    maxContracts = MGCMaximum; // V12.1101E [B-9]
+                }
                 else
+                {
                     minContracts = 1;
+                    maxContracts = 20; // V12.1101E [B-9]: Conservative default for unknown instruments
+                }
 
                 // Initialize ATR indicator on 5-min bars (BarsArray[1])
-                atrIndicator = ATR(BarsArray[1], RMAATRPeriod);
+                atrIndicator = this.ATR(BarsArray[1], RMAATRPeriod);
 
                 // V8.2: Initialize EMA indicators for TREND trades
                 // Using simple form - default is primary bars series
-                ema9 = EMA(9);
-                ema15 = EMA(15);
+                ema9 = this.EMA(9);
+                ema15 = this.EMA(15);
                 // V11: Telemetry & Multi-Anchor EMAs
-                ema30 = EMA(30);
-                ema65 = EMA(65);
-                ema200 = EMA(200);
+                ema30 = this.EMA(30);
+                ema65 = this.EMA(65);
+                ema200 = this.EMA(200);
                 
                 // V8.7: Initialize RSI for FFMA trades
-                rsiIndicator = RSI(14, 3);
+                rsiIndicator = this.RSI(14, 3);
                 
                 // V8.2 DEBUG: Verify EMA periods are correct
                 Print(string.Format("EMA INIT DEBUG: ema9.Period={0} ema15.Period={1}", ema9.Period, ema15.Period));
@@ -799,6 +515,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             else if (State == State.Realtime)
             {
                 // V12.2 HEADLESS SAFETY: Start core services even if ChartControl is null (for background execution)
+                // EMERGENCY SAFE MODE (V12.32): Disabling background services to allow platform login
                 StartIpcServer();
 
                 if (EnableSIMA)
@@ -809,7 +526,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // V10.3: Subscribe to external signals for multi-chart sync
-                SignalBroadcaster.OnExternalCommand += HandleExternalSignal;
+                // SignalBroadcaster.OnExternalCommand += HandleExternalSignal;
 
                 if (ChartControl != null)
                 {
@@ -839,17 +556,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 StopReaperAudit();
                 
                 // V12.7: Always unsubscribe from account updates (subscribed for fleet bracket management)
-                if (EnableSIMA)
-                {
-                    foreach (Account acct in Account.All)
-                    {
-                        if (acct.Name.IndexOf(AccountPrefix, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            acct.ExecutionUpdate -= OnAccountExecutionUpdate;
-                            acct.OrderUpdate -= OnAccountOrderUpdate;
-                        }
-                    }
-                }
+                // V12.1101E [A-4]: Use shared UnsubscribeFromFleetAccounts() — unconditional (no EnableSIMA guard)
+                // to handle cases where flag was toggled OFF mid-session while handlers were still subscribed.
+                UnsubscribeFromFleetAccounts();
                 
                 // V10.3: Unsubscribe
                 SignalBroadcaster.OnExternalCommand -= HandleExternalSignal;
@@ -963,7 +672,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // V11: Draw MNL Anchor Line if active
                 if (currentRmaAnchor == RmaAnchorType.Manual && cachedMnlPrice > 0)
                 {
-                    Draw.HorizontalLine(this, "MNL_Line", cachedMnlPrice, Brushes.Magenta, DashStyleHelper.Dash, 2);
+                    NinjaTrader.NinjaScript.DrawingTools.Draw.HorizontalLine(this, "MNL_Line", cachedMnlPrice, Brushes.Magenta, DashStyleHelper.Dash, 2);
                 }
                 else
                 {
@@ -1066,6 +775,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Position sync check
                 SyncPositionState();
+                SymmetryGuardProcessPendingFollowerFills();
 
                 // Manage trailing stops - NOW CALLED ON EVERY PRICE CHANGE!
                 if (activePositions.Count > 0)
@@ -1080,7 +790,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     CheckFFMAConditions();
                 }
 
-                UpdateDisplay();
+                SyncPendingOrders();  // V12.30: Real-time sizing synchronization
             }
             catch (Exception ex)
             {
@@ -1187,6 +897,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             sessionRange = 0;
             isInORWindow = false;
             orComplete = false;
+            retestFiredThisSession = false;  // V12.1101E [B-2]: Reset RETEST latch at session start
             orStartDateTime = DateTime.MinValue;
             orEndDateTime = DateTime.MinValue;
             sessionStartDateTime = DateTime.MinValue;

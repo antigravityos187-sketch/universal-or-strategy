@@ -1,4 +1,4 @@
-// V12.16 MODULAR: UI, IPC & Compliance Module (Extracted from main file)
+﻿// V12.16 MODULAR: UI, IPC & Compliance Module (Extracted from main file)
 // Contains: UI handlers, IPC Integration, Apex Compliance Hub, Position Sizing
 using System;
 using System.Collections.Generic;
@@ -34,22 +34,15 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region UI
 
-        private void UpdateDisplay()
-        {
-            // Legacy chart UI removed; IPC/indicator drives manual controls now.
-        }
-
-        private void UpdateRMAModeDisplay()
-        {
-            // Legacy chart UI removed; no visual updates.
-        }
+        // V12.44: UpdateRMAModeDisplay() removed — legacy chart UI no-op
+        // V12.44: OnKeyUp() removed — empty handler, R key no longer used for RMA
+        // V12.44: UpdateDisplay() permanently removed — all 28+ call sites cleaned
 
         private void AttachHotkeys()
         {
             if (ChartControl?.OwnerChart != null)
             {
                 ChartControl.OwnerChart.PreviewKeyDown += OnKeyDown;
-                ChartControl.OwnerChart.PreviewKeyUp += OnKeyUp;
             }
         }
 
@@ -58,7 +51,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (ChartControl?.OwnerChart != null)
             {
                 ChartControl.OwnerChart.PreviewKeyDown -= OnKeyDown;
-                ChartControl.OwnerChart.PreviewKeyUp -= OnKeyUp;
             }
         }
 
@@ -150,15 +142,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     {
                         isRMAButtonClicked = false;
                         isRMAModeActive = false;
-                        UpdateRMAModeDisplay();
 
-                        // V12.14: Broadcast RMA deactivation to panel
-                        string deactivateConfig = string.Format(
-                            "CONFIG|OR|COUNT:{0};T1:{1};T2:{2};T3:{3};STR:{4};MAX:{5};TRMA:{6};RRMA:{7};",
-                            minContracts, Target1FixedPoints, Target2Multiplier, Target3Multiplier,
-                            StopMultiplier, MaxRiskAmount, isTrendRmaMode ? "1" : "0", isRetestRmaMode ? "1" : "0");
-                        SendResponseToRemote(deactivateConfig);
-                        Print("V12.14: RMA auto-deactivated after entry - CONFIG broadcast sent");
+                        // V12.43: Lightweight deactivation — only signal mode change, don't clobber config
+                        SendResponseToRemote("SET_RMA_MODE|OFF");
+                        Print("V12.43: RMA auto-deactivated after entry (lightweight signal, no CONFIG clobber)");
                     }
                 }
 
@@ -211,11 +198,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // RMA uses Shift+Click (R conflicts with NT search, Ctrl conflicts with chart drag)
-        }
-
-        private void OnKeyUp(object sender, KeyEventArgs e)
-        {
-            // No longer using R key for RMA
         }
 
         #endregion
@@ -345,11 +327,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                             // Handle GET_LAYOUT (Synchronous Response to THIS client only)
                             if (message.StartsWith("GET_LAYOUT"))
                             {
-                                string mode = isRMAModeActive ? "RMA" : "OR";
-                                string configResponse = string.Format(
-                                    "CONFIG|{0}|COUNT:{1};T1:{2};T1TYPE:Points;T2:{3};T2TYPE:ATR;T3:{4};T3TYPE:ATR;T4:0;T4TYPE:ATR;T5:0;T5TYPE:ATR;STR:0;STRTYPE:Tick;MAX:0;CIT:{5};OT:Limit;TRMA:{6};RRMA:{7};\n",
-                                    mode, minContracts, Target1FixedPoints, Target2Multiplier, Target3Multiplier, ChaseIfTouchPoints ?? "0",
-                                    isTrendRmaMode ? "1" : "0", isRetestRmaMode ? "1" : "0");
+                                // V12.Hardening: Read strategy state under stateLock to prevent data race with strategy thread
+                                string configResponse;
+                                lock (stateLock)
+                                {
+                                    string mode = isRMAModeActive ? "RMA" : "OR";
+                                    configResponse = string.Format(
+                                        "CONFIG|{0}|COUNT:{1};T1:{2};T1TYPE:Points;T2:{3};T2TYPE:ATR;T3:{4};T3TYPE:ATR;T4:0;T4TYPE:ATR;T5:0;T5TYPE:ATR;STR:{5};STRTYPE:Tick;MAX:{6};CIT:{7};OT:Limit;TRMA:{8};RRMA:{9};\n",
+                                        mode, minContracts, Target1FixedPoints, Target2Multiplier, Target3Multiplier,
+                                        StopMultiplier, MaxRiskAmount, ChaseIfTouchPoints ?? "0",
+                                        isTrendRmaMode ? "1" : "0", isRetestRmaMode ? "1" : "0");
+                                }
                                 byte[] responseBytes = Encoding.UTF8.GetBytes(configResponse);
                                 stream.Write(responseBytes, 0, responseBytes.Length);
                                 stream.Flush();
@@ -465,7 +453,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (action == "TRIM_25" || action == "TRIM_50")
             {
                 double percent = action == "TRIM_50" ? 0.5 : 0.25;
-                foreach (var pos in activePositions.Values)
+                // V12.1101E [A-3/SK-02]: Snapshot .Values before iterating — ConcurrentDictionary.Values
+                // is not safe to iterate while OnOrderUpdate/OnExecutionUpdate may remove entries.
+                foreach (var pos in activePositions.Values.ToArray())
                 {
                     if (pos.RemainingContracts > 1)  // V10.3.1: Need at least 2 contracts to trim (leaves 1+ after)
                     {
@@ -543,6 +533,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                                     if (double.TryParse(val, out double v)) {
                                         MaxRiskAmount = v;
                                         RiskPerTrade = v;
+                                    }
+                                }
+                                else if (key == "COUNT") {
+                                    if (int.TryParse(val, out int v)) {
+                                        minContracts = v;
                                     }
                                 }
                             }
@@ -636,9 +631,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                                 if (pos.Instrument.FullName == Instrument.FullName && pos.MarketPosition != MarketPosition.Flat)
                                 {
                                     if (pos.MarketPosition == MarketPosition.Long)
-                                        ExitLong();
+                                        SubmitOrderUnmanaged(0, OrderAction.Sell, OrderType.Market, pos.Quantity, 0, 0, "", "FlattenOnly_ExitLong");
                                     else
-                                        ExitShort();
+                                        SubmitOrderUnmanaged(0, OrderAction.BuyToCover, OrderType.Market, pos.Quantity, 0, 0, "", "FlattenOnly_ExitShort");
                                 }
                             }
                         }
@@ -846,6 +841,51 @@ namespace NinjaTrader.NinjaScript.Strategies
                             FlattenSpecificTarget(targetNum);
                         }
                     }
+                    // V14: MOVE_TARGET command - Surgical target price adjustment
+                    else if (action.StartsWith("MOVE_TARGET"))
+                    {
+                        // Format: MOVE_TARGET|T1|1pt  or  MOVE_TARGET|T2|2pt
+                        if (parts.Length >= 3)
+                        {
+                            string targetId = parts[1].Trim().ToUpper(); // "T1", "T2", etc.
+                            string distance = parts[2].Trim().ToLower(); // "1pt" or "2pt"
+                            
+                            // Parse distance
+                            double profitPoints = 0;
+                            if (distance == "1pt") profitPoints = 1.0;
+                            else if (distance == "2pt") profitPoints = 2.0;
+                            else
+                            {
+                                Print($"[V14] MOVE_TARGET: Invalid distance '{distance}' - expected '1pt' or '2pt'");
+                                continue;
+                            }
+                            
+                            // Extract target number (T1 -> 1, T2 -> 2, etc.)
+                            int targetNum = 0;
+                            if (targetId.Length >= 2 && targetId.StartsWith("T"))
+                            {
+                                if (!int.TryParse(targetId.Substring(1), out targetNum) || targetNum < 1 || targetNum > 5)
+                                {
+                                    Print($"[V14] MOVE_TARGET: Invalid target '{targetId}' - expected T1-T5");
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+                                Print($"[V14] MOVE_TARGET: Invalid target format '{targetId}'");
+                                continue;
+                            }
+                            
+                            Print($"[V14] MOVE_TARGET: Command received for {targetId} to +{profitPoints}pt profit");
+                            
+                            // Call the move handler (implemented in Orders.cs)
+                            MoveSpecificTarget(targetNum, profitPoints);
+                        }
+                        else
+                        {
+                            Print("[V14] MOVE_TARGET: Invalid format - expected MOVE_TARGET|TX|1pt or MOVE_TARGET|TX|2pt");
+                        }
+                    }
                     else if (action.StartsWith("GET_FLEET"))
                     {
                         // Broadcast account names to the Remote App for UI mapping
@@ -875,7 +915,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                         {
                             string acctName = parts[1];
                             bool active = parts[2] == "1";
-                            activeFleetAccounts[acctName] = active;
+                            // V12.1101E [A-2]: Lock IPC writes to activeFleetAccounts — this dict is also
+                            // read by the strategy thread (ExecuteMultiAccountMarket) without a lock.
+                            lock (stateLock)
+                            {
+                                activeFleetAccounts[acctName] = active;
+                            }
                             Print($"[V12.2] TOGGLE_ACCOUNT: {acctName} | Active={active}");
                         }
                     }
@@ -935,7 +980,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                             isRMAModeActive = enable;
                             isRMAButtonClicked = enable;
                             Print(string.Format("V12.4: SET_RMA_MODE = {0} (Chart-Click RMA {1})", enable, enable ? "ENABLED" : "DISABLED"));
-                            UpdateRMAModeDisplay();
                         }
                     }
                     // V12.2: SYNC_MODE|{MODE} - Relay mode sync from chart panel to external app
@@ -949,28 +993,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                             Print(string.Format("V12.2: SYNC_MODE Relay -> {0}", syncMode));
                         }
                     }
-                    // V12.5: SET_TARGETS|count - Bidirectional sync for target count buttons
+                    // V12.5: SET_TARGETS|count - Panel is sole source of truth
                     else if (action == "SET_TARGETS")
                     {
                         if (parts.Length > 1 && int.TryParse(parts[1], out int targetCount))
                         {
                             minContracts = targetCount;
-                            Print(string.Format("V12.5: SET_TARGETS = {0} contracts", targetCount));
-
-                            // Build CONFIG message to broadcast
-                            string mode = isRMAModeActive ? "RMA" : "ORB";
-                            string configMsg = string.Format(
-                                "CONFIG|{0}|COUNT:{1};T1:{2};T2:{3};T3:{4};STR:{5};MAX:{6};TRMA:{7};RRMA:{8};",
-                                mode, targetCount, Target1FixedPoints, Target2Multiplier, Target3Multiplier,
-                                StopMultiplier, MaxRiskAmount, isTrendRmaMode ? "1" : "0", isRetestRmaMode ? "1" : "0");
-
-                            // V12.13-D: Broadcast CONFIG to all connected panel clients
-                            SendResponseToRemote(configMsg);
-
-                            Print(string.Format("V12.5: CONFIG Broadcast -> {0}", configMsg));
+                            Print(string.Format("V12.25: SET_TARGETS = {0} contracts (no CONFIG echo)", targetCount));
+                            // V12.25: CONFIG broadcast REMOVED — Panel is sole source of truth.
+                            // Sending CONFIG back here caused the Ping-Pong overwrite bug.
                         }
                     }
-                    // V12.5: SET_MODE|mode - Bidirectional sync for config mode buttons
+                    // V12.5: SET_MODE|mode - Panel is sole source of truth
                     else if (action == "SET_MODE")
                     {
                         if (parts.Length > 1)
@@ -1011,21 +1045,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                                 // ORB/OR = all modes off (already deactivated above)
                             }
 
-                            Print(string.Format("V12.20: SET_MODE = {0} | RMA={1} RETEST={2} TREND={3} MOMO={4} FFMA={5}",
+                            Print(string.Format("V12.25: SET_MODE = {0} | RMA={1} RETEST={2} TREND={3} MOMO={4} FFMA={5} (no CONFIG echo)",
                                 newMode, isRMAModeActive, isRetestModeActive, isTRENDModeActive, isMOMOModeActive, isFFMAModeArmed));
 
-                            UpdateRMAModeDisplay();
-
-                            // Build CONFIG message to broadcast
-                            string configMsg = string.Format(
-                                "CONFIG|{0}|COUNT:{1};T1:{2};T2:{3};T3:{4};STR:{5};MAX:{6};MODE:{0};TRMA:{7};RRMA:{8};",
-                                newMode, minContracts, Target1FixedPoints, Target2Multiplier, Target3Multiplier,
-                                StopMultiplier, MaxRiskAmount, isTrendRmaMode ? "1" : "0", isRetestRmaMode ? "1" : "0");
-
-                            // V12.13-D: Broadcast CONFIG to all connected panel clients
-                            SendResponseToRemote(configMsg);
-
-                            Print(string.Format("V12.20: CONFIG Broadcast -> {0}", configMsg));
+                            // V12.25: CONFIG broadcast REMOVED — Panel is sole source of truth.
+                            // Sending CONFIG back here caused the Ping-Pong overwrite bug.
+                        }
+                    }
+                    // V12.25: SET_LEADER_ACCOUNT|accountName — Panel tells strategy which account is the leader
+                    else if (action == "SET_LEADER_ACCOUNT")
+                    {
+                        if (parts.Length > 1)
+                        {
+                            string newLeader = parts[1].Trim();
+                            Print($"V12.25 IPC: Leader Account synced to [{newLeader}]");
                         }
                     }
 
@@ -1040,14 +1073,72 @@ namespace NinjaTrader.NinjaScript.Strategies
                             isMnlArmed = true;
 
                             Print(string.Format("IPC SET_MANUAL_PRICE: {0:F2} | Anchor set to MANUAL", manualPrice));
-
-                            // Update UI to reflect the new manual price
-                            UpdateDisplay();
                         }
                         else
                         {
                             Print(string.Format("IPC SET_MANUAL_PRICE: Invalid price format in command: {0}", command));
                         }
+                    }
+                    // V12.27: Manual entry commands from Contextual UI Submit button
+                    else if (action == "TREND_MANUAL_LIMIT")
+                    {
+                        // Format: TREND_MANUAL_LIMIT|LONG|1234.50
+                        if (parts.Length > 2)
+                        {
+                            string dir = parts[1].Trim().ToUpper();
+                            MarketPosition mp = dir == "LONG" ? MarketPosition.Long : MarketPosition.Short;
+                            if (double.TryParse(parts[2], out double price) && price > 0)
+                            {
+                                Print(string.Format("V12.27 IPC: TREND_MANUAL_LIMIT {0} @ {1:F2}", dir, price));
+                                ExecuteTRENDManualEntry(price, mp);
+                            }
+                            else
+                            {
+                                Print(string.Format("V12.27 IPC: TREND_MANUAL_LIMIT invalid price: {0}", command));
+                            }
+                        }
+                    }
+                    else if (action == "RETEST_MANUAL_LIMIT")
+                    {
+                        // Format: RETEST_MANUAL_LIMIT|LONG|1234.50
+                        if (parts.Length > 2)
+                        {
+                            string dir = parts[1].Trim().ToUpper();
+                            MarketPosition mp = dir == "LONG" ? MarketPosition.Long : MarketPosition.Short;
+                            if (double.TryParse(parts[2], out double price) && price > 0)
+                            {
+                                Print(string.Format("V12.27 IPC: RETEST_MANUAL_LIMIT {0} @ {1:F2}", dir, price));
+                                ExecuteRetestManualEntry(price, mp);
+                            }
+                            else
+                            {
+                                Print(string.Format("V12.27 IPC: RETEST_MANUAL_LIMIT invalid price: {0}", command));
+                            }
+                        }
+                    }
+                    else if (action == "FFMA_MANUAL_LIMIT")
+                    {
+                        // Format: FFMA_MANUAL_LIMIT|LONG|1234.50
+                        if (parts.Length > 2)
+                        {
+                            string dir = parts[1].Trim().ToUpper();
+                            MarketPosition mp = dir == "LONG" ? MarketPosition.Long : MarketPosition.Short;
+                            if (double.TryParse(parts[2], out double price) && price > 0)
+                            {
+                                Print(string.Format("V12.27 IPC: FFMA_MANUAL_LIMIT {0} @ {1:F2}", dir, price));
+                                ExecuteFFMALimitEntry(price, mp);
+                            }
+                            else
+                            {
+                                Print(string.Format("V12.27 IPC: FFMA_MANUAL_LIMIT invalid price: {0}", command));
+                            }
+                        }
+                    }
+                    else if (action == "FFMA_MANUAL_MARKET")
+                    {
+                        // V12.27: M.FFMA button — instant market, direction toward 9 EMA
+                        Print("V12.27 IPC: FFMA_MANUAL_MARKET — auto-direction toward EMA9");
+                        ExecuteFFMAManualMarketEntry();
                     }
                     else if (action.StartsWith("MODE_") || action.StartsWith("EXEC_") || action == "FFMA_DISARM")
                     {
@@ -1069,48 +1160,41 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         private void SendResponseToRemote(string response)
-{
-    if (connectedClients == null) return;
-
-    byte[] responseBytes = Encoding.UTF8.GetBytes(response + "\n");
-    List<TcpClient> disconnectedClients = new List<TcpClient>();
-
-    foreach (var client in connectedClients)
-    {
-        try
         {
-            if (client.Connected && client.GetStream().CanWrite)
+            if (connectedClients == null) return;
+
+            // Diagnostic: Log what we are sending and to how many clients
+            if (response.Contains("SYNC_TARGET_STATE"))
+                 Print($"V14 IPC: Broadcasting {response} to {connectedClients.Count} clients");
+
+            byte[] responseBytes = Encoding.UTF8.GetBytes(response + "\n");
+            List<TcpClient> disconnectedClients = new List<TcpClient>();
+
+            foreach (var client in connectedClients)
             {
-                client.GetStream().Write(responseBytes, 0, responseBytes.Length);
-                client.GetStream().Flush();
-            }
-        }
-        catch
-        {
-            // Client likely disconnected, will be handled by reading loop or next cleanup
-        }
-    }
-}
-
-        // V12.13-D: SendToExternalApp REMOVED — it connected to port 5001 (the strategy's own listener),
-        // causing infinite flood loops. All callers now use SendResponseToRemote() or direct client stream writes.
-
-
-        private void MoveStopsToBreakevenPlusOne()
-        {
-            foreach (var pos in activePositions.Values)
-            {
-                if (pos.RemainingContracts > 0)
+                try
                 {
-                    double newStop = pos.Direction == MarketPosition.Long
-                        ? pos.EntryPrice + (1 * tickSize)
-                        : pos.EntryPrice - (1 * tickSize);
-
-                    ChangeStop(pos.SignalName, newStop);
-                    Print(string.Format("IPC BE+1: Moved stop for {0} to {1:F2}", pos.SignalName, newStop));
+                    if (client.Connected && client.GetStream().CanWrite)
+                    {
+                        client.GetStream().Write(responseBytes, 0, responseBytes.Length);
+                        client.GetStream().Flush();
+                    }
+                    else
+                    {
+                        Print("V14 IPC: Client disconnected or stream not writable.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Print($"V14 IPC: Send Error - {ex.Message}");
+                    // Client likely disconnected, will be handled by reading loop or next cleanup
                 }
             }
         }
+
+        // V12.13-D: SendToExternalApp REMOVED — it connected to port 5001 (the strategy's own listener),
+        // causing infinite flood loops. All callers now use SendResponseToRemote() or direct client stream writes.
+        // V12.44: MoveStopsToBreakevenPlusOne() removed — dead code, replaced by MoveStopsToBreakevenWithOffset()
 
         /// <summary>
         /// V10.3: Close a specific target (T1, T2, T3, or T4) at market for all active positions
@@ -1237,7 +1321,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
              Print(string.Format("IPC Mode Toggle: {0} | RMA={1} MOMO={2} TrendRMA={3} RetestRMA={4} FFMA={5}",
                 action, isRMAModeActive, isMOMOModeActive, isTrendRmaMode, isRetestRmaMode, isFFMAModeArmed));
-             UpdateDisplay();
         }
 
 
@@ -1345,11 +1428,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                 "{0},\"{1}\",{2:F2},{3},{4:F2},{5},{6:F2},{7}",
                 summaryDate.ToString("yyyy-MM-dd"), safeName, dailyPL, dailyTrades, totalProfit, totalTrades, maxDrawdown, uniqueDays);
 
+            // V12.40 FREEZE FIX: Ensure CSV header exists (fast, no I/O if already created)
             lock (dailySummaryLock)
             {
                 EnsureDailySummaryCsv();
-                System.IO.File.AppendAllText(dailySummaryCsvPath, line + Environment.NewLine);
             }
+
+            // V12.40 FREEZE FIX: Fire-and-forget async write — never blocks UI thread
+            string pathCopy = dailySummaryCsvPath;
+            string lineCopy = line + Environment.NewLine;
+            Task.Run(() =>
+            {
+                try { System.IO.File.AppendAllText(pathCopy, lineCopy); }
+                catch { /* swallow — daily summary is best-effort */ }
+            });
         }
 
         private void FinalizeDailySummaryForAccount(string accountName, DateTime summaryDate)
@@ -1605,42 +1697,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (kvp.Value == filledOrder)
                         {
                             string fleetKey = kvp.Key;
-                            if (activePositions.TryGetValue(fleetKey, out var pos) && pos.IsFollower && !pos.BracketSubmitted && !pos.EntryFilled)
+                            if (activePositions.TryGetValue(fleetKey, out var pos) && pos.IsFollower && !pos.EntryFilled)
                             {
-                                pos.EntryFilled = true;
-                                // V12.18 PRICE INTEGRITY GUARD
-                                double fleetFillPrice = e.Execution.Price;
-                                if (fleetFillPrice > 0)
-                                {
-                                    pos.EntryPrice = fleetFillPrice;
-                                    pos.ExtremePriceSinceEntry = fleetFillPrice; // V12.18: Anchor trailing-stop baseline
-                                }
-                                else
-                                {
-                                    Print(string.Format("[PRICE_GUARD] CRITICAL: Fleet fill price={0} for {1}. Keeping intended price {2:F2}.",
-                                        fleetFillPrice, fleetKey, pos.EntryPrice));
-                                }
-
-                                // Submit deferred brackets on the follower's account
-                                Account acct = pos.ExecutingAccount;
-                                if (acct != null)
-                                {
-                                    OrderAction exitAction = pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
-                                    double validatedStop = ValidateStopPrice(pos.Direction, pos.CurrentStopPrice);
-                                    string ocoId = "B_" + fleetKey;
-
-                                    Order fStop = acct.CreateOrder(Instrument, exitAction, OrderType.StopMarket,
-                                        TimeInForce.Gtc, pos.TotalContracts, 0, validatedStop, ocoId, "Stop_" + fleetKey.Substring(0, Math.Min(fleetKey.Length, 40)), null);
-                                    Order fTarget = acct.CreateOrder(Instrument, exitAction, OrderType.Limit,
-                                        TimeInForce.Gtc, pos.TotalContracts, pos.Target2Price, 0, ocoId, "Tgt_" + fleetKey.Substring(0, Math.Min(fleetKey.Length, 40)), null);
-
-                                    acct.Submit(new[] { fStop, fTarget });
-                                    stopOrders[fleetKey] = fStop;
-                                    target2Orders[fleetKey] = fTarget;
-                                    pos.BracketSubmitted = true;
-
-                                    Print($"[SIMA V12.7] Fleet brackets submitted on fill: {fleetKey} | Stop: {validatedStop:F2} | Target: {pos.Target2Price:F2}");
-                                }
+                                double fleetFillPrice = e.Execution != null ? e.Execution.Price : 0;
+                                SymmetryGuardOnFollowerFill(fleetKey, pos, fleetFillPrice);
                             }
                             break;
                         }
@@ -1713,8 +1773,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                 sb.AppendLine("\n  ]");
                 sb.AppendLine("}");
 
-                System.IO.File.WriteAllText(complianceLogPath, sb.ToString());
+                // V12.40 FREEZE FIX: Fire-and-forget async write — never blocks UI thread
+                string jsonPayload = sb.ToString();
+                string path = complianceLogPath;
                 lastComplianceLog = DateTime.Now;
+                Task.Run(() =>
+                {
+                    try { System.IO.File.WriteAllText(path, jsonPayload); }
+                    catch { /* swallow — compliance log is best-effort */ }
+                });
             }
             catch (Exception ex)
             {
@@ -1724,54 +1791,216 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         #endregion
 
-        #region V12.2 Position Sizing Helpers
+        #region V12.30 ATR Auto-Sizing Engine
 
-        private int CalculatePositionSize(double stopDistance)
+        /// <summary>
+        /// V12.30: ATR Auto-Sizing Engine — Core Sizing Method
+        /// 1. stopDistanceRaw → Ceiling to whole point
+        /// 2. Quantity → Floor(MaxRisk / (ceilingStop * pointValue))
+        /// 3. Clamp to [minContracts, max]
+        /// </summary>
+        private int CalculatePositionSize(double stopDistanceRaw)
         {
-            if (stopDistance <= 0) return Math.Max(1, minContracts);
+            if (stopDistanceRaw <= 0) return Math.Max(1, minContracts);
+
+            // STEP 1: CEILING to whole POINT (e.g. 2.3 → 3.0, 4.0 → 4.0)
+            double stopPoints = Math.Ceiling(stopDistanceRaw);
 
             double riskToUse = MaxRiskAmount;
+            double stopDollars = stopPoints * pointValue;
+            if (stopDollars <= 0) return Math.Max(1, minContracts);
 
-            double stopDistanceInDollars = stopDistance * pointValue;
-            if (stopDistanceInDollars <= 0) return Math.Max(1, minContracts);
+            // STEP 2: FLOOR the quantity (never exceed $MaxRisk)
+            int contracts = (int)Math.Floor(riskToUse / stopDollars);
 
-            int contracts = (int)Math.Floor(riskToUse / stopDistanceInDollars);
-            contracts = Math.Max(1, contracts);
+            // V12.1101E [B-9]: Clamp to [minContracts, maxContracts] — prevents runaway sizing on
+            // tiny ATR values (e.g., flat market) from hitting broker limits or compliance thresholds.
+            contracts = Math.Max(minContracts, Math.Min(contracts, maxContracts));
 
-            Print($"[V12.2 SIZING] Stop={stopDistance:F2} | Risk=${riskToUse:F0} | Contracts={contracts}");
+            Print($"[V12.30 SIZING] RawStop={stopDistanceRaw:F2} → Ceiling={stopPoints:F0}pt | Risk=${riskToUse:F0} | StopDollars=${stopDollars:F0} | Qty={contracts} | Clamp=[{minContracts},{maxContracts}]");
             return contracts;
+        }
+
+        /// <summary>
+        /// V12.30: ATR Auto-Sizing Engine — Centralized Stop Distance Calculator
+        /// Returns ATR-based stop rounded UP to nearest whole point.
+        /// Replaces all inline "currentATR * multiplier" patterns.
+        /// </summary>
+        private double CalculateATRStopDistance(double atrMultiplier)
+        {
+            if (currentATR <= 0) return MinimumStop;
+
+            double rawStop = currentATR * atrMultiplier;
+            double ceilingStop = Math.Ceiling(rawStop);  // Round UP to whole point
+            return Math.Max(MinimumStop, Math.Min(ceilingStop, MaximumStop));
         }
 
         private void GetTargetDistribution(int contracts, out int t1, out int t2, out int t3, out int t4)
         {
+            // V12.40 PRIORITY FILL: Always respect user percentages.
+            // For small lots (≤4), the percentage math naturally assigns 0 to lower-priority targets.
+            // T4 (runner) gets the remainder — guaranteed ≥1 when contracts > 1.
+
+            // Single contract = pure runner (T4), no split possible
             if (contracts <= 1)
             {
-                t1 = 1; t2 = 0; t3 = 0; t4 = 0;
+                t1 = 0; t2 = 0; t3 = 0; t4 = contracts;
+                return;
             }
-            else if (contracts == 2)
-            {
-                t1 = 1; t2 = 0; t3 = 0; t4 = 1;
-            }
-            else if (contracts == 3)
-            {
-                t1 = 1; t2 = 1; t3 = 0; t4 = 1;
-            }
-            else if (contracts == 4)
-            {
-                t1 = 1; t2 = 1; t3 = 1; t4 = 1;
-            }
-            else
-            {
-                t1 = (int)Math.Floor(contracts * T1ContractPercent / 100.0);
-                t2 = (int)Math.Floor(contracts * T2ContractPercent / 100.0);
-                t3 = (int)Math.Floor(contracts * T3ContractPercent / 100.0);
-                t4 = contracts - t1 - t2 - t3;
 
-                // Enforce minimums for T1 and Runner
-                if (t1 < 1) t1 = 1;
-                if (t1 < 1) t1 = 1;
-                if (t4 < 1) t4 = 1;
+            t1 = (int)Math.Floor(contracts * T1ContractPercent / 100.0);
+            t2 = (int)Math.Floor(contracts * T2ContractPercent / 100.0);
+            t3 = (int)Math.Floor(contracts * T3ContractPercent / 100.0);
+
+            // V12.1101E [MATH-01]: CAP running sum BEFORE computing T4.
+            // The old approach computed t4 = contracts - t1 - t2 - t3, which goes negative when
+            // percentages sum > 100%. The post-hoc clamp then floored t4 to 0 while t1+t2+t3
+            // already consumed contracts+N slots — creating phantom contract totals.
+            // Fix: reduce T3 → T2 → T1 proportionally so t4 is always ≥ 1 before subtraction.
+            int runningSum = t1 + t2 + t3;
+            int maxAllowed = contracts - 1; // always reserve ≥1 slot for T4 runner
+            if (runningSum > maxAllowed)
+            {
+                int excess = runningSum - maxAllowed;
+                // Shed from lowest-priority first: T3 → T2 → T1
+                t3 = Math.Max(0, t3 - excess);
+                excess = (t1 + t2 + t3) - maxAllowed;
+                if (excess > 0) { t2 = Math.Max(0, t2 - excess); }
+                excess = (t1 + t2 + t3) - maxAllowed;
+                if (excess > 0) { t1 = Math.Max(1, t1 - excess); }
             }
+            t4 = contracts - t1 - t2 - t3; // guaranteed ≥ 1
+
+            // Ensure T1 gets at least 1 (the quick scalp anchor)
+            if (t1 < 1) { t1 = 1; t4 = Math.Max(0, t4 - 1); }
+
+            // Runner (T4) must get at least 1 on multi-contract trades
+            if (t4 < 1)
+            {
+                // Steal from lowest-priority filled target: T3 → T2
+                if (t3 > 0) { t3--; t4 = 1; }
+                else if (t2 > 0) { t2--; t4 = 1; }
+                else { t1 = contracts - 1; t2 = 0; t3 = 0; t4 = 1; }
+            }
+
+            // Safety floors: ensure no negatives remain after any edge-case adjustments
+            t1 = Math.Max(0, t1); t2 = Math.Max(0, t2); t3 = Math.Max(0, t3); t4 = Math.Max(0, t4);
+        }
+
+        /// <summary>
+        /// V12.45: Live Sync Engine — Updates unfilled entry orders when ATR
+        /// causes ceiling-stop or floor-qty to change.
+        /// FLICKER PROTECTION HARDENING:
+        /// 1. Order State Guard: Only sync orders in Accepted/Working state (blocks ChangePending)
+        /// 2. Tick-Aware Threshold: Uses tickSize instead of hardcoded 0.01
+        /// 3. Retry Cooldown: 500ms pause after ChangeOrder failure to prevent broker hammering
+        /// </summary>
+        private DateTime _lastSyncFailureTime = DateTime.MinValue;  // V12.45: Retry cooldown tracker
+
+        private void SyncPendingOrders()
+        {
+            if (currentATR <= 0) return;
+
+            // V12.45 RETRY COOLDOWN: If a ChangeOrder failed recently, back off for 500ms
+            // This prevents rapid-fire rejections that can cascade into broker throttling
+            if ((DateTime.Now - _lastSyncFailureTime).TotalMilliseconds < 500) return;
+
+            foreach (var kvp in activePositions.ToArray())
+            {
+                PositionInfo pos = kvp.Value;
+                string entryName = kvp.Key;
+
+                // Only sync UNFILLED entries
+                if (pos.EntryFilled) continue;
+
+                // Skip modes that don't use ATR-based stops
+                if (pos.IsFFMATrade || pos.IsMOMOTrade) continue;
+
+                // Get the entry order
+                Order entryOrder;
+                if (!entryOrders.TryGetValue(entryName, out entryOrder)) continue;
+                if (entryOrder == null) continue;
+
+                // V12.45 ORDER STATE GUARD: Only modify orders in stable states
+                // Accepted = broker acknowledged, waiting for fill
+                // Working  = actively in the order book
+                // ChangePending = a ChangeOrder is already in-flight — DO NOT send another
+                OrderState currentState = entryOrder.OrderState;
+                if (currentState != OrderState.Accepted && currentState != OrderState.Working)
+                {
+                    if (currentState == OrderState.ChangePending)
+                        Print($"[V12.45 SYNC] SKIP {entryName}: ChangeOrder already in-flight (ChangePending)");
+                    continue;
+                }
+
+                // Determine ATR multiplier for this trade type
+                double atrMult = GetATRMultiplierForPosition(pos);
+                double newStopDist = CalculateATRStopDistance(atrMult);
+                int    newQty     = CalculatePositionSize(newStopDist);
+
+                // V12.45 TICK-AWARE FLICKER CHECK: Use tickSize for meaningful comparison
+                // Only sync if ceiling stop changed by at least 1 tick OR quantity changed
+                double oldCeilingStop = Math.Ceiling(Math.Abs(pos.EntryPrice - pos.CurrentStopPrice));
+                double newCeilingStop = newStopDist;
+
+                double stopDelta = Math.Abs(newCeilingStop - oldCeilingStop);
+                if (stopDelta < tickSize && newQty == pos.TotalContracts)
+                    continue;  // No material change — skip
+
+                // SYNC: Update quantity and stop
+                try
+                {
+                    double newStopPrice = pos.Direction == MarketPosition.Long
+                        ? pos.EntryPrice - newStopDist
+                        : pos.EntryPrice + newStopDist;
+
+                    // Update the entry order quantity via ChangeOrder
+                    if (newQty != entryOrder.Quantity)
+                    {
+                        ChangeOrder(entryOrder, newQty, entryOrder.LimitPrice, entryOrder.StopPrice);
+                    }
+
+                    // Update position info
+                    pos.TotalContracts = newQty;
+                    pos.CurrentStopPrice = newStopPrice;
+                    pos.InitialStopPrice = newStopPrice;
+
+                    // Recalculate target distribution
+                    int t1, t2, t3, t4;
+                    GetTargetDistribution(newQty, out t1, out t2, out t3, out t4);
+                    pos.T1Contracts = t1;
+                    pos.T2Contracts = t2;
+                    pos.T3Contracts = t3;
+                    pos.T4Contracts = t4;
+                    pos.RemainingContracts = newQty;
+
+                    Print($"[V12.45 SYNC] {entryName}: Stop {oldCeilingStop:F0}→{newCeilingStop:F0}pt | Qty {entryOrder.Quantity}→{newQty} | ATR={currentATR:F2}");
+                }
+                catch (Exception ex)
+                {
+                    // V12.45 RETRY COOLDOWN: Record failure time to prevent hammering
+                    _lastSyncFailureTime = DateTime.Now;
+                    Print($"[V12.45 SYNC] ERROR syncing {entryName}: {ex.Message} — cooldown 500ms");
+                }
+            }
+        }
+
+        /// <summary>
+        /// V12.30: Returns the ATR multiplier for a given position type.
+        /// Used by SyncPendingOrders to determine which multiplier to recalculate with.
+        /// </summary>
+        private double GetATRMultiplierForPosition(PositionInfo pos)
+        {
+            if (pos.IsRMATrade) return RMAStopATRMultiplier;
+            if (pos.IsTRENDTrade)
+            {
+                if (pos.IsTRENDEntry1)
+                    return isTrendRmaMode ? RMAStopATRMultiplier : TRENDEntry1ATRMultiplier;
+                return isTrendRmaMode ? RMAStopATRMultiplier : TRENDEntry2ATRMultiplier;
+            }
+            if (pos.IsRetestTrade)
+                return isRetestRmaMode ? RMAStopATRMultiplier : RetestATRMultiplier; // V12.Hardening: was isTrendRmaMode (typo)
+            return StopMultiplier; // ORB default
         }
 
         #endregion
@@ -1880,8 +2109,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                             break;
                     }
                 }
-
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
@@ -2005,8 +2232,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                             break;
                     }
                 }
-
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
