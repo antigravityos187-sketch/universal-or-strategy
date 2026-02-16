@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\\\WSGTA\\\\universal-or-strategy\\\\scripts\\\\sima_toggle_stress.ps1\")",
+      "Bash(powershell.exe:*)"
+    ]
+  }
+}

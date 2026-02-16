@@ -103,6 +103,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                     stopDistance = tickSize * 2;
                 }
 
+                // V12.Hardening: Final stop-distance guard — prevent CalculatePositionSize(0) → ∞ contracts
+                if (stopDistance <= 0)
+                {
+                    Print("[FFMA REJECT] Stop distance is zero (doji candle or tickSize=0). Aborting entry.");
+                    return;
+                }
+
                 // Calculate targets (same as RMA: T1 fixed, T2/T3 ATR-based, T4 runner)
                 double target1Price = direction == MarketPosition.Long
                     ? entryPrice + Target1FixedPoints
@@ -122,7 +129,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 int t1Qty, t2Qty, t3Qty, t4Qty;
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty);
 
-                string timestamp = DateTime.Now.ToString("HHmmss");
+                string timestamp = DateTime.Now.ToString("HHmmssffff");
                 string signalName = direction == MarketPosition.Long ? "FFMALong" : "FFMAShort";
                 string entryName = signalName + "_" + timestamp;
 
@@ -175,12 +182,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // V12 SIMA: Dispatch to fleet (replaces legacy slave broadcast)
                 if (EnableSIMA)
                 {
-                    ExecuteSmartDispatchEntry("FFMA", direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort, contracts, entryPrice);
+                    ExecuteSmartDispatchEntry("FFMA", direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort, contracts, entryPrice, OrderType.Market, entryName);
                 }
 
                 // Disarm FFMA after execution (one-shot)
                 DeactivateFFMAMode();
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
@@ -218,7 +224,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                     isShortArmed = false; // Mutually exclusive for simplicity
                     lastArmedTime = DateTime.Now;
                     Print("[SYNC] LONG ENTRY ARMED. Waiting for ToS handshake signal...");
-                    UpdateDisplay();
                     return;
                 }
             }
@@ -254,7 +259,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                     isLongArmed = false; // Mutually exclusive
                     lastArmedTime = DateTime.Now;
                     Print("[SYNC] SHORT ENTRY ARMED. Waiting for ToS handshake signal...");
-                    UpdateDisplay();
                     return;
                 }
             }
@@ -305,7 +309,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     contracts, t1Qty, t2Qty, t3Qty, t4Qty));
 
                 string signalName = direction == MarketPosition.Long ? "ORLong" : "ORShort";
-                string timestamp = DateTime.Now.ToString("HHmmss");
+                string timestamp = DateTime.Now.ToString("HHmmssffff");
                 string entryName = signalName + "_" + timestamp;
 
                 // v5.13: T1 = Fixed 1 point profit (quick scalp)
@@ -374,8 +378,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     ExecuteSmartDispatchEntry("OR", direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort, contracts, entryPrice, OrderType.Limit);
                 }
-
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
@@ -388,8 +390,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             // v5.13: Use ATR for OR stop (same as RMA) instead of OR range
             if (currentATR <= 0) return MinimumStop;
 
-            double calculatedStop = currentATR * StopMultiplier;  // 0.5x ATR
-            return Math.Max(MinimumStop, Math.Min(calculatedStop, MaximumStop)); // V8.31: Use MaximumStop
+            double calculatedStop = CalculateATRStopDistance(StopMultiplier);  // V12.30: Ceiling-rounded
+            return calculatedStop;
         }
 
         #endregion
@@ -407,45 +409,104 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
             }
 
-            // Logic: EMA 9 vs EMA 15 Alignment determines Trend Direction
-            // If EMA 9 > EMA 15 -> Uptrend -> Enter Long (Buy Limit at 9 & 15)
-            // If EMA 9 < EMA 15 -> Downtrend -> Enter Short (Sell Limit at 9 & 15)
-
-            double e9 = ema9[0];
-            double e15 = ema15[0];
-
-            bool isLongTrend = e9 > e15;
-
-            // Calculate Position Sizes (Total Quantity split 1/3 and 2/3)
-            // e.g. 3 contracts -> 1 at EMA9, 2 at EMA15
-            int totalQty = DefaultQuantity;
-            int qty9 = Math.Max(1, totalQty / 3);
-            int qty15 = totalQty - qty9;
-
-            string orderIdBase = "TRMA_" + DateTime.Now.Ticks;
-
-            if (isLongTrend)
+            if (ema9 == null || ema15 == null)
             {
-                // Buy Limits at EMA 9 and 15
-                // Note: If price is currently below EMA (deep pullback), these act as Stop Limits?
-                // No, Limit orders buy at Price OR BETTER.
-                // If we submit Limit Buy at EMA9 and Price < EMA9, it fills instantly at Market (Better Price).
-                // If Price > EMA9, it rests as a pending Limit order.
-                // This is correct behavior for Trend Pullbacks.
-
-                EnterLongLimit(0, true, qty9, e9, orderIdBase + "_9");
-                EnterLongLimit(0, true, qty15, e15, orderIdBase + "_15");
-                Print(string.Format("Trend RMA LONG: {0} @ {1:F2}, {2} @ {3:F2}", qty9, e9, qty15, e15));
+                Print("Cannot execute TREND RMA - EMA indicators not ready");
+                return;
             }
-            else
-            {
-                // Sell Limits at EMA 9 and 15
-                // If Price > EMA (deep rally), Limit Sell fills instantly (Better Price).
-                // If Price < EMA, it rests as pending Limit.
 
-                EnterShortLimit(0, true, qty9, e9, orderIdBase + "_9");
-                EnterShortLimit(0, true, qty15, e15, orderIdBase + "_15");
-                Print(string.Format("Trend RMA SHORT: {0} @ {1:F2}, {2} @ {3:F2}", qty9, e9, qty15, e15));
+            try
+            {
+                // Logic: EMA 9 vs EMA 15 alignment determines trend direction.
+                double e9 = Instrument.MasterInstrument.RoundToTickSize(ema9[0]);
+                double e15 = Instrument.MasterInstrument.RoundToTickSize(ema15[0]);
+                bool isLongTrend = e9 > e15;
+                MarketPosition direction = isLongTrend ? MarketPosition.Long : MarketPosition.Short;
+                OrderAction entryAction = isLongTrend ? OrderAction.Buy : OrderAction.SellShort;
+
+                // TREND_RMA is risk-sized from MaxRiskAmount (default $200), then split across EMA9/EMA15.
+                // V12.1101E [B-1]: Decouple per-leg multipliers — mirror the standard TREND entry logic.
+                // E1 (EMA9 leg) uses TRENDEntry1ATRMultiplier; E2 (EMA15 leg) uses TRENDEntry2ATRMultiplier.
+                // When isTrendRmaMode is ON, both legs fall back to RMAStopATRMultiplier (same as standard TREND).
+                double e1Mult = isTrendRmaMode ? RMAStopATRMultiplier : TRENDEntry1ATRMultiplier;
+                double e2Mult = isTrendRmaMode ? RMAStopATRMultiplier : TRENDEntry2ATRMultiplier;
+                double stop9Dist  = CalculateATRStopDistance(e1Mult);  // EMA9 leg stop distance
+                double stop15Dist = CalculateATRStopDistance(e2Mult);  // EMA15 leg stop distance
+                double weightedStopDist = (stop9Dist * (1.0 / 3.0)) + (stop15Dist * (2.0 / 3.0));
+
+                int totalQty = CalculatePositionSize(weightedStopDist);
+                int qty9 = totalQty <= 1
+                    ? 1
+                    : Math.Max(1, (int)Math.Round(totalQty / 3.0, MidpointRounding.AwayFromZero));
+                int qty15 = Math.Max(0, totalQty - qty9);
+
+                if (totalQty > 1 && qty15 < 1)
+                {
+                    qty15 = 1;
+                    qty9 = Math.Max(1, totalQty - qty15);
+                }
+
+                int finalTotalQty = qty9 + qty15;
+                string timestamp = DateTime.Now.ToString("HHmmssffff");
+                string trendGroupId = "TRMA_" + timestamp;
+                string entry1Name = trendGroupId + "_E1";
+                string entry2Name = trendGroupId + "_E2";
+
+                double stop1Price = direction == MarketPosition.Long ? e9 - stop9Dist : e9 + stop9Dist;
+                PositionInfo pos1 = CreateTRENDPosition(entry1Name, direction, e9, stop1Price, qty9, true, trendGroupId, true);
+                activePositions[entry1Name] = pos1;
+
+                List<string> masterEntryNames = new List<string> { entry1Name };
+
+                Order entryOrder1 = direction == MarketPosition.Long
+                    ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, qty9, e9, 0, "", entry1Name)
+                    : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, qty9, e9, 0, "", entry1Name);
+                entryOrders[entry1Name] = entryOrder1;
+
+                if (qty15 > 0)
+                {
+                    double stop2Price = direction == MarketPosition.Long ? e15 - stop15Dist : e15 + stop15Dist;
+                    PositionInfo pos2 = CreateTRENDPosition(entry2Name, direction, e15, stop2Price, qty15, false, trendGroupId, true);
+                    activePositions[entry2Name] = pos2;
+
+                    linkedTRENDEntries[entry1Name] = entry2Name;
+                    linkedTRENDEntries[entry2Name] = entry1Name;
+
+                    Order entryOrder2 = direction == MarketPosition.Long
+                        ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, qty15, e15, 0, "", entry2Name)
+                        : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, qty15, e15, 0, "", entry2Name);
+                    entryOrders[entry2Name] = entryOrder2;
+                    masterEntryNames.Add(entry2Name);
+                }
+
+                double weightedEntryPrice = ((e9 * qty9) + (e15 * qty15)) / Math.Max(1, finalTotalQty);
+                weightedEntryPrice = Instrument.MasterInstrument.RoundToTickSize(weightedEntryPrice);
+
+                Print(string.Format("TREND RMA SPLIT: {0} | Qty={1} (EMA9={2}, EMA15={3}) | EMA9={4:F2} EMA15={5:F2} | Anchor={6:F2}",
+                    direction == MarketPosition.Long ? "LONG" : "SHORT",
+                    finalTotalQty,
+                    qty9,
+                    qty15,
+                    e9,
+                    e15,
+                    weightedEntryPrice));
+
+                if (EnableSIMA)
+                {
+                    ExecuteSmartDispatchEntry(
+                        "TREND_RMA",
+                        entryAction,
+                        finalTotalQty,
+                        weightedEntryPrice,
+                        OrderType.Limit,
+                        masterEntryNames.ToArray());
+                }
+
+                DeactivateTRENDMode();
+            }
+            catch (Exception ex)
+            {
+                Print("ERROR ExecuteTrendSplitEntry: " + ex.Message);
             }
         }
 
@@ -483,7 +544,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (lastKnownPrice > 0)
                 {
                      double diff = Math.Abs(lastKnownPrice - currentPrice);
-                     if (diff / currentPrice < 0.05) currentPrice = lastKnownPrice;
+                     if (currentPrice > 0 && diff / currentPrice < 0.05) currentPrice = lastKnownPrice;
                 }
 
                 // V11: Dynamic Anchor Direction Logic (UNUSED for Direction SafeGuard)
@@ -510,8 +571,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     clickPrice, currentPrice, direction));
 
                 // Calculate RMA stop and targets using ATR
-                double stopDistance = currentATR * RMAStopATRMultiplier;
-                stopDistance = Math.Min(stopDistance, 12.0); // V8.26: Increased Cap
+                double stopDistance = CalculateATRStopDistance(RMAStopATRMultiplier); // V12.30: Ceiling-rounded, MaximumStop cap
 
                 double entryPrice = clickPrice;
                 double stopPrice = direction == MarketPosition.Long
@@ -538,7 +598,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty);
 
                 string signalName = direction == MarketPosition.Long ? "RMALong" : "RMAShort";
-                string timestamp = DateTime.Now.ToString("HHmmss");
+                string timestamp = DateTime.Now.ToString("HHmmssffff");
                 string entryName = signalName + "_" + timestamp;
 
                 PositionInfo pos = new PositionInfo
@@ -598,9 +658,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     ExecuteSmartDispatchEntry("RMA", direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort, contracts, entryPrice, OrderType.Limit);
                 }
 
-                // Deactivate RMA mode after entry (one-shot)
                 DeactivateRMAMode();
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
@@ -621,8 +679,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             try
             {
-                double stopDistance = currentATR * RMAStopATRMultiplier;
-                stopDistance = Math.Min(stopDistance, 12.0); // Cap
+                double stopDistance = CalculateATRStopDistance(RMAStopATRMultiplier); // V12.30: Ceiling-rounded, MaximumStop cap
 
                 double entryPrice = Instrument.MasterInstrument.RoundToTickSize(price);
                 double stopPrice = direction == MarketPosition.Long
@@ -646,7 +703,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty);
 
                 string signalName = direction == MarketPosition.Long ? "IPCLong" : "IPCShort";
-                string entryName = signalName + "_" + DateTime.Now.ToString("HHmmss");
+                string entryName = signalName + "_" + DateTime.Now.ToString("HHmmssffff");
 
                 PositionInfo pos = new PositionInfo
                 {
@@ -692,15 +749,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void ActivateRMAMode()
         {
             isRMAModeActive = true;
-            UpdateRMAModeDisplay();
         }
 
         private void DeactivateRMAMode()
         {
             isRMAModeActive = false;
             isRMAButtonClicked = false;
-            isRKeyHeld = false;
-            UpdateRMAModeDisplay();
 
             // V12.14: Broadcast RMA deactivation to panel
             string deactivateConfig = string.Format(
@@ -785,7 +839,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty);
 
                 string signalName = direction == MarketPosition.Long ? "MOMOLong" : "MOMOShort";
-                string timestamp = DateTime.Now.ToString("HHmmss");
+                string timestamp = DateTime.Now.ToString("HHmmssffff");
                 string entryName = signalName + "_" + timestamp;
 
                 PositionInfo pos = new PositionInfo
@@ -817,14 +871,14 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 activePositions[entryName] = pos;
 
-                // Submit STOP MARKET order at clicked price (MOMO uses stop entries, not limit!)
+                // V12.Hardening: Use StopMarket (was StopLimit with limitPrice==stopPrice — never fills on fast breakouts)
                 Order entryOrder = direction == MarketPosition.Long
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.StopMarket, contracts, 0, entryPrice, "", entryName)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.StopMarket, contracts, 0, entryPrice, "", entryName);
 
                 entryOrders[entryName] = entryOrder;
 
-                Print(string.Format("MOMO ENTRY ORDER: {0} {1}@{2:F2} STOP | Stop: {3:F2}pt", signalName, contracts, entryPrice, stopDistance));
+                Print(string.Format("MOMO ENTRY ORDER: {0} {1}@{2:F2} STOP MKT | Stop: {3:F2}pt", signalName, contracts, entryPrice, stopDistance));
                 Print(string.Format("MOMO TARGETS: T1:{0}@{1:F2}(+{2:F2}pt) | T2:{3}@{4:F2} | T3:{5}@{6:F2} | T4:{7}@trail",
                     t1Qty, target1Price, Target1FixedPoints,
                     t2Qty, target2Price, t3Qty, target3Price, t4Qty));
@@ -837,7 +891,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Deactivate MOMO mode after entry (one-shot)
                 DeactivateMOMOMode();
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
@@ -853,19 +906,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                 DeactivateRMAMode();
             }
             isMOMOModeActive = true;
-            UpdateMOMOModeDisplay();
         }
 
         private void DeactivateMOMOMode()
         {
             isMOMOModeActive = false;
-            UpdateMOMOModeDisplay();
         }
 
-        private void UpdateMOMOModeDisplay()
-        {
-            // Legacy chart UI removed; no visual updates.
-        }
+        // V12.44: UpdateMOMOModeDisplay() removed — legacy chart UI no-op
 
         #endregion
 
@@ -969,8 +1017,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print(string.Format("V12.20: TREND Multiplier -> Mode={0} E1={1:F2}x E2={2:F2}x",
                     isTrendRmaMode ? "RMA" : "STD", e1MultTrend, e2MultTrend));
 
-                double e1StopDist = Math.Min(currentATR * e1MultTrend, MaximumStop); // V8.31: ATR-based, MaxStop cap
-                double e2StopDist = Math.Min(currentATR * e2MultTrend, MaximumStop); // V8.31: MaxStop cap
+                double e1StopDist = CalculateATRStopDistance(e1MultTrend); // V12.30: Ceiling-rounded
+                double e2StopDist = CalculateATRStopDistance(e2MultTrend); // V12.30: Ceiling-rounded
 
                 // Weighted average stop distance for the group
                 double weightedStopDist = (e1StopDist * (1.0/3.0)) + (e2StopDist * (2.0/3.0));
@@ -991,14 +1039,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                     MaxRiskAmount, e1StopDist, e2StopDist, weightedStopDist, totalContracts));
                 Print(string.Format("TREND SPLIT: E1Qty={0} (1/3) | E2Qty={1} (2/3)", entry1Qty, entry2Qty));
 
-                string timestamp = DateTime.Now.ToString("HHmmss");
+                string timestamp = DateTime.Now.ToString("HHmmssffff");
                 string trendGroupId = "TREND_" + timestamp;
                 string entry1Name = trendGroupId + "_E1";
                 string entry2Name = trendGroupId + "_E2";
 
                 // V8.31: ENTRY 1: 1/3 at 9 EMA with ATR-based stop from live EMA9
                 double entry1Price = ema9Value;
-                double e1AtrStop = currentATR * e1MultTrend;  // V8.31: ATR-based stop
+                double e1AtrStop = CalculateATRStopDistance(e1MultTrend);  // V12.30: Ceiling-rounded
                 double stop1Price = direction == MarketPosition.Long
                     ? ema9Value - e1AtrStop  // V8.31: Stop is 1.1x ATR below live EMA9
                     : ema9Value + e1AtrStop; // V8.31: Stop is 1.1x ATR above live EMA9
@@ -1006,8 +1054,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // ENTRY 2: 2/3 at 15 EMA with ATR trailing stop
                 double entry2Price = ema15Value;
                 double stop2Price = direction == MarketPosition.Long
-                    ? ema15Value - (currentATR * e2MultTrend)
-                    : ema15Value + (currentATR * e2MultTrend);
+                    ? ema15Value - CalculateATRStopDistance(e2MultTrend)
+                    : ema15Value + CalculateATRStopDistance(e2MultTrend);
 
                 // Create position info for Entry 1
                 PositionInfo pos1 = CreateTRENDPosition(entry1Name, direction, entry1Price, stop1Price,
@@ -1046,12 +1094,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (EnableSIMA)
                 {
                     // For Trend trades, followers get the full totalContracts qty split by the dispatcher
-                    ExecuteSmartDispatchEntry("TREND", direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort, totalContracts, currentPrice);
+                    ExecuteSmartDispatchEntry(
+                        "TREND",
+                        direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort,
+                        totalContracts,
+                        currentPrice,
+                        OrderType.Market,
+                        entry1Name,
+                        entry2Name);
                 }
 
                 // Deactivate TREND mode after placing orders
                 DeactivateTRENDMode();
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
@@ -1150,6 +1204,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
             }
 
+            // V12.1101E [B-2]: Session-scoped latch — one RETEST entry per OR session maximum.
+            // Resets automatically in ResetOR() at the start of each new session.
+            if (retestFiredThisSession)
+            {
+                Print("RETEST: Already fired this session — latch active, ignoring duplicate arm");
+                return;
+            }
+
             if (!orComplete)
             {
                 Print("Cannot execute RETEST - OR not complete yet");
@@ -1190,7 +1252,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 double multToUse = isRetestRmaMode ? RMAStopATRMultiplier : RetestATRMultiplier;
                 Print(string.Format("V12.20: RETEST Multiplier -> Mode={0} Using={1:F2}x",
                     isRetestRmaMode ? "RMA" : "STD", multToUse));
-                double stopDistance = Math.Min(currentATR * multToUse, MaximumStop); // V8.31: Use MaximumStop
+                double stopDistance = CalculateATRStopDistance(multToUse); // V12.30: Ceiling-rounded
 
                 double stopPrice = direction == MarketPosition.Long
                     ? entryPrice - stopDistance
@@ -1216,7 +1278,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty);
 
                 string signalName = direction == MarketPosition.Long ? "RetestLong" : "RetestShort";
-                string timestamp = DateTime.Now.ToString("HHmmss");
+                string timestamp = DateTime.Now.ToString("HHmmssffff");
                 string entryName = signalName + "_" + timestamp;
 
                 PositionInfo pos = new PositionInfo
@@ -1256,6 +1318,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, contracts, entryPrice, 0, "", entryName);
 
                 entryOrders[entryName] = entryOrder;
+                retestFiredThisSession = true;  // V12.1101E [B-2]: Arm latch — no further RETEST entries this session
 
                 Print(string.Format("RETEST ENTRY ORDER: {0} {1}@{2:F2} | ATR: {3:F2}", signalName, contracts, entryPrice, currentATR));
                 Print(string.Format("RETEST STOP: {0:F2} ({1:F2}x ATR = {2:F2}pts)",
@@ -1267,12 +1330,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // V12.1: Smart Dispatch to SIMA Fleet
                 if (EnableSIMA)
                 {
-                    ExecuteSmartDispatchEntry("RETEST", direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort, contracts, entryPrice);
+                    ExecuteSmartDispatchEntry(
+                        "RETEST",
+                        direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort,
+                        contracts,
+                        entryPrice,
+                        OrderType.Limit,
+                        entryName);
                 }
 
                 // Deactivate RETEST mode after entry (one-shot)
                 DeactivateRetestMode();
-                UpdateDisplay();
             }
             catch (Exception ex)
             {
@@ -1283,36 +1351,428 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void ActivateTRENDMode()
         {
             isTRENDModeActive = true;
-            UpdateTRENDModeDisplay();
         }
 
         private void DeactivateTRENDMode()
         {
             isTRENDModeActive = false;
-            UpdateTRENDModeDisplay();
         }
 
-        private void UpdateTRENDModeDisplay()
-        {
-            // Legacy chart UI removed; no visual updates.
-        }
+        // V12.44: UpdateTRENDModeDisplay() removed — legacy chart UI no-op
 
-        // V8.4: RETEST mode management
         private void ActivateRetestMode()
         {
             isRetestModeActive = true;
-            UpdateRetestModeDisplay();
         }
 
         private void DeactivateRetestMode()
         {
             isRetestModeActive = false;
-            UpdateRetestModeDisplay();
         }
 
-        private void UpdateRetestModeDisplay()
+        // V12.44: UpdateRetestModeDisplay() removed — legacy chart UI no-op
+
+        #endregion
+
+        #region Manual Entry Methods (V12.27 - Contextual UI)
+
+        /// <summary>
+        /// V12.27: TREND manual entry at user-specified price with 100% risk allocation.
+        /// Uses full MaxRiskAmount (no 1/3 + 2/3 split like standard TREND).
+        /// Submits a single limit order at the manual price.
+        /// </summary>
+        private void ExecuteTRENDManualEntry(double manualPrice, MarketPosition direction)
         {
-            // Legacy chart UI removed; no visual updates.
+            if (currentATR <= 0)
+            {
+                Print("V12.27 TREND_MANUAL: Ignored - ATR not available");
+                return;
+            }
+
+            try
+            {
+                double entryPrice = Instrument.MasterInstrument.RoundToTickSize(manualPrice);
+
+                // V12.27: 100% risk allocation - single position at manual price
+                // Stop uses RMA multiplier (Trend RMA Mode forced)
+                double stopDistance = CalculateATRStopDistance(RMAStopATRMultiplier); // V12.30: Ceiling-rounded
+                double stopPrice = direction == MarketPosition.Long
+                    ? entryPrice - stopDistance
+                    : entryPrice + stopDistance;
+
+                double target1Price = direction == MarketPosition.Long
+                    ? entryPrice + Target1FixedPoints
+                    : entryPrice - Target1FixedPoints;
+                double target2Price = direction == MarketPosition.Long
+                    ? entryPrice + (currentATR * RMAT1ATRMultiplier)
+                    : entryPrice - (currentATR * RMAT1ATRMultiplier);
+                double target3Price = direction == MarketPosition.Long
+                    ? entryPrice + (currentATR * RMAT2ATRMultiplier)
+                    : entryPrice - (currentATR * RMAT2ATRMultiplier);
+
+                // V12.27: 100% risk - full position size, no split
+                int contracts = CalculatePositionSize(stopDistance);
+                int t1Qty, t2Qty, t3Qty, t4Qty;
+                GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty);
+
+                string signalName = direction == MarketPosition.Long ? "TrendMnlLong" : "TrendMnlShort";
+                string entryName = signalName + "_" + DateTime.Now.ToString("HHmmssffff");
+
+                PositionInfo pos = CreateTRENDPosition(entryName, direction, entryPrice, stopPrice,
+                    contracts, true, "TMNL_" + DateTime.Now.Ticks, true);
+                activePositions[entryName] = pos;
+
+                // Submit LIMIT order at manual price
+                Order entryOrder = direction == MarketPosition.Long
+                    ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, contracts, entryPrice, 0, "", entryName)
+                    : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, contracts, entryPrice, 0, "", entryName);
+                entryOrders[entryName] = entryOrder;
+
+                Print(string.Format("V12.27 TREND_MANUAL: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | 100% Risk",
+                    direction, contracts, entryPrice, stopPrice));
+                Print(string.Format("V12.27 TREND_MANUAL TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2}",
+                    t1Qty, target1Price, t2Qty, target2Price, t3Qty, target3Price));
+
+                if (EnableSIMA)
+                {
+                    ExecuteSmartDispatchEntry(
+                        "TREND_MNL",
+                        direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort,
+                        contracts,
+                        entryPrice,
+                        OrderType.Limit,
+                        entryName);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Print("ERROR ExecuteTRENDManualEntry: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// V12.27: RETEST manual entry at user-specified price using Limit Order with RMA targets.
+        /// Uses RMA stop multiplier regardless of the R toggle state.
+        /// </summary>
+        private void ExecuteRetestManualEntry(double manualPrice, MarketPosition direction)
+        {
+            if (currentATR <= 0)
+            {
+                Print("V12.27 RETEST_MANUAL: Ignored - ATR not available");
+                return;
+            }
+
+            try
+            {
+                double entryPrice = Instrument.MasterInstrument.RoundToTickSize(manualPrice);
+
+                // V12.27: Always uses RMA multiplier for manual retest entries
+                double stopDistance = CalculateATRStopDistance(RMAStopATRMultiplier); // V12.30: Ceiling-rounded
+                double stopPrice = direction == MarketPosition.Long
+                    ? entryPrice - stopDistance
+                    : entryPrice + stopDistance;
+
+                double target1Price = direction == MarketPosition.Long
+                    ? entryPrice + Target1FixedPoints
+                    : entryPrice - Target1FixedPoints;
+                double target2Price = direction == MarketPosition.Long
+                    ? entryPrice + (currentATR * RMAT1ATRMultiplier)
+                    : entryPrice - (currentATR * RMAT1ATRMultiplier);
+                double target3Price = direction == MarketPosition.Long
+                    ? entryPrice + (currentATR * RMAT2ATRMultiplier)
+                    : entryPrice - (currentATR * RMAT2ATRMultiplier);
+
+                int contracts = CalculatePositionSize(stopDistance);
+                int t1Qty, t2Qty, t3Qty, t4Qty;
+                GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty);
+
+                string signalName = direction == MarketPosition.Long ? "RetestMnlLong" : "RetestMnlShort";
+                string entryName = signalName + "_" + DateTime.Now.ToString("HHmmssffff");
+
+                PositionInfo pos = new PositionInfo
+                {
+                    SignalName = entryName,
+                    Direction = direction,
+                    TotalContracts = contracts,
+                    T1Contracts = t1Qty,
+                    T2Contracts = t2Qty,
+                    T3Contracts = t3Qty,
+                    T4Contracts = t4Qty,
+                    RemainingContracts = contracts,
+                    EntryPrice = entryPrice,
+                    InitialStopPrice = stopPrice,
+                    CurrentStopPrice = stopPrice,
+                    Target1Price = target1Price,
+                    Target2Price = target2Price,
+                    Target3Price = target3Price,
+                    EntryFilled = false,
+                    T1Filled = false,
+                    T2Filled = false,
+                    T3Filled = false,
+                    BracketSubmitted = false,
+                    ExtremePriceSinceEntry = entryPrice,
+                    CurrentTrailLevel = 0,
+                    IsRMATrade = true,  // Uses RMA targets
+                    IsRetestTrade = true,
+                    RetestTrailActivated = false
+                };
+
+                activePositions[entryName] = pos;
+
+                // Submit LIMIT order at manual price
+                Order entryOrder = direction == MarketPosition.Long
+                    ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, contracts, entryPrice, 0, "", entryName)
+                    : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, contracts, entryPrice, 0, "", entryName);
+                entryOrders[entryName] = entryOrder;
+
+                Print(string.Format("V12.27 RETEST_MANUAL: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | RMA Targets",
+                    direction, contracts, entryPrice, stopPrice));
+                Print(string.Format("V12.27 RETEST_MANUAL TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2}",
+                    t1Qty, target1Price, t2Qty, target2Price, t3Qty, target3Price));
+
+                if (EnableSIMA)
+                {
+                    ExecuteSmartDispatchEntry(
+                        "RETEST_MNL",
+                        direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort,
+                        contracts,
+                        entryPrice,
+                        OrderType.Limit,
+                        entryName);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Print("ERROR ExecuteRetestManualEntry: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// V12.27: FFMA manual entry using Limit Order at user-specified price.
+        /// Uses ATR-based stop (same as standard FFMA but with Limit instead of Market).
+        /// </summary>
+        private void ExecuteFFMALimitEntry(double manualPrice, MarketPosition direction)
+        {
+            if (currentATR <= 0)
+            {
+                Print("V12.27 FFMA_LIMIT: Ignored - ATR not available");
+                return;
+            }
+
+            try
+            {
+                double entryPrice = Instrument.MasterInstrument.RoundToTickSize(manualPrice);
+
+                // V12.27: ATR-based stop (mirrors standard FFMA but won't use candle high/low since manual)
+                double stopDistance = CalculateATRStopDistance(RMAStopATRMultiplier); // V12.30: Ceiling-rounded
+                double stopPrice = direction == MarketPosition.Long
+                    ? entryPrice - stopDistance
+                    : entryPrice + stopDistance;
+
+                if (stopDistance < tickSize * 2)
+                {
+                    Print(string.Format("V12.27 FFMA_LIMIT: Stop too tight ({0:F2}pts) - using 2 tick minimum", stopDistance));
+                    stopPrice = direction == MarketPosition.Long
+                        ? entryPrice - (tickSize * 2)
+                        : entryPrice + (tickSize * 2);
+                    stopDistance = tickSize * 2;
+                }
+
+                double target1Price = direction == MarketPosition.Long
+                    ? entryPrice + Target1FixedPoints
+                    : entryPrice - Target1FixedPoints;
+                double target2Price = direction == MarketPosition.Long
+                    ? entryPrice + (currentATR * RMAT1ATRMultiplier)
+                    : entryPrice - (currentATR * RMAT1ATRMultiplier);
+                double target3Price = direction == MarketPosition.Long
+                    ? entryPrice + (currentATR * RMAT2ATRMultiplier)
+                    : entryPrice - (currentATR * RMAT2ATRMultiplier);
+
+                int contracts = CalculatePositionSize(stopDistance);
+                int t1Qty, t2Qty, t3Qty, t4Qty;
+                GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty);
+
+                string signalName = direction == MarketPosition.Long ? "FFMAMnlLong" : "FFMAMnlShort";
+                string entryName = signalName + "_" + DateTime.Now.ToString("HHmmssffff");
+
+                PositionInfo pos = new PositionInfo
+                {
+                    SignalName = entryName,
+                    Direction = direction,
+                    TotalContracts = contracts,
+                    T1Contracts = t1Qty,
+                    T2Contracts = t2Qty,
+                    T3Contracts = t3Qty,
+                    T4Contracts = t4Qty,
+                    RemainingContracts = contracts,
+                    EntryPrice = entryPrice,
+                    InitialStopPrice = stopPrice,
+                    CurrentStopPrice = stopPrice,
+                    Target1Price = target1Price,
+                    Target2Price = target2Price,
+                    Target3Price = target3Price,
+                    EntryFilled = false,
+                    T1Filled = false,
+                    T2Filled = false,
+                    T3Filled = false,
+                    BracketSubmitted = false,
+                    ExtremePriceSinceEntry = entryPrice,
+                    CurrentTrailLevel = 0,
+                    IsRMATrade = false,
+                    IsFFMATrade = true
+                };
+
+                activePositions[entryName] = pos;
+
+                // V12.27: Submit LIMIT order (not Market like standard FFMA)
+                Order entryOrder = direction == MarketPosition.Long
+                    ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, contracts, entryPrice, 0, "", entryName)
+                    : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, contracts, entryPrice, 0, "", entryName);
+                entryOrders[entryName] = entryOrder;
+
+                Print(string.Format("V12.27 FFMA_LIMIT: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | ATR-based",
+                    direction, contracts, entryPrice, stopPrice));
+                Print(string.Format("V12.27 FFMA_LIMIT TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2}",
+                    t1Qty, target1Price, t2Qty, target2Price, t3Qty, target3Price));
+
+                if (EnableSIMA)
+                {
+                    ExecuteSmartDispatchEntry("FFMA_MNL", direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort, contracts, entryPrice, OrderType.Limit, entryName);
+                }
+
+                DeactivateFFMAMode();
+            }
+            catch (Exception ex)
+            {
+                Print("ERROR ExecuteFFMALimitEntry: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// V12.27: FFMA Manual Market entry — instant market order, direction toward 9 EMA.
+        /// Stop at entry candle high/low (same as Auto FFMA).
+        /// </summary>
+        private void ExecuteFFMAManualMarketEntry()
+        {
+            if (currentATR <= 0)
+            {
+                Print("V12.27 FFMA_MANUAL_MARKET: Ignored - ATR not available");
+                return;
+            }
+
+            if (ema9 == null)
+            {
+                Print("V12.27 FFMA_MANUAL_MARKET: Ignored - EMA9 not initialized");
+                return;
+            }
+
+            try
+            {
+                double currentPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
+                double ema9Value = ema9[0];
+
+                // V12.27: Direction always toward 9 EMA
+                // Price below EMA9 = LONG (price moving up toward EMA)
+                // Price above EMA9 = SHORT (price moving down toward EMA)
+                MarketPosition direction;
+                if (currentPrice < ema9Value)
+                {
+                    direction = MarketPosition.Long;
+                    Print(string.Format("V12.27 FFMA_MANUAL_MARKET: Price below EMA9 ({0:F2} < {1:F2}) = LONG toward EMA",
+                        currentPrice, ema9Value));
+                }
+                else
+                {
+                    direction = MarketPosition.Short;
+                    Print(string.Format("V12.27 FFMA_MANUAL_MARKET: Price above EMA9 ({0:F2} > {1:F2}) = SHORT toward EMA",
+                        currentPrice, ema9Value));
+                }
+
+                double entryPrice = currentPrice; // Market order
+
+                // Stop at entry candle high/low (same as Auto FFMA)
+                double stopPrice = direction == MarketPosition.Long ? Low[0] : High[0];
+                double stopDistance = Math.Min(Math.Abs(entryPrice - stopPrice), MaximumStop);
+
+                if (stopDistance < tickSize * 2)
+                {
+                    Print(string.Format("V12.27 FFMA_MANUAL_MARKET: Stop too tight ({0:F2}pts) - using 2 tick minimum", stopDistance));
+                    stopPrice = direction == MarketPosition.Long
+                        ? entryPrice - (tickSize * 2)
+                        : entryPrice + (tickSize * 2);
+                    stopDistance = tickSize * 2;
+                }
+
+                double target1Price = direction == MarketPosition.Long
+                    ? entryPrice + Target1FixedPoints
+                    : entryPrice - Target1FixedPoints;
+                double target2Price = direction == MarketPosition.Long
+                    ? entryPrice + (currentATR * RMAT1ATRMultiplier)
+                    : entryPrice - (currentATR * RMAT1ATRMultiplier);
+                double target3Price = direction == MarketPosition.Long
+                    ? entryPrice + (currentATR * RMAT2ATRMultiplier)
+                    : entryPrice - (currentATR * RMAT2ATRMultiplier);
+
+                int contracts = CalculatePositionSize(stopDistance);
+                int t1Qty, t2Qty, t3Qty, t4Qty;
+                GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty);
+
+                string signalName = direction == MarketPosition.Long ? "FFMAMnlMktLong" : "FFMAMnlMktShort";
+                string entryName = signalName + "_" + DateTime.Now.ToString("HHmmssffff");
+
+                PositionInfo pos = new PositionInfo
+                {
+                    SignalName = entryName,
+                    Direction = direction,
+                    TotalContracts = contracts,
+                    T1Contracts = t1Qty,
+                    T2Contracts = t2Qty,
+                    T3Contracts = t3Qty,
+                    T4Contracts = t4Qty,
+                    RemainingContracts = contracts,
+                    EntryPrice = entryPrice,
+                    InitialStopPrice = stopPrice,
+                    CurrentStopPrice = stopPrice,
+                    Target1Price = target1Price,
+                    Target2Price = target2Price,
+                    Target3Price = target3Price,
+                    EntryFilled = false,
+                    T1Filled = false,
+                    T2Filled = false,
+                    T3Filled = false,
+                    BracketSubmitted = false,
+                    ExtremePriceSinceEntry = entryPrice,
+                    CurrentTrailLevel = 0,
+                    IsRMATrade = false,
+                    IsFFMATrade = true
+                };
+
+                activePositions[entryName] = pos;
+
+                // Submit MARKET order (immediate execution)
+                Order entryOrder = direction == MarketPosition.Long
+                    ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Market, contracts, 0, 0, "", entryName)
+                    : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Market, contracts, 0, 0, "", entryName);
+                entryOrders[entryName] = entryOrder;
+
+                Print(string.Format("V12.27 FFMA_MANUAL_MARKET: {0} {1}@MARKET | Stop: {2:F2} (candle {3}) | Toward EMA9={4:F2}",
+                    direction, contracts, stopPrice, direction == MarketPosition.Long ? "low" : "high", ema9Value));
+                Print(string.Format("V12.27 FFMA_MANUAL_MARKET TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2}",
+                    t1Qty, target1Price, t2Qty, target2Price, t3Qty, target3Price));
+
+                if (EnableSIMA)
+                {
+                    ExecuteSmartDispatchEntry("FFMA_MNL_MKT", direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort, contracts, entryPrice, OrderType.Market, entryName);
+                }
+
+                DeactivateFFMAMode();
+            }
+            catch (Exception ex)
+            {
+                Print("ERROR ExecuteFFMAManualMarketEntry: " + ex.Message);
+            }
         }
 
         #endregion

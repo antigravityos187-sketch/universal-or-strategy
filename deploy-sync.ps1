@@ -22,6 +22,10 @@ $Mappings = @(
     @{ src = "UniversalORStrategyV12_002_Dev.SIMA.cs"; dst = Join-Path $NtStrategyDir "UniversalORStrategyV12_002_Dev.SIMA.cs" },
     @{ src = "UniversalORStrategyV12_002_Dev.REAPER.cs"; dst = Join-Path $NtStrategyDir "UniversalORStrategyV12_002_Dev.REAPER.cs" },
     @{ src = "UniversalORStrategyV12_002_Dev.UI.cs"; dst = Join-Path $NtStrategyDir "UniversalORStrategyV12_002_Dev.UI.cs" },
+    @{ src = "UniversalORStrategyV12_002_Dev.Symmetry.cs"; dst = Join-Path $NtStrategyDir "UniversalORStrategyV12_002_Dev.Symmetry.cs" },
+    @{ src = "UniversalORStrategyV12_002_Dev.LogicAudit.cs"; dst = Join-Path $NtStrategyDir "UniversalORStrategyV12_002_Dev.LogicAudit.cs" },
+    @{ src = "UniversalORStrategyV12_002_Dev.Trailing.cs"; dst = Join-Path $NtStrategyDir "UniversalORStrategyV12_002_Dev.Trailing.cs" },
+    @{ src = "UniversalORStrategyV12_002_Dev.Properties.cs"; dst = Join-Path $NtStrategyDir "UniversalORStrategyV12_002_Dev.Properties.cs" },
     
     # Shared Components
     @{ src = "SignalBroadcaster.cs"; dst = Join-Path $NtStrategyDir "SignalBroadcaster.cs" }

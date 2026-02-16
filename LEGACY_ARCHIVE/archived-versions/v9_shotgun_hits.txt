@@ -1,3 +1,0 @@
-=== SHOTGUN TEST STARTED ===
-Looking for valid CUSTOM fields in current TOS watchlist configuration...
-

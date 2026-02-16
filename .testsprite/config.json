@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "testType": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5001",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "universal-or-strategy",
+    "projectPath": "C:\\WSGTA\\universal-or-strategy",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-C2FH9VhluyBnbbSVptvQY1bKDj0HFZZzhJ49V2ClKwwyet44Q_QBnh8MqlA0XUK7kTIsfBpg_3sswb5z7x5pDCcAMMX_qGdXHjE5FE5BKi_ir6gUVs8xhtT64eKkSQruOHo"
+    }
+  },
+  "serverPort": 58817,
+  "proxy": "http://76484c02-ee6d-4569-9416-f0642fa30843:NXQTX292mAbMf11IHeqMOQVosq0vXEtL@tun.testsprite.com:8080"
+}
