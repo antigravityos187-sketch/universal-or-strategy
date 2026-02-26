@@ -1,0 +1,74 @@
+{
+  "name": "Universal OR Strategy V12",
+  "logo": {
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373"
+  },
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "mailto:support@example.com"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "https://example.com"
+  },
+  "tabs": [
+    {
+      "name": "Guides",
+      "url": "docs"
+    },
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "docs/architecture",
+        "docs/risk_management"
+      ]
+    },
+    {
+      "group": "Module Reference",
+      "pages": [
+        {
+          "group": "Core Logic",
+          "pages": [
+            "docs/modules/core-logic",
+            "docs/modules/logic-audit"
+          ]
+        },
+        {
+          "group": "Trade Execution",
+          "pages": [
+            "docs/modules/entries",
+            "docs/modules/orders",
+            "docs/modules/trailing"
+          ]
+        },
+        {
+          "group": "Fleet Management",
+          "pages": [
+            "docs/modules/sima",
+            "docs/modules/reaper",
+            "docs/modules/symmetry"
+          ]
+        }
+      ]
+    }
+  ],
+  "footerSocials": {
+    "x": "https://x.com/mintlify",
+    "github": "https://github.com/mintlify"
+  }
+}

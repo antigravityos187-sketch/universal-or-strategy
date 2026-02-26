@@ -1,9 +1,0 @@
-{
-  "last_updated": "2026-01-28T06:07:00",
-  "versions": {
-    "V8": "UniversalORStrategyV8_22.cs",
-    "V9": "UniversalOR_V9_013_FINAL.cs",
-    "V10": "UniversalORStrategyV10_2.cs"
-  },
-  "notes": "V10_2 is the current production lead. V8_22 is the hardened fallback."
-}
