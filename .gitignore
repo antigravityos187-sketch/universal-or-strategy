@@ -1,17 +1,26 @@
-nul
-~$*
-.env
-.agent-cli/
-.agent/state/
-.agent/config/
-.agent/mcp-servers/
-.claude/
-.gemini/
-dotnet_sdk/
-dotnet-install.ps1
+# MS Build / NinjaTrader defaults
 bin/
 obj/
-*.user
-*.suo
-*.userosscache
-*.sln.doccache
+*.bak*
+
+# AI System Plumbing (Claude Code / MCP / Antigravity)
+.agent/
+.agents/
+.mcp/
+
+# JavaScript / TestSprite noise
+node_modules/
+**/node_modules/
+.npm/
+package-lock.json
+testsprite_tests/
+
+# Temporary / Temp files
+~$*
+*.tmp
+*.log
+
+# Sensitive Info / Env
+.env
+auth.json
+*.key
