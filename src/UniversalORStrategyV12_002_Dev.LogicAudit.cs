@@ -68,6 +68,11 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Audit Case 3: Target Distribution (Priority Fill)
                 Print("[AUDIT] CASE 3: TARGET DISTRIBUTION (5-TARGET PRIORITY + RUNNER)");
+                // [BUILD 926]: Print the active count so this audit is not misleading.
+                // NOTE: If this runs before the IPC app connects and sends COUNT:n, activeTargetCount
+                // will reflect the NinjaTrader property default (often 1), making T1 receive all contracts.
+                // In real trades, COUNT is set by the IPC app AFTER connect — distribution is correct there.
+                Print(string.Format("  [INFO] activeTargetCount at audit time = {0} (IPC app may not have connected yet)", activeTargetCount));
                 int[] testQuantities = { 1, 3, 5, 10 };
                 foreach (int qty in testQuantities)
                 {

@@ -1280,16 +1280,28 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // --- Step 2: Resolve follower entry names via Symmetry dispatch context ---
 
-            // [BUILD 924 – Fix A] Derive master TradeType for type-strict fallback filter.
+            // [BUILD 926 – Codex P1 Fix]: Derive master TradeType via authoritative TradeTypeTag first,
+            // then fall back to the boolean-flag chain (for master positions, booleans are accurate).
+            // NOTE: For FOLLOWERS, IsRMATrade=true on ALL entries (stamped by ExecuteSmartDispatchEntry
+            // for trailing behavior) — it is NOT reliable as a type discriminator. Always use TradeTypeTag.
             string masterTradeType = null;
             if (activePositions.TryGetValue(masterEntryName, out var masterPosForType))
             {
-                if (masterPosForType.IsTRENDTrade)       masterTradeType = "TREND";
-                else if (masterPosForType.IsRMATrade)    masterTradeType = "RMA";
-                else if (masterPosForType.IsMOMOTrade)   masterTradeType = "MOMO";
-                else if (masterPosForType.IsFFMATrade)   masterTradeType = "FFMA";
-                else if (masterPosForType.IsRetestTrade) masterTradeType = "RETEST";
-                else                                     masterTradeType = "OR";
+                if (!string.IsNullOrEmpty(masterPosForType.TradeTypeTag))
+                {
+                    // Use the authoritative stamp if present (Build 926+)
+                    masterTradeType = masterPosForType.TradeTypeTag;
+                }
+                else
+                {
+                    // Legacy fallback: derive from booleans (master booleans are accurate; follower booleans are not)
+                    if (masterPosForType.IsTRENDTrade)       masterTradeType = "TREND";
+                    else if (masterPosForType.IsRMATrade)    masterTradeType = "RMA";
+                    else if (masterPosForType.IsMOMOTrade)   masterTradeType = "MOMO";
+                    else if (masterPosForType.IsFFMATrade)   masterTradeType = "FFMA";
+                    else if (masterPosForType.IsRetestTrade) masterTradeType = "RETEST";
+                    else                                     masterTradeType = "OR";
+                }
             }
 
             IEnumerable<string> followerEntryNames;
@@ -1302,27 +1314,35 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else
             {
-                // [BUILD 924 – Fix A] Fallback now filters by TradeType — prevents TREND/RMA/OR
-                // price moves from broadcasting to non-related follower accounts.
+                // [BUILD 926 – Codex P1 Fix]: Fallback type match now uses TradeTypeTag exclusively.
+                // Previously used IsRMATrade which is stamped true on ALL followers — causing OR followers
+                // to fail the OR predicate (!IsRMATrade) and incorrectly route into RMA propagation.
                 var fallback = new List<string>();
                 foreach (var kvp in activePositions)
                 {
                     if (!kvp.Value.IsFollower || kvp.Value.ExecutingAccount == null) continue;
-                    bool typeMatch = (masterTradeType == null)
-                        || (masterTradeType == "TREND"  && kvp.Value.IsTRENDTrade)
-                        || (masterTradeType == "RMA"    && kvp.Value.IsRMATrade)
-                        || (masterTradeType == "MOMO"   && kvp.Value.IsMOMOTrade)
-                        || (masterTradeType == "FFMA"   && kvp.Value.IsFFMATrade)
-                        || (masterTradeType == "RETEST" && kvp.Value.IsRetestTrade)
-                        || (masterTradeType == "OR"     && !kvp.Value.IsTRENDTrade
-                                                        && !kvp.Value.IsRMATrade
-                                                        && !kvp.Value.IsMOMOTrade
-                                                        && !kvp.Value.IsFFMATrade
-                                                        && !kvp.Value.IsRetestTrade);
+                    bool typeMatch;
+                    if (!string.IsNullOrEmpty(kvp.Value.TradeTypeTag))
+                    {
+                        // Build 926+: reliable exact match
+                        typeMatch = (masterTradeType == null) || (kvp.Value.TradeTypeTag == masterTradeType);
+                    }
+                    else
+                    {
+                        // Legacy pre-Tag followers: fall back to boolean chain (imperfect but preserved for compatibility)
+                        typeMatch = (masterTradeType == null)
+                            || (masterTradeType == "TREND"  && kvp.Value.IsTRENDTrade)
+                            || (masterTradeType == "MOMO"   && kvp.Value.IsMOMOTrade)
+                            || (masterTradeType == "FFMA"   && kvp.Value.IsFFMATrade)
+                            || (masterTradeType == "RETEST" && kvp.Value.IsRetestTrade)
+                            || (masterTradeType == "RMA"    && kvp.Value.IsRMATrade && !kvp.Value.IsTRENDTrade && !kvp.Value.IsRetestTrade)
+                            || (masterTradeType == "OR"     && !kvp.Value.IsTRENDTrade && !kvp.Value.IsMOMOTrade && !kvp.Value.IsFFMATrade && !kvp.Value.IsRetestTrade && !kvp.Value.IsTRENDTrade);
+                    }
                     if (typeMatch)
                         fallback.Add(kvp.Key);
                 }
                 followerEntryNames = fallback;
+
             }
 
             // --- Step 3: Apply move to each linked follower ---
