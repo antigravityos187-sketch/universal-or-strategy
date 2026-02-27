@@ -439,7 +439,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                             BracketSubmitted = isMarketEntry, // V12.7: Brackets deferred for Limit entries
                             TicksSinceEntry = 0,
                             ExtremePriceSinceEntry = entryPrice,
-                            CurrentTrailLevel = 0
+                            CurrentTrailLevel = 0,
+                            // [BUILD 926 – Codex P1 Fix]: Authoritative type tag for PropagatePrice routing.
+                            // IsRMATrade=true on ALL followers (trailing behavior), so it cannot be used
+                            // as a type discriminator. TradeTypeTag is the reliable source of truth.
+                            TradeTypeTag = tradeType,
                         };
 
                         // V12.7: Submit only entry for Limit; market entries include stop + non-runner targets.

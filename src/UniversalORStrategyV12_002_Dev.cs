@@ -41,7 +41,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class UniversalORStrategyV12_002_Dev : Strategy
     {
-        public const string BUILD_TAG = "925";  // V12.925: P1 Fix – Follower Stop Lifecycle Breach (ExecutingAccount.Cancel routing)
+        public const string BUILD_TAG = "926";  // V12.926: Codex P1 – IsRMATrade misclassification fix + TradeType field + Audit diagnostic
 
         #region Variables
 
@@ -307,6 +307,13 @@ namespace NinjaTrader.NinjaScript.Strategies
             // V12.1: SIMA Multi-Account tracking
             public Account ExecutingAccount;    // The account this position belongs to (null = Master)
             public bool IsFollower;             // True if this is a SIMA follower position
+
+            // [BUILD 926 – Codex P1 Fix]: Authoritative trade-type identifier.
+            // ExecuteSmartDispatchEntry stamps IsRMATrade=true on ALL followers for trailing
+            // behavior, making it unreliable as a type discriminator in PropagateMasterPriceMove.
+            // TradeTypeTag is the single source of truth for type-based routing.
+            // Values: "OR", "RMA", "TREND", "RETEST", "MOMO", "FFMA", or null (unknown/pre-Tag builds).
+            public string TradeTypeTag;
         }
 
         private TargetMode GetTargetMode(int targetNumber)
