@@ -570,147 +570,132 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             try
             {
-                // Check for EXTERNAL close (position went flat from outside strategy)
                 if (marketPosition == MarketPosition.Flat)
-                {
-                    // [H-14]: Sync expectedPositions on flat. Build 931: guard against spurious flat.
-                    string flatAcctName = position?.Account?.Name;
-                    if (!string.IsNullOrEmpty(flatAcctName))
-                    {
-                        string flatExpKey = ExpKey(flatAcctName);
-                        bool hasSyncPending = IsDispatchSyncPending(flatExpKey);
-                        bool hasPendingEntry = false;
-                        foreach (var kvp in entryOrders.ToArray())
-                        {
-                            var ord = kvp.Value;
-                            if (ord != null
-                                && !IsOrderTerminal(ord.OrderState)
-                                && activePositions.TryGetValue(kvp.Key, out var pos)
-                                && pos.ExecutingAccount != null
-                                && pos.ExecutingAccount.Name == flatAcctName)
-                            {
-                                hasPendingEntry = true;
-                                break;
-                            }
-                        }
+                    HandleFlatPositionUpdate(position);
 
-                        bool hasActivePositionForAcct = false;
-                        if (!hasPendingEntry)
-                        {
-                            foreach (var kvp in activePositions.ToArray())
-                            {
-                                if (kvp.Value.ExecutingAccount != null
-                                    && kvp.Value.ExecutingAccount.Name == flatAcctName
-                                    && !kvp.Value.EntryFilled)
-                                {
-                                    hasActivePositionForAcct = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (hasPendingEntry || hasActivePositionForAcct || hasSyncPending)
-                        {
-                            string skipReason = hasPendingEntry
-                                ? "pending entry in flight"
-                                : (hasActivePositionForAcct ? "activePositions metadata present" : "dispatch sync pending");
-                            Print($"[OnPositionUpdate] H-14 SKIP: {flatExpKey} broker=Flat but {skipReason} — not resetting expectedPositions");
-                        }
-                        else
-                        {
-                            SetExpectedPositionLocked(flatExpKey, 0);
-                            Print($"[OnPositionUpdate] expectedPositions cleared for {flatExpKey} (position flat)");
-                        }
-                    }
-
-                    // V8.22: Even if activePositions is empty (strategy restart), we should scan for orphans
-                    if (activePositions.Count == 0)
-                    {
-                        Print("EXTERNAL CLOSE/RESTART DETECTED - Scanning for orphaned bracket orders...");
-                        ReconcileOrphanedOrders("Position went flat");
-                        return;
-                    }
-
-                    // Check if we still have any positions that think they're filled
-                    List<string> positionsToCleanup = new List<string>();
-
-                    // V8.30: Thread-safe snapshot iteration
-                    foreach (var kvp in activePositions.ToArray())
-                    {
-                        if (!activePositions.ContainsKey(kvp.Key)) continue;
-                        PositionInfo pos = kvp.Value;
-                        if (pos.EntryFilled && pos.RemainingContracts > 0)
-                        {
-                            Print("EXTERNAL CLOSE DETECTED - Position went flat. Cancelling orphaned orders...");
-
-                            // V8.30: Thread-safe order access
-                            if (stopOrders.TryGetValue(kvp.Key, out var stopOrder))
-                            {
-                                if (stopOrder != null && (stopOrder.OrderState == OrderState.Working || stopOrder.OrderState == OrderState.Accepted))
-                                {
-                                    CancelOrder(stopOrder);
-                                }
-                            }
-
-                            // Cancel orphaned target orders (T1-T5)
-                            for (int tNum = 1; tNum <= 5; tNum++)
-                            {
-                                var tDict = GetTargetOrdersDictionary(tNum);
-                                if (tDict != null && tDict.TryGetValue(kvp.Key, out var tOrder))
-                                {
-                                    if (tOrder != null && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted))
-                                        CancelOrder(tOrder);
-                                }
-                            }
-
-                            positionsToCleanup.Add(kvp.Key);
-                        }
-                    }
-
-                    // REMOVED v5.7: DO NOT cancel unrelated pending entry orders!
-                    // The old logic here cancelled ALL pending entries when position went flat,
-                    // which incorrectly cancelled opposite-side OR entries (e.g., ORShort when ORLong closed)
-                    // Pending entries should remain active - they are independent trades!
-
-                    // Clean up positions
-                    foreach (string key in positionsToCleanup)
-                    {
-                        CleanupPosition(key);
-                    }
-
-                    if (positionsToCleanup.Count > 0)
-                    {
-                        Print("Cleanup complete - Strategy still running, ready for new entries.");
-                    }
-                }
-
-                // V14 ADAPTIVE VISIBILITY: Broadcast current position size to panel
-                // This allows the panel to hide/show T1-T5 buttons based on trade size
-                // V14 FIX: Use State check instead of Connection.Status to avoid CS0120
-                if (State == State.Realtime)
-                {
-                    // Build 1102Y-V2 [U-04]: Broadcast InitialTargetCount from live master position when in trade;
-                    // fall back to dashboard activeTargetCount when flat.
-                    int syncCount = activeTargetCount;
-                    if (Position != null && Position.MarketPosition != MarketPosition.Flat)
-                    {
-                        foreach (var kvp in activePositions.ToArray())
-                        {
-                            PositionInfo p = kvp.Value;
-                            if (!p.IsFollower && p.EntryFilled && p.RemainingContracts > 0 && p.InitialTargetCount > 0)
-                            {
-                                syncCount = p.InitialTargetCount;
-                                break;
-                            }
-                        }
-                    }
-                    SendResponseToRemote($"SYNC_TARGET_STATE|{syncCount}");
-                }
+                BroadcastSyncTargetState();
             }
             catch (Exception ex)
             {
                 Print("ERROR OnPositionUpdate: " + ex.Message);
             }
+        }
+
+        // Build 935 [CB-B935-001]: Flat-position cleanup extracted from OnPositionUpdate.
+        private void HandleFlatPositionUpdate(Position position)
+        {
+            // [H-14]: Sync expectedPositions on flat. Build 931: guard against spurious flat.
+            string flatAcctName = position?.Account?.Name;
+            if (!string.IsNullOrEmpty(flatAcctName))
+            {
+                string flatExpKey = ExpKey(flatAcctName);
+                bool hasSyncPending = IsDispatchSyncPending(flatExpKey);
+                bool hasPendingEntry = false;
+                foreach (var kvp in entryOrders.ToArray())
+                {
+                    var ord = kvp.Value;
+                    if (ord != null
+                        && !IsOrderTerminal(ord.OrderState)
+                        && activePositions.TryGetValue(kvp.Key, out var pos)
+                        && pos.ExecutingAccount != null
+                        && pos.ExecutingAccount.Name == flatAcctName)
+                    {
+                        hasPendingEntry = true;
+                        break;
+                    }
+                }
+
+                bool hasActivePositionForAcct = false;
+                if (!hasPendingEntry)
+                {
+                    foreach (var kvp in activePositions.ToArray())
+                    {
+                        if (kvp.Value.ExecutingAccount != null
+                            && kvp.Value.ExecutingAccount.Name == flatAcctName
+                            && !kvp.Value.EntryFilled)
+                        {
+                            hasActivePositionForAcct = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasPendingEntry || hasActivePositionForAcct || hasSyncPending)
+                {
+                    string skipReason = hasPendingEntry
+                        ? "pending entry in flight"
+                        : (hasActivePositionForAcct ? "activePositions metadata present" : "dispatch sync pending");
+                    Print($"[OnPositionUpdate] H-14 SKIP: {flatExpKey} broker=Flat but {skipReason} — not resetting expectedPositions");
+                }
+                else
+                {
+                    SetExpectedPositionLocked(flatExpKey, 0);
+                    Print($"[OnPositionUpdate] expectedPositions cleared for {flatExpKey} (position flat)");
+                }
+            }
+
+            // V8.22: Scan for orphans even if activePositions is empty (strategy restart)
+            if (activePositions.Count == 0)
+            {
+                Print("EXTERNAL CLOSE/RESTART DETECTED - Scanning for orphaned bracket orders...");
+                ReconcileOrphanedOrders("Position went flat");
+                return;
+            }
+
+            List<string> positionsToCleanup = new List<string>();
+            foreach (var kvp in activePositions.ToArray())
+            {
+                if (!activePositions.ContainsKey(kvp.Key)) continue;
+                PositionInfo pos = kvp.Value;
+                if (pos.EntryFilled && pos.RemainingContracts > 0)
+                {
+                    Print("EXTERNAL CLOSE DETECTED - Position went flat. Cancelling orphaned orders...");
+                    if (stopOrders.TryGetValue(kvp.Key, out var stopOrder))
+                    {
+                        if (stopOrder != null && (stopOrder.OrderState == OrderState.Working || stopOrder.OrderState == OrderState.Accepted))
+                            CancelOrder(stopOrder);
+                    }
+                    for (int tNum = 1; tNum <= 5; tNum++)
+                    {
+                        var tDict = GetTargetOrdersDictionary(tNum);
+                        if (tDict != null && tDict.TryGetValue(kvp.Key, out var tOrder))
+                        {
+                            if (tOrder != null && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted))
+                                CancelOrder(tOrder);
+                        }
+                    }
+                    positionsToCleanup.Add(kvp.Key);
+                }
+            }
+
+            foreach (string key in positionsToCleanup)
+                CleanupPosition(key);
+
+            if (positionsToCleanup.Count > 0)
+                Print("Cleanup complete - Strategy still running, ready for new entries.");
+        }
+
+        // Build 935 [CB-B935-002]: Target count broadcast extracted from OnPositionUpdate.
+        private void BroadcastSyncTargetState()
+        {
+            // V14 ADAPTIVE VISIBILITY: Broadcast current position size to panel
+            if (State != State.Realtime) return;
+
+            // Build 1102Y-V2 [U-04]: Use live InitialTargetCount when in trade; fallback to dashboard count when flat.
+            int syncCount = activeTargetCount;
+            if (Position != null && Position.MarketPosition != MarketPosition.Flat)
+            {
+                foreach (var kvp in activePositions.ToArray())
+                {
+                    PositionInfo p = kvp.Value;
+                    if (!p.IsFollower && p.EntryFilled && p.RemainingContracts > 0 && p.InitialTargetCount > 0)
+                    {
+                        syncCount = p.InitialTargetCount;
+                        break;
+                    }
+                }
+            }
+            SendResponseToRemote($"SYNC_TARGET_STATE|{syncCount}");
         }
 
         protected override void OnExecutionUpdate(Execution execution, string executionId, double price, int quantity, MarketPosition marketPosition, string orderId, DateTime time)
