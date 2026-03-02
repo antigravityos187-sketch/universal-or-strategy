@@ -303,96 +303,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // V12.1: Skip Master account if its order was already placed by the caller
                     if (acct == this.Account) continue;
 
-                    // V12.Audit [Q3-002]: Use pre-snapshotted active set â€” prevents UI toggle race
-                    // between the active-check and acct.Submit on the next line.
-                    if (!activeAccountSnapshot.Contains(acct.Name))
-                    {
-                        dispatchLog.AppendLine($"[SIMA] Fleet Dispatch: {acct.Name} SKIPPED (Inactive in Fleet Manager)");
-                        continue;
-                    }
-
-                    // EMERGENCY FIX [H-13]: Reconcile stale expectedPositions with actual broker state.
-                    // If broker shows flat but memory shows a position, the account was externally closed.
-                    // [Phase 8.2 Part 3 - H-13 Hardened]: Use Math.Abs to handle short (negative) expected values.
-                    // Skip reset when a non-terminal entry order for this account is already in flight â€”
-                    // that means the Reaper repair is pending and expectedPositions is intentionally non-zero.
-                    try
-                    {
-                        var brokerPos = acct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
-                        bool brokerFlat = (brokerPos == null || brokerPos.MarketPosition == MarketPosition.Flat);
-                        int expected;
-                        lock (stateLock) { expectedPositions.TryGetValue(ExpKey(acct.Name), out expected); }
-
-                        if (brokerFlat && Math.Abs(expected) > 0)
-                        {
-                            // Guard: if a non-terminal entry order is in-flight for this account,
-                            // the desync is intentional (Repair Hook pending). Skip forced reset.
-                            bool hasPendingRepairOrder = false;
-                            foreach (var kvp in entryOrders.ToArray())
-                            {
-                                var ord = kvp.Value;
-                                if (ord != null
-                                    && !IsOrderTerminal(ord.OrderState)
-                                    && activePositions.TryGetValue(kvp.Key, out var pos)
-                                    && pos.IsFollower
-                                    && pos.ExecutingAccount != null
-                                    && pos.ExecutingAccount.Name == acct.Name)
-                                {
-                                    hasPendingRepairOrder = true;
-                                    break;
-                                }
-                            }
-
-                            // [Phase 8.2 Part 4 - H-13 Hardened]: Also preserve expectedPositions if
-                            // activePositions holds metadata for this account â€” means a repair is INTENDED
-                            // even if the repair order hasn't been submitted yet (race window closed).
-                            bool hasActivePositionForAcct = activePositions.Values.Any(p =>
-                                p.IsFollower
-                                && p.ExecutingAccount != null
-                                && p.ExecutingAccount.Name == acct.Name);
-
-                            // V12.Phase8.4 [GHOST-FIX]: Also check if the Master account has a working entry for this signal.
-                            // If Master is still waiting to fill, we must preserve the fleet's expected positions.
-                            bool isMasterWaiting = false;
-                            foreach (var kvp in entryOrders.ToArray())
-                            {
-                                if (activePositions.TryGetValue(kvp.Key, out var pi) && !pi.IsFollower && pi.ExecutingAccount == this.Account)
-                                {
-                                    if (kvp.Value != null && (kvp.Value.OrderState == OrderState.Working || kvp.Value.OrderState == OrderState.Submitted || kvp.Value.OrderState == OrderState.Accepted))
-                                    {
-                                        isMasterWaiting = true;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (hasPendingRepairOrder || hasActivePositionForAcct || isMasterWaiting)
-                            {
-                                dispatchLog.AppendLine(string.Format(
-                                    "[DISPATCH] H-13 SKIP: {0} broker=Flat expected={1} but {2} â€” not resetting",
-                                    acct.Name, expected,
-                                    isMasterWaiting ? "Master entry still working" : (hasPendingRepairOrder ? "repair order in flight" : "activePositions metadata present")));
-                            }
-                            else
-                            {
-                                SetExpectedPositionLocked(ExpKey(acct.Name), 0);
-                                dispatchLog.AppendLine(string.Format(
-                                    "[DISPATCH] Stale expectedPos cleared for {0}: was {1}, broker is Flat",
-                                    acct.Name, expected));
-                            }
-                        }
-                    }
-                    catch { }
-
-                    // Consistency Lock Check (Shared logic)
-                    if (EnableConsistencyLock)
-                    {
-                        if (fleet[i].DailyPL >= MaxDailyProfitCap)
-                        {
-                            dispatchLog.AppendLine($"[DISPATCH] ðŸ”’ SKIPPING {acct.Name} - Consistency Lock Active (${fleet[i].DailyPL:F2})");
-                            continue;
-                        }
-                    }
+                    // Build 935 [SIMA-B935-001]: Inactive + H-13 + consistency lock delegated to ShouldSkipFleetAccount.
+                    if (ShouldSkipFleetAccount(acct, fleet[i], activeAccountSnapshot, dispatchLog)) continue;
 
                     // V12: Followers ALWAYS use RMA multipliers for point-based trails (User Req)
                     bool useRmaForFollower = true;
@@ -686,6 +598,75 @@ namespace NinjaTrader.NinjaScript.Strategies
                 _simaToggleSem.Release();
             }
         }
+
+        // Build 935 [SIMA-B935-001]: Skip-logic extracted from ExecuteSmartDispatchEntry fleet loop.
+        // Returns true if the account should be skipped for this dispatch cycle.
+        // Threading: strategy thread only. stateLock usage identical to original inline code.
+        private bool ShouldSkipFleetAccount(Account acct, AccountRankInfo rankInfo,
+            System.Collections.Generic.HashSet<string> activeAccountSnapshot, System.Text.StringBuilder dispatchLog)
+        {
+            // Step 1: Inactive check -- prevents UI toggle race.
+            if (!activeAccountSnapshot.Contains(acct.Name))
+            {
+                dispatchLog.AppendLine(string.Format("[SIMA] {0} SKIPPED (Inactive)", acct.Name));
+                return true;
+            }
+
+            // Step 2: H-13 stale expectedPositions reconciliation.
+            try
+            {
+                var brokerPos = acct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
+                bool brokerFlat = (brokerPos == null || brokerPos.MarketPosition == MarketPosition.Flat);
+                int expected;
+                lock (stateLock) { expectedPositions.TryGetValue(ExpKey(acct.Name), out expected); }
+
+                if (brokerFlat && Math.Abs(expected) > 0)
+                {
+                    bool hasPendingRepairOrder = false;
+                    foreach (var kvp in entryOrders.ToArray())
+                    {
+                        var ord = kvp.Value;
+                        if (ord != null && !IsOrderTerminal(ord.OrderState)
+                            && activePositions.TryGetValue(kvp.Key, out var pos)
+                            && pos.IsFollower && pos.ExecutingAccount != null
+                            && pos.ExecutingAccount.Name == acct.Name)
+                        { hasPendingRepairOrder = true; break; }
+                    }
+
+                    bool hasActivePositionForAcct = activePositions.Values.Any(
+                        p => p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == acct.Name);
+
+                    bool isMasterWaiting = false;
+                    foreach (var kvp in entryOrders.ToArray())
+                    {
+                        if (activePositions.TryGetValue(kvp.Key, out var pi) && !pi.IsFollower && pi.ExecutingAccount == this.Account
+                            && kvp.Value != null && (kvp.Value.OrderState == OrderState.Working
+                                || kvp.Value.OrderState == OrderState.Submitted || kvp.Value.OrderState == OrderState.Accepted))
+                        { isMasterWaiting = true; break; }
+                    }
+
+                    if (hasPendingRepairOrder || hasActivePositionForAcct || isMasterWaiting)
+                        dispatchLog.AppendLine(string.Format("[DISPATCH] H-13 SKIP: {0} Flat but {1} -- not resetting",
+                            acct.Name, isMasterWaiting ? "Master working" : (hasPendingRepairOrder ? "repair in-flight" : "activePos present")));
+                    else
+                    {
+                        SetExpectedPositionLocked(ExpKey(acct.Name), 0);
+                        dispatchLog.AppendLine(string.Format("[DISPATCH] H-13: Stale expectedPos cleared for {0} (broker Flat)", acct.Name));
+                    }
+                }
+            }
+            catch { }
+
+            // Step 3: Consistency Lock -- skip if daily P&L cap hit.
+            if (EnableConsistencyLock && rankInfo.DailyPL >= MaxDailyProfitCap)
+            {
+                dispatchLog.AppendLine(string.Format("[DISPATCH] {0} SKIPPED - Consistency Lock ({1:C})", acct.Name, rankInfo.DailyPL));
+                return true;
+            }
+
+            return false;
+        }
+
 
         /// <summary>
         /// V12.1101E [A-4]: Idempotent unsubscribe â€” removes all SIMA event handlers before
