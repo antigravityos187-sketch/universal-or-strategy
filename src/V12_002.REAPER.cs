@@ -1,6 +1,6 @@
 // V12.17 THREADING FIX: Reaper (Safety Hub) Module
 // REAPER Module (Extracted)
-// FIX: acct.Flatten() calls moved from background thread → strategy thread via TriggerCustomEvent
+// FIX: acct.Flatten() calls moved from background thread -> strategy thread via TriggerCustomEvent
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
@@ -15,15 +15,15 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region V12 REAPER Audit Logic
 
-        // V12.17: Queue for flatten requests marshaled from background thread → strategy thread
+        // V12.17: Queue for flatten requests marshaled from background thread -> strategy thread
         private ConcurrentQueue<string> _reaperFlattenQueue = new ConcurrentQueue<string>();
 
-        // V12.Phase8.2: Queue for repair requests marshaled from background thread → strategy thread
+        // V12.Phase8.2: Queue for repair requests marshaled from background thread -> strategy thread
         private ConcurrentQueue<string> _reaperRepairQueue = new ConcurrentQueue<string>();
         // V12.Phase8.2: Prevents double-repair for the same account while an order is in-flight
         private readonly HashSet<string> _repairInFlight = new HashSet<string>();
 
-        // Build 1102R: Queue for naked-position emergency stop requests (background → strategy thread)
+        // Build 1102R: Queue for naked-position emergency stop requests (background -> strategy thread)
         private ConcurrentQueue<(string AccountName, MarketPosition Direction, int Qty)> _reaperNakedStopQueue
             = new ConcurrentQueue<(string, MarketPosition, int)>();
         // Build 1102R: Prevents duplicate emergency stops while broker confirmation is pending (mirrors _repairInFlight)
@@ -133,7 +133,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Thread.Sleep(ReaperIntervalMs);
                     if (!isReaperRunning) break;
 
-                    // V12.Phase8 [F-05]: Skip first cycle after startup — grace period for in-flight flattens.
+                    // V12.Phase8 [F-05]: Skip first cycle after startup -- grace period for in-flight flattens.
                     if (firstCycle)
                     {
                         firstCycle = false;
@@ -144,7 +144,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // V12.8: Pause auditing while a flatten is actively running to prevent race conditions
                     if (isFlattenRunning) continue;
 
-                    // V12.Hardening: Only audit in live/realtime — skip historical replay
+                    // V12.Hardening: Only audit in live/realtime -- skip historical replay
                     if (State != State.Realtime) continue;
 
                     AuditApexPositions();
@@ -226,10 +226,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 if (actualQty == 0 && expectedQty != 0)
                 {
-                    // GHOST-FIX-3: Skip repair for Master — it uses SubmitOrderUnmanaged, not follower path.
+                    // GHOST-FIX-3: Skip repair for Master -- it uses SubmitOrderUnmanaged, not follower path.
                     if (acct.Name == Account.Name)
                     {
-                        if (shouldLog) Print($"[REAPER] {acct.Name} is the Master account — skipping follower repair.");
+                        if (shouldLog) Print($"[REAPER] {acct.Name} is the Master account -- skipping follower repair.");
                         return hasState;
                     }
 
@@ -277,7 +277,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                         if (!hasWorkingEntry)
                         {
-                            if (shouldLog) Print($"[REAPER] 🔧 REPAIR CANDIDATE: {acct.Name} is Flat, expected={expectedQty}. Enqueuing repair.");
+                            if (shouldLog) Print($"[REAPER] * REPAIR CANDIDATE: {acct.Name} is Flat, expected={expectedQty}. Enqueuing repair.");
                             _reaperRepairQueue.Enqueue(acct.Name);
                             try { TriggerCustomEvent(o => ProcessReaperRepairQueue(), null); } catch { }
                         }
@@ -295,7 +295,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                         }
                     }
                     else if (shouldLog)
-                        Print($"[REAPER] {acct.Name} repair already in-flight — skipping.");
+                        Print($"[REAPER] {acct.Name} repair already in-flight -- skipping.");
 
                     return hasState;
                 }
@@ -305,10 +305,10 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 if (isCriticalDesync)
                 {
-                    if (shouldLog) Print($"[REAPER] 🚨 CRITICAL DESYNC on {acct.Name}: Expected={expectedQty}, Actual={actualQty}");
+                    if (shouldLog) Print($"[REAPER] * CRITICAL DESYNC on {acct.Name}: Expected={expectedQty}, Actual={actualQty}");
                     if (AutoFlattenDesync)
                     {
-                        if (shouldLog) Print($"[REAPER] 💀 QUEUING FLATTEN for {acct.Name} - Emergency Re-sync!");
+                        if (shouldLog) Print($"[REAPER] * QUEUING FLATTEN for {acct.Name} - Emergency Re-sync!");
                         _reaperFlattenQueue.Enqueue(acct.Name);
                         try { TriggerCustomEvent(o => ProcessReaperFlattenQueue(), null); } catch { }
                     }
@@ -317,7 +317,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Print($"[REAPER] Minor Desync on {acct.Name}: Expected={expectedQty}, Actual={actualQty}");
             }
 
-            // ── NAKED POSITION AUDIT (Build 1102R) ──────────────────────────────────
+            // ?? NAKED POSITION AUDIT (Build 1102R) ??????????????????????????????????
             if (actualQty != 0)
             {
                 bool hasWorkingStop = acct.Orders.Any(o =>
@@ -333,7 +333,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     if (!_nakedPositionFirstSeen.TryGetValue(acct.Name, out firstSeen))
                     {
                         _nakedPositionFirstSeen[acct.Name] = DateTime.UtcNow;
-                        Print(string.Format("[REAPER][NAKED_POSITION] {0}: {1}ct naked — starting {2}s grace window.",
+                        Print(string.Format("[REAPER][NAKED_POSITION] {0}: {1}ct naked -- starting {2}s grace window.",
                             acct.Name, actualQty, graceSeconds));
                     }
                     else if ((DateTime.UtcNow - firstSeen).TotalSeconds >= graceSeconds)
@@ -393,7 +393,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                          (Math.Sign(masterActualQty) != Math.Sign(masterExpectedQty) && masterExpectedQty != 0));
 
                     if (inFillGrace && shouldLog)
-                        Print($"[REAPER] {Account.Name} (Master): Fill grace active — desync check suppressed.");
+                        Print($"[REAPER] {Account.Name} (Master): Fill grace active -- desync check suppressed.");
 
                     if (isCriticalDesync)
                     {
@@ -417,7 +417,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <summary>
         /// V12.17 FIX: Processes queued flatten requests on the strategy thread.
         /// Called via TriggerCustomEvent from the Reaper background thread.
-        /// This is the SAFE way to call Account.Flatten() — same pattern as IPC.
+        /// This is the SAFE way to call Account.Flatten() -- same pattern as IPC.
         /// </summary>
         private void ProcessReaperFlattenQueue()
         {
@@ -484,22 +484,22 @@ namespace NinjaTrader.NinjaScript.Strategies
                                 Order closeOrder = targetAcct.CreateOrder(Instrument, closeAction, OrderType.Market, TimeInForce.Gtc, qty, 0, 0, "", signalName, null);
                                 targetAcct.Submit(new[] { closeOrder });
                             }
-                            Print($"[REAPER] ✓ Emergency Market Close: {qty} contracts on {accountName}");
+                            Print($"[REAPER] ? Emergency Market Close: {qty} contracts on {accountName}");
                         }
 
                         // V12.1101E [F-06]: Serialize expectedPositions mutation under stateLock.
                         // Build 1102U [BUG-1]: Composite key for instrument-scoped clear.
                         SetExpectedPositionLocked(ExpKey(accountName), 0);
-                        Print($"[REAPER] ✓ MARSHAL-FLATTEN (Unmanaged) executed on strategy thread for {accountName}");
+                        Print($"[REAPER] ? MARSHAL-FLATTEN (Unmanaged) executed on strategy thread for {accountName}");
                     }
                     else
                     {
-                        Print($"[REAPER] ✗ Could not find account '{accountName}' for marshal-flatten");
+                        Print($"[REAPER] [X] Could not find account '{accountName}' for marshal-flatten");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Print($"[REAPER] ✗ MARSHAL-FLATTEN FAILED for {accountName}: {ex.Message}");
+                    Print($"[REAPER] [X] MARSHAL-FLATTEN FAILED for {accountName}: {ex.Message}");
                 }
             }
         }
@@ -540,7 +540,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 if (repairPos == null)
                 {
-                    Print($"[REAPER REPAIR] \u2717 No PositionInfo found for {accountName} — cannot repair.");
+                    Print($"[REAPER REPAIR] \u2717 No PositionInfo found for {accountName} -- cannot repair.");
                     return;
                 }
 
@@ -644,7 +644,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 lock (stateLock) { expectedPositions.TryGetValue(ExpKey(accountName), out currentExpected); }
                 if (currentExpected == 0)
                 {
-                    Print($"[REAPER REPAIR] ⚠ RACE GUARD ABORT for {accountName}: " +
+                    Print($"[REAPER REPAIR] (!) RACE GUARD ABORT for {accountName}: " +
                           $"expectedPositions cleared to 0 while repair was in queue. Discarding repair order.");
                     lock (stateLock) { _repairInFlight.Remove(repairKey); }
                     return;
@@ -695,12 +695,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Account acct = Account.All.FirstOrDefault(a => a.Name == item.AccountName);
                     if (acct == null)
                     {
-                        Print(string.Format("[REAPER][NAKED_STOP] Account {0} not found — skipping.", item.AccountName));
+                        Print(string.Format("[REAPER][NAKED_STOP] Account {0} not found -- skipping.", item.AccountName));
                         continue;
                     }
 
                     // Compute emergency stop price: MaximumStop ticks from current close.
-                    // Close[0] is safe here — ProcessReaperNakedStopQueue runs on strategy thread
+                    // Close[0] is safe here -- ProcessReaperNakedStopQueue runs on strategy thread
                     // via TriggerCustomEvent.
                     double emergencyStopDist = MaximumStop;
                     double atrBound = CalculateATRStopDistance(RMAStopATRMultiplier);
