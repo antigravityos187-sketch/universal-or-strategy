@@ -1,4 +1,4 @@
-name: 'Claude Code Review'
+name: "Claude Code Review"
 
 on:
   pull_request:
@@ -12,6 +12,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write
       id-token: write
     steps:
       - name: Checkout Repository
@@ -22,7 +23,6 @@ jobs:
       - name: Claude Code Review
         uses: anthropics/claude-code-action@beta
         with:
-          model: claude-sonnet-4-6
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           direct_prompt: |
             You are a "Strict Auditor" for the Universal OR Strategy (V12) — a high-integrity institutional fleet trading strategy for NinjaTrader 8.
