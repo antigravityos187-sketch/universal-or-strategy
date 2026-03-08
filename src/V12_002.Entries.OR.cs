@@ -203,8 +203,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 };
                 ApplyTargetLadderGuard(pos);
 
-                activePositions[entryName] = pos;
-
                 // V12.13-D: Notify connected panel clients of position entry
                 string syncMsg = string.Format("POSITION_ENTERED|OR|{0}", contracts);
                 SendResponseToRemote(syncMsg);
@@ -218,18 +216,19 @@ namespace NinjaTrader.NinjaScript.Strategies
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.StopMarket, contracts, 0, entryPrice, "", entryName)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.StopMarket, contracts, 0, entryPrice, "", entryName);
 
+                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
                 if (entryOrder == null)
                 {
                     // Build 1102Y-V3 [MS-03 ROLLBACK]: Submit failed -- undo Order Ledger reservation.
                     AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaOR);
-                    Print("[ERROR][1102Y-V3] OR SubmitOrderUnmanaged returned NULL for " + entryName + " -- Master expected rolled back. Fleet dispatch aborted.");
-                    // [FIX-OR-E]: Must abort here. Without an early return, ExecuteSmartDispatchEntry
-                    // dispatches fleet followers for a master entry that does not exist -> phantom fleet entries.
-                    activePositions.TryRemove(entryName, out _);
+                    Print("[ENTRY_ABORT] OR SubmitOrderUnmanaged returned NULL for " + entryName + " -- Master expected rolled back. Fleet dispatch aborted.");
                     return;
                 }
-
-                entryOrders[entryName] = entryOrder;
+                lock (stateLock)
+                {
+                    activePositions[entryName] = pos;
+                    entryOrders[entryName] = entryOrder;
+                }
 
                 Print(string.Format("OR ENTRY ORDER: {0} {1}@{2:F2} | Stop: {3:F2} | OR Range: {4:F2}",
                     signalName, contracts, entryPrice, stopPrice, sessionRange));
