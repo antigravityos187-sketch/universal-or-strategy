@@ -589,9 +589,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 "[SYMMETRY_GUARD] SKIP | {0} | {1} | FleetFill={2:F2} | Slip={3:F1} ticks (${4:F2}/ct)",
                 fleetEntryName, reason, fleetFillPrice, slippageTicks, slippageUsdPerContract));
 
-            pos.EntryFilled = true;
+            // A1-1: pos.EntryFilled must be inside stateLock to prevent torn read by REAPER (Build 960 audit fix)
             lock (stateLock)
             {
+                pos.EntryFilled = true;
                 if (pos.RemainingContracts <= 0)
                     pos.RemainingContracts = Math.Max(1, pos.TotalContracts);
             }

@@ -169,19 +169,26 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // Build 936 [FIX-2]: Deterministic OCO group ID for broker-native bracket protection.
                     OcoGroupId = "V12_" + entryName.GetHashCode().ToString("X8")
                 };
-                activePositions[entryName] = pos;
-
                 // V12.13-D: Notify connected panel clients of position entry
                 string syncMsg = string.Format("POSITION_ENTERED|FFMA|{0}", contracts);
                 SendResponseToRemote(syncMsg);
-
 
                 // Submit MARKET order (immediate execution)
                 Order entryOrder = direction == MarketPosition.Long
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Market, contracts, 0, 0, "", entryName)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Market, contracts, 0, 0, "", entryName);
 
-                entryOrders[entryName] = entryOrder;
+                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
+                if (entryOrder == null)
+                {
+                    Print("[ENTRY_ABORT] FFMA SubmitOrderUnmanaged returned null for " + entryName + ". Rolling back.");
+                    return;
+                }
+                lock (stateLock)
+                {
+                    activePositions[entryName] = pos;
+                    entryOrders[entryName] = entryOrder;
+                }
 
                 Print(string.Format("FFMA MARKET ORDER: {0} {1}@MARKET | Stop: {2:F2} (candle {3})",
                     signalName, contracts, stopPrice, direction == MarketPosition.Long ? "low" : "high"));
@@ -304,13 +311,22 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // Build 936 [FIX-2]: Deterministic OCO group ID for broker-native bracket protection.
                     OcoGroupId = "V12_" + entryName.GetHashCode().ToString("X8")
                 };
-                activePositions[entryName] = pos;
-
                 // V12.27: Submit LIMIT order (not Market like standard FFMA)
                 Order entryOrder = direction == MarketPosition.Long
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, contracts, entryPrice, 0, "", entryName)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, contracts, entryPrice, 0, "", entryName);
-                entryOrders[entryName] = entryOrder;
+
+                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
+                if (entryOrder == null)
+                {
+                    Print("[ENTRY_ABORT] FFMA_LIMIT SubmitOrderUnmanaged returned null for " + entryName + ". Rolling back.");
+                    return;
+                }
+                lock (stateLock)
+                {
+                    activePositions[entryName] = pos;
+                    entryOrders[entryName] = entryOrder;
+                }
 
                 Print(string.Format("V12.27 FFMA_LIMIT: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | ATR-based",
                     direction, contracts, entryPrice, stopPrice));
@@ -443,13 +459,22 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // Build 936 [FIX-2]: Deterministic OCO group ID for broker-native bracket protection.
                     OcoGroupId = "V12_" + entryName.GetHashCode().ToString("X8")
                 };
-                activePositions[entryName] = pos;
-
                 // Submit MARKET order (immediate execution)
                 Order entryOrder = direction == MarketPosition.Long
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Market, contracts, 0, 0, "", entryName)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Market, contracts, 0, 0, "", entryName);
-                entryOrders[entryName] = entryOrder;
+
+                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
+                if (entryOrder == null)
+                {
+                    Print("[ENTRY_ABORT] FFMA_MANUAL_MARKET SubmitOrderUnmanaged returned null for " + entryName + ". Rolling back.");
+                    return;
+                }
+                lock (stateLock)
+                {
+                    activePositions[entryName] = pos;
+                    entryOrders[entryName] = entryOrder;
+                }
 
                 Print(string.Format("V12.27 FFMA_MANUAL_MARKET: {0} {1}@MARKET | Stop: {2:F2} (candle {3}) | Toward EMA9={4:F2}",
                     direction, contracts, stopPrice, direction == MarketPosition.Long ? "low" : "high", ema9Value));

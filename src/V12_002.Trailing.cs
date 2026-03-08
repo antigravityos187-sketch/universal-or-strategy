@@ -631,10 +631,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // No existing stop or not in a cancellable state - create directly
                 if (pos.ExecutingAccount != null)
                 {
-                    newStop = pos.ExecutingAccount.CreateOrder(Instrument, pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover, 
+                    newStop = pos.ExecutingAccount.CreateOrder(Instrument, pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover,
                         OrderType.StopMarket, TimeInForce.Gtc, pos.RemainingContracts, 0, validatedStopPrice, "Stop_" + entryName, "Stop_" + entryName, null);
                     pos.ExecutingAccount.Submit(new[] { newStop });
-                    stopOrders[entryName] = newStop;
+                    // A1-1: stopOrders mutation inside stateLock (Build 960 audit fix)
+                    lock (stateLock) { stopOrders[entryName] = newStop; }
                 }
                 else
                 {
@@ -645,7 +646,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     OrderAction stopExitAction = pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
                     newStop = SubmitOrderUnmanaged(0, stopExitAction, OrderType.StopMarket, pos.RemainingContracts, 0, validatedStopPrice, "", stopSigName);
 
-                    if (newStop != null) stopOrders[entryName] = newStop;
+                    // A1-1: stopOrders mutation inside stateLock (Build 960 audit fix)
+                    if (newStop != null) lock (stateLock) { stopOrders[entryName] = newStop; }
                 }
 
                 if (newStop == null)
@@ -662,7 +664,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return;
                 }
 
-                stopOrders[entryName] = newStop;
+                // A1-1: stopOrders final write inside stateLock (Build 960 audit fix)
+                lock (stateLock) { stopOrders[entryName] = newStop; }
                 pos.CurrentStopPrice = validatedStopPrice;
                 pos.CurrentTrailLevel = newTrailLevel;
 

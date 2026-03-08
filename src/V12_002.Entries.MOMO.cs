@@ -143,8 +143,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 };
                 ApplyTargetLadderGuard(pos);
 
-                activePositions[entryName] = pos;
-
                 // Build 1102Y-V3 [MS-06]: Register Master expected BEFORE StopMarket entry.
                 int masterDeltaMOMO = (direction == MarketPosition.Long) ? contracts : -contracts;
                 AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaMOMO);
@@ -154,13 +152,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.StopMarket, contracts, 0, entryPrice, "", entryName)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.StopMarket, contracts, 0, entryPrice, "", entryName);
 
+                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
                 if (entryOrder == null)
                 {
                     AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaMOMO);
-                    Print("[ERROR][1102Y-V3] MOMO SubmitOrderUnmanaged NULL for " + entryName + " -- rolled back.");
+                    Print("[ENTRY_ABORT] MOMO SubmitOrderUnmanaged returned null for " + entryName + ". Rolling back.");
+                    return;
                 }
-
-                entryOrders[entryName] = entryOrder;
+                lock (stateLock)
+                {
+                    activePositions[entryName] = pos;
+                    entryOrders[entryName] = entryOrder;
+                }
 
                 Print(string.Format("MOMO ENTRY ORDER: {0} {1}@{2:F2} STOP MKT | Stop: {3:F2}pt", signalName, contracts, entryPrice, stopDistance));
                 Print(string.Format("MOMO TARGETS: T1:{0}@{1:F2}(+{2:F2}pt) | T2:{3}@{4:F2} | T3:{5}@{6:F2} | T4:{7}@{8:F2} | T5:{9}@{10:F2} (Runner targets trail-only)",

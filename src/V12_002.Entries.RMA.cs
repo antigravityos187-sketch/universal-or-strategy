@@ -90,21 +90,26 @@ namespace NinjaTrader.NinjaScript.Strategies
                 double stop1Price = Instrument.MasterInstrument.RoundToTickSize(
                     direction == MarketPosition.Long ? e9 - stop9Dist : e9 + stop9Dist);
                 PositionInfo pos1 = CreateTRENDPosition(entry1Name, direction, e9, stop1Price, qty9, true, trendGroupId, true);
-                activePositions[entry1Name] = pos1;
 
                 List<string> masterEntryNames = new List<string> { entry1Name };
 
                 Order entryOrder1 = direction == MarketPosition.Long
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, qty9, e9, 0, "", entry1Name)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, qty9, e9, 0, "", entry1Name);
-                entryOrders[entry1Name] = entryOrder1;
+
+                // A1-1/A2-1: Null-abort + stateLock wrap for E1 (Build 960 audit fix)
+                if (entryOrder1 == null)
+                {
+                    Print("[ENTRY_ABORT] TrendSplit E1 SubmitOrderUnmanaged returned null for " + entry1Name + ". Rolling back.");
+                    return;
+                }
+                lock (stateLock) { activePositions[entry1Name] = pos1; entryOrders[entry1Name] = entryOrder1; }
 
                 if (qty15 > 0)
                 {
                     double stop2Price = Instrument.MasterInstrument.RoundToTickSize(
                         direction == MarketPosition.Long ? e15 - stop15Dist : e15 + stop15Dist);
                     PositionInfo pos2 = CreateTRENDPosition(entry2Name, direction, e15, stop2Price, qty15, false, trendGroupId, true);
-                    activePositions[entry2Name] = pos2;
 
                     linkedTRENDEntries[entry1Name] = entry2Name;
                     linkedTRENDEntries[entry2Name] = entry1Name;
@@ -112,8 +117,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Order entryOrder2 = direction == MarketPosition.Long
                         ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, qty15, e15, 0, "", entry2Name)
                         : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, qty15, e15, 0, "", entry2Name);
-                    entryOrders[entry2Name] = entryOrder2;
-                    masterEntryNames.Add(entry2Name);
+
+                    // A1-1/A2-1: Null-abort + stateLock wrap for E2 (Build 960 audit fix)
+                    if (entryOrder2 == null)
+                    {
+                        Print("[ENTRY_ABORT] TrendSplit E2 SubmitOrderUnmanaged returned null for " + entry2Name + ". Rolling back.");
+                        // E1 already submitted -- log but continue without E2 tracking
+                    }
+                    else
+                    {
+                        lock (stateLock) { activePositions[entry2Name] = pos2; entryOrders[entry2Name] = entryOrder2; }
+                        masterEntryNames.Add(entry2Name);
+                    }
                 }
 
                 double weightedEntryPrice = ((e9 * qty9) + (e15 * qty15)) / Math.Max(1, finalTotalQty);
@@ -289,22 +304,23 @@ namespace NinjaTrader.NinjaScript.Strategies
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, contracts, entryPrice, 0, "", entryName)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, contracts, entryPrice, 0, "", entryName);
 
-                if (entryOrder != null)
-                {
-                    entryOrders[entryName] = entryOrder;
-                    activePositions[entryName] = pos; // Only add to panel if order submitted
-
-                    // DEBUG: Visual Confirmation
-                    Draw.Text(this, "Debug_" + entryName, "ORDER SUBMITTED", 0, entryPrice, Brushes.Yellow);
-                    Draw.Line(this, "Line_" + entryName, 0, entryPrice, 10, entryPrice, Brushes.Yellow);
-                }
-                else
+                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
+                if (entryOrder == null)
                 {
                     // Build 1102Y-V3 [MS-01 ROLLBACK]: Submit failed -- undo reservation to prevent ghost position.
                     AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaRMA);
-                    Print("[ERROR][1102Y-V3] SubmitOrderUnmanaged returned NULL for " + entryName + " -- Master expected rolled back.");
+                    Print("[ENTRY_ABORT] RMA SubmitOrderUnmanaged returned NULL for " + entryName + " -- Master expected rolled back.");
                     Draw.Text(this, "Debug_Fail_" + entryName, "ORDER FAILED", 0, entryPrice, Brushes.Red);
+                    return;
                 }
+                lock (stateLock)
+                {
+                    activePositions[entryName] = pos;
+                    entryOrders[entryName] = entryOrder;
+                }
+                // DEBUG: Visual Confirmation
+                Draw.Text(this, "Debug_" + entryName, "ORDER SUBMITTED", 0, entryPrice, Brushes.Yellow);
+                Draw.Line(this, "Line_" + entryName, 0, entryPrice, 10, entryPrice, Brushes.Yellow);
 
                 Print(string.Format("RMA ENTRY ORDER: {0} {1}@{2:F2} | ATR: {3:F2}", signalName, contracts, entryPrice, currentATR));
                 Print(string.Format("RMA TARGETS: T1:{0}@{1:F2}(+{2:F2}pt) | T2:{3}@{4:F2} | T3:{5}@{6:F2} | T4:{7}@{8:F2} | T5:{9}@{10:F2} (Runner targets trail-only)",
@@ -397,8 +413,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 };
                 ApplyTargetLadderGuard(pos);
 
-                activePositions[entryName] = pos;
-
                 // Build 1102Y-V3 [MS-02]: Register Master's expected position in the Order Ledger BEFORE submit.
                 int masterDeltaRMACustom = (direction == MarketPosition.Long) ? contracts : -contracts;
                 AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaRMACustom);
@@ -408,11 +422,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Market, contracts, 0, 0, "", entryName)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Market, contracts, 0, 0, "", entryName);
 
+                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
                 if (entryOrderCustom == null)
                 {
                     // Build 1102Y-V3 [MS-02 ROLLBACK]: Submit failed -- undo reservation.
                     AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaRMACustom);
-                    Print("[ERROR][1102Y-V3] RMACustom SubmitOrderUnmanaged returned NULL for " + entryName + " -- Master expected rolled back.");
+                    Print("[ENTRY_ABORT] RMACustom SubmitOrderUnmanaged returned NULL for " + entryName + " -- Master expected rolled back.");
+                    return;
+                }
+                lock (stateLock)
+                {
+                    activePositions[entryName] = pos;
+                    entryOrders[entryName] = entryOrderCustom;
                 }
 
                 Print(string.Format("IPC EXEC: {0} {1} contracts at MKT (Ref: {2:F2})", direction, contracts, entryPrice));

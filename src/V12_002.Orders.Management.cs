@@ -100,7 +100,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     FlattenPositionByName(entryName);
                     return;
                 }
-                stopOrders[entryName] = stopOrder;
+                // A1-1: stopOrders mutation inside stateLock (Build 960 audit fix)
+                lock (stateLock) { stopOrders[entryName] = stopOrder; }
 
                 int nonRunnerLimitQty = 0;
                 int runnerQty = 0;
@@ -553,7 +554,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return;
                 }
 
-                stopOrders[entryName] = newStop;
+                // A1-1: stopOrders mutation inside stateLock (Build 960 audit fix)
+                lock (stateLock) { stopOrders[entryName] = newStop; }
 
                 // [LATENCY_AUDIT] Measure OCO turnaround: CreatedTime was stamped in UpdateStopQuantity() when
                 // the target fill triggered the pending stop replacement. The delta = Target Fill -> Stop Cancel
