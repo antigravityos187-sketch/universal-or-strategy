@@ -257,7 +257,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     linkedTRENDEntries.TryRemove(entry1Name, out removedPartner);
                     linkedTRENDEntries.TryRemove(entry2Name, out removedPartner);
                     // Cancel live E1 order if still working (may already be filled; swallow gracefully).
-                    try { if (entryOrder1 != null && !entryOrder1.IsTerminal) CancelOrder(entryOrder1); } catch { }
+                    try { if (entryOrder1 != null && !IsOrderTerminal(entryOrder1.OrderState)) CancelOrder(entryOrder1); } catch { }
                     Print("[ENTRY_ABORT] TREND E2 NULL -- E1 aborted for " + entry1Name + " to prevent orphan state.");
                     return;
                 }

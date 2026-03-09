@@ -671,8 +671,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     DeltaExpectedPositionLocked(ExpKey(cancelAcctKey), cancelDelta);
                     // B957/D2: Release the SIMA dispatch-sync barrier for this account. Without this, the barrier
                     // remains permanently blocked after a follower cancel, starving future dispatches.
-                    byte removedSyncKey;
-                    _dispatchSyncPendingExpKeys.TryRemove(cancelAcctKey, out removedSyncKey);
+                    _dispatchSyncPendingExpKeys.Remove(cancelAcctKey);
                 }
                 Print(string.Format("[SIMA] Follower entry cancelled: {0} on {1}. Reaper monitoring.", matchedEntry, acctName));
                 Draw.TextFixed(this, "SIMA_DESYNC_" + acctName, "(!) FOLLOWER DESYNC: " + acctName, TextPosition.TopLeft, Brushes.Red, new SimpleFont("Arial", 11), Brushes.Transparent, Brushes.Transparent, 50);

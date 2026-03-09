@@ -93,6 +93,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 List<string> masterEntryNames = new List<string> { entry1Name };
 
+                int masterDeltaE1 = (direction == MarketPosition.Long) ? qty9 : -qty9;
+                AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaE1);
+
                 Order entryOrder1 = direction == MarketPosition.Long
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, qty9, e9, 0, "", entry1Name)
                     : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, qty9, e9, 0, "", entry1Name);
@@ -100,6 +103,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // A1-1/A2-1: Null-abort + stateLock wrap for E1 (Build 960 audit fix)
                 if (entryOrder1 == null)
                 {
+                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaE1);
                     Print("[ENTRY_ABORT] TrendSplit E1 SubmitOrderUnmanaged returned null for " + entry1Name + ". Rolling back.");
                     return;
                 }
@@ -114,6 +118,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                     linkedTRENDEntries[entry1Name] = entry2Name;
                     linkedTRENDEntries[entry2Name] = entry1Name;
 
+                    int masterDeltaE2 = (direction == MarketPosition.Long) ? qty15 : -qty15;
+                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaE2);
+
                     Order entryOrder2 = direction == MarketPosition.Long
                         ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, qty15, e15, 0, "", entry2Name)
                         : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Limit, qty15, e15, 0, "", entry2Name);
@@ -121,6 +128,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // A1-1/A2-1: Null-abort + stateLock wrap for E2 (Build 960 audit fix)
                     if (entryOrder2 == null)
                     {
+                        AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaE2);
                         Print("[ENTRY_ABORT] TrendSplit E2 SubmitOrderUnmanaged returned null for " + entry2Name + ". Removing linked-pair references so E1 functions standalone.");
                         // B957: Remove linkedTRENDEntries cross-references so E1 teardown doesn't look for a missing E2 partner.
                         string removedPartner;
