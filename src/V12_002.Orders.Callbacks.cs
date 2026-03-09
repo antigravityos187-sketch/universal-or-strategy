@@ -409,7 +409,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                             if (activePositions.TryGetValue(kvp.Key, out cleanupPos) && cleanupPos != null
                                 && cleanupPos.PendingCleanup && cleanupPos.RemainingContracts <= 0)
                             {
-                                lock (stateLock) { activePositions.TryRemove(kvp.Key, out _); }
+                                lock (stateLock)
+                                {
+                                    stopOrders.TryRemove(kvp.Key, out _);
+                                    activePositions.TryRemove(kvp.Key, out _);
+                                }
                                 SymmetryGuardForgetEntry(kvp.Key);
                                 Print("[A2-2] Deferred PendingCleanup purge (master stop cancel): " + kvp.Key);
                             }
@@ -724,7 +728,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                             if (activePositions.TryGetValue(_sc.Key, out _scPos) && _scPos != null
                                 && _scPos.PendingCleanup && _scPos.RemainingContracts <= 0)
                             {
-                                lock (stateLock) { activePositions.TryRemove(_sc.Key, out _); }
+                                lock (stateLock)
+                                {
+                                    stopOrders.TryRemove(_sc.Key, out _);
+                                    activePositions.TryRemove(_sc.Key, out _);
+                                }
                                 SymmetryGuardForgetEntry(_sc.Key);
                                 Print("[A2-2] Deferred PendingCleanup purge (follower stop terminal): " + _sc.Key);
                             }

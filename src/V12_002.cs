@@ -41,7 +41,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "957";  // V12.957: Audit remediation loop 1 -- Groups A-H: stateLock guards, FSM target replace, null-submit rollbacks, REAPER/SIMA drain fixes
+        public const string BUILD_TAG = "960";  // V12.960: Resolve PR #32 audit findings -- ghost-state teardown fixes, locked cleanup symmetry, protocol alignment
 
         #region Variables
 
