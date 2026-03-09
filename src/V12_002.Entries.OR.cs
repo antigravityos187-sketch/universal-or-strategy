@@ -262,13 +262,13 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         #endregion
 
-        // Build 940 [FIX-1]: Stable OCO hash -- MD5 truncated to 8 hex chars, consistent across NT8 restarts.
+        // Build 940 [FIX-1]: Stable OCO hash -- SHA256 truncated to 8 hex chars, consistent across NT8 restarts.
         private string GetStableHash(string input)
         {
-            using (var md5 = System.Security.Cryptography.MD5.Create())
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
             {
                 byte[] bytes = System.Text.Encoding.UTF8.GetBytes(input);
-                byte[] hash  = md5.ComputeHash(bytes);
+                byte[] hash  = sha256.ComputeHash(bytes);
                 return BitConverter.ToString(hash, 0, 4).Replace("-", string.Empty).ToUpperInvariant();
             }
         }
