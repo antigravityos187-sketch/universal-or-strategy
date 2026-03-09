@@ -130,11 +130,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                     if (entryOrder2 == null)
                     {
                         AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaE2);
-                        Print("[ENTRY_ABORT] TrendSplit E2 SubmitOrderUnmanaged returned null for " + entry2Name + ". Removing linked-pair references so E1 functions standalone.");
-                        // B957: Remove linkedTRENDEntries cross-references so E1 teardown doesn't look for a missing E2 partner.
+                        // Remove partnership references; HandleOrderCancelled will teardown E1 state naturally.
                         string removedPartner;
                         linkedTRENDEntries.TryRemove(entry1Name, out removedPartner);
                         linkedTRENDEntries.TryRemove(entry2Name, out removedPartner);
+                        if (entryOrder1 != null && !IsOrderTerminal(entryOrder1.OrderState)) CancelOrder(entryOrder1);
+                        Print("[ENTRY_ABORT] TrendSplit E2 NULL -- E1 cancel issued for " + entry1Name + "; teardown deferred to cancel callback.");
+                        return;
                     }
                     else
                     {
