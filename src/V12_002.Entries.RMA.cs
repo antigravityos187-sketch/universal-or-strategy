@@ -138,11 +138,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                         Print("[ENTRY_ABORT] TrendSplit E2 NULL -- E1 cancel issued for " + entry1Name + "; teardown deferred to cancel callback.");
                         return;
                     }
-                    else
-                    {
-                        lock (stateLock) { activePositions[entry2Name] = pos2; entryOrders[entry2Name] = entryOrder2; }
-                        masterEntryNames.Add(entry2Name);
-                    }
+                    lock (stateLock) { activePositions[entry2Name] = pos2; entryOrders[entry2Name] = entryOrder2; }
+                    masterEntryNames.Add(entry2Name);
                 }
 
                 double weightedEntryPrice = ((e9 * qty9) + (e15 * qty15)) / Math.Max(1, finalTotalQty);
