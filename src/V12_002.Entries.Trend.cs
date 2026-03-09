@@ -211,10 +211,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Build 1102Y-V3 [LG-01]: Enforce staircase rule on E2.
                 ApplyTargetLadderGuard(pos2);
 
-                // Link the entries together
-                linkedTRENDEntries[entry1Name] = entry2Name;
-                linkedTRENDEntries[entry2Name] = entry1Name;
-
                 // Build 1102Y-V3 [MS-04a]: Register Master expected for E1 BEFORE submit.
                 int masterDeltaE1 = (direction == MarketPosition.Long) ? entry1Qty : -entry1Qty;
                 AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaE1);
@@ -232,6 +228,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return;
                 }
                 lock (stateLock) { activePositions[entry1Name] = pos1; entryOrders[entry1Name] = entryOrder1; }
+
+                // Only link the two legs after E1 is confirmed to have a live order handle.
+                linkedTRENDEntries[entry1Name] = entry2Name;
+                linkedTRENDEntries[entry2Name] = entry1Name;
 
                 // Build 1102Y-V3 [MS-04b]: Register Master expected for E2 BEFORE submit.
                 int masterDeltaE2 = (direction == MarketPosition.Long) ? entry2Qty : -entry2Qty;
