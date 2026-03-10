@@ -483,8 +483,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // Atomic commit before broker submission prevents REAPER race.
+            // B966: Enqueue stop write so it flows through actor pipeline (strategy thread, drains synchronously).
             ordersToSubmit.Insert(0, stop);
-            stopOrders[fleetEntryName] = stop;
+            { var _fen966 = fleetEntryName; var _s966 = stop; Enqueue(ctx => { ctx.stopOrders[_fen966] = _s966; }); }
             foreach (var (targetNum, order) in stagedTargets)
                 GetTargetOrdersDictionary(targetNum)[fleetEntryName] = order;
 

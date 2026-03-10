@@ -41,7 +41,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "962";  // V12.962: Inline Actor (Serializing Executor) -- stateLock eliminated
+        public const string BUILD_TAG = "966";  // V12.966: Atomic Unification -- full repo enqueue enclosure
 
         #region Variables
 
@@ -192,7 +192,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         private TcpListener ipcListener;
         private Thread ipcThread;
         private volatile bool isIpcRunning;
-        private readonly object ipcLock = new object();
         // V12.962 INLINE ACTOR (Serializing Executor) -- replaces stateLock
         // All state mutations run inside Enqueue closures; _drainToken ensures serial execution.
         // Zero locks: no monitor is ever held across a broker call (CancelOrder/SubmitOrder).
@@ -211,6 +210,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
         private void TryDrain() {
             if (Interlocked.CompareExchange(ref _drainToken, 1, 0) != 0) return;
+            DrainActor();
+        }
+        // V12.963: Non-recursive drain -- prevents stack growth from immediate broker callbacks
+        // (SubmitOrder/CancelOrder can re-trigger OnExecutionUpdate -> Enqueue -> TryDrain on same stack).
+        // Instead of recursing, schedule a new drain cycle via TriggerCustomEvent.
+        private void DrainActor() {
             try {
                 StrategyCommand cmd;
                 while (_cmdQueue.TryDequeue(out cmd)) {
@@ -220,7 +225,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             finally {
                 Interlocked.Exchange(ref _drainToken, 0);
-                if (!_cmdQueue.IsEmpty) TryDrain();
+                if (!_cmdQueue.IsEmpty)
+                    TriggerCustomEvent(o => { if (Interlocked.CompareExchange(ref _drainToken, 1, 0) == 0) DrainActor(); }, null);
             }
         }
         private ConcurrentQueue<string> ipcCommandQueue;
@@ -1220,8 +1226,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Manage trailing stops - NOW CALLED ON EVERY PRICE CHANGE!
                 if (activePositions.Count > 0)
                 {
-                    ManageTrailingStops();
-                    ManageCIT();
+                    Enqueue(ctx => ctx.ManageTrailingStops());
+                    Enqueue(ctx => ctx.ManageCIT());
                 }
 
                 // V8.7: Check FFMA conditions when armed

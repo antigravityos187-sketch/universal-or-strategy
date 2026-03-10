@@ -100,8 +100,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     FlattenPositionByName(entryName);
                     return;
                 }
-                // A1-1: stopOrders mutation inside stateLock (Build 960 audit fix)
-                stopOrders[entryName] = stopOrder;
+                // A1-1: B966 -- Enqueue actor pipeline (was naked stateLock write)
+                { var _en966 = entryName; var _so966 = stopOrder; Enqueue(ctx => { ctx.stopOrders[_en966] = _so966; }); }
 
                 int nonRunnerLimitQty = 0;
                 int runnerQty = 0;
@@ -563,8 +563,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return;
                 }
 
-                // A1-1: stopOrders mutation inside stateLock (Build 960 audit fix)
-                stopOrders[entryName] = newStop;
+                // A1-1: B966 -- Enqueue actor pipeline (was naked stateLock write)
+                { var _en966 = entryName; var _ns966 = newStop; Enqueue(ctx => { ctx.stopOrders[_en966] = _ns966; }); }
 
                 // [LATENCY_AUDIT] Measure OCO turnaround: CreatedTime was stamped in UpdateStopQuantity() when
                 // the target fill triggered the pending stop replacement. The delta = Target Fill -> Stop Cancel
@@ -848,6 +848,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                         }
                         followerAcct.Submit(new[] { nudgedOrder });
 
+                        // B966: No Enqueue needed -- ManageCIT is always called via Enqueue(ctx => ctx.ManageCIT())
+                        // from OnBarUpdate (Phase C), so this write is already inside the actor drain.
                         entryOrders[key] = nudgedOrder;
                     }
                     else

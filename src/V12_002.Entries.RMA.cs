@@ -95,7 +95,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 List<string> masterEntryNames = new List<string> { entry1Name };
 
                 int masterDeltaE1 = (direction == MarketPosition.Long) ? qty9 : -qty9;
-                AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaE1);
+                { var _aek966 = ExpKey(Account.Name); var _aed966 = (masterDeltaE1); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
 
                 Order entryOrder1 = direction == MarketPosition.Long
                     ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, qty9, e9, 0, "", entry1Name)
@@ -104,11 +104,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // A1-1/A2-1: Null-abort + stateLock wrap for E1 (Build 960 audit fix)
                 if (entryOrder1 == null)
                 {
-                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaE1);
+                    { var _aek966 = ExpKey(Account.Name); var _aed966 = (-masterDeltaE1); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
                     Print("[ENTRY_ABORT] TrendSplit E1 SubmitOrderUnmanaged returned null for " + entry1Name + ". Rolling back.");
                     return;
                 }
-                lock (stateLock) { activePositions[entry1Name] = pos1; entryOrders[entry1Name] = entryOrder1; }
+                { var _en966 = entry1Name; var _p966 = pos1; var _eo966 = entryOrder1;
+                Enqueue(ctx => { ctx.activePositions[_en966] = _p966; ctx.entryOrders[_en966] = _eo966; }); }
 
                 if (qty15 > 0)
                 {
@@ -120,7 +121,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     linkedTRENDEntries[entry2Name] = entry1Name;
 
                     int masterDeltaE2 = (direction == MarketPosition.Long) ? qty15 : -qty15;
-                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaE2);
+                    { var _aek966 = ExpKey(Account.Name); var _aed966 = (masterDeltaE2); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
 
                     Order entryOrder2 = direction == MarketPosition.Long
                         ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, qty15, e15, 0, "", entry2Name)
@@ -129,7 +130,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // A1-1/A2-1: Null-abort + stateLock wrap for E2 (Build 960 audit fix)
                     if (entryOrder2 == null)
                     {
-                        AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaE2);
+                        { var _aek966 = ExpKey(Account.Name); var _aed966 = (-masterDeltaE2); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
                         // Remove partnership references; HandleOrderCancelled will teardown E1 state naturally.
                         string removedPartner;
                         linkedTRENDEntries.TryRemove(entry1Name, out removedPartner);
@@ -138,7 +139,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                         Print("[ENTRY_ABORT] TrendSplit E2 NULL -- E1 cancel issued for " + entry1Name + "; teardown deferred to cancel callback.");
                         return;
                     }
-                    lock (stateLock) { activePositions[entry2Name] = pos2; entryOrders[entry2Name] = entryOrder2; }
+                    { var _en966 = entry2Name; var _p966 = pos2; var _eo966 = entryOrder2;
+                    Enqueue(ctx => { ctx.activePositions[_en966] = _p966; ctx.entryOrders[_en966] = _eo966; }); }
                     masterEntryNames.Add(entry2Name);
                 }
 
@@ -308,7 +310,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Build 1102Y-V3 [MS-01]: Register Master's expected position in the Order Ledger
                 // BEFORE SubmitOrderUnmanaged to close the Reaper's 1-5 second zero-window.
                 int masterDeltaRMA = (direction == MarketPosition.Long) ? contracts : -contracts;
-                AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaRMA);
+                { var _aek966 = ExpKey(Account.Name); var _aed966 = (masterDeltaRMA); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
 
                 // Submit LIMIT order at clicked price (RMA uses limit entries)
                 // B957: Wrap in try/catch so a thrown exception also triggers delta rollback (not just null return).
@@ -321,7 +323,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 catch (Exception submitEx)
                 {
-                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaRMA);
+                    { var _aek966 = ExpKey(Account.Name); var _aed966 = (-masterDeltaRMA); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
                     Print("[ENTRY_ABORT] RMA SubmitOrderUnmanaged THREW for " + entryName + " -- " + submitEx.Message + " -- expected rolled back.");
                     Draw.Text(this, "Debug_Fail_" + entryName, "ORDER FAILED", 0, entryPrice, Brushes.Red);
                     return;
@@ -331,16 +333,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (entryOrder == null)
                 {
                     // Build 1102Y-V3 [MS-01 ROLLBACK]: Submit failed -- undo reservation to prevent ghost position.
-                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaRMA);
+                    { var _aek966 = ExpKey(Account.Name); var _aed966 = (-masterDeltaRMA); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
                     Print("[ENTRY_ABORT] RMA SubmitOrderUnmanaged returned NULL for " + entryName + " -- Master expected rolled back.");
                     Draw.Text(this, "Debug_Fail_" + entryName, "ORDER FAILED", 0, entryPrice, Brushes.Red);
                     return;
                 }
-                lock (stateLock)
-                {
-                    activePositions[entryName] = pos;
-                    entryOrders[entryName] = entryOrder;
-                }
+                { var _en966ap = entryName; var _p966ap = pos; Enqueue(ctx => { ctx.activePositions[_en966ap] = _p966ap; }); }
+                { var _en966 = entryName; var _eo966 = entryOrder; Enqueue(ctx => { ctx.entryOrders[_en966] = _eo966; }); }
                 // DEBUG: Visual Confirmation
                 Draw.Text(this, "Debug_" + entryName, "ORDER SUBMITTED", 0, entryPrice, Brushes.Yellow);
                 Draw.Line(this, "Line_" + entryName, 0, entryPrice, 10, entryPrice, Brushes.Yellow);
@@ -439,7 +438,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Build 1102Y-V3 [MS-02]: Register Master's expected position in the Order Ledger BEFORE submit.
                 int masterDeltaRMACustom = (direction == MarketPosition.Long) ? contracts : -contracts;
-                AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaRMACustom);
+                { var _aek966 = ExpKey(Account.Name); var _aed966 = (masterDeltaRMACustom); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
 
                 // Execute as MARKET order for IPC commands to ensure immediate fill (V9 style)
                 // B957: Wrap in try/catch so a thrown exception also triggers delta rollback (not just null return).
@@ -452,7 +451,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 catch (Exception submitEx)
                 {
-                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaRMACustom);
+                    { var _aek966 = ExpKey(Account.Name); var _aed966 = (-masterDeltaRMACustom); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
                     Print("[ENTRY_ABORT] RMACustom SubmitOrderUnmanaged THREW for " + entryName + " -- " + submitEx.Message + " -- expected rolled back.");
                     return;
                 }
@@ -461,15 +460,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (entryOrderCustom == null)
                 {
                     // Build 1102Y-V3 [MS-02 ROLLBACK]: Submit failed -- undo reservation.
-                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaRMACustom);
+                    { var _aek966 = ExpKey(Account.Name); var _aed966 = (-masterDeltaRMACustom); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
                     Print("[ENTRY_ABORT] RMACustom SubmitOrderUnmanaged returned NULL for " + entryName + " -- Master expected rolled back.");
                     return;
                 }
-                lock (stateLock)
-                {
-                    activePositions[entryName] = pos;
-                    entryOrders[entryName] = entryOrderCustom;
-                }
+                { var _en966ap = entryName; var _p966ap = pos; Enqueue(ctx => { ctx.activePositions[_en966ap] = _p966ap; }); }
+                { var _en966 = entryName; var _eo966 = entryOrderCustom; Enqueue(ctx => { ctx.entryOrders[_en966] = _eo966; }); }
 
                 Print(string.Format("IPC EXEC: {0} {1} contracts at MKT (Ref: {2:F2})", direction, contracts, entryPrice));
 

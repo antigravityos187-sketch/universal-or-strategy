@@ -217,11 +217,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             string expectedKey = ExpKey(acct.Name);
             int expectedQty = 0;
             bool syncPending = false;
-            lock (stateLock)
-            {
-                expectedPositions.TryGetValue(expectedKey, out expectedQty);
-                syncPending = _dispatchSyncPendingExpKeys.Contains(expectedKey);
-            }
+            expectedPositions.TryGetValue(expectedKey, out expectedQty);
+            syncPending = _dispatchSyncPendingExpKeys.Contains(expectedKey);
             // Build 935 [REAPER-B935-002]: Per-account grace prevents Account A fill blocking Account B repair.
             bool inFillGrace = IsReaperFillGraceActive(expectedKey);
 
@@ -252,7 +249,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                     string repairKey = acct.Name + "_" + Instrument.FullName;
                     bool alreadyInFlight;
-                    lock (stateLock) { alreadyInFlight = _repairInFlight.Contains(repairKey); }
+                    alreadyInFlight = _repairInFlight.Contains(repairKey);
 
                     if (!alreadyInFlight)
                     {
@@ -260,7 +257,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                         string blockingOrderName = null;
                         OrderState blockingState = OrderState.Unknown;
                         Dictionary<string, PositionInfo> activeSnapshot;
-                        lock (stateLock) { activeSnapshot = new Dictionary<string, PositionInfo>(activePositions); }
+                        activeSnapshot = new Dictionary<string, PositionInfo>(activePositions);
 
                         foreach (var kvp in entryOrders.ToArray())
                         {
@@ -286,13 +283,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                         {
                             if (shouldLog) Print($"[REAPER] * REPAIR CANDIDATE: {acct.Name} is Flat, expected={expectedQty}. Enqueuing repair.");
                             // A3-2: Mark in-flight BEFORE TriggerCustomEvent to block double-enqueue in next audit cycle (Build 960 audit fix)
-                            lock (stateLock) { _repairInFlight.Add(repairKey); }
+                            _repairInFlight.Add(repairKey);
                             _reaperRepairQueue.Enqueue(acct.Name);
                             // B957/E1: Clear in-flight guard if TriggerCustomEvent fails, preventing permanent lockout.
                             try { TriggerCustomEvent(o => ProcessReaperRepairQueue(), null); }
                             catch (Exception repairTriggerEx)
                             {
-                                lock (stateLock) { _repairInFlight.Remove(repairKey); }
+                                _repairInFlight.Remove(repairKey);
                                 Print("[REAPER] TriggerCustomEvent failed for " + repairKey + ": " + repairTriggerEx.Message + " -- in-flight cleared.");
                             }
                         }
@@ -354,10 +351,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     else if ((DateTime.UtcNow - firstSeen).TotalSeconds >= graceSeconds)
                     {
                         bool alreadyNakedInFlight;
-                        lock (stateLock) { alreadyNakedInFlight = _reaperNakedStopInFlight.Contains(acct.Name); }
+                        alreadyNakedInFlight = _reaperNakedStopInFlight.Contains(acct.Name);
                         if (!alreadyNakedInFlight)
                         {
-                            lock (stateLock) { _reaperNakedStopInFlight.Add(acct.Name); }
+                            _reaperNakedStopInFlight.Add(acct.Name);
                             Print(string.Format("[REAPER][NAKED_POSITION] {0}: {1}ct CONFIRMED naked after {2:F1}s grace. Queuing emergency hard stop.",
                                 acct.Name, actualQty, (DateTime.UtcNow - firstSeen).TotalSeconds));
                             _reaperNakedStopQueue.Enqueue((acct.Name, pos.MarketPosition, Math.Abs(actualQty)));
@@ -384,7 +381,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             int masterExpectedQty = 0;
             // Build 1102U [BUG-1]: Composite key + stateLock guard.
-            lock (stateLock) { expectedPositions.TryGetValue(ExpKey(Account.Name), out masterExpectedQty); }
+            expectedPositions.TryGetValue(ExpKey(Account.Name), out masterExpectedQty);
 
             bool hasState = masterExpectedQty != 0 || masterActualQty != 0;
             if (shouldLog && hasState)
@@ -676,7 +673,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // V12.Phase8.2 [RACE-GUARD]: Re-verify expectedPositions immediately before order submission.
                 int currentExpected = 0;
-                lock (stateLock) { expectedPositions.TryGetValue(ExpKey(accountName), out currentExpected); }
+                expectedPositions.TryGetValue(ExpKey(accountName), out currentExpected);
                 if (currentExpected == 0)
                 {
                     Print($"[REAPER REPAIR] (!) RACE GUARD ABORT for {accountName}: " +
@@ -684,11 +681,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return;
                 }
 
-                lock (stateLock)
-                {
-                    repairPos.BracketSubmitted = false;
-                    entryOrders[repairEntryName] = repairEntry;
-                }
+                repairPos.BracketSubmitted = false;
+                // B966: reaperThread -- Enqueue not applicable (would drain on wrong thread).
+                // ConcurrentDictionary single-write is inherently thread-safe.
+                entryOrders[repairEntryName] = repairEntry;
 
                 targetAcct.Submit(new[] { repairEntry });
 
@@ -708,7 +704,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 finally
                 {
                     // 7. Clear in-flight flag -- guaranteed on all exit paths (return, throw, or normal).
-                    lock (stateLock) { _repairInFlight.Remove(repairKey); }
+                    _repairInFlight.Remove(repairKey);
                 }
             }
             catch (Exception ex)
@@ -768,7 +764,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     acct.Submit(new[] { emergencyStop });
 
                     // BUG-M2: Clear in-flight guard after successful submission
-                    lock (stateLock) { _reaperNakedStopInFlight.Remove(item.AccountName); }
+                    _reaperNakedStopInFlight.Remove(item.AccountName);
                     Print(string.Format(
                         "[REAPER][EMERGENCY_STOP] Submitted StopMarket for {0}: {1} {2}ct @ {3:F2} (Dist={4:F2})",
                         item.AccountName, closeAction, item.Qty, stopPrice, emergencyStopDist));
@@ -776,7 +772,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 catch (Exception ex)
                 {
                     // BUG-M2: Clear in-flight guard on failure so next cycle can retry
-                    lock (stateLock) { _reaperNakedStopInFlight.Remove(item.AccountName); }
+                    _reaperNakedStopInFlight.Remove(item.AccountName);
                     Print(string.Format("[REAPER][EMERGENCY_STOP_FAIL] {0}: {1}", item.AccountName, ex.Message));
                 }
             }

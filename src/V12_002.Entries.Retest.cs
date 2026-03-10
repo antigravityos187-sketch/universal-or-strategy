@@ -171,11 +171,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 };
                 ApplyTargetLadderGuard(pos);
 
-                lock (stateLock) { activePositions[entryName] = pos; }
+                { var _en966 = entryName; var _p966 = pos; Enqueue(ctx => { ctx.activePositions[_en966] = _p966; }); }
 
                 // Build 1102Y-V3 [MS-07]: Register Master expected BEFORE Limit entry.
                 int masterDeltaRetest = (direction == MarketPosition.Long) ? contracts : -contracts;
-                AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaRetest);
+                { var _aek966 = ExpKey(Account.Name); var _aed966 = (masterDeltaRetest); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
 
                 // Submit LIMIT order at OR High/Low (NO buffer)
                 Order entryOrder = direction == MarketPosition.Long
@@ -184,13 +184,13 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 if (entryOrder == null)
                 {
-                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaRetest);
-                    lock (stateLock) { activePositions.TryRemove(entryName, out _); } // [Build 956]: Clean pre-registered state on null submit.
+                    { var _aek966 = ExpKey(Account.Name); var _aed966 = (-masterDeltaRetest); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
+                    activePositions.TryRemove(entryName, out _); // [Build 956]: Clean pre-registered state on null submit.
                     Print("[ERROR][1102Y-V3] RETEST SubmitOrderUnmanaged NULL for " + entryName + " -- rolled back.");
                     return; // [Build 954]: Do not latch session or dispatch SIMA for a failed order.
                 }
 
-                lock (stateLock) { entryOrders[entryName] = entryOrder; }
+                { var _en966 = entryName; var _eo966 = entryOrder; Enqueue(ctx => { ctx.entryOrders[_en966] = _eo966; }); }
                 retestFiredThisSession = true;  // V12.1101E [B-2]: Arm latch -- no further RETEST entries this session
 
                 Print(string.Format("RETEST ENTRY ORDER: {0} {1}@{2:F2} | ATR: {3:F2}", signalName, contracts, entryPrice, currentATR));
@@ -313,11 +313,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 };
                 ApplyTargetLadderGuard(pos);
 
-                lock (stateLock) { activePositions[entryName] = pos; }
+                { var _en966 = entryName; var _p966 = pos; Enqueue(ctx => { ctx.activePositions[_en966] = _p966; }); }
 
                 // Build 1102Y-V3 [MS-08]: Register Master expected BEFORE Limit entry.
                 int masterDeltaRetestMnl = (direction == MarketPosition.Long) ? contracts : -contracts;
-                AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaRetestMnl);
+                { var _aek966 = ExpKey(Account.Name); var _aed966 = (masterDeltaRetestMnl); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
 
                 // Submit LIMIT order at manual price
                 Order entryOrder = direction == MarketPosition.Long
@@ -326,12 +326,12 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 if (entryOrder == null)
                 {
-                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaRetestMnl);
-                    lock (stateLock) { activePositions.TryRemove(entryName, out _); } // [Build 956]: Clean pre-registered state on null submit.
+                    { var _aek966 = ExpKey(Account.Name); var _aed966 = (-masterDeltaRetestMnl); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
+                    activePositions.TryRemove(entryName, out _); // [Build 956]: Clean pre-registered state on null submit.
                     Print("[ERROR][1102Y-V3] RETEST_MANUAL SubmitOrderUnmanaged NULL for " + entryName + " -- rolled back.");
                     return; // [Build 956]: Do not assign null entryOrder or dispatch SIMA for a failed order.
                 }
-                lock (stateLock) { entryOrders[entryName] = entryOrder; }
+                { var _en966 = entryName; var _eo966 = entryOrder; Enqueue(ctx => { ctx.entryOrders[_en966] = _eo966; }); }
 
                 Print(string.Format("V12.27 RETEST_MANUAL: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | RMA Targets",
                     direction, contracts, entryPrice, stopPrice));

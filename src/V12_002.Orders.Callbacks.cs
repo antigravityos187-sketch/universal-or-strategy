@@ -1637,22 +1637,26 @@ namespace NinjaTrader.NinjaScript.Strategies
                 fleetSignalName, null);
             acct.Submit(new[] { newEntry });
 
-            entryOrders[fleetSignalName] = newEntry;
-
-            // [QTY-SYNC]: Sync PositionInfo to new size so SubmitBracketOrders sum-assertion passes.
-            PositionInfo pos;
-            if (activePositions.TryGetValue(fleetSignalName, out pos) && pos != null)
-            {
-                pos.TotalContracts     = qty;
-                pos.RemainingContracts = qty;
-                int ft1, ft2, ft3, ft4, ft5;
-                GetTargetDistribution(qty, out ft1, out ft2, out ft3, out ft4, out ft5);
-                pos.T1Contracts = ft1;
-                pos.T2Contracts = ft2;
-                pos.T3Contracts = ft3;
-                pos.T4Contracts = ft4;
-                pos.T5Contracts = ft5;
-            }
+            // B966: wrap dict write + pos mutation in Enqueue so it flows through actor pipeline.
+            // Order submission stays outside; captures prevent stale closure refs.
+            { var _ne966 = newEntry; var _fsn966 = fleetSignalName; var _qty966 = qty;
+            Enqueue(ctx => {
+                ctx.entryOrders[_fsn966] = _ne966;
+                // [QTY-SYNC]: Sync PositionInfo to new size so SubmitBracketOrders sum-assertion passes.
+                PositionInfo pos966;
+                if (ctx.activePositions.TryGetValue(_fsn966, out pos966) && pos966 != null)
+                {
+                    pos966.TotalContracts     = _qty966;
+                    pos966.RemainingContracts = _qty966;
+                    int ft1, ft2, ft3, ft4, ft5;
+                    ctx.GetTargetDistribution(_qty966, out ft1, out ft2, out ft3, out ft4, out ft5);
+                    pos966.T1Contracts = ft1;
+                    pos966.T2Contracts = ft2;
+                    pos966.T3Contracts = ft3;
+                    pos966.T4Contracts = ft4;
+                    pos966.T5Contracts = ft5;
+                }
+            }); }
 
             Print("[FSM] Replacement submitted: " + fleetSignalName
                 + " @ " + price + " x" + qty);
