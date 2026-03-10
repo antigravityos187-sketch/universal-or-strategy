@@ -41,7 +41,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "965";  // V12.965: Build 965 Close-Out -- ExecuteRunnerAction Enqueue coverage
+        public const string BUILD_TAG = "966";  // V12.966: Atomic Unification -- full repo enqueue enclosure
 
         #region Variables
 
@@ -1227,8 +1227,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Manage trailing stops - NOW CALLED ON EVERY PRICE CHANGE!
                 if (activePositions.Count > 0)
                 {
-                    ManageTrailingStops();
-                    ManageCIT();
+                    Enqueue(ctx => ctx.ManageTrailingStops());
+                    Enqueue(ctx => ctx.ManageCIT());
                 }
 
                 // V8.7: Check FFMA conditions when armed

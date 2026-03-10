@@ -78,6 +78,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         // V12.1101E [F-06]: Serialize expectedPositions mutations so Reaper never observes partial state.
         private void AddExpectedPositionDeltaLocked(string accountName, int delta)
         {
+        // B966: No internal Enqueue. Called from strategy-thread (Enqueue at call site) AND reaperThread
+        // (ConcurrentDictionary single-write is safe; double-wrap avoided per $PLAN_AUDIT guard).
             if (string.IsNullOrEmpty(accountName) || expectedPositions == null) return;
             int oldVal = 0;
             expectedPositions.TryGetValue(accountName, out oldVal);
@@ -92,6 +94,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // V12.1101E [F-06]: Shared AddOrUpdate wrapper with stateLock serialization.
         private void AddOrUpdateExpectedPositionLocked(string accountName, int addValue, Func<int, int> updateExisting)
         {
+        // B966: No internal Enqueue. Thread-safe via ConcurrentDictionary.AddOrUpdate atomic semantics.
             if (string.IsNullOrEmpty(accountName) || expectedPositions == null || updateExisting == null) return;
             expectedPositions.AddOrUpdate(accountName, addValue, (k, v) => updateExisting(v));
         }
@@ -99,6 +102,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // V12.1101E [F-06]: Serialized set for expectedPositions.
         private void SetExpectedPositionLocked(string accountName, int value)
         {
+        // B966: No internal Enqueue. Called from both Enqueue-wrapped call sites and reaperThread.
             if (string.IsNullOrEmpty(accountName) || expectedPositions == null) return;
             expectedPositions[accountName] = value;
             if (value == 0)
@@ -118,6 +122,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Preserves expected position for other active entries on the same account.
         private void DeltaExpectedPositionLocked(string accountName, int delta)
         {
+        // B966: No internal Enqueue. All call sites already inside Enqueue (via ProcessOnOrderUpdate).
             if (string.IsNullOrEmpty(accountName) || expectedPositions == null) return;
             int current;
             expectedPositions.TryGetValue(accountName, out current);
@@ -472,6 +477,11 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                             // Build 935: Register local dictionaries before reserve/submit so REAPER never
                             // observes Expected!=0 without entry/stop/targets tracking state.
+                            // B966: Enqueue NOT applied here -- ordering invariant requires dict registration
+                            // to happen BEFORE AddExpectedPositionDeltaLocked (L495). Deferring via Enqueue
+                            // from within an existing drain would break this ordering. ConcurrentDictionary
+                            // single-writes are thread-safe; PumpFleetDispatch runs on strategy thread via
+                            // TriggerCustomEvent so no reaperThread access occurs at this point.
                             activePositions[fleetEntryName] = fleetPos;
                             entryOrders[fleetEntryName] = entry;
                             stopOrders[fleetEntryName] = stop;
@@ -517,6 +527,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                             // update and the dict commit (the old T1??'T3 race), it observes non-zero expected
                             // with no entry in entryOrders ??' hasWorkingEntry=false ??' phantom repair queued.
                             // Registering dicts first guarantees REAPER always finds the blocking entry.
+                            // B966: Enqueue NOT applied -- ordering invariant: dict BEFORE expectedPositions update (Phantom-Fix).
+                            // ConcurrentDictionary single-writes are thread-safe here.
                             activePositions[fleetEntryName] = fleetPos;
                             entryOrders[fleetEntryName] = entry; // V12.3: Track entry for CIT chase
                             registeredForCleanup = true;
@@ -723,7 +735,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                             acct.Name, isMasterWaiting ? "Master working" : (hasPendingRepairOrder ? "repair in-flight" : "activePos present")));
                     else
                     {
-                        SetExpectedPositionLocked(ExpKey(acct.Name), 0);
+                        { var _acct966h13 = ExpKey(acct.Name); Enqueue(ctx => ctx.SetExpectedPositionLocked(_acct966h13, 0)); }
                         dispatchLog.AppendLine(string.Format("[DISPATCH] H-13: Stale expectedPos cleared for {0} (broker Flat)", acct.Name));
                     }
                 }
@@ -849,7 +861,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (acct.Name.IndexOf(AccountPrefix, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     simaAccountCount++;
-                    SetExpectedPositionLocked(ExpKey(acct.Name), 0); // Initialize expected position as flat
+                    { var _acct966init = ExpKey(acct.Name); Enqueue(ctx => ctx.SetExpectedPositionLocked(_acct966init, 0)); } // Initialize expected position as flat
                     accountDailyProfit[acct.Name] = 0; // Initialize daily profit
                     EnsureAccountComplianceTracking(acct.Name, GetComplianceNow());
                     activeFleetAccounts[acct.Name] = false; // V12.8 SIMA: Default to INACTIVE ??" wait for Fleet Manager / IPC to enable
@@ -1307,6 +1319,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (entryOrder != null)
                 {
                     SymmetryGuardRegisterMasterEntry(symmetryDispatchId, localKey);
+                    // B966: Enqueue NOT applied -- ordering invariant: dict BEFORE expectedPositions update (L1345).
                     entryOrders[localKey] = entryOrder;
 
                     PositionInfo pos = new PositionInfo
@@ -1333,6 +1346,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                         BracketSubmitted = false, // V12.7: Brackets deferred until entry fills
                         IsRMATrade = true
                     };
+                    // B966: Enqueue NOT applied -- ordering invariant: dict BEFORE expectedPositions update (L1345).
                     activePositions[localKey] = pos;
 
                     // V12.12: Register Master account in expectedPositions (was missing ??" caused false Reaper desyncs)
@@ -1455,6 +1469,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                             // Build 936 [FIX-2]: Deterministic bracket OCO group ID for broker-native stop+target linking.
                             OcoGroupId = "V12_" + GetStableHash(fleetKey),
                         };
+                        // B966: Enqueue NOT applied -- ordering invariant: dicts BEFORE expectedPositions (L1479).
                         activePositions[fleetKey] = fleetFollowerPos; // FIRST: dicts registered atomically
                         entryOrders[fleetKey] = fEntry;               // REAPER hasWorkingEntry check reads these
 
@@ -1570,7 +1585,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                             }
 
                             // Reset expected position
-                            SetExpectedPositionLocked(ExpKey(acct.Name), 0);
+                            { var _acct966flat = ExpKey(acct.Name); Enqueue(ctx => ctx.SetExpectedPositionLocked(_acct966flat, 0)); }
                         }
                         catch (Exception ex)
                         {
@@ -1628,7 +1643,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                             Print($"[SIMA] V12.12 Master flatten: {masterClosedCount} position(s) on {Account.Name} (outside prefix filter)");
                         }
 
-                        SetExpectedPositionLocked(ExpKey(Account.Name), 0);
+                        { var _acct966mflat = ExpKey(Account.Name); Enqueue(ctx => ctx.SetExpectedPositionLocked(_acct966mflat, 0)); }
                     }
                     catch (Exception ex)
                     {
@@ -1710,7 +1725,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // Step 3: Clear ghost memory so REAPER does not trigger a second flatten.
-                SetExpectedPositionLocked(ExpKey(acct.Name), 0);
+                { var _acct966emg = ExpKey(acct.Name); Enqueue(ctx => ctx.SetExpectedPositionLocked(_acct966emg, 0)); }
             }
             catch (Exception ex)
             {
@@ -1784,7 +1799,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                             Print($"[SIMA] [OK] Graceful Close: {qty} {position.MarketPosition} on {acct.Name}");
                         }
 
-                        SetExpectedPositionLocked(ExpKey(acct.Name), 0);
+                        { var _acct966cpo = ExpKey(acct.Name); Enqueue(ctx => ctx.SetExpectedPositionLocked(_acct966cpo, 0)); }
                     }
                     catch (Exception ex)
                     {
@@ -1836,7 +1851,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                             Print($"[SIMA] ??-- Graceful Close FAILED: Master {qty} {position.MarketPosition} (SubmitOrderUnmanaged returned null)");
                         }
                     }
-                    SetExpectedPositionLocked(ExpKey(Account.Name), 0);
+                    { var _acct966cpm = ExpKey(Account.Name); Enqueue(ctx => ctx.SetExpectedPositionLocked(_acct966cpm, 0)); }
                 }
 
                 Print($"[SIMA] ====== GLOBAL POSITIONS CLOSE COMPLETE: {closeCount} positions closed ======");

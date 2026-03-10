@@ -205,41 +205,38 @@ namespace NinjaTrader.NinjaScript.Strategies
                 int    expectedDelta = 0;
                 string acctName     = null;
 
-                lock (stateLock)
+                double atrMult    = GetATRMultiplierForPosition(pos);
+                double newStopDist = CalculateATRStopDistance(atrMult);
+                newQty            = CalculatePositionSize(newStopDist);
+
+                // V12.45 TICK-AWARE FLICKER CHECK: use tickSize for meaningful comparison
+                double oldCeilingStop = Math.Ceiling(Math.Abs(pos.EntryPrice - pos.CurrentStopPrice));
+                double stopDelta      = Math.Abs(newStopDist - oldCeilingStop);
+                if (stopDelta < tickSize && newQty == pos.TotalContracts)
+                    continue;  // No material change -- skip (releases lock before continuing)
+
+                double newStopPrice = pos.Direction == MarketPosition.Long
+                    ? pos.EntryPrice - newStopDist
+                    : pos.EntryPrice + newStopDist;
+
+                // Stop prices update immediately -- they reflect intent and are safe before broker confirmation.
+                pos.CurrentStopPrice = newStopPrice;
+                pos.InitialStopPrice = newStopPrice;
+
+                // [VOLATILITY-01]: TotalContracts / distribution are NOT updated here.
+                // They are committed in OnOrderUpdate when broker confirms the ChangeOrder (Accepted state).
+                // This prevents Desync-01 if the broker rejects the size change.
+                needsQtyChange = newQty != entryOrder.Quantity;
+                if (needsQtyChange)
                 {
-                    double atrMult    = GetATRMultiplierForPosition(pos);
-                    double newStopDist = CalculateATRStopDistance(atrMult);
-                    newQty            = CalculatePositionSize(newStopDist);
-
-                    // V12.45 TICK-AWARE FLICKER CHECK: use tickSize for meaningful comparison
-                    double oldCeilingStop = Math.Ceiling(Math.Abs(pos.EntryPrice - pos.CurrentStopPrice));
-                    double stopDelta      = Math.Abs(newStopDist - oldCeilingStop);
-                    if (stopDelta < tickSize && newQty == pos.TotalContracts)
-                        continue;  // No material change -- skip (releases lock before continuing)
-
-                    double newStopPrice = pos.Direction == MarketPosition.Long
-                        ? pos.EntryPrice - newStopDist
-                        : pos.EntryPrice + newStopDist;
-
-                    // Stop prices update immediately -- they reflect intent and are safe before broker confirmation.
-                    pos.CurrentStopPrice = newStopPrice;
-                    pos.InitialStopPrice = newStopPrice;
-
-                    // [VOLATILITY-01]: TotalContracts / distribution are NOT updated here.
-                    // They are committed in OnOrderUpdate when broker confirms the ChangeOrder (Accepted state).
-                    // This prevents Desync-01 if the broker rejects the size change.
-                    needsQtyChange = newQty != entryOrder.Quantity;
-                    if (needsQtyChange)
-                    {
-                        // [M8.2 SIZING-SYNC]: Mirror the quantity change into expectedPositions so Reaper
-                        // sees the updated target size before the fill arrives.
-                        int qtyDelta    = newQty - entryOrder.Quantity;
-                        expectedDelta   = pos.Direction == MarketPosition.Long ? qtyDelta : -qtyDelta;
-                        acctName        = (pos.IsFollower && pos.ExecutingAccount != null)
-                                            ? pos.ExecutingAccount.Name : Account.Name;
-                    }
-                    syncLog = $"[V12.45 SYNC] {entryName}: Stop {oldCeilingStop:F0}->{newStopDist:F0}pt | Qty {entryOrder.Quantity}->{newQty} | ATR={currentATR:F2}";
+                    // [M8.2 SIZING-SYNC]: Mirror the quantity change into expectedPositions so Reaper
+                    // sees the updated target size before the fill arrives.
+                    int qtyDelta    = newQty - entryOrder.Quantity;
+                    expectedDelta   = pos.Direction == MarketPosition.Long ? qtyDelta : -qtyDelta;
+                    acctName        = (pos.IsFollower && pos.ExecutingAccount != null)
+                                        ? pos.ExecutingAccount.Name : Account.Name;
                 }
+                syncLog = $"[V12.45 SYNC] {entryName}: Stop {oldCeilingStop:F0}->{newStopDist:F0}pt | Qty {entryOrder.Quantity}->{newQty} | ATR={currentATR:F2}";
 
                 // ChangeOrder must be called outside stateLock -- broker API call.
                 try

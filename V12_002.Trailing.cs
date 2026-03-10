@@ -631,8 +631,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     newStop = pos.ExecutingAccount.CreateOrder(Instrument, pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover,
                         OrderType.StopMarket, TimeInForce.Gtc, pos.RemainingContracts, 0, validatedStopPrice, "Stop_" + entryName, "Stop_" + entryName, null);
                     pos.ExecutingAccount.Submit(new[] { newStop });
-                    // A1-1: stopOrders mutation inside stateLock (Build 960 audit fix)
-                    stopOrders[entryName] = newStop;
+                    // A1-1: B966 -- Enqueue to flow through actor pipeline (was naked stateLock write)
+                    { var _en966 = entryName; var _ns966 = newStop; Enqueue(ctx => { ctx.stopOrders[_en966] = _ns966; }); }
                 }
                 else
                 {
@@ -643,8 +643,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     OrderAction stopExitAction = pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
                     newStop = SubmitOrderUnmanaged(0, stopExitAction, OrderType.StopMarket, pos.RemainingContracts, 0, validatedStopPrice, "", stopSigName);
 
-                    // A1-1: stopOrders mutation inside stateLock (Build 960 audit fix)
-                    if (newStop != null) stopOrders[entryName] = newStop;
+                    // A1-1: B966 -- Enqueue to flow through actor pipeline (was naked stateLock write)
+                    if (newStop != null) { var _en966 = entryName; var _ns966 = newStop; Enqueue(ctx => { ctx.stopOrders[_en966] = _ns966; }); }
                 }
 
                 if (newStop == null)

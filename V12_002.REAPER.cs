@@ -682,6 +682,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 repairPos.BracketSubmitted = false;
+                // B966: reaperThread -- Enqueue not applicable (would drain on wrong thread).
+                // ConcurrentDictionary single-write is inherently thread-safe.
                 entryOrders[repairEntryName] = repairEntry;
 
                 targetAcct.Submit(new[] { repairEntry });

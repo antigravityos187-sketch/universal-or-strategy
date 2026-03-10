@@ -188,11 +188,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Print("[ENTRY_ABORT] FFMA SubmitOrderUnmanaged returned null for " + entryName + ". Rolling back.");
                     return;
                 }
-                lock (stateLock)
-                {
-                    activePositions[entryName] = pos;
-                    entryOrders[entryName] = entryOrder;
-                }
+                { var _en966ap = entryName; var _p966ap = pos; Enqueue(ctx => { ctx.activePositions[_en966ap] = _p966ap; }); }
+                { var _en966 = entryName; var _eo966 = entryOrder; Enqueue(ctx => { ctx.entryOrders[_en966] = _eo966; }); }
                 // B957: Notify panel only after confirmed submit (not before). Prevents premature IPC notification.
                 string syncMsg = string.Format("POSITION_ENTERED|FFMA|{0}", contracts);
                 SendResponseToRemote(syncMsg);
@@ -329,11 +326,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Print("[ENTRY_ABORT] FFMA_LIMIT SubmitOrderUnmanaged returned null for " + entryName + ". Rolling back.");
                     return;
                 }
-                lock (stateLock)
-                {
-                    activePositions[entryName] = pos;
-                    entryOrders[entryName] = entryOrder;
-                }
+                { var _en966ap = entryName; var _p966ap = pos; Enqueue(ctx => { ctx.activePositions[_en966ap] = _p966ap; }); }
+                { var _en966 = entryName; var _eo966 = entryOrder; Enqueue(ctx => { ctx.entryOrders[_en966] = _eo966; }); }
 
                 Print(string.Format("V12.27 FFMA_LIMIT: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | ATR-based",
                     direction, contracts, entryPrice, stopPrice));
@@ -477,11 +471,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Print("[ENTRY_ABORT] FFMA_MANUAL_MARKET SubmitOrderUnmanaged returned null for " + entryName + ". Rolling back.");
                     return;
                 }
-                lock (stateLock)
-                {
-                    activePositions[entryName] = pos;
-                    entryOrders[entryName] = entryOrder;
-                }
+                { var _en966ap = entryName; var _p966ap = pos; Enqueue(ctx => { ctx.activePositions[_en966ap] = _p966ap; }); }
+                { var _en966 = entryName; var _eo966 = entryOrder; Enqueue(ctx => { ctx.entryOrders[_en966] = _eo966; }); }
 
                 Print(string.Format("V12.27 FFMA_MANUAL_MARKET: {0} {1}@MARKET | Stop: {2:F2} (candle {3}) | Toward EMA9={4:F2}",
                     direction, contracts, stopPrice, direction == MarketPosition.Long ? "low" : "high", ema9Value));

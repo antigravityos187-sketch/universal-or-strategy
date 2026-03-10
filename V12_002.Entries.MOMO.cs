@@ -145,7 +145,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Build 1102Y-V3 [MS-06]: Register Master expected BEFORE StopMarket entry.
                 int masterDeltaMOMO = (direction == MarketPosition.Long) ? contracts : -contracts;
-                AddExpectedPositionDeltaLocked(ExpKey(Account.Name), masterDeltaMOMO);
+                { var _aek966 = ExpKey(Account.Name); var _aed966 = (masterDeltaMOMO); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
 
                 // V12.Hardening: Use StopMarket (was StopLimit with limitPrice==stopPrice -- never fills on fast breakouts)
                 Order entryOrder = direction == MarketPosition.Long
@@ -155,12 +155,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
                 if (entryOrder == null)
                 {
-                    AddExpectedPositionDeltaLocked(ExpKey(Account.Name), -masterDeltaMOMO);
+                    { var _aek966 = ExpKey(Account.Name); var _aed966 = (-masterDeltaMOMO); Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966)); }
                     Print("[ENTRY_ABORT] MOMO SubmitOrderUnmanaged returned null for " + entryName + ". Rolling back.");
                     return;
                 }
-                activePositions[entryName] = pos;
-                entryOrders[entryName] = entryOrder;
+                { var _en966ap = entryName; var _p966ap = pos; Enqueue(ctx => { ctx.activePositions[_en966ap] = _p966ap; }); }
+                { var _en966 = entryName; var _eo966 = entryOrder; Enqueue(ctx => { ctx.entryOrders[_en966] = _eo966; }); }
 
                 Print(string.Format("MOMO ENTRY ORDER: {0} {1}@{2:F2} STOP MKT | Stop: {3:F2}pt", signalName, contracts, entryPrice, stopDistance));
                 Print(string.Format("MOMO TARGETS: T1:{0}@{1:F2}(+{2:F2}pt) | T2:{3}@{4:F2} | T3:{5}@{6:F2} | T4:{7}@{8:F2} | T5:{9}@{10:F2} (Runner targets trail-only)",
