@@ -9,6 +9,7 @@ Reserve Important ONLY for findings that would:
 - Skip a required Thread.MemoryBarrier() before hot-path memory reads
 - Allow duplicate orders through the dedup map (race on FNV-1a probe)
 - Introduce lock() inside src/ (BANNED by V12 Platinum Standard)
+- Violate Jane Street Alignment: Fragmented state transitions, non-deterministic latency spikes, or new heap allocations in the hot path.
 - Leak non-ASCII into a C# string literal (compiler gate violation)
 - Expose GCP project IDs or API keys in workflow YAML
 
@@ -28,6 +29,9 @@ Reserve Important ONLY for findings that would:
 ## Always check (V12 Critical Gates)
 
 - src/: zero lock() statements (grep confirm)
+- Jane Street Purity: "Allocation is a Bug" -- flag any `new` heap allocations in the hot path.
+- Atomic Unification: Verify that state transitions are complete and indivisible.
+- V12 ATLAS Compliance: Ensure no logic drifts from the world model in `docs/brain/V12_ATLAS.md`.
 - Any new struct with adjacent int/long fields: verify [StructLayout(LayoutKind.Explicit)] with 64-byte padding
 - Any new Thread or Task: verify Thread.MemoryBarrier() placement before ring buffer read
 - Workflow YAML: verify no project IDs, tokens, or credentials are hardcoded

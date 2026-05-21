@@ -163,6 +163,37 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 - **Subsequent Waits**: `Start-Sleep -Seconds 180` (3 minutes) between status polls.
 - **BANNED**: Polling intervals under 120 seconds are strictly forbidden for the Global Audit pillar.
 
+## Section 16: Mandatory Jane Street Architectural Alignment (V12.17)
+
+**To ensure maximum performance and low-latency integrity, ALL agents (Gemini CLI, Bob, Codex, Greptile) MUST load and apply the ingested Jane Street Intel before any planning or implementation task.**
+
+- **Master Intel Path**: `docs/intel/jane-street/`
+- **Mandate**: Every implementation plan must include a "Jane Street Alignment" section, verifying that the proposed changes adhere to:
+    1. **Atomic Unification**: No fragmented state transitions.
+    2. **Lock-Free Kernels**: Absolute ban on `lock()` (already V12 DNA).
+    3. **Deterministic Execution**: Zero garbage-collection pressure in the hot path.
+- **Enforcement**: Greptile is designated as the "Jane Street Sentinel" to verify alignment in PR reviews.
+
+## Section 17: V12 ATLAS & Context-Augmented Generation (CAG) (V12.18)
+
+**To prevent context drift and ensure architectural consistency across the fleet, ALL agents MUST load the V12 ATLAS as their primary world model at the start of every session.**
+
+- **Atlas Path**: `docs/brain/V12_ATLAS.md`
+- **Mandate**: Agents are forbidden from "searching" for core architectural rules—they must act based on the pre-loaded Atlas.
+- **Workflow Integration**: 
+    1. Load Atlas.
+    2. Query Greptile MCP for specific module context.
+    3. Execute task following Jane Street Alignment.
+
+## Section 18: Nested Autonomous Perfection Loops (V12.19)
+
+**To achieve 100/100 PHS without manual intervention, all Epic execution workflows MUST integrate `/pr-loop` as a nested sub-routine.**
+
+- **Trigger**: Every `git commit` within an Epic (automatic or manual) must be followed by a handoff to the **PR Perfection Loop**.
+- **Scope**: The loop remains active until the PR reaches 100/100 PHS.
+- **Commands Involved**: `/epic-run`, `/epic-tdd`, `/repair-pr`.
+- **Handoff Requirement**: The Orchestrator must provide the `<PR_NUMBER>` to the nested loop to ensure it targets the correct branch.
+
 ## graphify
 
 This project has a graphify knowledge graph at graphify-out/.
