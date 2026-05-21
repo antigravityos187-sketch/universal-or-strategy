@@ -6,6 +6,7 @@ You must read, ingest, and strictly adhere to the permanent project standards de
 - **UltraThink Always**: Perform P2 Diagnosis and P5 Side-Effect Audits for all edits.
 - **UltraPlan Always**: Use Claude Ultraplan for architectural designs.
 - **No Internal Locks**: Use the Actor/FSM `Enqueue` model for state mutations.
+- **Jane Street Alignment (V12.17)**: You MUST load and apply the Jane Street Intel from `docs/intel/jane-street/` for every architectural decision.
 - **Tool Parity**: You have full access to the following project-specific tools:
     - **Context7 CLI**: `python scripts/context7_cli.py` (query docs, resolve IDs).
     - **jCodemunch-MCP**: Use for deep codebase navigation (refer to `.mcp.json`).

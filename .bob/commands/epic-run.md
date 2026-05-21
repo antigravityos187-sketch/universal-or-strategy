@@ -219,10 +219,20 @@ After Director types "F5 done [BUILD_TAG]", switch to Advanced mode:
 COMMIT TASK:
 Run: git add -A
 Run: git commit -m "[$1] ticket-XX: [short description] -- CYC [before]->[after] [BUILD_TAG]"
-Report the commit hash.
+Report the commit hash and current branch name.
 ```
 
-**Step F -- Advance:**
+**Step F -- Switch to: Orchestrator mode (/pr-loop)**
+
+After the commit, immediately trigger the autonomous perfection gate:
+```
+EPIC: $1
+TASK: Run /pr-loop <PR_NUMBER>
+GOAL: Drive the current branch to 100/100 PHS.
+STOP when /pr-loop outputs [PHS-PERFECT].
+```
+
+**Step G -- Advance:**
 Mark ticket-XX complete in your running status.
 Check EXECUTION_GUIDE.md for the next ticket.
 If tickets remain: return to TICKET LOOP START.

@@ -1,7 +1,7 @@
 // V12 REAPER Emergency Stop -- Naked-position hard stop protection (Build 1102R)
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using NinjaTrader.Cbi;
@@ -27,53 +27,47 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Account acct = Account.All.FirstOrDefault(a => a.Name == item.AccountName);
                     if (acct == null)
                     {
-                        Print(string.Format("[REAPER][NAKED_STOP] Account {0} not found -- skipping.", item.AccountName));
-                        _reaperNakedStopInFlight.TryRemove(ExpKey(item.AccountName), out _); // [Build 969.3]
+                        Print(
+                            string.Format("[REAPER][NAKED_STOP] Account {0} not found -- skipping.", item.AccountName)
+                        );
+                        ClearNakedStopInFlight(ExpKey(item.AccountName)); // NEW: Accessor method
                         continue;
                     }
 
-                    // Compute emergency stop price: MaximumStop ticks from current close.
-                    // Close[0] is safe here -- ProcessReaperNakedStopQueue runs on strategy thread
-                    // via TriggerCustomEvent.
-                    double emergencyStopDist = MaximumStop;
-                    double atrBound = CalculateATRStopDistance(RMAStopATRMultiplier);
-                    if (atrBound > 0)
-                        emergencyStopDist = Math.Min(emergencyStopDist, atrBound);
-                    if (emergencyStopDist <= 0)
-                        emergencyStopDist = Math.Max(tickSize, MinimumStop);
-
-                    double stopPrice;
-                    OrderAction closeAction;
-
-                    if (item.Direction == MarketPosition.Long)
-                    {
-                        stopPrice   = Instrument.MasterInstrument.RoundToTickSize(Close[0] - emergencyStopDist);
-                        closeAction = OrderAction.Sell;
-                    }
-                    else
-                    {
-                        stopPrice   = Instrument.MasterInstrument.RoundToTickSize(Close[0] + emergencyStopDist);
-                        closeAction = OrderAction.BuyToCover;
-                    }
+                    // NEW: Call extracted helper with ATR floor fix
+                    var (stopPrice, closeAction) = CalculateEmergencyStopPrice(item.Direction, Close[0], item.Qty);
 
                     string signalName = "EMERGENCY_STOP_" + item.AccountName;
                     Order emergencyStop = acct.CreateOrder(
-                        Instrument, closeAction, OrderType.StopMarket,
-                        TimeInForce.Gtc, item.Qty,
-                        0, stopPrice, "", signalName, null);
+                        Instrument,
+                        closeAction,
+                        OrderType.StopMarket,
+                        TimeInForce.Gtc,
+                        item.Qty,
+                        0,
+                        stopPrice,
+                        "",
+                        signalName,
+                        null
+                    );
 
                     acct.Submit(new[] { emergencyStop });
 
-                    // BUG-M2: Clear in-flight guard after successful submission
-                    _reaperNakedStopInFlight.TryRemove(ExpKey(item.AccountName), out _); // [Build 969.3] - Clears guard for immediate retry if broker update latches
-                    Print(string.Format(
-                        "[REAPER][EMERGENCY_STOP] Submitted StopMarket for {0}: {1} {2}ct @ {3:F2} (Dist={4:F2})",
-                        item.AccountName, closeAction, item.Qty, stopPrice, emergencyStopDist));
+                    ClearNakedStopInFlight(ExpKey(item.AccountName)); // NEW: Accessor method
+                    Print(
+                        string.Format(
+                            "[REAPER][EMERGENCY_STOP] Submitted StopMarket for {0}: {1} {2}ct @ {3:F2} (Dist={4:F2})",
+                            item.AccountName,
+                            closeAction,
+                            item.Qty,
+                            stopPrice,
+                            Math.Abs(Close[0] - stopPrice)
+                        )
+                    );
                 }
                 catch (Exception ex)
                 {
-                    // BUG-M2: Clear in-flight guard on failure so next cycle can retry
-                    _reaperNakedStopInFlight.TryRemove(ExpKey(item.AccountName), out _); // [Build 968]
+                    ClearNakedStopInFlight(ExpKey(item.AccountName)); // NEW: Accessor method
                     Print(string.Format("[REAPER][EMERGENCY_STOP_FAIL] {0}: {1}", item.AccountName, ex.Message));
                 }
             }

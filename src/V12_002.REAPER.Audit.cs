@@ -313,7 +313,17 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             if (!hasWorkingStop)
             {
-                if (EnqueueReaperNakedStopCandidate(acct, pos, actualQty, expectedKey, shouldLog))
+                if (
+                    DetectNakedPosition(
+                        acct,
+                        pos,
+                        actualQty,
+                        expectedKey,
+                        shouldLog,
+                        pendingStopReplacements,
+                        activePositions
+                    )
+                )
                 {
                     try
                     {
@@ -321,7 +331,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                     catch (Exception tcEx)
                     {
-                        _reaperNakedStopInFlight.TryRemove(expectedKey, out _); // [Build 969]
+                        ClearNakedStopInFlight(expectedKey); // NEW: Accessor method
                         Print(
                             string.Format(
                                 "[REAPER][NAKED_STOP] TriggerCustomEvent failed for {0}: {1} -- in-flight cleared.",
@@ -334,7 +344,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else
             {
-                _nakedPositionFirstSeen.TryRemove(acct.Name, out _);
+                ClearNakedPositionGrace(acct.Name); // NEW: Accessor method
             }
         }
 
@@ -485,78 +495,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             );
         }
 
-        private bool EnqueueReaperNakedStopCandidate(
-            Account acct,
-            Position pos,
-            int actualQty,
-            string expectedKey,
-            bool shouldLog
-        )
-        {
-            // H17-GUARD: Prevent new enqueues after shutdown initiated
-            if (_isTerminating)
-                return false;
-            bool hasPendingStopReplace = false;
-            foreach (var psr in pendingStopReplacements.Values)
-            {
-                PositionInfo psrPos;
-                if (
-                    activePositions.TryGetValue(psr.EntryName, out psrPos)
-                    && psrPos != null
-                    && psrPos.ExecutingAccount != null
-                    && psrPos.ExecutingAccount.Name == acct.Name
-                )
-                {
-                    hasPendingStopReplace = true;
-                    break;
-                }
-            }
-
-            if (hasPendingStopReplace)
-            {
-                _nakedPositionFirstSeen.TryRemove(acct.Name, out _);
-                if (shouldLog)
-                    Print(string.Format("[REAPER] {0}: Stop replace in flight -- suppressing naked audit.", acct.Name));
-            }
-            else
-            {
-                DateTime firstSeen;
-                int graceSeconds = (NakedPositionGraceSec >= 5) ? NakedPositionGraceSec : 5;
-                if (!_nakedPositionFirstSeen.TryGetValue(acct.Name, out firstSeen))
-                {
-                    _nakedPositionFirstSeen[acct.Name] = DateTime.UtcNow;
-                    Print(
-                        string.Format(
-                            "[REAPER][NAKED_POSITION] {0}: {1}ct naked -- starting {2}s grace window.",
-                            acct.Name,
-                            actualQty,
-                            graceSeconds
-                        )
-                    );
-                }
-                else if ((DateTime.UtcNow - firstSeen).TotalSeconds >= graceSeconds)
-                {
-                    // H16-FIX: Atomic TryAdd check prevents duplicate naked stop submissions.
-                    if (!_reaperNakedStopInFlight.TryAdd(expectedKey, 0))
-                    {
-                        // Already in flight - skip
-                        return false;
-                    }
-                    Print(
-                        string.Format(
-                            "[REAPER][NAKED_POSITION] {0}: {1}ct CONFIRMED naked after {2:F1}s grace. Queuing emergency hard stop.",
-                            acct.Name,
-                            actualQty,
-                            (DateTime.UtcNow - firstSeen).TotalSeconds
-                        )
-                    );
-                    _reaperNakedStopQueue.Enqueue((acct.Name, pos.MarketPosition, Math.Abs(actualQty)));
-                    return true;
-                }
-            }
-
-            return false;
-        }
+        // Build 1111.007-reaper-t1: EnqueueReaperNakedStopCandidate extracted to V12_002.REAPER.NakedPosition.cs as DetectNakedPosition
 
         private void TerminateFsmsForAccount(string accountName)
         {
