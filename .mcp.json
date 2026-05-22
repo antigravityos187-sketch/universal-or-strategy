@@ -2,8 +2,8 @@
   "mcpServers": {
     "jcodemunch": {
       "type": "stdio",
-      "command": "uvx",
-      "args": ["jcodemunch-mcp"]
+      "command": "jcodemunch-mcp.exe",
+      "args": []
     }
   }
 }
