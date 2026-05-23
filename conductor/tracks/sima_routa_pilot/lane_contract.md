@@ -13,7 +13,7 @@
 ### Constraints:
 - **Lock-Free**: Zero `lock()` statements in the new files.
 - **ASCII Only**: No Unicode in `Print()` statements.
-- **Pattern**: Must use `_simaToggleSem.Wait()`/`Release()` in `finally` blocks.
+- **Pattern**: Must use lock-free state transitions (Interlocked.Exchange) or the FSM/Actor Enqueue model. Blocking semaphores are BANNED.
 
 ---
 
@@ -22,7 +22,7 @@
 
 ### Definition of Done (Evidence Required):
 - [ ] **ASCII Gate**: `python check_ascii.py` output showing PASS.
-- [ ] **Complexity Audit**: `complexity_audit_report.txt` showing the new files have CC < 20.
+- [ ] **Complexity Audit**: `complexity_audit_report.txt` showing the new files have CC <= 15.
 - [ ] **Build Check**: `build_output.txt` showing 0 errors in NinjaScript compilation.
 - [ ] **Lock Audit**: `grep -r "lock(" src/Sima/Extracts/` returns 0 results.
 
