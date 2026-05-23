@@ -119,11 +119,11 @@ if ($exitCode -eq 0) {
     Write-Host "[PASS] No V12 DNA violations detected!" -ForegroundColor Green
     Write-Host ""
     Write-Host "All checks passed:" -ForegroundColor Green
-    Write-Host "  ✓ No lock() statements" -ForegroundColor Green
-    Write-Host "  ✓ ASCII-only strings" -ForegroundColor Green
-    Write-Host "  ✓ Atomic operations on shared state" -ForegroundColor Green
-    Write-Host "  ✓ No blocking async calls" -ForegroundColor Green
-    Write-Host "  ✓ No LINQ in hot paths" -ForegroundColor Green
+    Write-Host "  [x] No lock() statements" -ForegroundColor Green
+    Write-Host "  [x] ASCII-only strings" -ForegroundColor Green
+    Write-Host "  [x] Atomic operations on shared state" -ForegroundColor Green
+    Write-Host "  [x] No blocking async calls" -ForegroundColor Green
+    Write-Host "  [x] No LINQ in hot paths" -ForegroundColor Green
     exit 0
 } elseif ($exitCode -eq 1) {
     Write-Host "[FAIL] V12 DNA violations detected!" -ForegroundColor Red
@@ -131,10 +131,10 @@ if ($exitCode -eq 0) {
     Write-Host "Review findings above and fix before pushing." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Common fixes:" -ForegroundColor Cyan
-    Write-Host "  • lock() → Interlocked.CompareExchange or Actor model" -ForegroundColor White
-    Write-Host "  • Unicode → ASCII equivalents (!, --, ->, straight quotes)" -ForegroundColor White
-    Write-Host "  • Task.Wait() → await Task.WhenAll()" -ForegroundColor White
-    Write-Host "  • LINQ in OnBarUpdate → for loops" -ForegroundColor White
+    Write-Host "  - lock() -> Interlocked.CompareExchange or Actor model" -ForegroundColor White
+    Write-Host "  - Unicode -> ASCII equivalents (!, --, ->, straight quotes)" -ForegroundColor White
+    Write-Host "  - Task.Wait() -> await Task.WhenAll()" -ForegroundColor White
+    Write-Host "  - LINQ in OnBarUpdate -> for loops" -ForegroundColor White
     Write-Host ""
     Write-Host "For detailed guidance, see: docs/architecture.md" -ForegroundColor Cyan
     exit 1

@@ -94,7 +94,7 @@ rules:
         - audit
 
   - id: v12-task-waitall-blocking
-    patterns:
+    pattern-either:
       - pattern: Task.WaitAll(...)
       - pattern: Task.Wait()
       - pattern: $TASK.Result
@@ -289,17 +289,9 @@ rules:
 
   - id: v12-hardcoded-credentials
     patterns:
-      - pattern-either:
-          - pattern: |
-              string $VAR = "password=...";
-          - pattern: |
-              string $VAR = "apikey=...";
-          - pattern: |
-              string $VAR = "secret=...";
-          - pattern: |
-              string $VAR = "token=...";
+      - pattern-regex: '(?i)["''](password|apikey|secret|token|credential)=.*["'']'
     message: |
-      CRITICAL: Hardcoded credentials detected.
+      CRITICAL: Hardcoded credentials detected in string literal.
       
       Fix: Use environment variables or secure vault (Azure Key Vault, AWS Secrets Manager).
     languages: [csharp]
