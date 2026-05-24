@@ -4,7 +4,7 @@
       "url": "https://api.greptile.com/mcp",
       "type": "http",
       "headers": {
-        "Authorization": "Bearer vob20OZM949/QgQ/IPxtzrU7lJDMGEFuFvwQ8D0UxO3lJ2CG"
+        "Authorization": "Bearer ${GREPTILE_API_KEY}"
       },
       "alwaysAllow": ["query", "search", "search_codebase", "query_codebase", "semantic_search"]
     }
