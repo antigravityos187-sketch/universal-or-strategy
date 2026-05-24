@@ -4,6 +4,9 @@ obj/
 *.bak*
 *.202*
 __pycache__/
+*.pyc
+*.pyo
+*.extracted.py
 
 # ...
 artifacts/
