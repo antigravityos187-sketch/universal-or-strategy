@@ -490,7 +490,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 bool brokerFlat = (brokerPos == null || brokerPos.MarketPosition == MarketPosition.Flat);
 
-                // T-W1-Perf: direct foreach over ConcurrentDictionary -- no .Values snapshot, no closure alloc.
+                // H-13: Check for active FSM entries for this account
                 bool hasActiveFsmForAcct = false;
                 foreach (var _fkvp in _followerBrackets)
                 {
