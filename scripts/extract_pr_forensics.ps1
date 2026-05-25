@@ -9,8 +9,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Extract repository URL dynamically from git remote
+$GitRemote = git remote get-url origin
+$RepoUrl = $GitRemote -replace '\.git$', '' -replace 'git@github\.com:', 'https://github.com/'
+
 Write-Host "=== PR FORENSICS EXTRACTION ===" -ForegroundColor Cyan
 Write-Host "PR #$PrNumber" -ForegroundColor Yellow
+Write-Host "Repository: $RepoUrl" -ForegroundColor Gray
 
 # Step 1: Fetch raw data
 Write-Host "`n[1/5] Fetching PR data from GitHub..." -ForegroundColor Green
@@ -115,7 +120,7 @@ foreach ($review in $prData.reviews) {
         Priority = $priority
         Category = $category
         Timestamp = $review.submittedAt
-        URL = "https://github.com/mdasdispatch-hash/universal-or-strategy/pull/$PrNumber"
+        URL = "$RepoUrl/pull/$PrNumber"
         Body = $body.Substring(0, [Math]::Min(500, $body.Length))
     }
 }

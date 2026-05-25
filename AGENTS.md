@@ -272,7 +272,8 @@ The repository uses `.codacy.yml` to enforce V12 architectural standards:
 **After pushing `.codacy.yml` to GitHub**:
 
 1. **Check Codacy Dashboard**:
-   - Navigate to: https://app.codacy.com/gh/mdasdispatch-hash/universal-or-strategy/settings
+   - Navigate to: https://app.codacy.com/gh/malhitticrypto-debug/universal-or-strategy/settings
+   # Note: Update this URL when GitHub account changes
    - Verify "Configuration file" shows `.codacy.yml` detected
    - Confirm complexity threshold displays as 15
 
@@ -313,7 +314,8 @@ The repository uses `.codacy.yml` to enforce V12 architectural standards:
 ### Commands
 
 - **Local Complexity Audit**: `python scripts/complexity_audit.py`
-- **View Codacy Dashboard**: https://app.codacy.com/gh/mdasdispatch-hash/universal-or-strategy/dashboard
+- **View Codacy Dashboard**: https://app.codacy.com/gh/malhitticrypto-debug/universal-or-strategy/dashboard
+# Note: Update this URL when GitHub account changes
 - **Check PR Quality**: Codacy bot comments on every PR with issue delta
 
 - **Checkpointing**: Always enabled via `.bob/settings.json`. Restore via `/restore`.
