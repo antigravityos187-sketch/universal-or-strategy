@@ -10,7 +10,7 @@ updates:
         patterns:
           - "*"
     reviewers:
-      - "mkalhitti-cloud"
+      - "malhitticrypto-debug"  # TODO: Make this dynamic via git remote parsing
     commit-message:
       prefix: "chore(deps)"
   - package-ecosystem: "nuget"
@@ -23,6 +23,6 @@ updates:
         patterns:
           - "*"
     reviewers:
-      - "mkalhitti-cloud"
+      - "malhitticrypto-debug"  # TODO: Make this dynamic via git remote parsing
     commit-message:
       prefix: "chore(deps)"
