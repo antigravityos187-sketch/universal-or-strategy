@@ -4,6 +4,10 @@ root = true
 # Default severity for analyzer diagnostics
 dotnet_analyzer_diagnostic.severity = warning
 
+# IDE0011: Add braces to single-line control statements
+csharp_prefer_braces = true:warning
+dotnet_diagnostic.IDE0011.severity = warning
+
 # StyleCop specific configurations (optional, can be expanded as needed)
 dotnet_diagnostic.SA1633.severity = none # File must have header
 dotnet_diagnostic.SA1200.severity = none # Using directives must be placed correctly
