@@ -44,9 +44,41 @@ if ($LASTEXITCODE -eq 0) {
 **Mode:** Advanced
 **Action:** Verify branch is clean and rebased, run Semgrep scan
 
+**CRITICAL SAFETY CHECK**: Before ANY rebase operation:
+1. Check PR scope: `powershell -File .\scripts\check_pr_scope.ps1 -PrNumber <PR_NUMBER>`
+2. If output is `SRC-ONLY`:
+   - **SRC-ONLY PR**: Skip rebase entirely, use `git reset --hard origin/<branch>`
+   - Rationale: Rebasing src-only PRs risks contamination from non-src commits in main
+3. If output is `MIXED`:
+   - **MIXED PR**: Proceed with normal rebase + conflict resolution
+4. If output is `EMPTY`:
+   - **EMPTY PR**: No files changed, skip hygiene checks
+
+**Rebase Protocol** (MIXED PRs only):
+1. Run: `git fetch origin main`
+2. Run: `git rebase origin/main`
+3. If conflicts in non-src files: resolve them
+4. If conflicts in src/ files: HALT and report (likely merge issue)
+5. Continue rebase until complete
+
+**Hygiene Verification** (ALL PRs):
+
 **If PR already exists (from Step -1):**
 ```powershell
-git fetch origin main && git rebase origin/main
+# Check scope first
+$scope = powershell -File .\scripts\check_pr_scope.ps1 -PrNumber <PR_NUMBER>
+
+if ($scope -eq "SRC-ONLY") {
+    # Src-only: hard reset to avoid contamination
+    git fetch origin <branch>
+    git reset --hard origin/<branch>
+} elseif ($scope -eq "MIXED") {
+    # Mixed: normal rebase
+    git fetch origin main
+    git rebase origin/main
+}
+
+# Run hygiene checks
 powershell -File .\scripts\verify_pr_hygiene.ps1
 powershell -File .\scripts\run_semgrep.ps1 -Severity ERROR
 ```
@@ -166,7 +198,7 @@ When Semgrep GitHub App is installed, findings will appear in PR comments and be
 **Protocol:**
 1. `powershell -File .\deploy-sync.ps1` (MANDATORY - syncs NT8 hard links)
 2. `git add . && git commit -m "fix: PHS Perfection Loop - PR #<N>" && git push`
-3. **MANDATORY SLEEP**: `Start-Sleep -Seconds 300` (5 min for first check)
+3. **MANDATORY SLEEP**: `Start-Sleep -Seconds 240` (4 min for first check - bots complete faster than expected)
 4. Monitor: `gh pr checks <PR_NUMBER>`
 5. **SUBSEQUENT SLEEP**: `Start-Sleep -Seconds 180` (3 min if checks still pending)
 6. Calculate PHS: `powershell -File .\scripts\calculate_fleet_score.ps1 -PrNumber <N>`
