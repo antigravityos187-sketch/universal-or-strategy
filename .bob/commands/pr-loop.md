@@ -63,17 +63,37 @@ PROTOCOL:
 
 Hand off:
 ```
-TASK: Verify PR Hygiene
+TASK: Verify PR Hygiene with Scope-Aware Rebase
+PR: $1
 PROTOCOL:
+  CRITICAL SAFETY CHECK (ALL PRs):
+    1. Check PR scope: powershell -File .\scripts\check_pr_scope.ps1 -PrNumber $1
+    2. Store result in $scope variable
+  
   IF PR is new (from Step -1):
     1. Create branch: git checkout -b <branch_name>
     2. Run `git fetch origin main && git rebase origin/main`.
     3. Run `powershell -File .\scripts\verify_pr_hygiene.ps1`.
+  
   IF PR already exists (from Step -1):
-    1. Run `git fetch origin main && git rebase origin/main`.
-    2. Run `powershell -File .\scripts\verify_pr_hygiene.ps1`.
-  4. If FAIL: HALT and report the violation (e.g. "Diff > 10k" or "Branch is dirty").
-  5. If PASS: Advance to Step 1.
+    1. IF $scope is "SRC-ONLY":
+       - Run: git fetch origin <branch>
+       - Run: git reset --hard origin/<branch>
+       - Emit: [SRC-ONLY-RESET] Skipped rebase to prevent non-src contamination
+       - Rationale: Rebasing src-only PRs risks staging non-src commits from main
+    2. ELSE IF $scope is "MIXED":
+       - Run: git fetch origin main
+       - Run: git rebase origin/main
+       - If conflicts in non-src files: resolve them
+       - If conflicts in src/ files: HALT and report (likely merge issue)
+       - Emit: [MIXED-REBASE] Completed rebase with conflict resolution
+    3. ELSE IF $scope is "EMPTY":
+       - Emit: [EMPTY-PR] No files changed, skipping hygiene
+       - Skip to Step 1
+    4. Run `powershell -File .\scripts\verify_pr_hygiene.ps1`.
+  
+  5. If FAIL: HALT and report the violation (e.g. "Diff > 10k" or "Branch is dirty").
+  6. If PASS: Emit [HYGIENE-PASS] and advance to Step 1.
 ```
 
 ---
