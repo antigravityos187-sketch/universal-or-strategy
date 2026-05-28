@@ -127,29 +127,30 @@ if (-not $SkipLint) {
 }
 
 # ============================================================================
-# 5. CSHARPIER FORMATTING CHECK
+# 5. CSHARPIER FORMATTING CHECK (V12 DNA - Curly Braces Mandate)
 # ============================================================================
 Write-CheckHeader "5. Code Formatting (CSharpier)"
 try {
-    # Check if CSharpier is installed
-    $csharpierInstalled = Get-Command "dotnet-csharpier" -ErrorAction SilentlyContinue
+    # Check if CSharpier is installed as dotnet tool
+    $csharpierCheck = dotnet tool list --global 2>&1 | Select-String "csharpier"
     
-    if ($csharpierInstalled) {
+    if ($csharpierCheck) {
         # Run CSharpier in check mode (doesn't modify files)
-        $formatOutput = dotnet csharpier . --check 2>&1
+        # FIXED: Use 'check' command, not '--check' flag
+        $formatOutput = dotnet csharpier check src/ 2>&1
         $formatSuccess = $LASTEXITCODE -eq 0
         
         if ($formatSuccess) {
             Write-CheckResult "Formatting" $true "All files properly formatted"
         } else {
-            Write-CheckResult "Formatting" $false "Formatting issues detected - run 'dotnet csharpier .'"
+            Write-CheckResult "Formatting" $false "Formatting issues detected - run 'dotnet csharpier format src/'"
             Write-Host $formatOutput -ForegroundColor Yellow
         }
     } else {
-        Write-CheckResult "Formatting" $true "CSharpier not installed (skipped)"
+        Write-CheckResult "Formatting" $false "CSharpier not installed - run 'dotnet tool install -g csharpier'"
     }
 } catch {
-    Write-CheckResult "Formatting" $true "CSharpier check skipped: $($_.Exception.Message)"
+    Write-CheckResult "Formatting" $false "CSharpier check failed: $($_.Exception.Message)"
 }
 
 # ============================================================================
