@@ -54,12 +54,15 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 
 ## 3. Standard Commands
 
-- **Build & Sync** (Build Pillar): `powershell -File .\scripts\build_readiness.ps1`
+- **Build & Sync** (Build Pillar): `powershell -File .\scripts\build_readiness.ps1` (Now includes CSharpier formatting check)
+- **Format Code** (CSharpier): `dotnet csharpier format src/` (Adds missing braces, fixes line endings)
+- **Format Check** (CSharpier): `dotnet csharpier check src/` (Verify formatting without changes)
 - **Lint Audit** (Style Pillar): `powershell -File .\scripts\lint.ps1`
 - **Stress Test** (Testing Pillar): `powershell -File .\scripts\test_stress.ps1`
 - **Sovereign Audit**: `droid /review` (Focus on P0-P3 severity findings).
 - **Readiness Check**: `droid /readiness-report` (Maintain Level 2+).
 - **Forensic Scan**: `grep -r "lock(" src/` (Zero-match requirement).
+- **Hotspot Analysis** (CodeScene): Open files in VS Code, check status bar for Code Health Score. See `docs/protocol/CODESCENE_INTEGRATION.md` for workflow.
 - **Jane Street KB Query**: `& "%USERPROFILE%\AppData\Local\Programs\Python\Python312\python.exe" scripts/query_kb.py "<term>"` (Retrieves HFT and high-performance system guidelines from the Firestore knowledge base).
 
 ## 3.5. Pre-Push Validation Protocol (V12.22)
@@ -409,6 +412,80 @@ The repository uses `.codacy.yml` to enforce V12 architectural standards:
 - **Check PR Quality**: Codacy bot comments on every PR with issue delta
 
 - **Checkpointing**: Always enabled via `.bob/settings.json`. Restore via `/restore`.
+
+## 10. Code Quality Toolchain
+
+### CSharpier (Mandatory)
+
+**Purpose**: Opinionated C# formatter that enforces V12 DNA curly braces mandate.
+
+**Installation**:
+```powershell
+dotnet tool install -g csharpier
+```
+
+**Integration**:
+- ✅ **Pre-Push Validation** (Check #5): Blocks push if formatting issues detected
+- ✅ **Build Readiness**: Runs before compilation
+- ✅ **Bob CLI**: Auto-formats before every commit
+
+**Commands**:
+- Format: `dotnet csharpier format src/`
+- Check: `dotnet csharpier check src/`
+
+**Why Mandatory**:
+- Automatically adds missing braces (V12 DNA requirement)
+- Fixes line ending inconsistencies (CRLF/LF)
+- Prevents whitespace mutation in diffs
+- Fast: <1 second for entire codebase
+
+### CodeScene (Recommended)
+
+**Purpose**: Behavioral code analysis for hotspot detection and refactoring prioritization.
+
+**Installation**: VS Code Extension (free) or Enterprise CLI (paid)
+
+**Key Features**:
+- **Hotspot Detection**: Identifies high-complexity + high-churn files
+- **Change Coupling**: Shows files that change together (God-module detection)
+- **Code Health Score**: 0-10 metric for file maintainability
+- **Refactoring Priorities**: Data-driven guidance for EPIC-CCN-10
+
+**Integration**: See `docs/protocol/CODESCENE_INTEGRATION.md` for complete workflow.
+
+**Jane Street Alignment**:
+- Hotspots = cognitively complex code
+- High churn = unpredictable behavior
+- Coupling = hidden dependencies
+
+**Usage**:
+1. Open file in VS Code
+2. Check CodeScene status bar for Code Health Score
+3. Red/yellow hotspots = prioritize for refactoring
+4. Track improvement after extraction
+
+### Codacy (Automated)
+
+**Purpose**: Static analysis for complexity, style, and security.
+
+**Integration**: Automatic via `.codacy.yml` and GitHub PR checks.
+
+**Threshold**: CYC ≤ 15 (Jane Street aligned)
+
+### Tool Synergy
+
+| Tool | Analysis Type | Use Case |
+|------|---------------|----------|
+| **CSharpier** | Formatting | Enforce braces, line endings |
+| **CodeScene** | Behavioral | Identify hotspots (complexity + churn) |
+| **Codacy** | Static | Catch violations in PR |
+| **complexity_audit.py** | Local | Pre-commit complexity check |
+
+**Workflow**:
+1. **Before refactoring**: Check CodeScene hotspots + complexity audit
+2. **During refactoring**: CSharpier auto-formats on save
+3. **Before push**: Pre-push validation runs all checks
+4. **In PR**: Codacy + CodeRabbit review changes
 
 ## graphify
 
