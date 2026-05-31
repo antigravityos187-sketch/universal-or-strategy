@@ -336,15 +336,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
-        /// Updates the stop order quantity after a partial target fill.
-        /// </summary>
-        /// <remarks>
-        /// V12.Audit [C-08]: Callers MUST ensure the <paramref name="pos"/> reference is
-        /// read under <c>stateLock</c> or from within a callback that is already serialized
-        /// by the NinjaTrader dispatch thread. Passing a stale <paramref name="pos"/> can
-        /// result in the stop being undersized relative to actual remaining contracts.
-        /// </remarks>
-        /// <summary>
         /// [Phase 7 NEW-2] Helper: Handle stale pending replacement detection and purge
         /// Extracted from UpdateStopQuantity to reduce complexity (CYC 25->15)
         /// </summary>
@@ -356,8 +347,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             // Build 1104.2: Staleness fast-path -- purge stale pending and re-initiate
-            // Fix #1: Cache DateTime.Now for determinism (Jane Street: Microsecond Latency)
-            DateTime now = DateTime.Now;
+            // Fix #1: Cache DateTime.UtcNow for determinism (Jane Street: Microsecond Latency)
+            DateTime now = DateTime.UtcNow;
             double pendingAgeSeconds = (now - existingPendingQty.CreatedTime).TotalSeconds;
             if (pendingAgeSeconds > STALE_PENDING_FAST_PATH_SEC)
             {
@@ -406,7 +397,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 StopPrice = currentStopPrice,
                 Direction = direction,
                 OldOrder = currentStop,
-                CreatedTime = DateTime.Now, // V8.31: Added for timeout support
+                CreatedTime = DateTime.UtcNow, // V8.31: Added for timeout support
             };
 
             // V8.31: Thread-safe add
@@ -462,18 +453,25 @@ namespace NinjaTrader.NinjaScript.Strategies
                         && (stopOrder.OrderType == OrderType.StopMarket || stopOrder.OrderType == OrderType.StopLimit);
                 }
 
-                // Fix #3: Also check for prefixed order names (fallback to LINQ if needed)
+                // Fix #3: Also check for prefixed order names (zero-allocation foreach)
                 if (!hasActiveStop)
                 {
-                    hasActiveStop = Account.Orders.Any(o =>
-                        (
-                            o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Accepted
-                            || o.OrderState == OrderState.PendingSubmit
+                    foreach (Order o in Account.Orders)
+                    {
+                        if (
+                            (
+                                o.OrderState == OrderState.Working
+                                || o.OrderState == OrderState.Accepted
+                                || o.OrderState == OrderState.PendingSubmit
+                            )
+                            && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
+                            && o.Name.EndsWith("_" + entryName)
                         )
-                        && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
-                        && o.Name.EndsWith("_" + entryName)
-                    );
+                        {
+                            hasActiveStop = true;
+                            break;
+                        }
+                    }
                 }
             }
             catch
@@ -518,14 +516,27 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        /// <summary>
+        /// Updates the stop order quantity after a partial target fill.
+        /// </summary>
+        /// <remarks>
+        /// V12.Audit [C-08]: Callers MUST ensure the <paramref name="pos"/> reference is
+        /// read under <c>stateLock</c> or from within a callback that is already serialized
+        /// by the NinjaTrader dispatch thread. Passing a stale <paramref name="pos"/> can
+        /// result in the stop being undersized relative to actual remaining contracts.
+        /// </remarks>
         private void UpdateStopQuantity(string entryName, PositionInfo pos)
         {
             // V12.Hardening [RISK-01]: Atomic update guard
             // Locks stateLock to prevent dirty reads of pos.RemainingContracts while ApplyTargetFill is modifying it
             if (!stopOrders.ContainsKey(entryName))
+            {
                 return;
+            }
             if (pos.RemainingContracts <= 0)
+            {
                 return;
+            }
             // V12.41: No trailing/updates before entry fill is confirmed
             if (!pos.EntryFilled)
                 return;
