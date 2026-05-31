@@ -1,76 +1,55 @@
 ﻿# PR #6 Forensics Report
-Generated: 2026-05-23 11:22:11
+Generated: 2026-05-31 08:19:12
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| Total Findings | 24 |
-| VALID Issues | 17 |
+| Total Findings | 10 |
+| VALID Issues | 10 |
 | HALLUCINATIONS | 0 |
-| INFRA-NOISE | 7 |
-| P0 (Critical) | 13 |
+| INFRA-NOISE | 0 |
+| P0 (Critical) | 5 |
 | P1 (High) | 4 |
-| P2 (Medium) | 7 |
+| P2 (Medium) |  |
 
 ## VALID Issues (Priority Order)
 
 ### [P0] CRITICAL - coderabbitai
 **Source:** review  
-**Timestamp:** 2026-05-23T15:18:32Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
+**Timestamp:** 2026-05-31T14:57:52Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6
 
 **Excerpt:**
 ```
-**Actionable comments posted: 9**
 
-<details>
-<summary>­ƒñû Prompt for all review comments with AI agents</summary>
 
-```
-Verify each finding against current code. Fix only still-valid issues, skip the
-rest with a brief reason, keep changes minimal, and validate.
-
-Inline comments:
-In `@benchmarks/BarUpdateBenchmark.cs`:
-- Line 14: The class BarUpdateBenchmark violates the required V12 prefix
-convention; rename the primary class BarUpdateBenchmark to use the appropriate
-V12 prefix (e.g., V12_001_Ba
-```
-
-### [P0] CRITICAL - codacy-production
-**Source:** review  
-**Timestamp:** 2026-05-23T15:16:25Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
-
-**Excerpt:**
-```
-### Pull Request Overview
-
-The current PR fails to meet the core objective of 'locking in' performance gains because the benchmarks exercise mock properties and local re-implementations rather than production logic. This, combined with methodological errors like JIT dead-code elimination, constant folding, and suboptimal RunStrategies, means the resulting metrics will not reflect the real system's behavior. The PR analysis indicates it is not up to standards, with critical safety issues like blo
-```
-
-### [P0] CONCURRENCY - sourcery-ai
-**Source:** review  
-**Timestamp:** 2026-05-23T15:15:24Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
-
-**Excerpt:**
-```
-Hey - I've found 3 issues, and left some high level feedback:
-
-- In `MockOrderTracker.CancelOrder`, the `Interlocked.CompareExchange` is operating on a local `currentState` value rather than shared state, so the compare/exchange is not actually atomic or preventing multiple successful cancellations; consider storing the state as an `int` field on `OrderData` (or a separate shared field) and performing `CompareExchange` directly against that field.
-- The benchmarks currently depend on types from 
+> [!CAUTION]
+> Some comments are outside the diff and canÔÇÖt be posted inline due to platform limitations.
+> 
+> 
+> 
+> <details>
+> <summary>ÔÜá´©Å Outside diff range comments (2)</summary><blockquote>
+> 
+> <details>
+> <summary>pr_6_raw.json (2)</summary><blockquote>
+> 
+> `2-2`: _ÔÜá´©Å Potential issue_ | _­ƒö┤ Critical_ | _ÔÜí Quick win_
+> 
+> **Remove trailing non-JSON token to restore valid artifact format.**
+> 
+> Line 2 contains a stray `2`, which makes `pr_6_raw.json` invalid JSON and will 
 ```
 
 ### [P0] CRITICAL - cubic-dev-ai
 **Source:** review  
-**Timestamp:** 2026-05-23T15:22:18Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
+**Timestamp:** 2026-05-31T15:15:40Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6
 
 **Excerpt:**
 ```
-**6 issues found** across 9 files
+**1 issue found across 4 files (changes from recent commits).**
 
 <details>
 <summary>Prompt for AI agents (unresolved issues)</summary>
@@ -80,220 +59,16 @@ Hey - I've found 3 issues, and left some high level feedback:
 Check if these issues are valid ÔÇö if so, understand the root cause of each and fix them. If appropriate, use sub-agents to investigate and fix each issue separately.
 
 
-<file name="benchmarks/V12_Performance.Benchmarks.csproj">
+<file name="docs/standards/JANE_STREET_DEVIATIONS.md">
 
-<violation number="1" location="benchmarks/V12_Performance.Benchmarks.csproj:16">
-P2: Benchmark project references the test project, pulling in xunit, test
+<violation number="1" location="docs/standards/JANE_STREET_DEVIATIONS.md:172">
+P2: This line references `Decision #3`, but the do
 ```
 
 ### [P0] CRITICAL - coderabbitai
 **Source:** review  
-**Timestamp:** 2026-05-23T17:00:49Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
-
-**Excerpt:**
-```
-**Actionable comments posted: 1**
-
-<details>
-<summary>­ƒñû Prompt for all review comments with AI agents</summary>
-
-```
-Verify each finding against current code. Fix only still-valid issues, skip the
-rest with a brief reason, keep changes minimal, and validate.
-
-Inline comments:
-In `@tests/V12_Performance.Tests/Core/OrderManagementTests.cs`:
-- Around line 199-203: Make the StateInt backing field private on OrderData and
-encapsulate the atomic transition by adding a method like TryCancel() or
-Try
-```
-
-### [P0] CRITICAL - cubic-dev-ai
-**Source:** review  
-**Timestamp:** 2026-05-23T16:36:11Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
-
-**Excerpt:**
-```
-**1 issue found across 1 file (changes from recent commits).**
-
-<details>
-<summary>Prompt for AI agents (unresolved issues)</summary>
-
-```text
-
-Check if these issues are valid ÔÇö if so, understand the root cause of each and fix them. If appropriate, use sub-agents to investigate and fix each issue separately.
-
-
-<file name="Linting.csproj">
-
-<violation number="1" location="Linting.csproj:9">
-P2: Adding `<OutputType>Library</OutputType>` without re-adding `<IsPackable>false</IsPackable>` (which w
-```
-
-### [P0] CRITICAL - cubic-dev-ai
-**Source:** review  
-**Timestamp:** 2026-05-23T16:18:57Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
-
-**Excerpt:**
-```
-**2 issues found across 1 file (changes from recent commits).**
-
-<details>
-<summary>Prompt for AI agents (unresolved issues)</summary>
-
-```text
-
-Check if these issues are valid ÔÇö if so, understand the root cause of each and fix them. If appropriate, use sub-agents to investigate and fix each issue separately.
-
-
-<file name="tests/V12_Performance.Tests/Core/OrderManagementTests.cs">
-
-<violation number="1" location="tests/V12_Performance.Tests/Core/OrderManagementTests.cs:205">
-P0: [CRITICAL-JS-V
-```
-
-### [P0] CRITICAL - gemini-code-assist
-**Source:** review  
-**Timestamp:** 2026-05-23T15:15:23Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
-
-**Excerpt:**
-```
-## Code Review
-
-This pull request adds a performance benchmarking and unit testing framework for the V12 project, including BenchmarkDotNet harnesses for hot paths and Xunit tests for lock-free Actor and order management logic. Review feedback highlights a critical bug in the order cancellation implementation where atomic operations were incorrectly applied to local variables, and identifies a test logic error caused by struct copy semantics. Further recommendations include implementing defensiv
-```
-
-### [P0] CRITICAL - sourcery-ai
-**Source:** comment  
-**Timestamp:** 2026-05-23T15:13:42Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6#issuecomment-4525772213
-
-**Excerpt:**
-```
-<!-- Generated by sourcery-ai[bot]: start review_guide -->
-
-## Reviewer's Guide
-
-Introduces a dedicated performance testing infrastructure by adding BenchmarkDotNet harnesses for core hot paths, lockÔÇæfree unit tests around FSM/actor and order management patterns, and zeroÔÇæallocation NinjaTrader API mocks, all wired through new test and benchmark projects.
-
-#### Sequence diagram for running Benchmarks via Program.Main
-
-```mermaid
-sequenceDiagram
-    actor Developer
-    participant Program
-   
-```
-
-### [P0] CRITICAL - codacy-production
-**Source:** comment  
-**Timestamp:** 2026-05-23T15:14:14Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6#issuecomment-4525773431
-
-**Excerpt:**
-```
-## Not up to standards Ôøö
-<details><summary><strong>­ƒö┤ Issues</strong>  <code>6 critical ┬À 1 high ┬À 27 medium</code></summary>
-
-> <br/>
->
-> 
-> **Alerts:**
-> ÔÜá 34 issues (Ôëñ 0 issues of at least minor severity)
-> 
->
-> **Results:**
-> `34` new issues
->
-> | Category | Results |
-> | ------------- | ------------- |
-> | Compatibility | `7` medium  | 
- > | UnusedCode | `9` medium  | 
- > | BestPractice | `7` medium  | 
- > | ErrorProne | `6` critical <br/> `1` high  | 
- > | Performance | `4` mediu
-```
-
-### [P0] CRITICAL - coderabbitai
-**Source:** comment  
-**Timestamp:** 2026-05-23T15:13:48Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6#issuecomment-4525772437
-
-**Excerpt:**
-```
-<!-- This is an auto-generated comment: summarize by coderabbit.ai -->
-<!-- walkthrough_start -->
-
-<details>
-<summary>­ƒôØ Walkthrough</summary>
-
-## Walkthrough
-
-Adds a benchmark harness, three BenchmarkDotNet benchmark classes, mock NinjaTrader types, and concurrent xUnit tests to exercise hot paths and concurrency behaviors.
-
-## Changes
-
-**Performance Testing and Benchmarking Infrastructure**
-
-|Layer / File(s)|Summary|
-|---|---|
-|**Mock type contracts and implementations** <br> `tests/V12_Perf
-```
-
-### [P0] CRITICAL - amazon-q-developer
-**Source:** review  
-**Timestamp:** 2026-05-23T15:14:32Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
-
-**Excerpt:**
-```
-## Critical Issues Found - Blocking Merge
-
-This PR contains fundamental logic errors in the test implementation that undermine the lock-free guarantees being tested:
-
-**Critical Defects:**
-1. **Struct Copy Semantics Bug** (Lines 30, 52): Tests modify struct copies instead of originals, invalidating state transition validation
-2. **Broken Atomic Operations** (Lines 199-211): `CompareExchange` on local variable instead of struct field, creating race conditions
-3. **Non-Atomic State Updates** (Line
-```
-
-### [P0] CRITICAL - codacy-production
-**Source:** comment  
-**Timestamp:** 2026-05-23T16:58:39Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6#issuecomment-4526007362
-
-**Excerpt:**
-```
-## Not up to standards Ôøö
-<details><summary><strong>­ƒö┤ Issues</strong>  <code>6 critical ┬À 1 high ┬À 27 medium</code></summary>
-
-> <br/>
->
-> 
-> **Alerts:**
-> ÔÜá 34 issues (Ôëñ 0 issues of at least minor severity)
-> 
->
-> **Results:**
-> `34` new issues
->
-> | Category | Results |
-> | ------------- | ------------- |
-> | Compatibility | `7` medium  | 
- > | UnusedCode | `9` medium  | 
- > | BestPractice | `7` medium  | 
- > | ErrorProne | `6` critical <br/> `1` high  | 
- > | Performance | `4` mediu
-```
-
-### [P1] REVIEW - coderabbitai
-**Source:** review  
-**Timestamp:** 2026-05-23T16:17:30Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
+**Timestamp:** 2026-05-31T15:14:12Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6
 
 **Excerpt:**
 ```
@@ -307,85 +82,124 @@ Verify each finding against current code. Fix only still-valid issues, skip the
 rest with a brief reason, keep changes minimal, and validate.
 
 Inline comments:
-In `@Linting.csproj`:
-- Around line 16-17: The project disables compilation so no Linting.dll is
-produced (SkipCompilerExecution=true plus EnableDefaultCompileItems=false and no
-Compile items), breaking CI and preventing
+In @.codacy.yml:
+- Line 100: The .codacy.yml change that adds the comment
+'src/V12_002.SIMA.Fleet.cs' (documenting SA1119 suppression / Jane Street
+Deviation `#3`) must be removed from this PR and relocated to a separate
+```
+
+### [P0] CRITICAL - cubic-dev-ai
+**Source:** review  
+**Timestamp:** 2026-05-31T14:58:37Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6
+
+**Excerpt:**
+```
+**3 issues found across 6 files (changes from recent commits).**
+
+<details>
+<summary>Prompt for AI agents (unresolved issues)</summary>
+
+```text
+
+Check if these issues are valid ÔÇö if so, understand the root cause of each and fix them. If appropriate, use sub-agents to investigate and fix each issue separately.
+
+
+<file name="docs/brain/pr_6_suppress_queue.md">
+
+<violation number="1" location="docs/brain/pr_6_suppress_queue.md:31">
+P2: The documented suppression is too broad: excluding the whole
+```
+
+### [P0] CRITICAL - cubic-dev-ai
+**Source:** review  
+**Timestamp:** 2026-05-31T04:12:09Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6
+
+**Excerpt:**
+```
+**3 issues found** across 1 file
+
+<sub>Reply with feedback, questions, or to request a fix.<br /><br />[Fix all with cubic](https://www.cubic.dev/action/fix/pr/backtothefutures83-oss/universal-or-strategy/6/ai_pr_review_1780200392543_ee5067ae-f63c-4769-9fd3-4f81de3cc402?entrySource=github_ui_to_cubic_ui) | [Re-trigger cubic](https://www.cubic.dev/action/re-review/pr/backtothefutures83-oss/universal-or-strategy/6/ai_pr_review_1780200392543_ee5067ae-f63c-4769-9fd3-4f81de3cc402?returnTo=https%3A%2F
+```
+
+### [P1] REVIEW - codacy-production
+**Source:** review  
+**Timestamp:** 2026-05-31T15:00:45Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6
+
+**Excerpt:**
+```
+### Pull Request Overview
+
+While this PR successfully reduces the cyclomatic complexity of the main health check entry point and improves metric accuracy, it introduces two significant issues that should be addressed before merging. First, a performance regression in `IsBrokerPositionFlat` introduces heap allocations and O(N) complexity in a high-frequency path, contradicting the intent of the refactor. Second, while the main method complexity dropped, the extracted `LogHealthCheckResult` method
+```
+
+### [P1] REVIEW - amazon-q-developer
+**Source:** review  
+**Timestamp:** 2026-05-31T04:06:52Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6
+
+**Excerpt:**
+```
+This PR successfully refactors `ShouldSkipFleet_RunHealthCheck` to reduce cyclomatic complexity from 31ÔåÆ5 by extracting logic into well-defined helper methods. The refactoring maintains identical behavior while improving code maintainability and readability. All extracted methods are properly documented and follow the existing codebase patterns. No defects found that would block merge.
+
+---
+You can now have the agent implement changes and create commits directly on your pull request's source b
 ```
 
 ### [P1] REVIEW - coderabbitai
 **Source:** review  
-**Timestamp:** 2026-05-23T16:35:25Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6
+**Timestamp:** 2026-05-31T04:09:22Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6
 
 **Excerpt:**
 ```
-
-
-<details>
-<summary>ÔÖ╗´©Å Duplicate comments (1)</summary><blockquote>
+**Actionable comments posted: 1**
 
 <details>
-<summary>Linting.csproj (1)</summary><blockquote>
+<summary>­ƒñû Prompt for all review comments with AI agents</summary>
 
-`24-27`: _ÔÜá´©Å Potential issue_ | _­ƒƒá Major_ | _ÔÜí Quick win_
+```
+Verify each finding against current code. Fix only still-valid issues, skip the
+rest with a brief reason, keep changes minimal, and validate.
 
-**Linting project is configured to analyze zero repo sources.**
-
-At Line 25, the `ItemGroup` has no `Compile` items while `EnableDefaultCompileItems` is disabled, so analyzers wonÔÇÖt evaluate real code files during `dotnet build Linting.csproj`.
-
-<details>
-<summary>Suggested minimal fix</summary
+Inline comments:
+In `@src/V12_002.SIMA.Fleet.cs`:
+- Line 528: The expression "return (brokerPos == null ||
+brokerPos.MarketPosition == MarketPosition.Flat);" contains redundant
+parentheses that trigger SA1119; update the return statement
 ```
 
-### [P1] SECURITY - pr-insights-tagger
+### [P1] REVIEW - sourcery-ai
+**Source:** review  
+**Timestamp:** 2026-05-31T04:07:36Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6
+
+**Excerpt:**
+```
+Hey - I've found 1 issue, and left some high level feedback:
+
+- The new helpers `HasActiveFsmForAccount` and `HasActivePositionForAccount` call `ToArray()` on the underlying collections each time, which may introduce extra allocations compared to the original `foreach` on the concurrent dictionaries; consider keeping the lock-free enumeration pattern to preserve the zero-allocation AMAL requirement.
+- Given that `ShouldSkipFleet_RunHealthCheck` already guarantees `acct != null` and `acct.Positio
+```
+
+### [P2] PERFORMANCE - gitar-bot
 **Source:** comment  
-**Timestamp:** 2026-05-23T16:56:47Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6#issuecomment-4526003745
+**Timestamp:** 2026-05-31T15:11:18Z  
+**URL:** https://github.com/backtothefutures83-oss/universal-or-strategy/pull/6#issuecomment-4587112210
 
 **Excerpt:**
 ```
-## PR Analysis Summary
-
-<div align="center">
-
-<!-- Badges for GitHub web view -->
-![Risk Level](https://img.shields.io/badge/Risk-HIGH-red?style=flat-square) ![Complexity](https://img.shields.io/badge/Complexity-8.0%2F10-blue?style=flat-square) ![Files Changed](https://img.shields.io/badge/Files-10-informational?style=flat-square)
-
-<!-- Text fallback for email notifications -->
 <details>
-<summary><sub>­ƒôº Email-friendly summary</sub></summary>
-<br>
-<strong>Risk:</strong> ­ƒö┤ High Risk | <stron
-```
+<summary><b>Code Review</b> <kbd>Ô£à Approved</kbd> <kbd>1 resolved / 1 findings</kbd></summary>
 
-### [P1] SECURITY - pr-insights-tagger
-**Source:** comment  
-**Timestamp:** 2026-05-23T16:31:45Z  
-**URL:** https://github.com/mdasdispatch-hash/universal-or-strategy/pull/6#issuecomment-4525945322
+Refactored SIMA fleet health checks to reduce cyclomatic complexity, resolving concerns regarding excessive allocations by removing unnecessary dictionary snapshots. Dispatch tracking logic was also adjusted to ensure metrics reflect only active processing cycles.
 
-**Excerpt:**
-```
-## PR Analysis Summary
-
-<div align="center">
-
-<!-- Badges for GitHub web view -->
-![Risk Level](https://img.shields.io/badge/Risk-HIGH-red?style=flat-square) ![Complexity](https://img.shields.io/badge/Complexity-8.0%2F10-blue?style=flat-square) ![Files Changed](https://img.shields.io/badge/Files-10-informational?style=flat-square)
-
-<!-- Text fallback for email notifications -->
 <details>
-<summary><sub>­ƒôº Email-friendly summary</sub></summary>
-<br>
-<strong>Risk:</strong> ­ƒö┤ High Risk | <stron
-```
+<summary><kbd>Ô£à 1 resolved</kbd></summary>
 
-## INFRA-NOISE (Ignored)
-- **codeslick-security-scanner**: INFRA
-- **codeslick-security-scanner**: INFRA
-- **insight-code-accessibility**: INFRA
-- **codeslick-security-scanner**: INFRA
-- **insight-code-accessibility**: INFRA
-- **codeslick-security-scanner**: INFRA
-- **insight-code-accessibility**: INFRA
+<details>
+<summary>Ô£à <b>Performance:</b> ToArray() on ConcurrentDict
+```
 
