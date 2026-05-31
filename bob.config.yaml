@@ -2,6 +2,7 @@
 # This file ensures Bob defaults to high-performance modes and auto-saves work.
 
 default_mode: advanced  # Use Claude 3.7 (Advanced) by default for v12 missions
+default_model: claude-opus-4-8  # Default to Opus 4.8 for maximum capability
 auto_apply: true        # Always save changes to disk (equivalent to --yes)
 checkpointing: true     # Enable automated safety backups before every edit
 
