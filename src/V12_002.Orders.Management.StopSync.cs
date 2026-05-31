@@ -356,7 +356,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             // Build 1104.2: Staleness fast-path -- purge stale pending and re-initiate
-            double pendingAgeSeconds = (DateTime.Now - existingPendingQty.CreatedTime).TotalSeconds;
+            // Fix #1: Cache DateTime.Now for determinism (Jane Street: Microsecond Latency)
+            DateTime now = DateTime.Now;
+            double pendingAgeSeconds = (now - existingPendingQty.CreatedTime).TotalSeconds;
             if (pendingAgeSeconds > STALE_PENDING_FAST_PATH_SEC)
             {
                 if (pendingStopReplacements.TryRemove(entryName, out _))
@@ -440,13 +442,39 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             // P0-1: GRADUATED RESPONSE - Only flatten if position truly lacks stop protection
             // Jane Street Principle #4: Fail-Fast - verify state before emergency action
+
+            // Fix #1: Cache DateTime.Now for determinism (already applied above)
             // Check if position still has active stop protection (transient broker errors may resolve)
             bool hasActiveStop = false;
             try
             {
-                hasActiveStop = Account.Orders.Any(o =>
-                    o.OrderState == OrderState.Working && o.IsStopMarket && o.Name == entryName
-                );
+                // Fix #2: Use thread-safe dictionary lookup instead of LINQ (Jane Street: Zero-Allocation)
+                if (stopOrders.TryGetValue(entryName, out Order stopOrder))
+                {
+                    // Fix #4: Use OrderType enum instead of non-existent IsStopMarket
+                    // Fix #5: Check all protective states and order types
+                    hasActiveStop =
+                        (
+                            stopOrder.OrderState == OrderState.Working
+                            || stopOrder.OrderState == OrderState.Accepted
+                            || stopOrder.OrderState == OrderState.PendingSubmit
+                        )
+                        && (stopOrder.OrderType == OrderType.StopMarket || stopOrder.OrderType == OrderType.StopLimit);
+                }
+
+                // Fix #3: Also check for prefixed order names (fallback to LINQ if needed)
+                if (!hasActiveStop)
+                {
+                    hasActiveStop = Account.Orders.Any(o =>
+                        (
+                            o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Accepted
+                            || o.OrderState == OrderState.PendingSubmit
+                        )
+                        && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
+                        && o.Name.EndsWith("_" + entryName)
+                    );
+                }
             }
             catch
             {
