@@ -1,4 +1,4 @@
-# Three-Tier Branch Model (V12.18)
+# Three-Tier Branch Model (V12.18.1)
 
 ## Overview
 Separates changes by **architectural layer** to prevent PR noise and enable independent review cycles.
@@ -199,27 +199,135 @@ gh pr create --title "[PROTOCOL] Complex change" --body "Rationale..."
 
 ---
 
-## Enforcement
+## Enforcement (V12.18.1 - Enhanced)
 
-**Branch Guard Rule:** `.bob/rules-v12-engineer/branch-guard.md`
-- Auto-blocks mixed commits
+### 1. Pre-Commit Hook (NEW - Automatic)
+**Location**: `.git/hooks/pre-commit`
+**Status**: ✅ Active (auto-installed)
+
+**What it does:**
+- Blocks commits with mixed-tier files
+- Provides clear error messages with fix instructions
+- Runs automatically before every commit
+- Zero configuration required
+
+**Example violation:**
+```
+❌ THREE-TIER VIOLATION: src branch contains non-src files
+
+Branch: feature/src-phase7-new3-dispatch
+Src files: 1
+Infra files: 2
+
+SOLUTION:
+1. Unstage non-src files: git reset HEAD <file>
+2. Create separate infra branch for those files
+3. Commit src files only on this branch
+```
+
+### 2. Branch Hygiene Fix Script (NEW - Manual)
+**Location**: `scripts/fix_branch_hygiene.ps1`
+**Usage**: `powershell -File .\scripts\fix_branch_hygiene.ps1`
+
+**What it does:**
+- Detects violating files in current branch
+- Resets branch to last clean commit
+- Force-pushes cleaned branch
+- Provides dry-run mode for safety
+
+**When to use:**
+- After accidentally committing mixed files
+- Before creating a PR
+- When PR shows unexpected file changes
+
+**Example:**
+```powershell
+# Dry run (safe preview)
+.\scripts\fix_branch_hygiene.ps1 -DryRun
+
+# Apply fix
+.\scripts\fix_branch_hygiene.ps1
+```
+
+### 3. Branch Guard Rule (Existing)
+**Location**: `.bob/rules-v12-engineer/branch-guard.md`
+- Auto-blocks mixed commits in Bob IDE
 - Auto-stashes violating files
 - Logs violations
 
-**Protocol Guard (Optional PR Path):** `.github/workflows/protocol-guard.yml`
+### 4. Protocol Guard Workflow (Existing)
+**Location**: `.github/workflows/protocol-guard.yml`
 - Auto-detects protocol file changes
 - Auto-adds `protocol-only` label
 - Posts human-readable notice
 - Blocks bot reviews via CODEOWNERS
 
-**Git Hooks:** (optional, not yet implemented)
-- Pre-commit validation
-- Branch pattern matching
+### 5. PR Review Exclusions (Existing)
+**Location**: `.pr-review-ignore`
+- Excludes `.yaml`, `.json`, `.md` from bot reviews
+- Focuses reviews on `.cs` files only
+- Reduces PR noise by 90%
 
-**Bob Shell/IDE Isolation:**
-- Bob IDE → src branches only
-- Bob Shell → infra/protocol branches only
-- Separate terminal windows recommended
+---
+
+## Common Violations & Fixes
+
+### Violation 1: Config Files on Src Branch
+**Symptom**: PR shows `.yaml`, `.json`, or `.md` files alongside `.cs` files
+
+**Root Cause**: Files were modified during src work and accidentally committed
+
+**Fix:**
+```powershell
+# Option A: Use fix script (recommended)
+.\scripts\fix_branch_hygiene.ps1
+
+# Option B: Manual reset
+git reset --hard <last-clean-commit>
+git push origin <branch> --force
+
+# Then create separate infra branch for config files
+git checkout -b feature/infra-<description>
+# Make config changes here
+```
+
+### Violation 2: Src Files on Infra Branch
+**Symptom**: PR shows `.cs` files on `feature/infra-*` branch
+
+**Root Cause**: Wrong branch selected for src work
+
+**Fix:**
+```powershell
+# Stash src changes
+git stash
+
+# Switch to correct branch
+git checkout -b feature/src-<description>
+
+# Apply stashed changes
+git stash pop
+
+# Commit on correct branch
+git add src/
+git commit -m "[Phase X] Description"
+```
+
+### Violation 3: Merge Commits Mixing Tiers
+**Symptom**: Merge commit brings infra files into src branch
+
+**Root Cause**: Accidentally merged infra branch into src branch
+
+**Fix:**
+```powershell
+# Revert the merge
+git revert -m 1 <merge-commit-hash>
+
+# Or reset to before merge
+git reset --hard HEAD~1
+
+# Force push
+git push origin <branch> --force
+```
 
 ---
 
@@ -239,14 +347,18 @@ gh pr create --title "[PROTOCOL] Complex change" --body "Rationale..."
 
 ## Current Status
 
-**Implemented:**
-- ✅ Branch guard rule created (`.bob/rules-v12-engineer/branch-guard.md`)
+**Implemented (V12.18.1):**
+- ✅ Pre-commit hook (automatic enforcement)
+- ✅ Branch hygiene fix script (manual cleanup)
+- ✅ Branch guard rule (Bob IDE integration)
 - ✅ Three-tier model documented
-- ✅ Protocol Guard workflow (`.github/workflows/protocol-guard.yml`)
+- ✅ Protocol Guard workflow
 - ✅ CODEOWNERS updated for protocol paths
+- ✅ PR review exclusions configured
 
 **Pending:**
-- ⏳ Git pre-commit hooks (optional)
 - ⏳ Fine-tuning as we use it in practice
+- ⏳ Additional Bob IDE integration
 
 **Effective Date:** 2026-05-29 (V12.18)
+**Enhanced:** 2026-05-31 (V12.18.1 - Pre-commit hook + fix script)
