@@ -437,6 +437,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Fix #1: Cache DateTime.Now for determinism (already applied above)
             // Check if position still has active stop protection (transient broker errors may resolve)
             bool hasActiveStop = false;
+
             // Pre-compute suffix once for zero-allocation (Jane Street: Principle #1)
             string suffix = string.Concat("_", entryName);
 
