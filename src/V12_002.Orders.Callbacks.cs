@@ -34,6 +34,11 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region Order Callbacks
 
+        // Phase 7 NEW-1: Centralized prefix constants (Sourcery AI recommendation)
+        private const string StopOrderPrefix = "Stop_";
+        private const string StopOrderPrefixShort = "S_";
+        private static readonly string[] TerminalTargetPrefixes = { "T1_", "T2_", "T3_", "T4_", "T5_", "Runner_" };
+
         /// <summary>
         /// Applies a target fill in a partial-fill-safe way.
         /// - Uses cumulative filled quantity to avoid over/under-decrement when callbacks race.
@@ -353,13 +358,20 @@ namespace NinjaTrader.NinjaScript.Strategies
             return false;
         }
 
-        private bool HandleSecondaryOrderFilled(Order order, double averageFillPrice)
+        /// <summary>
+        /// Handles target order fills (T1-T5). Extracted from HandleSecondaryOrderFilled.
+        /// Phase 7 NEW-1: Complexity reduction (CYC 17 -> 4).
+        /// </summary>
+        /// <param name="order">The filled order</param>
+        /// <param name="averageFillPrice">Average fill price</param>
+        /// <param name="snapshot">Pre-allocated snapshot of active positions</param>
+        /// <returns>True if order was a target and was handled</returns>
+        private bool HandleSecondaryOrderFilled_Target(
+            Order order,
+            double averageFillPrice,
+            KeyValuePair<string, PositionInfo>[] snapshot
+        )
         {
-            string orderName = order.Name;
-
-            // [EPIC-5-PERF-T02] Single snapshot allocation at method start
-            var snapshot = activePositions.ToArray();
-
             // Targets 1-5
             for (int tNum = 1; tNum <= 5; tNum++)
             {
@@ -400,16 +412,43 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                 }
             }
+            return false;
+        }
 
-            // Stop filled
-            if (orderName.StartsWith("Stop_") || orderName.StartsWith("S_"))
+        /// <summary>
+        /// Handles stop order fills with dictionary lookup and name-based fallback.
+        /// Extracted from HandleSecondaryOrderFilled.
+        /// Phase 7 NEW-1: Complexity reduction (CYC 17 -> 4).
+        /// CRITICAL: Mutation-safety guard prevents double-cleanup race condition.
+        /// If platform delivers callbacks from multiple threads OR another actor message
+        /// races between snapshot and cleanup, we must verify the key still exists.
+        /// </summary>
+        /// <param name="order">The filled order.</param>
+        /// <param name="orderName">Order name for fallback matching.</param>
+        /// <param name="averageFillPrice">Average fill price.</param>
+        /// <param name="snapshot">Pre-allocated snapshot of active positions.</param>
+        /// <returns>True if order was a stop and was handled.</returns>
+        private bool HandleSecondaryOrderFilled_Stop(
+            Order order,
+            string orderName,
+            double averageFillPrice,
+            KeyValuePair<string, PositionInfo>[] snapshot
+        )
+        {
+            // Stop filled.
+            if (!orderName.StartsWith(StopOrderPrefix) && !orderName.StartsWith(StopOrderPrefixShort))
             {
-                foreach (var kvp in snapshot)
+                return false;
+            }
+
+            foreach (var kvp in snapshot)
+            {
+                // Single TryGetValue for mutation safety + lookup efficiency.
+                if (stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order)
                 {
-                    // Re-check existence (mutation safety)
-                    if (!activePositions.ContainsKey(kvp.Key))
-                        continue;
-                    if (stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order)
+                    // CRITICAL: Re-check existence before cleanup (mutation-safety guard).
+                    // Prevents double-cleanup if another thread/actor removed the position.
+                    if (activePositions.ContainsKey(kvp.Key))
                     {
                         Print(
                             LogBuffer.Format(
@@ -419,35 +458,80 @@ namespace NinjaTrader.NinjaScript.Strategies
                             )
                         );
                         CleanupPosition(kvp.Key);
-                        return true;
                     }
-                }
-                // Fallback by name
-                string entryName = ExtractEntryNameFromStop(orderName);
-                if (activePositions.TryGetValue(entryName, out var pos))
-                {
-                    Print(
-                        LogBuffer.Format(
-                            "STOP FILLED (by name): {0} contracts @ {1:F2}",
-                            pos.RemainingContracts,
-                            averageFillPrice
-                        )
-                    );
-                    CleanupPosition(entryName);
+                    else
+                    {
+                        // Guard prevented cleanup but stop order is terminal - remove stale reference
+                        stopOrders.TryRemove(kvp.Key, out _);
+                    }
                     return true;
                 }
             }
-
-            if (
-                orderName.StartsWith("T1_")
-                || orderName.StartsWith("T2_")
-                || orderName.StartsWith("T3_")
-                || orderName.StartsWith("T4_")
-                || orderName.StartsWith("T5_")
-                || orderName.StartsWith("Runner_")
-            )
+            // Fallback by name.
+            string entryName = ExtractEntryNameFromStop(orderName);
+            if (activePositions.TryGetValue(entryName, out var pos))
             {
-                RemoveTargetReferenceOnTerminalFill(order);
+                Print(
+                    LogBuffer.Format(
+                        "STOP FILLED (by name): {0} contracts @ {1:F2}",
+                        pos.RemainingContracts,
+                        averageFillPrice
+                    )
+                );
+                CleanupPosition(entryName);
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Handles terminal target cleanup for T1-T5 and Runner orders.
+        /// Extracted from HandleSecondaryOrderFilled.
+        /// Phase 7 NEW-1: Complexity reduction (CYC 17 -> 4).
+        /// </summary>
+        /// <param name="order">The filled order.</param>
+        /// <param name="orderName">Order name for prefix matching.</param>
+        /// <returns>True if order was a terminal target and was handled.</returns>
+        private bool HandleSecondaryOrderFilled_TerminalCleanup(Order order, string orderName)
+        {
+            foreach (var prefix in TerminalTargetPrefixes)
+            {
+                if (orderName.StartsWith(prefix))
+                {
+                    RemoveTargetReferenceOnTerminalFill(order);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Routes secondary order fills to specialized handlers.
+        /// Refactored in Phase 7 NEW-1 to reduce complexity (CYC 17 -> 4).
+        /// </summary>
+        private bool HandleSecondaryOrderFilled(Order order, double averageFillPrice)
+        {
+            string orderName = order.Name;
+
+            // [EPIC-5-PERF-T02] Single snapshot allocation at method start
+            var snapshot = activePositions.ToArray();
+
+            // Route to target handler
+            if (HandleSecondaryOrderFilled_Target(order, averageFillPrice, snapshot))
+            {
+                return true;
+            }
+
+            // Route to stop handler
+            if (HandleSecondaryOrderFilled_Stop(order, orderName, averageFillPrice, snapshot))
+            {
+                return true;
+            }
+
+            // Route to terminal cleanup handler
+            if (HandleSecondaryOrderFilled_TerminalCleanup(order, orderName))
+            {
                 return true;
             }
 
@@ -456,7 +540,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private string ExtractEntryNameFromStop(string orderName)
         {
-            string stopPrefix = orderName.StartsWith("Stop_") ? "Stop_" : "S_";
+            string stopPrefix = orderName.StartsWith(StopOrderPrefix) ? StopOrderPrefix : StopOrderPrefixShort;
             string entryNameFromOrder = orderName.Substring(stopPrefix.Length);
             int lastUnderscore = entryNameFromOrder.LastIndexOf('_');
             if (lastUnderscore > 0 && entryNameFromOrder.Length - lastUnderscore > 10)
@@ -476,6 +560,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 foreach (var kvp in snapshot)
                 {
+                    // Mutation-safety guard (zero-allocation)
                     if (!activePositions.ContainsKey(kvp.Key))
                         continue;
                     if (stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order)
@@ -497,6 +582,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 foreach (var kvp in snapshot)
                 {
+                    // Mutation-safety guard (zero-allocation)
                     if (!activePositions.ContainsKey(kvp.Key))
                         continue;
                     if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
@@ -528,7 +614,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             bool handled = false;
 
             // Stop replacement check
-            if (orderName.StartsWith("Stop_") || orderName.StartsWith("S_"))
+            if (orderName.StartsWith(StopOrderPrefix) || orderName.StartsWith(StopOrderPrefixShort))
             {
                 handled = HandleOrderCancelled_ProcessStopReplacement(order);
                 if (!handled)
@@ -544,18 +630,22 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private bool HandleOrderCancelled_ProcessStopReplacement(Order order)
         {
-            foreach (var kvp in pendingStopReplacements.ToArray())
+            // [EPIC-5-PERF-T02] Zero-allocation foreach loop with mutation-safety guard
+            var snapshot = pendingStopReplacements.ToArray();
+            foreach (var kvp in snapshot)
             {
+                // Mutation-safety guard
+                if (!activePositions.ContainsKey(kvp.Key))
+                    continue;
                 if (
-                    (
-                        kvp.Value.OldOrder == order
-                        || (kvp.Value.OldOrder != null && kvp.Value.OldOrder.OrderId == order.OrderId)
-                    ) && activePositions.TryGetValue(kvp.Key, out var pos)
+                    kvp.Value.OldOrder == order
+                    || (kvp.Value.OldOrder != null && kvp.Value.OldOrder.OrderId == order.OrderId)
                 )
                 {
+                    if (!activePositions.TryGetValue(kvp.Key, out var pos))
+                        continue;
                     // Build 955: Snapshot qty under stateLock -- single atomic read for both check and use.
-                    int _stopQty;
-                    _stopQty = pos.RemainingContracts;
+                    int _stopQty = pos.RemainingContracts;
                     if (_stopQty > 0)
                     {
                         CreateNewStopOrder(kvp.Key, _stopQty, kvp.Value.StopPrice, kvp.Value.Direction);
@@ -568,7 +658,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                         }
                     }
                     if (pendingStopReplacements.TryRemove(kvp.Key, out _))
+                    {
                         Interlocked.Decrement(ref pendingReplacementCount);
+                    }
                     return true;
                 }
             }
@@ -607,12 +699,19 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (entryOrders.Values.Contains(order))
             {
-                foreach (var kvp in activePositions.ToArray())
+                // [EPIC-5-PERF-T02] Zero-allocation foreach loop with mutation-safety guard
+                var snapshot = activePositions.ToArray();
+                foreach (var kvp in snapshot)
                 {
+                    // Mutation-safety guard
+                    if (!activePositions.ContainsKey(kvp.Key))
+                        continue;
                     if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
                     {
                         if (EnableSIMA && !kvp.Value.IsFollower)
+                        {
                             SymmetryGuardCascadeFollowerCleanup(kvp.Key);
+                        }
                         RollbackExpectedPosition(kvp.Key, kvp.Value);
                         CleanupPosition(kvp.Key);
                         return true;
@@ -627,8 +726,13 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (entryOrders.Values.Contains(order))
             {
-                foreach (var kvp in activePositions.ToArray())
+                // [EPIC-5-PERF-T02] Zero-allocation foreach loop with mutation-safety guard
+                var snapshot = activePositions.ToArray();
+                foreach (var kvp in snapshot)
                 {
+                    // Mutation-safety guard
+                    if (!activePositions.ContainsKey(kvp.Key))
+                        continue;
                     if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
                     {
                         double newPrice = limitPrice > 0 ? limitPrice : stopPrice;
@@ -637,8 +741,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                             kvp.Value.EntryPrice = newPrice;
                             Print(LogBuffer.Format("V12: Entry order MOVED: {0} to {1:F2}", kvp.Key, newPrice));
                         }
-                        int _totalContracts;
-                        _totalContracts = kvp.Value.TotalContracts;
+                        int _totalContracts = kvp.Value.TotalContracts;
                         if (quantity > 0 && quantity != _totalContracts)
                         {
                             // [937-FIX] Sync expectedPositions with broker-confirmed qty.
