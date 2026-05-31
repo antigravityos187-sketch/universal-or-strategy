@@ -245,6 +245,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             FleetDispatchSlot _ringSlot;
             if (_photonDispatchRing != null && _photonDispatchRing.TryDequeue(out _ringSlot))
             {
+                TrackPhotonDequeue();
                 int _sbIdx = _ringSlot.PoolSlotIndex;
 
                 // Sideband read (BEFORE shadow verify -- sideband is required for rollback logs)
@@ -289,6 +290,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             FleetDispatchSlot abortSlot;
             while (_photonDispatchRing != null && _photonDispatchRing.TryDequeue(out abortSlot))
             {
+                TrackPhotonDequeue();
                 int _sbIdx = abortSlot.PoolSlotIndex;
                 string _expectedKey =
                     (_sbIdx >= 0 && _sbIdx < _photonSideband.Length) ? _photonSideband[_sbIdx].ExpectedKey : null;
@@ -333,7 +335,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             _ringSlot.Shadow = _stored; // restore for downstream logging
             if (_recomputed != _stored)
             {
-                Interlocked.Increment(ref _photonCrcFailures);
+                TrackPhotonCrcFailure();
                 Print(
                     string.Format(
                         "[PHOTON_SHADOW] INTEGRITY FAILURE: expected=0x{0:X16} got=0x{1:X16} entry={2} -- SKIPPING",
