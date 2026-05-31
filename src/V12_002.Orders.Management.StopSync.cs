@@ -437,6 +437,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Fix #1: Cache DateTime.Now for determinism (already applied above)
             // Check if position still has active stop protection (transient broker errors may resolve)
             bool hasActiveStop = false;
+            // Pre-compute suffix once for zero-allocation (Jane Street: Principle #1)
+            string suffix = string.Concat("_", entryName);
+
             try
             {
                 // Fix #2: Use thread-safe dictionary lookup instead of LINQ (Jane Street: Zero-Allocation)
@@ -465,7 +468,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                                 || o.OrderState == OrderState.ChangeSubmitted
                             )
                             && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
-                            && o.Name.EndsWith("_" + entryName)
+                            && o.Name.EndsWith(suffix)
                         )
                         {
                             hasActiveStop = true;
