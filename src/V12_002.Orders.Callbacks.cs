@@ -431,7 +431,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             // Stop filled.
-            if (!orderName.StartsWith("Stop_") && !orderName.StartsWith("S_"))
+            if (!orderName.StartsWith(StopOrderPrefix) && !orderName.StartsWith(StopOrderPrefixShort))
             {
                 return false;
             }
@@ -476,6 +476,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // Phase 7 NEW-1: Centralized prefix constants (Sourcery AI recommendation)
+        private const string StopOrderPrefix = "Stop_";
+        private const string StopOrderPrefixShort = "S_";
         private static readonly string[] TerminalTargetPrefixes = { "T1_", "T2_", "T3_", "T4_", "T5_", "Runner_" };
 
         /// <summary>
@@ -533,7 +535,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private string ExtractEntryNameFromStop(string orderName)
         {
-            string stopPrefix = orderName.StartsWith("Stop_") ? "Stop_" : "S_";
+            string stopPrefix = orderName.StartsWith(StopOrderPrefix) ? StopOrderPrefix : StopOrderPrefixShort;
             string entryNameFromOrder = orderName.Substring(stopPrefix.Length);
             int lastUnderscore = entryNameFromOrder.LastIndexOf('_');
             if (lastUnderscore > 0 && entryNameFromOrder.Length - lastUnderscore > 10)
@@ -551,38 +553,38 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             if (stopOrders.Values.Contains(order))
             {
-                foreach (var kvp in snapshot)
+                var matchingStop = snapshot
+                    .Where(kvp => activePositions.ContainsKey(kvp.Key))
+                    .FirstOrDefault(kvp => stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order);
+
+                if (matchingStop.Key != null)
                 {
-                    if (!activePositions.ContainsKey(kvp.Key))
-                        continue;
-                    if (stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order)
-                    {
-                        Print(LogBuffer.Format("(!) CRITICAL: Stop REJECTED for {0}. Re-submitting...", kvp.Key));
-                        stopOrders.TryRemove(kvp.Key, out _);
-                        CreateNewStopOrder(
-                            kvp.Key,
-                            kvp.Value.RemainingContracts,
-                            kvp.Value.CurrentStopPrice,
-                            kvp.Value.Direction
-                        );
-                        return true;
-                    }
+                    Print(LogBuffer.Format("(!) CRITICAL: Stop REJECTED for {0}. Re-submitting...", matchingStop.Key));
+                    stopOrders.TryRemove(matchingStop.Key, out _);
+                    CreateNewStopOrder(
+                        matchingStop.Key,
+                        matchingStop.Value.RemainingContracts,
+                        matchingStop.Value.CurrentStopPrice,
+                        matchingStop.Value.Direction
+                    );
+                    return true;
                 }
             }
 
             if (entryOrders.Values.Contains(order))
             {
-                foreach (var kvp in snapshot)
+                var matchingEntry = snapshot
+                    .Where(kvp => activePositions.ContainsKey(kvp.Key))
+                    .FirstOrDefault(kvp =>
+                        entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled
+                    );
+
+                if (matchingEntry.Key != null)
                 {
-                    if (!activePositions.ContainsKey(kvp.Key))
-                        continue;
-                    if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
-                    {
-                        Print(LogBuffer.Format("[ZOMBIE-FIX] Entry REJECTED: {0}. Tearing down.", orderName));
-                        RollbackExpectedPosition(kvp.Key, kvp.Value);
-                        CleanupPosition(kvp.Key);
-                        return true;
-                    }
+                    Print(LogBuffer.Format("[ZOMBIE-FIX] Entry REJECTED: {0}. Tearing down.", orderName));
+                    RollbackExpectedPosition(matchingEntry.Key, matchingEntry.Value);
+                    CleanupPosition(matchingEntry.Key);
+                    return true;
                 }
             }
 
@@ -605,7 +607,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             bool handled = false;
 
             // Stop replacement check
-            if (orderName.StartsWith("Stop_") || orderName.StartsWith("S_"))
+            if (orderName.StartsWith(StopOrderPrefix) || orderName.StartsWith(StopOrderPrefixShort))
             {
                 handled = HandleOrderCancelled_ProcessStopReplacement(order);
                 if (!handled)
@@ -684,16 +686,19 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (entryOrders.Values.Contains(order))
             {
-                foreach (var kvp in activePositions.ToArray())
+                var matchingEntry = activePositions
+                    .ToArray()
+                    .FirstOrDefault(kvp =>
+                        entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled
+                    );
+
+                if (matchingEntry.Key != null)
                 {
-                    if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
-                    {
-                        if (EnableSIMA && !kvp.Value.IsFollower)
-                            SymmetryGuardCascadeFollowerCleanup(kvp.Key);
-                        RollbackExpectedPosition(kvp.Key, kvp.Value);
-                        CleanupPosition(kvp.Key);
-                        return true;
-                    }
+                    if (EnableSIMA && !matchingEntry.Value.IsFollower)
+                        SymmetryGuardCascadeFollowerCleanup(matchingEntry.Key);
+                    RollbackExpectedPosition(matchingEntry.Key, matchingEntry.Value);
+                    CleanupPosition(matchingEntry.Key);
+                    return true;
                 }
             }
 
@@ -704,49 +709,52 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (entryOrders.Values.Contains(order))
             {
-                foreach (var kvp in activePositions.ToArray())
+                var matchingEntry = activePositions
+                    .ToArray()
+                    .FirstOrDefault(kvp =>
+                        entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled
+                    );
+
+                if (matchingEntry.Key != null)
                 {
-                    if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
+                    double newPrice = limitPrice > 0 ? limitPrice : stopPrice;
+                    if (newPrice > 0 && Math.Abs(newPrice - matchingEntry.Value.EntryPrice) > tickSize * 0.5)
                     {
-                        double newPrice = limitPrice > 0 ? limitPrice : stopPrice;
-                        if (newPrice > 0 && Math.Abs(newPrice - kvp.Value.EntryPrice) > tickSize * 0.5)
-                        {
-                            kvp.Value.EntryPrice = newPrice;
-                            Print(LogBuffer.Format("V12: Entry order MOVED: {0} to {1:F2}", kvp.Key, newPrice));
-                        }
-                        int _totalContracts;
-                        _totalContracts = kvp.Value.TotalContracts;
-                        if (quantity > 0 && quantity != _totalContracts)
-                        {
-                            // [937-FIX] Sync expectedPositions with broker-confirmed qty.
-                            // Without this, RollbackExpectedPosition uses stale TotalContracts -> desync.
-                            int qtyDiff = quantity - _totalContracts;
-                            string fixAcct =
-                                (kvp.Value.IsFollower && kvp.Value.ExecutingAccount != null)
-                                    ? kvp.Value.ExecutingAccount.Name
-                                    : Account.Name;
-                            int expDelta = (kvp.Value.Direction == MarketPosition.Long) ? qtyDiff : -qtyDiff;
-                            DeltaExpectedPositionLocked(ExpKey(fixAcct), expDelta);
-                            Print(
-                                LogBuffer.Format(
-                                    "[937-FIX] expectedPositions adjusted on qty change: {0} delta={1}",
-                                    fixAcct,
-                                    expDelta
-                                )
-                            );
-                            kvp.Value.TotalContracts = quantity;
-                            kvp.Value.RemainingContracts = quantity;
-                            GetTargetDistribution(
-                                quantity,
-                                out kvp.Value.T1Contracts,
-                                out kvp.Value.T2Contracts,
-                                out kvp.Value.T3Contracts,
-                                out kvp.Value.T4Contracts,
-                                out kvp.Value.T5Contracts
-                            );
-                        }
-                        return true;
+                        matchingEntry.Value.EntryPrice = newPrice;
+                        Print(LogBuffer.Format("V12: Entry order MOVED: {0} to {1:F2}", matchingEntry.Key, newPrice));
                     }
+                    int _totalContracts;
+                    _totalContracts = matchingEntry.Value.TotalContracts;
+                    if (quantity > 0 && quantity != _totalContracts)
+                    {
+                        // [937-FIX] Sync expectedPositions with broker-confirmed qty.
+                        // Without this, RollbackExpectedPosition uses stale TotalContracts -> desync.
+                        int qtyDiff = quantity - _totalContracts;
+                        string fixAcct =
+                            (matchingEntry.Value.IsFollower && matchingEntry.Value.ExecutingAccount != null)
+                                ? matchingEntry.Value.ExecutingAccount.Name
+                                : Account.Name;
+                        int expDelta = (matchingEntry.Value.Direction == MarketPosition.Long) ? qtyDiff : -qtyDiff;
+                        DeltaExpectedPositionLocked(ExpKey(fixAcct), expDelta);
+                        Print(
+                            LogBuffer.Format(
+                                "[937-FIX] expectedPositions adjusted on qty change: {0} delta={1}",
+                                fixAcct,
+                                expDelta
+                            )
+                        );
+                        matchingEntry.Value.TotalContracts = quantity;
+                        matchingEntry.Value.RemainingContracts = quantity;
+                        GetTargetDistribution(
+                            quantity,
+                            out matchingEntry.Value.T1Contracts,
+                            out matchingEntry.Value.T2Contracts,
+                            out matchingEntry.Value.T3Contracts,
+                            out matchingEntry.Value.T4Contracts,
+                            out matchingEntry.Value.T5Contracts
+                        );
+                    }
+                    return true;
                 }
             }
             return false;
