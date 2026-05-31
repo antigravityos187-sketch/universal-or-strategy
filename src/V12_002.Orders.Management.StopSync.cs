@@ -431,7 +431,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         /// <summary>
         /// [Phase 7 NEW-2 Round 7] Helper: Check if order is in active/pending state
-        /// Reduces complex conditional branches (CodeScene: 5→3 branches)
+        /// Reduces complex conditional branches (CodeScene: 5->3 branches)
         /// </summary>
         private bool IsOrderActiveOrPending(Order order)
         {
@@ -459,7 +459,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     // Fix #4: Use OrderType enum instead of non-existent IsStopMarket
                     // Fix #5: Check all protective states and order types
-                    // [Round 7] Extracted state check to helper (CodeScene: 5→3 branches)
+                    // [Round 7] Extracted state check to helper (CodeScene: 5->3 branches)
                     hasActiveStop =
                         IsOrderActiveOrPending(stopOrder)
                         && (stopOrder.OrderType == OrderType.StopMarket || stopOrder.OrderType == OrderType.StopLimit);
@@ -470,7 +470,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     foreach (Order o in Account.Orders)
                     {
-                        // [Round 7] Extracted state check to helper (CodeScene: 5→3 branches)
+                        // [Round 7] Extracted state check to helper (CodeScene: 5->3 branches)
                         if (
                             IsOrderActiveOrPending(o)
                             && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
