@@ -448,7 +448,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                         (
                             stopOrder.OrderState == OrderState.Working
                             || stopOrder.OrderState == OrderState.Accepted
-                            || stopOrder.OrderState == OrderState.PendingSubmit
+                            || stopOrder.OrderState == OrderState.ChangeSubmitted
                         )
                         && (stopOrder.OrderType == OrderType.StopMarket || stopOrder.OrderType == OrderType.StopLimit);
                 }
@@ -462,7 +462,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                             (
                                 o.OrderState == OrderState.Working
                                 || o.OrderState == OrderState.Accepted
-                                || o.OrderState == OrderState.PendingSubmit
+                                || o.OrderState == OrderState.ChangeSubmitted
                             )
                             && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
                             && o.Name.EndsWith("_" + entryName)
