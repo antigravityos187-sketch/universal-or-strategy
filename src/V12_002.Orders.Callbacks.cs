@@ -34,6 +34,11 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region Order Callbacks
 
+        // Phase 7 NEW-1: Centralized prefix constants (Sourcery AI recommendation)
+        private const string StopOrderPrefix = "Stop_";
+        private const string StopOrderPrefixShort = "S_";
+        private static readonly string[] TerminalTargetPrefixes = { "T1_", "T2_", "T3_", "T4_", "T5_", "Runner_" };
+
         /// <summary>
         /// Applies a target fill in a partial-fill-safe way.
         /// - Uses cumulative filled quantity to avoid over/under-decrement when callbacks race.
@@ -454,6 +459,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                         );
                         CleanupPosition(kvp.Key);
                     }
+                    else
+                    {
+                        // Guard prevented cleanup but stop order is terminal - remove stale reference
+                        stopOrders.TryRemove(kvp.Key, out _);
+                    }
                     return true;
                 }
             }
@@ -474,11 +484,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             return false;
         }
-
-        // Phase 7 NEW-1: Centralized prefix constants (Sourcery AI recommendation)
-        private const string StopOrderPrefix = "Stop_";
-        private const string StopOrderPrefixShort = "S_";
-        private static readonly string[] TerminalTargetPrefixes = { "T1_", "T2_", "T3_", "T4_", "T5_", "Runner_" };
 
         /// <summary>
         /// Handles terminal target cleanup for T1-T5 and Runner orders.
@@ -623,33 +628,43 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private bool HandleOrderCancelled_ProcessStopReplacement(Order order)
         {
-            foreach (var kvp in pendingStopReplacements.ToArray())
-            {
-                if (
+            var matchingReplacement = pendingStopReplacements
+                .ToArray()
+                .FirstOrDefault(kvp =>
                     (
                         kvp.Value.OldOrder == order
                         || (kvp.Value.OldOrder != null && kvp.Value.OldOrder.OrderId == order.OrderId)
-                    ) && activePositions.TryGetValue(kvp.Key, out var pos)
-                )
+                    ) && activePositions.ContainsKey(kvp.Key)
+                );
+
+            if (matchingReplacement.Key != null && activePositions.TryGetValue(matchingReplacement.Key, out var pos))
+            {
+                // Build 955: Snapshot qty under stateLock -- single atomic read for both check and use.
+                int _stopQty = pos.RemainingContracts;
+                if (_stopQty > 0)
                 {
-                    // Build 955: Snapshot qty under stateLock -- single atomic read for both check and use.
-                    int _stopQty;
-                    _stopQty = pos.RemainingContracts;
-                    if (_stopQty > 0)
+                    CreateNewStopOrder(
+                        matchingReplacement.Key,
+                        _stopQty,
+                        matchingReplacement.Value.StopPrice,
+                        matchingReplacement.Value.Direction
+                    );
+                    // Build 950: Restore OCO-cascade-cancelled targets after stop replacement.
+                    if (
+                        matchingReplacement.Value.BracketRestorationNeeded
+                        && matchingReplacement.Value.CapturedTargets != null
+                    )
                     {
-                        CreateNewStopOrder(kvp.Key, _stopQty, kvp.Value.StopPrice, kvp.Value.Direction);
-                        // Build 950: Restore OCO-cascade-cancelled targets after stop replacement.
-                        if (kvp.Value.BracketRestorationNeeded && kvp.Value.CapturedTargets != null)
-                        {
-                            TargetSnapshot[] _mSnap = kvp.Value.CapturedTargets;
-                            string _mKey = kvp.Key;
-                            TriggerCustomEvent(o => RestoreCascadedTargets(_mKey, _mSnap), null);
-                        }
+                        TargetSnapshot[] _mSnap = matchingReplacement.Value.CapturedTargets;
+                        string _mKey = matchingReplacement.Key;
+                        TriggerCustomEvent(o => RestoreCascadedTargets(_mKey, _mSnap), null);
                     }
-                    if (pendingStopReplacements.TryRemove(kvp.Key, out _))
-                        Interlocked.Decrement(ref pendingReplacementCount);
-                    return true;
                 }
+                if (pendingStopReplacements.TryRemove(matchingReplacement.Key, out _))
+                {
+                    Interlocked.Decrement(ref pendingReplacementCount);
+                }
+                return true;
             }
 
             return false;
@@ -688,6 +703,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 var matchingEntry = activePositions
                     .ToArray()
+                    .Where(kvp => activePositions.ContainsKey(kvp.Key))
                     .FirstOrDefault(kvp =>
                         entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled
                     );
@@ -695,7 +711,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (matchingEntry.Key != null)
                 {
                     if (EnableSIMA && !matchingEntry.Value.IsFollower)
+                    {
                         SymmetryGuardCascadeFollowerCleanup(matchingEntry.Key);
+                    }
                     RollbackExpectedPosition(matchingEntry.Key, matchingEntry.Value);
                     CleanupPosition(matchingEntry.Key);
                     return true;
@@ -711,6 +729,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 var matchingEntry = activePositions
                     .ToArray()
+                    .Where(kvp => activePositions.ContainsKey(kvp.Key))
                     .FirstOrDefault(kvp =>
                         entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled
                     );
