@@ -415,11 +415,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Extracted from HandleSecondaryOrderFilled.
         /// Phase 7 NEW-1: Complexity reduction (CYC 17 -> 4).
         /// </summary>
-        /// <param name="order">The filled order</param>
-        /// <param name="orderName">Order name for fallback matching</param>
-        /// <param name="averageFillPrice">Average fill price</param>
-        /// <param name="snapshot">Pre-allocated snapshot of active positions</param>
-        /// <returns>True if order was a stop and was handled</returns>
+        /// <param name="order">The filled order.</param>
+        /// <param name="orderName">Order name for fallback matching.</param>
+        /// <param name="averageFillPrice">Average fill price.</param>
+        /// <param name="snapshot">Pre-allocated snapshot of active positions.</param>
+        /// <returns>True if order was a stop and was handled.</returns>
         private bool HandleSecondaryOrderFilled_Stop(
             Order order,
             string orderName,
@@ -435,9 +435,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             foreach (var kvp in snapshot)
             {
-                // Re-check existence (mutation safety)
-                if (!activePositions.ContainsKey(kvp.Key))
-                    continue;
+                // Single TryGetValue for mutation safety + lookup efficiency
                 if (stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order)
                 {
                     Print(
@@ -469,27 +467,26 @@ namespace NinjaTrader.NinjaScript.Strategies
             return false;
         }
 
+        // Phase 7 NEW-1: Centralized prefix constants (Sourcery AI recommendation)
+        private static readonly string[] TerminalTargetPrefixes = { "T1_", "T2_", "T3_", "T4_", "T5_", "Runner_" };
+
         /// <summary>
         /// Handles terminal target cleanup for T1-T5 and Runner orders.
         /// Extracted from HandleSecondaryOrderFilled.
         /// Phase 7 NEW-1: Complexity reduction (CYC 17 -> 4).
         /// </summary>
-        /// <param name="order">The filled order</param>
-        /// <param name="orderName">Order name for prefix matching</param>
-        /// <returns>True if order was a terminal target and was handled</returns>
+        /// <param name="order">The filled order.</param>
+        /// <param name="orderName">Order name for prefix matching.</param>
+        /// <returns>True if order was a terminal target and was handled.</returns>
         private bool HandleSecondaryOrderFilled_TerminalCleanup(Order order, string orderName)
         {
-            if (
-                orderName.StartsWith("T1_")
-                || orderName.StartsWith("T2_")
-                || orderName.StartsWith("T3_")
-                || orderName.StartsWith("T4_")
-                || orderName.StartsWith("T5_")
-                || orderName.StartsWith("Runner_")
-            )
+            foreach (var prefix in TerminalTargetPrefixes)
             {
-                RemoveTargetReferenceOnTerminalFill(order);
-                return true;
+                if (orderName.StartsWith(prefix))
+                {
+                    RemoveTargetReferenceOnTerminalFill(order);
+                    return true;
+                }
             }
             return false;
         }
