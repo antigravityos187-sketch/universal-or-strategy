@@ -353,13 +353,20 @@ namespace NinjaTrader.NinjaScript.Strategies
             return false;
         }
 
-        private bool HandleSecondaryOrderFilled(Order order, double averageFillPrice)
+        /// <summary>
+        /// Handles target order fills (T1-T5). Extracted from HandleSecondaryOrderFilled.
+        /// Phase 7 NEW-1: Complexity reduction (CYC 17 -> 4).
+        /// </summary>
+        /// <param name="order">The filled order</param>
+        /// <param name="averageFillPrice">Average fill price</param>
+        /// <param name="snapshot">Pre-allocated snapshot of active positions</param>
+        /// <returns>True if order was a target and was handled</returns>
+        private bool HandleSecondaryOrderFilled_Target(
+            Order order,
+            double averageFillPrice,
+            KeyValuePair<string, PositionInfo>[] snapshot
+        )
         {
-            string orderName = order.Name;
-
-            // [EPIC-5-PERF-T02] Single snapshot allocation at method start
-            var snapshot = activePositions.ToArray();
-
             // Targets 1-5
             for (int tNum = 1; tNum <= 5; tNum++)
             {
@@ -400,44 +407,78 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                 }
             }
+            return false;
+        }
 
+        /// <summary>
+        /// Handles stop order fills with dictionary lookup and name-based fallback.
+        /// Extracted from HandleSecondaryOrderFilled.
+        /// Phase 7 NEW-1: Complexity reduction (CYC 17 -> 4).
+        /// </summary>
+        /// <param name="order">The filled order</param>
+        /// <param name="orderName">Order name for fallback matching</param>
+        /// <param name="averageFillPrice">Average fill price</param>
+        /// <param name="snapshot">Pre-allocated snapshot of active positions</param>
+        /// <returns>True if order was a stop and was handled</returns>
+        private bool HandleSecondaryOrderFilled_Stop(
+            Order order,
+            string orderName,
+            double averageFillPrice,
+            KeyValuePair<string, PositionInfo>[] snapshot
+        )
+        {
             // Stop filled
-            if (orderName.StartsWith("Stop_") || orderName.StartsWith("S_"))
+            if (!orderName.StartsWith("Stop_") && !orderName.StartsWith("S_"))
             {
-                foreach (var kvp in snapshot)
-                {
-                    // Re-check existence (mutation safety)
-                    if (!activePositions.ContainsKey(kvp.Key))
-                        continue;
-                    if (stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order)
-                    {
-                        Print(
-                            LogBuffer.Format(
-                                "STOP FILLED: {0} contracts @ {1:F2}",
-                                kvp.Value.RemainingContracts,
-                                averageFillPrice
-                            )
-                        );
-                        CleanupPosition(kvp.Key);
-                        return true;
-                    }
-                }
-                // Fallback by name
-                string entryName = ExtractEntryNameFromStop(orderName);
-                if (activePositions.TryGetValue(entryName, out var pos))
+                return false;
+            }
+
+            foreach (var kvp in snapshot)
+            {
+                // Re-check existence (mutation safety)
+                if (!activePositions.ContainsKey(kvp.Key))
+                    continue;
+                if (stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order)
                 {
                     Print(
                         LogBuffer.Format(
-                            "STOP FILLED (by name): {0} contracts @ {1:F2}",
-                            pos.RemainingContracts,
+                            "STOP FILLED: {0} contracts @ {1:F2}",
+                            kvp.Value.RemainingContracts,
                             averageFillPrice
                         )
                     );
-                    CleanupPosition(entryName);
+                    CleanupPosition(kvp.Key);
                     return true;
                 }
             }
+            // Fallback by name
+            string entryName = ExtractEntryNameFromStop(orderName);
+            if (activePositions.TryGetValue(entryName, out var pos))
+            {
+                Print(
+                    LogBuffer.Format(
+                        "STOP FILLED (by name): {0} contracts @ {1:F2}",
+                        pos.RemainingContracts,
+                        averageFillPrice
+                    )
+                );
+                CleanupPosition(entryName);
+                return true;
+            }
 
+            return false;
+        }
+
+        /// <summary>
+        /// Handles terminal target cleanup for T1-T5 and Runner orders.
+        /// Extracted from HandleSecondaryOrderFilled.
+        /// Phase 7 NEW-1: Complexity reduction (CYC 17 -> 4).
+        /// </summary>
+        /// <param name="order">The filled order</param>
+        /// <param name="orderName">Order name for prefix matching</param>
+        /// <returns>True if order was a terminal target and was handled</returns>
+        private bool HandleSecondaryOrderFilled_TerminalCleanup(Order order, string orderName)
+        {
             if (
                 orderName.StartsWith("T1_")
                 || orderName.StartsWith("T2_")
@@ -448,6 +489,37 @@ namespace NinjaTrader.NinjaScript.Strategies
             )
             {
                 RemoveTargetReferenceOnTerminalFill(order);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Routes secondary order fills to specialized handlers.
+        /// Refactored in Phase 7 NEW-1 to reduce complexity (CYC 17 -> 4).
+        /// </summary>
+        private bool HandleSecondaryOrderFilled(Order order, double averageFillPrice)
+        {
+            string orderName = order.Name;
+
+            // [EPIC-5-PERF-T02] Single snapshot allocation at method start
+            var snapshot = activePositions.ToArray();
+
+            // Route to target handler
+            if (HandleSecondaryOrderFilled_Target(order, averageFillPrice, snapshot))
+            {
+                return true;
+            }
+
+            // Route to stop handler
+            if (HandleSecondaryOrderFilled_Stop(order, orderName, averageFillPrice, snapshot))
+            {
+                return true;
+            }
+
+            // Route to terminal cleanup handler
+            if (HandleSecondaryOrderFilled_TerminalCleanup(order, orderName))
+            {
                 return true;
             }
 
