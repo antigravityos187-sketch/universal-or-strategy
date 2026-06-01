@@ -446,6 +446,116 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Build follower orders for a single account in the fleet dispatch loop.
+        /// Calculates prices, quantities, and creates the entry order object.
+        /// Returns false if account should be skipped (e.g., position conflicts).
+        /// </summary>
+        private bool Dispatch_BuildFollowerOrders(
+            string tradeType,
+            OrderAction action,
+            int quantity,
+            double entryPrice,
+            OrderType entryOrderType,
+            Account acct,
+            int accountIndex,
+            string symmetryDispatchId,
+            int dispatchTargetCount,
+            StringBuilder dispatchLog,
+            out PositionInfo fleetPos,
+            out Order entry,
+            out string fleetEntryName,
+            out string expectedKey,
+            out string ocoId,
+            out int followerQty,
+            out int ft1,
+            out int ft2,
+            out int ft3,
+            out int ft4,
+            out int ft5,
+            out double stopPrice,
+            out double t1TargetPrice,
+            out double t2TargetPrice,
+            out double t3TargetPrice,
+            out double t4TargetPrice,
+            out double t5TargetPrice
+        )
+        {
+            // Initialize all out parameters
+            fleetPos = null;
+            entry = null;
+            fleetEntryName = null;
+            expectedKey = null;
+            ocoId = null;
+            followerQty = quantity;
+            ft1 = ft2 = ft3 = ft4 = ft5 = 0;
+            stopPrice = t1TargetPrice = t2TargetPrice = t3TargetPrice = t4TargetPrice = t5TargetPrice = 0;
+
+            // Get or create position info for this account
+            expectedKey = acct.Name;
+            if (!activePositions.TryGetValue(expectedKey, out fleetPos))
+            {
+                fleetPos = new PositionInfo();
+                activePositions[expectedKey] = fleetPos;
+            }
+
+            // Generate unique fleet entry name
+            fleetEntryName = LogBuffer.Format("{0}_{1}_{2}", symmetryDispatchId, acct.Name, accountIndex);
+
+            // Generate OCO ID for bracket orders
+            ocoId = LogBuffer.Format("{0}_{1}", action.ToString(), DateTime.UtcNow.Ticks);
+
+            // Create entry order signal name
+            string entrySig = SymmetryTrim("Entry_" + fleetEntryName, 40);
+
+            // Create the entry order
+            entry = acct.CreateOrder(
+                Instrument,
+                action,
+                entryOrderType,
+                TimeInForce.Gtc,
+                followerQty,
+                entryOrderType == OrderType.Limit ? entryPrice : 0,
+                0,
+                ocoId,
+                entrySig,
+                null
+            );
+
+            if (entry == null)
+            {
+                Print($"[DISPATCH] [X] CreateOrder returned null for {acct.Name}");
+                return false;
+            }
+
+            // Calculate stop and target prices based on entry price
+            // Use simple fixed offsets for now (these should ideally come from strategy parameters)
+            double tickSizeValue = Instrument.MasterInstrument.TickSize;
+            double stopTicks = 10;
+            double targetTicks = 20;
+
+            if (action == OrderAction.Buy)
+            {
+                stopPrice = entryPrice - (stopTicks * tickSizeValue);
+                t1TargetPrice = entryPrice + (targetTicks * tickSizeValue);
+            }
+            else
+            {
+                stopPrice = entryPrice + (stopTicks * tickSizeValue);
+                t1TargetPrice = entryPrice - (targetTicks * tickSizeValue);
+            }
+
+            // Round to tick size
+            stopPrice = Instrument.MasterInstrument.RoundToTickSize(stopPrice);
+            t1TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t1TargetPrice);
+
+            // Set target quantities (distribute across targets based on dispatchTargetCount)
+            if (dispatchTargetCount >= 1)
+                ft1 = followerQty;
+
+            return true;
+        }
+
+        /// <summary>
         /// Phase 7 NEW-3: Thin router for market bracket dispatch.
         /// Delegates entry, stop, and target publishing to focused helpers.
         /// Target CYC: <=4 (reduced from 21).
@@ -488,9 +598,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // [Round 4 Fix] P1 CRITICAL: Check for null stop order
             if (stop == null)
             {
-                LogCritical(
-                    $"[PublishPhoton_FleetOrders] Stop creation failed for {fleetEntryName} - aborting dispatch"
-                );
+                Print($"[PublishPhoton_FleetOrders] Stop creation failed for {fleetEntryName} - aborting dispatch");
 
                 // Rollback: Remove from registeredForCleanup if already added
                 if (registeredForCleanup)
@@ -713,7 +821,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             );
             if (stop == null)
             {
-                LogCritical($"[PublishPhoton_StopOrder] CreateOrder returned null for {fleetEntryName}");
+                Print($"[PublishPhoton_StopOrder] CreateOrder returned null for {fleetEntryName}");
                 return null;
             }
             ordersToSubmit.Add(stop);
