@@ -515,3 +515,40 @@ Is task modifying code?
 ```
 
 **Code Mode**: BANNED - Any delegation to code mode is a protocol violation.
+
+
+## 11. No Scope Creep Protocol (V12.23 - MANDATORY)
+
+**Effective**: 2026-06-01 (Post-EPIC-13 PR #12 Failure)
+
+### Rule
+**ONE EPIC = ONE CONCERN**. Never mix unrelated fixes in a single PR.
+
+### Violations
+- ❌ Fixing pre-existing compilation errors during an epic
+- ❌ Adding "while we're here" improvements
+- ❌ Bundling multiple concerns in one commit
+- ❌ Expanding scope mid-epic without Director approval
+
+### Enforcement
+1. **Before Starting Epic**: Verify codebase compiles cleanly
+2. **During Epic**: If unrelated issues found, STOP and report to Director
+3. **Separate PRs**: Create dedicated PR for each concern
+4. **PR Review**: Reject any PR mixing multiple concerns
+
+### Example (EPIC-13 Failure)
+**Wrong** ❌:
+- EPIC-13 extraction + pre-existing error fixes = 3 P0 blockers
+
+**Right** ✅:
+- PR #1: Pre-existing compilation fixes (separate)
+- PR #2: EPIC-13 extraction only (clean)
+
+### Recovery Protocol
+If scope creep detected:
+1. Close PR immediately
+2. Document failure in `docs/brain/EPIC-X/failure-analysis.md`
+3. Separate concerns into individual PRs
+4. Restart epic cleanly
+
+**Reference**: `docs/brain/EPIC-13/09-pr12-failure-analysis.md`
