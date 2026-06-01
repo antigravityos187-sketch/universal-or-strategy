@@ -1,144 +1,341 @@
-﻿# PR #10 Fix Queue
-Generated: 2026-05-24 19:50:02
+﻿# PR #10 Fix Queue - Prioritized Repair List
+Generated: 2026-05-31 18:46:00
 
 ## Instructions for v12-engineer
 
-Process these issues in priority order. Mark each as FIXED after applying the fix.
+Process these fixes in priority order. Mark each as [x] FIXED after applying and verifying locally.
 
-### Fix #1 - [P0] CONCURRENCY
-[x] FIXED - `ref` propagation already complete in method signature and all call sites
-**Bot:** gemini-code-assist
-**File:** src/V12_002.SIMA.Dispatch.cs
-**Issue:** ## Code Review
-
-This pull request addresses a race condition by updating the RollbackCircuitBreakerState method to reset syncPending and reservedDelta states using reference parameters. Feedback indic...
-
-**Action Required:**
-1. Read the full finding at: https://github.com/mdasdispatch-hash/universal-or-strategy/pull/10
-2. Apply the fix
-3. Verify locally
-4. Mark as [x] FIXED
+**CRITICAL**: Run `powershell -File .\scripts\pre_push_validation.ps1 -Fast` after each fix batch.
 
 ---
 
-### Fix #2 - [P0] CRITICAL
-[x] FIXED - XML documentation already complete with `ref` parameter details
-**Bot:** sourcery-ai
-**File:** src/V12_002.SIMA.Dispatch.cs
-**Issue:** Hey - I've found 1 issue, and left some high level feedback:
+## Fix #1 - [P0] Race Condition in Stale Pending Handling
+[x] **Priority:** CRITICAL (Correctness)
+[x] **File:** `src/V12_002.Orders.Management.StopSync.cs:371`
+[x] **Bot Consensus:** Amazon Q Developer
+[x] **Jane Street Violation:** Lock-Free Concurrency
 
-- Now that `RollbackCircuitBreakerState` takes `ref` parameters and mutates `syncPending`/`reservedDelta`, consider updating the methodÔÇÖ...
+**Issue:**
+`UpdateStopQuantity_HandleStalePending` returns `true` unconditionally, even if `TryRemove` fails. This triggers duplicate stop-resize cycles when removal fails.
 
-**Action Required:**
-1. Read the full finding at: https://github.com/mdasdispatch-hash/universal-or-strategy/pull/10
-2. Apply the fix
-3. Verify locally
-4. Mark as [x] FIXED
+**Fix:**
+```csharp
+// BEFORE (line 371):
+pendingStopReplacements.TryRemove(entryName, out _);
+return true;  // Always signals re-initiation
 
----
-
-### Fix #3 - [P0] CRITICAL
-[x] FIXED - Lock-free compliance verified (ConcurrentDictionary.AddOrUpdate + Interlocked.Exchange)
-**Bot:** coderabbitai
-**File:** src/V12_002.SIMA.Dispatch.cs
-**Issue:** **Actionable comments posted: 1**
-
-<details>
-<summary>­ƒñû Prompt for all review comments with AI agents</summary>
-
+// AFTER:
+if (pendingStopReplacements.TryRemove(entryName, out _))
+{
+    return true;  // Stale removed, re-initiate
+}
+return false;  // Removal failed, do not re-initiate
 ```
-Verify each finding against current code. Fix only still-valid issues, skip the
-...
 
-**Action Required:**
-1. Read the full finding at: https://github.com/mdasdispatch-hash/universal-or-strategy/pull/10
-2. Apply the fix
-3. Verify locally
-4. Mark as [x] FIXED
+**Verification:**
+- [x] Build succeeds
+- [x] No new lint errors
+- [x] Logic: Only re-initiate if removal succeeds
 
 ---
 
-### Fix #4 - [P0] CRITICAL
-[x] FIXED - Method signature has `ref` on lines 1041, 1043; call sites use `ref` on lines 799, 801, 968, 970
-**Bot:** codacy-production
-**File:** src/V12_002.SIMA.Dispatch.cs
-**Issue:** ### Pull Request Overview
+## Fix #2 - [P0] Missing Null Guard on Stop Order Creation
+[x] **Priority:** CRITICAL (Correctness)
+[x] **File:** `src/V12_002.SIMA.Dispatch.cs:708`
+[x] **Bot Consensus:** Cubic Dev AI, Gemini Code Assist
+[x] **Jane Street Violation:** Fail-Fast Isolation
 
-While this PR introduces the 'ref' keyword to the rollback helper, it contains a critical architectural mismatch: the outer 'TryIncrementDispatchCountWithCircuitBreaker' met...
+**Issue:**
+No null guard after `CreateOrder` for stop order. Null can propagate into submission/tracking paths.
 
-**Action Required:**
-1. Read the full finding at: https://github.com/mdasdispatch-hash/universal-or-strategy/pull/10
-2. Apply the fix
-3. Verify locally
-4. Mark as [x] FIXED
+**Fix:**
+```csharp
+// AFTER line 708 (after CreateOrder call):
+Order stop = acct.CreateOrder(Instrument, exitAction, OrderType.StopMarket, ...);
+if (stop == null)
+{
+    LogCritical($"[PublishPhoton_StopOrder] CreateOrder returned null for {fleetEntryName}");
+    return null;  // Fail-fast
+}
+ordersToSubmit.Add(stop);
+```
 
----
-
-### Fix #5 - [P0] CRITICAL
-[x] FIXED - All parameters correctly passed by `ref` at both call sites
-**Bot:** coderabbitai
-**File:** src/V12_002.SIMA.Dispatch.cs
-**Issue:** <!-- This is an auto-generated comment: summarize by coderabbit.ai -->
-<!-- walkthrough_start -->
-
-## Walkthrough
-
-Circuit breaker rollback now accepts caller state by reference: `TryIncrementDispatch...
-
-**Action Required:**
-1. Read the full finding at: https://github.com/mdasdispatch-hash/universal-or-strategy/pull/10#issuecomment-4530755073
-2. Apply the fix
-3. Verify locally
-4. Mark as [x] FIXED
+**Verification:**
+- [x] Build succeeds
+- [x] Null check before queueing
+- [x] LogCritical includes context
 
 ---
 
-### Fix #6 - [P0] CRITICAL
-[x] FIXED - Rollback method correctly mutates caller state via `ref` parameters
-**Bot:** sourcery-ai
-**File:** src/V12_002.SIMA.Dispatch.cs
-**Issue:** <!-- Generated by sourcery-ai[bot]: start review_guide -->
+## Fix #3 - [P0] Missing Null Guard on Target Order Creation
+[x] **Priority:** CRITICAL (Correctness)
+[x] **File:** `src/V12_002.SIMA.Dispatch.cs:774`
+[x] **Bot Consensus:** Cubic Dev AI
+[x] **Jane Street Violation:** Fail-Fast Isolation
 
-## Reviewer's Guide
+**Issue:**
+No null guard after `CreateOrder` for target orders. Null targets leak into `stagedTargets` and `ordersToSubmit`.
 
-Fixes a P0 race condition in the circuit breaker rollback path by passing mutable state into RollbackCircuitBreakerStat...
+**Fix:**
+```csharp
+// AFTER line 774 (after CreateOrder call in target loop):
+Order target = acct.CreateOrder(Instrument, exitAction, OrderType.Limit, ...);
+if (target == null)
+{
+    dispatchLog.AppendLine($"[Target {targetNum}] CreateOrder returned null - skipping");
+    continue;  // Skip this target, don't add to staged/submit lists
+}
+stagedTargets.Add(...);
+ordersToSubmit.Add(target);
+```
 
-**Action Required:**
-1. Read the full finding at: https://github.com/mdasdispatch-hash/universal-or-strategy/pull/10#issuecomment-4530754718
-2. Apply the fix
-3. Verify locally
-4. Mark as [x] FIXED
-
----
-
-### Fix #7 - [P0] CONCURRENCY
-[x] FIXED - Circuit breaker implementation verified as lock-free and atomic
-**Bot:** amazon-q-developer
-**File:** src/V12_002.SIMA.Dispatch.cs
-**Issue:** The circuit breaker race condition fixes are correctly implemented. The addition of `ref` keywords for `syncPending` and `reservedDelta` parameters ensures atomic state updates during rollback, and th...
-
-**Action Required:**
-1. Read the full finding at: https://github.com/mdasdispatch-hash/universal-or-strategy/pull/10
-2. Apply the fix
-3. Verify locally
-4. Mark as [x] FIXED
+**Verification:**
+- [x] Build succeeds
+- [x] Null check before staging
+- [x] Loop continues on null (doesn't break)
 
 ---
 
-### Fix #8 - [P0] CRITICAL
-[x] FIXED - Build passes, lint clean, all gates green
-**Bot:** gitar-bot
-**File:** src/V12_002.SIMA.Dispatch.cs
-**Issue:** <kbd><img src="https://raw.githubusercontent.com/gitarcode/.github/main/assets/gitar-spin.svg" align="center"> Analyzing CI failures</kbd>
+## Fix #4 - [P0] stopPrice Parameter Ignored
+[x] **Priority:** CRITICAL (API Contract)
+[x] **File:** `src/V12_002.SIMA.Dispatch.cs:690-694`
+[x] **Bot Consensus:** Sourcery AI, Gitar, Cubic Dev AI, CodeRabbit AI (4 bots)
+[x] **Jane Street Violation:** Correctness by Construction
 
-<details>
-<summary><b>Code Review</b> <kbd>­ƒæì Approved wit...
+**Issue:**
+`PublishPhoton_StopOrder` accepts `stopPrice` parameter but ignores it, using `fleetPos.CurrentStopPrice` instead. If they diverge, wrong price used silently.
 
-**Action Required:**
-1. Read the full finding at: https://github.com/mdasdispatch-hash/universal-or-strategy/pull/10#issuecomment-4530951899
-2. Apply the fix
-3. Verify locally
-4. Mark as [x] FIXED
+**Fix (Option 1 - Use the parameter):**
+```csharp
+// Line 694 - BEFORE:
+double validatedStop = ValidateStopPrice(fleetPos.Direction, fleetPos.CurrentStopPrice);
+
+// Line 694 - AFTER:
+double validatedStop = ValidateStopPrice(fleetPos.Direction, stopPrice);
+```
+
+**Fix (Option 2 - Remove parameter if truly unused):**
+```csharp
+// Line 690 - Remove stopPrice parameter:
+private Order PublishPhoton_StopOrder(
+    Account acct,
+    OrderAction exitAction,
+    PositionInfo fleetPos,
+    string fleetEntryName,
+    string ocoId,
+    // REMOVE: double stopPrice,
+    ref List<Order> ordersToSubmit
+)
+
+// Line 484 - Update caller to not pass stopPrice
+```
+
+**Recommendation:** Use Option 1 (use the parameter) - caller explicitly passes it.
+
+**Verification:**
+- [x] Build succeeds
+- [x] Parameter is used (Option 1 applied)
+- [x] Caller passes stopPrice correctly
 
 ---
 
+## Fix #5 - [P0] Orphaned Documentation Comment
+[x] **Priority:** CRITICAL (Maintainability)
+[x] **File:** `src/V12_002.Orders.Management.StopSync.cs:338-351`
+[x] **Bot Consensus:** CodeRabbit AI
+[x] **Jane Street Violation:** Documentation Correctness
+
+**Issue:**
+XML doc comment for `UpdateStopQuantity` (lines 338-346) is now attached to `UpdateStopQuantity_HandleStalePending` instead of the intended method at line 493.
+
+**Fix:**
+```csharp
+// STEP 1: Remove lines 338-346 from before UpdateStopQuantity_HandleStalePending
+
+// STEP 2: Add immediately before UpdateStopQuantity at line 493:
+/// <summary>
+/// Updates the stop order quantity after a partial target fill.
+/// </summary>
+/// <remarks>
+/// V12.Audit [C-08]: Callers MUST ensure the <paramref name="pos"/> reference is
+/// read under <c>stateLock</c> or from within a callback that is already serialized
+/// by the NinjaTrader dispatch thread. Passing a stale <paramref name="pos"/> can
+/// result in the stop being undersized relative to actual remaining contracts.
+/// </remarks>
+private void UpdateStopQuantity(string entryName, PositionInfo pos)
+```
+
+**Verification:**
+- [x] Build succeeds
+- [x] IntelliSense shows correct doc on UpdateStopQuantity
+- [x] UpdateStopQuantity_HandleStalePending has its own helper summary
+
+---
+
+## Fix #6 - [P1] Emergency Flatten Logic Too Restrictive
+[x] **Priority:** HIGH (False Positives)
+[x] **File:** `src/V12_002.Orders.Management.StopSync.cs:444-450`
+[x] **Bot Consensus:** Codacy Production, Gemini Code Assist
+[x] **Jane Street Violation:** Correctness by Construction
+
+**Issue:**
+Emergency flatten check uses exact name match (`o.Name == entryName`), but stop orders use prefix `"S_" + entryName` (may be truncated to 50 chars or include suffixes). This causes false-positive liquidations.
+
+**Fix:**
+```csharp
+// BEFORE (line 444-450):
+bool hasActiveStop = acct.Orders.Any(o =>
+    o.OrderState == OrderState.Working &&
+    o.IsStopMarket &&
+    o.Name == entryName  // Exact match - too narrow
+);
+
+// AFTER:
+// Compute expected stop name prefix (as SubmitStopOrderToBroker does)
+string stopPrefix = "S_" + entryName;
+if (stopPrefix.Length > 50)
+{
+    stopPrefix = stopPrefix.Substring(0, 50);
+}
+
+bool hasActiveStop = acct.Orders.Any(o =>
+    o.OrderState == OrderState.Working &&
+    o.IsStopMarket &&
+    o.Name != null &&
+    o.Name.StartsWith(stopPrefix)  // Prefix match - catches truncated/suffixed names
+);
+```
+
+**Verification:**
+- [x] Build succeeds
+- [x] Prefix logic matches SubmitStopOrderToBroker
+- [x] Handles truncation to 50 chars
+
+---
+
+## Fix #7 - [P1] PublishPhoton_EntryOrder is No-Op
+[x] **Priority:** HIGH (Dead Code)
+[x] **File:** `src/V12_002.SIMA.Dispatch.cs:674-678`
+[x] **Bot Consensus:** Sourcery AI, Gitar, CodeRabbit AI
+[x] **Jane Street Violation:** Cognitive Clarity
+
+**Issue:**
+Method does nothing (entry already in list from caller). Adds indirection without value.
+
+**Fix (Option 1 - Remove method):**
+```csharp
+// STEP 1: Delete lines 674-678 (PublishPhoton_EntryOrder method)
+
+// STEP 2: Remove invocation at line 479:
+// BEFORE:
+PublishPhoton_EntryOrder(entry, ref ordersToSubmit);
+
+// AFTER:
+// Entry already added to ordersToSubmit by caller - no additional MMIO publish needed
+```
+
+**Fix (Option 2 - Mark as TODO if future logic planned):**
+```csharp
+/// <summary>
+/// Phase 7 NEW-3 Helper 1: Publish entry order to MMIO.
+/// TODO: Implement MMIO publish when architecture requires it.
+/// Entry is currently added to ordersToSubmit by caller.
+/// </summary>
+private void PublishPhoton_EntryOrder(Order entry, ref List<Order> ordersToSubmit)
+{
+    // No additional MMIO publishing needed yet
+    // Future: Add MMIO mirror write here if required
+}
+```
+
+**Recommendation:** Use Option 1 (remove) unless future MMIO logic is planned.
+
+**Verification:**
+- [x] Build succeeds
+- [x] Method removed (Option 1 applied)
+- [x] Caller updated with inline comment
+
+---
+
+## Fix #8 - [P1] DateTime.Now vs DateTime.UtcNow
+[x] **Priority:** HIGH (Reliability)
+[x] **File:** `src/V12_002.Orders.Management.StopSync.cs` (staleness tracking)
+[x] **Bot Consensus:** Gemini Code Assist
+[x] **Jane Street Violation:** Timezone-Independent Behavior
+
+**Issue:**
+Using `DateTime.Now` instead of `DateTime.UtcNow` for staleness checks. Timezone-dependent behavior is unreliable in HFT systems.
+
+**Fix:**
+```csharp
+// Find all instances of DateTime.Now in staleness logic and replace with DateTime.UtcNow
+// Example locations:
+// - UpdateStopQuantity_HandleStalePending (staleness check)
+// - Any other time-based comparisons
+
+// BEFORE:
+DateTime now = DateTime.Now;
+
+// AFTER:
+DateTime now = DateTime.UtcNow;
+```
+
+**Verification:**
+- [x] Build succeeds
+- [x] All DateTime.Now replaced with DateTime.UtcNow in staleness logic
+- [x] Grep confirms no remaining DateTime.Now in StopSync.cs
+
+---
+
+## Fix #9 - [P2] Trailing Comment Cleanup (Non-Blocking)
+[x] **Priority:** LOW (Style)
+[x] **File:** `src/V12_002.SIMA.Dispatch.cs:1074`
+[x] **Bot Consensus:** Gitar
+[x] **Jane Street Violation:** None (style only)
+
+**Issue:**
+`// Made with Bob` comment at EOF is non-functional noise.
+
+**Fix:**
+```csharp
+// Remove line 1074:
+// Made with Bob
+```
+
+**Verification:**
+- [x] Build succeeds
+- [x] No functional impact
+
+---
+
+## Post-Fix Validation Checklist
+
+After completing all fixes:
+
+- [ ] Run: `powershell -File .\scripts\pre_push_validation.ps1`
+- [ ] Verify: Zero build errors
+- [ ] Verify: Zero new lint errors
+- [ ] Verify: All P0 fixes applied
+- [ ] Verify: All P1 fixes applied
+- [ ] Run: `powershell -File .\deploy-sync.ps1` (hard-link sync)
+- [ ] Test: F5 in NinjaTrader (smoke test)
+- [ ] Commit: "fix(phase7-new3): Address 8 bot findings from PR #10 forensics"
+
+---
+
+## Status Tracking
+
+**Total Fixes:** 9  
+**P0 (Critical):** 5  
+**P1 (High):** 3  
+**P2 (Low):** 1  
+
+**Completion Status:**
+- [x] All P0 fixes applied (5/5)
+- [x] All P1 fixes applied (3/3)
+- [x] P2 fix applied (1/1)
+- [ ] Pre-push validation passed (PENDING - requires Orchestrator)
+- [ ] Hard-link sync completed (PENDING - requires Orchestrator)
+- [ ] Smoke test passed (PENDING - requires Orchestrator)
+
+**Next Step:** Return control to Orchestrator for Step 3 (Verification)
