@@ -60,8 +60,39 @@ When v12-epic-planner outputs [PLAN-GATE], present key findings.
 **GATE 2 CHECKPOINT:**
 > "Plan review complete. Key findings: [top 3]. Type APPROVED to proceed or provide feedback."
 
-- APPROVED: advance to GATE 2.3
+- APPROVED: advance to GATE 2.5
 - Feedback: relay to v12-epic-planner, re-run plan review
+
+---
+
+### GATE 2.5: BOB FINDINGS REVIEW (NEW - V12.22)
+**Switch to: v12-engineer mode**
+
+Hand off this exact task:
+```
+EPIC: $1
+TICKET: $2
+TASK: Review Bob Findings for ticket scope
+PROTOCOL:
+  1. Open Bob Findings panel in VSCode (View → Problems → Filter to "Bob Findings")
+  2. Identify files in ticket scope from docs/brain/$1/ticket-$2.md
+  3. Filter Bob Findings to only those files
+  4. For each finding:
+     - P0 (CRITICAL): MUST fix before implementation - blocks GATE 2.5
+     - P1 (HIGH): Add to ticket implementation notes as mandatory fix
+     - P2 (MEDIUM): Document as technical debt in ticket-$2-debt.md
+  5. Export findings to: docs/brain/$1/ticket-$2-bob-findings.md
+  6. Update ticket-$2.md with Bob findings summary
+  7. Emit: [BOB-FINDINGS-REVIEWED] X critical, Y high, Z medium
+```
+
+**GATE 2.5 CHECKPOINT:**
+> "Bob Findings reviewed. Critical (P0): [list]. High (P1): [list]. Reply GO to proceed or FIX to address critical issues now."
+
+- GO (if zero P0 issues): advance to GATE 2.3
+- FIX (if P0 issues exist): Address critical findings using "Fix with Bob" button, then re-run review
+
+**Rationale:** Bob CLI's static analysis catches architectural issues (god functions, coupling, complexity) that may not be visible in the extraction plan. Blocking on P0 prevents implementing flawed designs.
 
 ---
 
@@ -130,17 +161,40 @@ Expected output: ALL blocking checks PASS (8/8 required, 5/5 warnings informatio
 
 If ANY blocking check fails: **HALT and fix.**
 
-### Step 3: F5 Verification
+### Step 3: Pre-Commit Panel Review (NEW - V12.22)
+**MANDATORY before Step 4**
+
+Check all three VSCode panels (see AGENTS.md Section 3.5 for full protocol):
+
+1. **Bob Findings Panel** (View → Problems → Filter: "Bob Findings"):
+   - Filter to files you modified
+   - **BLOCKING**: Zero P0 (Critical) findings
+   - **REQUIRED**: Document P1 (High) as technical debt in ticket-$2-debt.md
+   - **OPTIONAL**: P2 (Medium) can be deferred
+
+2. **Problems Panel** (View → Problems):
+   - Filter to files you modified
+   - **BLOCKING**: Zero errors (warnings OK)
+   - Fix all compilation errors
+
+3. **Comments Panel** (View → Comments):
+   - Only relevant if working on existing PR
+   - Review any new bot comments
+   - Address P0/P1 issues
+
+**If ANY blocking issue found**: Fix it before proceeding to Step 4.
+
+### Step 4: F5 Verification
 1. Press F5 in NinjaTrader.
 2. Verify the BUILD_TAG banner.
 3. Confirm the Logic Audit passes.
 
-### Step 4: Commit & Push
+### Step 5: Commit & Push
 1. `git add .`
 2. `git commit -m "[$1] ticket-$2: manual TDD implementation"`
 3. `git push`
 
-### Step 5: Autonomous Perfection Gate
+### Step 6: Autonomous Perfection Gate
 **Switch to: Orchestrator mode (/pr-loop)**
 
 Immediately after pushing, hand off to the perfection loop:
