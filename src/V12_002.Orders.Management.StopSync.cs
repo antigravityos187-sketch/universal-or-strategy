@@ -482,18 +482,25 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private bool HasActiveStopInAccountOrders(string suffix, string entryName)
         {
+            string prefix = "S_" + entryName + "_";
             foreach (Order o in Account.Orders)
             {
-                if (
-                    IsOrderActiveOrPending(o)
-                    && IsProtectiveStopOrder(o)
-                    && (o.Name.EndsWith(suffix) || o.Name.StartsWith("S_" + entryName + "_"))
-                )
+                if (IsOrderActiveOrPending(o) && IsProtectiveStopOrder(o) && IsStopOrderForEntry(o, suffix, prefix))
                 {
                     return true;
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// [Phase 7 NEW-2 Round 12] Helper: Check if order name matches entry stop naming patterns.
+        /// Supports both legacy "_entryName" suffix and new "S_entryName_" prefix formats.
+        /// Reduces complex conditional branches (CodeScene: 3->2 branches).
+        /// </summary>
+        private bool IsStopOrderForEntry(Order o, string suffix, string prefix)
+        {
+            return o.Name.EndsWith(suffix) || o.Name.StartsWith(prefix);
         }
 
         private void UpdateStopQuantity_HandleEmergencyFlatten(string entryName, int remainingContracts)

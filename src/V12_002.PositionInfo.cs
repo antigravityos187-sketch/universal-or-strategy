@@ -407,14 +407,20 @@ namespace NinjaTrader.NinjaScript.Strategies
         private readonly struct PendingStopReplacement
         {
             public string EntryName { get; init; }
+
             public int Quantity { get; init; }
+
             public double StopPrice { get; init; }
+
             public MarketPosition Direction { get; init; }
+
             public Order OldOrder { get; init; } // Track the old order being cancelled
+
             public DateTime CreatedTime { get; init; } // V8.30: Timeout support - clean up stale replacements
 
             // Build 950: Bracket restoration -- populated before stop cancel is sent.
             public TargetSnapshot[] CapturedTargets { get; init; } // null if no Working targets at cancel time
+
             public bool BracketRestorationNeeded { get; init; } // true when CapturedTargets is non-null
         }
 
