@@ -291,7 +291,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                     PositionInfo pos = kvp.Value;
 
                     // EXTRACTION 1: Validate and prepare entry fill
-                    if (!ValidateAndPrepareEntryFill(kvp.Key, pos, averageFillPrice, filled, quantity, time))
+                    if (
+                        !ValidateAndPrepareEntryFill(
+                            kvp.Key,
+                            pos,
+                            averageFillPrice,
+                            filled,
+                            quantity,
+                            time,
+                            activeTargetCount
+                        )
+                    )
                     {
                         // Price guard triggered, skip recalculation but submit brackets
                         SubmitBracketOrders(kvp.Key, pos);
@@ -299,7 +309,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
 
                     // EXTRACTION 2: Recalculate targets and stop
-                    RecalculateTargetsAndStop(pos, averageFillPrice);
+                    RecalculateTargetsAndStop(pos, averageFillPrice, activeTargetCount);
 
                     Print(
                         LogBuffer.Format(
@@ -323,7 +333,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             double averageFillPrice,
             int filled,
             int quantity,
-            DateTime time
+            DateTime time,
+            int activeTargetCount
         )
         {
             if (!pos.IsFollower)
@@ -351,12 +362,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false; // Price guard triggered, skip recalculation
             }
 
-            pos.EntryFilled = true;
-            pos.InitialTargetCount = activeTargetCount;
             return true; // Validation passed, proceed to recalculation
         }
 
-        private void RecalculateTargetsAndStop(PositionInfo pos, double averageFillPrice)
+        private void RecalculateTargetsAndStop(PositionInfo pos, double averageFillPrice, int activeTargetCount)
         {
             pos.EntryPrice = averageFillPrice;
             pos.ExtremePriceSinceEntry = averageFillPrice;
@@ -376,6 +385,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     : averageFillPrice + stopDistance;
             pos.CurrentStopPrice = pos.InitialStopPrice;
             ApplyTargetLadderGuard(pos);
+
+            // ATOMIC STATE COMMIT: All price fields written, now commit EntryFilled flag
+            pos.EntryFilled = true;
+            pos.InitialTargetCount = activeTargetCount;
         }
 
         /// <summary>
