@@ -204,17 +204,40 @@ namespace NinjaTrader.NinjaScript.Strategies
                     );
                 }
             }
-            else if (pendingStopReplacements.TryGetValue(entryName, out var pending))
+            else
             {
-                // Just update the pending price
-                pending.StopPrice = validatedStopPrice;
-                // Build 950: Refresh CapturedTargets on the live pending record if not yet populated
-                if (!pending.BracketRestorationNeeded)
-                {
-                    var _b950Refresh = RefreshTargetSnapshot(entryName);
-                    pending.CapturedTargets = _b950Refresh;
-                    pending.BracketRestorationNeeded = _b950Refresh != null && _b950Refresh.Length > 0;
-                }
+                // ATOMIC UPDATE: Use AddOrUpdate to avoid read-modify-write race condition
+                pendingStopReplacements.AddOrUpdate(
+                    entryName,
+                    // Add factory (race condition: entry removed between TryAdd and AddOrUpdate)
+                    key =>
+                    {
+                        Interlocked.Increment(ref pendingReplacementCount);
+                        return newPending;
+                    },
+                    // Update factory (atomic)
+                    (key, pending) =>
+                    {
+                        // Readonly struct: must create new instance to update dictionary
+                        var _b950Refresh = !pending.BracketRestorationNeeded
+                            ? RefreshTargetSnapshot(entryName)
+                            : pending.CapturedTargets;
+                        var _b950Needed =
+                            !pending.BracketRestorationNeeded && _b950Refresh != null && _b950Refresh.Length > 0;
+
+                        return new PendingStopReplacement
+                        {
+                            EntryName = pending.EntryName,
+                            Quantity = pending.Quantity,
+                            StopPrice = validatedStopPrice,
+                            Direction = pending.Direction,
+                            OldOrder = pending.OldOrder,
+                            CreatedTime = pending.CreatedTime,
+                            CapturedTargets = _b950Refresh ?? pending.CapturedTargets,
+                            BracketRestorationNeeded = _b950Needed || pending.BracketRestorationNeeded,
+                        };
+                    }
+                );
             }
 
             pos.CurrentStopPrice = validatedStopPrice;
