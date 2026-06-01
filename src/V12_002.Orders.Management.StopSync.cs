@@ -365,7 +365,19 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else
             {
-                existingPendingQty.Quantity = remainingContracts;
+                // V12 Round 11: Immutable struct reassignment pattern (readonly struct requires new instance)
+                var updatedPending = new PendingStopReplacement
+                {
+                    EntryName = existingPendingQty.EntryName,
+                    Quantity = remainingContracts, // Updated quantity
+                    StopPrice = existingPendingQty.StopPrice,
+                    Direction = existingPendingQty.Direction,
+                    OldOrder = existingPendingQty.OldOrder,
+                    CreatedTime = existingPendingQty.CreatedTime,
+                    CapturedTargets = existingPendingQty.CapturedTargets,
+                    BracketRestorationNeeded = existingPendingQty.BracketRestorationNeeded,
+                };
+                pendingStopReplacements[entryName] = updatedPending; // Reassign to dictionary
                 Print(
                     string.Format(
                         "V8.31: Updated existing pending replacement for {0} to {1} contracts",
@@ -429,9 +441,14 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// [Phase 7 NEW-2] Helper: Handle emergency flatten when stop order fails
         /// Extracted from UpdateStopQuantity to reduce complexity (CYC 23->15)
         /// </summary>
+        private void UpdateStopQuantity_HandleEmergencyFlatten(string entryName, int remainingContracts)
+        {
+            HandleEmergencyFlatten(entryName, remainingContracts);
+        }
+
         /// <summary>
-        /// [Phase 7 NEW-2 Round 7] Helper: Check if order is in active/pending state
-        /// Reduces complex conditional branches (CodeScene: 5->3 branches)
+        /// [Phase 7 NEW-2 Round 7] Helper: Check if order is in active/pending state.
+        /// Reduces complex conditional branches (CodeScene: 5->3 branches).
         /// </summary>
         private bool IsOrderActiveOrPending(Order order)
         {
@@ -441,8 +458,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
-        /// [Phase 7 NEW-2 Round 10] Helper: Check if dictionary contains active stop order
-        /// Reduces cognitive complexity (nested condition extraction)
+        /// [Phase 7 NEW-2 Round 10] Helper: Check if dictionary contains active stop order.
+        /// Reduces cognitive complexity (nested condition extraction).
         /// </summary>
         private bool HasActiveStopInDictionary(string entryName)
         {
@@ -455,17 +472,22 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
-        /// [Phase 7 NEW-2 Round 10] Helper: Check if Account.Orders contains active stop with suffix
-        /// Reduces cognitive complexity (nested loop extraction)
+        /// [Phase 7 NEW-2 Round 10] Helper: Check if Account.Orders contains active stop with suffix.
+        /// Reduces cognitive complexity (nested loop extraction).
         /// </summary>
-        private bool HasActiveStopInAccountOrders(string suffix)
+        private bool IsProtectiveStopOrder(Order o)
+        {
+            return o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
+        }
+
+        private bool HasActiveStopInAccountOrders(string suffix, string entryName)
         {
             foreach (Order o in Account.Orders)
             {
                 if (
                     IsOrderActiveOrPending(o)
-                    && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
-                    && o.Name.EndsWith(suffix)
+                    && IsProtectiveStopOrder(o)
+                    && (o.Name.EndsWith(suffix) || o.Name.StartsWith("S_" + entryName + "_"))
                 )
                 {
                     return true;
@@ -485,7 +507,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             try
             {
-                hasActiveStop = HasActiveStopInDictionary(entryName) || HasActiveStopInAccountOrders(suffix);
+                hasActiveStop = HasActiveStopInDictionary(entryName) || HasActiveStopInAccountOrders(suffix, entryName);
             }
             catch
             {
@@ -534,17 +556,18 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         /// <remarks>
         /// V12.Audit [C-08]: Callers MUST ensure the <paramref name="pos"/> reference is
-        /// read under <c>stateLock</c> or from within a callback that is already serialized
-        /// by the NinjaTrader dispatch thread. Passing a stale <paramref name="pos"/> can
+        /// obtained from the NinjaTrader dispatch thread or from within a callback that is
+        /// already serialized by that actor. Passing a stale <paramref name="pos"/> can
         /// result in the stop being undersized relative to actual remaining contracts.
+        /// DO NOT use lock(stateLock) for internal logic - this pattern is BANNED.
         /// </remarks>
         /// <summary>
-        /// [Phase 7 NEW-2 Round 10] Helper: Validate preconditions for stop quantity update
-        /// Reduces cognitive complexity (early return pattern extraction)
+        /// [Phase 7 NEW-2 Round 10] Helper: Validate preconditions for stop quantity update.
+        /// Reduces cognitive complexity (early return pattern extraction).
         /// </summary>
         private bool ShouldSkipStopQuantityUpdate(string entryName, PositionInfo pos)
         {
-            if (!stopOrders.ContainsKey(entryName))
+            if (!stopOrders.TryGetValue(entryName, out _))
             {
                 return true;
             }
@@ -563,7 +586,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void UpdateStopQuantity(string entryName, PositionInfo pos)
         {
             // V12.Hardening [RISK-01]: Atomic update guard
-            // Locks stateLock to prevent dirty reads of pos.RemainingContracts while ApplyTargetFill is modifying it
+            // Actor/dispatch-thread serialization prevents dirty reads of pos.RemainingContracts
             if (ShouldSkipStopQuantityUpdate(entryName, pos))
             {
                 return;
