@@ -10,9 +10,15 @@ error: cannot spawn .git/hooks/post-commit: No such file or directory
 The hook script at `.git/hooks/post-commit` was missing the shebang line (`#!/bin/bash`) at the top of the file. Lines 1-2 were empty, causing Git for Windows to fail when trying to execute the script.
 
 ## Fix Applied
-Added proper shebang line at line 1:
-```bash
-#!/bin/bash
+1. Added shebang line: `#!/bin/bash`
+2. Removed leading blank lines (lines 1-2 were empty)
+3. Ensured shebang is on line 1 (Git requirement)
+
+PowerShell command used:
+```powershell
+$content = Get-Content .git/hooks/post-commit -Raw
+$content = $content.TrimStart()
+Set-Content .git/hooks/post-commit -Value $content -NoNewline
 ```
 
 ## Verification
