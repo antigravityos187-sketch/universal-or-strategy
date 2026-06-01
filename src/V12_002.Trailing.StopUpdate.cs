@@ -209,8 +209,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // ATOMIC UPDATE: Use AddOrUpdate to avoid read-modify-write race condition
                 pendingStopReplacements.AddOrUpdate(
                     entryName,
-                    // Add factory (should not be called since TryAdd failed above)
-                    key => newPending,
+                    // Add factory (race condition: entry removed between TryAdd and AddOrUpdate)
+                    key =>
+                    {
+                        Interlocked.Increment(ref pendingReplacementCount);
+                        return newPending;
+                    },
                     // Update factory (atomic)
                     (key, pending) =>
                     {
