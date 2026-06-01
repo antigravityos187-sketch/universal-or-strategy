@@ -291,7 +291,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     PositionInfo pos = kvp.Value;
 
                     // EXTRACTION 1: Validate and prepare entry fill
-                    if (!ValidateAndPrepareEntryFill(kvp.Key, pos, order, averageFillPrice, filled, quantity, time))
+                    if (!ValidateAndPrepareEntryFill(kvp.Key, pos, averageFillPrice, filled, quantity, time))
                     {
                         // Price guard triggered, skip recalculation but submit brackets
                         SubmitBracketOrders(kvp.Key, pos);
@@ -320,7 +320,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool ValidateAndPrepareEntryFill(
             string signalKey,
             PositionInfo pos,
-            Order order,
             double averageFillPrice,
             int filled,
             int quantity,
