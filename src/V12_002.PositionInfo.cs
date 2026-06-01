@@ -406,22 +406,22 @@ namespace NinjaTrader.NinjaScript.Strategies
         // V12 Round 11: Converted to readonly struct to eliminate heap allocation in hot path (Jane Street principle)
         private readonly struct PendingStopReplacement
         {
-            public string EntryName { get; set; }
+            public string EntryName { get; init; }
 
-            public int Quantity { get; set; }
+            public int Quantity { get; init; }
 
-            public double StopPrice { get; set; }
+            public double StopPrice { get; init; }
 
-            public MarketPosition Direction { get; set; }
+            public MarketPosition Direction { get; init; }
 
-            public Order OldOrder { get; set; } // Track the old order being cancelled
+            public Order OldOrder { get; init; } // Track the old order being cancelled
 
-            public DateTime CreatedTime { get; set; } // V8.30: Timeout support - clean up stale replacements
+            public DateTime CreatedTime { get; init; } // V8.30: Timeout support - clean up stale replacements
 
             // Build 950: Bracket restoration -- populated before stop cancel is sent.
-            public TargetSnapshot[] CapturedTargets { get; set; } // null if no Working targets at cancel time
+            public TargetSnapshot[] CapturedTargets { get; init; } // null if no Working targets at cancel time
 
-            public bool BracketRestorationNeeded { get; set; } // true when CapturedTargets is non-null
+            public bool BracketRestorationNeeded { get; init; } // true when CapturedTargets is non-null
         }
 
         // V8.22: Thread-Safe UI Snapshot Struct
