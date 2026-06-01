@@ -98,34 +98,17 @@ PROTOCOL:
 
 ---
 
-### Step 1: Panel Review + Jane Street Audit (MANDATORY - V12.22)
+### Step 1: Bot Forensics + Jane Street Audit (MANDATORY - NEW IN V2)
 
 **Switch to: Advanced mode**
 
 Hand off:
 ```
-TASK: Review VSCode Panels and Categorize Findings with Jane Street Alignment
+TASK: Extract and Categorize Bot Findings with Jane Street Alignment Review
 PR: $1
 PROTOCOL:
-  1. REVIEW COMMENTS PANEL (Bot Findings):
-     - Open Comments panel in VSCode (View → Comments)
-     - Filter to PR #$1 files only
-     - Read all bot comments (Codacy, CodeFactor, Gitar-bot, etc.)
-     - Categorize each as VALID-FIX, VALID-SUPPRESS, HALLUCINATION, or INFRA-NOISE
-  
-  2. REVIEW BOB FINDINGS PANEL (Architectural Issues):
-     - Open Bob Findings panel (View → Problems → Filter: "Bob Findings")
-     - Filter to files changed in PR #$1
-     - Categorize by severity:
-       * P0 (CRITICAL): Architectural violations, god functions (CYC >20)
-       * P1 (HIGH): Complexity warnings (CYC 15-20), missing error handling
-       * P2 (MEDIUM): Style issues, minor refactoring opportunities
-  
-  3. REVIEW PROBLEMS PANEL (Linter Issues):
-     - Open Problems panel (View → Problems)
-     - Filter to files changed in PR #$1
-     - Focus on blocking issues (errors, not warnings)
-  
+  1. Run: powershell -File .\scripts\extract_pr_forensics.ps1 -PrNumber $1
+  2. Read the generated forensics report: docs/brain/pr_$1_forensics.md
   3. JANE STREET AUDIT (MANDATORY):
      - Read: docs/standards/JANE_STREET_DEVIATIONS.md
      - For each VALID issue, check if it conflicts with documented Jane Street deviations
@@ -134,29 +117,22 @@ PROTOCOL:
        * [VALID-SUPPRESS]: Issue conflicts with Jane Street - suppress via .codacy.yml
        * [HALLUCINATION]: Bot error - log and ignore
        * [INFRA-NOISE]: Infrastructure issue - ignore
-  4. MERGE FINDINGS INTO UNIFIED QUEUE:
-     - Combine Comments + Bob Findings + Problems
-     - Priority order: P0 Bob → P0 Problems → P0 Comments → P1 Bob → P1 Comments → P2
-     - Document in: docs/brain/pr_$1_fix_queue.md
-  
-  5. Present summary to Director:
-     - Total VALID-FIX issues (P0/P1/P2 breakdown, bot vs Bob)
+  4. Present summary to Director:
+     - Total VALID-FIX issues (P0/P1/P2 breakdown)
      - Total VALID-SUPPRESS issues (with Jane Street rationale)
      - Hallucinations detected
      - INFRA-NOISE filtered
-  
-  6. If P0 VALID-FIX issues exist: Flag as CRITICAL and proceed to Step 2.
-  7. If only VALID-SUPPRESS issues: Update .codacy.yml, document in JANE_STREET_DEVIATIONS.md
-  8. If no VALID issues: Skip to Step 3 (verification only).
-  9. Emit: [PANEL-REVIEW-COMPLETE] X Comments, Y Bob Findings, Z Problems, Total VALID-FIX: N
+  5. If P0 VALID-FIX issues exist: Flag as CRITICAL and proceed to Step 2.
+  6. If only VALID-SUPPRESS issues: Update .codacy.yml, document in JANE_STREET_DEVIATIONS.md
+  7. If no VALID issues: Skip to Step 3 (verification only).
+  8. Emit: [FORENSICS-READY] X VALID-FIX, Y VALID-SUPPRESS, Z hallucinations
 ```
 
 **Outputs:**
-- `docs/brain/pr_$1_fix_queue.md` - Merged priority queue (Comments + Bob + Problems)
+- `docs/brain/pr_$1_forensics.md` - Full categorized findings
+- `docs/brain/pr_$1_fix_queue.md` - Priority-ordered fix list (VALID-FIX only)
 - `docs/brain/pr_$1_suppress_queue.md` - Suppression list (VALID-SUPPRESS with rationale)
-- `docs/brain/bot_hallucinations.md` - Updated hallucination log (Comments panel only)
-
-**Rationale:** Direct panel reading is faster, more accurate, and provides visual context. No scripts needed for manual workflows.
+- `docs/brain/bot_hallucinations.md` - Updated hallucination log
 
 **Gate:** Review forensics report. If P0 VALID-FIX issues exist, they MUST be fixed before proceeding. If VALID-SUPPRESS issues exist, they MUST be documented before proceeding.
 
