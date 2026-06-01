@@ -526,8 +526,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Calculate stop and target prices based on entry price
             // Use simple fixed offsets for now (these should ideally come from strategy parameters)
             double tickSize = Instrument.MasterInstrument.TickSize;
-            double stopTicks = 8.0; // Default stop distance
-            double targetTicks = 12.0; // Default target distance
+            // CORRECTNESS BY CONSTRUCTION: Derive from master position's ATR-based parameters
+            // instead of hardcoded values to maintain master/follower symmetry
+            double stopDistance = Math.Abs(masterPos.InitialStopPrice - masterPos.EntryPrice);
+            double stopTicks = stopDistance / tickSize;
+            double targetDistance = Math.Abs(masterPos.Target1Price - masterPos.EntryPrice);
+            double targetTicks = targetDistance / tickSize;
 
             if (action == OrderAction.Buy)
             {
