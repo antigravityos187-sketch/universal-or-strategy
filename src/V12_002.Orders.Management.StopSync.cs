@@ -336,25 +336,268 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// [Phase 7 NEW-2] Helper: Handle stale pending replacement detection and purge
+        /// Extracted from UpdateStopQuantity to reduce complexity (CYC 25->15)
+        /// </summary>
+        /// <returns>True if stale pending was purged and should re-initiate, False if updated existing pending</returns>
+        private bool UpdateStopQuantity_HandleStalePending(
+            string entryName,
+            PendingStopReplacement existingPendingQty,
+            int remainingContracts
+        )
+        {
+            // Build 1104.2: Staleness fast-path -- purge stale pending and re-initiate
+            // Fix #1: Cache DateTime.UtcNow for determinism (Jane Street: Microsecond Latency)
+            DateTime now = DateTime.UtcNow;
+            double pendingAgeSeconds = (now - existingPendingQty.CreatedTime).TotalSeconds;
+            if (pendingAgeSeconds > STALE_PENDING_FAST_PATH_SEC)
+            {
+                if (pendingStopReplacements.TryRemove(entryName, out _))
+                    Interlocked.Decrement(ref pendingReplacementCount);
+                Print(
+                    string.Format(
+                        "[1104.2] Stale pending purged for {0} ({1:F1}s). Re-initiating stop resize.",
+                        entryName,
+                        pendingAgeSeconds
+                    )
+                );
+                return true; // Signal to re-initiate
+            }
+            else
+            {
+                // V12 Round 11: Immutable struct reassignment pattern (readonly struct requires new instance)
+                var updatedPending = new PendingStopReplacement
+                {
+                    EntryName = existingPendingQty.EntryName,
+                    Quantity = remainingContracts, // Updated quantity
+                    StopPrice = existingPendingQty.StopPrice,
+                    Direction = existingPendingQty.Direction,
+                    OldOrder = existingPendingQty.OldOrder,
+                    CreatedTime = existingPendingQty.CreatedTime,
+                    CapturedTargets = existingPendingQty.CapturedTargets,
+                    BracketRestorationNeeded = existingPendingQty.BracketRestorationNeeded,
+                };
+                pendingStopReplacements[entryName] = updatedPending; // Reassign to dictionary
+                Print(
+                    string.Format(
+                        "V8.31: Updated existing pending replacement for {0} to {1} contracts",
+                        entryName,
+                        remainingContracts
+                    )
+                );
+                return false; // Signal early return
+            }
+        }
+
+        /// <summary>
+        /// [Phase 7 NEW-2] Helper: Create and store pending replacement info
+        /// Extracted from UpdateStopQuantity to reduce complexity (CYC 25->15)
+        /// </summary>
+        private void UpdateStopQuantity_CreateReplacement(
+            string entryName,
+            int remainingContracts,
+            double currentStopPrice,
+            MarketPosition direction,
+            Order currentStop
+        )
+        {
+            // Store the replacement info
+            var newPending = new PendingStopReplacement
+            {
+                EntryName = entryName,
+                Quantity = remainingContracts,
+                StopPrice = currentStopPrice,
+                Direction = direction,
+                OldOrder = currentStop,
+                CreatedTime = DateTime.UtcNow, // V8.31: Added for timeout support
+            };
+
+            // V8.31: Thread-safe add
+            if (pendingStopReplacements.TryAdd(entryName, newPending))
+            {
+                Interlocked.Increment(ref pendingReplacementCount);
+            }
+        }
+
+        /// <summary>
+        /// [Phase 7 NEW-2] Helper: Cancel old stop and print replacement info
+        /// Extracted from UpdateStopQuantity to reduce complexity (CYC 25->15)
+        /// </summary>
+        private void UpdateStopQuantity_CancelAndReplace(string entryName, Order currentStop, PositionInfo pos)
+        {
+            // Cancel old stop - replacement will be created in OnOrderUpdate when confirmed
+            CancelOrderForReplace(currentStop, pos);
+            Print(
+                string.Format(
+                    "STOP CANCEL PENDING: {0} | Will replace with {1} contracts @ {2:F2}",
+                    entryName,
+                    pos.RemainingContracts,
+                    pos.CurrentStopPrice
+                )
+            );
+        }
+
+        /// <summary>
+        /// [Phase 7 NEW-2] Helper: Handle emergency flatten when stop order fails
+        /// Extracted from UpdateStopQuantity to reduce complexity (CYC 23->15)
+        /// </summary>
+        private void UpdateStopQuantity_HandleEmergencyFlatten(string entryName, int remainingContracts)
+        {
+            HandleEmergencyFlatten(entryName, remainingContracts);
+        }
+
+        /// <summary>
+        /// [Phase 7 NEW-2 Round 7] Helper: Check if order is in active/pending state.
+        /// Reduces complex conditional branches (CodeScene: 5->3 branches).
+        /// </summary>
+        private bool IsOrderActiveOrPending(Order order)
+        {
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.ChangeSubmitted;
+        }
+
+        /// <summary>
+        /// [Phase 7 NEW-2 Round 10] Helper: Check if dictionary contains active stop order.
+        /// Reduces cognitive complexity (nested condition extraction).
+        /// </summary>
+        private bool HasActiveStopInDictionary(string entryName)
+        {
+            if (!stopOrders.TryGetValue(entryName, out Order stopOrder))
+            {
+                return false;
+            }
+            return IsOrderActiveOrPending(stopOrder)
+                && (stopOrder.OrderType == OrderType.StopMarket || stopOrder.OrderType == OrderType.StopLimit);
+        }
+
+        /// <summary>
+        /// [Phase 7 NEW-2 Round 10] Helper: Check if Account.Orders contains active stop with suffix.
+        /// Reduces cognitive complexity (nested loop extraction).
+        /// </summary>
+        private bool IsProtectiveStopOrder(Order o)
+        {
+            return o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
+        }
+
+        private bool HasActiveStopInAccountOrders(string suffix, string entryName)
+        {
+            string prefix = "S_" + entryName + "_";
+            foreach (Order o in Account.Orders)
+            {
+                if (IsOrderActiveOrPending(o) && IsProtectiveStopOrder(o) && IsStopOrderForEntry(o, suffix, prefix))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// [Phase 7 NEW-2 Round 12] Helper: Check if order name matches entry stop naming patterns.
+        /// Supports both legacy "_entryName" suffix and new "S_entryName_" prefix formats.
+        /// Reduces complex conditional branches (CodeScene: 3->2 branches).
+        /// </summary>
+        private bool IsStopOrderForEntry(Order o, string suffix, string prefix)
+        {
+            return o.Name.EndsWith(suffix) || o.Name.StartsWith(prefix);
+        }
+
+        private void UpdateStopQuantity_HandleEmergencyFlatten(string entryName, int remainingContracts)
+        {
+            // P0-1: GRADUATED RESPONSE - Only flatten if position truly lacks stop protection
+            // Jane Street Principle #4: Fail-Fast - verify state before emergency action
+
+            // [Round 10] Extracted nested checks to helpers (Cognitive 19->15)
+            bool hasActiveStop = false;
+            string suffix = string.Concat("_", entryName);
+
+            try
+            {
+                hasActiveStop = HasActiveStopInDictionary(entryName) || HasActiveStopInAccountOrders(suffix, entryName);
+            }
+            catch
+            {
+                // If order enumeration fails, assume unprotected (fail-safe)
+                hasActiveStop = false;
+            }
+
+            if (!hasActiveStop)
+            {
+                Print(
+                    string.Format(
+                        "(!) POSITION UNPROTECTED: {0} contracts - emergency flatten required",
+                        remainingContracts
+                    )
+                );
+
+                // Attempt emergency flatten to protect the position
+                try
+                {
+                    FlattenPositionByName(entryName);
+                }
+                catch (Exception flatEx)
+                {
+                    Print(
+                        string.Format(
+                            "(!) CRITICAL: Emergency flatten also failed for {0}: {1}",
+                            entryName,
+                            flatEx.ToString()
+                        )
+                    );
+                }
+            }
+            else
+            {
+                Print(
+                    string.Format(
+                        "(!) Active stop still protecting {0} - quirk was transient, no flatten needed",
+                        entryName
+                    )
+                );
+            }
+        }
+
+        /// <summary>
         /// Updates the stop order quantity after a partial target fill.
         /// </summary>
         /// <remarks>
         /// V12.Audit [C-08]: Callers MUST ensure the <paramref name="pos"/> reference is
-        /// read under <c>stateLock</c> or from within a callback that is already serialized
-        /// by the NinjaTrader dispatch thread. Passing a stale <paramref name="pos"/> can
+        /// obtained from the NinjaTrader dispatch thread or from within a callback that is
+        /// already serialized by that actor. Passing a stale <paramref name="pos"/> can
         /// result in the stop being undersized relative to actual remaining contracts.
+        /// DO NOT use lock(stateLock) for internal logic - this pattern is BANNED.
         /// </remarks>
+        /// <summary>
+        /// [Phase 7 NEW-2 Round 10] Helper: Validate preconditions for stop quantity update.
+        /// Reduces cognitive complexity (early return pattern extraction).
+        /// </summary>
+        private bool ShouldSkipStopQuantityUpdate(string entryName, PositionInfo pos)
+        {
+            if (!stopOrders.TryGetValue(entryName, out _))
+            {
+                return true;
+            }
+            if (pos.RemainingContracts <= 0)
+            {
+                return true;
+            }
+            // V12.41: No trailing/updates before entry fill is confirmed
+            if (!pos.EntryFilled)
+            {
+                return true;
+            }
+            return false;
+        }
+
         private void UpdateStopQuantity(string entryName, PositionInfo pos)
         {
             // V12.Hardening [RISK-01]: Atomic update guard
-            // Locks stateLock to prevent dirty reads of pos.RemainingContracts while ApplyTargetFill is modifying it
-            if (!stopOrders.ContainsKey(entryName))
+            // Actor/dispatch-thread serialization prevents dirty reads of pos.RemainingContracts
+            if (ShouldSkipStopQuantityUpdate(entryName, pos))
+            {
                 return;
-            if (pos.RemainingContracts <= 0)
-                return;
-            // V12.41: No trailing/updates before entry fill is confirmed
-            if (!pos.EntryFilled)
-                return;
+            }
 
             try
             {
@@ -370,61 +613,27 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // V8.31: Check if there's already a pending replacement to prevent duplicates
                     if (pendingStopReplacements.TryGetValue(entryName, out var existingPendingQty))
                     {
-                        // Build 1104.2: Staleness fast-path -- purge stale pending and re-initiate
-                        double pendingAgeSeconds = (DateTime.Now - existingPendingQty.CreatedTime).TotalSeconds;
-                        if (pendingAgeSeconds > STALE_PENDING_FAST_PATH_SEC)
-                        {
-                            if (pendingStopReplacements.TryRemove(entryName, out _))
-                                Interlocked.Decrement(ref pendingReplacementCount);
-                            Print(
-                                string.Format(
-                                    "[1104.2] Stale pending purged for {0} ({1:F1}s). Re-initiating stop resize.",
-                                    entryName,
-                                    pendingAgeSeconds
-                                )
-                            );
-                        }
-                        else
-                        {
-                            existingPendingQty.Quantity = pos.RemainingContracts;
-                            Print(
-                                string.Format(
-                                    "V8.31: Updated existing pending replacement for {0} to {1} contracts",
-                                    entryName,
-                                    pos.RemainingContracts
-                                )
-                            );
-                            return;
-                        }
-                    }
-
-                    // Store the replacement info
-                    var newPending = new PendingStopReplacement
-                    {
-                        EntryName = entryName,
-                        Quantity = pos.RemainingContracts,
-                        StopPrice = pos.CurrentStopPrice,
-                        Direction = pos.Direction,
-                        OldOrder = currentStop,
-                        CreatedTime = DateTime.Now, // V8.31: Added for timeout support
-                    };
-
-                    // V8.31: Thread-safe add
-                    if (pendingStopReplacements.TryAdd(entryName, newPending))
-                    {
-                        Interlocked.Increment(ref pendingReplacementCount);
-                    }
-
-                    // Cancel old stop - replacement will be created in OnOrderUpdate when confirmed
-                    CancelOrderForReplace(currentStop, pos);
-                    Print(
-                        string.Format(
-                            "STOP CANCEL PENDING: {0} | Will replace with {1} contracts @ {2:F2}",
+                        // [Phase 7 NEW-2] Extracted: Handle stale pending detection
+                        bool shouldReInitiate = UpdateStopQuantity_HandleStalePending(
                             entryName,
-                            pos.RemainingContracts,
-                            pos.CurrentStopPrice
-                        )
+                            existingPendingQty,
+                            pos.RemainingContracts
+                        );
+                        if (!shouldReInitiate)
+                            return;
+                    }
+
+                    // [Phase 7 NEW-2] Extracted: Create replacement info
+                    UpdateStopQuantity_CreateReplacement(
+                        entryName,
+                        pos.RemainingContracts,
+                        pos.CurrentStopPrice,
+                        pos.Direction,
+                        currentStop
                     );
+
+                    // [Phase 7 NEW-2] Extracted: Cancel and print
+                    UpdateStopQuantity_CancelAndReplace(entryName, currentStop, pos);
                 }
                 else
                 {
@@ -449,56 +658,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string.Format("(!) WARNING UpdateStopQuantity for {0} (known quirk): {1}", entryName, ex.Message)
                 );
 
-                // P0-1: GRADUATED RESPONSE - Only flatten if position truly lacks stop protection
-                // Jane Street Principle #4: Fail-Fast - verify state before emergency action
-                // Check if position still has active stop protection (transient broker errors may resolve)
-                bool hasActiveStop = false;
-                try
-                {
-                    hasActiveStop = Account.Orders.Any(o =>
-                        o.OrderState == OrderState.Working && o.IsStopMarket && o.Name == entryName
-                    );
-                }
-                catch
-                {
-                    // If order enumeration fails, assume unprotected (fail-safe)
-                    hasActiveStop = false;
-                }
-
-                if (!hasActiveStop)
-                {
-                    Print(
-                        string.Format(
-                            "(!) POSITION UNPROTECTED: {0} contracts - emergency flatten required",
-                            pos.RemainingContracts
-                        )
-                    );
-
-                    // Attempt emergency flatten to protect the position
-                    try
-                    {
-                        FlattenPositionByName(entryName);
-                    }
-                    catch (Exception flatEx)
-                    {
-                        Print(
-                            string.Format(
-                                "(!) CRITICAL: Emergency flatten also failed for {0}: {1}",
-                                entryName,
-                                flatEx.ToString()
-                            )
-                        );
-                    }
-                }
-                else
-                {
-                    Print(
-                        string.Format(
-                            "(!) Active stop still protecting {0} - quirk was transient, no flatten needed",
-                            entryName
-                        )
-                    );
-                }
+                // [Phase 7 NEW-2] Extracted: Emergency flatten logic
+                UpdateStopQuantity_HandleEmergencyFlatten(entryName, pos.RemainingContracts);
             }
             catch (Exception ex)
             {
@@ -510,56 +671,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 Print(string.Format("(!) CRITICAL UpdateStopQuantity for {0}: {1}", entryName, ex.ToString()));
 
-                // P0-1: GRADUATED RESPONSE - Only flatten if position truly lacks stop protection
-                // Jane Street Principle #4: Fail-Fast - verify state before emergency action
-                // Check if position still has active stop protection (transient broker errors may resolve)
-                bool hasActiveStop = false;
-                try
-                {
-                    hasActiveStop = Account.Orders.Any(o =>
-                        o.OrderState == OrderState.Working && o.IsStopMarket && o.Name == entryName
-                    );
-                }
-                catch
-                {
-                    // If order enumeration fails, assume unprotected (fail-safe)
-                    hasActiveStop = false;
-                }
-
-                if (!hasActiveStop)
-                {
-                    Print(
-                        string.Format(
-                            "(!) POSITION UNPROTECTED: {0} contracts - emergency flatten required",
-                            pos.RemainingContracts
-                        )
-                    );
-
-                    // Attempt emergency flatten to protect the position
-                    try
-                    {
-                        FlattenPositionByName(entryName);
-                    }
-                    catch (Exception flatEx)
-                    {
-                        Print(
-                            string.Format(
-                                "(!) CRITICAL: Emergency flatten also failed for {0}: {1}",
-                                entryName,
-                                flatEx.ToString()
-                            )
-                        );
-                    }
-                }
-                else
-                {
-                    Print(
-                        string.Format(
-                            "(!) Active stop still protecting {0} - quirk was transient, no flatten needed",
-                            entryName
-                        )
-                    );
-                }
+                // [Phase 7 NEW-2] Extracted: Emergency flatten logic
+                UpdateStopQuantity_HandleEmergencyFlatten(entryName, pos.RemainingContracts);
                 // Do NOT rethrow - position safety requires stop order attempt to complete
             }
         }
