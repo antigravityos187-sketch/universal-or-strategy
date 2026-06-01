@@ -440,48 +440,52 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || order.OrderState == OrderState.ChangeSubmitted;
         }
 
+        /// <summary>
+        /// [Phase 7 NEW-2 Round 10] Helper: Check if dictionary contains active stop order
+        /// Reduces cognitive complexity (nested condition extraction)
+        /// </summary>
+        private bool HasActiveStopInDictionary(string entryName)
+        {
+            if (!stopOrders.TryGetValue(entryName, out Order stopOrder))
+            {
+                return false;
+            }
+            return IsOrderActiveOrPending(stopOrder)
+                && (stopOrder.OrderType == OrderType.StopMarket || stopOrder.OrderType == OrderType.StopLimit);
+        }
+
+        /// <summary>
+        /// [Phase 7 NEW-2 Round 10] Helper: Check if Account.Orders contains active stop with suffix
+        /// Reduces cognitive complexity (nested loop extraction)
+        /// </summary>
+        private bool HasActiveStopInAccountOrders(string suffix)
+        {
+            foreach (Order o in Account.Orders)
+            {
+                if (
+                    IsOrderActiveOrPending(o)
+                    && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
+                    && o.Name.EndsWith(suffix)
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void UpdateStopQuantity_HandleEmergencyFlatten(string entryName, int remainingContracts)
         {
             // P0-1: GRADUATED RESPONSE - Only flatten if position truly lacks stop protection
             // Jane Street Principle #4: Fail-Fast - verify state before emergency action
 
-            // Fix #1: Cache DateTime.Now for determinism (already applied above)
-            // Check if position still has active stop protection (transient broker errors may resolve)
+            // [Round 10] Extracted nested checks to helpers (Cognitive 19->15)
             bool hasActiveStop = false;
-
-            // Pre-compute suffix once for zero-allocation (Jane Street: Principle #1)
             string suffix = string.Concat("_", entryName);
 
             try
             {
-                // Fix #2: Use thread-safe dictionary lookup instead of LINQ (Jane Street: Zero-Allocation)
-                if (stopOrders.TryGetValue(entryName, out Order stopOrder))
-                {
-                    // Fix #4: Use OrderType enum instead of non-existent IsStopMarket
-                    // Fix #5: Check all protective states and order types
-                    // [Round 7] Extracted state check to helper (CodeScene: 5->3 branches)
-                    hasActiveStop =
-                        IsOrderActiveOrPending(stopOrder)
-                        && (stopOrder.OrderType == OrderType.StopMarket || stopOrder.OrderType == OrderType.StopLimit);
-                }
-
-                // Fix #3: Also check for prefixed order names (zero-allocation foreach)
-                if (!hasActiveStop)
-                {
-                    foreach (Order o in Account.Orders)
-                    {
-                        // [Round 7] Extracted state check to helper (CodeScene: 5->3 branches)
-                        if (
-                            IsOrderActiveOrPending(o)
-                            && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
-                            && o.Name.EndsWith(suffix)
-                        )
-                        {
-                            hasActiveStop = true;
-                            break;
-                        }
-                    }
-                }
+                hasActiveStop = HasActiveStopInDictionary(entryName) || HasActiveStopInAccountOrders(suffix);
             }
             catch
             {
@@ -534,21 +538,36 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// by the NinjaTrader dispatch thread. Passing a stale <paramref name="pos"/> can
         /// result in the stop being undersized relative to actual remaining contracts.
         /// </remarks>
+        /// <summary>
+        /// [Phase 7 NEW-2 Round 10] Helper: Validate preconditions for stop quantity update
+        /// Reduces cognitive complexity (early return pattern extraction)
+        /// </summary>
+        private bool ShouldSkipStopQuantityUpdate(string entryName, PositionInfo pos)
+        {
+            if (!stopOrders.ContainsKey(entryName))
+            {
+                return true;
+            }
+            if (pos.RemainingContracts <= 0)
+            {
+                return true;
+            }
+            // V12.41: No trailing/updates before entry fill is confirmed
+            if (!pos.EntryFilled)
+            {
+                return true;
+            }
+            return false;
+        }
+
         private void UpdateStopQuantity(string entryName, PositionInfo pos)
         {
             // V12.Hardening [RISK-01]: Atomic update guard
             // Locks stateLock to prevent dirty reads of pos.RemainingContracts while ApplyTargetFill is modifying it
-            if (!stopOrders.ContainsKey(entryName))
+            if (ShouldSkipStopQuantityUpdate(entryName, pos))
             {
                 return;
             }
-            if (pos.RemainingContracts <= 0)
-            {
-                return;
-            }
-            // V12.41: No trailing/updates before entry fill is confirmed
-            if (!pos.EntryFilled)
-                return;
 
             try
             {
