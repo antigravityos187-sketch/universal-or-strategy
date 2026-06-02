@@ -3,6 +3,8 @@
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <LangVersion>latest</LangVersion>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +19,16 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
+
+  <!-- 
+    NOTE: This is a UNIT TEST project for testing extracted helper methods in isolation.
+    It does NOT link V12_002 source files or require NT8 assemblies.
+    Tests validate business logic using simple mock types.
+    
+    For integration tests that require full NT8 runtime, see the integration test project (future).
+  -->
 </Project>
+
+<!-- Made with Bob (EPIC-CCN-10 TDD Infrastructure) -->
 
 <!-- Made with Bob -->
