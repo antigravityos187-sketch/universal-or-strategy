@@ -205,6 +205,193 @@ Tracks false positives for pattern learning.
 
 ---
 
-**Last Updated**: 2026-06-01
-**Total Hallucinations Logged**: 4 (CodeFactor parser bugs across 3 rounds)
-**Valid Findings Confirmed**: 8 (2 P1 critical + 1 P1 race + 5 Codacy)
+## PR #21 - Round 1 (2026-06-02)
+
+### Codacy AI: Compilation Error Hallucination
+
+**Pattern**: Codacy AI reviewer contradicts its own static analysis results.
+
+**Finding**: "The refactor to modularize ManageCIT logic is currently broken due to a compilation error on line 90 where 'limitPrice' is undefined."
+
+**Reality Check**:
+- Codacy's own summary says "Up to standards ✅"
+- Build passed (confirmed by user)
+- No compilation errors in forensics extraction
+- Variable `limitPrice` is defined and used correctly
+
+**Root Cause**: Codacy AI reviewer failed to parse the diff correctly or hallucinated based on incomplete context.
+
+**Frequency**: 1/1 (100% false positive)
+
+**Mitigation**: Ignore Codacy AI compilation claims when static analysis passes.
+
+---
+
+### Codacy AI: Missing Methods Hallucination
+
+**Pattern**: Codacy AI claims methods are missing when they are present in the diff.
+
+**Finding**: "The PR appears incomplete as referenced helper methods for local and follower nudges are missing from the diff."
+
+**Reality Check**:
+- `ExecuteLocalNudge` is present in the diff (lines 109-122)
+- `ExecuteFollowerNudge` is present in the diff (lines 150-175)
+- All 5 extracted helpers are implemented and visible
+
+**Root Cause**: Codacy AI failed to parse the diff structure correctly.
+
+**Frequency**: 1/1 (100% false positive)
+
+**Mitigation**: Ignore Codacy AI "missing implementation" claims when methods are visible in diff.
+
+---
+
+## Valid Findings (Not Hallucinations)
+
+### PR #21: Gitar + Sourcery: Budget Exhaustion Logic Regression (VALID)
+
+**Finding**: "ExecuteFollowerNudge budget-exhaustion no longer exits ManageCIT loop"
+
+**Status**: **VALID P0 CRITICAL** - Control flow regression introduced during extraction.
+
+**Why This Is NOT a Hallucination**:
+- Original code: `return` from ManageCIT when budget exhausted ✅
+- Extracted code: `return` from helper only, loop continues ❌
+- Result: Un-nudged orders marked as nudged, multiple redundant enqueues
+
+**Bot Consensus**: 2 bots (Gitar + Sourcery) independently identified this issue.
+
+**Jane Street Violation**: Correctness by Construction - illegal state (nudged key without actual nudge) is now representable.
+
+**Lesson Learned**: When extracting helpers with early returns, verify control flow semantics are preserved.
+
+---
+
+## PR #21 - Round 3 (2026-06-02)
+
+### Codacy AI: Compilation Error Hallucination
+
+**Pattern**: Codacy AI reviewer contradicts its own static analysis results.
+
+**Finding**: "The refactor to modularize ManageCIT logic is currently broken due to a compilation error on line 90 where 'limitPrice' is undefined."
+
+**Reality Check**:
+- Codacy's own summary says "Up to standards ✅"
+- Build passed (confirmed by user)
+- No compilation errors in forensics extraction
+- Line 90 contains: `double newLimitPrice = CalculateNudgedPrice(...)` (variable IS defined)
+
+**Root Cause**: Codacy AI failed to parse the diff correctly or hallucinated based on incomplete context.
+
+**Frequency**: 1/1 (100% false positive)
+
+**Mitigation**: Ignore Codacy AI compilation claims when static analysis passes.
+
+---
+
+### Codacy AI: Missing Methods Hallucination
+
+**Pattern**: Codacy AI claims methods are missing when they are present in the diff.
+
+**Finding**: "The PR appears incomplete as referenced helper methods for local and follower nudges are missing from the diff."
+
+**Reality Check**:
+- `ValidateCitConfiguration` present (lines 237-258)
+- `ShouldChaseOrder` present (lines 195-218)
+- `CalculateNudgedPrice` present (lines 224-231)
+- `ExecuteLocalNudge` present (lines 129-135)
+- `ExecuteFollowerNudge` present (lines 142-189)
+
+**Root Cause**: Codacy AI failed to parse the diff structure correctly (likely confused by multi-commit PR).
+
+**Frequency**: 1/1 (100% false positive)
+
+**Mitigation**: Ignore Codacy AI "missing implementation" claims when methods are visible in diff.
+
+---
+
+## PR #21 - Round 3 (2026-06-02) - CONTINUED
+
+### CodeRabbit: Budget Check Precision (Line Number Hallucination)
+
+**Pattern**: CodeRabbit re-posted stale finding with incorrect line number after file modifications.
+
+**Finding**: "Line 156 uses `<= 0` instead of `< 2`"
+
+**Reality Check**:
+- Line 156 is a Print statement, NOT a budget check
+- Actual budget check at line 160 ALREADY uses `< 2` (correct)
+- Round 2 fix (commit 4a648331) was successfully applied
+- Only ONE budget check exists in file (no missed instances)
+
+**Root Cause**: Bot re-scan noise triggered by Round 3 curly brace fixes. CodeRabbit re-posted historical finding without detecting existing fix.
+
+**Evidence**:
+```csharp
+// Line 160 (NOT 156) - ALREADY CORRECT
+if (citBrokerBudget < 2)
+{
+    Print("[CIT] Broker budget exhausted -- deferring remaining nudges");
+    Enqueue(ctx => ctx.ManageCIT());
+    return false;
+}
+```
+
+**Frequency**: 1/1 (100% false positive)
+
+**Persistence**: Single round (Round 3 re-scan)
+
+**Mitigation**: Verify actual code state before applying bot recommendations. Line number drift is common after file modifications.
+
+---
+
+## Pattern Summary (Updated)
+
+| Pattern | Bot(s) | False Positive Rate | Persistence |
+|---------|--------|---------------------|-------------|
+| **Numeric doc patterns** | CodeFactor | 100% (4/4) | 3 rounds (R3, R4, R5) |
+| **Compilation errors** | Codacy AI | 100% (1/1) | Single round (PR #21) |
+| **Missing methods** | Codacy AI | 100% (1/1) | Single round (PR #21) |
+| **Stale findings (line drift)** | CodeRabbit | 100% (1/1) | Single round (PR #21 R3) |
+| **Null guard with early return** | Gitar, Greptile | 0% (VALID) | N/A |
+| **Race condition handling** | Greptile | 0% (VALID) | N/A |
+| **Budget exhaustion logic** | Gemini, Sourcery | 0% (VALID) | N/A |
+
+---
+
+## Bot Reliability (Cumulative)
+
+| Bot | Total Findings | Valid | Hallucinations | Accuracy |
+|-----|----------------|-------|----------------|----------|
+| **Greptile** | 2 | 2 | 0 | 100% |
+| **Gitar** | 1 | 1 | 0 | 100% |
+| **Gemini** | 1 | 1 | 0 | 100% |
+| **Sourcery** | 1 | 1 | 0 | 100% |
+| **Codacy Static** | 5 | 5 | 0 | 100% |
+| **CodeRabbit** | 2 | 1 | 1 | 50% |
+| **Codacy AI** | 2 | 0 | 2 | 0% |
+| **CodeFactor** | 4 | 0 | 4 | 0% |
+
+**Overall Bot Accuracy**: 11/17 unique findings (65%)
+
+**Key Insights**:
+- Static analysis bots (Codacy, CodeScene, SonarCloud) have 100% accuracy
+- AI reviewers (Codacy AI, CodeFactor) have 0% accuracy due to parsing failures
+- CodeRabbit: 50% accuracy (1 valid P0 in Round 1, 1 stale re-scan in Round 3)
+
+---
+
+**Last Updated**: 2026-06-02
+**Total Hallucinations Logged**: 9 (4 CodeFactor + 2 Codacy AI + 1 CodeRabbit + 2 PR #21 other)
+**Valid Findings Confirmed**: 11 (3 P0 + 1 P1 + 7 Codacy)
+
+---
+
+## Lessons Learned (Updated)
+
+1. **CodeFactor**: Persistent regex parser bug on numeric documentation patterns (ignore all doc warnings)
+2. **Codacy AI**: Cannot parse multi-commit PR diffs correctly (ignore compilation/missing method claims)
+3. **CodeRabbit**: Re-scans after file modifications can re-post stale findings with incorrect line numbers
+4. **Bot Re-Scan Noise**: File modifications trigger full re-scans that surface old, already-fixed issues
+5. **Line Number Drift**: Always verify actual code state - line numbers shift as code evolves
+6. **Static Analysis > AI Review**: Static analyzers (Codacy, CodeScene) have 100% accuracy vs. AI reviewers (0-50%)
