@@ -2,6 +2,7 @@
 // Complements fleet symmetry sync (Trailing.cs) which syncs by trail LEVEL.
 // Shadow syncs by stop PRICE and auto-propagates leader flatten.
 using System;
+using System.Collections.Concurrent;
 using NinjaTrader.Cbi;
 
 namespace NinjaTrader.NinjaScript.Strategies
@@ -34,48 +35,150 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             foreach (var kvp in activePositions.ToArray())
             {
-                PositionInfo pos = kvp.Value;
-                if (pos == null || pos.IsFollower)
-                    continue;
-                if (!pos.EntryFilled || pos.RemainingContracts <= 0)
-                    continue;
-
                 Order leaderStop;
-                if (!stopOrders.TryGetValue(kvp.Key, out leaderStop))
+                if (!ValidateLeaderPosition(kvp.Value, kvp.Key, stopOrders, out leaderStop))
+                {
                     continue;
-                if (leaderStop == null || leaderStop.StopPrice <= 0)
-                    continue;
+                }
 
                 double lastKnown;
-                _leaderLastStopPrice.TryGetValue(kvp.Key, out lastKnown);
-
-                // Only propagate if price actually changed (beyond half-tick noise)
-                if (Math.Abs(leaderStop.StopPrice - lastKnown) < tickSize * 0.5)
+                if (
+                    !DetectStopPriceChange(kvp.Key, leaderStop.StopPrice, _leaderLastStopPrice, tickSize, out lastKnown)
+                )
+                {
                     continue;
+                }
 
-                // Find and update all follower positions linked to this leader entry
-                if (ShadowMoveFollowerStops(kvp.Key, leaderStop.StopPrice))
-                    _leaderLastStopPrice[kvp.Key] = leaderStop.StopPrice;
+                PropagateAndCacheStopPrice(kvp.Key, leaderStop.StopPrice, _leaderLastStopPrice);
             }
 
             foreach (var cacheKvp in _leaderLastStopPrice.ToArray())
             {
-                PositionInfo livePos;
-                Order liveStop;
-                if (
-                    !activePositions.TryGetValue(cacheKvp.Key, out livePos)
-                    || livePos == null
-                    || livePos.IsFollower
-                    || !livePos.EntryFilled
-                    || livePos.RemainingContracts <= 0
-                    || !stopOrders.TryGetValue(cacheKvp.Key, out liveStop)
-                    || liveStop == null
-                    || liveStop.StopPrice <= 0
-                )
+                if (!ValidateCachedEntry(cacheKvp.Key, activePositions, stopOrders))
                 {
                     _leaderLastStopPrice.TryRemove(cacheKvp.Key, out _);
                 }
             }
+        }
+
+        /// <summary>
+        /// Validates leader position eligibility for stop propagation.
+        /// Returns true if position is a filled leader with a valid stop order.
+        /// </summary>
+        /// <param name="pos">Position to validate.</param>
+        /// <param name="entryKey">Entry key for stop order lookup.</param>
+        /// <param name="stopOrders">Stop orders dictionary for lookup.</param>
+        /// <param name="leaderStop">Output: leader stop order if valid.</param>
+        /// <returns>True if position is eligible for propagation.</returns>
+        internal static bool ValidateLeaderPosition(
+            PositionInfo pos,
+            string entryKey,
+            ConcurrentDictionary<string, Order> stopOrders,
+            out Order leaderStop
+        )
+        {
+            leaderStop = null;
+
+            if (pos == null || pos.IsFollower)
+            {
+                return false;
+            }
+            if (!pos.EntryFilled || pos.RemainingContracts <= 0)
+            {
+                return false;
+            }
+
+            if (!stopOrders.TryGetValue(entryKey, out leaderStop))
+            {
+                return false;
+            }
+            if (leaderStop == null || leaderStop.StopPrice <= 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Detects if leader stop price changed beyond noise threshold.
+        /// Uses half-tick threshold to filter out insignificant price movements.
+        /// </summary>
+        /// <param name="entryKey">Entry key for cache lookup.</param>
+        /// <param name="currentStopPrice">Current stop price from order.</param>
+        /// <param name="leaderLastStopPrice">Cache dictionary for price tracking.</param>
+        /// <param name="tickSize">Tick size for noise threshold calculation.</param>
+        /// <param name="lastKnownPrice">Output: last known price from cache.</param>
+        /// <returns>True if price changed beyond threshold.</returns>
+        internal static bool DetectStopPriceChange(
+            string entryKey,
+            double currentStopPrice,
+            ConcurrentDictionary<string, double> leaderLastStopPrice,
+            double tickSize,
+            out double lastKnownPrice
+        )
+        {
+            leaderLastStopPrice.TryGetValue(entryKey, out lastKnownPrice);
+
+            if (Math.Abs(currentStopPrice - lastKnownPrice) < tickSize * 0.5)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Propagates stop price to followers and updates cache on success.
+        /// Cache is only updated if propagation succeeds (all followers ready).
+        /// </summary>
+        /// <param name="leaderEntryKey">Leader entry key.</param>
+        /// <param name="newStopPrice">New stop price to propagate.</param>
+        /// <param name="leaderLastStopPrice">Cache dictionary for price tracking.</param>
+        internal void PropagateAndCacheStopPrice(
+            string leaderEntryKey,
+            double newStopPrice,
+            ConcurrentDictionary<string, double> leaderLastStopPrice
+        )
+        {
+            if (ShadowMoveFollowerStops(leaderEntryKey, newStopPrice))
+            {
+                leaderLastStopPrice[leaderEntryKey] = newStopPrice;
+            }
+        }
+
+        /// <summary>
+        /// Validates cached entry still has valid leader position and stop order.
+        /// Used for cache cleanup - removes stale entries when leader position closes.
+        /// </summary>
+        /// <param name="entryKey">Entry key to validate.</param>
+        /// <param name="activePositions">Active positions dictionary.</param>
+        /// <param name="stopOrders">Stop orders dictionary.</param>
+        /// <returns>True if entry is still valid (has active leader position with stop).</returns>
+        internal static bool ValidateCachedEntry(
+            string entryKey,
+            ConcurrentDictionary<string, PositionInfo> activePositions,
+            ConcurrentDictionary<string, Order> stopOrders
+        )
+        {
+            PositionInfo livePos;
+            Order liveStop;
+
+            if (
+                !activePositions.TryGetValue(entryKey, out livePos)
+                || livePos == null
+                || livePos.IsFollower
+                || !livePos.EntryFilled
+                || livePos.RemainingContracts <= 0
+                || !stopOrders.TryGetValue(entryKey, out liveStop)
+                || liveStop == null
+                || liveStop.StopPrice <= 0
+            )
+            {
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -114,6 +217,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 if (string.IsNullOrEmpty(followerEntryName))
                     continue;
+
                 if (!symmetryFleetEntryToDispatch.TryGetValue(followerEntryName, out var linkedDispatch))
                     continue;
                 if (!string.Equals(linkedDispatch, dispatchId, StringComparison.Ordinal))
