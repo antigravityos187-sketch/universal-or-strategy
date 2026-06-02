@@ -70,7 +70,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <param name="stopOrders">Stop orders dictionary for lookup.</param>
         /// <param name="leaderStop">Output: leader stop order if valid.</param>
         /// <returns>True if position is eligible for propagation.</returns>
-        internal static bool ValidateLeaderPosition(
+        private static bool ValidateLeaderPosition(
             PositionInfo pos,
             string entryKey,
             ConcurrentDictionary<string, Order> stopOrders,
@@ -155,7 +155,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <param name="activePositions">Active positions dictionary.</param>
         /// <param name="stopOrders">Stop orders dictionary.</param>
         /// <returns>True if entry is still valid (has active leader position with stop).</returns>
-        internal static bool ValidateCachedEntry(
+        private static bool ValidateCachedEntry(
             string entryKey,
             ConcurrentDictionary<string, PositionInfo> activePositions,
             ConcurrentDictionary<string, Order> stopOrders
