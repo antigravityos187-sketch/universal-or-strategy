@@ -30,9 +30,15 @@ customModes:
       
       Phase 1.5 (Scope Boundary) is MANDATORY to prevent scope creep (V12.23 Protocol).
     groups:
-      - advanced
+      - read
+      - - edit
+        - fileRegex: \.(md|yaml|yml|json|txt|ps1|py|sh)$
+          description: Documentation, config, and script files only (no src/*.cs)
+      - command
+      - mcp
+      - browser
     customRules:
-      - dna: rules-v12-engineer/dna.md
+      - dna: rules-v12-epic-planner/dna.md
       - epicProtocol: rules-v12-epic-planner/01-planning-protocol.md
 
   - slug: v12-engineer
@@ -57,7 +63,11 @@ customModes:
       7. Bump BUILD_TAG in src/V12_002.cs.
       8. Report: list of files modified, CYC before/after, deploy-sync result to Director.
     groups:
-      - advanced
+      - read
+      - edit
+      - command
+      - mcp
+      - browser
     customRules:
       - dna: rules-v12-engineer/dna.md
 
@@ -95,7 +105,11 @@ customModes:
       2. Run: grep -r "lock(" src/ (must return zero matches)
       3. Report: BUILD_TAG from banner and lock-audit result to Director.
     groups:
-      - advanced
+      - read
+      - edit
+      - command
+      - mcp
+      - browser
     customRules:
       - dna: rules-v12-engineer/dna.md
 
