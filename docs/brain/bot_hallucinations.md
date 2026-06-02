@@ -381,9 +381,31 @@ if (citBrokerBudget < 2)
 
 ---
 
+## PR #22 - Round 2 (2026-06-02)
+
+### CodeScene: Code Duplication in Test Files
+
+**Pattern**: CodeScene's duplication detector flags standard xUnit test patterns as duplicated code.
+
+**Finding**: 11 test functions in `ShadowPropagateStopMovesTests.cs` flagged as duplicated code.
+
+**Reality Check**:
+- Standard xUnit test pattern: Arrange-Act-Assert
+- Each test verifies different behavior
+- Structural similarity is expected and correct
+- Not actual duplication
+
+**Root Cause**: CodeScene's duplication detector cannot distinguish test patterns from actual duplication.
+
+**Frequency**: Common pattern in test files
+
+**Mitigation**: Ignore CodeScene duplication warnings in test files.
+
+---
+
 **Last Updated**: 2026-06-02
-**Total Hallucinations Logged**: 9 (4 CodeFactor + 2 Codacy AI + 1 CodeRabbit + 2 PR #21 other)
-**Valid Findings Confirmed**: 11 (3 P0 + 1 P1 + 7 Codacy)
+**Total Hallucinations Logged**: 10 (4 CodeFactor + 2 Codacy AI + 1 CodeRabbit + 1 CodeScene + 2 PR #21 other)
+**Valid Findings Confirmed**: 16 (2 P0 + 3 P1 + 5 P2 + 6 suppressions)
 
 ---
 
