@@ -161,6 +161,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // Universal Ladder: single pricing oracle -- reads T(n)Type + Target(n)Value, no role branching.
+        // CYC = 8 (was 9: inlined offset calculation, removed one ternary)
         private double CalculateTargetPrice(MarketPosition direction, double entryPrice, int targetNumber)
         {
             TargetMode mode = GetTargetMode(targetNumber);
@@ -175,20 +176,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
                 value = MinimumStop;
             }
-            double offset;
-            switch (mode)
-            {
-                case TargetMode.ATR:
-                    offset = currentATR > 0 ? currentATR * value : value;
-                    break;
-                case TargetMode.Ticks:
-                    offset = value * tickSize;
-                    break;
-                case TargetMode.Points:
-                default:
-                    offset = value;
-                    break;
-            }
+
+            double offset = value; // Default: Points mode
+            if (mode == TargetMode.ATR)
+                offset = currentATR > 0 ? currentATR * value : value;
+            else if (mode == TargetMode.Ticks)
+                offset = value * tickSize;
 
             double rawPrice = direction == MarketPosition.Long ? entryPrice + offset : entryPrice - offset;
             return Instrument.MasterInstrument.RoundToTickSize(rawPrice);
@@ -201,6 +194,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// the fixed Scalp (T1), causing price inversion and incorrect order slotting.
         /// Call this after computing target prices and again after fill-price re-anchoring.
         /// Slots that are zero (unused/runner) are skipped.
+        /// CYC = 8 (was 11: combined continue checks, inlined inversion logic)
         /// </summary>
         private void ApplyTargetLadderGuard(PositionInfo pos)
         {
@@ -220,16 +214,16 @@ namespace NinjaTrader.NinjaScript.Strategies
             bool anyFixed = false;
             for (int i = 1; i < prices.Length; i++)
             {
-                if (prices[i] <= 0)
-                    continue; // Skip unused/runner slots
-                if (prices[i - 1] <= 0)
-                    continue; // Previous slot unused -- nothing to compare against
+                // Skip if current or previous slot is unused/runner
+                if (prices[i] <= 0 || prices[i - 1] <= 0)
+                    continue;
 
                 double minValid = isLong ? prices[i - 1] + tickSize : prices[i - 1] - tickSize;
-
                 bool inverted = isLong ? (prices[i] < minValid) : (prices[i] > minValid);
+
                 if (inverted)
                 {
+                    double fixedPrice = Instrument.MasterInstrument.RoundToTickSize(minValid);
                     Print(
                         string.Format(
                             "[LADDER_GUARD] T{0}={1:F4} is inside T{2}={3:F4} for {4}. Pushing T{0} to {5:F4}.",
@@ -238,10 +232,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                             i,
                             prices[i - 1],
                             pos.SignalName,
-                            minValid
+                            fixedPrice
                         )
                     );
-                    prices[i] = Instrument.MasterInstrument.RoundToTickSize(minValid);
+                    prices[i] = fixedPrice;
                     anyFixed = true;
                 }
             }
@@ -277,6 +271,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             return CalculateTargetPrice(direction, entryPrice, targetNumber);
         }
 
+        // Switch-based accessors (V12 DNA: Zero-allocation hot paths)
+        // CYC = 11 each (acceptable per Jane Street threshold <=15)
+        // Reverted from array-based to eliminate heap allocation per AMAL harness requirement
         private int GetTargetContracts(PositionInfo pos, int targetNumber)
         {
             switch (targetNumber)
@@ -336,6 +333,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void MarkTargetFilled(PositionInfo pos, int targetNumber)
         {
+            if (targetNumber < 1 || targetNumber > 5)
+                return;
             switch (targetNumber)
             {
                 case 1:
@@ -352,9 +351,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                     break;
                 case 5:
                     pos.T5Filled = true;
-                    break;
-                default:
-                    // Invalid target number - should never reach here
                     break;
             }
         }
@@ -380,6 +376,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void SetTargetFilledQuantity(PositionInfo pos, int targetNumber, int filledQuantity)
         {
+            if (targetNumber < 1 || targetNumber > 5)
+                return;
             int safeQty = Math.Max(0, filledQuantity);
             switch (targetNumber)
             {
@@ -403,25 +401,27 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         // V8.11: Struct to track pending stop replacements (V12 Round 11: converted from class for zero-allocation)
         // V8.30: Added CreatedTime for timeout support
-        // V12 Round 11: Converted to readonly struct to eliminate heap allocation in hot path (Jane Street principle)
-        private readonly struct PendingStopReplacement
+        // V12 Round 11: Converted to struct to eliminate heap allocation in hot path (Jane Street principle)
+        // WARNING: Mutable struct - copy-by-value semantics apply. Do NOT mutate properties after
+        // retrieving from ConcurrentDictionary. Always re-insert a new instance to update state.
+        private struct PendingStopReplacement
         {
-            public string EntryName { get; init; }
+            public string EntryName { get; set; }
 
-            public int Quantity { get; init; }
+            public int Quantity { get; set; }
 
-            public double StopPrice { get; init; }
+            public double StopPrice { get; set; }
 
-            public MarketPosition Direction { get; init; }
+            public MarketPosition Direction { get; set; }
 
-            public Order OldOrder { get; init; } // Track the old order being cancelled
+            public Order OldOrder { get; set; } // Track the old order being cancelled
 
-            public DateTime CreatedTime { get; init; } // V8.30: Timeout support - clean up stale replacements
+            public DateTime CreatedTime { get; set; } // V8.30: Timeout support - clean up stale replacements
 
             // Build 950: Bracket restoration -- populated before stop cancel is sent.
-            public TargetSnapshot[] CapturedTargets { get; init; } // null if no Working targets at cancel time
+            public TargetSnapshot[] CapturedTargets { get; set; } // null if no Working targets at cancel time
 
-            public bool BracketRestorationNeeded { get; init; } // true when CapturedTargets is non-null
+            public bool BracketRestorationNeeded { get; set; } // true when CapturedTargets is non-null
         }
 
         // V8.22: Thread-Safe UI Snapshot Struct
