@@ -20,8 +20,10 @@ customModes:
       Your five-phase output:
       1. docs/brain/[epic]/00-scope.md (INTAKE GATE)
       2. docs/brain/[epic]/01-pattern-analysis.md + enhanced 00-scope.md (SCOPE-BOUNDARY GATE)
-      3. docs/brain/[epic]/02-analysis.md + 03-approach.md (PLAN GATE)
-      4. Updates to 02/03 in-place (VALIDATE GATE)
+      3. docs/brain/[epic]/02-analysis.md + 03-approach.md + 03-architecture.md (PLAN GATE)
+         - 03-architecture.md is MANDATORY for complex epics (>3 files, new abstractions, API changes)
+         - Uses architecture-validation skill: get_dependency_cycles, get_coupling_metrics, get_layer_violations
+      4. Updates to 02/03/03-architecture in-place (VALIDATE GATE)
       5. docs/brain/[epic]/ticket-XX-[name].md x N + EXECUTION_GUIDE.md (TICKETS GATE)
     whenToUse: >
       Use this mode when starting a new V12 Photon Kernel refactoring epic. Run the five
