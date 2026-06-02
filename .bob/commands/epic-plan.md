@@ -5,7 +5,7 @@ argument-hint: <epic-slug>
 # PHASE 2: EPIC PLAN
 **Epic Slug:** $1
 **Input:** docs/brain/$1/00-scope.md (from /epic-intake)
-**Output:** docs/brain/$1/01-analysis.md + docs/brain/$1/02-approach.md
+**Output:** docs/brain/$1/01-analysis.md + docs/brain/$1/02-approach.md + docs/brain/$1/03-architecture.md (if complex)
 **Protocol:** V12 Photon Kernel -- Traycer-Parity Epic Workflow (Bob Edition)
 
 > You are a Technical Architect who thoroughly analyzes and plans before executing.
@@ -146,8 +146,81 @@ ONLY after Director alignment on decisions, produce `docs/brain/$1/02-approach.m
 
 ---
 
+## PART 2.5: ARCHITECTURE VALIDATION (CONDITIONAL)
+
+**Trigger Criteria** (if ANY apply, this step is MANDATORY):
+- Epic touches >3 files
+- Introduces new abstractions (classes, interfaces, enums)
+- Extracts methods called from >2 locations
+- Modifies public APIs
+- Changes cross-file dependencies
+
+**Skip if:** Simple single-file extraction with no new abstractions.
+
+### Step 2.5a -- Apply Architecture-Validation Skill
+Read and apply: `@plugins/architecture-validation/SKILL.md`
+
+Use the template: `@scaffolds/03-architecture.md`
+
+### Step 2.5b -- Run Architectural Analysis Tools
+Using jCodemunch MCP tools:
+
+1. **Dependency Cycles Check**
+   ```
+   get_dependency_cycles { "repo": "." }
+   ```
+   - Document any existing cycles
+   - Verify refactoring won't introduce new cycles
+
+2. **Coupling Metrics**
+   ```
+   get_coupling_metrics { "repo": ".", "module_path": "<target-file>" }
+   ```
+   - Record Ca (afferent coupling - who depends on this)
+   - Record Ce (efferent coupling - what this depends on)
+   - Calculate Instability: I = Ce/(Ca+Ce)
+   - Target: Stable modules (I < 0.5) for core logic
+
+3. **Layer Violations** (if layer rules exist in `.jcodemunch.jsonc`)
+   ```
+   get_layer_violations { "repo": "." }
+   ```
+   - Document any violations
+   - Verify refactoring respects layer boundaries
+
+4. **Blast Radius Analysis** (already done in Part 1, but verify architectural impact)
+   ```
+   get_blast_radius { "repo": ".", "symbol": "<target-method>", "depth": 2 }
+   ```
+
+### Step 2.5c -- Write Architecture Validation Document
+Produce `docs/brain/$1/03-architecture.md` using the template from `scaffolds/03-architecture.md`.
+
+Key sections:
+- **Dependency Impact Analysis**: Cycles, new dependencies, risk assessment
+- **Coupling Metrics**: Ca/Ce/Instability scores, trend analysis
+- **Interface Contracts**: Extracted method signatures with preconditions/postconditions
+- **Layer Compliance**: Violations detected (if applicable)
+- **Architectural Decision Records**: Decisions with rationale and trade-offs
+
+### Step 2.5d -- Architecture Gate Checklist
+Verify:
+- [ ] No new circular dependencies introduced
+- [ ] Coupling metrics stable or improving
+- [ ] All extracted methods have explicit contracts
+- [ ] No layer violations (if layer rules defined)
+- [ ] Architectural decisions documented with rationale
+
+**If this step was skipped** (simple epic), document why in 02-approach.md under a new section:
+```markdown
+## Architecture Validation
+**Status:** SKIPPED - Simple single-file extraction, no new abstractions
+```
+
+---
+
 ## !! DIRECTOR APPROVAL GATE !!
-**STOP HERE.** Present both documents (01-analysis.md and 02-approach.md).
+**STOP HERE.** Present all documents (01-analysis.md, 02-approach.md, and 03-architecture.md if created).
 Ask the Director:
 - Does the approach match your intent?
 - Are the key decisions aligned with how you want to refactor this?
