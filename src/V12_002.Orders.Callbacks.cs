@@ -192,6 +192,56 @@ namespace NinjaTrader.NinjaScript.Strategies
             Enqueue(ctx => ctx.ProcessOnOrderUpdate(_o, _lp, _sp, _q, _f, _af, _os, _t, _ne));
         }
 
+        // [EPIC-CCN-10] Helper: Check if price move should propagate to followers
+        private bool ShouldPropagatePriceMove(Order order, OrderState orderState)
+        {
+            return order.Account == this.Account
+                && (
+                    orderState == OrderState.Working
+                    || orderState == OrderState.Accepted
+                    || orderState == OrderState.ChangeSubmitted
+                );
+        }
+
+        // [EPIC-CCN-10] Helper: Handle filled order state
+        private bool HandleOrderState_Filled(
+            Order order,
+            int quantity,
+            int filled,
+            double averageFillPrice,
+            DateTime time
+        )
+        {
+            if (entryOrders.Values.Contains(order))
+                return HandleEntryOrderFilled(order, quantity, filled, averageFillPrice, time);
+            else
+                return HandleSecondaryOrderFilled(order, averageFillPrice);
+        }
+
+        // [EPIC-CCN-10] Helper: Handle terminal order states (Rejected/Cancelled)
+        private bool HandleOrderState_Terminal(Order order, OrderState orderState, string nativeError)
+        {
+            if (orderState == OrderState.Rejected)
+                return HandleOrderRejected(order, nativeError);
+            else if (orderState == OrderState.Cancelled)
+                return HandleOrderCancelled(order);
+
+            // Correctness by construction: throw for unhandled terminal states
+            throw new InvalidOperationException("Unhandled terminal state: " + orderState.ToString());
+        }
+
+        // [EPIC-CCN-10] Helper: Handle working order state
+        private bool HandleOrderState_Working(Order order, double limitPrice, double stopPrice, int quantity)
+        {
+            return HandleOrderPriceOrQuantityChanged(order, limitPrice, stopPrice, quantity);
+        }
+
+        // [EPIC-CCN-10] Helper: Check if order state is terminal
+        private bool IsTerminalState(OrderState state)
+        {
+            return state == OrderState.Cancelled || state == OrderState.Rejected || state == OrderState.Unknown;
+        }
+
         private void ProcessOnOrderUpdate(
             Order order,
             double limitPrice,
@@ -209,49 +259,24 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             try
             {
-                if (
-                    order.Account == this.Account
-                    && (
-                        orderState == OrderState.Working
-                        || orderState == OrderState.Accepted
-                        || orderState == OrderState.ChangeSubmitted
-                    )
-                )
+                // Price propagation for working orders
+                if (ShouldPropagatePriceMove(order, orderState))
                 {
                     PropagateMasterPriceMove(order, limitPrice, stopPrice, quantity);
                 }
 
                 bool handled = false;
 
+                // State-specific processing
                 if (orderState == OrderState.Filled)
-                {
-                    if (entryOrders.Values.Contains(order))
-                        handled = HandleEntryOrderFilled(order, quantity, filled, averageFillPrice, time);
-                    else
-                        handled = HandleSecondaryOrderFilled(order, averageFillPrice);
-                }
-                else if (orderState == OrderState.Rejected)
-                {
-                    handled = HandleOrderRejected(order, nativeError);
-                }
-                else if (orderState == OrderState.Cancelled)
-                {
-                    handled = HandleOrderCancelled(order);
-                }
+                    handled = HandleOrderState_Filled(order, quantity, filled, averageFillPrice, time);
+                else if (orderState == OrderState.Rejected || orderState == OrderState.Cancelled)
+                    handled = HandleOrderState_Terminal(order, orderState, nativeError);
                 else if (orderState == OrderState.Accepted || orderState == OrderState.Working)
-                {
-                    handled = HandleOrderPriceOrQuantityChanged(order, limitPrice, stopPrice, quantity);
-                }
+                    handled = HandleOrderState_Working(order, limitPrice, stopPrice, quantity);
 
-                // Terminal catch-all
-                if (
-                    !handled
-                    && (
-                        orderState == OrderState.Cancelled
-                        || orderState == OrderState.Rejected
-                        || orderState == OrderState.Unknown
-                    )
-                )
+                // Terminal catch-all for unhandled states
+                if (!handled && IsTerminalState(orderState))
                 {
                     RemoveGhostOrderRef(order, orderState.ToString().ToUpper());
                 }
