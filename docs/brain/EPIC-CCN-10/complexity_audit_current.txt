@@ -1,0 +1,105 @@
+================================================================================
+V12 UNIVERSAL OR STRATEGY - FULL CODEBASE COMPLEXITY AUDIT
+Generated: 2026-06-02T14:14:46Z
+================================================================================
+
+SUMMARY STATISTICS
+==================
+Total methods audited: 914
+CYC > 20 remaining: 0
+CYC 15-20 (watch list): 35
+M5 dispatch candidates: 12
+LOC > 80: 28
+
+CRITICAL FINDING
+================
+✅ ALL methods with CYC > 20 have been refactored!
+✅ Zero P0 blockers remaining (threshold: CYC > 20)
+
+WATCH LIST (CYC 15-20)
+======================
+1. V12_002.Entries.FFMA.cs::CheckFFMAConditions (CYC=16, LOC=50)
+2. V12_002.Entries.RMA.cs::MonitorRmaProximity (CYC=17, LOC=67)
+3. V12_002.Orders.Callbacks.AccountOrders.cs::ProcessQueuedAccountOrder (CYC=15, LOC=34)
+4. V12_002.Orders.Callbacks.cs::ProcessOnOrderUpdate (CYC=19, LOC=48)
+5. V12_002.Orders.Callbacks.Execution.cs::HandleFlatPosition_CleanupActivePositions (CYC=17, LOC=30)
+6. V12_002.Orders.Callbacks.Propagation.cs::PropagateMaster_IdentifyMove (CYC=18, LOC=40)
+7. V12_002.Orders.Management.Cleanup.cs::ValidateOrphanedMasterOrders (CYC=19, LOC=32)
+8. V12_002.Orders.Management.Flatten.cs::ManageCIT (CYC=20, LOC=79)
+9. V12_002.Orders.Management.Flatten.cs::FlattenSinglePosition (CYC=16, LOC=76)
+10. V12_002.Orders.Management.StopSync.cs::SyncLimitTarget (CYC=17, LOC=128)
+11. V12_002.Orders.Management.StopSync.cs::RestoreCascadedTargets (CYC=16, LOC=90)
+12. V12_002.REAPER.Audit.cs::AuditMaster_HandleNakedPosition (CYC=15, LOC=38)
+13. V12_002.SIMA.Dispatch.cs::Dispatch_PublishMarketBracketToPhoton (CYC=19, LOC=160)
+14. V12_002.SIMA.Flatten.cs::ProcessFlattenWorkItem_CancelOrders (CYC=18, LOC=36)
+15. V12_002.SIMA.Flatten.cs::EmergencyFlattenSingleFleetAccount (CYC=16, LOC=73)
+16. V12_002.SIMA.Lifecycle.cs::SweepBrokerOrders (CYC=18, LOC=49)
+17. V12_002.SIMA.Lifecycle.cs::AdoptFleetWorkingOrders (CYC=17, LOC=46)
+18. V12_002.SIMA.Lifecycle.cs::ClassifyAndRouteFleetOrder (CYC=16, LOC=42)
+19. V12_002.SIMA.Shadow.cs::ShadowPropagateStopMoves (CYC=20, LOC=32)
+20. V12_002.Symmetry.Replace.cs::SymmetryGuardReplaceExistingFollowerTarget (CYC=18, LOC=49)
+21. V12_002.Symmetry.Replace.cs::SymmetryGuardTryResolveFollowersForDispatch (CYC=18, LOC=33)
+22. V12_002.UI.Compliance.cs::IsOrderAllowed (CYC=16, LOC=43)
+23. V12_002.UI.Compliance.cs::HandleFleetTargetFill (CYC=16, LOC=58)
+24. V12_002.UI.IPC.Commands.Config.cs::TryApplyConfigTarget_Value (CYC=17, LOC=45)
+25. V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleetCommand (CYC=19, LOC=42)
+26. V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_CancelAll (CYC=19, LOC=41)
+27. V12_002.UI.IPC.Commands.Fleet.cs::CancelAll_ProcessSingleFleetAccount (CYC=18, LOC=31)
+28. V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_MoveTarget (CYC=15, LOC=33)
+29. V12_002.UI.IPC.cs::IsSymbolMatch (CYC=18, LOC=19)
+30. V12_002.UI.Panel.Construction.cs::DestroyPanel (CYC=17, LOC=149)
+31. V12_002.UI.Panel.Handlers.cs::ShowModeSpecificControls (CYC=20, LOC=42)
+32. V12_002.UI.Panel.Handlers.cs::UpdateTargetVisibility (CYC=19, LOC=36)
+33. V12_002.UI.Panel.Helpers.cs::FindChartTraderViaChartTab (CYC=20, LOC=54)
+34. V12_002.UI.Panel.StateSync.cs::UpdatePanelState (CYC=16, LOC=51)
+35. V12_002.UI.Panel.StateSync.cs::SyncPanelConfigFromSnapshot (CYC=15, LOC=37)
+
+M5 DISPATCH CANDIDATES (High-Frequency Hot Paths)
+==================================================
+1. V12_002.Lifecycle.cs::ProcessOnStateChange
+2. V12_002.Orders.Callbacks.cs::ProcessOnOrderUpdate
+3. V12_002.PositionInfo.cs::MarkTargetFilled
+4. V12_002.PositionInfo.cs::SetTargetFilledQuantity
+5. V12_002.SIMA.cs::SetRmaAnchorFromIpc
+6. V12_002.Symmetry.BracketFSM.cs::ProcessBracketEvent
+7. V12_002.UI.Callbacks.cs::RouteTargetActionToHandler
+8. V12_002.UI.Callbacks.cs::DispatchRunnerAction
+9. V12_002.UI.IPC.Commands.Config.cs::TryApplyConfigTarget_Value
+10. V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_LongShort
+11. V12_002.UI.IPC.Commands.Mode.cs::TryHandleMode_SetMode
+12. V12_002.UI.IPC.cs::ProcessIpcCommandCore
+
+LOC > 80 (Extraction Candidates)
+=================================
+1. V12_002.Entries.FFMA.cs::ExecuteFFMAManualMarketEntry (LOC=162)
+2. V12_002.Entries.FFMA.cs::ExecuteFFMALimitEntry (LOC=146)
+3. V12_002.Entries.FFMA.cs::ExecuteFFMAEntry (LOC=126)
+4. V12_002.Entries.MOMO.cs::ExecuteMOMOEntry (LOC=166)
+5. V12_002.Entries.OR.cs::EnterORPosition (LOC=166)
+6. V12_002.Entries.Retest.cs::ExecuteRetestEntry (LOC=199)
+7. V12_002.Entries.Retest.cs::ExecuteRetestManualEntry (LOC=149)
+8. V12_002.Entries.RMA.cs::SubmitTrendSplitBrackets (LOC=126)
+9. V12_002.Entries.Trend.cs::ExecuteTRENDEntry (LOC=88)
+10. V12_002.Entries.Trend.cs::ExecuteTREND_CalculateLegs (LOC=84)
+11. V12_002.Lifecycle.cs::OnStateChangeSetDefaults (LOC=98)
+12. V12_002.Orders.Management.cs::SubmitTargetOrdersLoop (LOC=104)
+13. V12_002.Orders.Management.StopSync.cs::SyncLimitTarget (LOC=128)
+14. V12_002.Orders.Management.StopSync.cs::RestoreCascadedTargets (LOC=90)
+15. V12_002.SIMA.Dispatch.cs::Dispatch_PublishMarketBracketToPhoton (LOC=160)
+16. V12_002.SIMA.Dispatch.cs::Dispatch_ProcessFleetLoop (LOC=113)
+17. V12_002.SIMA.Dispatch.cs::Dispatch_PublishLimitEntryToPhoton (LOC=98)
+18. V12_002.SIMA.Execution.cs::ProcessSingleFleetRMAAccount (LOC=106)
+19. V12_002.SIMA.Execution.cs::ExecuteMultiAccountBracket (LOC=107)
+20. V12_002.SIMA.Execution.cs::ExecuteRMAEntryV2 (LOC=110)
+21. V12_002.Symmetry.Follower.cs::SymmetryGuardTryResolveFollower (LOC=83)
+22. V12_002.Symmetry.Follower.cs::SymmetryGuardSubmitFollowerBracket (LOC=101)
+23. V12_002.UI.IPC.Commands.Config.cs::HandleTrimCommand (LOC=85)
+24. V12_002.UI.Panel.Construction.cs::DestroyPanel (LOC=149)
+25. V12_002.UI.Panel.Construction.cs::CreateSection0_Identity (LOC=154)
+26. V12_002.UI.Panel.Construction.cs::CreateSection3_Config (LOC=277)
+27. V12_002.UI.Panel.Construction.cs::CreateSection1_Execution (LOC=181)
+28. V12_002.UI.Panel.Construction.cs::CreateSection2_Telemetry (LOC=95)
+
+================================================================================
+END OF AUDIT
+================================================================================
