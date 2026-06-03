@@ -26,7 +26,7 @@ load_env()
 
 def get_jcodemunch_hotspots(repo: str, top_n: int = 20, days: int = 90) -> List[Dict]:
     """Get hotspots from jcodemunch-mcp"""
-    print(f"📊 Fetching top {top_n} hotspots from jcodemunch...")
+    print(f"[*] Fetching top {top_n} hotspots from jcodemunch...")
     
     # This would normally call jcodemunch-mcp via MCP protocol
     # For now, we'll use a placeholder that reads from a cached file
@@ -36,7 +36,7 @@ def get_jcodemunch_hotspots(repo: str, top_n: int = 20, days: int = 90) -> List[
         with open(cache_file) as f:
             return json.load(f)
     
-    print("⚠️  No cached hotspot data. Run jcodemunch get_hotspots first.")
+    print("[!]  No cached hotspot data. Run jcodemunch get_hotspots first.")
     return []
 
 def get_codescene_review(file_path: str) -> Optional[Dict]:
@@ -52,16 +52,16 @@ def get_codescene_review(file_path: str) -> Optional[Dict]:
         )
         return json.loads(result.stdout)
     except subprocess.CalledProcessError as e:
-        print(f"❌ CodeScene review failed: {e}")
+        print(f"[X] CodeScene review failed: {e}")
         return None
     except json.JSONDecodeError as e:
-        print(f"❌ Failed to parse CodeScene output: {e}")
+        print(f"[X] Failed to parse CodeScene output: {e}")
         return None
 
 def calculate_composite_score(hotspot: Dict, codescene: Optional[Dict]) -> float:
     """
     Calculate composite epic priority score using multiple signals:
-    - Hotspot Score (40%): complexity × log(1 + churn)
+    - Hotspot Score (40%): complexity x log(1 + churn)
     - Code Health (30%): CodeScene score (inverted: 10 - score)
     - Severity (20%): Number of high-severity issues
     - Churn (10%): Raw commit count
@@ -91,7 +91,7 @@ def calculate_composite_score(hotspot: Dict, codescene: Optional[Dict]) -> float
 
 def generate_epic_roadmap(hotspots: List[Dict], top_n: int = 10) -> List[Dict]:
     """Generate prioritized epic roadmap with multi-signal scoring"""
-    print(f"\n🎯 Generating epic roadmap for top {top_n} hotspots...")
+    print(f"\n[*] Generating epic roadmap for top {top_n} hotspots...")
     
     epics = []
     
@@ -139,7 +139,7 @@ def generate_epic_roadmap(hotspots: List[Dict], top_n: int = 10) -> List[Dict]:
 def print_roadmap(epics: List[Dict]):
     """Print epic roadmap in human-readable format"""
     print("\n" + "="*80)
-    print("🎯 MULTI-SIGNAL EPIC ROADMAP")
+    print("[*] MULTI-SIGNAL EPIC ROADMAP")
     print("="*80)
     print(f"\n{'Rank':<6} {'Epic':<15} {'Method':<30} {'Composite':<12} {'Hotspot':<10} {'Health':<8}")
     print("-"*80)
@@ -150,10 +150,10 @@ def print_roadmap(epics: List[Dict]):
               f"{epic['composite_score']:<12.2f} {epic['hotspot_score']:<10.2f} {health:<8}")
     
     print("\n" + "="*80)
-    print("📊 SCORING BREAKDOWN")
+    print("[*] SCORING BREAKDOWN")
     print("="*80)
     print("Composite Score = Hotspot(40%) + CodeHealth(30%) + Severity(20%) + Churn(10%)")
-    print("- Hotspot: Complexity × log(1 + churn)")
+    print("- Hotspot: Complexity x log(1 + churn)")
     print("- CodeHealth: 10 - CodeScene score (inverted)")
     print("- Severity: Count of high-severity issues")
     print("- Churn: Raw commit count")
@@ -185,7 +185,7 @@ def main():
         hotspots = get_jcodemunch_hotspots('universal-or-strategy', top_n=top_n)
         
         if not hotspots:
-            print("❌ No hotspot data available")
+            print("[X] No hotspot data available")
             sys.exit(1)
         
         # Generate roadmap
@@ -206,7 +206,7 @@ def main():
         if review:
             print(json.dumps(review, indent=2))
         else:
-            print("❌ Review failed")
+            print("[X] Review failed")
             sys.exit(1)
     
     else:
