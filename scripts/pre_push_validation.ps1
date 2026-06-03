@@ -435,6 +435,67 @@ if (-not $Fast) {
     }
 }
 
+# ============================================================================
+# 14. CODESCENE DELTA ANALYSIS (Code Health Impact)
+# ============================================================================
+Write-CheckHeader "14. CodeScene Delta Analysis"
+
+try {
+    # Check if CodeScene CLI is installed
+    $csInstalled = Get-Command cs -ErrorAction SilentlyContinue
+    
+    if ($csInstalled) {
+        # Check if CS_ACCESS_TOKEN is set
+        if ($env:CS_ACCESS_TOKEN) {
+            Write-Host "Running CodeScene delta analysis on staged changes..." -ForegroundColor Gray
+            
+            # Run delta analysis on staged changes
+            $csOutput = cs delta --staged --output-format json 2>&1
+            
+            if ($LASTEXITCODE -eq 0) {
+                try {
+                    $csResults = $csOutput | ConvertFrom-Json
+                    
+                    # Check for code health degradation
+                    $newIssues = @()
+                    if ($csResults.review) {
+                        foreach ($issue in $csResults.review) {
+                            if ($issue.indication -ge 3) {  # High severity
+                                $newIssues += $issue
+                            }
+                        }
+                    }
+                    
+                    if ($newIssues.Count -eq 0) {
+                        Write-CheckResult "CodeScene Delta" $true "No code health degradation detected"
+                    } else {
+                        Write-CheckResult "CodeScene Delta" $false "$($newIssues.Count) high-severity code health issues detected"
+                        Write-Host "  Run 'cs delta --staged' for details" -ForegroundColor Yellow
+                    }
+                    
+                    # Save results
+                    $csResults | ConvertTo-Json -Depth 10 | Out-File "codescene_delta.json" -Encoding UTF8
+                    Write-Host "  Results saved to: codescene_delta.json" -ForegroundColor Gray
+                } catch {
+                    Write-CheckResult "CodeScene Delta" $true "Failed to parse results (non-blocking): $($_.Exception.Message)"
+                }
+            } else {
+                # No staged changes or other non-error condition
+                Write-CheckResult "CodeScene Delta" $true "No staged changes to analyze"
+            }
+        } else {
+            Write-CheckResult "CodeScene Delta" $true "CS_ACCESS_TOKEN not set (skipped)"
+            Write-Host "  Set token: `$env:CS_ACCESS_TOKEN = '<your-token>'" -ForegroundColor Gray
+        }
+    } else {
+        Write-CheckResult "CodeScene Delta" $true "Not installed (skipped)"
+        Write-Host "  Install: Invoke-WebRequest -Uri 'https://downloads.codescene.io/enterprise/cli/install-cs-tool.ps1' -OutFile install-cs-tool.ps1; .\install-cs-tool.ps1" -ForegroundColor Gray
+    }
+} catch {
+    Write-CheckResult "CodeScene Delta" $true "Analysis failed (non-blocking): $($_.Exception.Message)"
+}
+
+
 
 # ============================================================================
 # FINAL REPORT

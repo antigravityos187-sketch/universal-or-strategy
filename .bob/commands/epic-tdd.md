@@ -125,8 +125,9 @@ Ensure:
 Run the FULL validation suite:
 1. `powershell -File .\deploy-sync.ps1`
 2. `powershell -File .\scripts\pre_push_validation.ps1`
+   (Includes CodeScene Delta Analysis as Check #14)
 
-Expected output: ALL blocking checks PASS (8/8 required, 5/5 warnings informational).
+Expected output: ALL blocking checks PASS (9/14 required: ASCII, Build, Tests, Lint, Formatting, PR Hygiene, Complexity, CodeScene Delta, Jane Street DNA).
 
 If ANY blocking check fails: **HALT and fix.**
 

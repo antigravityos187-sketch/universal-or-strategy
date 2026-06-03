@@ -31,6 +31,31 @@ You have TWO responsibilities:
 
 ---
 
+## PHASE 0: HOTSPOT ANALYSIS (CodeScene Integration)
+
+**Switch to: Advanced mode**
+
+Hand off this exact task:
+```
+TASK: Run Multi-Signal Epic Analysis
+PROTOCOL:
+  1. Run: python scripts/epic_planner.py
+  2. Read output: epic_candidates.json
+  3. Present top 5 candidates ranked by composite score:
+     - Hotspot score (complexity × log(1 + churn))
+     - Code health (CodeScene 0-10 rating)
+     - Composite score (weighted: 40% hotspot + 30% health + 20% severity + 10% churn)
+  4. Emit: [HOTSPOT-ANALYSIS-COMPLETE]
+```
+
+**GATE 0:**
+> "Top 5 refactoring candidates: [list with scores]. Confirm epic $1 targets: $2. Reply YES to proceed or ADJUST to change target."
+
+- YES: advance to Phase 1
+- ADJUST: relay new target, re-run analysis
+
+---
+
 ## PHASE 1: INTAKE
 
 **Switch to: v12-epic-planner mode**
@@ -40,6 +65,7 @@ Hand off this exact task:
 EPIC: $1
 TASK: Run /epic-intake
 DESCRIPTION: $2
+INPUT: @epic_candidates.json (from Phase 0)
 OUTPUT: Write docs/brain/$1/00-scope.md
 STOP at [INTAKE-GATE] and do not proceed.
 ```
@@ -202,6 +228,7 @@ VERIFICATION TASK for epic $1, ticket-XX
 Run the FULL pre-push validation suite with Jane Street audit:
 
 1. powershell -File .\scripts\pre_push_validation.ps1
+   (Includes CodeScene Delta Analysis as Check #14)
 
 2. JANE STREET AUDIT (MANDATORY):
    - Read: docs/standards/JANE_STREET_DEVIATIONS.md
@@ -213,20 +240,21 @@ Run the FULL pre-push validation suite with Jane Street audit:
    - If new Jane Street conflicts detected: HALT and report
 
 Report results as:
-  ASCII Gate      : PASS / FAIL
-  Build           : PASS / FAIL
-  Unit Tests      : PASS / FAIL
-  Lint            : PASS / FAIL
-  Formatting      : PASS / FAIL
-  Security        : PASS / FAIL (warnings OK)
-  Markdown Links  : PASS / FAIL (warnings OK)
-  PR Hygiene      : PASS / FAIL
-  Complexity (≤15): PASS / FAIL
-  Dead Code       : PASS / FAIL (warnings OK)
-  Codacy Preview  : PASS / FAIL (warnings OK)
-  Semgrep         : PASS / FAIL (warnings OK)
-  CodeRabbit AI   : PASS / FAIL (warnings OK)
-  Jane Street DNA : PASS / FAIL
+  ASCII Gate         : PASS / FAIL
+  Build              : PASS / FAIL
+  Unit Tests         : PASS / FAIL
+  Lint               : PASS / FAIL
+  Formatting         : PASS / FAIL
+  Security           : PASS / FAIL (warnings OK)
+  Markdown Links     : PASS / FAIL (warnings OK)
+  PR Hygiene         : PASS / FAIL
+  Complexity (≤15)   : PASS / FAIL
+  Dead Code          : PASS / FAIL (warnings OK)
+  Codacy Preview     : PASS / FAIL (warnings OK)
+  Semgrep            : PASS / FAIL (warnings OK)
+  CodeRabbit AI      : PASS / FAIL (warnings OK)
+  CodeScene Delta    : PASS / FAIL (Check #14)
+  Jane Street DNA    : PASS / FAIL
 
 If ANY blocking check fails: HALT and report to orchestrator.
 ```
