@@ -23,7 +23,19 @@
     "**/bin/**": true,
     "**/obj/**": true
   },
-  "snyk.advanced.autoSelectOrganization": false
+  "snyk.advanced.autoSelectOrganization": false,
+  
+  // Mise Tool Management Integration
+  "terminal.integrated.env.windows": {
+    "MISE_SHELL": "pwsh"
+  },
+  "terminal.integrated.env.linux": {
+    "MISE_SHELL": "bash"
+  },
+  "terminal.integrated.env.osx": {
+    "MISE_SHELL": "zsh"
+  },
+  "mise.enable": true
 }
 
 // Made with Bob

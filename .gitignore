@@ -46,6 +46,7 @@ audit_report.md
 codex_audit.md
 *_audit*.md
 *_audit*.json
+docs/brain/GITHUB_MIGRATION_TOKENS.md
 pr*.diff
 pr*.txt
 prdiff*.txt
@@ -66,6 +67,11 @@ tmp/
 .gemini/
 .agent/
 graphify-out/
+
+# Mise Tool Management
+.mise.local.toml
+.mise/
+.mise.*.lock
 
 # Project pollution ignore rules
 infrastructure/

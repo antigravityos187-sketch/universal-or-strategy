@@ -33,18 +33,60 @@ To prevent AI "blindspots" between platforms (Claude Code, Cursor, Codex, Gemini
 - **Local Terminal First**: Prioritize running agents (Codex, Claude) in the local terminal. See [IDE_GUIDE.md](IDE_GUIDE.md) for setup.
 - **Handoff Protocol**: [MASTER_HANDOFF_PROTOCOL.md](docs/protocol/MASTER_HANDOFF_PROTOCOL.md) — Follow this for all agent transitions.
 
+## 🛠️ Tool Management (Mise)
+
+This project uses [Mise](https://mise.jdx.dev) for unified tool version management. Mise replaces nvm, pyenv, rbenv, and other version managers with a single declarative configuration.
+
+### Quick Start
+
+```powershell
+# Install Mise (Windows)
+irm https://mise.jdx.dev/install.ps1 | iex
+
+# Install all project tools
+mise install
+
+# Run complete setup
+mise run setup
+```
+
+### Common Tasks
+
+```powershell
+mise run validate      # Full pre-push validation
+mise run format        # Format C# code
+mise run build         # Build project
+mise run test          # Run tests
+mise run security      # Security scans
+mise run sync          # Sync NinjaTrader hard links
+```
+
+**Full Documentation**: [docs/protocol/MISE_SETUP.md](docs/protocol/MISE_SETUP.md)
+
 ## 🚀 Key Commands
 
 ### Deployment
 Synchronize the repository with your NinjaTrader 8 environment:
 ```powershell
 ./deploy-sync.ps1
+# OR via Mise
+mise run sync
 ```
 
 ### Auditing
 Run the executive audit scan to discover logic risks:
 ```powershell
 ./scripts/audit_scan.ps1
+```
+
+### Validation
+Run pre-push validation checks:
+```powershell
+# Full validation (all 13 checks)
+mise run validate
+
+# Fast validation (skip slow checks)
+mise run validate-fast
 ```
 
 ---
