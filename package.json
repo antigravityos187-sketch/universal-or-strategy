@@ -1,5 +1,41 @@
 {
-  "dependencies": {
-    "openai": "6.37.0"
-  }
+  "name": "universal-or-strategy",
+  "version": "12.0.0",
+  "description": "V12 Photon Kernel - Universal OR Strategy for NinjaTrader",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/malhitticrypto-debug/universal-or-strategy.git"
+  },
+  "scripts": {
+    "setup": "mise install && npm install",
+    "validate": "pwsh -File ./scripts/pre_push_validation.ps1",
+    "validate:fast": "pwsh -File ./scripts/pre_push_validation.ps1 -Fast",
+    "format": "dotnet csharpier format src/",
+    "format:check": "dotnet csharpier check src/",
+    "build": "dotnet build src/V12_002.csproj",
+    "test": "dotnet test tests/",
+    "security": "snyk test --all-projects",
+    "sync": "pwsh -File ./deploy-sync.ps1"
+  },
+  "devDependencies": {
+    "snyk": "^1.1200.0"
+  },
+  "optionalDependencies": {
+    "@modelcontextprotocol/graphify": "^0.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "keywords": [
+    "ninjatrader",
+    "trading",
+    "strategy",
+    "hft",
+    "photon-kernel",
+    "v12"
+  ],
+  "author": "Universal OR Strategy Team",
+  "license": "UNLICENSED"
 }

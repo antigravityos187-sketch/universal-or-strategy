@@ -43,6 +43,105 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
     - ~~**Code Mode** (`code`): DEPRECATED - DO NOT USE~~
 - **FORENSICS (P2/P6)**: Diagnosis (P2) and Adversarial Audit (P6).
 
+## 1.5. Agent Tool Requirements (Mise Integration)
+
+**ALL agents must use Mise-managed tools for consistency and reproducibility.**
+
+### Tool Installation
+
+```bash
+# One-command setup (installs all tools)
+mise run setup
+
+# Verify installation
+mise run doctor
+```
+
+### Agent → Tool Matrix
+
+| Agent | Mode | Required Tools | Installation Method |
+|-------|------|----------------|---------------------|
+| **Antigravity (Gemini CLI)** | `yolo` | Python 3.12, Node 20, Git, gh CLI | `mise install` |
+| **Bob CLI** | `v12-engineer` | .NET 8.0, CSharpier, Git, PowerShell 7, All quality tools | `mise run setup` |
+| **Codex CLI** | `codex-rescue` | ❓ TBD (investigation pending) | TBD |
+| **Jules AI** | GitHub | gh CLI, Git | `mise install` (cloud-based) |
+| **Arena AI** | Adjudicator | None (cloud-based) | N/A |
+| **Advanced Mode** | `advanced` | All Mise tools + MCP servers | `mise run setup` |
+
+### Tool Access by Agent
+
+| Tool | Antigravity | Bob | Codex | Jules | Arena | Advanced |
+|------|-------------|-----|-------|-------|-------|----------|
+| **Python 3.12** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **.NET 8.0** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **Git** | ✅ | ✅ | ❓ | ✅ | ❌ | ✅ |
+| **gh CLI** | ✅ | ✅ | ❓ | ✅ | ❌ | ✅ |
+| **CSharpier** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **Lizard** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **Semgrep** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **Snyk** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **Gitleaks** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **CodeScene** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **CodeRabbit** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **jCodemunch MCP** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+| **Graphify** | ✅ | ✅ | ❓ | ❌ | ❌ | ✅ |
+
+**Legend**: ✅ Required/Available | ❌ Not Needed | ❓ Unknown (Codex investigation pending)
+
+### Mise Commands for Agents
+
+**All agents should use these standardized commands:**
+
+```bash
+# Quality Checks
+mise run validate        # Full validation (13 checks)
+mise run validate-fast   # Fast validation (skip slow checks)
+mise run format          # Format C# code
+mise run complexity      # Check cyclomatic complexity
+mise run security        # Run security scans
+
+# Build & Test
+mise run build           # Build project
+mise run test            # Run unit tests
+mise run sync            # Sync NinjaTrader hard links
+
+# Development
+mise run dev             # Format + Build + Test
+mise run ci              # Full CI pipeline locally
+mise run doctor          # Check tool installation
+```
+
+### Bob CLI Integration
+
+Bob CLI is **fully integrated** with Mise:
+
+```bash
+# Run Bob with Mise tools
+mise run bob-engineer
+
+# Bob automatically:
+# - Uses Mise-managed tool versions
+# - Runs quality gates (pre-commit, pre-push, pre-PR)
+# - Validates V12 DNA constraints (CYC ≤ 15, ASCII-only, lock-free)
+```
+
+**Configuration Files**:
+- `.bob/mise.json` - Bridge configuration
+- `.bob/settings.json` - Mise integration enabled
+- `.mise.toml` - Bob environment variables
+
+**Documentation**: See [`docs/protocol/BOB_MISE_INTEGRATION.md`](docs/protocol/BOB_MISE_INTEGRATION.md)
+
+### Tool Audit
+
+**Complete tool inventory**: See [`docs/protocol/MISE_TOOL_AUDIT.md`](docs/protocol/MISE_TOOL_AUDIT.md)
+
+**Summary**:
+- ✅ 18 tools accounted for (all in Mise or documented)
+- ✅ 0 missing tools
+- ✅ Cloud services documented (Jules AI, Arena AI, Gemini CLI)
+- ❓ Codex CLI investigation pending
+
 ## 2. Architectural Mandates (THE PLATINUM STANDARD)
 
 - **Correctness by Construction ("Make illegal states unrepresentable")**: Structure types, enums, and data models so that it is mathematically impossible for the compiler to allow an invalid state. Do not rely on runtime if/else guards for weird edge cases   design the architecture so the edge case literally cannot exist.

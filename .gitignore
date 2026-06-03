@@ -68,6 +68,11 @@ tmp/
 .agent/
 graphify-out/
 
+# Mise Tool Management
+.mise.local.toml
+.mise/
+.mise.*.lock
+
 # Project pollution ignore rules
 infrastructure/
 experts/
