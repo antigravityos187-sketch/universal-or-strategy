@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "description": "Bob CLI - Mise Tool Management Integration",
+  "version": "1.0.0",
+  "environment": {
+    "setup_command": "mise run setup",
+    "validate_command": "mise run validate",
+    "validate_fast_command": "mise run validate-fast",
+    "format_command": "mise run format",
+    "format_check_command": "mise run format-check",
+    "build_command": "mise run build",
+    "build_release_command": "mise run build-release",
+    "test_command": "mise run test",
+    "test_stress_command": "mise run test-stress",
+    "complexity_command": "mise run complexity",
+    "hotspots_command": "mise run hotspots",
+    "dead_code_command": "mise run dead-code",
+    "security_command": "mise run security",
+    "lint_command": "mise run lint",
+    "sync_command": "mise run sync",
+    "pr_hygiene_command": "mise run pr-hygiene",
+    "links_command": "mise run links",
+    "clean_command": "mise run clean",
+    "dev_command": "mise run dev",
+    "ci_command": "mise run ci",
+    "doctor_command": "mise run doctor"
+  },
+  "tools": {
+    "python": {
+      "command": "mise which python",
+      "version_command": "python --version",
+      "expected_version": "3.12"
+    },
+    "node": {
+      "command": "mise which node",
+      "version_command": "node --version",
+      "expected_version": "20"
+    },
+    "dotnet": {
+      "command": "mise which dotnet",
+      "version_command": "dotnet --version",
+      "expected_version": "8.0"
+    },
+    "git": {
+      "command": "mise which git",
+      "version_command": "git --version",
+      "expected_version": "latest"
+    },
+    "gh": {
+      "command": "mise which gh",
+      "version_command": "gh --version",
+      "expected_version": "latest"
+    },
+    "jq": {
+      "command": "mise which jq",
+      "version_command": "jq --version",
+      "expected_version": "latest"
+    },
+    "yq": {
+      "command": "mise which yq",
+      "version_command": "yq --version",
+      "expected_version": "latest"
+    },
+    "csharpier": {
+      "command": "dotnet csharpier",
+      "version_command": "dotnet csharpier --version",
+      "expected_version": "latest"
+    },
+    "pwsh": {
+      "command": "pwsh",
+      "version_command": "pwsh --version",
+      "expected_version": "7.x"
+    }
+  },
+  "paths": {
+    "project_root": "{{PROJECT_ROOT}}",
+    "scripts_dir": "{{SCRIPTS_DIR}}",
+    "src_dir": "{{SRC_DIR}}",
+    "docs_dir": "{{DOCS_DIR}}"
+  },
+  "quality_gates": {
+    "pre_commit": [
+      "mise run format-check",
+      "mise run complexity"
+    ],
+    "pre_push": [
+      "mise run validate-fast"
+    ],
+    "pre_pr": [
+      "mise run validate",
+      "mise run pr-hygiene"
+    ]
+  },
+  "v12_dna": {
+    "ascii_only": true,
+    "lock_free": true,
+    "complexity_threshold": 15,
+    "diff_limit": 10000
+  }
+}

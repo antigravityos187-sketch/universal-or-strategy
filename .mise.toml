@@ -1,0 +1,328 @@
+# Universal OR Strategy - Mise Tool Management Configuration
+# V12 Photon Kernel Infrastructure Layer
+# Last Updated: 2026-06-03
+
+[tools]
+# Core Development Runtimes
+python = "3.12"           # Scripts, Lizard, Semgrep
+node = "20"               # Snyk, npm packages
+dotnet = "8.0"            # C# compilation, CSharpier
+"core:git" = "latest"     # Version control
+
+# GitHub & CI Tools
+gh = "latest"             # GitHub CLI
+jq = "latest"             # JSON parsing
+yq = "latest"             # YAML parsing
+
+# Note: Some tools require manual installation or are managed via other package managers:
+# - PowerShell 7.x (Windows: winget, macOS: brew)
+# - Gitleaks (cargo:gitleaks or manual binary)
+# - CodeScene CLI (manual binary from codescene.com)
+# - CodeRabbit CLI (curl -fsSL https://cli.coderabbit.ai/install.sh | sh)
+# - Bob CLI (IBM binary, manual install)
+# - Graphify (npm install -g @modelcontextprotocol/graphify)
+# - jCodemunch (MCP server, separate installation)
+
+[env]
+# Telemetry Opt-Out (Privacy & Performance)
+DOTNET_CLI_TELEMETRY_OPTOUT = "1"
+PYTHONUNBUFFERED = "1"
+SNYK_DISABLE_ANALYTICS = "1"
+
+# Project Paths
+PROJECT_ROOT = "{{config_root}}"
+SCRIPTS_DIR = "{{config_root}}/scripts"
+SRC_DIR = "{{config_root}}/src"
+DOCS_DIR = "{{config_root}}/docs"
+
+# Jane Street Knowledge Base
+JANE_STREET_REPOS_DIR = "~/.jane-street"
+JANE_STREET_VERSION = "2026-06-03"
+
+# Bob CLI Integration
+BOB_PROJECT_ROOT = "{{config_root}}"
+BOB_SETTINGS_PATH = "{{config_root}}/.bob/settings.json"
+BOB_MODES_PATH = "{{config_root}}/.bob/custom_modes.yaml"
+BOB_MISE_BRIDGE = "{{config_root}}/.bob/mise.json"
+
+# V12 DNA Environment Markers
+V12_MISE_MANAGED = "true"
+V12_TOOL_VERSION = "12.0.0"
+
+[tasks.setup]
+description = "Complete project setup - install all tools and dependencies"
+run = """
+echo "=== V12 Universal OR Strategy - Mise Setup ==="
+echo "Installing mise-managed tools..."
+mise install
+
+echo ""
+echo "Installing .NET tools (CSharpier, dotnet-format)..."
+dotnet tool restore
+
+echo ""
+echo "Installing Python dependencies..."
+pip install -r requirements.txt
+
+echo ""
+echo "Installing Node dependencies..."
+npm install
+
+echo ""
+echo "=== Setup Complete ==="
+echo "Run 'mise run validate' to verify installation"
+"""
+
+[tasks.validate]
+description = "Run full pre-push validation (all 13 checks)"
+run = "pwsh -File ./scripts/pre_push_validation.ps1"
+
+[tasks.validate-fast]
+description = "Run fast validation (skip slow checks 10-13)"
+run = "pwsh -File ./scripts/pre_push_validation.ps1 -Fast"
+
+[tasks.format]
+description = "Format all C# code with CSharpier"
+run = "dotnet csharpier format src/"
+
+[tasks.format-check]
+description = "Check C# formatting without changes"
+run = "dotnet csharpier check src/"
+
+[tasks.build]
+description = "Build V12 project (Debug)"
+run = "dotnet build src/V12_002.csproj"
+
+[tasks.build-release]
+description = "Build V12 project (Release)"
+run = "dotnet build src/V12_002.csproj -c Release"
+
+[tasks.build-readiness]
+description = "Run build readiness checks (includes formatting)"
+run = "pwsh -File ./scripts/build_readiness.ps1"
+
+[tasks.test]
+description = "Run unit tests"
+run = "dotnet test tests/"
+
+[tasks.test-stress]
+description = "Run stress tests"
+run = "pwsh -File ./scripts/test_stress.ps1"
+
+[tasks.complexity]
+description = "Run complexity audit (CYC threshold: 15)"
+run = "python scripts/complexity_audit.py"
+
+[tasks.hotspots]
+description = "Identify code hotspots (complexity + churn)"
+run = "python scripts/epic_planner.py"
+
+[tasks.dead-code]
+description = "Scan for dead code"
+run = "python scripts/dead_code_scan.py"
+
+[tasks.security]
+description = "Run security scans (Gitleaks, Snyk, Semgrep)"
+run = """
+echo "=== Running Security Scans ==="
+echo ""
+echo "1. Gitleaks (secrets detection)..."
+gitleaks detect --source . --verbose --no-git
+
+echo ""
+echo "2. Snyk (dependency vulnerabilities)..."
+snyk test --all-projects || true
+
+echo ""
+echo "3. Semgrep (SAST)..."
+semgrep --config auto --quiet
+"""
+
+[tasks.lint]
+description = "Run Roslyn linting"
+run = "pwsh -File ./scripts/lint.ps1"
+
+[tasks.sync]
+description = "Sync NinjaTrader hard links"
+run = "pwsh -File ./deploy-sync.ps1"
+
+[tasks.pr-hygiene]
+description = "Verify PR hygiene (rebase, diff size)"
+run = "pwsh -File ./scripts/verify_pr_hygiene.ps1"
+
+[tasks.links]
+description = "Verify markdown links"
+run = "pwsh -File ./scripts/verify_links.ps1"
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = """
+dotnet clean src/V12_002.csproj
+Remove-Item -Recurse -Force bin,obj -ErrorAction SilentlyContinue
+"""
+
+[tasks.dev]
+description = "Start development workflow (format + build + test)"
+run = """
+mise run format
+mise run build
+mise run test
+"""
+
+[tasks.ci]
+description = "Run CI pipeline locally (full validation)"
+run = """
+mise run format-check
+mise run build
+mise run test
+mise run validate
+"""
+
+[tasks.doctor]
+description = "Check tool installation status"
+run = """
+echo "=== V12 Tool Installation Status ==="
+echo ""
+echo "Core Runtimes:"
+python --version
+node --version
+dotnet --version
+git --version
+echo ""
+echo "GitHub Tools:"
+gh --version
+jq --version
+yq --version
+echo ""
+echo ".NET Tools:"
+dotnet tool list
+echo ""
+echo "Python Packages:"
+pip list | grep -E "(lizard|semgrep|requests)"
+echo ""
+echo "Node Packages:"
+npm list -g --depth=0 | grep snyk
+echo ""
+echo "=== Manual Installation Required ==="
+echo "- PowerShell 7.x: pwsh --version"
+echo "- Gitleaks: gitleaks version"
+echo "- CodeScene CLI: cs --version"
+echo "- CodeRabbit CLI: cr --version"
+echo "- Bob CLI: bob --version"
+echo "- Graphify: graphify --version"
+"""
+
+# Windows-specific tasks
+[tasks.setup-windows]
+description = "Windows-specific setup (PowerShell 7, Gitleaks)"
+run = """
+echo "=== Windows Setup ==="
+echo "Installing PowerShell 7..."
+winget install Microsoft.PowerShell --silent
+
+echo ""
+echo "Installing Gitleaks..."
+winget install gitleaks --silent
+
+echo ""
+echo "Run 'mise run setup' to complete installation"
+"""
+
+# macOS-specific tasks
+[tasks.setup-macos]
+description = "macOS-specific setup (PowerShell 7, Gitleaks)"
+run = """
+echo "=== macOS Setup ==="
+echo "Installing PowerShell 7..."
+brew install powershell
+
+echo ""
+echo "Installing Gitleaks..."
+brew install gitleaks
+
+echo ""
+echo "Run 'mise run setup' to complete installation"
+"""
+
+[tasks.bob-engineer]
+description = "Run Bob CLI in v12-engineer mode"
+run = "bob --mode v12-engineer"
+
+# Jane Street Knowledge Base Sync Tasks
+[tasks.jcodemunch-install]
+description = "Install jcodemunch-mcp globally via npm"
+run = """
+echo "=== Installing jCodemunch MCP ==="
+npm install -g jcodemunch-mcp
+echo ""
+echo "Verifying installation..."
+jcodemunch --version
+"""
+
+[tasks.jcodemunch-setup]
+description = "Verify jcodemunch-mcp is installed and configured"
+run = """
+echo "=== Verifying jCodemunch MCP Setup ==="
+if (Get-Command jcodemunch -ErrorAction SilentlyContinue) {
+    Write-Host "jCodemunch MCP is installed" -ForegroundColor Green
+    jcodemunch --version
+} else {
+    Write-Host "ERROR: jCodemunch not found. Install via: mise run jcodemunch-install" -ForegroundColor Red
+    exit 1
+}
+"""
+
+[tasks.jane-street-sync]
+description = "Sync Jane Street knowledge base (jcodemunch + Firestore)"
+run = "pwsh -File ./scripts/jane_street_sync.ps1"
+depends = ["jcodemunch-setup"]
+
+[tasks.jane-street-sync-tier1]
+description = "Sync Tier 1 repos only (12 repos, ~6 hours)"
+run = "pwsh -File ./scripts/jane_street_sync.ps1 -Tier 1"
+depends = ["jcodemunch-setup"]
+
+[tasks.jane-street-sync-tier2]
+description = "Sync Tier 2 repos only (10 repos, ~5 hours)"
+run = "pwsh -File ./scripts/jane_street_sync.ps1 -Tier 2"
+depends = ["jcodemunch-setup"]
+
+[tasks.jane-street-sync-extract]
+description = "Extract docs to Firestore (requires repos already cloned)"
+run = "pwsh -File ./scripts/jane_street_sync.ps1 -ExtractOnly"
+
+[tasks.jane-street-sync-test]
+description = "Test sync on 2 small repos (time_now, patience_diff)"
+run = "pwsh -File ./scripts/jane_street_sync.ps1 -TestMode"
+depends = ["jcodemunch-setup"]
+
+[tasks.jane-street-sync-test-dry]
+description = "Test sync without Firestore upload (validation only)"
+run = "pwsh -File ./scripts/jane_street_sync.ps1 -TestMode -SkipFirestore"
+depends = ["jcodemunch-setup"]
+
+[tasks.jane-street-status]
+description = "Check Jane Street sync status"
+run = """
+if (Test-Path ~/.jane-street/.sync-status.json) {
+    Get-Content ~/.jane-street/.sync-status.json | ConvertFrom-Json | Format-Table
+} else {
+    Write-Host "No sync status found. Run 'mise run jane-street-sync' to start." -ForegroundColor Yellow
+}
+"""
+
+# Alias shortcuts
+[tasks.v]
+alias = "validate-fast"
+
+[tasks.f]
+alias = "format"
+
+[tasks.b]
+alias = "build"
+
+[tasks.t]
+alias = "test"
+
+[tasks.s]
+alias = "sync"
