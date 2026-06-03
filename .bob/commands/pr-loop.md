@@ -164,11 +164,12 @@ PROTOCOL:
   PART C: Validation
     3. Run formatters: powershell -File .\scripts\format_all_csharp.ps1
     4. Run FULL local validation: powershell -File .\scripts\pre_push_validation.ps1
+       (Includes CodeScene Delta Analysis as Check #14)
     5. If ANY blocking check fails: identify issue, repeat Step 2.
-    6. If ALL checks pass (13/13): emit [LOCAL-READY] with fix summary.
+    6. If ALL checks pass (14/14): emit [LOCAL-READY] with fix summary.
 ```
 
-**Gate:** ALL local checks PASS (8 blocking + 5 warnings). If any blocking check fails, repeat Step 2.
+**Gate:** ALL local checks PASS (9 blocking + 5 warnings). CodeScene Delta must show no high-severity code health degradation. If any blocking check fails, repeat Step 2.
 
 ---
 
