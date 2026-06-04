@@ -6,7 +6,7 @@ Analyzes all src/*.cs files for:
 2. M5 dispatch candidates (switch/if chains >= 4 branches)
 3. LOC health (methods > 80 LOC)
 
-V12.22 Enhancement: Supports --threshold and --fail-on-violation for CI gates.
+V12.24 GODMODE: Default threshold = 8 (Jane Street strict)
 """
 import re
 import os
@@ -209,13 +209,14 @@ def generate_report():
     
     all_methods = []
     total_methods = 0
-    cyc_over_20 = []
-    cyc_15_to_20 = []
+    cyc_over_8 = []
+    cyc_6_to_8 = []
     m5_candidates = []
     loc_over_80 = []
     
     print("=" * 80)
-    print("V12 UNIVERSAL OR STRATEGY - FULL CODEBASE COMPLEXITY AUDIT")
+    print("V12 UNIVERSAL OR STRATEGY - GODMODE COMPLEXITY AUDIT")
+    print("JANE STREET STRICT THRESHOLD: CYC ≤ 8")
     print("=" * 80)
     print()
     
@@ -236,12 +237,12 @@ def generate_report():
         
         for method in sorted_methods:
             action = []
-            if method.cyc > 20:
-                action.append("CRITICAL-REFACTOR")
-                cyc_over_20.append(f"{cs_file.name}::{method.name} (CYC={method.cyc}, LOC={method.loc})")
-            elif method.cyc >= 15:
+            if method.cyc > 8:
+                action.append("REFACTOR")
+                cyc_over_8.append(f"{cs_file.name}::{method.name} (CYC={method.cyc}, LOC={method.loc})")
+            elif method.cyc >= 6:
                 action.append("WATCH")
-                cyc_15_to_20.append(f"{cs_file.name}::{method.name} (CYC={method.cyc}, LOC={method.loc})")
+                cyc_6_to_8.append(f"{cs_file.name}::{method.name} (CYC={method.cyc}, LOC={method.loc})")
             
             if method.loc > 80:
                 action.append("LOC>80")
@@ -259,22 +260,22 @@ def generate_report():
     
     # Final summary
     print("=" * 80)
-    print("=== PHASE 7 CLOSE REPORT ===")
+    print("=== GODMODE AUDIT REPORT ===")
     print("=" * 80)
     print(f"Total methods audited: {total_methods}")
     print()
     
-    print(f"CYC > 20 remaining: {len(cyc_over_20)}")
-    if cyc_over_20:
-        for item in cyc_over_20:
+    print(f"CYC > 8 (BLOCKING): {len(cyc_over_8)}")
+    if cyc_over_8:
+        for item in cyc_over_8:
             print(f"  - {item}")
     else:
         print("  NONE")
     print()
     
-    print(f"CYC 15-20 (watch list): {len(cyc_15_to_20)}")
-    if cyc_15_to_20:
-        for item in cyc_15_to_20:
+    print(f"CYC 6-8 (watch list): {len(cyc_6_to_8)}")
+    if cyc_6_to_8:
+        for item in cyc_6_to_8:
             print(f"  - {item}")
     else:
         print("  NONE")
@@ -297,15 +298,15 @@ def generate_report():
     print("[CODEBASE-AUDIT-COMPLETE]")
 
 if __name__ == '__main__':
-    # V12.22: Add CLI argument parsing for threshold enforcement
+    # V12.24 GODMODE: Default threshold = 8 (Jane Street strict)
     parser = argparse.ArgumentParser(
-        description='V12 Complexity Audit - Analyze cyclomatic complexity across src/ files'
+        description='V12 GODMODE Complexity Audit - Jane Street Strict (CYC ≤ 8)'
     )
     parser.add_argument(
         '--threshold',
         type=int,
-        default=20,
-        help='CYC threshold for violations (default: 20, V12.22 uses 15)'
+        default=8,
+        help='CYC threshold for violations (default: 8, Jane Street strict)'
     )
     parser.add_argument(
         '--fail-on-violation',
@@ -313,6 +314,9 @@ if __name__ == '__main__':
         help='Exit with code 1 if any method exceeds threshold (CI gate mode)'
     )
     args = parser.parse_args()
+    
+    print(f"[GODMODE] Using Jane Street strict threshold: CYC ≤ {args.threshold}")
+    print()
     
     # Run the audit
     src_dir = Path('src')

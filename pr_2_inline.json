@@ -1,0 +1,1313 @@
+﻿[
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350495563",
+        "pull_request_review_id":  4420950261,
+        "id":  3350495563,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtIFL",
+        "diff_hunk":  "@@ -379,113 +379,139 @@ private void DeactivateRMAMode()\n         #region RMA Intelligence (Phase 9.2)\n \n \n+        // [EPIC-CCN-13] Orchestrator pattern (CYC \u003c= 8)\n         private void MonitorRmaProximity()\n         {\n-            // [EPIC-5-PERF] Latency instrumentation\n             var probe = LatencyProbe.Start();\n-\n             try\n             {\n                 if (!RmaIntelligenceEnabled)\n                     return;\n \n                 foreach (var kvp in entryOrders)\n                 {\n-                    Order order = kvp.Value;\n-                    if (order == null || order.OrderState != OrderState.Working)\n-                        continue;\n-\n-                    PositionInfo pos;\n-                    if (!activePositions.TryGetValue(kvp.Key, out pos) || !pos.IsRMATrade)\n+                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))\n+                    {\n                         continue;\n+                    }\n \n-                    double currentPrice = Close[0];\n-                    double level = pos.EntryPrice;\n-                    double distTicks = Math.Abs(currentPrice - level) / tickSize;\n-\n-                    // Phase 9.2: Initialize ClosestApproachTicks on first observation.\n-                    if (pos.ClosestApproachTicks \u003c= 0)\n-                        pos.ClosestApproachTicks = double.MaxValue;\n-\n-                    // Phase 9.2: Track closest approach as a monotonic minimum.\n-                    if (distTicks \u003c pos.ClosestApproachTicks)\n-                        pos.ClosestApproachTicks = distTicks;\n+                    double distTicks = CalculateProximityDistance(pos, Close[0]);\n \n                     if (distTicks \u003c= RmaProximityTicks)\n                     {\n-                        if (!pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = true;\n-                            pos.ProximityProbeCount++;\n-                            Print(\n-                                LogBuffer.Format(\n-                                    \"[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}\",\n-                                    pos.ProximityProbeCount,\n-                                    kvp.Key,\n-                                    distTicks,\n-                                    level\n-                                )\n-                            );\n-                        }\n-\n-                        // Visual feedback only. Draw state is not logic state.\n-                        Draw.Dot(this, \"Prox_\" + kvp.Key, false, 0, level, Brushes.Cyan);\n+                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice);\n                     }\n-                    else if (distTicks \u003c RmaCancellationTicks)\n+                    else if (distTicks \u003e= RmaCancellationTicks)\n                     {\n-                        // Dead zone hysteresis. No state transition.\n-                    }\n-                    else\n-                    {\n-                        if (pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = false;\n-\n-                            if (RmaExhaustionEnabled \u0026\u0026 pos.ProximityProbeCount \u003e= RmaMaxProbeCount)\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] EXHAUSTION: {0} probed {1}x (max={2}), closest={3:F1}t. Cancelling.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        RmaMaxProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                CancelOrderSafe(order, pos);\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_EXHAUSTION_CANCEL\");\n-                            }\n-                            else\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] Retreat for {0} (probe #{1}, closest={2:F1}t). Monitoring.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_PROXIMITY_RETREAT\");\n-                            }\n-                        }\n-                        else\n-                        {\n-                            if (GetDrawObject(\"Prox_\" + kvp.Key) != null)\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                        }\n+                        HandleProximityExit(kvp.Key, kvp.Value, pos);\n                     }",
+        "path":  "src/V12_002.Entries.RMA.cs",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "amazon-q-developer[bot]",
+                     "id":  208079219,
+                     "node_id":  "BOT_kgDODGcJcw",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/1220912?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/amazon-q-developer",
+                     "followers_url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/amazon-q-developer%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  ":stop_sign: **Logic Error**: The refactoring removed the hysteresis dead zone between proximity and cancellation thresholds. The original code had three branches: proximity entry (`\u003c= RmaProximityTicks`), dead zone (`\u003c RmaCancellationTicks`), and exit (`\u003e= RmaCancellationTicks`). The new code only has two branches, causing the dead zone range to incorrectly trigger exit logic. This breaks the intended state-transition behavior where prices between the two thresholds should not trigger any action.\n```suggestion\n                if (distTicks \u003c= RmaProximityTicks)\n                    {\n                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice);\n                    }\n                    else if (distTicks \u003e= RmaCancellationTicks)\n                    {\n                        HandleProximityExit(kvp.Key, kvp.Value, pos);\n                    }\n                    // Dead zone hysteresis: no action between RmaProximityTicks and RmaCancellationTicks\n```",
+        "created_at":  "2026-06-03T17:13:14Z",
+        "updated_at":  "2026-06-03T17:13:14Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350495563",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350495563"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350495563"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350495563/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  400,
+        "original_start_line":  400,
+        "start_side":  "RIGHT",
+        "line":  407,
+        "original_line":  407,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  108,
+        "position":  108,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498424",
+        "pull_request_review_id":  4420954055,
+        "id":  3350498424,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtIx4",
+        "diff_hunk":  "@@ -379,113 +379,139 @@ private void DeactivateRMAMode()\n         #region RMA Intelligence (Phase 9.2)\n \n \n+        // [EPIC-CCN-13] Orchestrator pattern (CYC \u003c= 8)\n         private void MonitorRmaProximity()\n         {\n-            // [EPIC-5-PERF] Latency instrumentation\n             var probe = LatencyProbe.Start();\n-\n             try\n             {\n                 if (!RmaIntelligenceEnabled)\n                     return;",
+        "path":  "src/V12_002.Entries.RMA.cs",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "gemini-code-assist[bot]",
+                     "id":  176961590,
+                     "node_id":  "BOT_kgDOCow4Ng",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/956858?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/gemini-code-assist",
+                     "followers_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "![medium](https://www.gstatic.com/codereviewagent/medium-priority.svg)\n\nTo prevent potential `NullReferenceException` or `IndexOutOfRangeException` during startup or when no bars are loaded, add guards for `CurrentBar \u003c 0` and `Close == null` before accessing `Close[0]`.\n\n```c#\n                if (!RmaIntelligenceEnabled || CurrentBar \u003c 0 || Close == null)\n                    return;\n```",
+        "created_at":  "2026-06-03T17:13:45Z",
+        "updated_at":  "2026-06-03T17:13:45Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350498424",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498424"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350498424"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498424/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  388,
+        "original_start_line":  388,
+        "start_side":  "RIGHT",
+        "line":  389,
+        "original_line":  389,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  13,
+        "position":  13,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498431",
+        "pull_request_review_id":  4420954055,
+        "id":  3350498431,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtIx_",
+        "diff_hunk":  "@@ -379,113 +379,139 @@ private void DeactivateRMAMode()\n         #region RMA Intelligence (Phase 9.2)\n \n \n+        // [EPIC-CCN-13] Orchestrator pattern (CYC \u003c= 8)\n         private void MonitorRmaProximity()\n         {\n-            // [EPIC-5-PERF] Latency instrumentation\n             var probe = LatencyProbe.Start();\n-\n             try\n             {\n                 if (!RmaIntelligenceEnabled)\n                     return;\n \n                 foreach (var kvp in entryOrders)\n                 {\n-                    Order order = kvp.Value;\n-                    if (order == null || order.OrderState != OrderState.Working)\n-                        continue;\n-\n-                    PositionInfo pos;\n-                    if (!activePositions.TryGetValue(kvp.Key, out pos) || !pos.IsRMATrade)\n+                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))\n+                    {\n                         continue;\n+                    }\n \n-                    double currentPrice = Close[0];\n-                    double level = pos.EntryPrice;\n-                    double distTicks = Math.Abs(currentPrice - level) / tickSize;\n-\n-                    // Phase 9.2: Initialize ClosestApproachTicks on first observation.\n-                    if (pos.ClosestApproachTicks \u003c= 0)\n-                        pos.ClosestApproachTicks = double.MaxValue;\n-\n-                    // Phase 9.2: Track closest approach as a monotonic minimum.\n-                    if (distTicks \u003c pos.ClosestApproachTicks)\n-                        pos.ClosestApproachTicks = distTicks;\n+                    double distTicks = CalculateProximityDistance(pos, Close[0]);\n \n                     if (distTicks \u003c= RmaProximityTicks)\n                     {\n-                        if (!pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = true;\n-                            pos.ProximityProbeCount++;\n-                            Print(\n-                                LogBuffer.Format(\n-                                    \"[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}\",\n-                                    pos.ProximityProbeCount,\n-                                    kvp.Key,\n-                                    distTicks,\n-                                    level\n-                                )\n-                            );\n-                        }\n-\n-                        // Visual feedback only. Draw state is not logic state.\n-                        Draw.Dot(this, \"Prox_\" + kvp.Key, false, 0, level, Brushes.Cyan);\n+                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice);\n                     }\n-                    else if (distTicks \u003c RmaCancellationTicks)\n+                    else if (distTicks \u003e= RmaCancellationTicks)\n                     {\n-                        // Dead zone hysteresis. No state transition.\n-                    }\n-                    else\n-                    {\n-                        if (pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = false;\n-\n-                            if (RmaExhaustionEnabled \u0026\u0026 pos.ProximityProbeCount \u003e= RmaMaxProbeCount)\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] EXHAUSTION: {0} probed {1}x (max={2}), closest={3:F1}t. Cancelling.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        RmaMaxProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                CancelOrderSafe(order, pos);\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_EXHAUSTION_CANCEL\");\n-                            }\n-                            else\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] Retreat for {0} (probe #{1}, closest={2:F1}t). Monitoring.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_PROXIMITY_RETREAT\");\n-                            }\n-                        }\n-                        else\n-                        {\n-                            if (GetDrawObject(\"Prox_\" + kvp.Key) != null)\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                        }\n+                        HandleProximityExit(kvp.Key, kvp.Value, pos);\n                     }\n                 }\n             }\n             finally\n             {\n-                // [EPIC-5-PERF] Record latency\n                 probe = probe.Stop();\n                 _histMonitorRmaProximity.Record(probe);\n             }\n         }\n \n+        // [EPIC-CCN-13] Helper: Validate order eligibility (CYC \u003c= 5)\n+        private bool ShouldMonitorOrder(Order order, string entryName, out PositionInfo pos)\n+        {\n+            pos = null;\n+            if (order == null || order.OrderState != OrderState.Working)\n+            {\n+                return false;\n+            }\n+\n+            if (!activePositions.TryGetValue(entryName, out pos) || !pos.IsRMATrade)",
+        "path":  "src/V12_002.Entries.RMA.cs",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "gemini-code-assist[bot]",
+                     "id":  176961590,
+                     "node_id":  "BOT_kgDOCow4Ng",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/956858?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/gemini-code-assist",
+                     "followers_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "![medium](https://www.gstatic.com/codereviewagent/medium-priority.svg)\n\nAdd a null check for `pos` after retrieving it from `activePositions` to prevent a potential `NullReferenceException` if a null value is ever stored in the dictionary.\n\n```c#\n            if (!activePositions.TryGetValue(entryName, out pos) || pos == null || !pos.IsRMATrade)\n```",
+        "created_at":  "2026-06-03T17:13:45Z",
+        "updated_at":  "2026-06-03T17:13:45Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350498431",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498431"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350498431"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498431/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  null,
+        "original_start_line":  null,
+        "start_side":  null,
+        "line":  426,
+        "original_line":  426,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  128,
+        "position":  128,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498435",
+        "pull_request_review_id":  4420954055,
+        "id":  3350498435,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtIyD",
+        "diff_hunk":  "@@ -25,10 +25,11 @@ $rawFile = \"pr_${PrNumber}_raw.json\"\n gh pr view $PrNumber --json comments,reviews,statusCheckRollup | Out-File -FilePath $rawFile -Encoding utf8\n $prData = Get-Content $rawFile | ConvertFrom-Json\n \n-# Fetch full comments page (includes inline review comments)\n-$commentsFile = \"pr_${PrNumber}_comments.txt\"\n-gh pr view $PrNumber --comments | Out-File -FilePath $commentsFile -Encoding utf8\n-$fullComments = Get-Content $commentsFile -Raw\n+# Fetch inline review comments via REST API (NEW - replaces text parsing)\n+Write-Host \"  Fetching inline review comments via REST API...\" -ForegroundColor Gray\n+$inlineFile = \"pr_${PrNumber}_inline.json\"\n+gh api repos/:owner/:repo/pulls/$PrNumber/comments | Out-File -FilePath $inlineFile -Encoding utf8\n+$inlineComments = Get-Content $inlineFile | ConvertFrom-Json",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "gemini-code-assist[bot]",
+                     "id":  176961590,
+                     "node_id":  "BOT_kgDOCow4Ng",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/956858?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/gemini-code-assist",
+                     "followers_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "![medium](https://www.gstatic.com/codereviewagent/medium-priority.svg)\n\nIf the `gh api` call fails or returns an empty response, `ConvertFrom-Json` will throw an error and halt the script due to `$ErrorActionPreference = \"Stop\"`. Wrap the JSON parsing in a robust check and `try-catch` block to handle API failures gracefully.\n\n```\n$inlineFile = \"pr_${PrNumber}_inline.json\"\ngh api repos/:owner/:repo/pulls/$PrNumber/comments | Out-File -FilePath $inlineFile -Encoding utf8\n$inlineComments = @()\nif (Test-Path $inlineFile) {\n    $inlineContent = Get-Content $inlineFile -Raw\n    if (-not [string]::IsNullOrWhiteSpace($inlineContent)) {\n        try {\n            $inlineComments = $inlineContent | ConvertFrom-Json\n        } catch {\n            Write-Warning \"Failed to parse inline comments JSON: $_\"\n        }\n    }\n}\n```",
+        "created_at":  "2026-06-03T17:13:45Z",
+        "updated_at":  "2026-06-03T17:13:45Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350498435",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498435"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350498435"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498435/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  30,
+        "original_start_line":  30,
+        "start_side":  "RIGHT",
+        "line":  32,
+        "original_line":  32,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  12,
+        "position":  12,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498437",
+        "pull_request_review_id":  4420954055,
+        "id":  3350498437,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtIyF",
+        "diff_hunk":  "@@ -186,39 +187,30 @@ foreach ($review in $prData.reviews) {\n     }\n }\n \n-# Step 2.5: Parse inline review comments from full comments page\n-Write-Host \"[2.5/5] Parsing inline review comments...\" -ForegroundColor Green\n+# Step 2.5: Process inline review comments from REST API\n+Write-Host \"[2.5/5] Processing inline review comments from REST API...\" -ForegroundColor Green\n \n-# Extract inline comments (format: \"bot-name commented on line X in file.cs\")\n-$inlinePattern = \u0027(?m)^(\\S+)\\s+commented.*?on line (\\d+).*?in\\s+(\\S+\\.cs).*?\\n\\n(.*?)(?=\\n\\n\\S+\\s+commented|\\z)\u0027\n-$inlineMatches = [regex]::Matches($fullComments, $inlinePattern)\n-\n-foreach ($match in $inlineMatches) {\n-    $author = $match.Groups[1].Value\n-    $lineNum = $match.Groups[2].Value\n-    $fileName = $match.Groups[3].Value\n-    $commentBody = $match.Groups[4].Value.Trim()\n+foreach ($comment in $inlineComments) {\n+    $author = $comment.user.login\n+    $body = $comment.body\n+    $file = $comment.path\n+    $line = $comment.line\n+    $commentId = $comment.id",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "gemini-code-assist[bot]",
+                     "id":  176961590,
+                     "node_id":  "BOT_kgDOCow4Ng",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/956858?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/gemini-code-assist",
+                     "followers_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/gemini-code-assist%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "![medium](https://www.gstatic.com/codereviewagent/medium-priority.svg)\n\nTo ensure compatibility with Windows PowerShell 5.1 (which does not support the null-coalescing operator `??`) and to prevent runtime crashes if `$comment.user` or `$comment.body` is null, use robust, PowerShell 5.1-compatible null checks.\n\n```\n    $author = if ($comment.user) { $comment.user.login } else { \"unknown\" }\n    $body = $comment.body\n    if ($null -eq $body) { $body = \"\" }\n    $file = $comment.path\n    if ($null -eq $file) { $file = \"unknown\" }\n    $line = $comment.line\n    if ($null -eq $line) { $line = $comment.original_line }\n    if ($null -eq $line) { $line = 0 }\n    $commentId = $comment.id\n```",
+        "created_at":  "2026-06-03T17:13:45Z",
+        "updated_at":  "2026-06-03T17:13:45Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350498437",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498437"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350498437"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350498437/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  194,
+        "original_start_line":  194,
+        "start_side":  "RIGHT",
+        "line":  198,
+        "original_line":  198,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  39,
+        "position":  39,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350500873",
+        "pull_request_review_id":  4420957349,
+        "id":  3350500873,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtJYJ",
+        "diff_hunk":  "@@ -25,10 +25,11 @@ $rawFile = \"pr_${PrNumber}_raw.json\"\n gh pr view $PrNumber --json comments,reviews,statusCheckRollup | Out-File -FilePath $rawFile -Encoding utf8\n $prData = Get-Content $rawFile | ConvertFrom-Json\n \n-# Fetch full comments page (includes inline review comments)\n-$commentsFile = \"pr_${PrNumber}_comments.txt\"\n-gh pr view $PrNumber --comments | Out-File -FilePath $commentsFile -Encoding utf8\n-$fullComments = Get-Content $commentsFile -Raw\n+# Fetch inline review comments via REST API (NEW - replaces text parsing)\n+Write-Host \"  Fetching inline review comments via REST API...\" -ForegroundColor Gray\n+$inlineFile = \"pr_${PrNumber}_inline.json\"\n+gh api repos/:owner/:repo/pulls/$PrNumber/comments | Out-File -FilePath $inlineFile -Encoding utf8\n+$inlineComments = Get-Content $inlineFile | ConvertFrom-Json",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "sourcery-ai[bot]",
+                     "id":  58596630,
+                     "node_id":  "MDM6Qm90NTg1OTY2MzA=",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/48477?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/sourcery-ai",
+                     "followers_url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/sourcery-ai%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "**issue:** Handle pagination when fetching inline review comments via the GitHub REST API.\n\nThis endpoint is paginated and currently only returns the first page. On PRs with many inline comments, later pages will be missed and the analysis will be incomplete. Please either add `--paginate` (and optionally `--jq` to flatten) or follow the `Link` headers so `$inlineComments` includes all inline comments.",
+        "created_at":  "2026-06-03T17:14:13Z",
+        "updated_at":  "2026-06-03T17:14:13Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350500873",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350500873"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350500873"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350500873/reactions",
+                          "total_count":  2,
+                          "+1":  1,
+                          "-1":  1,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  30,
+        "original_start_line":  30,
+        "start_side":  "RIGHT",
+        "line":  32,
+        "original_line":  32,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  12,
+        "position":  12,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350501415",
+        "pull_request_review_id":  4420958113,
+        "id":  3350501415,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtJgn",
+        "diff_hunk":  "@@ -25,10 +25,11 @@ $rawFile = \"pr_${PrNumber}_raw.json\"\n gh pr view $PrNumber --json comments,reviews,statusCheckRollup | Out-File -FilePath $rawFile -Encoding utf8\n $prData = Get-Content $rawFile | ConvertFrom-Json\n \n-# Fetch full comments page (includes inline review comments)\n-$commentsFile = \"pr_${PrNumber}_comments.txt\"\n-gh pr view $PrNumber --comments | Out-File -FilePath $commentsFile -Encoding utf8\n-$fullComments = Get-Content $commentsFile -Raw\n+# Fetch inline review comments via REST API (NEW - replaces text parsing)\n+Write-Host \"  Fetching inline review comments via REST API...\" -ForegroundColor Gray\n+$inlineFile = \"pr_${PrNumber}_inline.json\"\n+gh api repos/:owner/:repo/pulls/$PrNumber/comments | Out-File -FilePath $inlineFile -Encoding utf8",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "45ab2ba1f010c3ebc9210f92529b1601da4be8db",
+        "original_commit_id":  "45ab2ba1f010c3ebc9210f92529b1601da4be8db",
+        "user":  {
+                     "login":  "codacy-production[bot]",
+                     "id":  61871480,
+                     "node_id":  "MDM6Qm90NjE4NzE0ODA=",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/56611?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/codacy-production%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/codacy-production",
+                     "followers_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "\u003csub\u003e:red_circle: HIGH RISK\u003c/sub\u003e\n\nThe GitHub CLI requires curly braces for repository placeholders. Use `{owner}/{repo}` instead of `:owner/:repo` to allow the CLI to automatically fill in the repository context; otherwise, the API request will fail with a 404.\n\u003c!-- e34d5167-b092-49eb-b8c8-33859ab00079 --\u003e",
+        "created_at":  "2026-06-03T17:14:19Z",
+        "updated_at":  "2026-06-03T17:14:19Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350501415",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350501415"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350501415"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350501415/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  null,
+        "original_start_line":  null,
+        "start_side":  null,
+        "line":  31,
+        "original_line":  31,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  11,
+        "position":  11,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350501420",
+        "pull_request_review_id":  4420958113,
+        "id":  3350501420,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtJgs",
+        "diff_hunk":  "@@ -379,113 +379,139 @@ private void DeactivateRMAMode()\n         #region RMA Intelligence (Phase 9.2)\n \n \n+        // [EPIC-CCN-13] Orchestrator pattern (CYC \u003c= 8)\n         private void MonitorRmaProximity()\n         {\n-            // [EPIC-5-PERF] Latency instrumentation\n             var probe = LatencyProbe.Start();\n-\n             try\n             {\n                 if (!RmaIntelligenceEnabled)\n                     return;\n \n                 foreach (var kvp in entryOrders)\n                 {\n-                    Order order = kvp.Value;\n-                    if (order == null || order.OrderState != OrderState.Working)\n-                        continue;\n-\n-                    PositionInfo pos;\n-                    if (!activePositions.TryGetValue(kvp.Key, out pos) || !pos.IsRMATrade)\n+                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))\n+                    {\n                         continue;\n+                    }\n \n-                    double currentPrice = Close[0];\n-                    double level = pos.EntryPrice;\n-                    double distTicks = Math.Abs(currentPrice - level) / tickSize;\n-\n-                    // Phase 9.2: Initialize ClosestApproachTicks on first observation.\n-                    if (pos.ClosestApproachTicks \u003c= 0)\n-                        pos.ClosestApproachTicks = double.MaxValue;\n-\n-                    // Phase 9.2: Track closest approach as a monotonic minimum.\n-                    if (distTicks \u003c pos.ClosestApproachTicks)\n-                        pos.ClosestApproachTicks = distTicks;\n+                    double distTicks = CalculateProximityDistance(pos, Close[0]);\n \n                     if (distTicks \u003c= RmaProximityTicks)\n                     {\n-                        if (!pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = true;\n-                            pos.ProximityProbeCount++;\n-                            Print(\n-                                LogBuffer.Format(\n-                                    \"[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}\",\n-                                    pos.ProximityProbeCount,\n-                                    kvp.Key,\n-                                    distTicks,\n-                                    level\n-                                )\n-                            );\n-                        }\n-\n-                        // Visual feedback only. Draw state is not logic state.\n-                        Draw.Dot(this, \"Prox_\" + kvp.Key, false, 0, level, Brushes.Cyan);\n+                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice);\n                     }\n-                    else if (distTicks \u003c RmaCancellationTicks)\n+                    else if (distTicks \u003e= RmaCancellationTicks)\n                     {\n-                        // Dead zone hysteresis. No state transition.\n-                    }\n-                    else\n-                    {\n-                        if (pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = false;\n-\n-                            if (RmaExhaustionEnabled \u0026\u0026 pos.ProximityProbeCount \u003e= RmaMaxProbeCount)\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] EXHAUSTION: {0} probed {1}x (max={2}), closest={3:F1}t. Cancelling.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        RmaMaxProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                CancelOrderSafe(order, pos);\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_EXHAUSTION_CANCEL\");\n-                            }\n-                            else\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] Retreat for {0} (probe #{1}, closest={2:F1}t). Monitoring.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_PROXIMITY_RETREAT\");\n-                            }\n-                        }\n-                        else\n-                        {\n-                            if (GetDrawObject(\"Prox_\" + kvp.Key) != null)\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                        }\n+                        HandleProximityExit(kvp.Key, kvp.Value, pos);\n                     }\n                 }\n             }\n             finally\n             {\n-                // [EPIC-5-PERF] Record latency\n                 probe = probe.Stop();\n                 _histMonitorRmaProximity.Record(probe);\n             }\n         }\n \n+        // [EPIC-CCN-13] Helper: Validate order eligibility (CYC \u003c= 5)\n+        private bool ShouldMonitorOrder(Order order, string entryName, out PositionInfo pos)\n+        {\n+            pos = null;\n+            if (order == null || order.OrderState != OrderState.Working)\n+            {\n+                return false;\n+            }\n+\n+            if (!activePositions.TryGetValue(entryName, out pos) || !pos.IsRMATrade)\n+            {\n+                return false;\n+            }\n+\n+            return true;\n+        }\n+\n+        // [EPIC-CCN-13] Helper: Calculate distance + track closest approach (CYC \u003c= 5)\n+        private double CalculateProximityDistance(PositionInfo pos, double currentPrice)\n+        {\n+            double level = pos.EntryPrice;\n+            double distTicks = Math.Abs(currentPrice - level) / tickSize;\n+\n+            if (pos.ClosestApproachTicks \u003c= 0)\n+                pos.ClosestApproachTicks = double.MaxValue;\n+\n+            if (distTicks \u003c pos.ClosestApproachTicks)\n+                pos.ClosestApproachTicks = distTicks;\n+\n+            return distTicks;\n+        }\n+\n+        // [EPIC-CCN-13] Helper: Handle proximity zone entry (CYC \u003c= 5)\n+        private void HandleProximityEntry(string entryName, PositionInfo pos, double distTicks, double level)",
+        "path":  "src/V12_002.Entries.RMA.cs",
+        "commit_id":  "45ab2ba1f010c3ebc9210f92529b1601da4be8db",
+        "original_commit_id":  "45ab2ba1f010c3ebc9210f92529b1601da4be8db",
+        "user":  {
+                     "login":  "codacy-production[bot]",
+                     "id":  61871480,
+                     "node_id":  "MDM6Qm90NjE4NzE0ODA=",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/56611?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/codacy-production%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/codacy-production",
+                     "followers_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "\u003csub\u003e:white_circle: LOW RISK\u003c/sub\u003e\n\nSuggestion: This method has side effects that mutate the `pos` object (specifically `ClosestApproachTicks`). Consider separating the state update from the calculation or renaming the method to `UpdateProximityStats` to reflect that it modifies tracking data.\n\u003c!-- e34d5167-b092-49eb-b8c8-33859ab00079 --\u003e",
+        "created_at":  "2026-06-03T17:14:19Z",
+        "updated_at":  "2026-06-03T17:14:19Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350501420",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350501420"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350501420"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350501420/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  437,
+        "original_start_line":  437,
+        "start_side":  "RIGHT",
+        "line":  450,
+        "original_line":  450,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  152,
+        "position":  152,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350501424",
+        "pull_request_review_id":  4420958113,
+        "id":  3350501424,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtJgw",
+        "diff_hunk":  "@@ -186,39 +187,30 @@ foreach ($review in $prData.reviews) {\n     }\n }\n \n-# Step 2.5: Parse inline review comments from full comments page\n-Write-Host \"[2.5/5] Parsing inline review comments...\" -ForegroundColor Green\n+# Step 2.5: Process inline review comments from REST API\n+Write-Host \"[2.5/5] Processing inline review comments from REST API...\" -ForegroundColor Green\n \n-# Extract inline comments (format: \"bot-name commented on line X in file.cs\")\n-$inlinePattern = \u0027(?m)^(\\S+)\\s+commented.*?on line (\\d+).*?in\\s+(\\S+\\.cs).*?\\n\\n(.*?)(?=\\n\\n\\S+\\s+commented|\\z)\u0027\n-$inlineMatches = [regex]::Matches($fullComments, $inlinePattern)\n-\n-foreach ($match in $inlineMatches) {\n-    $author = $match.Groups[1].Value\n-    $lineNum = $match.Groups[2].Value\n-    $fileName = $match.Groups[3].Value\n-    $commentBody = $match.Groups[4].Value.Trim()\n+foreach ($comment in $inlineComments) {\n+    $author = $comment.user.login\n+    $body = $comment.body\n+    $file = $comment.path\n+    $line = $comment.line\n+    $commentId = $comment.id",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "45ab2ba1f010c3ebc9210f92529b1601da4be8db",
+        "original_commit_id":  "45ab2ba1f010c3ebc9210f92529b1601da4be8db",
+        "user":  {
+                     "login":  "codacy-production[bot]",
+                     "id":  61871480,
+                     "node_id":  "MDM6Qm90NjE4NzE0ODA=",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/56611?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/codacy-production%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/codacy-production",
+                     "followers_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/codacy-production%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "\u003csub\u003e:white_circle: LOW RISK\u003c/sub\u003e\n\nNitpick: The variable `$commentId` is unused and can be removed.\n\u003c!-- e34d5167-b092-49eb-b8c8-33859ab00079 --\u003e",
+        "created_at":  "2026-06-03T17:14:19Z",
+        "updated_at":  "2026-06-03T17:14:19Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350501424",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350501424"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350501424"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350501424/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  null,
+        "original_start_line":  null,
+        "start_side":  null,
+        "line":  198,
+        "original_line":  198,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  39,
+        "position":  39,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350505924",
+        "pull_request_review_id":  4420963781,
+        "id":  3350505924,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtKnE",
+        "diff_hunk":  "@@ -25,10 +25,11 @@ $rawFile = \"pr_${PrNumber}_raw.json\"\n gh pr view $PrNumber --json comments,reviews,statusCheckRollup | Out-File -FilePath $rawFile -Encoding utf8\n $prData = Get-Content $rawFile | ConvertFrom-Json\n \n-# Fetch full comments page (includes inline review comments)\n-$commentsFile = \"pr_${PrNumber}_comments.txt\"\n-gh pr view $PrNumber --comments | Out-File -FilePath $commentsFile -Encoding utf8\n-$fullComments = Get-Content $commentsFile -Raw\n+# Fetch inline review comments via REST API (NEW - replaces text parsing)\n+Write-Host \"  Fetching inline review comments via REST API...\" -ForegroundColor Gray\n+$inlineFile = \"pr_${PrNumber}_inline.json\"\n+gh api repos/:owner/:repo/pulls/$PrNumber/comments | Out-File -FilePath $inlineFile -Encoding utf8\n+$inlineComments = Get-Content $inlineFile | ConvertFrom-Json",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "codeant-ai[bot]",
+                     "id":  151821869,
+                     "node_id":  "BOT_kgDOCQyeLQ",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/646884?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/codeant-ai%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/codeant-ai",
+                     "followers_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "**­ƒƒá Architect Review ÔÇö HIGH**\n\nInline review comments are fetched with a single unpaginated `gh api repos/:owner/:repo/pulls/$PrNumber/comments` call, so PRs with more than one REST page of inline comments will silently drop all comments beyond the first page, breaking the \"parse ALL feedback\" contract for the forensics extractor.\n\n**Suggestion:** Use `gh api --paginate` (or explicitly loop over `page`/`per_page` with Link headers) to fetch and aggregate all pages of `/pulls/{pr}/comments` before converting to JSON and classifying, so inline findings remain complete even on high-comment PRs.\n\n\n[Fix in Cursor](https://app.codeant.ai/fix-in-ide?tool=cursor\u0026prompt_id=c55dd422488843acb2938e25a9e30c9c\u0026service=github\u0026base_url=https%3A%2F%2Fgithub.com\u0026org=antigravityos187-sketch\u0026repo=antigravityos187-sketch%2Funiversal-or-strategy) | [Fix in VSCode Claude](https://app.codeant.ai/fix-in-ide?tool=vscode-claude\u0026prompt_id=c55dd422488843acb2938e25a9e30c9c\u0026service=github\u0026base_url=https%3A%2F%2Fgithub.com\u0026org=antigravityos187-sketch\u0026repo=antigravityos187-sketch%2Funiversal-or-strategy)\n\n*(Use Cmd/Ctrl + Click for best experience)*\n\u003cdetails\u003e\n\u003csummary\u003e\u003cb\u003ePrompt for AI Agent ­ƒñû \u003c/b\u003e\u003c/summary\u003e\n\n```mdx\nThis is an **Architect / Logical Review** comment left during a code review. These reviews are first-class, important findings ÔÇö not optional suggestions. Do NOT dismiss this as a \u0027big architectural change\u0027 just because the title says architect review; most of these can be resolved with a small, localized fix once the intent is understood.\n\n**Path:** scripts/extract_pr_forensics.ps1\n**Line:** 31:32\n**Comment:**\n\t*HIGH: Inline review comments are fetched with a single unpaginated `gh api repos/:owner/:repo/pulls/$PrNumber/comments` call, so PRs with more than one REST page of inline comments will silently drop all comments beyond the first page, breaking the \"parse ALL feedback\" contract for the forensics extractor.\n\nValidate the correctness of the flagged issue. If correct, How can I resolve this? If you propose a fix, implement it and please make it concise.\nIf a suggested approach is provided above, use it as the authoritative instruction. If no explicit code suggestion is given, you MUST still draft and apply your own minimal, localized fix ÔÇö do not punt back with \u0027no suggestion provided, review manually\u0027. Keep the change as small as possible: add a guard clause, gate on a loading state, reorder an await, wrap in a conditional, etc. Do not refactor surrounding code or expand scope beyond the finding.\nOnce fix is implemented, also check other comments on the same PR, and ask user if the user wants to fix the rest of the comments as well. if said yes, then fetch all the comments validate the correctness and implement a minimal fix\n```\n\u003c/details\u003e",
+        "created_at":  "2026-06-03T17:15:06Z",
+        "updated_at":  "2026-06-03T17:15:06Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350505924",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350505924"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350505924"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350505924/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  31,
+        "original_start_line":  31,
+        "start_side":  "RIGHT",
+        "line":  32,
+        "original_line":  32,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  12,
+        "position":  12,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350513116",
+        "pull_request_review_id":  4420973444,
+        "id":  3350513116,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtMXc",
+        "diff_hunk":  "@@ -25,10 +25,11 @@ $rawFile = \"pr_${PrNumber}_raw.json\"\n gh pr view $PrNumber --json comments,reviews,statusCheckRollup | Out-File -FilePath $rawFile -Encoding utf8\n $prData = Get-Content $rawFile | ConvertFrom-Json\n \n-# Fetch full comments page (includes inline review comments)\n-$commentsFile = \"pr_${PrNumber}_comments.txt\"\n-gh pr view $PrNumber --comments | Out-File -FilePath $commentsFile -Encoding utf8\n-$fullComments = Get-Content $commentsFile -Raw\n+# Fetch inline review comments via REST API (NEW - replaces text parsing)\n+Write-Host \"  Fetching inline review comments via REST API...\" -ForegroundColor Gray\n+$inlineFile = \"pr_${PrNumber}_inline.json\"\n+gh api repos/:owner/:repo/pulls/$PrNumber/comments | Out-File -FilePath $inlineFile -Encoding utf8",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "codeant-ai[bot]",
+                     "id":  151821869,
+                     "node_id":  "BOT_kgDOCQyeLQ",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/646884?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/codeant-ai%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/codeant-ai",
+                     "followers_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/codeant-ai%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "**Suggestion:** This API call does not paginate, so only the first page of review comments is retrieved (GitHub defaults to a limited page size). Large PRs will silently miss many inline findings; add pagination to ensure all comments are collected. [incomplete implementation]\n\n\u003cdetails\u003e\n\u003csummary\u003e\u003cb\u003eSeverity Level:\u003c/b\u003e Critical ­ƒÜ¿\u003c/summary\u003e\n\n```mdx\n- ÔØî Forensics report omits inline findings beyond first page.\n- ÔØî Fix queue misses some critical inline issues entirely.\n```\n\u003c/details\u003e\n\u003cdetails\u003e\n\u003csummary\u003e\u003cb\u003eSteps of Reproduction Ô£à \u003c/b\u003e\u003c/summary\u003e\n\n```mdx\n1. Create or identify a GitHub PR on this repo with a large number of inline review\ncomments, such that GitHub paginates the `GET\n/repos/{owner}/{repo}/pulls/{pull_number}/comments` results (many bot inline comments\nacross multiple files).\n\n2. From the repo root, run the documented script `.\\scripts\\extract_pr_forensics.ps1\n-PrNumber \u003cthat-PR-number\u003e` (usage at `scripts/extract_pr_forensics.ps1:3`), which calls\n`gh api repos/:owner/:repo/pulls/$PrNumber/comments` once at\n`scripts/extract_pr_forensics.ps1:31` and writes the single-page response to\n`pr_${PrNumber}_inline.json`, then loads it into `$inlineComments` at line 32.\n\n3. The inline-processing loop `foreach ($comment in $inlineComments)` at\n`scripts/extract_pr_forensics.ps1:193ÔÇô249` iterates only over the comments returned on\nthat first page, classifies them, and appends them to `$findings` as `Source = \"inline\"`\nat lines 239ÔÇô247; any additional inline comments on subsequent API pages are never fetched\nor processed.\n\n4. Inspect the generated forensics artifacts: the report at\n`docs/brain/pr_${PrNumber}_forensics.md` (built from `$findings` at\n`scripts/extract_pr_forensics.ps1:254ÔÇô67`) and the fix queue at\n`docs/brain/pr_${PrNumber}_fix_queue.md` (built from `$validFindings` at lines 83ÔÇô103);\nobserve that they only include inline findings from the first API page and silently omit\ninline comments beyond that page.\n```\n\u003c/details\u003e\n\n[Fix in Cursor](https://app.codeant.ai/fix-in-ide?tool=cursor\u0026prompt_id=498c61d558e54e98a4230d371a433c1d\u0026service=github\u0026base_url=https%3A%2F%2Fgithub.com\u0026org=antigravityos187-sketch\u0026repo=antigravityos187-sketch%2Funiversal-or-strategy) | [Fix in VSCode Claude](https://app.codeant.ai/fix-in-ide?tool=vscode-claude\u0026prompt_id=498c61d558e54e98a4230d371a433c1d\u0026service=github\u0026base_url=https%3A%2F%2Fgithub.com\u0026org=antigravityos187-sketch\u0026repo=antigravityos187-sketch%2Funiversal-or-strategy)\n\n*(Use Cmd/Ctrl + Click for best experience)*\n\u003cdetails\u003e\n\u003csummary\u003e\u003cb\u003ePrompt for AI Agent ­ƒñû \u003c/b\u003e\u003c/summary\u003e\n\n```mdx\nThis is a comment left during a code review.\n\n**Path:** scripts/extract_pr_forensics.ps1\n**Line:** 31:31\n**Comment:**\n\t*Incomplete Implementation: This API call does not paginate, so only the first page of review comments is retrieved (GitHub defaults to a limited page size). Large PRs will silently miss many inline findings; add pagination to ensure all comments are collected.\n\nValidate the correctness of the flagged issue. If correct, How can I resolve this? If you propose a fix, implement it and please make it concise.\nOnce fix is implemented, also check other comments on the same PR, and ask user if the user wants to fix the rest of the comments as well. if said yes, then fetch all the comments validate the correctness and implement a minimal fix\n```\n\u003c/details\u003e\n\u003ca href=\u0027https://app.codeant.ai/feedback?pr_url=https%3A%2F%2Fgithub.com%2Fantigravityos187-sketch%2Funiversal-or-strategy%2Fpull%2F2\u0026comment_hash=8dbe8547e5753edd972ccfc6c0e1fb204278405bca58ae6964293b1efc20836d\u0026reaction=like\u0027\u003e­ƒæì\u003c/a\u003e | \u003ca href=\u0027https://app.codeant.ai/feedback?pr_url=https%3A%2F%2Fgithub.com%2Fantigravityos187-sketch%2Funiversal-or-strategy%2Fpull%2F2\u0026comment_hash=8dbe8547e5753edd972ccfc6c0e1fb204278405bca58ae6964293b1efc20836d\u0026reaction=dislike\u0027\u003e­ƒæÄ\u003c/a\u003e",
+        "created_at":  "2026-06-03T17:16:19Z",
+        "updated_at":  "2026-06-03T17:16:19Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350513116",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350513116"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350513116"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350513116/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  null,
+        "original_start_line":  null,
+        "start_side":  null,
+        "line":  31,
+        "original_line":  31,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  11,
+        "position":  11,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350515023",
+        "pull_request_review_id":  4420976089,
+        "id":  3350515023,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtM1P",
+        "diff_hunk":  "@@ -25,10 +25,11 @@ $rawFile = \"pr_${PrNumber}_raw.json\"\n gh pr view $PrNumber --json comments,reviews,statusCheckRollup | Out-File -FilePath $rawFile -Encoding utf8\n $prData = Get-Content $rawFile | ConvertFrom-Json\n \n-# Fetch full comments page (includes inline review comments)\n-$commentsFile = \"pr_${PrNumber}_comments.txt\"\n-gh pr view $PrNumber --comments | Out-File -FilePath $commentsFile -Encoding utf8\n-$fullComments = Get-Content $commentsFile -Raw\n+# Fetch inline review comments via REST API (NEW - replaces text parsing)\n+Write-Host \"  Fetching inline review comments via REST API...\" -ForegroundColor Gray\n+$inlineFile = \"pr_${PrNumber}_inline.json\"\n+gh api repos/:owner/:repo/pulls/$PrNumber/comments | Out-File -FilePath $inlineFile -Encoding utf8\n+$inlineComments = Get-Content $inlineFile | ConvertFrom-Json",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "qodo-code-review[bot]",
+                     "id":  151058649,
+                     "node_id":  "BOT_kgDOCQD42Q",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/484649?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/qodo-code-review",
+                     "followers_url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/qodo-code-review%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "\u003cimg src=\"https://www.qodo.ai/wp-content/uploads/2026/01/action-required.png\" height=\"20\" alt=\"Action required\"\u003e\n\n1\\. Inline json parsing fails \u003ccode\u003e­ƒÉ× Bug\u003c/code\u003e \u003ccode\u003eÔÿ╝ Reliability\u003c/code\u003e\n\n\u003cpre\u003e\nextract_pr_forensics.ps1 pipes Get-Content (line-by-line) into ConvertFrom-Json for inline comments,\nwhich fails when the saved JSON spans multiple lines; with $ErrorActionPreference=\u0026quot;Stop\u0026quot; this aborts\nthe entire forensics run. This can prevent inline bot findings from being extracted at all.\n\u003c/pre\u003e\n\n\n\u003cdetails\u003e\n\u003csummary\u003e\u003cstrong\u003eAgent Prompt\u003c/strong\u003e\u003c/summary\u003e\n\n````\n## Issue description\n`scripts/extract_pr_forensics.ps1` loads the inline review comments JSON using:\n\n```powershell\n$inlineComments = Get-Content $inlineFile | ConvertFrom-Json\n```\n\nBecause `Get-Content` emits one string per line, `ConvertFrom-Json` is invoked per-line and will fail for multi-line JSON output. Since the script sets `$ErrorActionPreference = \"Stop\"`, this error terminates the entire forensics extraction.\n\n## Issue Context\nThis PR switched inline comment collection to `gh api .../pulls/\u003cpr\u003e/comments` and writes the JSON response to disk before parsing it.\n\n## Fix Focus Areas\n- scripts/extract_pr_forensics.ps1[28-33]\n\n## Recommended fix\nUse raw content when parsing JSON from disk, or parse directly from the command output.\n\nOption A (minimal):\n```powershell\n$inlineComments = Get-Content $inlineFile -Raw | ConvertFrom-Json\n```\n\nOption B (more robust, avoids file parsing pitfalls):\n```powershell\n$inlineJson = gh api repos/:owner/:repo/pulls/$PrNumber/comments\n$inlineJson | Out-File -FilePath $inlineFile -Encoding utf8\n$inlineComments = $inlineJson | ConvertFrom-Json\n```\n\n(Optionally apply the same `-Raw` pattern to `$prData = Get-Content $rawFile | ConvertFrom-Json` for consistency.)\n````\n\n\u003ccode\u003eÔôÿ Copy this prompt and use it to remediate the issue with your preferred AI generation tools\u003c/code\u003e\n\u003c/details\u003e",
+        "created_at":  "2026-06-03T17:16:39Z",
+        "updated_at":  "2026-06-03T17:16:39Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350515023",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350515023"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350515023"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350515023/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  31,
+        "original_start_line":  31,
+        "start_side":  "RIGHT",
+        "line":  32,
+        "original_line":  32,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  12,
+        "position":  12,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526238",
+        "pull_request_review_id":  4420990717,
+        "id":  3350526238,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtPke",
+        "diff_hunk":  "@@ -379,113 +379,139 @@ private void DeactivateRMAMode()\n         #region RMA Intelligence (Phase 9.2)\n \n \n+        // [EPIC-CCN-13] Orchestrator pattern (CYC \u003c= 8)\n         private void MonitorRmaProximity()\n         {\n-            // [EPIC-5-PERF] Latency instrumentation\n             var probe = LatencyProbe.Start();\n-\n             try\n             {\n                 if (!RmaIntelligenceEnabled)\n                     return;\n \n                 foreach (var kvp in entryOrders)\n                 {\n-                    Order order = kvp.Value;\n-                    if (order == null || order.OrderState != OrderState.Working)\n-                        continue;\n-\n-                    PositionInfo pos;\n-                    if (!activePositions.TryGetValue(kvp.Key, out pos) || !pos.IsRMATrade)\n+                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))\n+                    {\n                         continue;\n+                    }\n \n-                    double currentPrice = Close[0];\n-                    double level = pos.EntryPrice;\n-                    double distTicks = Math.Abs(currentPrice - level) / tickSize;\n-\n-                    // Phase 9.2: Initialize ClosestApproachTicks on first observation.\n-                    if (pos.ClosestApproachTicks \u003c= 0)\n-                        pos.ClosestApproachTicks = double.MaxValue;\n-\n-                    // Phase 9.2: Track closest approach as a monotonic minimum.\n-                    if (distTicks \u003c pos.ClosestApproachTicks)\n-                        pos.ClosestApproachTicks = distTicks;\n+                    double distTicks = CalculateProximityDistance(pos, Close[0]);\n \n                     if (distTicks \u003c= RmaProximityTicks)\n                     {\n-                        if (!pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = true;\n-                            pos.ProximityProbeCount++;\n-                            Print(\n-                                LogBuffer.Format(\n-                                    \"[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}\",\n-                                    pos.ProximityProbeCount,\n-                                    kvp.Key,\n-                                    distTicks,\n-                                    level\n-                                )\n-                            );\n-                        }\n-\n-                        // Visual feedback only. Draw state is not logic state.\n-                        Draw.Dot(this, \"Prox_\" + kvp.Key, false, 0, level, Brushes.Cyan);\n+                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice);\n                     }\n-                    else if (distTicks \u003c RmaCancellationTicks)\n+                    else if (distTicks \u003e= RmaCancellationTicks)\n                     {\n-                        // Dead zone hysteresis. No state transition.\n-                    }\n-                    else\n-                    {\n-                        if (pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = false;\n-\n-                            if (RmaExhaustionEnabled \u0026\u0026 pos.ProximityProbeCount \u003e= RmaMaxProbeCount)\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] EXHAUSTION: {0} probed {1}x (max={2}), closest={3:F1}t. Cancelling.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        RmaMaxProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                CancelOrderSafe(order, pos);\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_EXHAUSTION_CANCEL\");\n-                            }\n-                            else\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] Retreat for {0} (probe #{1}, closest={2:F1}t). Monitoring.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_PROXIMITY_RETREAT\");\n-                            }\n-                        }\n-                        else\n-                        {\n-                            if (GetDrawObject(\"Prox_\" + kvp.Key) != null)\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                        }\n+                        HandleProximityExit(kvp.Key, kvp.Value, pos);\n                     }",
+        "path":  "src/V12_002.Entries.RMA.cs",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "coderabbitai[bot]",
+                     "id":  136622811,
+                     "node_id":  "BOT_kgDOCCSy2w",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/347564?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/coderabbitai%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/coderabbitai",
+                     "followers_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "_ÔÜá´©Å Potential issue_ | _­ƒƒá Major_ | _ÔÜí Quick win_\n\n\u003cdetails\u003e\n\u003csummary\u003e­ƒº® Analysis chain\u003c/summary\u003e\n\n­ƒÅü Script executed:\n\n```shell\n#!/bin/bash\n# Description: Search for RmaProximityTicks and RmaCancellationTicks validation\n\n# Look for initialization or validation of these parameters\nrg -n -C5 \u0027RmaCancellationTicks|RmaProximityTicks\u0027 --type=cs\n```\n\nRepository: antigravityos187-sketch/universal-or-strategy\n\nLength of output: 3158\n\n---\n\n­ƒÅü Script executed:\n\n```shell\n#!/bin/bash\nset -euo pipefail\n\n# Search for any guard/validation that references these properties or their relationship\nrg -n --type=cs \\\n  \u0027(Validate|validation|Guard|throw new|InvalidOperationException|ArgumentException|RmaIntelligenceEnabled|RmaExhaustionEnabled)\u0027 \\\n  src/V12_002*.cs\n\n# Search specifically for relational checks involving the thresholds\nrg -n --type=cs \\\n  \u0027RmaCancellationTicks\\s*[\u003c\u003e=!]=?\\s*RmaProximityTicks|RmaProximityTicks\\s*[\u003c\u003e=!]=?\\s*RmaCancellationTicks\u0027 \\\n  src/V12_002*.cs\n\n# Check where lifecycle/setup calls happen (to see best place for validation)\nrg -n --type=cs \u0027OnStateChange|SetDefaults|Configure|Initialize|State\\.SetDefaults|State\\.Configure|State\\.DataLoaded|OnBarUpdate\u0027 src/V12_002*.cs\n```\n\nRepository: antigravityos187-sketch/universal-or-strategy\n\nLength of output: 35611\n\n---\n\n­ƒÅü Script executed:\n\n```shell\n#!/bin/bash\nset -euo pipefail\n\nfile=\"src/V12_002.Entries.RMA.cs\"\n\n# Locate helper implementations\nrg -n \"HandleProximityEntry|HandleProximityExit|CalculateProximityDistance|CancelOrderSafe|Validate.*Rma|Validate.*Proximity|MonitorRmaProximity\" \"$file\"\n\n# Show the relevant sections around each match (limited window)\nfor pat in \"HandleProximityEntry\" \"HandleProximityExit\" \"CalculateProximityDistance\" \"MonitorRmaProximity\" \"Validate\"; do\n  echo \"===== $pat =====\"\n  rg -n -C3 \"$pat\" \"$file\" || true\ndone\n```\n\nRepository: antigravityos187-sketch/universal-or-strategy\n\nLength of output: 3374\n\n---\n\n­ƒÅü Script executed:\n\n```shell\n#!/bin/bash\nset -euo pipefail\n\nfile=\"src/V12_002.Entries.RMA.cs\"\n\n# Show the orchestrator + helper bodies for threshold interaction and guards\nsed -n \u0027360,520p\u0027 \"$file\"\n\necho \"===== tickSize references =====\"\nrg -n \"tickSize\" \"$file\"\n```\n\nRepository: antigravityos187-sketch/universal-or-strategy\n\nLength of output: 5646\n\n---\n\n\n\n\u003c/details\u003e\n\n**Enforce RMA threshold ordering (RmaCancellationTicks \u003e RmaProximityTicks)**\n\n`MonitorRmaProximity()` enters proximity when `distTicks \u003c= RmaProximityTicks`, but exits (and may cancel via `CancelOrderSafe`) when `distTicks \u003e= RmaCancellationTicks` while `pos.WasInProximity` is already true. If `RmaCancellationTicks \u003c= RmaProximityTicks`, the hysteresis window collapses, causing premature retreat and earlier cancellation (when exhaustion is enabled). ThereÔÇÖs no validation/clamp for this relationship in the codeÔÇöonly the property/default definitions and the threshold comparisons.\n\n\u003cdetails\u003e\n\u003csummary\u003e­ƒøí´©Å Proposed fix to add configuration validation\u003c/summary\u003e\n\nAdd validation in the strategy\u0027s initialization or configuration setter:\n\n```diff\n+private void ValidateRmaConfiguration()\n+{\n+    if (RmaIntelligenceEnabled \u0026\u0026 RmaCancellationTicks \u003c= RmaProximityTicks)\n+    {\n+        throw new InvalidOperationException(\n+            $\"RmaCancellationTicks ({RmaCancellationTicks}) must be greater than RmaProximityTicks ({RmaProximityTicks})\"\n+        );\n+    }\n+    if (RmaExhaustionEnabled \u0026\u0026 RmaMaxProbeCount \u003c= 0)\n+    {\n+        throw new InvalidOperationException($\"RmaMaxProbeCount must be positive when exhaustion is enabled\");\n+    }\n+}\n```\n\n\u003c/details\u003e\n\n\u003cdetails\u003e\n\u003csummary\u003e­ƒñû Prompt for AI Agents\u003c/summary\u003e\n\n```\nVerify each finding against current code. Fix only still-valid issues, skip the\nrest with a brief reason, keep changes minimal, and validate.\n\nIn `@src/V12_002.Entries.RMA.cs` around lines 400 - 407, MonitorRmaProximityÔÇÖs\nhysteresis breaks when RmaCancellationTicks \u003c= RmaProximityTicks; add validation\nin the strategy initialization or the configuration setter to ensure\nRmaCancellationTicks \u003e RmaProximityTicks (or clamp RmaCancellationTicks to\nRmaProximityTicks+1) before the strategy runs; update the code paths that set\nthese properties (the config setter or constructor where RmaProximityTicks and\nRmaCancellationTicks are initialized) to either throw/alert or adjust values and\nlog the correction so subsequent logic in MonitorRmaProximity,\nHandleProximityEntry, HandleProximityExit and CancelOrderSafe always sees a\nvalid ordering.\n```\n\n\u003c/details\u003e\n\n\u003c!-- fingerprinting:phantom:poseidon:puma --\u003e\n\n\u003c!-- This is an auto-generated comment by CodeRabbit --\u003e",
+        "created_at":  "2026-06-03T17:18:20Z",
+        "updated_at":  "2026-06-03T17:18:21Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350526238",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526238"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350526238"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526238/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  400,
+        "original_start_line":  400,
+        "start_side":  "RIGHT",
+        "line":  407,
+        "original_line":  407,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  108,
+        "position":  108,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526254",
+        "pull_request_review_id":  4420990717,
+        "id":  3350526254,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtPku",
+        "diff_hunk":  "@@ -379,113 +379,139 @@ private void DeactivateRMAMode()\n         #region RMA Intelligence (Phase 9.2)\n \n \n+        // [EPIC-CCN-13] Orchestrator pattern (CYC \u003c= 8)\n         private void MonitorRmaProximity()\n         {\n-            // [EPIC-5-PERF] Latency instrumentation\n             var probe = LatencyProbe.Start();\n-\n             try\n             {\n                 if (!RmaIntelligenceEnabled)\n                     return;\n \n                 foreach (var kvp in entryOrders)\n                 {\n-                    Order order = kvp.Value;\n-                    if (order == null || order.OrderState != OrderState.Working)\n-                        continue;\n-\n-                    PositionInfo pos;\n-                    if (!activePositions.TryGetValue(kvp.Key, out pos) || !pos.IsRMATrade)\n+                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))\n+                    {\n                         continue;\n+                    }\n \n-                    double currentPrice = Close[0];\n-                    double level = pos.EntryPrice;\n-                    double distTicks = Math.Abs(currentPrice - level) / tickSize;\n-\n-                    // Phase 9.2: Initialize ClosestApproachTicks on first observation.\n-                    if (pos.ClosestApproachTicks \u003c= 0)\n-                        pos.ClosestApproachTicks = double.MaxValue;\n-\n-                    // Phase 9.2: Track closest approach as a monotonic minimum.\n-                    if (distTicks \u003c pos.ClosestApproachTicks)\n-                        pos.ClosestApproachTicks = distTicks;\n+                    double distTicks = CalculateProximityDistance(pos, Close[0]);\n \n                     if (distTicks \u003c= RmaProximityTicks)\n                     {\n-                        if (!pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = true;\n-                            pos.ProximityProbeCount++;\n-                            Print(\n-                                LogBuffer.Format(\n-                                    \"[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}\",\n-                                    pos.ProximityProbeCount,\n-                                    kvp.Key,\n-                                    distTicks,\n-                                    level\n-                                )\n-                            );\n-                        }\n-\n-                        // Visual feedback only. Draw state is not logic state.\n-                        Draw.Dot(this, \"Prox_\" + kvp.Key, false, 0, level, Brushes.Cyan);\n+                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice);\n                     }\n-                    else if (distTicks \u003c RmaCancellationTicks)\n+                    else if (distTicks \u003e= RmaCancellationTicks)\n                     {\n-                        // Dead zone hysteresis. No state transition.\n-                    }\n-                    else\n-                    {\n-                        if (pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = false;\n-\n-                            if (RmaExhaustionEnabled \u0026\u0026 pos.ProximityProbeCount \u003e= RmaMaxProbeCount)\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] EXHAUSTION: {0} probed {1}x (max={2}), closest={3:F1}t. Cancelling.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        RmaMaxProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                CancelOrderSafe(order, pos);\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_EXHAUSTION_CANCEL\");\n-                            }\n-                            else\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] Retreat for {0} (probe #{1}, closest={2:F1}t). Monitoring.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_PROXIMITY_RETREAT\");\n-                            }\n-                        }\n-                        else\n-                        {\n-                            if (GetDrawObject(\"Prox_\" + kvp.Key) != null)\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                        }\n+                        HandleProximityExit(kvp.Key, kvp.Value, pos);\n                     }\n                 }\n             }\n             finally\n             {\n-                // [EPIC-5-PERF] Record latency\n                 probe = probe.Stop();\n                 _histMonitorRmaProximity.Record(probe);\n             }\n         }\n \n+        // [EPIC-CCN-13] Helper: Validate order eligibility (CYC \u003c= 5)\n+        private bool ShouldMonitorOrder(Order order, string entryName, out PositionInfo pos)\n+        {\n+            pos = null;\n+            if (order == null || order.OrderState != OrderState.Working)\n+            {\n+                return false;\n+            }\n+\n+            if (!activePositions.TryGetValue(entryName, out pos) || !pos.IsRMATrade)\n+            {\n+                return false;\n+            }\n+\n+            return true;\n+        }\n+\n+        // [EPIC-CCN-13] Helper: Calculate distance + track closest approach (CYC \u003c= 5)\n+        private double CalculateProximityDistance(PositionInfo pos, double currentPrice)\n+        {\n+            double level = pos.EntryPrice;\n+            double distTicks = Math.Abs(currentPrice - level) / tickSize;",
+        "path":  "src/V12_002.Entries.RMA.cs",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "coderabbitai[bot]",
+                     "id":  136622811,
+                     "node_id":  "BOT_kgDOCCSy2w",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/347564?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/coderabbitai%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/coderabbitai",
+                     "followers_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "_ÔÜá´©Å Potential issue_ | _­ƒƒí Minor_ | _ÔÜí Quick win_\n\n**Add defensive guard for tickSize.**\n\nDivision by `tickSize` will throw `DivideByZeroException` if tickSize is zero. While NinjaTrader instruments typically guarantee tickSize \u003e 0, an explicit guard reduces brittleness.\n\n\n\n\n\u003cdetails\u003e\n\u003csummary\u003e­ƒøí´©Å Proposed fix\u003c/summary\u003e\n\n```diff\n private double CalculateProximityDistance(PositionInfo pos, double currentPrice)\n {\n     double level = pos.EntryPrice;\n+    if (tickSize \u003c= 0)\n+    {\n+        Print(\"ERROR: Invalid tickSize in CalculateProximityDistance\");\n+        return double.MaxValue;\n+    }\n     double distTicks = Math.Abs(currentPrice - level) / tickSize;\n```\n\n\u003c/details\u003e\n\n\u003c!-- suggestion_start --\u003e\n\n\u003cdetails\u003e\n\u003csummary\u003e­ƒôØ Committable suggestion\u003c/summary\u003e\n\n\u003e ÔÇ╝´©Å **IMPORTANT**\n\u003e Carefully review the code before committing. Ensure that it accurately replaces the highlighted code, contains no missing lines, and has no issues with indentation. Thoroughly test \u0026 benchmark the code to ensure it meets the requirements.\n\n```suggestion\n        private double CalculateProximityDistance(PositionInfo pos, double currentPrice)\n        {\n            double level = pos.EntryPrice;\n            if (tickSize \u003c= 0)\n            {\n                Print(\"ERROR: Invalid tickSize in CalculateProximityDistance\");\n                return double.MaxValue;\n            }\n            double distTicks = Math.Abs(currentPrice - level) / tickSize;\n```\n\n\u003c/details\u003e\n\n\u003c!-- suggestion_end --\u003e\n\n\u003cdetails\u003e\n\u003csummary\u003e­ƒñû Prompt for AI Agents\u003c/summary\u003e\n\n```\nVerify each finding against current code. Fix only still-valid issues, skip the\nrest with a brief reason, keep changes minimal, and validate.\n\nIn `@src/V12_002.Entries.RMA.cs` at line 438, The calculation of distTicks uses\ndivision by tickSize (double distTicks = Math.Abs(currentPrice - level) /\ntickSize) and needs a defensive guard to avoid DivideByZeroException; update the\ncode around that expression in V12_002.Entries.RMA.cs to check tickSize for zero\n(or near-zero) before dividingÔÇöe.g., if tickSize == 0 (or Math.Abs(tickSize) \u003c\nepsilon) handle by logging/returning/skipping the calculation or assigning a\nsafe default (like double.PositiveInfinity or 0) so the code using distTicks\n(based on currentPrice and level) never performs a division by zero.\n```\n\n\u003c/details\u003e\n\n\u003c!-- fingerprinting:phantom:poseidon:puma --\u003e\n\n\u003c!-- This is an auto-generated comment by CodeRabbit --\u003e",
+        "created_at":  "2026-06-03T17:18:20Z",
+        "updated_at":  "2026-06-03T17:18:21Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350526254",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526254"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350526254"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526254/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  null,
+        "original_start_line":  null,
+        "start_side":  null,
+        "line":  438,
+        "original_line":  438,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  140,
+        "position":  140,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526265",
+        "pull_request_review_id":  4420990717,
+        "id":  3350526265,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtPk5",
+        "diff_hunk":  "@@ -379,113 +379,139 @@ private void DeactivateRMAMode()\n         #region RMA Intelligence (Phase 9.2)\n \n \n+        // [EPIC-CCN-13] Orchestrator pattern (CYC \u003c= 8)\n         private void MonitorRmaProximity()\n         {\n-            // [EPIC-5-PERF] Latency instrumentation\n             var probe = LatencyProbe.Start();\n-\n             try\n             {\n                 if (!RmaIntelligenceEnabled)\n                     return;\n \n                 foreach (var kvp in entryOrders)\n                 {\n-                    Order order = kvp.Value;\n-                    if (order == null || order.OrderState != OrderState.Working)\n-                        continue;\n-\n-                    PositionInfo pos;\n-                    if (!activePositions.TryGetValue(kvp.Key, out pos) || !pos.IsRMATrade)\n+                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))\n+                    {\n                         continue;\n+                    }\n \n-                    double currentPrice = Close[0];\n-                    double level = pos.EntryPrice;\n-                    double distTicks = Math.Abs(currentPrice - level) / tickSize;\n-\n-                    // Phase 9.2: Initialize ClosestApproachTicks on first observation.\n-                    if (pos.ClosestApproachTicks \u003c= 0)\n-                        pos.ClosestApproachTicks = double.MaxValue;\n-\n-                    // Phase 9.2: Track closest approach as a monotonic minimum.\n-                    if (distTicks \u003c pos.ClosestApproachTicks)\n-                        pos.ClosestApproachTicks = distTicks;\n+                    double distTicks = CalculateProximityDistance(pos, Close[0]);\n \n                     if (distTicks \u003c= RmaProximityTicks)\n                     {\n-                        if (!pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = true;\n-                            pos.ProximityProbeCount++;\n-                            Print(\n-                                LogBuffer.Format(\n-                                    \"[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}\",\n-                                    pos.ProximityProbeCount,\n-                                    kvp.Key,\n-                                    distTicks,\n-                                    level\n-                                )\n-                            );\n-                        }\n-\n-                        // Visual feedback only. Draw state is not logic state.\n-                        Draw.Dot(this, \"Prox_\" + kvp.Key, false, 0, level, Brushes.Cyan);\n+                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice);\n                     }\n-                    else if (distTicks \u003c RmaCancellationTicks)\n+                    else if (distTicks \u003e= RmaCancellationTicks)\n                     {\n-                        // Dead zone hysteresis. No state transition.\n-                    }\n-                    else\n-                    {\n-                        if (pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = false;\n-\n-                            if (RmaExhaustionEnabled \u0026\u0026 pos.ProximityProbeCount \u003e= RmaMaxProbeCount)\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] EXHAUSTION: {0} probed {1}x (max={2}), closest={3:F1}t. Cancelling.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        RmaMaxProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                CancelOrderSafe(order, pos);\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_EXHAUSTION_CANCEL\");\n-                            }\n-                            else\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] Retreat for {0} (probe #{1}, closest={2:F1}t). Monitoring.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_PROXIMITY_RETREAT\");\n-                            }\n-                        }\n-                        else\n-                        {\n-                            if (GetDrawObject(\"Prox_\" + kvp.Key) != null)\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                        }\n+                        HandleProximityExit(kvp.Key, kvp.Value, pos);\n                     }\n                 }\n             }\n             finally\n             {\n-                // [EPIC-5-PERF] Record latency\n                 probe = probe.Stop();\n                 _histMonitorRmaProximity.Record(probe);\n             }\n         }\n \n+        // [EPIC-CCN-13] Helper: Validate order eligibility (CYC \u003c= 5)\n+        private bool ShouldMonitorOrder(Order order, string entryName, out PositionInfo pos)\n+        {\n+            pos = null;\n+            if (order == null || order.OrderState != OrderState.Working)\n+            {\n+                return false;\n+            }\n+\n+            if (!activePositions.TryGetValue(entryName, out pos) || !pos.IsRMATrade)\n+            {\n+                return false;\n+            }\n+\n+            return true;\n+        }\n+\n+        // [EPIC-CCN-13] Helper: Calculate distance + track closest approach (CYC \u003c= 5)\n+        private double CalculateProximityDistance(PositionInfo pos, double currentPrice)\n+        {\n+            double level = pos.EntryPrice;\n+            double distTicks = Math.Abs(currentPrice - level) / tickSize;\n+\n+            if (pos.ClosestApproachTicks \u003c= 0)\n+                pos.ClosestApproachTicks = double.MaxValue;\n+\n+            if (distTicks \u003c pos.ClosestApproachTicks)\n+                pos.ClosestApproachTicks = distTicks;\n+\n+            return distTicks;\n+        }\n+\n+        // [EPIC-CCN-13] Helper: Handle proximity zone entry (CYC \u003c= 5)\n+        private void HandleProximityEntry(string entryName, PositionInfo pos, double distTicks, double level)\n+        {\n+            if (!pos.WasInProximity)\n+            {\n+                pos.WasInProximity = true;\n+                pos.ProximityProbeCount++;",
+        "path":  "src/V12_002.Entries.RMA.cs",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "coderabbitai[bot]",
+                     "id":  136622811,
+                     "node_id":  "BOT_kgDOCCSy2w",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/347564?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/coderabbitai%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/coderabbitai",
+                     "followers_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "_ÔÜá´©Å Potential issue_ | _­ƒƒá Major_ | _­ƒÅù´©Å Heavy lift_\n\n**Apply Enqueue pattern for thread-safe state mutations.**\n\nLines 454-455 directly mutate `pos.WasInProximity` and `pos.ProximityProbeCount` without the `Enqueue` synchronization pattern used elsewhere in this file. This is the same concurrency concern flagged at lines 440-444.\n\n\n\n\n\u003cdetails\u003e\n\u003csummary\u003eÔÖ╗´©Å Proposed fix\u003c/summary\u003e\n\n```diff\n private void HandleProximityEntry(string entryName, PositionInfo pos, double distTicks, double level)\n {\n     if (!pos.WasInProximity)\n     {\n-        pos.WasInProximity = true;\n-        pos.ProximityProbeCount++;\n+        Enqueue(ctx =\u003e\n+        {\n+            pos.WasInProximity = true;\n+            pos.ProximityProbeCount++;\n+        });\n         Print(\n             LogBuffer.Format(\n                 \"[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}\",\n```\n\n\u003c/details\u003e\n\n\u003cdetails\u003e\n\u003csummary\u003e­ƒñû Prompt for AI Agents\u003c/summary\u003e\n\n```\nVerify each finding against current code. Fix only still-valid issues, skip the\nrest with a brief reason, keep changes minimal, and validate.\n\nIn `@src/V12_002.Entries.RMA.cs` around lines 452 - 455, Replace the direct\nmutations of pos.WasInProximity and pos.ProximityProbeCount with the Enqueue\nsynchronization pattern used elsewhere: instead of setting pos.WasInProximity =\ntrue and incrementing pos.ProximityProbeCount inline, call the same Enqueue(...)\nused around the earlier proximity block to enqueue a delegate that sets\nWasInProximity = true and increments ProximityProbeCount on the pos object; use\nthe same lambda structure and error handling style as the other Enqueue usage to\nensure thread-safe state mutation for pos.\n```\n\n\u003c/details\u003e\n\n\u003c!-- fingerprinting:phantom:poseidon:puma --\u003e\n\n\u003c!-- This is an auto-generated comment by CodeRabbit --\u003e",
+        "created_at":  "2026-06-03T17:18:20Z",
+        "updated_at":  "2026-06-03T17:18:21Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350526265",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526265"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350526265"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526265/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  452,
+        "original_start_line":  452,
+        "start_side":  "RIGHT",
+        "line":  455,
+        "original_line":  455,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  157,
+        "position":  157,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526275",
+        "pull_request_review_id":  4420990717,
+        "id":  3350526275,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtPlD",
+        "diff_hunk":  "@@ -379,113 +379,139 @@ private void DeactivateRMAMode()\n         #region RMA Intelligence (Phase 9.2)\n \n \n+        // [EPIC-CCN-13] Orchestrator pattern (CYC \u003c= 8)\n         private void MonitorRmaProximity()\n         {\n-            // [EPIC-5-PERF] Latency instrumentation\n             var probe = LatencyProbe.Start();\n-\n             try\n             {\n                 if (!RmaIntelligenceEnabled)\n                     return;\n \n                 foreach (var kvp in entryOrders)\n                 {\n-                    Order order = kvp.Value;\n-                    if (order == null || order.OrderState != OrderState.Working)\n-                        continue;\n-\n-                    PositionInfo pos;\n-                    if (!activePositions.TryGetValue(kvp.Key, out pos) || !pos.IsRMATrade)\n+                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))\n+                    {\n                         continue;\n+                    }\n \n-                    double currentPrice = Close[0];\n-                    double level = pos.EntryPrice;\n-                    double distTicks = Math.Abs(currentPrice - level) / tickSize;\n-\n-                    // Phase 9.2: Initialize ClosestApproachTicks on first observation.\n-                    if (pos.ClosestApproachTicks \u003c= 0)\n-                        pos.ClosestApproachTicks = double.MaxValue;\n-\n-                    // Phase 9.2: Track closest approach as a monotonic minimum.\n-                    if (distTicks \u003c pos.ClosestApproachTicks)\n-                        pos.ClosestApproachTicks = distTicks;\n+                    double distTicks = CalculateProximityDistance(pos, Close[0]);\n \n                     if (distTicks \u003c= RmaProximityTicks)\n                     {\n-                        if (!pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = true;\n-                            pos.ProximityProbeCount++;\n-                            Print(\n-                                LogBuffer.Format(\n-                                    \"[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}\",\n-                                    pos.ProximityProbeCount,\n-                                    kvp.Key,\n-                                    distTicks,\n-                                    level\n-                                )\n-                            );\n-                        }\n-\n-                        // Visual feedback only. Draw state is not logic state.\n-                        Draw.Dot(this, \"Prox_\" + kvp.Key, false, 0, level, Brushes.Cyan);\n+                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice);\n                     }\n-                    else if (distTicks \u003c RmaCancellationTicks)\n+                    else if (distTicks \u003e= RmaCancellationTicks)\n                     {\n-                        // Dead zone hysteresis. No state transition.\n-                    }\n-                    else\n-                    {\n-                        if (pos.WasInProximity)\n-                        {\n-                            pos.WasInProximity = false;\n-\n-                            if (RmaExhaustionEnabled \u0026\u0026 pos.ProximityProbeCount \u003e= RmaMaxProbeCount)\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] EXHAUSTION: {0} probed {1}x (max={2}), closest={3:F1}t. Cancelling.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        RmaMaxProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                CancelOrderSafe(order, pos);\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_EXHAUSTION_CANCEL\");\n-                            }\n-                            else\n-                            {\n-                                Print(\n-                                    LogBuffer.Format(\n-                                        \"[SENTINEL] Retreat for {0} (probe #{1}, closest={2:F1}t). Monitoring.\",\n-                                        kvp.Key,\n-                                        pos.ProximityProbeCount,\n-                                        pos.ClosestApproachTicks\n-                                    )\n-                                );\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                                SendResponseToRemote(\"SOUND|SENTINEL_PROXIMITY_RETREAT\");\n-                            }\n-                        }\n-                        else\n-                        {\n-                            if (GetDrawObject(\"Prox_\" + kvp.Key) != null)\n-                                RemoveDrawObject(\"Prox_\" + kvp.Key);\n-                        }\n+                        HandleProximityExit(kvp.Key, kvp.Value, pos);\n                     }\n                 }\n             }\n             finally\n             {\n-                // [EPIC-5-PERF] Record latency\n                 probe = probe.Stop();\n                 _histMonitorRmaProximity.Record(probe);\n             }\n         }\n \n+        // [EPIC-CCN-13] Helper: Validate order eligibility (CYC \u003c= 5)\n+        private bool ShouldMonitorOrder(Order order, string entryName, out PositionInfo pos)\n+        {\n+            pos = null;\n+            if (order == null || order.OrderState != OrderState.Working)\n+            {\n+                return false;\n+            }\n+\n+            if (!activePositions.TryGetValue(entryName, out pos) || !pos.IsRMATrade)\n+            {\n+                return false;\n+            }\n+\n+            return true;\n+        }\n+\n+        // [EPIC-CCN-13] Helper: Calculate distance + track closest approach (CYC \u003c= 5)\n+        private double CalculateProximityDistance(PositionInfo pos, double currentPrice)\n+        {\n+            double level = pos.EntryPrice;\n+            double distTicks = Math.Abs(currentPrice - level) / tickSize;\n+\n+            if (pos.ClosestApproachTicks \u003c= 0)\n+                pos.ClosestApproachTicks = double.MaxValue;\n+\n+            if (distTicks \u003c pos.ClosestApproachTicks)\n+                pos.ClosestApproachTicks = distTicks;\n+\n+            return distTicks;\n+        }\n+\n+        // [EPIC-CCN-13] Helper: Handle proximity zone entry (CYC \u003c= 5)\n+        private void HandleProximityEntry(string entryName, PositionInfo pos, double distTicks, double level)\n+        {\n+            if (!pos.WasInProximity)\n+            {\n+                pos.WasInProximity = true;\n+                pos.ProximityProbeCount++;\n+                Print(\n+                    LogBuffer.Format(\n+                        \"[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}\",\n+                        pos.ProximityProbeCount,\n+                        entryName,\n+                        distTicks,\n+                        level\n+                    )\n+                );\n+            }\n+\n+            Draw.Dot(this, \"Prox_\" + entryName, false, 0, level, Brushes.Cyan);\n+        }\n+\n+        // [EPIC-CCN-13] Helper: Handle proximity zone exit + exhaustion (CYC \u003c= 5)\n+        private void HandleProximityExit(string entryName, Order order, PositionInfo pos)\n+        {\n+            if (pos.WasInProximity)\n+            {\n+                pos.WasInProximity = false;",
+        "path":  "src/V12_002.Entries.RMA.cs",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "coderabbitai[bot]",
+                     "id":  136622811,
+                     "node_id":  "BOT_kgDOCCSy2w",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/347564?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/coderabbitai%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/coderabbitai",
+                     "followers_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "_ÔÜá´©Å Potential issue_ | _­ƒƒá Major_ | _­ƒÅù´©Å Heavy lift_\n\n**Apply Enqueue pattern for thread-safe state mutations.**\n\nLine 475 directly mutates `pos.WasInProximity` without the `Enqueue` synchronization pattern. This is the same concurrency concern flagged at lines 440-444 and 452-455.\n\n\n\n\n\u003cdetails\u003e\n\u003csummary\u003eÔÖ╗´©Å Proposed fix\u003c/summary\u003e\n\n```diff\n private void HandleProximityExit(string entryName, Order order, PositionInfo pos)\n {\n     if (pos.WasInProximity)\n     {\n-        pos.WasInProximity = false;\n+        Enqueue(ctx =\u003e { pos.WasInProximity = false; });\n\n         if (RmaExhaustionEnabled \u0026\u0026 pos.ProximityProbeCount \u003e= RmaMaxProbeCount)\n```\n\n\u003c/details\u003e\n\n\u003c!-- suggestion_start --\u003e\n\n\u003cdetails\u003e\n\u003csummary\u003e­ƒôØ Committable suggestion\u003c/summary\u003e\n\n\u003e ÔÇ╝´©Å **IMPORTANT**\n\u003e Carefully review the code before committing. Ensure that it accurately replaces the highlighted code, contains no missing lines, and has no issues with indentation. Thoroughly test \u0026 benchmark the code to ensure it meets the requirements.\n\n```suggestion\n            if (pos.WasInProximity)\n            {\n                Enqueue(ctx =\u003e { pos.WasInProximity = false; });\n```\n\n\u003c/details\u003e\n\n\u003c!-- suggestion_end --\u003e\n\n\u003cdetails\u003e\n\u003csummary\u003e­ƒñû Prompt for AI Agents\u003c/summary\u003e\n\n```\nVerify each finding against current code. Fix only still-valid issues, skip the\nrest with a brief reason, keep changes minimal, and validate.\n\nIn `@src/V12_002.Entries.RMA.cs` around lines 473 - 475, The direct mutation\npos.WasInProximity = false must be converted to the thread-safe Enqueue mutation\npattern used earlier; replace the direct assignment with an invocation that\nschedules the change on pos\u0027s work queue (e.g., pos.Enqueue(() =\u003e\npos.WasInProximity = false) or the project\u0027s equivalent Enqueue/EnqueueAction\nmethod) so the state change uses the same synchronization as the assignments at\nthe earlier blocks that touched WasInProximity.\n```\n\n\u003c/details\u003e\n\n\u003c!-- fingerprinting:phantom:poseidon:puma --\u003e\n\n\u003c!-- This is an auto-generated comment by CodeRabbit --\u003e",
+        "created_at":  "2026-06-03T17:18:20Z",
+        "updated_at":  "2026-06-03T17:18:21Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350526275",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526275"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350526275"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350526275/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  473,
+        "original_start_line":  473,
+        "start_side":  "RIGHT",
+        "line":  475,
+        "original_line":  475,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  177,
+        "position":  177,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350539705",
+        "pull_request_review_id":  4421008971,
+        "id":  3350539705,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtS25",
+        "diff_hunk":  "@@ -231,24 +223,28 @@ foreach ($match in $inlineMatches) {\n     $priority = \"P1\"\n     $category = \"INLINE\"\n     \n-    if ($commentBody -match \"Critical|Blocking|MUST|P0|race condition|deadlock\") {\n+    if ($body -match \"Critical|Blocking|MUST|P0|race condition|deadlock\") {\n         $priority = \"P0\"\n         $category = \"CRITICAL\"\n     }\n-    elseif ($commentBody -match \"allocation|heap|string\\.Format|StringBuilder\") {\n+    elseif ($body -match \"allocation|heap|string\\.Format|StringBuilder\") {\n         $priority = \"P0\"\n         $category = \"PERFORMANCE\"\n     }\n+    elseif ($body -match \"Complex Method|High Complexity|cyclomatic complexity\") {\n+        $priority = \"P1\"\n+        $category = \"COMPLEXITY\"\n+    }\n     \n     $findings += [PSCustomObject]@{\n         Source = \"inline\"\n         Bot = $author\n         Classification = $classification\n         Priority = $priority\n         Category = $category\n-        Timestamp = (Get-Date).ToString(\"o\")\n-        URL = \"$RepoUrl/pull/$PrNumber#discussion_r\"\n-        Body = \"${fileName}:${lineNum} - $($commentBody.Substring(0, [Math]::Min(400, $commentBody.Length)))\"\n+        Timestamp = $comment.created_at\n+        URL = $comment.html_url\n+        Body = \"${file}:${line} - $($body.Substring(0, [Math]::Min(400, $body.Length)))\"",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "greptile-apps[bot]",
+                     "id":  165735046,
+                     "node_id":  "BOT_kgDOCeDqhg",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/867647?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/greptile-apps%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/greptile-apps",
+                     "followers_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "\u003ca href=\"#\"\u003e\u003cimg alt=\"P1\" src=\"https://greptile-static-assets.s3.amazonaws.com/badges/p1.svg?v=9\" align=\"top\"\u003e\u003c/a\u003e Null body on inline comment crashes the script. The GitHub REST API can return a null `body` for deleted or minimised comments, and PowerShell throws `\"You cannot call a method on a null-valued expression\"` when `.Substring()` is called on `$null`. This will abort the entire forensics run for any PR that has a comment with a null body.\n\n```suggestion\n        Body = \"${file}:${line} - $(if ($body) { $body.Substring(0, [Math]::Min(400, $body.Length)) } else { \u0027\u0027 })\"\n```",
+        "created_at":  "2026-06-03T17:20:22Z",
+        "updated_at":  "2026-06-03T17:20:24Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350539705",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350539705"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350539705"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350539705/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  null,
+        "original_start_line":  null,
+        "start_side":  null,
+        "line":  247,
+        "original_line":  247,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  97,
+        "position":  97,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350539794",
+        "pull_request_review_id":  4421008971,
+        "id":  3350539794,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtS4S",
+        "diff_hunk":  "@@ -186,39 +187,30 @@ foreach ($review in $prData.reviews) {\n     }\n }\n \n-# Step 2.5: Parse inline review comments from full comments page\n-Write-Host \"[2.5/5] Parsing inline review comments...\" -ForegroundColor Green\n+# Step 2.5: Process inline review comments from REST API\n+Write-Host \"[2.5/5] Processing inline review comments from REST API...\" -ForegroundColor Green\n \n-# Extract inline comments (format: \"bot-name commented on line X in file.cs\")\n-$inlinePattern = \u0027(?m)^(\\S+)\\s+commented.*?on line (\\d+).*?in\\s+(\\S+\\.cs).*?\\n\\n(.*?)(?=\\n\\n\\S+\\s+commented|\\z)\u0027\n-$inlineMatches = [regex]::Matches($fullComments, $inlinePattern)\n-\n-foreach ($match in $inlineMatches) {\n-    $author = $match.Groups[1].Value\n-    $lineNum = $match.Groups[2].Value\n-    $fileName = $match.Groups[3].Value\n-    $commentBody = $match.Groups[4].Value.Trim()\n+foreach ($comment in $inlineComments) {\n+    $author = $comment.user.login\n+    $body = $comment.body\n+    $file = $comment.path\n+    $line = $comment.line\n+    $commentId = $comment.id\n     \n     # Skip non-bot comments\n     if ($author -notmatch \"bot|ai|codacy|sourcery|coderabbit|amazon-q|gemini|greptile|cubic|codeant|codeslick|insight|gitar\") {\n         continue\n     }\n     \n-    # Skip if already captured in JSON data (avoid duplicates)\n-    $isDuplicate = $findings | Where-Object { $_.Body -like \"*$($commentBody.Substring(0, [Math]::Min(50, $commentBody.Length)))*\" }\n-    if ($isDuplicate) {\n-        continue\n-    }\n-    \n     # Filter out summaries\n     $isSummary = $false\n-    if ($commentBody -match \"\u003c!-- This is an auto-generated comment: summarize|\u003c!-- auto-generated comment: summarize\") {\n+    if ($body -match \"\u003c!-- This is an auto-generated comment: summarize|\u003c!-- auto-generated comment: summarize\") {\n         $isSummary = $true\n     }\n-    elseif ($commentBody -match \"\u003c!-- Generated by .+\\[bot\\]: start review_guide|## Reviewer\u0027s Guide\") {\n+    elseif ($body -match \"\u003c!-- Generated by .+\\[bot\\]: start review_guide|## Reviewer\u0027s Guide\") {\n         $isSummary = $true\n     }",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "greptile-apps[bot]",
+                     "id":  165735046,
+                     "node_id":  "BOT_kgDOCeDqhg",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/867647?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/greptile-apps%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/greptile-apps",
+                     "followers_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/greptile-apps%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "\u003ca href=\"#\"\u003e\u003cimg alt=\"P2\" src=\"https://greptile-static-assets.s3.amazonaws.com/badges/p2.svg?v=9\" align=\"top\"\u003e\u003c/a\u003e **Duplicate detection removed without a replacement guard.** The old `$isDuplicate` check existed because the same bot comment could appear in both `prData.reviews` (processed above in Step 2) and the inline REST comments endpoint. Removing it means a bot finding that appears in both data sources will produce two identical `$findings` entries. Consider checking `$comment.id` against already-seen IDs, or filtering by `$comment.html_url` before adding to `$findings`.\n\nNote: If this suggestion doesn\u0027t match your team\u0027s coding style, reply to this and let me know. I\u0027ll remember it for next time!",
+        "created_at":  "2026-06-03T17:20:23Z",
+        "updated_at":  "2026-06-03T17:20:24Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350539794",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350539794"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350539794"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350539794/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  206,
+        "original_start_line":  206,
+        "start_side":  "RIGHT",
+        "line":  212,
+        "original_line":  212,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  61,
+        "position":  61,
+        "subject_type":  "line"
+    },
+    {
+        "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350547997",
+        "pull_request_review_id":  4421020736,
+        "id":  3350547997,
+        "node_id":  "PRRC_kwDOSwL1Vc7HtU4d",
+        "diff_hunk":  "@@ -25,10 +25,11 @@ $rawFile = \"pr_${PrNumber}_raw.json\"\n gh pr view $PrNumber --json comments,reviews,statusCheckRollup | Out-File -FilePath $rawFile -Encoding utf8\n $prData = Get-Content $rawFile | ConvertFrom-Json\n \n-# Fetch full comments page (includes inline review comments)\n-$commentsFile = \"pr_${PrNumber}_comments.txt\"\n-gh pr view $PrNumber --comments | Out-File -FilePath $commentsFile -Encoding utf8\n-$fullComments = Get-Content $commentsFile -Raw\n+# Fetch inline review comments via REST API (NEW - replaces text parsing)\n+Write-Host \"  Fetching inline review comments via REST API...\" -ForegroundColor Gray\n+$inlineFile = \"pr_${PrNumber}_inline.json\"\n+gh api repos/:owner/:repo/pulls/$PrNumber/comments | Out-File -FilePath $inlineFile -Encoding utf8",
+        "path":  "scripts/extract_pr_forensics.ps1",
+        "commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "original_commit_id":  "dad1414051a8834b5d902f3a4092055c0e287ad5",
+        "user":  {
+                     "login":  "cubic-dev-ai[bot]",
+                     "id":  191113872,
+                     "node_id":  "BOT_kgDOC2QqkA",
+                     "avatar_url":  "https://avatars.githubusercontent.com/in/1082092?v=4",
+                     "gravatar_id":  "",
+                     "url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D",
+                     "html_url":  "https://github.com/apps/cubic-dev-ai",
+                     "followers_url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D/followers",
+                     "following_url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D/following{/other_user}",
+                     "gists_url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D/gists{/gist_id}",
+                     "starred_url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D/starred{/owner}{/repo}",
+                     "subscriptions_url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D/subscriptions",
+                     "organizations_url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D/orgs",
+                     "repos_url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D/repos",
+                     "events_url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D/events{/privacy}",
+                     "received_events_url":  "https://api.github.com/users/cubic-dev-ai%5Bbot%5D/received_events",
+                     "type":  "Bot",
+                     "user_view_type":  "public",
+                     "site_admin":  false
+                 },
+        "body":  "\u003c!-- cubic:v=4eb41843-e8ea-4aad-bce3-769a46a67848 --\u003e\n\u003c!-- cubic:review-run=4aaebc83-5214-487d-b773-758cbca3bf40 --\u003e\n\u003c!-- metadata:{\"confidence\":9} --\u003e\nP2: Unpaginated review-comments fetch drops inline comments beyond first page. For large PRs, forensics and generated fix queue become incomplete.\n\n\u003cdetails\u003e\n\u003csummary\u003ePrompt for AI agents\u003c/summary\u003e\n\n```text\nCheck if this issue is valid ÔÇö if so, understand the root cause and fix it. At scripts/extract_pr_forensics.ps1, line 31:\n\n\u003ccomment\u003eUnpaginated review-comments fetch drops inline comments beyond first page. For large PRs, forensics and generated fix queue become incomplete.\u003c/comment\u003e\n\n\u003cfile context\u003e\n@@ -25,10 +25,11 @@ $rawFile = \"pr_${PrNumber}_raw.json\"\n+# Fetch inline review comments via REST API (NEW - replaces text parsing)\n+Write-Host \"  Fetching inline review comments via REST API...\" -ForegroundColor Gray\n+$inlineFile = \"pr_${PrNumber}_inline.json\"\n+gh api repos/:owner/:repo/pulls/$PrNumber/comments | Out-File -FilePath $inlineFile -Encoding utf8\n+$inlineComments = Get-Content $inlineFile | ConvertFrom-Json\n \n\u003c/file context\u003e\n```\n\n\u003c/details\u003e\n\n\u003ca href=\"https://www.cubic.dev/action/fix/violation/4eb41843-e8ea-4aad-bce3-769a46a67848\" target=\"_blank\" rel=\"noopener noreferrer\" data-no-image-dialog=\"true\"\u003e\n  \u003cpicture\u003e\n    \u003csource media=\"(prefers-color-scheme: dark)\" srcset=\"https://cubic.dev/buttons/fix-with-cubic-dark.svg\"\u003e\n    \u003csource media=\"(prefers-color-scheme: light)\" srcset=\"https://cubic.dev/buttons/fix-with-cubic-light.svg\"\u003e\n    \u003cimg alt=\"Fix with cubic\" src=\"https://cubic.dev/buttons/fix-with-cubic-dark.svg\"\u003e\n  \u003c/picture\u003e\n\u003c/a\u003e",
+        "created_at":  "2026-06-03T17:21:44Z",
+        "updated_at":  "2026-06-03T17:21:54Z",
+        "html_url":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350547997",
+        "pull_request_url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2",
+        "_links":  {
+                       "self":  {
+                                    "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350547997"
+                                },
+                       "html":  {
+                                    "href":  "https://github.com/antigravityos187-sketch/universal-or-strategy/pull/2#discussion_r3350547997"
+                                },
+                       "pull_request":  {
+                                            "href":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/2"
+                                        }
+                   },
+        "reactions":  {
+                          "url":  "https://api.github.com/repos/antigravityos187-sketch/universal-or-strategy/pulls/comments/3350547997/reactions",
+                          "total_count":  0,
+                          "+1":  0,
+                          "-1":  0,
+                          "laugh":  0,
+                          "hooray":  0,
+                          "confused":  0,
+                          "heart":  0,
+                          "rocket":  0,
+                          "eyes":  0
+                      },
+        "start_line":  null,
+        "original_start_line":  null,
+        "start_side":  null,
+        "line":  31,
+        "original_line":  31,
+        "side":  "RIGHT",
+        "author_association":  "NONE",
+        "original_position":  11,
+        "position":  11,
+        "subject_type":  "line"
+    }
+]

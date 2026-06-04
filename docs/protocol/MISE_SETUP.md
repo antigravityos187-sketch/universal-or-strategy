@@ -424,6 +424,69 @@ mise run build
 mise run test
 ```
 
+## Source Code Context Infrastructure
+
+**Purpose**: Track session state, prevent redundant searches, and enable budget-aware exploration.
+
+### Negative Evidence Tracking
+
+**What**: Records when jcodemunch searches find NO implementation of a feature.
+
+**Why**: Prevents agents from wasting tokens re-searching with different terms.
+
+**Usage**:
+```bash
+# Check if feature is known non-implementation
+python scripts/negative_evidence_check.py "CSRF protection"
+# Exit 0 = confirmed NOT implemented, skip search
+# Exit 1 = no evidence, proceed with search
+
+# Or via Mise (when installed)
+mise run negative-evidence-check "CSRF protection"
+```
+
+**Storage**: `docs/brain/negative_evidence.json`
+
+### Session Snapshots
+
+**What**: Tracks files read, symbols explored, searches performed, and token budget.
+
+**Why**: Enables budget-aware exploration and prevents redundant file reads.
+
+**Usage**:
+```bash
+# Initialize session
+python scripts/session_snapshot.py init "2026-06-03-epic-ccn-14" "Bob CLI" "Extract method X"
+
+# Check if file already read (before reading)
+python scripts/session_snapshot.py check-read "session-id" "src/V12_002.cs"
+# Exit 0 = already read, use cached knowledge
+# Exit 1 = not read, proceed
+
+# Record file read (after reading)
+python scripts/session_snapshot.py record-read "session-id" "src/V12_002.cs" "outline"
+
+# Update token budget
+python scripts/session_snapshot.py update-budget "session-id" 15000
+
+# Get session state
+python scripts/session_snapshot.py get "session-id" --json
+
+# Or via Mise (when installed)
+mise run session-snapshot get "session-id"
+```
+
+**Storage**: `docs/brain/session_<id>.json`
+
+### Integration with Slash Commands
+
+- **`/epic-run`**: Mandatory session tracking, negative evidence checks
+- **`/pr-loop`**: Session tracking for iterative loops, negative evidence for bot issues
+- **`/epic-tdd`**: Optional session tracking for complex test suites
+- **`/github-migration`**: Optional audit trail for migrations
+
+See individual slash command files for detailed integration points.
+
 ## Best Practices
 
 1. **Always use `mise run` for tasks**: Ensures consistent environment
