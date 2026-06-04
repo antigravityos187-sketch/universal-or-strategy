@@ -63,4 +63,17 @@ exclude_paths:
 # - Rationale: Surgical refactoring - separate concerns, prevent scope creep
 # - See: docs/protocol/BRANCH_STRATEGY.md
 
+# Jane Street Deviations (Intentional Suppressions)
+# Full documentation: docs/standards/JANE_STREET_DEVIATIONS.md
+#
+# Decision #12: Hot-path mutation pattern (PR #4)
+# - File: src/V12_002.Entries.RMA.cs
+# - Method: CalculateProximityDistance (lines 440-444)
+# - Rationale: Zero-allocation hot-path, atomic double assignment
+#
+# Decision #13: Close[0] hoisting suggestion (PR #4)
+# - File: src/V12_002.Entries.RMA.cs
+# - Method: MonitorRmaProximity (line 398)
+# - Rationale: NinjaTrader semantics require per-iteration read for data freshness
+
 # Made with Bob
