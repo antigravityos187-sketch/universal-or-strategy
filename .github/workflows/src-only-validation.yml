@@ -1,0 +1,55 @@
+name: Src-Only Branch Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-src-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check epic-ccn-* branch compliance
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          echo "🔍 Checking branch: $BRANCH"
+          
+          if [[ $BRANCH =~ ^epic-ccn- ]]; then
+            echo "✓ Branch matches epic-ccn-* pattern"
+            echo "📋 Validating .cs-only requirement..."
+            
+            # Get changed files
+            CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+            
+            # Find non-.cs files in src/
+            NON_CS_FILES=$(echo "$CHANGED_FILES" | grep '^src/' | grep -v '\.cs$' || true)
+            
+            if [ -n "$NON_CS_FILES" ]; then
+              echo ""
+              echo "❌ ERROR: epic-ccn-* branches can only modify .cs files in src/"
+              echo ""
+              echo "Blocked files:"
+              echo "$NON_CS_FILES" | sed 's/^/  - /'
+              echo ""
+              echo "To fix:"
+              echo "  1. Create separate PR for non-.cs changes"
+              echo "  2. Rebase this PR to remove non-.cs commits"
+              echo "  3. Use 'git filter-branch' or 'git rebase -i' to clean history"
+              echo ""
+              echo "See: docs/protocol/BRANCH_STRATEGY.md"
+              exit 1
+            else
+              echo "✅ PASS: All changes are .cs files"
+              echo ""
+              echo "Changed .cs files:"
+              echo "$CHANGED_FILES" | grep '^src/.*\.cs$' | sed 's/^/  - /' || echo "  (none)"
+            fi
+          else
+            echo "ℹ️  Not an epic-ccn-* branch, skipping validation"
+            echo "   Branch: $BRANCH"
+          fi
+
+# Made with Bob
