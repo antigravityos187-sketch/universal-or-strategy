@@ -228,7 +228,8 @@ TASK: Global Audit & Monitor
 PR: $1
 PROTOCOL:
   1. powershell -File .\deploy-sync.ps1 (MANDATORY before push - syncs NT8 hard links)
-  2. git add . && git commit -m "fix: PHS Perfection Loop - PR #$1" && git push
+  2. git add src/ && git commit -m "fix: PHS Perfection Loop - PR #$1" && git push
+     # Pre-commit hook enforces src-only on epic-* branches
   3. UPDATE TOKEN BUDGET (estimate tokens consumed):
      # Rough estimate: 1 token = 4 chars
      python scripts/session_snapshot.py update-budget "session-id" <consumed_tokens>
