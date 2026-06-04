@@ -592,41 +592,65 @@ try {
 }
 
 # ============================================================================
-# 17. SRC-ONLY BRANCH VALIDATION (epic-ccn-* enforcement)
+# 17. SRC-ONLY PR VALIDATION (ALL PRs to main)
 # ============================================================================
-Write-CheckHeader "17. Src-Only Branch Validation"
+# POLICY: ALL PRs to main MUST be .cs-only
+# Infrastructure changes go directly to main (no PR, no bot review, no token waste)
+#
+# BLOCKS ALL NON-.CS EXTENSIONS INCLUDING:
+# Infrastructure: .yaml, .yml, .json, .jsonc, .toml, .xml, .config, .props, .targets
+# Scripts: .ps1, .py, .sh, .bat, .cmd, .js, .ts, .mjs, .cjs
+# Documentation: .md, .txt, .html, .css, .svg, .png, .jpg
+# Build artifacts: .dll, .exe, .pdb, .cache, .log, .bin
+# Config: .gitignore, .editorconfig, .env, .example, .npmignore
+# And 50+ other extensions found in this project
+#
+# RATIONALE: Bot reviews waste tokens on infrastructure files, slow down audits
+# See: docs/protocol/BRANCH_STRATEGY.md
+# ============================================================================
+Write-CheckHeader "17. Src-Only PR Validation (ALL PRs)"
 try {
     $branch = git rev-parse --abbrev-ref HEAD 2>&1
     
-    if ($branch -match '^epic-ccn-') {
-        Write-Host "  Validating epic-ccn-* branch: $branch" -ForegroundColor Gray
+    # Skip check if on main branch (infrastructure changes go directly to main)
+    if ($branch -eq "main") {
+        Write-CheckResult "Src-Only PR" $true "On main branch (infrastructure changes allowed)"
+    } else {
+        Write-Host "  Validating branch: $branch" -ForegroundColor Gray
+        Write-Host "  POLICY: ALL PRs to main MUST be .cs-only" -ForegroundColor Gray
+        Write-Host "  Enforcement: ONLY .cs files allowed in src/ (ALL other extensions blocked)" -ForegroundColor Gray
         
         # Get changed files compared to main
         $changedFiles = git diff --name-only origin/main...HEAD 2>&1
         
         if ($LASTEXITCODE -eq 0) {
-            # Find non-.cs files in src/
+            # Find non-.cs files in src/ (BLOCKS EVERYTHING except .cs)
             $nonCsFiles = $changedFiles | Where-Object { $_ -match '^src/' -and $_ -notmatch '\.cs$' }
             
             if ($nonCsFiles) {
-                Write-CheckResult "Src-Only Branch" $false "epic-ccn-* branches can only modify .cs files"
-                Write-Host "`n  Blocked files:" -ForegroundColor Red
+                Write-CheckResult "Src-Only PR" $false "ALL PRs to main can ONLY modify .cs files in src/"
+                Write-Host "`n  BLOCKED FILES (ALL non-.cs extensions are forbidden in PRs):" -ForegroundColor Red
                 $nonCsFiles | ForEach-Object { Write-Host "    - $_" -ForegroundColor Red }
+                Write-Host "`n  This includes infrastructure files created during PR review:" -ForegroundColor Yellow
+                Write-Host "    - Bot-generated files (.json, .yaml, .md)" -ForegroundColor Yellow
+                Write-Host "    - Quality reports (.log, .txt, .csv)" -ForegroundColor Yellow
+                Write-Host "    - Config changes (.toml, .xml, .config)" -ForegroundColor Yellow
+                Write-Host "    - Scripts (.ps1, .py, .sh)" -ForegroundColor Yellow
+                Write-Host "    - Documentation (.md, .html)" -ForegroundColor Yellow
                 Write-Host "`n  To fix:" -ForegroundColor Yellow
-                Write-Host "    1. Create separate branch for non-.cs changes" -ForegroundColor Yellow
-                Write-Host "    2. Cherry-pick only .cs commits to epic-ccn-* branch" -ForegroundColor Yellow
-                Write-Host "    3. Push non-.cs changes on different branch" -ForegroundColor Yellow
+                Write-Host "    1. Switch to main: git checkout main" -ForegroundColor Yellow
+                Write-Host "    2. Commit infrastructure changes directly to main (no PR)" -ForegroundColor Yellow
+                Write-Host "    3. Push to main: git push origin main" -ForegroundColor Yellow
+                Write-Host "    4. Return to feature branch for .cs-only changes" -ForegroundColor Yellow
             } else {
-                Write-CheckResult "Src-Only Branch" $true "All changes are .cs files"
+                Write-CheckResult "Src-Only PR" $true "All changes are .cs files only"
             }
         } else {
-            Write-CheckResult "Src-Only Branch" $true "Could not compare with origin/main (skipped)"
+            Write-CheckResult "Src-Only PR" $true "Could not compare with origin/main (skipped)"
         }
-    } else {
-        Write-CheckResult "Src-Only Branch" $true "Not an epic-ccn-* branch (skipped)"
     }
 } catch {
-    Write-CheckResult "Src-Only Branch" $true "Validation failed (non-blocking): $($_.Exception.Message)"
+    Write-CheckResult "Src-Only PR" $true "Validation failed (non-blocking): $($_.Exception.Message)"
 }
 
 # ============================================================================

@@ -1,4 +1,18 @@
-name: Src-Only Branch Validation
+name: Src-Only PR Validation
+
+# POLICY: ALL PRs to main MUST be .cs-only
+# Infrastructure changes go directly to main (no PR, no bot review, no token waste)
+#
+# BLOCKS ALL NON-.CS EXTENSIONS INCLUDING:
+# Infrastructure: .yaml, .yml, .json, .jsonc, .toml, .xml, .config, .props, .targets
+# Scripts: .ps1, .py, .sh, .bat, .cmd, .js, .ts, .mjs, .cjs
+# Documentation: .md, .txt, .html, .css, .svg, .png, .jpg
+# Build artifacts: .dll, .exe, .pdb, .cache, .log, .bin
+# Config: .gitignore, .editorconfig, .env, .example, .npmignore
+# And 50+ other extensions found in this project
+#
+# RATIONALE: Bot reviews waste tokens on infrastructure files, slow down audits
+# See: docs/protocol/BRANCH_STRATEGY.md
 
 on:
   pull_request:
@@ -12,44 +26,47 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Check epic-ccn-* branch compliance
+      - name: Enforce .cs-only for ALL PRs (BLOCKS ALL non-.cs extensions)
         run: |
           BRANCH="${{ github.head_ref }}"
-          echo "🔍 Checking branch: $BRANCH"
+          echo "🔍 Validating PR from branch: $BRANCH"
+          echo "📋 POLICY: ALL PRs to main MUST be .cs-only"
+          echo "📋 Enforcement: ONLY .cs files allowed in src/ (ALL other extensions blocked)"
           
-          if [[ $BRANCH =~ ^epic-ccn- ]]; then
-            echo "✓ Branch matches epic-ccn-* pattern"
-            echo "📋 Validating .cs-only requirement..."
-            
-            # Get changed files
-            CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
-            
-            # Find non-.cs files in src/
-            NON_CS_FILES=$(echo "$CHANGED_FILES" | grep '^src/' | grep -v '\.cs$' || true)
-            
-            if [ -n "$NON_CS_FILES" ]; then
-              echo ""
-              echo "❌ ERROR: epic-ccn-* branches can only modify .cs files in src/"
-              echo ""
-              echo "Blocked files:"
-              echo "$NON_CS_FILES" | sed 's/^/  - /'
-              echo ""
-              echo "To fix:"
-              echo "  1. Create separate PR for non-.cs changes"
-              echo "  2. Rebase this PR to remove non-.cs commits"
-              echo "  3. Use 'git filter-branch' or 'git rebase -i' to clean history"
-              echo ""
-              echo "See: docs/protocol/BRANCH_STRATEGY.md"
-              exit 1
-            else
-              echo "✅ PASS: All changes are .cs files"
-              echo ""
-              echo "Changed .cs files:"
-              echo "$CHANGED_FILES" | grep '^src/.*\.cs$' | sed 's/^/  - /' || echo "  (none)"
-            fi
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+          
+          # Find non-.cs files in src/ (BLOCKS EVERYTHING except .cs)
+          NON_CS_FILES=$(echo "$CHANGED_FILES" | grep '^src/' | grep -v '\.cs$' || true)
+          
+          if [ -n "$NON_CS_FILES" ]; then
+            echo ""
+            echo "❌ ERROR: ALL PRs to main can ONLY modify .cs files in src/"
+            echo ""
+            echo "📋 BLOCKED FILES (ALL non-.cs extensions are forbidden in PRs):"
+            echo "$NON_CS_FILES" | sed 's/^/  - /'
+            echo ""
+            echo "🚫 This includes infrastructure files created during PR review:"
+            echo "  - Bot-generated files (.json, .yaml, .md)"
+            echo "  - Quality reports (.log, .txt, .csv)"
+            echo "  - Config changes (.toml, .xml, .config)"
+            echo "  - Scripts (.ps1, .py, .sh)"
+            echo "  - Documentation (.md, .html)"
+            echo ""
+            echo "✅ To fix:"
+            echo "  1. Close this PR"
+            echo "  2. Switch to main: git checkout main"
+            echo "  3. Commit infrastructure changes directly to main (no PR)"
+            echo "  4. Push to main: git push origin main"
+            echo "  5. Create new PR with .cs-only changes"
+            echo ""
+            echo "See: docs/protocol/BRANCH_STRATEGY.md"
+            exit 1
           else
-            echo "ℹ️  Not an epic-ccn-* branch, skipping validation"
-            echo "   Branch: $BRANCH"
+            echo "✅ PASS: All changes are .cs files only"
+            echo ""
+            echo "Changed .cs files:"
+            echo "$CHANGED_FILES" | grep '^src/.*\.cs$' | sed 's/^/  - /' || echo "  (none)"
           fi
 
 # Made with Bob
