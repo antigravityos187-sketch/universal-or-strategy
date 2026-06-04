@@ -390,7 +390,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 foreach (var kvp in entryOrders)
                 {
-                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))
+                    var pos = ShouldMonitorOrder(kvp.Value, kvp.Key);
+                    if (pos == null)
                     {
                         continue;
                     }
@@ -415,30 +416,34 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // [EPIC-CCN-13] Helper: Validate order eligibility (CYC <= 5)
-        private bool ShouldMonitorOrder(Order order, string entryName, out PositionInfo pos)
+        // JS-002: Returns nullable PositionInfo instead of out parameter
+        private PositionInfo? ShouldMonitorOrder(Order order, string entryName)
         {
-            pos = null;
             if (order == null || order.OrderState != OrderState.Working)
             {
-                return false;
+                return null;
             }
 
-            if (!activePositions.TryGetValue(entryName, out pos) || !pos.IsRMATrade)
+            if (!activePositions.TryGetValue(entryName, out var pos) || !pos.IsRMATrade)
             {
-                return false;
+                return null;
             }
 
-            return true;
+            return pos;
         }
 
+        // JS-042: Named constant for sentinel value
+        private const double UninitializedClosestApproachTicks = double.MaxValue;
+
         // [EPIC-CCN-13] Helper: Calculate distance + track closest approach (CYC <= 5)
+        // JS-007: Snapshot EntryPrice once to prevent race condition
         private double CalculateProximityDistance(PositionInfo pos, double currentPrice)
         {
             double level = pos.EntryPrice;
             double distTicks = Math.Abs(currentPrice - level) / tickSize;
 
             if (pos.ClosestApproachTicks <= 0)
-                pos.ClosestApproachTicks = double.MaxValue;
+                pos.ClosestApproachTicks = UninitializedClosestApproachTicks;
 
             if (distTicks < pos.ClosestApproachTicks)
                 pos.ClosestApproachTicks = distTicks;
