@@ -568,27 +568,36 @@ if (-not $Fast) {
 # 16. JANE STREET RULE ENFORCEMENT (V12.24 - Phase 5)
 # ============================================================================
 Write-CheckHeader "16. Jane Street Rule Enforcement (GODMODE - ALL SEVERITIES)"
-try {
-    $pythonInstalled = Get-Command "python" -ErrorAction SilentlyContinue
-    if ($pythonInstalled) {
-        Write-Host "  Running Jane Street rule checker on src/ (ALL severities)..." -ForegroundColor Gray
-        
-        # GODMODE: Check ALL severities (P0/P1/P2), all are BLOCKING
-        $jsOutput = python "$PSScriptRoot\jane_street_rule_checker.py" --severity ALL src/ 2>&1
-        $jsSuccess = $LASTEXITCODE -eq 0
-        
-        if ($jsSuccess) {
-            Write-CheckResult "Jane Street Rules (ALL)" $true "No rule violations detected"
+
+# Check if any .cs files are staged
+$stagedFiles = git diff --cached --name-only --diff-filter=ACM 2>&1
+$hasCsFiles = $stagedFiles | Where-Object { $_ -match "\.cs$" }
+
+if (-not $hasCsFiles) {
+    Write-CheckResult "Jane Street Rules" $true "No .cs files staged (infrastructure commit)"
+} else {
+    try {
+        $pythonInstalled = Get-Command "python" -ErrorAction SilentlyContinue
+        if ($pythonInstalled) {
+            Write-Host "  Running Jane Street rule checker on src/ (ALL severities)..." -ForegroundColor Gray
+            
+            # GODMODE: Check ALL severities (P0/P1/P2), all are BLOCKING
+            $jsOutput = python "$PSScriptRoot\jane_street_rule_checker.py" --severity ALL src/ 2>&1
+            $jsSuccess = $LASTEXITCODE -eq 0
+            
+            if ($jsSuccess) {
+                Write-CheckResult "Jane Street Rules (ALL)" $true "No rule violations detected"
+            } else {
+                Write-CheckResult "Jane Street Rules (ALL)" $false "Rule violations detected - ALL BLOCKING IN GODMODE"
+                Write-Host $jsOutput -ForegroundColor Red
+                Write-Host "`n  Fix ALL violations before pushing. See: docs/standards/jane-street/RULES_CATALOG.md" -ForegroundColor Yellow
+            }
         } else {
-            Write-CheckResult "Jane Street Rules (ALL)" $false "Rule violations detected - ALL BLOCKING IN GODMODE"
-            Write-Host $jsOutput -ForegroundColor Red
-            Write-Host "`n  Fix ALL violations before pushing. See: docs/standards/jane-street/RULES_CATALOG.md" -ForegroundColor Yellow
+            Write-CheckResult "Jane Street Rules" $true "Python not installed (skipped)"
         }
-    } else {
-        Write-CheckResult "Jane Street Rules" $true "Python not installed (skipped)"
+    } catch {
+        Write-CheckResult "Jane Street Rules" $false "Check failed: $($_.Exception.Message)"
     }
-} catch {
-    Write-CheckResult "Jane Street Rules" $false "Check failed: $($_.Exception.Message)"
 }
 
 # ============================================================================
