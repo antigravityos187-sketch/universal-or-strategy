@@ -314,7 +314,7 @@ Wait for Director input.
 After Director types "F5 done [BUILD_TAG]", switch to Advanced mode:
 ```
 COMMIT TASK:
-Run: git add -A
+Run: git add src/  # Epic branches: src-only (enforced by pre-commit hook)
 Run: git commit -m "[$1] ticket-XX: [short description] -- CYC [before]->[after] [BUILD_TAG]"
 Report the commit hash and current branch name.
 ```

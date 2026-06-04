@@ -81,3 +81,7 @@ agy_log.txt
 
 #Ignore vscode AI rules
 .github\instructions\codacy.instructions.md
+
+# GitHub Personal Access Tokens (SECURITY - NEVER COMMIT)
+docs/brain/GITHUB_PAT_STORAGE.md
+docs/brain/GITHUB_MIGRATION_TOKENS.md

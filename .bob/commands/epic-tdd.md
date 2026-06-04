@@ -156,7 +156,7 @@ This is OPTIONAL for TDD but recommended for:
 3. Confirm the Logic Audit passes.
 
 ### Step 4: Commit & Push
-1. `git add .`
+1. `git add src/`  # Epic branches: src-only (enforced by pre-commit hook)
 2. `git commit -m "[$1] ticket-$2: manual TDD implementation"`
 3. `git push`
 
