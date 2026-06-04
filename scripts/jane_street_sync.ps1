@@ -102,18 +102,33 @@ function Update-RepoStatus {
     )
     
     $syncStatus = Get-SyncStatus
-    if (!$syncStatus.repos) {
-        $syncStatus.repos = @{}
+    
+    # Convert to hashtable for proper manipulation
+    $statusHash = @{
+        version = $syncStatus.version
+        last_sync = (Get-Date).ToString("o")
+        repos = @{}
     }
     
-    $syncStatus.repos[$RepoName] = @{
+    # Copy existing repos if they exist
+    if ($syncStatus.repos) {
+        foreach ($prop in $syncStatus.repos.PSObject.Properties) {
+            $statusHash.repos[$prop.Name] = @{
+                status = $prop.Value.status
+                message = $prop.Value.message
+                timestamp = $prop.Value.timestamp
+            }
+        }
+    }
+    
+    # Add/update current repo
+    $statusHash.repos[$RepoName] = @{
         status = $Status
         message = $Message
         timestamp = (Get-Date).ToString("o")
     }
     
-    $syncStatus.last_sync = (Get-Date).ToString("o")
-    $syncStatus | ConvertTo-Json -Depth 10 | Set-Content $StatusFile
+    $statusHash | ConvertTo-Json -Depth 10 | Set-Content $StatusFile
 }
 
 function Clone-JaneStreetRepo {

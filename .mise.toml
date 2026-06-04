@@ -110,8 +110,8 @@ description = "Run stress tests"
 run = "pwsh -File ./scripts/test_stress.ps1"
 
 [tasks.complexity]
-description = "Run complexity audit (CYC threshold: 15)"
-run = "python scripts/complexity_audit.py"
+description = "Run complexity audit (GODMODE: CYC threshold: 8)"
+run = "python scripts/complexity_audit.py --threshold 8 --fail-on-violation"
 
 [tasks.hotspots]
 description = "Identify code hotspots (complexity + churn)"
@@ -310,6 +310,22 @@ if (Test-Path ~/.jane-street/.sync-status.json) {
     Write-Host "No sync status found. Run 'mise run jane-street-sync' to start." -ForegroundColor Yellow
 }
 """
+
+[tasks.negative-evidence-check]
+description = "Check if feature has negative evidence (no implementation found)"
+run = "python scripts/negative_evidence_check.py"
+
+[tasks.session-snapshot]
+description = "Manage session snapshots for budget-aware exploration"
+run = "python scripts/session_snapshot.py"
+
+[tasks.session-init]
+description = "Initialize a new session snapshot"
+run = "python scripts/session_snapshot.py init"
+
+[tasks.session-get]
+description = "Get current session state"
+run = "python scripts/session_snapshot.py get"
 
 # Alias shortcuts
 [tasks.v]

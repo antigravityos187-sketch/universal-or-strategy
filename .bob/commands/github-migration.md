@@ -175,17 +175,27 @@ Hand off:
 TASK: Install GitHub Apps
 TARGET: $1/universal-or-strategy
 PROTOCOL:
-  1. Instruct user to go to:
-     https://github.com/$1/universal-or-strategy/settings/installations
-  2. Present Tier 1 apps (REQUIRED):
-     - Codacy (https://github.com/apps/codacy)
-     - CodeScene (https://github.com/apps/codescene)
-     - CodeRabbit (https://github.com/apps/coderabbit)
-     - SonarCloud (https://github.com/apps/sonarcloud)
-  3. Present Tier 2 apps (OPTIONAL):
+  1. Instruct user to install Tier 1 apps (REQUIRED):
+     
+     A. PR-Agent (DIRECT LINK METHOD - EASIEST):
+        - Go to: https://github.com/apps/the-pr-agent/installations/new
+        - Select account: $1
+        - Choose "Only select repositories"
+        - Pick: universal-or-strategy
+        - Click "Install"
+        - Verify at: https://github.com/$1/universal-or-strategy/settings/installations
+     
+     B. Other Tier 1 Apps (use marketplace):
+        - Codacy: https://github.com/apps/codacy
+        - CodeScene: https://github.com/apps/codescene
+        - CodeRabbit: https://github.com/apps/coderabbit
+        - SonarCloud: https://github.com/apps/sonarcloud
+  
+  2. Present Tier 2 apps (OPTIONAL):
      - Sourcery, Greptile, Amazon Q, qlty, gitar
-  4. Wait for user confirmation: "Apps installed"
-  5. Emit: [APPS-INSTALLED] Tier 1: 4/4, Tier 2: <count>
+  
+  3. Wait for user confirmation: "Apps installed"
+  4. Emit: [APPS-INSTALLED] Tier 1: 5/5 (PR-Agent + 4 others), Tier 2: <count>
 ```
 
 **Gate:** User MUST confirm Tier 1 apps installed. Tier 2 is optional.
@@ -278,6 +288,24 @@ PROTOCOL:
 ```
 
 **Gate:** At least 3/4 Tier 1 bots MUST comment. If not, debug integration issues.
+
+### Session Snapshot (OPTIONAL)
+
+For migration auditing, track the migration session:
+```bash
+# Initialize migration session
+python scripts/session_snapshot.py init "YYYY-MM-DD-migration-$1" "Advanced mode" "GitHub migration to $1"
+
+# Record each phase completion
+python scripts/session_snapshot.py record-search "session-id" "Phase 1: Backup" "migration" 1
+python scripts/session_snapshot.py record-search "session-id" "Phase 2: Auth" "migration" 1
+# ... (repeat for all 10 phases)
+
+# Get migration summary
+python scripts/session_snapshot.py get "session-id" --json
+```
+
+This creates an audit trail for future migrations.
 
 ---
 
