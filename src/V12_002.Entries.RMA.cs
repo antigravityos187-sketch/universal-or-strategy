@@ -388,22 +388,34 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (!RmaIntelligenceEnabled)
                     return;
 
+                // P1-3: Cache Close[0] outside loop (JS-036: Zero-Allocation)
+                double currentClose = Close[0];
+
                 foreach (var kvp in entryOrders)
                 {
+                    // P0-5: Compute drawing tag once (JS-036: Zero-Allocation)
+                    string proximityTag = string.Format("Prox_{0}", kvp.Key);
+
                     if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))
                     {
                         continue;
                     }
 
-                    double distTicks = CalculateProximityDistance(pos, Close[0]);
+                    double distTicks = UpdateProximityAndCalculateDistance(pos, currentClose);
 
+                    // P0-2 + P1-7: Restore hysteresis dead zone (JS-004: Exhaustive Matching)
                     if (distTicks <= RmaProximityTicks)
                     {
-                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice);
+                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice, proximityTag);
                     }
-                    else if (distTicks >= RmaCancellationTicks)
+                    else if (distTicks < RmaCancellationTicks)
                     {
-                        HandleProximityExit(kvp.Key, kvp.Value, pos);
+                        // Dead zone: between proximity and cancellation thresholds
+                        // Prevents oscillation at boundary
+                    }
+                    else
+                    {
+                        HandleProximityExit(kvp.Key, kvp.Value, pos, proximityTag);
                     }
                 }
             }
@@ -418,7 +430,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool ShouldMonitorOrder(Order order, string entryName, out PositionInfo pos)
         {
             pos = null;
-            if (order == null || order.OrderState != OrderState.Working)
+            // P1-5: Include Accepted orders (JS-004: Exhaustive Matching)
+            if (order == null || (order.OrderState != OrderState.Working && order.OrderState != OrderState.Accepted))
             {
                 return false;
             }
@@ -431,28 +444,59 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
-        // [EPIC-CCN-13] Helper: Calculate distance + track closest approach (CYC <= 5)
-        private double CalculateProximityDistance(PositionInfo pos, double currentPrice)
+        // [EPIC-CCN-13] Helper: Calculate distance + track closest approach (CYC <= 6)
+        // P1-1: Renamed to signal mutation (JS-019: Clear Intent)
+        // P0-1: Lock-free atomic updates (JS-021: No Lock, JS-022: Actor Pattern)
+        private double UpdateProximityAndCalculateDistance(PositionInfo pos, double currentPrice)
         {
             double level = pos.EntryPrice;
+
+            // P0-3: Guard against division by zero (JS-015: Parse at Boundaries)
+            if (tickSize <= 0)
+            {
+                return double.MaxValue;
+            }
+
             double distTicks = Math.Abs(currentPrice - level) / tickSize;
 
-            if (pos.ClosestApproachTicks <= 0)
-                pos.ClosestApproachTicks = double.MaxValue;
+            // P0-1: Atomic CAS loop for lock-free updates
+            double currentClosest = pos.ClosestApproachTicks;
+            if (currentClosest <= 0)
+            {
+                currentClosest = double.MaxValue;
+                Interlocked.CompareExchange(ref pos.ClosestApproachTicks, currentClosest, 0);
+            }
 
-            if (distTicks < pos.ClosestApproachTicks)
-                pos.ClosestApproachTicks = distTicks;
+            // Update closest approach atomically if new distance is smaller
+            while (distTicks < currentClosest)
+            {
+                double original = Interlocked.CompareExchange(ref pos.ClosestApproachTicks, distTicks, currentClosest);
+
+                if (original == currentClosest)
+                {
+                    break; // Successfully updated
+                }
+
+                currentClosest = original; // Retry with new value
+            }
 
             return distTicks;
         }
 
         // [EPIC-CCN-13] Helper: Handle proximity zone entry (CYC <= 5)
-        private void HandleProximityEntry(string entryName, PositionInfo pos, double distTicks, double level)
+        private void HandleProximityEntry(
+            string entryName,
+            PositionInfo pos,
+            double distTicks,
+            double level,
+            string proximityTag
+        )
         {
             if (!pos.WasInProximity)
             {
+                // P0-1: Atomic state transitions (JS-021: No Lock)
                 pos.WasInProximity = true;
-                pos.ProximityProbeCount++;
+                Interlocked.Increment(ref pos.ProximityProbeCount);
                 Print(
                     LogBuffer.Format(
                         "[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}",
@@ -464,14 +508,16 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
             }
 
-            Draw.Dot(this, "Prox_" + entryName, false, 0, level, Brushes.Cyan);
+            // P0-5: Use pre-computed tag (JS-036: Zero-Allocation)
+            Draw.Dot(this, proximityTag, false, 0, level, Brushes.Cyan);
         }
 
         // [EPIC-CCN-13] Helper: Handle proximity zone exit + exhaustion (CYC <= 5)
-        private void HandleProximityExit(string entryName, Order order, PositionInfo pos)
+        private void HandleProximityExit(string entryName, Order order, PositionInfo pos, string proximityTag)
         {
             if (pos.WasInProximity)
             {
+                // P0-1: Atomic state transition (JS-021: No Lock)
                 pos.WasInProximity = false;
 
                 if (RmaExhaustionEnabled && pos.ProximityProbeCount >= RmaMaxProbeCount)
@@ -486,7 +532,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                         )
                     );
                     CancelOrderSafe(order, pos);
-                    RemoveDrawObject("Prox_" + entryName);
+                    // P0-5: Use pre-computed tag (JS-036: Zero-Allocation)
+                    RemoveDrawObject(proximityTag);
                     SendResponseToRemote("SOUND|SENTINEL_EXHAUSTION_CANCEL");
                 }
                 else
@@ -499,17 +546,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                             pos.ClosestApproachTicks
                         )
                     );
-                    RemoveDrawObject("Prox_" + entryName);
+                    // P0-5: Use pre-computed tag (JS-036: Zero-Allocation)
+                    RemoveDrawObject(proximityTag);
                     SendResponseToRemote("SOUND|SENTINEL_PROXIMITY_RETREAT");
                 }
             }
-            else
-            {
-                if (GetDrawObject("Prox_" + entryName) != null)
-                {
-                    RemoveDrawObject("Prox_" + entryName);
-                }
-            }
+            // P0-4: Removed redundant else block (JS-036: Zero-Allocation, JS-041: Cache-Friendly)
+            // WasInProximity state tracking makes defensive cleanup unnecessary
         }
 
         #endregion
