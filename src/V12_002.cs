@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.010-epic5-perf"; // EPIC-5 Ticket 04: Order Array Pooling
+        public const string BUILD_TAG = "1111.011-epic-ccn-14"; // EPIC-CCN-14: PropagateMaster_IdentifyMove CYC 18->4
 
         public class UILiveTargetSnapshot
         {
