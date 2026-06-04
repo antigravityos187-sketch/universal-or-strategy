@@ -2,16 +2,106 @@
 ignore_files = ["**/*.md", ".github/**", "docs/**"]
 ignore_directories = [".agent", ".agents", ".bob", ".codex", ".cursor", ".gemini", "Traycerrefactor", "artifacts"]
 extra_instructions = """
-STRICT RULE: C# string literals must be ASCII-only. Flag any Unicode, emojis, or curly quotes.
-STRICT RULE: The `lock(stateLock)` pattern is BANNED. Ensure all state mutations use the Enqueue/FSM model.
-STRICT RULE: Verify that any order replacement uses the two-phase Replace FSM pattern.
+GODMODE: Jane Street Sentinel - ALL VIOLATIONS BLOCKING
+Full catalog: docs/standards/jane-street/RULES_CATALOG.md
+
+MANDATORY: LABEL ALL VIOLATIONS WITH SEVERITY-SPECIFIC TAGS
+- P0 (CRITICAL): [CRITICAL-JS-P0] - BLOCKS MERGE
+- P1 (HIGH): [CRITICAL-JS-P1] - BLOCKS MERGE (upgraded from warning)
+- P2 (MEDIUM): [CRITICAL-JS-P2] - BLOCKS MERGE (upgraded from info)
+
+GODMODE RATIONALE:
+Autonomous "Bob the God" operation requires zero tolerance for ALL violations.
+Goal: Write code that "Jane Street can set their clocks by" without human intervention.
+
+P0 RULES (CRITICAL - Blocking):
+
+Type Safety:
+- JS-001: Use Result<T,E> instead of exceptions in hot paths
+- JS-002: Use Option<T> instead of null
+- JS-005: Enable nullable reference types
+- JS-015: Parse at boundaries, use validated types internally
+
+Concurrency:
+- JS-021: ABSOLUTE BAN on lock() - use Actor/FSM or atomic primitives
+- JS-022: Use Actor pattern (Channel-based FSM) for stateful concurrency
+- JS-023: Use Interlocked.* for atomic state updates
+- JS-033: NEVER use async void (except event handlers)
+
+Performance:
+- JS-036: Use Span<T> for zero-allocation in hot paths
+- JS-037: Use ArrayPool<T> for reusable buffers
+- JS-040: Use readonly struct for small value types
+- JS-042: NO MAGIC NUMBERS - use named constants
+
+Testing:
+- JS-051: Property-based tests for complex logic
+- JS-052: Deterministic randomness (seeded Random)
+- JS-055: Benchmark hot paths with BenchmarkDotNet
+
+Code Review:
+- JS-066: PR diff <10,000 characters
+- JS-067: Cyclomatic complexity ≤8 (GODMODE: Jane Street strict for ALL code)
+- JS-070: ASCII-only string literals (no Unicode, emoji, curly quotes)
+
+Serialization:
+- JS-081: Schema evolution (versioned messages)
+- JS-082: Checksums for data integrity
+- JS-083: Zero-copy deserialization
+
+Philosophy:
+- JS-096: Make illegal states unrepresentable
+- JS-097: Prefer compile-time errors over runtime checks
+- JS-100: Explicit control flow (no hidden magic)
+
+P1 RULES (HIGH - BLOCKING IN GODMODE):
+- Missing XML docs on public APIs
+- Non-optimal LINQ usage in hot paths
+- Missing benchmarks for performance-critical code
+- TODO comments without tracking tickets
+
+P2 RULES (MEDIUM - BLOCKING IN GODMODE):
+- Minor style inconsistencies
+- Commented-out code
+- Non-critical optimizations
+
+ENFORCEMENT (GODMODE):
+1. Scan for ALL violations (P0/P1/P2)
+2. P0: Label [CRITICAL-JS-P0], request changes, BLOCK MERGE
+3. P1: Label [CRITICAL-JS-P1], request changes, BLOCK MERGE
+4. P2: Label [CRITICAL-JS-P2], request changes, BLOCK MERGE
+
+SRC-ONLY ENFORCEMENT (epic-ccn-* branches):
+CRITICAL: If this is an epic-ccn-* branch and contains non-.cs files in src/,
+add a [CRITICAL-SRC-ONLY] finding: "epic-ccn-* branches must only modify .cs files in src/"
+Rationale: Surgical refactoring - separate concerns, prevent scope creep
+See: docs/protocol/BRANCH_STRATEGY.md
+
+Reference: docs/standards/jane-street/RULES_CATALOG.md for full details
 """
 
 [pr_code_suggestions]
 extra_instructions = """
-STRICT RULE: C# string literals must be ASCII-only. Flag any Unicode, emojis, or curly quotes.
-STRICT RULE: The `lock(stateLock)` pattern is BANNED. Ensure all state mutations use the Enqueue/FSM model.
-STRICT RULE: Verify that any order replacement uses the two-phase Replace FSM pattern.
+GODMODE: Jane Street Sentinel - ALL VIOLATIONS BLOCKING
+Full catalog: docs/standards/jane-street/RULES_CATALOG.md
+
+Label ALL violations with severity-specific tags:
+- P0: [CRITICAL-JS-P0] - BLOCKS MERGE
+- P1: [CRITICAL-JS-P1] - BLOCKS MERGE (upgraded from warning)
+- P2: [CRITICAL-JS-P2] - BLOCKS MERGE (upgraded from info)
+
+Focus on P0 violations (CRITICAL - Blocking):
+- JS-001: Result<T,E> instead of exceptions
+- JS-002: Option<T> instead of null
+- JS-021: NO lock() - use Actor/FSM
+- JS-036: Span<T> for zero-allocation
+- JS-042: Named constants (no magic numbers)
+- JS-067: Complexity ≤8 (GODMODE: Jane Street strict for ALL code)
+- JS-070: ASCII-only strings
+
+Also flag P1/P2 violations - ALL are BLOCKING in GODMODE.
+
+Suggest fixes with code examples from RULES_CATALOG.md
 """
 
 [github_action_config]

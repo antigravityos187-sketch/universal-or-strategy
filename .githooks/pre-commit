@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Pre-commit hook: Enforce .cs-only for epic-ccn-* branches
+# Blocks commits with non-.cs files in src/ on epic-ccn-* branches
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+if [[ $BRANCH =~ ^epic-ccn- ]]; then
+  # Get staged files
+  STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+  
+  # Check for non-.cs files in src/
+  NON_CS_FILES=$(echo "$STAGED_FILES" | grep '^src/' | grep -v '\.cs$')
+  
+  if [ -n "$NON_CS_FILES" ]; then
+    echo "❌ ERROR: epic-ccn-* branches can only modify .cs files in src/"
+    echo ""
+    echo "Blocked files:"
+    echo "$NON_CS_FILES"
+    echo ""
+    echo "To fix:"
+    echo "  1. Unstage non-.cs files: git reset HEAD <file>"
+    echo "  2. Move changes to separate branch"
+    echo "  3. Commit again"
+    echo ""
+    echo "To bypass (NOT RECOMMENDED): git commit --no-verify"
+    exit 1
+  fi
+fi
+
+exit 0
+
+# Made with Bob
