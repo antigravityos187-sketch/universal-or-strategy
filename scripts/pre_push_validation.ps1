@@ -574,7 +574,7 @@ try {
         Write-Host "  Running Jane Street rule checker on src/ (ALL severities)..." -ForegroundColor Gray
         
         # GODMODE: Check ALL severities (P0/P1/P2), all are BLOCKING
-        $jsOutput = python "$PSScriptRoot\jane_street_rule_checker.py" src/ --severity ALL 2>&1
+        $jsOutput = python "$PSScriptRoot\jane_street_rule_checker.py" --severity ALL src/ 2>&1
         $jsSuccess = $LASTEXITCODE -eq 0
         
         if ($jsSuccess) {
