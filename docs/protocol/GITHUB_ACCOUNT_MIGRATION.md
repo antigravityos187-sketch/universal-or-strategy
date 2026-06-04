@@ -22,17 +22,46 @@ When migrating from Account A to Account B:
 **Use this for quick migrations when you want to keep the fork.**
 
 1. **Create PAT** on new account:
-   - Go to: https://github.com/settings/tokens/new?scopes=repo
-   - Scopes: `repo` (full control)
+   - Go to: https://github.com/settings/tokens/new
+   - **Required Scopes**:
+     - ✅ `repo` (full control of private repositories)
+     - ✅ `workflow` (update GitHub Action workflows) - **CRITICAL for PR creation**
+     - ✅ `admin:org` (read:org minimum)
    - Generate token (starts with `ghp_...`)
+   - **SAVE IMMEDIATELY** - token shown only once
 
-2. **Configure GitHub CLI**:
+2. **⚠️ CRITICAL: Remove Old Account Token**:
    ```powershell
-   $env:GH_TOKEN = "ghp_xxxxxxxxxxxxx"
+   # Check current authentication
+   gh auth status
+   
+   # If showing old account, clear environment variable
+   [System.Environment]::SetEnvironmentVariable('GITHUB_TOKEN', $null, 'User')
+   [System.Environment]::SetEnvironmentVariable('GITHUB_TOKEN', $null, 'Process')
+   
+   # Verify old token removed
+   gh auth status  # Should show error or different account
+   ```
+
+3. **Configure GitHub CLI with NEW token**:
+   ```powershell
+   # Set persistently (survives terminal restarts)
+   [System.Environment]::SetEnvironmentVariable('GITHUB_TOKEN', 'ghp_NEW_TOKEN_HERE', 'User')
+   
+   # Set for current session
+   $env:GITHUB_TOKEN = "ghp_NEW_TOKEN_HERE"
+   
+   # Verify authentication
+   gh auth status --show-token
+   # Should show: ✓ Logged in to github.com account NEW_ACCOUNT
+   ```
+
+4. **Test PR creation**:
+   ```powershell
    gh pr create --repo <new-account>/<repo> --head <branch> --base main --title "..." --body "..."
    ```
 
-3. **Automation works immediately** ✅
+5. **Automation works immediately** ✅
 
 ### Option 2: Standalone Repository (CLEANEST)
 
@@ -70,13 +99,16 @@ When migrating from Account A to Account B:
 - [ ] Document all repository secrets
 - [ ] List active workflows in `.github/workflows/`
 - [ ] Note any external service integrations (Codacy, Snyk, etc.)
+- [ ] **Save old account token** to `docs/brain/GITHUB_MIGRATION_TOKENS.md` (keep for old account access)
 
 ### During Migration
 - [ ] Choose Option 1 (PAT) or Option 2 (Standalone)
-- [ ] If Option 1: Create PAT with `repo` scope
+- [ ] If Option 1: Create PAT with **ALL required scopes** (`repo`, `workflow`, `admin:org`)
+- [ ] **⚠️ CRITICAL: Remove old account token from environment** (see Option 1, Step 2)
+- [ ] Configure GitHub CLI with NEW token (persistent + session)
+- [ ] Verify authentication shows NEW account: `gh auth status`
 - [ ] If Option 2: Delete fork, create fresh repo
 - [ ] Push all branches to new account
-- [ ] Verify GitHub CLI authentication: `gh auth status`
 
 ### Post-Migration
 - [ ] Add repository secrets to new repo
@@ -84,6 +116,7 @@ When migrating from Account A to Account B:
 - [ ] Test automated PR creation: `gh pr create ...`
 - [ ] Confirm all workflows trigger correctly
 - [ ] Update local git remotes if needed
+- [ ] Document new token in `docs/brain/GITHUB_MIGRATION_TOKENS.md`
 
 ## Automation Integration
 
@@ -126,21 +159,60 @@ if (-not $env:GH_TOKEN) {
 
 ## Troubleshooting
 
+### "Resource not accessible by personal access token" error
+**Cause**: Token missing required scopes (usually `workflow`) OR authenticated with wrong account
+**Symptoms**:
+- `gh auth status` shows old account name
+- PR creation fails with GraphQL error
+- Token has `repo` scope but still fails
+
+**Fix**:
+```powershell
+# 1. Check current authentication
+gh auth status --show-token
+
+# 2. If showing wrong account, remove old token
+[System.Environment]::SetEnvironmentVariable('GITHUB_TOKEN', $null, 'User')
+$env:GITHUB_TOKEN = $null
+
+# 3. Set new token with ALL required scopes
+[System.Environment]::SetEnvironmentVariable('GITHUB_TOKEN', 'ghp_NEW_TOKEN', 'User')
+$env:GITHUB_TOKEN = "ghp_NEW_TOKEN"
+
+# 4. Verify correct account
+gh auth status
+# Should show: ✓ Logged in to github.com account NEW_ACCOUNT
+```
+
+**Prevention**: Always remove old account tokens before setting new ones during migration.
+
 ### "must be a collaborator" error
-**Cause**: Trying to create PR on a fork without PAT  
+**Cause**: Trying to create PR on a fork without PAT
 **Fix**: Use Option 1 (PAT) or Option 2 (Standalone)
 
 ### "permission denied" on push
-**Cause**: Git credential cache has old account credentials  
-**Fix**: 
+**Cause**: Git credential cache has old account credentials
+**Fix**:
 ```powershell
 "protocol=https`nhost=github.com`n" | git credential-manager erase
 git config --global credential.helper "!gh auth git-credential"
 ```
 
 ### GitHub Apps not triggering
-**Cause**: Apps are installed on old account, not new account  
+**Cause**: Apps are installed on old account, not new account
 **Fix**: Install apps on new account (they're account-level, auto-work on all repos)
+
+### Token authentication works but reverts to old account
+**Cause**: `GITHUB_TOKEN` environment variable not set persistently
+**Fix**:
+```powershell
+# Set at User level (persists across terminal sessions)
+[System.Environment]::SetEnvironmentVariable('GITHUB_TOKEN', 'ghp_NEW_TOKEN', 'User')
+
+# Restart terminal or reload environment
+# Verify persistence
+gh auth status
+```
 
 ## References
 
@@ -207,6 +279,13 @@ When migrating accounts, add this step:
 
 ## Version History
 
+- **1.2** (2026-06-04): Added critical token conflict prevention
+  - **CRITICAL**: Added Step 2 to Option 1 - Remove old account token before setting new one
+  - Updated PAT scopes to include `workflow` (required for PR creation)
+  - Added troubleshooting section for "Resource not accessible by personal access token" error
+  - Updated migration checklist with token removal step
+  - Added persistent token configuration instructions
+  - Documented token reversion issue and fix
 - **1.1** (2026-05-25): Added dynamic username detection pattern
   - Created `scripts/get_github_username.ps1` helper
   - Updated `scripts/extract_pr_forensics.ps1` to use dynamic URLs

@@ -216,7 +216,7 @@ def generate_report():
     
     print("=" * 80)
     print("V12 UNIVERSAL OR STRATEGY - GODMODE COMPLEXITY AUDIT")
-    print("JANE STREET STRICT THRESHOLD: CYC ≤ 8")
+    print("JANE STREET STRICT THRESHOLD: CYC <= 8")
     print("=" * 80)
     print()
     
@@ -300,7 +300,7 @@ def generate_report():
 if __name__ == '__main__':
     # V12.24 GODMODE: Default threshold = 8 (Jane Street strict)
     parser = argparse.ArgumentParser(
-        description='V12 GODMODE Complexity Audit - Jane Street Strict (CYC ≤ 8)'
+        description='V12 GODMODE Complexity Audit - Jane Street Strict (CYC <= 8)'
     )
     parser.add_argument(
         '--threshold',
@@ -315,7 +315,7 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
     
-    print(f"[GODMODE] Using Jane Street strict threshold: CYC ≤ {args.threshold}")
+    print(f"[GODMODE] Using Jane Street strict threshold: CYC <= {args.threshold}")
     print()
     
     # Run the audit

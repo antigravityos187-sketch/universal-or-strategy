@@ -1,0 +1,180 @@
+# Epic: EPIC-CCN-13 -- Scope Alignment
+
+## Code Area
+
+**Target Method**: `ShouldSkipFleet_RunHealthCheck`
+**File**: `src/V12_002.SIMA.Fleet.cs:407-459`
+**Lines**: 53 LOC
+**Current Complexity**: CYC 29 (HIGH - 2nd highest in codebase)
+**Max Nesting**: 5 levels
+**Parameters**: 2 (Account acct, StringBuilder dispatchLog)
+
+### Method Signature
+```csharp
+private void ShouldSkipFleet_RunHealthCheck(Account acct, StringBuilder dispatchLog)
+```
+
+### Method Purpose
+T-W1 Helper 1: H-13 stale state reconciliation (diagnostic-only).
+- Logs broker position vs FSM/activePositions/dispatch state
+- RETURNS VOID per H8 constraint -- no bool decision path
+- Diagnostic-only health check with no side effects beyond logging
+
+### Call Chain
+1. **Caller**: `ShouldSkipFleetAccount` (line 394 in same file)
+2. **Parent Caller**: `Dispatch_ProcessFleetLoop` (line 164 in `V12_002.SIMA.Dispatch.cs`)
+3. **Context**: Fleet dispatch loop - called once per fleet account during SIMA dispatch
+
+## Validated Problem
+
+**Confirmed via jCodemunch Analysis**:
+- ✅ **Complexity**: CYC 29 (confirmed via `get_symbol_complexity`)
+- ✅ **Hotspot Score**: 80.41 (rank #2 in codebase per Phase 0 analysis)
+- ✅ **Churn**: 15 commits in 90 days (ACTIVE maintenance burden)
+- ✅ **Lock-Free**: Zero `lock()` statements (V12 DNA compliant)
+- ✅ **ASCII-Only**: Zero non-ASCII characters (V12 DNA compliant)
+- ✅ **Assessment**: HIGH complexity per jCodemunch
+
+**Complexity Breakdown**:
+The method has 29 decision points across:
+1. Position snapshot iteration with null checks
+2. FSM state enumeration (4 state checks: Active, Accepted, Submitted, Replacing)
+3. Active position enumeration with follower checks
+4. Dispatch pending check
+5. Multiple conditional branches for logging different scenarios
+
+**Why This Matters**:
+- 2nd highest complexity in entire codebase (only behind methods already targeted)
+- High churn (15 commits) indicates ongoing maintenance burden
+- Diagnostic code should be simple and reliable
+- Current complexity makes it hard to verify correctness of health check logic
+
+## Scope Boundaries
+
+### IN SCOPE
+- **Primary Target**: `ShouldSkipFleet_RunHealthCheck` method (lines 407-459)
+- **Extraction Goal**: Reduce CYC from 29 to ≤8 (Jane Street strict threshold)
+- **Approach**: Extract sub-methods for:
+  1. Broker position snapshot logic
+  2. FSM state enumeration
+  3. Active position enumeration
+  4. Health check result classification and logging
+
+### OUT OF SCOPE
+- ❌ Caller method `ShouldSkipFleetAccount` (separate method, already extracted in Build 935)
+- ❌ Parent caller `Dispatch_ProcessFleetLoop` (different file, different concern)
+- ❌ Other Fleet methods in the file
+- ❌ FSM state machine logic (`_followerBrackets` dictionary)
+- ❌ Active positions dictionary (`activePositions`)
+- ❌ Dispatch sync dictionary (`_dispatchSyncPendingExpKeys`)
+- ❌ Changing method signature or return type (VOID per H8 constraint)
+- ❌ Changing logging behavior or diagnostic output
+
+### Anti-Scope Creep Guards
+- **ONE METHOD ONLY**: Do not touch adjacent methods
+- **NO CALLER CHANGES**: Caller invocation at line 394 remains unchanged
+- **NO SIGNATURE CHANGES**: Method signature is frozen (void return, 2 params)
+- **NO BEHAVIOR CHANGES**: Diagnostic output must remain identical
+
+## Risk Level
+
+**CORE COMPONENT - MEDIUM RISK**
+
+**Risk Factors**:
+- ✅ **Low Coupling**: Only 1 caller (line 394 in same file)
+- ✅ **Diagnostic Only**: No side effects beyond logging (void return)
+- ✅ **No State Mutation**: Read-only access to FSM/positions/dispatch state
+- ⚠️ **Fleet Critical**: Part of SIMA Fleet dispatch health check
+- ⚠️ **Complexity**: High CYC 29 means many edge cases to preserve
+
+**Mitigation**:
+- Extraction preserves exact logic flow
+- No changes to caller or parent methods
+- Comprehensive testing of all 29 decision paths
+- Verify identical diagnostic output before/after
+
+## V12 DNA Constraints
+
+### Mandatory Compliance
+- ✅ **CYC Target**: ≤ 8 per method (Jane Street strict)
+- ✅ **Lock-Free**: Already compliant (zero lock() statements)
+- ✅ **ASCII-Only**: Already compliant (zero non-ASCII chars)
+- ✅ **Extraction Floor**: ≥ 15 LOC per sub-method
+- ✅ **No New Locks**: Extraction must not introduce lock() statements
+- ✅ **Enqueue/FSM Model**: Read-only access to FSM state (no mutations)
+
+### Extraction Strategy
+**Target**: 4-5 sub-methods, each CYC ≤ 8
+
+**Proposed Breakdown**:
+1. `GetBrokerPositionSnapshot` (CYC ~5): Snapshot + find position logic
+2. `HasActiveFsmForAccount` (CYC ~4): FSM enumeration with state checks
+3. `HasActivePositionForAccount` (CYC ~3): Active position enumeration
+4. `ClassifyHealthCheckResult` (CYC ~6): Conditional logging logic
+5. Main method orchestrates calls (CYC ~3)
+
+**Verification**:
+- Each sub-method ≥ 15 LOC (extraction floor)
+- Each sub-method CYC ≤ 8 (Jane Street strict)
+- Total CYC reduction: 29 → ~21 distributed (main ~3, helpers ~18)
+- Main method becomes thin orchestrator
+
+## Dependencies & State Access
+
+**Read-Only Access** (No Mutations):
+- `acct.Positions` - Broker position collection (snapshotted)
+- `_followerBrackets` - ConcurrentDictionary<string, FollowerBracket>
+- `activePositions` - ConcurrentDictionary<string, PositionInfo>
+- `_dispatchSyncPendingExpKeys` - Dictionary<string, bool>
+- `Instrument.FullName` - Strategy instrument name
+
+**No Side Effects**:
+- Method is diagnostic-only (void return)
+- Only writes to `dispatchLog` StringBuilder (passed by caller)
+- No state mutations, no FSM transitions, no order submissions
+
+## Success Criteria
+
+### Functional Correctness
+- [ ] All 29 decision paths preserved exactly
+- [ ] Diagnostic output identical to original (character-for-character)
+- [ ] No changes to caller invocation
+- [ ] No changes to method signature
+
+### Complexity Reduction
+- [ ] Main method CYC ≤ 8
+- [ ] All sub-methods CYC ≤ 8
+- [ ] All sub-methods ≥ 15 LOC
+- [ ] Total distributed CYC ≤ 25 (main + helpers)
+
+### V12 DNA Compliance
+- [ ] Zero new lock() statements
+- [ ] ASCII-only in all extracted code
+- [ ] No nullable reference warnings
+- [ ] Builds without errors
+
+### Testing
+- [ ] Unit tests for each sub-method
+- [ ] Integration test for main method
+- [ ] Verify all 29 decision paths covered
+- [ ] Compare diagnostic output before/after
+
+## Notes
+
+**Historical Context**:
+- Build 935 [SIMA-B935-001]: Parent method `ShouldSkipFleetAccount` was extracted from `Dispatch_ProcessFleetLoop`
+- This extraction continues the Build 935 refactoring pattern
+- Method was created as "Helper 1" in the Build 935 extraction
+- Now Helper 1 itself needs extraction (CYC 29 too high)
+
+**Jane Street Alignment**:
+- Diagnostic code should be simple and obviously correct
+- High complexity in health checks increases risk of false positives/negatives
+- Extraction improves testability and maintainability
+- Follows Jane Street principle: "Make illegal states unrepresentable" by making logic paths explicit
+
+**Phase 0 Hotspot Data**:
+- Rank: #2 in codebase
+- Hotspot Score: 80.41
+- Churn: 15 commits (90 days)
+- Assessment: HIGH complexity + ACTIVE churn = priority target
