@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.015-pr5-final"; // PR #5: Fixed final 10 compilation errors (type conversions, method signatures, missing fields)
+        public const string BUILD_TAG = "1111.016-pr5-iter8"; // PR #5 Iteration 8: Extract magic literals to named constants
 
         public class UILiveTargetSnapshot
         {
@@ -327,10 +327,34 @@ namespace NinjaTrader.NinjaScript.Strategies
         private DateTime lastDrawORBoxTime = DateTime.MinValue;
         private const int DRAW_ORBOX_THROTTLE_MS = 200;
 
+        /// <summary>
+        /// Default adaptive throttle interval in milliseconds.
+        /// Prevents CPU saturation during high-frequency tick processing.
+        /// </summary>
+        private const int DEFAULT_ADAPTIVE_THROTTLE_MS = 100;
+
+        /// <summary>
+        /// Actor queue depth warning threshold.
+        /// Triggers backlog warning when queue exceeds this depth.
+        /// </summary>
+        private const int ACTOR_QUEUE_DEPTH_WARNING_THRESHOLD = 100;
+
+        /// <summary>
+        /// Initial capacity for dispatch log StringBuilder.
+        /// Pre-allocated to avoid reallocation during hot path logging.
+        /// </summary>
+        private const int DISPATCH_LOG_INITIAL_CAPACITY = 512;
+
+        /// <summary>
+        /// Maximum items to drain from IPC queue during shutdown.
+        /// Prevents infinite loop if queue is continuously fed.
+        /// </summary>
+        private const int IPC_DRAIN_LIMIT = 100;
+
         // V8.30: Adaptive throttling based on tick frequency
         private int tickCountInLastSecond = 0;
         private DateTime lastTickCountReset = DateTime.MinValue;
-        private int adaptiveThrottleMs = 100;
+        private int adaptiveThrottleMs = DEFAULT_ADAPTIVE_THROTTLE_MS;
 
         // V9.1.8 IPC Integration
         private TcpListener ipcListener;
@@ -563,7 +587,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             TouchStrategyHeartbeat();
             // Build 1109 [FREEZE-PROOF]: Early warning for queue saturation
             int _actorQd = _cmdQueue.Count;
-            if (_actorQd > 100)
+            if (_actorQd > ACTOR_QUEUE_DEPTH_WARNING_THRESHOLD)
                 Print("[ACTOR_WARN] Queue depth=" + _actorQd + " -- possible backlog");
             BeginActorCycle();
             try

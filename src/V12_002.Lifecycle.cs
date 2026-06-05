@@ -481,7 +481,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 int ipcDrained = 0;
                 if (ipcCommandQueue != null)
                 {
-                    while (ipcDrained < 100 && ipcCommandQueue.TryDequeue(out string _))
+                    while (ipcDrained < IPC_DRAIN_LIMIT && ipcCommandQueue.TryDequeue(out string _))
                     {
                         ipcDrained++;
                     }
