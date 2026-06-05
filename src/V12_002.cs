@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.016-pr5-iter8"; // PR #5 Iteration 8: Extract magic literals to named constants
+        public const string BUILD_TAG = "1111.017-pr5-iter10"; // PR #5 Iteration 10: Fix narrow exception handling in FlattenAll()
 
         public class UILiveTargetSnapshot
         {
