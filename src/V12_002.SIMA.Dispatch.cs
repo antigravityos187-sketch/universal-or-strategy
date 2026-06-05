@@ -650,11 +650,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Print($"[PublishPhoton_FleetOrders] Stop creation failed for {fleetEntryName} - aborting dispatch");
 
-                // Rollback: Remove from registeredForCleanup if already added
-                if (registeredForCleanup)
-                {
-                    registeredForCleanup = false;
-                }
+                // Rollback: Clear registeredForCleanup flag (ref parameter)
+                registeredForCleanup = false;
 
                 return; // Do NOT proceed to dictionary registration
             }
