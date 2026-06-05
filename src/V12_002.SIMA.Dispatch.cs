@@ -541,7 +541,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Fix: tradeType is string, need to convert to double for CalculateATRStopDistance
             double atrMultiplier = StopMultiplier; // Use configured stop multiplier
             double atrStopDistance = CalculateATRStopDistance(atrMultiplier);
-            double tickSizeValue = Instrument.MasterInstrument.TickSize;
             
             if (action == OrderAction.Buy)
             {
@@ -562,6 +561,16 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // Set target quantities (distribute across targets based on dispatchTargetCount)
             GetTargetDistribution(followerQty, out ft1, out ft2, out ft3, out ft4, out ft5);
+
+            // Persist bracket data to fleetPos BEFORE publish
+            fleetPos.InitialStopPrice = stopPrice;
+            fleetPos.CurrentStopPrice = stopPrice;
+            fleetPos.Target1Price = t1TargetPrice;
+            fleetPos.T1Contracts = ft1;
+            fleetPos.T2Contracts = ft2;
+            fleetPos.T3Contracts = ft3;
+            fleetPos.T4Contracts = ft4;
+            fleetPos.T5Contracts = ft5;
 
             return true;
         }
@@ -636,22 +645,19 @@ namespace NinjaTrader.NinjaScript.Strategies
             );
 
             // Register tracking dictionaries
-            // Fix: Convert List<StagedTarget> to List<(int, Order, double)>
-            var stagedTargetTuples = stagedTargets.Select(st => (st.Num, st.Order, st.Price)).ToList();
-            
             RegisterTrackingDictionaries(
                 fleetEntryName,
                 fleetPos,
                 entry,
                 stop,
-                stagedTargetTuples,
+                stagedTargets,
                 expectedKey,
                 ref syncPending,
                 ref registeredForCleanup
             );
 
             // Initialize FSM
-            InitializeFollowerBracketFSM(acct, fleetEntryName, followerQty, entry, stop, ocoId, stagedTargetTuples);
+            InitializeFollowerBracketFSM(acct, fleetEntryName, followerQty, entry, stop, ocoId, stagedTargets);
 
             // P1-1 FIX: Register follower with symmetry guard for fleet tracking
             SymmetryGuardRegisterFollower(symmetryDispatchId, fleetEntryName);
@@ -663,11 +669,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             // V14.2 [ADR-012]: Zero-allocation dispatch via PhotonPool + SPSC ring
             var (_proxyOrders, _poolSlotIndex) = ClaimPhotonPoolSlot();
 
-            // Fix: Convert List<StagedTarget> to tuple list for PopulatePhotonSlot
             FleetDispatchSlot _slot = PopulatePhotonSlot(
                 entry,
                 stop,
-                stagedTargetTuples,
+                stagedTargets,
                 _proxyOrders,
                 _poolSlotIndex,
                 entryPrice,

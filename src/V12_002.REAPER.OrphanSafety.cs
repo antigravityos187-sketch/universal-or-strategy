@@ -20,9 +20,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private readonly ConcurrentDictionary<string, DateTime> _orphanedPositionFirstSeen =
             new ConcurrentDictionary<string, DateTime>();
 
-        // Orphan repair attempt counter (key = account name)
-        private readonly ConcurrentDictionary<string, int> _reaperOrphanRepairCount =
-            new ConcurrentDictionary<string, int>();
+        // NOTE: _reaperOrphanRepairCount declaration moved to V12_002.REAPER.cs to eliminate duplicate definition
 
         /// <summary>
         /// Detects orphaned FSM positions (broker flat but activePositions entry exists) after 10s grace.
