@@ -394,7 +394,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private volatile bool _dataLoadedComplete = false;
         private int _startupReadinessLogEmitted = 0;
         private volatile bool _diagFleet; // T-Q1: Fleet dispatch + account queue catch logging
-        private volatile bool _diagIpc; // T-Q1: MMIO mirror publish catch logging
+        // P0-9 FIX: _diagIpc removed - field was never assigned, diagnostic branches never run
 
         protected void Enqueue(Action<V12_002> action)
         {

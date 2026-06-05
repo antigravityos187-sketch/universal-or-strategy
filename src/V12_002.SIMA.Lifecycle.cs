@@ -46,14 +46,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Measure lifecycle semaphore contention because this wait runs on the actor path
             // and can stall queue drain when SIMA toggles overlap with other work.
             Stopwatch waitTimer = Stopwatch.StartNew();
-            // Build 1109 [FREEZE-PROOF]: Non-blocking semaphore. Wait(0) returns instantly.
+            // Build 1109 [FREEZE-PROOF]: Non-blocking gate via Interlocked.CompareExchange.
             // If contended, defer to next strategy-thread cycle via TriggerCustomEvent.
-            if (!_simaToggleSem.Wait(0))
+            if (Interlocked.CompareExchange(ref _simaToggleState, 1, 0) != 0)
             {
                 waitTimer.Stop();
                 _simaTogglePending = true;
                 bool _defEnabled = enabled;
-                Print("[SIMA_WARN] Toggle semaphore contended -- scheduling non-blocking retry");
+                Print("[SIMA_WARN] Toggle gate contended -- scheduling non-blocking retry");
                 try { TriggerCustomEvent(o => ProcessApplySimaState(_defEnabled), null); } catch { }
                 return;
             }
@@ -61,7 +61,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 waitTimer.Stop();
                 if (waitTimer.Elapsed.TotalMilliseconds >= 25.0)
-                    Print(string.Format("[LATENCY] [SIMA LIFECYCLE] Toggle semaphore wait: {0:F1}ms", waitTimer.Elapsed.TotalMilliseconds));
+                    Print(string.Format("[LATENCY] [SIMA LIFECYCLE] Toggle gate wait: {0:F1}ms", waitTimer.Elapsed.TotalMilliseconds));
 
                 if (enabled)
                     ProcessInitializeSIMA();
@@ -74,7 +74,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             finally
             {
-                _simaToggleSem.Release();
+                Interlocked.Exchange(ref _simaToggleState, 0);
             }
         }
 

@@ -412,9 +412,13 @@ namespace NinjaTrader.NinjaScript.Strategies
             // so a live read inside the fleet loop (line below) can produce a different bound for
             // different accounts. Capturing once here ensures all fleet accounts submit identical
             // target counts for this dispatch.
-            activeAccountSnapshot = new HashSet<string>(
-                activeFleetAccounts.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
-            );
+            // P0-3 FIX: Replace LINQ with manual iteration to avoid hot-path allocation
+            activeAccountSnapshot = new HashSet<string>();
+            foreach (var kvp in activeFleetAccounts)
+            {
+                if (kvp.Value)
+                    activeAccountSnapshot.Add(kvp.Key);
+            }
             dispatchTargetCount = Math.Max(1, Math.Min(5, activeTargetCount));
 
             fleet = GetSortedAccountFleet();
@@ -488,21 +492,25 @@ namespace NinjaTrader.NinjaScript.Strategies
             ocoId = null;
             followerQty = quantity;
             ft1 = ft2 = ft3 = ft4 = ft5 = 0;
-            stopPrice = t1TargetPrice = t2TargetPrice = t3TargetPrice = t4TargetPrice = t5TargetPrice = 0;
-
-            // Get or create position info for this account
-            expectedKey = acct.Name;
-            if (!activePositions.TryGetValue(expectedKey, out fleetPos))
-            {
-                fleetPos = new PositionInfo();
-                activePositions[expectedKey] = fleetPos;
-            }
+            stopPrice = t1TargetPrice = 0;
+            // P0-8 FIX: Remove unused out parameters (t2-t5 never assigned)
+            t2TargetPrice = t3TargetPrice = t4TargetPrice = t5TargetPrice = 0;
 
             // Generate unique fleet entry name
-            fleetEntryName = LogBuffer.Format("{0}_{1}_{2}", symmetryDispatchId, acct.Name, accountIndex);
+            fleetEntryName = LogBuffer.Format("Fleet_{0}_{1}_{2}", acct.Name, tradeType, accountIndex);
 
-            // Generate OCO ID for bracket orders
-            ocoId = LogBuffer.Format("{0}_{1}", action.ToString(), DateTime.UtcNow.Ticks);
+            // P0-4 FIX: Use ExpKey helper for consistent dictionary key generation
+            expectedKey = ExpKey(acct.Name);
+
+            // P0-5 FIX: Use fleetEntryName as key for activePositions (not acct.Name)
+            if (!activePositions.TryGetValue(fleetEntryName, out fleetPos))
+            {
+                fleetPos = new PositionInfo();
+                activePositions[fleetEntryName] = fleetPos;
+            }
+
+            // P0-6 FIX: Generate unique OCO ID per fleet account (include fleetEntryName)
+            ocoId = LogBuffer.Format("V12_{0}_{1}", fleetEntryName, DateTime.UtcNow.Ticks);
 
             // Create entry order signal name
             string entrySig = SymmetryTrim("Entry_" + fleetEntryName, 40);
@@ -527,21 +535,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
             }
 
-            // Calculate stop and target prices based on entry price
-            // Use simple fixed offsets for now (these should ideally come from strategy parameters)
+            // P0-2/P1-1 FIX: Restore ATR-based bracket calculation (not hardcoded ticks)
+            // Calculate stop distance using ATR-based logic
+            double atrStopDistance = CalculateATRStopDistance(tradeType);
             double tickSizeValue = Instrument.MasterInstrument.TickSize;
-            double stopTicks = 10;
-            double targetTicks = 20;
-
+            
             if (action == OrderAction.Buy)
             {
-                stopPrice = entryPrice - (stopTicks * tickSizeValue);
-                t1TargetPrice = entryPrice + (targetTicks * tickSizeValue);
+                stopPrice = entryPrice - atrStopDistance;
+                t1TargetPrice = CalculateTargetPrice(entryPrice, atrStopDistance, 1, true);
             }
             else
             {
-                stopPrice = entryPrice + (stopTicks * tickSizeValue);
-                t1TargetPrice = entryPrice - (targetTicks * tickSizeValue);
+                stopPrice = entryPrice + atrStopDistance;
+                t1TargetPrice = CalculateTargetPrice(entryPrice, atrStopDistance, 1, false);
             }
 
             // Round to tick size
@@ -549,8 +556,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             t1TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t1TargetPrice);
 
             // Set target quantities (distribute across targets based on dispatchTargetCount)
-            if (dispatchTargetCount >= 1)
-                ft1 = followerQty;
+            GetTargetDistribution(followerQty, out ft1, out ft2, out ft3, out ft4, out ft5);
 
             return true;
         }
