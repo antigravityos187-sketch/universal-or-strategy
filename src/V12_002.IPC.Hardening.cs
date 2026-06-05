@@ -261,7 +261,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Validate command format and parameters against allowlist.
         /// EPIC-4 P0 Fix #1: Aligned with AllowedIpcActions to prevent circuit breaker trips.
         /// EPIC-4 P0 Fix #2: Uses static readonly array to eliminate hot-path allocations.
-        /// CYC: 4
+        /// EPIC-4 P0 Fix #3: Parameter count validation delegated to dispatcher (returns -1).
+        /// CYC: 3
         /// </summary>
         private bool CheckCommandSyntax(string action, string[] parts)
         {
@@ -277,8 +278,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
             }
 
+            // Parameter count validation delegated to dispatcher (GetExpectedParameterCount returns -1)
+            // This prevents false rejections of valid commands with variable parameter counts
             int expectedParams = GetExpectedParameterCount(action);
-            if (parts.Length != expectedParams)
+            if (expectedParams >= 0 && parts.Length != expectedParams)
             {
                 Print(
                     string.Format(
@@ -296,15 +299,16 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         /// <summary>
         /// Get expected parameter count for a given action.
-        /// EPIC-4 P0-1 Fix: Removed phantom commands (ENABLE_SIMA, FLATTEN_ALL, etc.) that don't exist in ValidIpcActions.
-        /// All commands in ValidIpcActions have variable parameter counts handled by dispatcher, so default to 0.
+        /// EPIC-4 P0 Fix: Returns -1 to disable parameter count validation (dispatcher handles it).
+        /// Parameter count validation is delegated to the command dispatcher since IPC commands
+        /// have variable parameter counts that depend on runtime context.
         /// CYC: 1
         /// </summary>
         private int GetExpectedParameterCount(string action)
         {
-            // All valid IPC actions have their parameter validation handled by the dispatcher
-            // This method now serves as a placeholder for future parameter count enforcement
-            return 0;
+            // Return -1 to signal "skip parameter count check" - dispatcher validates parameters
+            // This prevents false rejections of valid commands with parameters
+            return -1;
         }
 
         /// <summary>
