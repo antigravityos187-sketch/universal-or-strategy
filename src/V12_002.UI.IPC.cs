@@ -263,6 +263,28 @@ namespace NinjaTrader.NinjaScript.Strategies
                     if (!MetadataGuardCommandTimestamp(senderTicks, action))
                         continue;
 
+                    // EPIC-4 Ticket 03: IPC Hardening validation (rate limiting, circuit breakers, anomaly detection)
+                    ValidationResult validationResult = ValidateIpcCommand(action, parts);
+                    if (validationResult != ValidationResult.Valid)
+                    {
+                        switch (validationResult)
+                        {
+                            case ValidationResult.InvalidSyntax:
+                                Print($"V12 IPC REJECT [HARDENING]: Invalid syntax for '{action}'");
+                                break;
+                            case ValidationResult.RateLimitExceeded:
+                                SendBackpressureNack(action);
+                                break;
+                            case ValidationResult.CircuitBreakerOpen:
+                                Print($"V12 IPC REJECT [HARDENING]: Circuit breaker open for '{action}'");
+                                break;
+                            case ValidationResult.AllowlistBypass:
+                                Print($"V12 IPC REJECT [HARDENING]: Allowlist bypass attempt detected for '{action}'");
+                                break;
+                        }
+                        continue;
+                    }
+
                     if (!IsAllowedIpcAction(action))
                     {
                         Interlocked.Increment(ref _ipcAllowlistRejectCount);
