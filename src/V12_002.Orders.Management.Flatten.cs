@@ -282,7 +282,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                             if (Position != null && Position.MarketPosition != MarketPosition.Flat)
                                 livePositionQty = Position.Quantity;
                         }
-                        catch (Exception pEx) { Print("Flatten Error reading Position: " + pEx.Message); }
+                        catch (InvalidOperationException pEx) { Print("Flatten Error reading Position InvalidOp: " + pEx.Message); }
+                        catch (NullReferenceException pEx) { Print("Flatten Error reading Position NullRef: " + pEx.Message); }
 
                         // Use the smaller of cached and live to avoid overselling
                         // V10 DIAGNOSTIC: Print values
