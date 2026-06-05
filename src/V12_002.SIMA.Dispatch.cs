@@ -491,10 +491,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             fleetEntryName = null;
             expectedKey = null;
             ocoId = null;
-            followerQty = quantity;
+            // P0-5 FIX: Apply fleet parity scaling to follower quantity
+            followerQty = quantity * FleetParityMultiplier;
             ft1 = ft2 = ft3 = ft4 = ft5 = 0;
             stopPrice = t1TargetPrice = 0;
-            // P0-8 FIX: Remove unused out parameters (t2-t5 never assigned)
             t2TargetPrice = t3TargetPrice = t4TargetPrice = t5TargetPrice = 0;
 
             // Generate unique fleet entry name
@@ -538,34 +538,63 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // P0-2/P1-1 FIX: Restore ATR-based bracket calculation (not hardcoded ticks)
             // Calculate stop distance using ATR-based logic
-            // Fix: tradeType is string, need to convert to double for CalculateATRStopDistance
             double atrMultiplier = StopMultiplier; // Use configured stop multiplier
             double atrStopDistance = CalculateATRStopDistance(atrMultiplier);
             
+            MarketPosition direction;
             if (action == OrderAction.Buy)
             {
                 stopPrice = entryPrice - atrStopDistance;
-                // Fix: CalculateTargetPrice takes 3 args (MarketPosition, entryPrice, targetNumber)
-                t1TargetPrice = CalculateTargetPrice(MarketPosition.Long, entryPrice, 1);
+                direction = MarketPosition.Long;
             }
             else
             {
                 stopPrice = entryPrice + atrStopDistance;
-                // Fix: CalculateTargetPrice takes 3 args (MarketPosition, entryPrice, targetNumber)
-                t1TargetPrice = CalculateTargetPrice(MarketPosition.Short, entryPrice, 1);
+                direction = MarketPosition.Short;
             }
 
-            // Round to tick size
+            // Round stop to tick size
             stopPrice = Instrument.MasterInstrument.RoundToTickSize(stopPrice);
+
+            // Calculate all target prices based on dispatchTargetCount
+            t1TargetPrice = CalculateTargetPrice(direction, entryPrice, 1);
             t1TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t1TargetPrice);
+            
+            if (dispatchTargetCount >= 2)
+            {
+                t2TargetPrice = CalculateTargetPrice(direction, entryPrice, 2);
+                t2TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t2TargetPrice);
+            }
+            
+            if (dispatchTargetCount >= 3)
+            {
+                t3TargetPrice = CalculateTargetPrice(direction, entryPrice, 3);
+                t3TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t3TargetPrice);
+            }
+            
+            if (dispatchTargetCount >= 4)
+            {
+                t4TargetPrice = CalculateTargetPrice(direction, entryPrice, 4);
+                t4TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t4TargetPrice);
+            }
+            
+            if (dispatchTargetCount >= 5)
+            {
+                t5TargetPrice = CalculateTargetPrice(direction, entryPrice, 5);
+                t5TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t5TargetPrice);
+            }
 
             // Set target quantities (distribute across targets based on dispatchTargetCount)
-            GetTargetDistribution(followerQty, out ft1, out ft2, out ft3, out ft4, out ft5);
+            GetTargetDistribution(followerQty, out ft1, out ft2, out ft3, out ft4, out ft5, dispatchTargetCount);
 
             // Persist bracket data to fleetPos BEFORE publish
             fleetPos.InitialStopPrice = stopPrice;
             fleetPos.CurrentStopPrice = stopPrice;
             fleetPos.Target1Price = t1TargetPrice;
+            fleetPos.Target2Price = t2TargetPrice;
+            fleetPos.Target3Price = t3TargetPrice;
+            fleetPos.Target4Price = t4TargetPrice;
+            fleetPos.Target5Price = t5TargetPrice;
             fleetPos.T1Contracts = ft1;
             fleetPos.T2Contracts = ft2;
             fleetPos.T3Contracts = ft3;
@@ -913,7 +942,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             PositionInfo fleetPos,
             Order entry,
             Order stop,
-            List<(int Num, Order Order, double Price)> stagedTargets,
+            List<StagedTarget> stagedTargets,
             string expectedKey,
             ref bool syncPending,
             ref bool registeredForCleanup
@@ -944,7 +973,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             Order entry,
             Order stop,
             string ocoId,
-            List<(int Num, Order Order, double Price)> stagedTargets
+            List<StagedTarget> stagedTargets
         )
         {
             // Phase 6 [FSM-P1]: Proactive FSM
@@ -1001,7 +1030,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private FleetDispatchSlot PopulatePhotonSlot(
             Order entry,
             Order stop,
-            List<(int Num, Order Order, double Price)> stagedTargets,
+            List<StagedTarget> stagedTargets,
             Order[] proxyOrders,
             int poolSlotIndex,
             double entryPrice,
@@ -1102,6 +1131,62 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
             }
         }
+        /// <summary>
+        /// P2-3 FIX: Centralized enqueue helper for limit entry dispatch.
+        /// Matches market path pattern to prevent divergence.
+        /// Target CYC: <=5.
+        /// </summary>
+        private void EnqueueLimitEntryToPhotonRing(
+            ref FleetDispatchSlot slot,
+            Order[] proxyOrders,
+            int poolSlotIndex,
+            Order entry,
+            Account acct,
+            string fleetEntryName,
+            string expectedKey,
+            int reservedDelta
+        )
+        {
+            if (poolSlotIndex >= 0 && _photonDispatchRing.TryEnqueue(ref slot))
+            {
+                TrackPhotonEnqueue();
+                if (_photonMmioMirror != null)
+                {
+                    try
+                    {
+                        _photonMmioMirror.TryPublish(ref slot);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (_diagIpc)
+                            Print("[IPC_CATCH] Dispatch_BuildFollowerOrders MMIO failed: " + ex.Message);
+                    }
+                }
+            }
+            else
+            {
+                if (poolSlotIndex >= 0)
+                {
+                    TrackPhotonRingFull();
+                    Order[] legacyOrdersLmt = new Order[] { entry };
+                    _photonPool.ReleaseByIndex(poolSlotIndex);
+                    _photonSideband[poolSlotIndex] = default(FleetDispatchSideband);
+                    proxyOrders = legacyOrdersLmt;
+                }
+                _pendingFleetDispatches.Enqueue(
+                    new FleetDispatchRequest
+                    {
+                        Account = acct,
+                        Orders = proxyOrders,
+                        FleetEntryName = fleetEntryName,
+                        ExpectedKey = expectedKey,
+                        ReservedDelta = reservedDelta,
+                        SignalTicks = DateTime.UtcNow.Ticks,
+                    }
+                );
+            }
+        }
+
 
         private void Dispatch_PublishLimitEntryToPhoton(
             Account acct,
@@ -1204,44 +1289,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return; // Circuit breaker tripped, state already rolled back
             }
 
-            if (_poolSlotIndexLmt >= 0 && _photonDispatchRing.TryEnqueue(ref _slotLmt))
-            {
-                TrackPhotonEnqueue();
-                if (_photonMmioMirror != null)
-                {
-                    try
-                    {
-                        _photonMmioMirror.TryPublish(ref _slotLmt);
-                    }
-                    catch (Exception ex)
-                    {
-                        if (_diagIpc)
-                            Print("[IPC_CATCH] Dispatch_BuildFollowerOrders MMIO failed: " + ex.Message);
-                    }
-                }
-            }
-            else
-            {
-                if (_poolSlotIndexLmt >= 0)
-                {
-                    TrackPhotonRingFull();
-                    Order[] legacyOrdersLmt = new Order[] { entry };
-                    _photonPool.ReleaseByIndex(_poolSlotIndexLmt);
-                    _photonSideband[_poolSlotIndexLmt] = default(FleetDispatchSideband);
-                    _proxyOrdersLmt = legacyOrdersLmt;
-                }
-                _pendingFleetDispatches.Enqueue(
-                    new FleetDispatchRequest
-                    {
-                        Account = acct,
-                        Orders = _proxyOrdersLmt,
-                        FleetEntryName = fleetEntryName,
-                        ExpectedKey = expectedKey,
-                        ReservedDelta = reservedDelta,
-                        SignalTicks = DateTime.UtcNow.Ticks,
-                    }
-                );
-            }
+            // P2-3 FIX: Use centralized enqueue helper (matches market path pattern)
+            EnqueueLimitEntryToPhotonRing(
+                ref _slotLmt,
+                _proxyOrdersLmt,
+                _poolSlotIndexLmt,
+                entry,
+                acct,
+                fleetEntryName,
+                expectedKey,
+                reservedDelta
+            );
             syncPending = false;
             reservedDelta = 0;
             registeredForCleanup = false;
