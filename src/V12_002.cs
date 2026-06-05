@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.013-ccn18"; // EPIC-CCN-18: ValidateOrphanedMasterOrders extraction (CYC 19->5)
+        public const string BUILD_TAG = "1111.015-pr5-final"; // PR #5: Fixed final 10 compilation errors (type conversions, method signatures, missing fields)
 
         public class UILiveTargetSnapshot
         {
@@ -306,7 +306,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         // EPIC-4 Ticket 02: Sticky State persistence layer fields
         private bool _stickyStateEnabled = true;
-        private string _stickyStatePath = string.Empty;
         private long _lastSnapshotTicks = 0;
         private int _stickyDirtyFlag = 0; // Atomic dirty flag (0=clean, 1=dirty)
 
@@ -394,7 +393,17 @@ namespace NinjaTrader.NinjaScript.Strategies
         private volatile bool _dataLoadedComplete = false;
         private int _startupReadinessLogEmitted = 0;
         private volatile bool _diagFleet; // T-Q1: Fleet dispatch + account queue catch logging
-        // P0-9 FIX: _diagIpc removed - field was never assigned, diagnostic branches never run
+        private volatile bool _diagIpc; // IPC/MMIO diagnostic logging (restored for Dispatch.cs usage)
+
+        // UI callback failure counter
+        private int _uiCallbackFailures = 0;
+
+        // Build 1111.014 [PR#5]: Sticky state diagnostic counters
+        private int _stateTempCleanupFailures = 0;
+        private bool _stateCorruptionDetected = false;
+
+        // Keyboard command registry for hotkeys
+        private Dictionary<Key, Action> _keyCommands;
 
         protected void Enqueue(Action<V12_002> action)
         {
@@ -643,6 +652,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         // if two enable/disable calls interleave (e.g. IPC toggle while UI toggle in progress).
         // 0=idle, 1=busy (Interlocked.CompareExchange acquire, Interlocked.Exchange release in finally)
         private int _simaToggleState = 0;
+        
+        // V12.Phase7 [GAP-4]: SIMA toggle semaphore (legacy, replaced by lock-free _simaToggleState)
+        // Retained for disposal in Lifecycle cleanup
+        private SemaphoreSlim _simaToggleSem;
 
         // V12.Audit [H-10]: Tracks a toggle that could not complete due to gate contention.
         // ApplySimaState retries the pending toggle at the top of its next invocation.

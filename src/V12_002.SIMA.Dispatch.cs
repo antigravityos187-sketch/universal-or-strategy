@@ -286,6 +286,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                             entryPrice,
                             stopPrice,
                             dispatchTargetCount,
+                            symmetryDispatchId,
                             dispatchLog,
                             ref syncPending,
                             ref reservedDelta,
@@ -537,18 +538,22 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // P0-2/P1-1 FIX: Restore ATR-based bracket calculation (not hardcoded ticks)
             // Calculate stop distance using ATR-based logic
-            double atrStopDistance = CalculateATRStopDistance(tradeType);
+            // Fix: tradeType is string, need to convert to double for CalculateATRStopDistance
+            double atrMultiplier = StopMultiplier; // Use configured stop multiplier
+            double atrStopDistance = CalculateATRStopDistance(atrMultiplier);
             double tickSizeValue = Instrument.MasterInstrument.TickSize;
             
             if (action == OrderAction.Buy)
             {
                 stopPrice = entryPrice - atrStopDistance;
-                t1TargetPrice = CalculateTargetPrice(entryPrice, atrStopDistance, 1, true);
+                // Fix: CalculateTargetPrice takes 3 args (MarketPosition, entryPrice, targetNumber)
+                t1TargetPrice = CalculateTargetPrice(MarketPosition.Long, entryPrice, 1);
             }
             else
             {
                 stopPrice = entryPrice + atrStopDistance;
-                t1TargetPrice = CalculateTargetPrice(entryPrice, atrStopDistance, 1, false);
+                // Fix: CalculateTargetPrice takes 3 args (MarketPosition, entryPrice, targetNumber)
+                t1TargetPrice = CalculateTargetPrice(MarketPosition.Short, entryPrice, 1);
             }
 
             // Round to tick size
@@ -578,6 +583,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             double entryPrice,
             double stopPrice,
             int dispatchTargetCount,
+            string symmetryDispatchId,
             StringBuilder dispatchLog,
             ref bool syncPending,
             ref int reservedDelta,
@@ -630,19 +636,22 @@ namespace NinjaTrader.NinjaScript.Strategies
             );
 
             // Register tracking dictionaries
+            // Fix: Convert List<StagedTarget> to List<(int, Order, double)>
+            var stagedTargetTuples = stagedTargets.Select(st => (st.Num, st.Order, st.Price)).ToList();
+            
             RegisterTrackingDictionaries(
                 fleetEntryName,
                 fleetPos,
                 entry,
                 stop,
-                stagedTargets,
+                stagedTargetTuples,
                 expectedKey,
                 ref syncPending,
                 ref registeredForCleanup
             );
 
             // Initialize FSM
-            InitializeFollowerBracketFSM(acct, fleetEntryName, followerQty, entry, stop, ocoId, stagedTargets);
+            InitializeFollowerBracketFSM(acct, fleetEntryName, followerQty, entry, stop, ocoId, stagedTargetTuples);
 
             // P1-1 FIX: Register follower with symmetry guard for fleet tracking
             SymmetryGuardRegisterFollower(symmetryDispatchId, fleetEntryName);
@@ -654,10 +663,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             // V14.2 [ADR-012]: Zero-allocation dispatch via PhotonPool + SPSC ring
             var (_proxyOrders, _poolSlotIndex) = ClaimPhotonPoolSlot();
 
+            // Fix: Convert List<StagedTarget> to tuple list for PopulatePhotonSlot
             FleetDispatchSlot _slot = PopulatePhotonSlot(
                 entry,
                 stop,
-                stagedTargets,
+                stagedTargetTuples,
                 _proxyOrders,
                 _poolSlotIndex,
                 entryPrice,
