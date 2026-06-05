@@ -40,7 +40,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // V12.Audit [H-10]: If a previous toggle timed out, attempt retry now.
             // We re-enter with the same `enabled` argument that was pending.
             // If the semaphore is still held this call will time out again, setting the flag once more.
-            if (_simaTogglePending)
+            if (_simaTogglePending != 0)
                 Print("[SIMA LIFECYCLE] Retrying previously timed-out toggle (pending retry flag was set).");
 
             // Measure lifecycle semaphore contention because this wait runs on the actor path
@@ -51,7 +51,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (Interlocked.CompareExchange(ref _simaToggleState, 1, 0) != 0)
             {
                 waitTimer.Stop();
-                _simaTogglePending = true;
+                _simaTogglePending = 1;
                 bool _defEnabled = enabled;
                 Print("[SIMA_WARN] Toggle gate contended -- scheduling non-blocking retry");
                 try { TriggerCustomEvent(o => ProcessApplySimaState(_defEnabled), null); } catch { }
@@ -70,7 +70,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 EnableSIMA = enabled;
                 // V12.Audit [H-10]: Toggle completed successfully -- clear any pending-retry flag.
-                _simaTogglePending = false;
+                _simaTogglePending = 0;
             }
             finally
             {

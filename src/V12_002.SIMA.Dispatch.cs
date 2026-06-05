@@ -644,6 +644,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Initialize FSM
             InitializeFollowerBracketFSM(acct, fleetEntryName, followerQty, entry, stop, ocoId, stagedTargets);
 
+            // P1-1 FIX: Register follower with symmetry guard for fleet tracking
+            SymmetryGuardRegisterFollower(symmetryDispatchId, fleetEntryName);
+
             // Reserve expected quantity
             reservedDelta = (action == OrderAction.Buy) ? followerQty : -followerQty;
             AddExpectedPositionDeltaLocked(expectedKey, reservedDelta);
