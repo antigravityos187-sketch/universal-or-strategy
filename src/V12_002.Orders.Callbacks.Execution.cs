@@ -51,7 +51,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     HandleFlatPositionUpdate(acctName); // [B967-FIX-01]
                 BroadcastSyncTargetState();
             }
-            catch (Exception ex) { Print("ERROR OnPositionUpdate: " + ex.Message); }
+            catch (InvalidOperationException ex) { Print("ERROR OnPositionUpdate InvalidOp: " + ex.Message); }
+            catch (NullReferenceException ex) { Print("ERROR OnPositionUpdate NullRef: " + ex.Message); }
         }
 
         // Build 935 [CB-B935-001]: Flat-position cleanup extracted from OnPositionUpdate.
