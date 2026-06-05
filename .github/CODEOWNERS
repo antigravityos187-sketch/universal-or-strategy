@@ -1,16 +1,29 @@
-# V12 Universal OR Strategy - Code Ownership
-# 
-# This file defines code ownership for automated review requests.
-# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# CODEOWNERS — V12 Universal OR Strategy
+# All code requires review from the Director (repository owner).
+# Ref: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-# Default owner for everything in the repo
-* @antigravityos187-sketch
+# Global ownership — applies to all files not matched below
+* @mkalhitti-cloud
 
-# Source code requires Director approval (enforces .cs-only policy)
-src/ @antigravityos187-sketch
+# Core strategy kernel — highest sensitivity
+src/ @mkalhitti-cloud
 
-# Infrastructure changes (can be pushed directly to main, no PR required)
-.github/ @antigravityos187-sketch
-scripts/ @antigravityos187-sketch
-docs/ @antigravityos187-sketch
-.bob/ @antigravityos187-sketch
+# Protocol paths — Director review ONLY (no bot reviews)
+# These paths define agent behavior and must be reviewed by humans only
+# Branch protection rule: "Require review from Code Owners" ensures bots can't approve
+.bob/ @mkalhitti-cloud
+.agent/ @mkalhitti-cloud
+.claude/ @mkalhitti-cloud
+.gemini/ @mkalhitti-cloud
+.codex/ @mkalhitti-cloud
+docs/protocol/ @mkalhitti-cloud
+AGENTS.md @mkalhitti-cloud
+CLAUDE.md @mkalhitti-cloud
+GEMINI.md @mkalhitti-cloud
+BOB.md @mkalhitti-cloud
+CODEX.md @mkalhitti-cloud
+
+# CI/CD and deployment scripts — changes affect live production
+.github/ @mkalhitti-cloud
+deploy-sync.ps1 @mkalhitti-cloud
+scripts/ @mkalhitti-cloud

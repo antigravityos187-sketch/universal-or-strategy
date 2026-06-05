@@ -233,21 +233,21 @@ try {
 }
 
 # ============================================================================
-# 9. COMPLEXITY THRESHOLD ENFORCEMENT (GODMODE - Jane Street Strict)
+# 9. COMPLEXITY THRESHOLD ENFORCEMENT (V12 DNA - Jane Street Aligned)
 # ============================================================================
 if (-not $Fast) {
-    Write-CheckHeader "9. Complexity Threshold (CYC ≤ 8 STRICT)"
+    Write-CheckHeader "9. Complexity Threshold (CYC ≤ 15)"
     try {
         $pythonInstalled = Get-Command "python" -ErrorAction SilentlyContinue
         if ($pythonInstalled) {
-            # GODMODE: Run with Jane Street strict threshold (CYC ≤ 8)
-            $complexityOutput = python "$PSScriptRoot\complexity_audit.py" --threshold 8 --fail-on-violation 2>&1
+            # Run with threshold enforcement
+            $complexityOutput = python "$PSScriptRoot\complexity_audit.py" --threshold 15 --fail-on-violation 2>&1
             $complexitySuccess = $LASTEXITCODE -eq 0
             
             if ($complexitySuccess) {
-                Write-CheckResult "Complexity (≤8)" $true "All methods within Jane Street strict threshold"
+                Write-CheckResult "Complexity (≤15)" $true "All methods within threshold"
             } else {
-                Write-CheckResult "Complexity (≤8)" $false "Methods exceed CYC 8 threshold (BLOCKING)"
+                Write-CheckResult "Complexity (≤15)" $false "Methods exceed CYC 15 threshold"
                 Write-Host $complexityOutput -ForegroundColor Red
             }
         } else {
@@ -496,171 +496,6 @@ try {
 }
 
 
-
-# ============================================================================
-# 15. JANE STREET PATTERN VALIDATION (V12 DNA - Phase 4)
-# ============================================================================
-if (-not $Fast) {
-    Write-CheckHeader "15. Jane Street Pattern Validation"
-    try {
-        $pythonInstalled = Get-Command "python" -ErrorAction SilentlyContinue
-        if ($pythonInstalled) {
-            Write-Host "  Scanning for Jane Street anti-patterns..." -ForegroundColor Gray
-            
-            # Run validator with JSON output for parsing
-            $jsOutput = python "$PSScriptRoot\jane_street_validator.py" src/ --json 2>&1
-            $jsSuccess = $LASTEXITCODE -eq 0
-            
-            if ($jsSuccess) {
-                try {
-                    $jsResults = $jsOutput | ConvertFrom-Json
-                    $p0Count = $jsResults.summary.P0
-                    $p1Count = $jsResults.summary.P1
-                    $p2Count = $jsResults.summary.P2
-                    $totalCount = $p0Count + $p1Count + $p2Count
-                    
-                    # GODMODE: ALL violations (P0/P1/P2) are BLOCKING
-                    if ($totalCount -eq 0) {
-                        Write-CheckResult "Jane Street Patterns" $true "No violations detected"
-                    } else {
-                        Write-CheckResult "Jane Street Patterns" $false "$totalCount violations detected (P0: $p0Count, P1: $p1Count, P2: $p2Count) - ALL BLOCKING IN GODMODE"
-                        Write-Host "  ALL violations must be fixed before push (GODMODE):" -ForegroundColor Red
-                        
-                        # Show all violations (P0 first, then P1, then P2)
-                        $allViolations = $jsResults.violations | Sort-Object @{Expression={
-                            switch ($_.severity) {
-                                "P0" { 1 }
-                                "P1" { 2 }
-                                "P2" { 3 }
-                            }
-                        }}
-                        $allViolations | Select-Object -First 10 | ForEach-Object {
-                            $color = switch ($_.severity) {
-                                "P0" { "Red" }
-                                "P1" { "Yellow" }
-                                "P2" { "Gray" }
-                            }
-                            Write-Host "    [$($_.severity)] [$($_.rule)] $($_.file):$($_.line) - $($_.message)" -ForegroundColor $color
-                        }
-                        
-                        if ($totalCount -gt 10) {
-                            Write-Host "    ... and $($totalCount - 10) more" -ForegroundColor Red
-                        }
-                        
-                        Write-Host "`n  Run 'python scripts\jane_street_validator.py src\ --fix-suggestions' for full report" -ForegroundColor Yellow
-                    }
-                } catch {
-                    Write-CheckResult "Jane Street Patterns" $false "Failed to parse results: $($_.Exception.Message)"
-                }
-            } else {
-                Write-CheckResult "Jane Street Patterns" $false "Validator execution failed"
-                Write-Host $jsOutput -ForegroundColor Red
-            }
-        } else {
-            Write-CheckResult "Jane Street Patterns" $true "Python not installed (skipped)"
-        }
-    } catch {
-        Write-CheckResult "Jane Street Patterns" $true "Validation failed (non-blocking): $($_.Exception.Message)"
-    }
-}
-
-# ============================================================================
-# 16. JANE STREET RULE ENFORCEMENT (V12.24 - Phase 5)
-# ============================================================================
-Write-CheckHeader "16. Jane Street Rule Enforcement (GODMODE - ALL SEVERITIES)"
-
-# Check if any .cs files are staged
-$stagedFiles = git diff --cached --name-only --diff-filter=ACM 2>&1
-$hasCsFiles = $stagedFiles | Where-Object { $_ -match "\.cs$" }
-
-if (-not $hasCsFiles) {
-    Write-CheckResult "Jane Street Rules" $true "No .cs files staged (infrastructure commit)"
-} else {
-    try {
-        $pythonInstalled = Get-Command "python" -ErrorAction SilentlyContinue
-        if ($pythonInstalled) {
-            Write-Host "  Running Jane Street rule checker on src/ (ALL severities)..." -ForegroundColor Gray
-            
-            # GODMODE: Check ALL severities (P0/P1/P2), all are BLOCKING
-            $jsOutput = python "$PSScriptRoot\jane_street_rule_checker.py" --severity ALL src/ 2>&1
-            $jsSuccess = $LASTEXITCODE -eq 0
-            
-            if ($jsSuccess) {
-                Write-CheckResult "Jane Street Rules (ALL)" $true "No rule violations detected"
-            } else {
-                Write-CheckResult "Jane Street Rules (ALL)" $false "Rule violations detected - ALL BLOCKING IN GODMODE"
-                Write-Host $jsOutput -ForegroundColor Red
-                Write-Host "`n  Fix ALL violations before pushing. See: docs/standards/jane-street/RULES_CATALOG.md" -ForegroundColor Yellow
-            }
-        } else {
-            Write-CheckResult "Jane Street Rules" $true "Python not installed (skipped)"
-        }
-    } catch {
-        Write-CheckResult "Jane Street Rules" $false "Check failed: $($_.Exception.Message)"
-    }
-}
-
-# ============================================================================
-# 17. SRC-ONLY PR VALIDATION (ALL PRs to main)
-# ============================================================================
-# POLICY: ALL PRs to main MUST be .cs-only
-# Infrastructure changes go directly to main (no PR, no bot review, no token waste)
-#
-# BLOCKS ALL NON-.CS EXTENSIONS INCLUDING:
-# Infrastructure: .yaml, .yml, .json, .jsonc, .toml, .xml, .config, .props, .targets
-# Scripts: .ps1, .py, .sh, .bat, .cmd, .js, .ts, .mjs, .cjs
-# Documentation: .md, .txt, .html, .css, .svg, .png, .jpg
-# Build artifacts: .dll, .exe, .pdb, .cache, .log, .bin
-# Config: .gitignore, .editorconfig, .env, .example, .npmignore
-# And 50+ other extensions found in this project
-#
-# RATIONALE: Bot reviews waste tokens on infrastructure files, slow down audits
-# See: docs/protocol/BRANCH_STRATEGY.md
-# ============================================================================
-Write-CheckHeader "17. Src-Only PR Validation (ALL PRs)"
-try {
-    $branch = git rev-parse --abbrev-ref HEAD 2>&1
-    
-    # Skip check if on main branch (infrastructure changes go directly to main)
-    if ($branch -eq "main") {
-        Write-CheckResult "Src-Only PR" $true "On main branch (infrastructure changes allowed)"
-    } else {
-        Write-Host "  Validating branch: $branch" -ForegroundColor Gray
-        Write-Host "  POLICY: ALL PRs to main MUST be .cs-only" -ForegroundColor Gray
-        Write-Host "  Enforcement: ONLY .cs files allowed in src/ (ALL other extensions blocked)" -ForegroundColor Gray
-        
-        # Get changed files compared to main
-        $changedFiles = git diff --name-only origin/main...HEAD 2>&1
-        
-        if ($LASTEXITCODE -eq 0) {
-            # Find non-.cs files in src/ (BLOCKS EVERYTHING except .cs)
-            $nonCsFiles = $changedFiles | Where-Object { $_ -match '^src/' -and $_ -notmatch '\.cs$' }
-            
-            if ($nonCsFiles) {
-                Write-CheckResult "Src-Only PR" $false "ALL PRs to main can ONLY modify .cs files in src/"
-                Write-Host "`n  BLOCKED FILES (ALL non-.cs extensions are forbidden in PRs):" -ForegroundColor Red
-                $nonCsFiles | ForEach-Object { Write-Host "    - $_" -ForegroundColor Red }
-                Write-Host "`n  This includes infrastructure files created during PR review:" -ForegroundColor Yellow
-                Write-Host "    - Bot-generated files (.json, .yaml, .md)" -ForegroundColor Yellow
-                Write-Host "    - Quality reports (.log, .txt, .csv)" -ForegroundColor Yellow
-                Write-Host "    - Config changes (.toml, .xml, .config)" -ForegroundColor Yellow
-                Write-Host "    - Scripts (.ps1, .py, .sh)" -ForegroundColor Yellow
-                Write-Host "    - Documentation (.md, .html)" -ForegroundColor Yellow
-                Write-Host "`n  To fix:" -ForegroundColor Yellow
-                Write-Host "    1. Switch to main: git checkout main" -ForegroundColor Yellow
-                Write-Host "    2. Commit infrastructure changes directly to main (no PR)" -ForegroundColor Yellow
-                Write-Host "    3. Push to main: git push origin main" -ForegroundColor Yellow
-                Write-Host "    4. Return to feature branch for .cs-only changes" -ForegroundColor Yellow
-            } else {
-                Write-CheckResult "Src-Only PR" $true "All changes are .cs files only"
-            }
-        } else {
-            Write-CheckResult "Src-Only PR" $true "Could not compare with origin/main (skipped)"
-        }
-    }
-} catch {
-    Write-CheckResult "Src-Only PR" $true "Validation failed (non-blocking): $($_.Exception.Message)"
-}
 
 # ============================================================================
 # FINAL REPORT

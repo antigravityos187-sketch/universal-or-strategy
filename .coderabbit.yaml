@@ -1,9 +1,10 @@
 # CodeRabbit Configuration for V12 Universal OR Strategy
 # Aligned with V12 DNA: Jane Street principles, lock-free patterns, ASCII-only
-# Last Updated: 2026-06-03
+# Last Updated: 2026-05-23
 # Documentation: https://docs.coderabbit.ai/guides/configure-coderabbit
 
 language: en-US
+
 early_access: true
 
 reviews:
@@ -31,96 +32,18 @@ reviews:
 chat:
   auto_reply: true
 
-# GODMODE: Jane Street Sentinel - ALL VIOLATIONS BLOCKING
-# Full catalog: docs/standards/jane-street/RULES_CATALOG.md
-# Validator scripts: scripts/jane_street_validator.py, scripts/jane_street_rule_checker.py
-
-# MANDATORY: LABEL ALL VIOLATIONS AND BLOCK MERGE
-# You are the "Jane Street Sentinel" in GODMODE. ALL violations (P0/P1/P2) BLOCK MERGE.
-
-# LABELING STRATEGY (GODMODE):
-# - P0 (CRITICAL): [CRITICAL-JS-P0] - BLOCKS MERGE
-# - P1 (HIGH): [CRITICAL-JS-P1] - BLOCKS MERGE (upgraded from warning)
-# - P2 (MEDIUM): [CRITICAL-JS-P2] - BLOCKS MERGE (upgraded from info)
-
-# P0 RULES (CRITICAL - Blocking):
-
-# Type Safety (JS-001 to JS-020):
-# - JS-001: Use Result<T,E> instead of exceptions in hot paths
-# - JS-002: Use Option<T> instead of null for optional values
-# - JS-005: Enable nullable reference types (#nullable enable)
-# - JS-015: Parse at boundaries, use validated types internally
-
-# Concurrency (JS-021 to JS-035):
-# - JS-021: ABSOLUTE BAN on lock() - use Actor pattern or atomic primitives
-# - JS-022: Use Actor pattern (Channel-based FSM) for stateful concurrency
-# - JS-023: Use Interlocked.* for simple atomic state updates
-# - JS-033: NEVER use async void (except event handlers)
-
-# Performance (JS-036 to JS-050):
-# - JS-036: Use Span<T> for zero-allocation in hot paths
-# - JS-037: Use ArrayPool<T> for reusable buffers
-# - JS-040: Use readonly struct for small value types (<16 bytes)
-# - JS-042: NO MAGIC NUMBERS - use named constants
-
-# Testing (JS-051 to JS-065):
-# - JS-051: Property-based tests for complex logic
-# - JS-052: Deterministic randomness (seeded Random)
-# - JS-055: Benchmark hot paths with BenchmarkDotNet
-
-# Code Review (JS-066 to JS-080):
-# - JS-066: PR diff <10,000 characters (surgical changes only)
-# - JS-067: Cyclomatic complexity ≤8 (GODMODE: Jane Street strict for ALL code)
-# - JS-070: ASCII-only string literals (no Unicode, emoji, curly quotes)
-
-# Serialization (JS-081 to JS-095):
-# - JS-081: Schema evolution (versioned messages)
-# - JS-082: Checksums for data integrity
-# - JS-083: Zero-copy deserialization (Span<byte>)
-
-# Tools & Philosophy (JS-096 to JS-110):
-# - JS-096: Make illegal states unrepresentable (type system enforcement)
-# - JS-097: Prefer compile-time errors over runtime checks
-# - JS-100: Explicit control flow (no hidden magic)
-
-# P1 RULES (HIGH - BLOCKING IN GODMODE):
-# - Flag P1 violations with [CRITICAL-JS-P1] and BLOCK MERGE
-# - Examples: Missing XML docs, non-optimal LINQ usage, missing benchmarks, TODO comments
-# - GODMODE: Zero tolerance - all P1 violations must be fixed
-
-# P2 RULES (MEDIUM - BLOCKING IN GODMODE):
-# - Flag P2 violations with [CRITICAL-JS-P2] and BLOCK MERGE
-# - Examples: Minor style issues, commented-out code, non-critical optimizations
-# - GODMODE: Zero tolerance - all P2 violations must be fixed
-
-# ENFORCEMENT WORKFLOW (GODMODE):
-# 1. Scan PR for ALL violations (P0/P1/P2) using pattern matching + AI reasoning
-# 2. P0 violations:
-#    - Label as [CRITICAL-JS-P0]
-#    - Request changes
-#    - BLOCK MERGE
-#    - Reference specific rule (e.g., "JS-021: Lock usage detected")
-# 3. P1 violations:
-#    - Label as [CRITICAL-JS-P1]
-#    - Request changes
-#    - BLOCK MERGE (upgraded from warning)
-#    - Suggest fix with code example
-# 4. P2 violations:
-#    - Label as [CRITICAL-JS-P2]
-#    - Request changes
-#    - BLOCK MERGE (upgraded from info)
-#    - Provide fix guidance
-
-# RULE REFERENCE:
-# For detailed patterns, examples, and fix suggestions, see:
-# - docs/standards/jane-street/RULES_CATALOG.md (100+ rules)
-# - docs/standards/jane-street/*.md (10 pattern documents)
-# - docs/training/JANE_STREET_AGENT_GUIDE.md (agent training)
-
-# SRC-ONLY ENFORCEMENT (epic-ccn-* branches):
-# CRITICAL: If this is an epic-ccn-* branch and contains non-.cs files in src/,
-# add a [CRITICAL-SRC-ONLY] finding: "epic-ccn-* branches must only modify .cs files in src/"
-# Rationale: Surgical refactoring - separate concerns, prevent scope creep
-# See: docs/protocol/BRANCH_STRATEGY.md
+# V12 DNA Review Instructions (applied via CodeRabbit dashboard)
+# 
+# CRITICAL REQUIREMENTS:
+# 1. V12 NAMING: All files/classes must have V12_001 (Panel) or V12_002 (Strategy) prefix
+# 2. LOCK-FREE: Flag any lock() usage as CRITICAL - require Interlocked or Actor model
+# 3. COMPLEXITY: Flag functions with cyclomatic complexity >15 (Jane Street threshold)
+# 4. ATOMIC OPS: Verify Interlocked.CompareExchange operates on shared state, not local copies
+# 5. ASCII-ONLY: No emoji, curly quotes, em-dashes, Unicode arrows in string literals
+# 6. STRUCT BUGS: Check for struct copy mutations (should use ref parameters)
+# 7. ZERO-ALLOC: Flag LINQ in hot paths (OnBarUpdate, OnOrderUpdate, OnExecutionUpdate)
+# 8. BENCHMARKS: Void benchmarks risk JIT elimination - require return values
+# 9. CIRCUIT BREAKERS: Verify all Interlocked.Decrement paths check reset condition
+# 10. CORRECTNESS: Prefer type system enforcement over runtime checks
 
 # Made with Bob

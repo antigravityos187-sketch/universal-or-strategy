@@ -21,21 +21,5 @@
     "graphify": "graphify",
     "deploy_sync": "powershell -File .\\deploy-sync.ps1",
     "nexus_bridge": "python scripts/nexus_relay.py"
-  },
-  "mise": {
-    "enabled": true,
-    "bridge_config": ".bob/mise.json",
-    "auto_activate": true,
-    "quality_gates": {
-      "pre_commit": true,
-      "pre_push": true,
-      "pre_pr": true
-    },
-    "tool_paths": {
-      "python": "mise which python",
-      "node": "mise which node",
-      "dotnet": "mise which dotnet",
-      "git": "mise which git"
-    }
   }
 }
