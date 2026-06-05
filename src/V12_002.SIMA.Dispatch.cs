@@ -184,7 +184,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             sw = Stopwatch.StartNew();
             t0Ticks = sw.ElapsedTicks;
             tLoopStartTicks = sw.ElapsedTicks;
-            dispatchLog = new StringBuilder(512);
+            dispatchLog = new StringBuilder(DISPATCH_LOG_INITIAL_CAPACITY);
             dispatchLog.AppendLine(
                 LogBuffer.Format(
                     "[LATENCY] Loop start at {0:F3} ms from entry",
