@@ -1,0 +1,25 @@
+# CodeAnt Ignore File
+# Only scan C# files to save tokens
+
+# Ignore everything by default
+*
+
+# Only include C# files
+!*.cs
+
+# Ignore test files (optional - remove if you want to scan tests)
+# *Test.cs
+# *Tests.cs
+# *.Test.cs
+# *.Tests.cs
+
+# Ignore generated files
+*.Designer.cs
+*.g.cs
+*.g.i.cs
+*AssemblyInfo.cs
+*AssemblyAttributes.cs
+
+# Ignore obj and bin directories
+obj/
+bin/
