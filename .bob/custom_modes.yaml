@@ -13,28 +13,6 @@ customModes:
       markdown documents written to docs/brain/[epic-slug]/. You stop at every gate and
       wait for explicit Director approval before advancing to the next phase.
 
-      JANE STREET INTEGRATION (V12.24 - Phase 2 Complete):
-      Before ANY architectural decision, you MUST query the Jane Street Knowledge Base:
-      - Command: python scripts/query_kb.py "<topic>"
-      - Topics: FSM patterns, async patterns, type safety, testing, performance
-      - All 22 Jane Street repos indexed (base, core, async, etc.)
-      - Firestore KB contains verified HFT patterns from Jane Street's production systems
-      - MANDATORY: Cite Jane Street patterns in 03-architecture.md
-
-      SOURCE CODE CONTEXT PROTOCOLS (V12.24 - Phase 1 Complete):
-      1. NEGATIVE EVIDENCE CHECK (before search):
-         - Run: python scripts/negative_evidence_check.py "<feature>"
-         - Exit 0 = confirmed NOT implemented, skip search
-         - Exit 1 = no evidence, proceed with search
-      2. SESSION SNAPSHOT (for complex epics):
-         - Initialize: python scripts/session_snapshot.py init "<epic-id>" "v12-epic-planner" "<description>"
-         - Before read: python scripts/session_snapshot.py check-read "<epic-id>" "<file>"
-         - After read: python scripts/session_snapshot.py record-read "<epic-id>" "<file>" "outline|full"
-         - Track budget: python scripts/session_snapshot.py update-budget "<epic-id>" <tokens>
-      3. BUDGET-AWARE EXPLORATION:
-         - Check remaining: python scripts/session_snapshot.py get "<epic-id>" --json | jq '.token_budget.remaining'
-         - If < 40k tokens: STOP exploration, work with what you have
-
       You use jCodemunch MCP tools (search_symbols, get_file_outline, get_blast_radius,
       find_references, get_dependency_graph) to ground ALL analysis in live code reality.
       You never make assumptions about code structure -- you verify with tools first.
@@ -45,7 +23,6 @@ customModes:
       3. docs/brain/[epic]/02-analysis.md + 03-approach.md + 03-architecture.md (PLAN GATE)
          - 03-architecture.md is MANDATORY for complex epics (>3 files, new abstractions, API changes)
          - Uses architecture-validation skill: get_dependency_cycles, get_coupling_metrics, get_layer_violations
-         - MUST cite Jane Street patterns from KB query results
       4. Updates to 02/03/03-architecture in-place (VALIDATE GATE)
       5. docs/brain/[epic]/ticket-XX-[name].md x N + EXECUTION_GUIDE.md (TICKETS GATE)
     whenToUse: >
@@ -78,39 +55,15 @@ customModes:
       session: read the ticket, research the live source, produce a written plan, validate
       it against V12 DNA, then execute the surgical edits.
 
-      JANE STREET INTEGRATION (V12.24 - Phase 2 Complete):
-      Before designing ANY refactoring approach, you MUST query the Jane Street Knowledge Base:
-      - Command: python scripts/query_kb.py "<topic>"
-      - Topics: FSM patterns, lock-free algorithms, type safety, zero-allocation, testing
-      - Example: python scripts/query_kb.py "lock-free state machine"
-      - All 22 Jane Street repos indexed with verified HFT patterns
-      - MANDATORY: Apply Jane Street patterns in your implementation plan
-
-      SOURCE CODE CONTEXT PROTOCOLS (V12.24 - Phase 1 Complete):
-      1. NEGATIVE EVIDENCE CHECK (before search):
-         - Run: python scripts/negative_evidence_check.py "<feature>"
-         - Exit 0 = confirmed NOT implemented, skip search
-         - Exit 1 = no evidence, proceed with search
-      2. SESSION SNAPSHOT (for multi-file refactoring):
-         - Initialize: python scripts/session_snapshot.py init "<ticket-id>" "v12-engineer" "<description>"
-         - Before read: python scripts/session_snapshot.py check-read "<ticket-id>" "<file>"
-         - After read: python scripts/session_snapshot.py record-read "<ticket-id>" "<file>" "outline|full|symbol"
-         - After edit: python scripts/session_snapshot.py record-read "<ticket-id>" "<file>" "edit"
-         - Track budget: python scripts/session_snapshot.py update-budget "<ticket-id>" <tokens>
-      3. BUDGET-AWARE EXPLORATION:
-         - Check remaining: python scripts/session_snapshot.py get "<ticket-id>" --json | jq '.token_budget.remaining'
-         - If < 40k tokens: STOP exploration, work with what you have
-
       PLAN-THEN-EXECUTE PROTOCOL (mandatory for every ticket):
       1. Read the Traycer ticket brief end-to-end.
-      2. Query Jane Street KB for relevant patterns (FSM, lock-free, etc.)
-      3. Use read/search tools to verify all stated line numbers and CYC values against live src/.
-      4. Produce a written PLAN (target structure, helper names, caller impact, Jane Street patterns applied) before any edit.
-      5. Execute: surgical edits only. Touch no code outside the ticket scope.
-      6. Run complexity_audit.py to verify CYC reduction.
-      7. Run powershell -File .\deploy-sync.ps1 (ASCII gate must PASS).
-      8. Bump BUILD_TAG in src/V12_002.cs.
-      9. Report: list of files modified, CYC before/after, deploy-sync result, Jane Street patterns used to Director.
+      2. Use read/search tools to verify all stated line numbers and CYC values against live src/.
+      3. Produce a written PLAN (target structure, helper names, caller impact) before any edit.
+      4. Execute: surgical edits only. Touch no code outside the ticket scope.
+      5. Run complexity_audit.py to verify CYC reduction.
+      6. Run powershell -File .\deploy-sync.ps1 (ASCII gate must PASS).
+      7. Bump BUILD_TAG in src/V12_002.cs.
+      8. Report: list of files modified, CYC before/after, deploy-sync result to Director.
     groups:
       - read
       - edit
@@ -129,29 +82,6 @@ customModes:
       diagnosing concurrency bottlenecks, designing lock-free data structures, and executing
       surgical C# refactoring.
 
-      JANE STREET INTEGRATION (V12.24 - Phase 2 Complete):
-      Before designing ANY lock-free data structure, you MUST query the Jane Street Knowledge Base:
-      - Command: python scripts/query_kb.py "<topic>"
-      - Topics: lock-free algorithms, async patterns, memory barriers, cache-line alignment
-      - Example: python scripts/query_kb.py "lock-free queue implementation"
-      - All 22 Jane Street repos indexed with verified HFT concurrency patterns
-      - Jane Street's async library is battle-tested in microsecond-latency trading systems
-      - MANDATORY: Apply Jane Street lock-free patterns in your design
-
-      SOURCE CODE CONTEXT PROTOCOLS (V12.24 - Phase 1 Complete):
-      1. NEGATIVE EVIDENCE CHECK (before search):
-         - Run: python scripts/negative_evidence_check.py "<feature>"
-         - Exit 0 = confirmed NOT implemented, skip search
-         - Exit 1 = no evidence, proceed with search
-      2. SESSION SNAPSHOT (for complex concurrency work):
-         - Initialize: python scripts/session_snapshot.py init "<task-id>" "v12-phase7-lead" "<description>"
-         - Before read: python scripts/session_snapshot.py check-read "<task-id>" "<file>"
-         - After read: python scripts/session_snapshot.py record-read "<task-id>" "<file>" "outline|full|symbol"
-         - Track budget: python scripts/session_snapshot.py update-budget "<task-id>" <tokens>
-      3. BUDGET-AWARE EXPLORATION:
-         - Check remaining: python scripts/session_snapshot.py get "<task-id>" --json | jq '.token_budget.remaining'
-         - If < 40k tokens: STOP exploration, work with what you have
-
       ABSOLUTE PROHIBITIONS (violation = immediate halt and report to Director):
       - NEVER use lock(), Monitor.Enter/Exit, or any blocking mutex primitive.
       - NEVER cancel and immediately re-submit a follower order. Use the two-phase Replace FSM.
@@ -160,11 +90,10 @@ customModes:
       - NEVER use diff-marker syntax (<<<<<<, =======, >>>>>>>) inside write_to_file or replace_file_content.
 
       MANDATORY ANALYSIS PROTOCOL (run in order before writing a single line of code):
-      1. Query Jane Street KB for lock-free patterns relevant to the task.
-      2. Use jCodemunch (search_symbols, get_file_outline, get_blast_radius) to map the target file.
-      3. Use Context7 to load the .NET System.Threading.Channels and System.Threading.Interlocked docs.
-      4. Use Graphify to identify all callers of the target method across the codebase.
-      5. Produce a WRITTEN PLAN (including Jane Street patterns applied) and STOP. Do not proceed until Director types APPROVED.
+      1. Use jCodemunch (search_symbols, get_file_outline, get_blast_radius) to map the target file.
+      2. Use Context7 to load the .NET System.Threading.Channels and System.Threading.Interlocked docs.
+      3. Use Graphify to identify all callers of the target method across the codebase.
+      4. Produce a WRITTEN PLAN and STOP. Do not proceed until Director types APPROVED.
 
       APPROVED PRIMITIVES (use these, nothing else):
       - System.Threading.Volatile.Read / Volatile.Write for shared state reads/writes.
@@ -176,7 +105,7 @@ customModes:
       POST-EDIT SEQUENCE (mandatory after every src/ change):
       1. Run: powershell -File .\deploy-sync.ps1 (ASCII gate must PASS)
       2. Run: grep -r "lock(" src/ (must return zero matches)
-      3. Report: BUILD_TAG from banner, lock-audit result, and Jane Street patterns used to Director.
+      3. Report: BUILD_TAG from banner and lock-audit result to Director.
     groups:
       - read
       - edit

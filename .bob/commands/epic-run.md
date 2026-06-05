@@ -58,18 +58,6 @@ PROTOCOL:
 
 ## PHASE 1: INTAKE
 
-### Session Initialization (MANDATORY)
-
-Before starting any epic, initialize session tracking:
-```bash
-python scripts/session_snapshot.py init "YYYY-MM-DD-epic-ccn-X" "Bob CLI" "Extract [MethodName]"
-```
-
-This enables:
-- Budget-aware exploration (stop at 80% token consumption)
-- Redundancy prevention (check if file already read)
-- Session continuity (restore context after compaction)
-
 **Switch to: v12-epic-planner mode**
 
 Hand off this exact task:
@@ -221,28 +209,6 @@ PROTOCOL: Read ticket completely. Write the extraction plan with:
   - sub-method names and signatures
   - caller impact
   - CYC before/after estimate
-
-FORENSIC INTAKE (jcodemunch integration + Jane Street validation):
-  1. Use jcodemunch tools for code exploration (NOT Read/Grep/Glob)
-  2. Record all file reads:
-     python scripts/session_snapshot.py record-read "session-id" "path/to/file.cs" "outline"
-     python scripts/session_snapshot.py record-symbol "session-id" "sym_id" "MethodName" "path/to/file.cs"
-  3. Check for negative evidence before searching:
-     python scripts/negative_evidence_check.py "feature name"
-     # Exit 0 = feature confirmed NOT implemented, skip search
-     # Exit 1 = no evidence, proceed with search
-  4. JANE STREET PATTERN VALIDATION (for each pattern found):
-     # Query indexed Jane Street repos for similar patterns
-     # Use jcodemunch search_symbols on Jane Street repos to verify pattern alignment
-     # Example: jcodemunch search_symbols --repo janestreet/base --query "Result" --kind type
-     # If Jane Street uses this pattern: APPROVED
-     # If Jane Street doesn't use this pattern: FLAG for review
-     # Document findings in ticket plan
-  5. Record negative evidence after failed searches:
-     # If search_symbols returns verdict: "no_implementation_found"
-     # Add entry to docs/brain/negative_evidence.json manually or via script
-     # Note: "Jane Street doesn't implement X" vs "Feature doesn't exist in V12"
-
 STOP at [TICKET-GATE]. Do not write any code yet.
 ```
 
@@ -314,7 +280,7 @@ Wait for Director input.
 After Director types "F5 done [BUILD_TAG]", switch to Advanced mode:
 ```
 COMMIT TASK:
-Run: git add src/  # Epic branches: src-only (enforced by pre-commit hook)
+Run: git add -A
 Run: git commit -m "[$1] ticket-XX: [short description] -- CYC [before]->[after] [BUILD_TAG]"
 Report the commit hash and current branch name.
 ```

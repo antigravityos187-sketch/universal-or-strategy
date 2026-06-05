@@ -131,32 +131,13 @@ Expected output: ALL blocking checks PASS (9/14 required: ASCII, Build, Tests, L
 
 If ANY blocking check fails: **HALT and fix.**
 
-### Session Tracking (OPTIONAL)
-
-For complex TDD workflows, track session state:
-```bash
-# Initialize session
-python scripts/session_snapshot.py init "YYYY-MM-DD-tdd-X" "Developer" "TDD for feature X"
-
-# Record test file reads
-python scripts/session_snapshot.py record-read "session-id" "tests/TestFile.cs" "full"
-
-# Update budget after each iteration
-python scripts/session_snapshot.py update-budget "session-id" <consumed_tokens>
-```
-
-This is OPTIONAL for TDD but recommended for:
-- Multi-file test suites
-- Complex refactoring with >5 test files
-- Budget-constrained sessions
-
 ### Step 3: F5 Verification
 1. Press F5 in NinjaTrader.
 2. Verify the BUILD_TAG banner.
 3. Confirm the Logic Audit passes.
 
 ### Step 4: Commit & Push
-1. `git add src/`  # Epic branches: src-only (enforced by pre-commit hook)
+1. `git add .`
 2. `git commit -m "[$1] ticket-$2: manual TDD implementation"`
 3. `git push`
 

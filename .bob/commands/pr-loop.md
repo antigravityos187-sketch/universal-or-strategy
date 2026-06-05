@@ -109,13 +109,7 @@ PR: $1
 PROTOCOL:
   1. Run: powershell -File .\scripts\extract_pr_forensics.ps1 -PrNumber $1
   2. Read the generated forensics report: docs/brain/pr_$1_forensics.md
-  3. SESSION INITIALIZATION (MANDATORY):
-     python scripts/session_snapshot.py init "YYYY-MM-DD-pr-X" "Advanced mode" "PR Loop for PR #X"
-  4. CHECK NEGATIVE EVIDENCE (for each VALID issue):
-     python scripts/negative_evidence_check.py "issue description"
-     # Exit 0 = Issue is known non-implementation, categorize as [VALID-SUPPRESS]
-     # Exit 1 = New issue, proceed with categorization
-  5. JANE STREET AUDIT (MANDATORY):
+  3. JANE STREET AUDIT (MANDATORY):
      - Read: docs/standards/JANE_STREET_DEVIATIONS.md
      - For each VALID issue, check if it conflicts with documented Jane Street deviations
      - Categorize as:
@@ -123,15 +117,15 @@ PROTOCOL:
        * [VALID-SUPPRESS]: Issue conflicts with Jane Street - suppress via .codacy.yml
        * [HALLUCINATION]: Bot error - log and ignore
        * [INFRA-NOISE]: Infrastructure issue - ignore
-  6. Present summary to Director:
+  4. Present summary to Director:
      - Total VALID-FIX issues (P0/P1/P2 breakdown)
      - Total VALID-SUPPRESS issues (with Jane Street rationale)
      - Hallucinations detected
      - INFRA-NOISE filtered
-  7. If P0 VALID-FIX issues exist: Flag as CRITICAL and proceed to Step 2.
-  8. If only VALID-SUPPRESS issues: Update .codacy.yml, document in JANE_STREET_DEVIATIONS.md
-  9. If no VALID issues: Skip to Step 3 (verification only).
-  10. Emit: [FORENSICS-READY] X VALID-FIX, Y VALID-SUPPRESS, Z hallucinations
+  5. If P0 VALID-FIX issues exist: Flag as CRITICAL and proceed to Step 2.
+  6. If only VALID-SUPPRESS issues: Update .codacy.yml, document in JANE_STREET_DEVIATIONS.md
+  7. If no VALID issues: Skip to Step 3 (verification only).
+  8. Emit: [FORENSICS-READY] X VALID-FIX, Y VALID-SUPPRESS, Z hallucinations
 ```
 
 **Outputs:**
@@ -154,13 +148,8 @@ TASK: Fix VALID-FIX Issues and Document VALID-SUPPRESS Issues
 INPUT: @docs/brain/pr_$1_fix_queue.md @docs/brain/pr_$1_suppress_queue.md
 PROTOCOL:
   PART A: Code Fixes (VALID-FIX)
-    1. CHECK IF ALREADY READ (redundancy prevention):
-       python scripts/session_snapshot.py check-read "session-id" "docs/brain/pr_$1_fix_queue.md"
-       # Exit 0 = already read, use cached knowledge
-       # Exit 1 = not read, proceed with read
-    2. Read fix queue completely.
-       python scripts/session_snapshot.py record-read "session-id" "docs/brain/pr_$1_fix_queue.md" "full"
-    3. For each VALID-FIX issue (P0 first, then P1, then P2):
+    1. Read fix queue completely.
+    2. For each VALID-FIX issue (P0 first, then P1, then P2):
        - Apply fix
        - Verify locally (compile, test)
        - Mark as [x] FIXED in fix queue
@@ -173,48 +162,14 @@ PROTOCOL:
        - Mark as [x] SUPPRESSED in suppress queue
   
   PART C: Validation
-    3. REGISTER EDITS (after applying fixes):
-       python scripts/session_snapshot.py record-read "session-id" "src/edited_file.cs" "edit"
-    4. Run formatters: powershell -File .\scripts\format_all_csharp.ps1
-    5. Run Jane Street rule checker (GODMODE - ALL severities):
-       python scripts\jane_street_rule_checker.py src\ --severity ALL
-       - If ANY P0/P1/P2 violations: fix before proceeding (GODMODE enforcement)
-    6. Run FULL local validation: powershell -File .\scripts\pre_push_validation.ps1
-       (Includes CodeScene Delta as Check #14, Jane Street Rules as Check #16)
-       (Check #9: Complexity ≤8 GODMODE strict, Check #16: ALL Jane Street violations blocking)
-    7. If ANY blocking check fails: identify issue, repeat Step 2.
-    8. If ALL checks pass (16/16): emit [LOCAL-READY] with fix summary.
+    3. Run formatters: powershell -File .\scripts\format_all_csharp.ps1
+    4. Run FULL local validation: powershell -File .\scripts\pre_push_validation.ps1
+       (Includes CodeScene Delta Analysis as Check #14)
+    5. If ANY blocking check fails: identify issue, repeat Step 2.
+    6. If ALL checks pass (14/14): emit [LOCAL-READY] with fix summary.
 ```
 
 **Gate:** ALL local checks PASS (9 blocking + 5 warnings). CodeScene Delta must show no high-severity code health degradation. If any blocking check fails, repeat Step 2.
-
----
-
-### Step 2.5: Benchmark Validation (NEW - Phase 3)
-
-**Switch to: Advanced mode**
-
-Hand off:
-```
-TASK: Run Performance Benchmarks
-PR: $1
-PROTOCOL:
-  1. Run: powershell -File .\scripts\run_benchmarks.ps1 -Fast
-  2. If regression detected:
-     - Emit: [BENCHMARK-REGRESSION] <benchmark_name> regressed by X%
-     - HALT and report to Director
-     - Director must decide: fix regression or update baseline
-  3. If zero-allocation violation detected:
-     - Emit: [BENCHMARK-ALLOCATION] <benchmark_name> allocated Y bytes (was 0)
-     - HALT and report to Director (CRITICAL - violates V12 DNA)
-  4. If no regression:
-     - Emit: [BENCHMARK-PASS] All benchmarks within 5% of baseline
-  5. Proceed to Step 3 (Global Push)
-```
-
-**Gate:** Benchmarks MUST pass (no regressions >5%, zero allocations maintained). Performance regressions are treated as P0 blockers.
-
-**Rationale:** Jane Street alignment - performance is a feature, not an afterthought. Catch regressions before they reach production.
 
 ---
 
@@ -228,17 +183,13 @@ TASK: Global Audit & Monitor
 PR: $1
 PROTOCOL:
   1. powershell -File .\deploy-sync.ps1 (MANDATORY before push - syncs NT8 hard links)
-  2. git add src/ && git commit -m "fix: PHS Perfection Loop - PR #$1" && git push
-     # Pre-commit hook enforces src-only on epic-* branches
-  3. UPDATE TOKEN BUDGET (estimate tokens consumed):
-     # Rough estimate: 1 token = 4 chars
-     python scripts/session_snapshot.py update-budget "session-id" <consumed_tokens>
-  4. monitor_pr_checks $1 (Wait for all bots).
+  2. git add . && git commit -m "fix: PHS Perfection Loop - PR #$1" && git push
+  3. monitor_pr_checks $1 (Wait for all bots).
      - **MANDATORY SLEEP**: Start-Sleep -Seconds 300 (5 min) for the first check.
      - **SUBSEQUENT SLEEP**: Start-Sleep -Seconds 180 (3 min) if checks are still pending.
-  5. Run: powershell -File .\scripts\calculate_fleet_score.ps1 -PrNumber $1
-  6. If Score < 100: emit [PHS-RETRY] Current: X/100.
-  7. If Score = 100: emit [PHS-PERFECT] 100/100.
+  4. Run: powershell -File .\scripts\calculate_fleet_score.ps1 -PrNumber $1
+  5. If Score < 100: emit [PHS-RETRY] Current: X/100.
+  6. If Score = 100: emit [PHS-PERFECT] 100/100.
 ```
 
 **Gate:**

@@ -1,82 +1,8 @@
 # GitHub Migration Skill
 
-**Purpose**: Automate GitHub account migrations with upfront decision-making
-**Version**: 1.1
-**Last Updated**: 2026-06-04
-
-## Critical Update: REST API for PR Creation
-
-**BREAKING CHANGE**: GitHub CLI `gh pr create` fails with "Resource not accessible by personal access token" error even with full `repo` and `workflow` scopes.
-
-**SOLUTION**: Use REST API directly via `scripts/create_github_pr.ps1`
-
-### Why REST API?
-
-| Method | Status | Issue |
-|--------|--------|-------|
-| `gh pr create` | ❌ FAILS | GraphQL `createPullRequest` mutation requires stricter permissions |
-| REST API | ✅ WORKS | Direct HTTP calls with Bearer token bypass permission issues |
-
-### Usage
-
-**OLD (Broken)**:
-```powershell
-gh pr create --repo "$NewAccount/$Repo" --head $Branch --base main --title "..." --body "..."
-```
-
-**NEW (Working)**:
-```powershell
-powershell -File .\scripts\create_github_pr.ps1 `
-    -Title "feat: My feature" `
-    -Body "Description here" `
-    -Head "feature-branch" `
-    -Base "main"
-```
-
-### Script Details
-
-The `scripts/create_github_pr.ps1` script:
-- Uses GitHub REST API v3 (`POST /repos/{owner}/{repo}/pulls`)
-- Requires `$env:GITHUB_TOKEN` set (same token as GitHub CLI)
-- Auto-detects repository from git remote
-- Returns PR number and URL on success
-- Handles errors with clear messages
-
-**Token Requirements** (same as before):
-- Scopes: `repo`, `workflow` (optional but recommended)
-- Generate at: https://github.com/settings/tokens/new
-
-**Example**:
-```powershell
-# Set token (one-time per session)
-$env:GITHUB_TOKEN = "ghp_xxxxxxxxxxxxx"
-
-# Create PR
-powershell -File .\scripts\create_github_pr.ps1 `
-    -Title "feat(EPIC-CCN-14): Extract ShouldSkipFleet_RunHealthCheck" `
-    -Body "Reduces complexity from CYC 29 to 8" `
-    -Head "epic-ccn-14" `
-    -Base "main"
-
-# Output:
-# ✅ PR created successfully!
-# PR Number: 5
-# PR URL: https://github.com/antigravityos187-sketch/universal-or-strategy/pull/5
-```
-
-### Migration Impact
-
-**All workflows using `gh pr create` must be updated**:
-- ✅ `/pr-loop` - No changes needed (works with existing PRs)
-- ⚠️ `/epic-run` - Update Ticket Loop Step D
-- ⚠️ `/epic-tdd` - Update Step 4
-- ⚠️ Custom automation scripts - Replace `gh pr create` calls
-
-### Validation
-
-**Tested on**: 2026-06-04
-**PR Created**: #4 (https://github.com/antigravityos187-sketch/universal-or-strategy/pull/4)
-**Result**: ✅ Success (GitHub CLI failed, REST API worked)
+**Purpose**: Automate GitHub account migrations with upfront decision-making  
+**Version**: 1.0  
+**Last Updated**: 2026-05-25
 
 ## Pre-Migration Decision (MANDATORY)
 
@@ -232,7 +158,7 @@ gh pr create --repo <new-account>/<repo> --head <branch> --base main --title "..
 ## Agent Automation Script
 
 ```powershell
-# GitHub Migration Automation (REST API Version)
+# GitHub Migration Automation
 # Usage: .\migrate-github-account.ps1 -NewAccount "malhitticrypto-debug" -Branch "feature-branch"
 
 param(
@@ -242,23 +168,20 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$Branch,
     
-    [string]$Repo = "universal-or-strategy",
-    
-    [string]$Title = "[AUTO] $Branch",
-    
-    [string]$Body = "Automated migration from PR Loop V2"
+    [string]$Repo = "universal-or-strategy"
 )
 
 # Check if PAT exists
 $patEnvVar = "GITHUB_PAT_NEW_ACCOUNT"
 if (-not (Test-Path env:$patEnvVar)) {
     Write-Host "PAT not found. Loading from .env..."
-    $env:GITHUB_TOKEN = (Get-Content .env | Select-String $patEnvVar).ToString().Split("=")[1]
+    $env:GH_TOKEN = (Get-Content .env | Select-String $patEnvVar).ToString().Split("=")[1]
 }
 
-# Verify token is set
-if (-not $env:GITHUB_TOKEN) {
-    Write-Error "GITHUB_TOKEN not set. Set via: `$env:GITHUB_TOKEN = 'ghp_xxxxx'"
+# Verify authentication
+$authStatus = gh auth status 2>&1
+if ($authStatus -notmatch $NewAccount) {
+    Write-Error "Not authenticated as $NewAccount. Run: gh auth login"
     exit 1
 }
 
@@ -266,27 +189,12 @@ if (-not $env:GITHUB_TOKEN) {
 Write-Host "Pushing branch $Branch to $NewAccount/$Repo..."
 git push $NewAccount $Branch
 
-# Create PR using REST API (GitHub CLI fails with PAT)
-Write-Host "Creating PR via REST API..."
-powershell -File .\scripts\create_github_pr.ps1 `
-    -Title $Title `
-    -Body $Body `
-    -Head $Branch `
-    -Base "main"
+# Create PR
+Write-Host "Creating PR..."
+gh pr create --repo "$NewAccount/$Repo" --head $Branch --base main --title "[AUTO] $Branch" --body "Automated migration from PR Loop V2"
 
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ Migration complete! Check PR at: https://github.com/$NewAccount/$Repo/pulls"
-} else {
-    Write-Error "❌ PR creation failed. Check error above."
-    exit 1
-}
+Write-Host "✅ Migration complete! PR created at: https://github.com/$NewAccount/$Repo/pulls"
 ```
-
-**Key Changes from v1.0**:
-- ✅ Uses `scripts/create_github_pr.ps1` instead of `gh pr create`
-- ✅ Sets `$env:GITHUB_TOKEN` instead of `$env:GH_TOKEN`
-- ✅ Removed `gh auth status` check (not needed for REST API)
-- ✅ Added exit code handling
 
 ## Merge Conflict Resolution
 
