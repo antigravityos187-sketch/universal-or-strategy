@@ -1,0 +1,123 @@
+# CodeAnt Full-Pass Review Configuration
+# V12 Universal OR Strategy - Unified 5/5 Scoring
+# Protocol: Every agent reviews EVERYTHING (no specialization)
+
+review_mode: full_pass
+
+# Core Principle: NO SPECIALIZATION
+# CodeAnt must evaluate ALL dimensions, not just code quality
+dimensions:
+  security:
+    enabled: true
+    weight: 20
+    checks:
+      - hardcoded_secrets
+      - sql_injection
+      - xss_vulnerabilities
+      - insecure_deserialization
+      - weak_crypto
+      - path_traversal
+      - command_injection
+      - xxe_attacks
+  
+  code_quality:
+    enabled: true
+    weight: 20
+    checks:
+      - complexity
+      - duplication
+      - maintainability
+      - readability
+      - naming_conventions
+      - code_smells
+      - anti_patterns
+  
+  testing:
+    enabled: true
+    weight: 20
+    checks:
+      - test_coverage
+      - test_quality
+      - assertion_strength
+      - test_isolation
+      - edge_case_coverage
+  
+  performance:
+    enabled: true
+    weight: 20
+    checks:
+      - algorithmic_complexity
+      - memory_leaks
+      - resource_management
+      - hot_path_optimization
+      - n_plus_one_queries
+  
+  standards:
+    enabled: true
+    weight: 20
+    checks:
+      - style_guide_compliance
+      - documentation_quality
+      - api_design
+      - error_handling
+      - logging_practices
+
+# Scoring Configuration
+scoring:
+  format: "X/5"
+  threshold_excellent: 90  # 5/5 stars
+  threshold_good: 75       # 4/5 stars
+  threshold_fair: 60       # 3/5 stars
+  threshold_poor: 40       # 2/5 stars
+  # Below 40 = 1/5 stars
+
+# Output Format
+output:
+  format: markdown
+  include_summary: true
+  include_breakdown: true
+  template: |
+    ## CodeAnt Full-Pass Review
+    
+    **Overall Score**: {score}/5 ⭐⭐⭐⭐⭐
+    
+    ### Dimension Breakdown
+    - **Security**: {security_score}/5 ({security_issues} issues)
+    - **Code Quality**: {quality_score}/5 ({quality_issues} issues)
+    - **Testing**: {testing_score}/5 ({testing_issues} issues)
+    - **Performance**: {performance_score}/5 ({performance_issues} issues)
+    - **Standards**: {standards_score}/5 ({standards_issues} issues)
+    
+    ### Verdict
+    {verdict}
+
+# Language-Specific Rules
+languages:
+  csharp:
+    enabled: true
+    complexity_threshold: 15  # V12 DNA: CYC ≤ 15
+    line_length: 120
+    naming_convention: PascalCase
+    
+# Exclusions (from .codeantignore)
+exclude_paths:
+  - "*.Designer.cs"
+  - "*.g.cs"
+  - "*.generated.cs"
+  - "obj/**"
+  - "bin/**"
+  - ".vs/**"
+  - "packages/**"
+
+# Integration
+integrations:
+  github:
+    enabled: true
+    comment_on_pr: true
+    block_merge_below: 3  # Block merge if score < 3/5
+  
+  slack:
+    enabled: false
+    webhook_url: ""
+
+# Made with Bob
