@@ -28,7 +28,7 @@ jobs:
       
       - name: Install CodeScene CLI
         run: |
-          curl -fsSL https://downloads.codescene.io/enterprise/cli/install-cs-tool.sh | bash -s -- --non-interactive
+          yes '' | curl -fsSL https://downloads.codescene.io/enterprise/cli/install-cs-tool.sh | bash || true
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Verify CodeScene CLI installation
