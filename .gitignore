@@ -39,3 +39,7 @@ diff.txt
 gh_log.txt
 help.txt
 test-vertex.js
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md
