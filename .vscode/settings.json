@@ -3,5 +3,7 @@
   "sonarlint.connectedMode.project": {
     "connectionId": "mkalhitti-cloud",
     "projectKey": "mkalhitti-cloud_universal-or-strategy"
-  }
+  },
+  "snyk.advanced.organization": "a27fded7-d7b5-49a3-893a-859446dbd178",
+  "snyk.advanced.autoSelectOrganization": true
 }
