@@ -79,13 +79,10 @@ if ($csFiles) {
     git stash drop
 }
 
-<<<<<<< Updated upstream
-=======
 # 11.5. CRITICAL: Restore .bob/ infrastructure from main
 Write-Host "Restoring .bob/ infrastructure from main..." -ForegroundColor Yellow
 git checkout main -- .bob/
 
->>>>>>> Stashed changes
 # 12. MANDATORY: Merge main into PR branch (prevents divergence)
 Write-Host ""
 Write-Host "CRITICAL: Merging main into $currentBranch..." -ForegroundColor Yellow
