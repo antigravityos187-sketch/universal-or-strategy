@@ -202,6 +202,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (emergencyStopDist <= 0)
                 emergencyStopDist = Math.Max(tickSize, MinimumStop);
 
+            // REAPER Bounds Protocol: Enforce MinimumStop floor (handles MaximumStop < MinimumStop edge case)
+            emergencyStopDist = Math.Max(emergencyStopDist, MinimumStop);
+
             // Calculate stop price and close action based on direction
             double stopPrice;
             OrderAction closeAction;

@@ -156,7 +156,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 )
             );
 
-            // SetExpectedPositionLocked(..., 0) already removes from _dispatchSyncPendingExpKeys internally.
+            // V12 DNA: Blanket zeroing is acceptable here as a last-resort recovery path.
+            // This is triggered only after 3 failed repair attempts when PositionInfo is null,
+            // indicating a ghost position state. Zeroing prevents infinite repair loops.
+            // Alternative (per-entry clear) risks leaving partial state causing future desyncs.
             SetExpectedPositionLocked(ExpKey(accountName), 0);
 
             // Reset orphan counter

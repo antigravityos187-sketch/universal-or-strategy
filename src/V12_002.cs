@@ -676,7 +676,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // if two enable/disable calls interleave (e.g. IPC toggle while UI toggle in progress).
         // 0=idle, 1=busy (Interlocked.CompareExchange acquire, Interlocked.Exchange release in finally)
         private int _simaToggleState = 0;
-        
+
         // V12.Phase7 [GAP-4]: SIMA toggle semaphore (legacy, replaced by lock-free _simaToggleState)
         // Retained for disposal in Lifecycle cleanup
         private SemaphoreSlim _simaToggleSem;
