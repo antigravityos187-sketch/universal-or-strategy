@@ -540,7 +540,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Calculate stop distance using ATR-based logic
             double atrMultiplier = StopMultiplier; // Use configured stop multiplier
             double atrStopDistance = CalculateATRStopDistance(atrMultiplier);
-            
+
             MarketPosition direction;
             if (action == OrderAction.Buy)
             {
@@ -559,25 +559,25 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Calculate all target prices based on dispatchTargetCount
             t1TargetPrice = CalculateTargetPrice(direction, entryPrice, 1);
             t1TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t1TargetPrice);
-            
+
             if (dispatchTargetCount >= 2)
             {
                 t2TargetPrice = CalculateTargetPrice(direction, entryPrice, 2);
                 t2TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t2TargetPrice);
             }
-            
+
             if (dispatchTargetCount >= 3)
             {
                 t3TargetPrice = CalculateTargetPrice(direction, entryPrice, 3);
                 t3TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t3TargetPrice);
             }
-            
+
             if (dispatchTargetCount >= 4)
             {
                 t4TargetPrice = CalculateTargetPrice(direction, entryPrice, 4);
                 t4TargetPrice = Instrument.MasterInstrument.RoundToTickSize(t4TargetPrice);
             }
-            
+
             if (dispatchTargetCount >= 5)
             {
                 t5TargetPrice = CalculateTargetPrice(direction, entryPrice, 5);
@@ -1128,6 +1128,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
             }
         }
+
         /// <summary>
         /// P2-3 FIX: Centralized enqueue helper for limit entry dispatch.
         /// Matches market path pattern to prevent divergence.
@@ -1183,7 +1184,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
             }
         }
-
 
         private void Dispatch_PublishLimitEntryToPhoton(
             Account acct,

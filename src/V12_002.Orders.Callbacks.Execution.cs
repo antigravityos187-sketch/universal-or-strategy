@@ -1,13 +1,15 @@
 // Build 971: Orders.Callbacks.Execution -- OnPositionUpdate, ProcessOnPositionUpdate, HandleFlatPositionUpdate, BroadcastSyncTargetState, OnExecutionUpdate, ProcessOnExecutionUpdate
 // V12 Orders.Callbacks Module (Extracted)
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
 using System.Globalization;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,16 +19,14 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using NinjaTrader.Cbi;
+using NinjaTrader.Data;
 using NinjaTrader.Gui;
 using NinjaTrader.Gui.Chart;
 using NinjaTrader.Gui.Tools;
-using NinjaTrader.Data;
 using NinjaTrader.NinjaScript;
 using NinjaTrader.NinjaScript.DrawingTools;
 using NinjaTrader.NinjaScript.Indicators;
 using NinjaTrader.NinjaScript.Strategies;
-using System.Net;
-using System.Net.Sockets;
 
 namespace NinjaTrader.NinjaScript.Strategies
 {
@@ -34,12 +34,16 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region Orders Callbacks Execution
 
-        protected override void OnPositionUpdate(Position position, double averagePrice,
-            int quantity, MarketPosition marketPosition)
+        protected override void OnPositionUpdate(
+            Position position,
+            double averagePrice,
+            int quantity,
+            MarketPosition marketPosition
+        )
         {
             // Capture only primitive/string fields -- no NT8 object in closure [B967-FIX-01]
             string _acctName967 = position?.Account?.Name ?? "UNKNOWN"; // [B967-FIX-01]
-            var    _mp967       = marketPosition;
+            var _mp967 = marketPosition;
             Enqueue(ctx => ctx.ProcessOnPositionUpdate(_acctName967, _mp967)); // [B967-FIX-01]
         }
 
@@ -51,8 +55,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                     HandleFlatPositionUpdate(acctName); // [B967-FIX-01]
                 BroadcastSyncTargetState();
             }
-            catch (InvalidOperationException ex) { Print("ERROR OnPositionUpdate InvalidOp: " + ex.Message); }
-            catch (NullReferenceException ex) { Print("ERROR OnPositionUpdate NullRef: " + ex.Message); }
+            catch (InvalidOperationException ex)
+            {
+                Print("ERROR OnPositionUpdate InvalidOp: " + ex.Message);
+            }
+            catch (NullReferenceException ex)
+            {
+                Print("ERROR OnPositionUpdate NullRef: " + ex.Message);
+            }
         }
 
         // Build 935 [CB-B935-001]: Flat-position cleanup extracted from OnPositionUpdate.
@@ -68,11 +78,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                 foreach (var kvp in entryOrders.ToArray())
                 {
                     var ord = kvp.Value;
-                    if (ord != null
+                    if (
+                        ord != null
                         && !IsOrderTerminal(ord.OrderState)
                         && activePositions.TryGetValue(kvp.Key, out var pos)
                         && pos.ExecutingAccount != null
-                        && pos.ExecutingAccount.Name == flatAcctName)
+                        && pos.ExecutingAccount.Name == flatAcctName
+                    )
                     {
                         hasPendingEntry = true;
                         break;
@@ -84,9 +96,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     foreach (var kvp in activePositions.ToArray())
                     {
-                        if (kvp.Value.ExecutingAccount != null
+                        if (
+                            kvp.Value.ExecutingAccount != null
                             && kvp.Value.ExecutingAccount.Name == flatAcctName
-                            && !kvp.Value.EntryFilled)
+                            && !kvp.Value.EntryFilled
+                        )
                         {
                             hasActivePositionForAcct = true;
                             break;
@@ -99,7 +113,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string skipReason = hasPendingEntry
                         ? "pending entry in flight"
                         : (hasActivePositionForAcct ? "activePositions metadata present" : "dispatch sync pending");
-                    Print($"[OnPositionUpdate] H-14 SKIP: {flatExpKey} broker=Flat but {skipReason} -- not resetting expectedPositions");
+                    Print(
+                        $"[OnPositionUpdate] H-14 SKIP: {flatExpKey} broker=Flat but {skipReason} -- not resetting expectedPositions"
+                    );
                 }
                 else
                 {
@@ -119,14 +135,21 @@ namespace NinjaTrader.NinjaScript.Strategies
             List<string> positionsToCleanup = new List<string>();
             foreach (var kvp in activePositions.ToArray())
             {
-                if (!activePositions.ContainsKey(kvp.Key)) continue;
+                if (!activePositions.ContainsKey(kvp.Key))
+                    continue;
                 PositionInfo pos = kvp.Value;
                 if (pos.EntryFilled && pos.RemainingContracts > 0)
                 {
                     Print("EXTERNAL CLOSE DETECTED - Position went flat. Cancelling orphaned orders...");
                     if (stopOrders.TryGetValue(kvp.Key, out var stopOrder))
                     {
-                        if (stopOrder != null && (stopOrder.OrderState == OrderState.Working || stopOrder.OrderState == OrderState.Accepted))
+                        if (
+                            stopOrder != null
+                            && (
+                                stopOrder.OrderState == OrderState.Working
+                                || stopOrder.OrderState == OrderState.Accepted
+                            )
+                        )
                             CancelOrderSafe(stopOrder, pos);
                     }
                     for (int tNum = 1; tNum <= 5; tNum++)
@@ -134,7 +157,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                         var tDict = GetTargetOrdersDictionary(tNum);
                         if (tDict != null && tDict.TryGetValue(kvp.Key, out var tOrder))
                         {
-                            if (tOrder != null && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted))
+                            if (
+                                tOrder != null
+                                && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted)
+                            )
                                 CancelOrderSafe(tOrder, pos);
                         }
                     }
@@ -153,7 +179,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void BroadcastSyncTargetState()
         {
             // V14 ADAPTIVE VISIBILITY: Broadcast current position size to panel
-            if (State != State.Realtime) return;
+            if (State != State.Realtime)
+                return;
 
             // Build 1102Y-V2 [U-04]: Use live InitialTargetCount when in trade; fallback to dashboard count when flat.
             int syncCount = activeTargetCount;
@@ -174,29 +201,45 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         // V12.962 INLINE ACTOR: Thin-shell for OnExecutionUpdate.
         // Captures Execution fields before Enqueue; ProcessOnExecutionUpdate runs lock-free inside the drain.
-        protected override void OnExecutionUpdate(Execution execution, string executionId, double price, int quantity, MarketPosition marketPosition, string orderId, DateTime time)
+        protected override void OnExecutionUpdate(
+            Execution execution,
+            string executionId,
+            double price,
+            int quantity,
+            MarketPosition marketPosition,
+            string orderId,
+            DateTime time
+        )
         {
-            if (execution == null || execution.Order == null) return;
+            if (execution == null || execution.Order == null)
+                return;
             // Capture all values from Execution -- NT8 may recycle the object after callback returns
-            string     _on  = execution.Order.Name ?? string.Empty;
-            string     _eid = executionId ?? string.Empty;
-            string     _oid = execution.Order.OrderId ?? string.Empty;
-            int        _of  = execution.Order.Filled;
+            string _on = execution.Order.Name ?? string.Empty;
+            string _eid = executionId ?? string.Empty;
+            string _oid = execution.Order.OrderId ?? string.Empty;
+            int _of = execution.Order.Filled;
             OrderState _ost = execution.Order.OrderState;
-            double     _pr  = price;
-            int        _qty = quantity;
-            Execution  _ex  = execution; // Reference kept -- stable for compliance TrackTradeEntry path
+            double _pr = price;
+            int _qty = quantity;
+            Execution _ex = execution; // Reference kept -- stable for compliance TrackTradeEntry path
             Enqueue(ctx => ctx.ProcessOnExecutionUpdate(_on, _eid, _oid, _of, _ost, _pr, _qty, _ex));
         }
 
         private void ProcessOnExecutionUpdate(
-            string orderName, string executionId, string orderId,
-            int orderFilled, OrderState orderState,
-            double price, int quantity, Execution execution)
+            string orderName,
+            string executionId,
+            string orderId,
+            int orderFilled,
+            OrderState orderState,
+            double price,
+            int quantity,
+            Execution execution
+        )
         {
             try
             {
-                if (string.IsNullOrEmpty(orderName)) return;
+                if (string.IsNullOrEmpty(orderName))
+                    return;
 
                 // V12.962 INLINE ACTOR: Dedup guard -- lock-free, serial execution guaranteed by _drainToken.
                 // V12.Phase7 [C-01]: Prevent double-decrement if OnOrderUpdate + OnExecutionUpdate both fire.
@@ -206,7 +249,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                     long _execHash = FnvHash64(executionId);
                     if (_executionIdRing.ContainsOrAdd(_execHash))
                     {
-                        Print(string.Format("[DEDUP] Skipping duplicate execution {0} for {1}", executionId, orderName));
+                        Print(
+                            string.Format("[DEDUP] Skipping duplicate execution {0} for {1}", executionId, orderName)
+                        );
                         return;
                     }
                 }
@@ -215,15 +260,19 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // V14.2 [ADR-011]: Fallback dedup when executionId is missing
                     // Uses execution.Order properties -- FIX-D5: correct variable mapping
                     string uniqueOrderId = !string.IsNullOrEmpty(execution.Order.OrderId)
-                        ? execution.Order.OrderId : execution.Order.Name;
-                    int dedupFilledQty = execution.Order.Filled > 0
-                        ? execution.Order.Filled : Math.Max(0, quantity);
+                        ? execution.Order.OrderId
+                        : execution.Order.Name;
+                    int dedupFilledQty = execution.Order.Filled > 0 ? execution.Order.Filled : Math.Max(0, quantity);
                     string _fallbackKey = string.Format("{0}|{1}", uniqueOrderId, dedupFilledQty);
                     long _fallbackHash = FnvHash64(_fallbackKey);
                     if (_executionIdFallbackRing.ContainsOrAdd(_fallbackHash))
                     {
-                        Print(string.Format("[DEDUP] Skipping duplicate execution (fallback) orderId={0}",
-                            execution.Order.OrderId));
+                        Print(
+                            string.Format(
+                                "[DEDUP] Skipping duplicate execution (fallback) orderId={0}",
+                                execution.Order.OrderId
+                            )
+                        );
                         return;
                     }
                 }
@@ -240,7 +289,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Helper: Extract entry name from order name (removes prefix and optional timestamp suffix)
                 Func<string, string, string> extractEntryName = (name, prefix) =>
                 {
-                    if (!name.StartsWith(prefix)) return "";
+                    if (!name.StartsWith(prefix))
+                        return "";
                     string entryPart = name.Substring(prefix.Length);
                     // Strip timestamp suffix if present (format: _123456789012345)
                     int lastUnderscore = entryPart.LastIndexOf('_');
@@ -255,7 +305,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (orderName.StartsWith("Stop_"))
                 {
                     string entryName = extractEntryName(orderName, "Stop_");
-                    if (!string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos))
+                    if (
+                        !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
+                    )
                     {
                         int remainingAfterStop;
                         pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
@@ -271,7 +323,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                             var tDict = GetTargetOrdersDictionary(tNum);
                             if (tDict != null && tDict.TryGetValue(entryName, out var tOrder))
                             {
-                                if (tOrder != null && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted))
+                                if (
+                                    tOrder != null
+                                    && (
+                                        tOrder.OrderState == OrderState.Working
+                                        || tOrder.OrderState == OrderState.Accepted
+                                    )
+                                )
                                 {
                                     CancelOrderSafe(tOrder, pos);
                                     cancelledTargets++;
@@ -281,7 +339,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                         if (cancelledTargets > 0)
                         {
-                            Print(string.Format("OCO: Cancelled {0} target orders for {1}", cancelledTargets, entryName));
+                            Print(
+                                string.Format("OCO: Cancelled {0} target orders for {1}", cancelledTargets, entryName)
+                            );
                         }
 
                         // B957/D1: Only remove stopOrders and pendingStopReplacements when position is fully closed.
@@ -301,39 +361,66 @@ namespace NinjaTrader.NinjaScript.Strategies
                         }
                     }
                 }
-
                 // ============================================================
                 // 2. TARGET 1-5 FILL - Reduce stop quantity (unified loop)
                 // V12.1101E [SK-01/A-1]: First-Writer-Wins guard prevents double-decrement.
                 // ============================================================
-                else if (orderName.StartsWith("T1_") || orderName.StartsWith("T2_") || orderName.StartsWith("T3_") ||
-                         orderName.StartsWith("T4_") || orderName.StartsWith("T5_"))
+                else if (
+                    orderName.StartsWith("T1_")
+                    || orderName.StartsWith("T2_")
+                    || orderName.StartsWith("T3_")
+                    || orderName.StartsWith("T4_")
+                    || orderName.StartsWith("T5_")
+                )
                 {
                     // Extract target number from prefix (T1_, T2_, etc.)
                     int targetNum = orderName[1] - '0';
                     string targetPrefix = "T" + targetNum + "_";
                     string entryName = extractEntryName(orderName, targetPrefix);
 
-                    if (!string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos))
+                    if (
+                        !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
+                    )
                     {
                         bool terminalFill = execution.Order.OrderState == OrderState.Filled;
                         bool alreadyProcessed;
                         int appliedQty;
                         int remainingAfter;
-                        ApplyTargetFill(pos, targetNum, quantity, terminalFill, out alreadyProcessed, out appliedQty, out remainingAfter);
+                        ApplyTargetFill(
+                            pos,
+                            targetNum,
+                            quantity,
+                            terminalFill,
+                            out alreadyProcessed,
+                            out appliedQty,
+                            out remainingAfter
+                        );
                         if (alreadyProcessed)
                         {
-                            Print(string.Format("[1101E GUARD] T{0} already processed for {1} -- skipping duplicate OnExecutionUpdate fill", targetNum, entryName));
+                            Print(
+                                string.Format(
+                                    "[1101E GUARD] T{0} already processed for {1} -- skipping duplicate OnExecutionUpdate fill",
+                                    targetNum,
+                                    entryName
+                                )
+                            );
                             if (terminalFill)
                             {
                                 var tDict = GetTargetOrdersDictionary(targetNum);
-                                if (tDict != null) tDict.TryRemove(entryName, out _);
+                                if (tDict != null)
+                                    tDict.TryRemove(entryName, out _);
                             }
                             return;
                         }
 
-                        Print(string.Format("TARGET FILLED: {0} @ {1:F2}. Reducing stop. Remaining: {2}",
-                            appliedQty, price, remainingAfter));
+                        Print(
+                            string.Format(
+                                "TARGET FILLED: {0} @ {1:F2}. Reducing stop. Remaining: {2}",
+                                appliedQty,
+                                price,
+                                remainingAfter
+                            )
+                        );
 
                         if (remainingAfter > 0)
                         {
@@ -355,11 +442,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (terminalFill)
                         {
                             var tDict = GetTargetOrdersDictionary(targetNum);
-                            if (tDict != null) tDict.TryRemove(entryName, out _);
+                            if (tDict != null)
+                                tDict.TryRemove(entryName, out _);
                         }
                     }
                 }
-
                 // ============================================================
                 // 5. TRIM EXECUTION - V10.3.1: Enhanced Stop Integrity
                 // ============================================================
@@ -371,7 +458,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 else if (orderName.StartsWith("Trim_"))
                 {
                     string entryName = extractEntryName(orderName, "Trim_");
-                    if (!string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos))
+                    if (
+                        !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
+                    )
                     {
                         int previousQty;
                         int remainingAfterTrim;
@@ -379,20 +468,35 @@ namespace NinjaTrader.NinjaScript.Strategies
                         pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
                         remainingAfterTrim = pos.RemainingContracts;
 
-                        Print(string.Format("TRIM EXECUTION: {0} contracts closed for {1}. Position: {2} -> {3}",
-                            quantity, entryName, previousQty, remainingAfterTrim));
+                        Print(
+                            string.Format(
+                                "TRIM EXECUTION: {0} contracts closed for {1}. Position: {2} -> {3}",
+                                quantity,
+                                entryName,
+                                previousQty,
+                                remainingAfterTrim
+                            )
+                        );
 
                         // V10.3.1 FIX: MANDATORY stop quantity reduction to prevent reverse position
                         if (remainingAfterTrim > 0)
                         {
-                            Print(string.Format("STOP INTEGRITY: Reducing stop quantity from {0} to {1} for {2}",
-                                previousQty, remainingAfterTrim, entryName));
+                            Print(
+                                string.Format(
+                                    "STOP INTEGRITY: Reducing stop quantity from {0} to {1} for {2}",
+                                    previousQty,
+                                    remainingAfterTrim,
+                                    entryName
+                                )
+                            );
                             UpdateStopQuantity(entryName, pos);
                         }
                         else
                         {
                             // Position fully closed by trim, cancel stop
-                            Print(string.Format("TRIM FLATTEN: Position {0} fully closed. Cancelling stop.", entryName));
+                            Print(
+                                string.Format("TRIM FLATTEN: Position {0} fully closed. Cancelling stop.", entryName)
+                            );
                             // A2-2: Defer activePositions.TryRemove to broker-confirmed stop terminal state (Build 960)
                             RequestStopCancelLifecycleSafe(entryName);
 
@@ -432,7 +536,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         ///   3. Target moves use pos.ExecutingAccount.Cancel + CreateOrder + Submit (not ChangeOrder).
         ///   4. Entry (Limit, pre-fill) moves implemented via cancel/resubmit.
         /// </summary>
-
         #endregion
     }
 }
