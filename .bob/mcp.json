@@ -1,15 +1,10 @@
-<<<<<<< Updated upstream
-{
-  "mcpServers": {}
-}
-=======
 {
   "mcpServers": {
     "greptile": {
       "url": "https://api.greptile.com/mcp",
       "type": "streamable-http",
       "headers": {
-        "Authorization": "Bearer ${GREPTILE_API_KEY}"
+        "Authorization": "Bearer pS4L5AeiV35cwkTbNyKVunYcJWQhbD+CI1M8hk6Hf4aMiLKR"
       },
       "alwaysAllow": ["query", "search", "search_codebase", "query_codebase", "semantic_search"]
     }
@@ -17,4 +12,3 @@
 }
 
 
->>>>>>> Stashed changes
