@@ -433,7 +433,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         private readonly ConcurrentDictionary<string, int> _reaperOrphanRepairCount =
             new ConcurrentDictionary<string, int>();
 
-        private int GetPhotonDispatchRingDepth() => _photonDispatchRing?.Count ?? 0;
+        private int GetPhotonDispatchRingDepth()
+        {
+            return _photonDispatchRing?.Count ?? 0;
+        }
 
         protected void Enqueue(Action<V12_002> action)
         {
