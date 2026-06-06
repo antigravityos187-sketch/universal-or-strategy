@@ -1,4 +1,5 @@
 {
+<<<<<<< Updated upstream
   // CSharpier - Auto-format on save
   "[csharp]": {
     "editor.defaultFormatter": "csharpier.csharpier-vscode",
@@ -24,6 +25,15 @@
     "**/obj/**": true
   },
   "snyk.advanced.autoSelectOrganization": false
+=======
+  "chatgpt.openOnStartup": true,
+  "sonarlint.connectedMode.project": {
+    "connectionId": "mkalhitti-cloud",
+    "projectKey": "mkalhitti-cloud_universal-or-strategy"
+  },
+  "snyk.advanced.organization": "a27fded7-d7b5-49a3-893a-859446dbd178",
+  "snyk.advanced.autoSelectOrganization": true
+>>>>>>> Stashed changes
 }
 
 // Made with Bob
