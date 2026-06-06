@@ -686,51 +686,87 @@ namespace NinjaTrader.NinjaScript.Strategies
                 manualEntryRow.Visibility = Visibility.Visible;
         }
 
+        // [EPIC-CCN-15] Refactored to dispatch-only pattern (CYC 8, Jane Street ultra-aligned)
         private void ShowModeSpecificControls(string mode)
         {
             switch (mode)
             {
                 case "ORB":
-                    if (orLongButton != null)
-                        orLongButton.Visibility = Visibility.Visible;
-                    if (orShortButton != null)
-                        orShortButton.Visibility = Visibility.Visible;
+                    ShowOrbControls();
                     break;
                 case "RMA":
-                    if (rmaButton != null)
-                        rmaButton.Visibility = Visibility.Visible;
+                    ShowRmaControls();
                     break;
                 case "RETEST":
-                    if (execRetestRow != null)
-                        execRetestRow.Visibility = Visibility.Visible;
+                    ShowRetestControls();
                     break;
                 case "MOMO":
-                    if (momoButton != null)
-                        momoButton.Visibility = Visibility.Visible;
+                    ShowMomoControls();
                     break;
                 case "FFMA":
-                    if (ffmaButton != null)
-                        ffmaButton.Visibility = Visibility.Visible;
-                    if (ffmaManualButton != null)
-                        ffmaManualButton.Visibility = Visibility.Visible;
-                    if (manualEntryRow != null)
-                        manualEntryRow.Visibility = Visibility.Collapsed;
+                    ShowFfmaControls();
                     break;
                 case "TREND":
-                    if (execTrendRow != null)
-                        execTrendRow.Visibility = Visibility.Visible;
+                    ShowTrendControls();
                     break;
                 case "MNL":
-                    if (mButton != null)
-                        mButton.Visibility = Visibility.Visible;
+                    ShowMnlControls();
                     break;
                 default:
-                    if (orLongButton != null)
-                        orLongButton.Visibility = Visibility.Visible;
-                    if (orShortButton != null)
-                        orShortButton.Visibility = Visibility.Visible;
+                    ShowOrbControls();
                     break;
             }
+        }
+
+        // [EPIC-CCN-15] Mode-specific visibility helpers (CYC 2-4 each)
+        // Extracted from ShowModeSpecificControls to achieve Jane Street ultra-alignment (CYC <=8)
+
+        private void ShowOrbControls()
+        {
+            if (orLongButton != null)
+                orLongButton.Visibility = Visibility.Visible;
+            if (orShortButton != null)
+                orShortButton.Visibility = Visibility.Visible;
+        }
+
+        private void ShowRmaControls()
+        {
+            if (rmaButton != null)
+                rmaButton.Visibility = Visibility.Visible;
+        }
+
+        private void ShowRetestControls()
+        {
+            if (execRetestRow != null)
+                execRetestRow.Visibility = Visibility.Visible;
+        }
+
+        private void ShowMomoControls()
+        {
+            if (momoButton != null)
+                momoButton.Visibility = Visibility.Visible;
+        }
+
+        private void ShowFfmaControls()
+        {
+            if (ffmaButton != null)
+                ffmaButton.Visibility = Visibility.Visible;
+            if (ffmaManualButton != null)
+                ffmaManualButton.Visibility = Visibility.Visible;
+            if (manualEntryRow != null)
+                manualEntryRow.Visibility = Visibility.Collapsed;
+        }
+
+        private void ShowTrendControls()
+        {
+            if (execTrendRow != null)
+                execTrendRow.Visibility = Visibility.Visible;
+        }
+
+        private void ShowMnlControls()
+        {
+            if (mButton != null)
+                mButton.Visibility = Visibility.Visible;
         }
 
         private void PopulateDirectionCombo(string mode)
@@ -752,7 +788,17 @@ namespace NinjaTrader.NinjaScript.Strategies
             directionCombo.SelectedIndex = 0;
         }
 
+        // [EPIC-CCN-16] Refactored to dispatch-only pattern (CYC 19 -> 1, Jane Street ultra-aligned)
         public void UpdateTargetVisibility(int count)
+        {
+            UpdateConfigControlsEnabled(count);
+            UpdateConfigRowsVisibility(count);
+            UpdateLiveButtonsVisibility(count);
+        }
+
+        // [EPIC-CCN-16] Extracted from UpdateTargetVisibility (CYC 19 -> 8)
+        // Enable/disable config panel Val+Type controls based on target count
+        private void UpdateConfigControlsEnabled(int count)
         {
             if (svT2Val != null)
                 svT2Val.IsEnabled = count >= 2;
@@ -770,7 +816,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 svT5Val.IsEnabled = count >= 5;
             if (svT5Type != null)
                 svT5Type.IsEnabled = count >= 5;
+        }
 
+        // [EPIC-CCN-16] Extracted from UpdateTargetVisibility (CYC 19 -> 8)
+        // Show/hide config panel rows based on target count
+        private void UpdateConfigRowsVisibility(int count)
+        {
             if (t2Row != null)
                 t2Row.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed;
             if (t3Row != null)
@@ -779,22 +830,40 @@ namespace NinjaTrader.NinjaScript.Strategies
                 t4Row.Visibility = count >= 4 ? Visibility.Visible : Visibility.Collapsed;
             if (t5Row != null)
                 t5Row.Visibility = count >= 5 ? Visibility.Visible : Visibility.Collapsed;
+        }
 
-            // Build 1107: In live mode, Section 1 buttons stay collapsed (live rows replace them).
-            // Only manage button visibility when in config mode (flat).
+        // [EPIC-CCN-16] Extracted from UpdateTargetVisibility (CYC 19 -> 2)
+        // Show/hide live target buttons (only in config mode, not live mode)
+        // Build 1107: In live mode, Section 1 buttons stay collapsed (live rows replace them).
+        private void UpdateLiveButtonsVisibility(int count)
+        {
             if (_currentLiveEntryName == null)
             {
-                if (t1Button != null)
-                    t1Button.Visibility = Visibility.Visible;
-                if (t2Button != null)
-                    t2Button.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed;
-                if (t3Button != null)
-                    t3Button.Visibility = count >= 3 ? Visibility.Visible : Visibility.Collapsed;
-                if (t4Button != null)
-                    t4Button.Visibility = count >= 4 ? Visibility.Visible : Visibility.Collapsed;
-                if (t5Button != null)
-                    t5Button.Visibility = count >= 5 ? Visibility.Visible : Visibility.Collapsed;
+                SetT1ButtonVisible();
+                SetT2T5ButtonsVisible(count);
             }
+        }
+
+        // [EPIC-CCN-16] Helper for UpdateLiveButtonsVisibility (CYC 1)
+        // T1 button always visible in config mode (no count threshold)
+        private void SetT1ButtonVisible()
+        {
+            if (t1Button != null)
+                t1Button.Visibility = Visibility.Visible;
+        }
+
+        // [EPIC-CCN-16] Helper for UpdateLiveButtonsVisibility (CYC 8)
+        // T2-T5 buttons visibility based on target count
+        private void SetT2T5ButtonsVisible(int count)
+        {
+            if (t2Button != null)
+                t2Button.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+            if (t3Button != null)
+                t3Button.Visibility = count >= 3 ? Visibility.Visible : Visibility.Collapsed;
+            if (t4Button != null)
+                t4Button.Visibility = count >= 4 ? Visibility.Visible : Visibility.Collapsed;
+            if (t5Button != null)
+                t5Button.Visibility = count >= 5 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void UpdateRmaButtonVisual(bool active)

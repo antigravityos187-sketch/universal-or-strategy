@@ -450,59 +450,102 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        /// <summary>
+        /// EPIC-CCN-18: Refactored to use helper methods (CYC 19 -> 4).
+        /// Validates Master account orders and cancels orphaned orders (no matching activePosition).
+        /// </summary>
         private bool ValidateOrphanedMasterOrders(string reason)
         {
             bool foundOrphans = false;
             foreach (Order order in Account.Orders)
             {
-                if (order == null)
+                if (!ShouldValidateOrder(order))
                     continue;
 
-                // Only look at working orders
-                if (order.OrderState != OrderState.Working && order.OrderState != OrderState.Accepted)
-                    continue;
-
-                // V8.27 CRITICAL FIX: Only process orders for THIS instrument
-                // This prevents cross-instrument cancellation when running multiple strategy instances
-                if (order.Instrument.FullName != Instrument.FullName)
-                    continue;
-
-                // Check if this order has one of our prefix signatures
                 string name = order.Name;
-                if (
-                    name.StartsWith("Stop_")
-                    || name.StartsWith("T1_")
-                    || name.StartsWith("T2_")
-                    || name.StartsWith("T3_")
-                    || name.StartsWith("T4_")
-                    || name.StartsWith("T5_")
-                    || name.StartsWith("Flatten_")
-                    || name.StartsWith("Trim_")
-                )
+                if (!HasV12OrderPrefix(name))
+                    continue;
+
+                string entryName = ExtractEntryNameFromOrderName(name);
+
+                if (IsOrphanedOrder(entryName))
                 {
-                    // Check if we actually have an active position for this
-                    string entryName = "";
-                    if (name.Contains("_"))
-                    {
-                        int firstUnderscore = name.IndexOf('_');
-                        entryName = name.Substring(firstUnderscore + 1);
-                        // Strip timestamp if present
-                        int lastUnderscore = entryName.LastIndexOf('_');
-                        if (lastUnderscore > 0 && entryName.Length - lastUnderscore > 10)
-                            entryName = entryName.Substring(0, lastUnderscore);
-                    }
-
-                    // V10 FIX: Handle TRIM execution state update - MOVED TO OnExecutionUpdate
-
-                    if (string.IsNullOrEmpty(entryName) || !activePositions.ContainsKey(entryName))
-                    {
-                        Print(string.Format("ORPHANED ORDER DETECTED ({0}): {1} | Cancelling...", reason, name));
-                        CancelOrderOnAccount(order, order.Account);
-                        foundOrphans = true;
-                    }
+                    Print(string.Format("ORPHANED ORDER DETECTED ({0}): {1} | Cancelling...", reason, name));
+                    CancelOrderOnAccount(order, order.Account);
+                    foundOrphans = true;
                 }
             }
             return foundOrphans;
+        }
+
+        /// <summary>
+        /// EPIC-CCN-18: Filter orders for orphan validation.
+        /// Returns true if order should be validated (non-null, Working/Accepted, current instrument).
+        /// CYC: 4
+        /// </summary>
+        private bool ShouldValidateOrder(Order order)
+        {
+            if (order == null)
+                return false;
+
+            // Only look at working orders
+            if (order.OrderState != OrderState.Working && order.OrderState != OrderState.Accepted)
+                return false;
+
+            // V8.27 CRITICAL FIX: Only process orders for THIS instrument
+            // This prevents cross-instrument cancellation when running multiple strategy instances
+            if (order.Instrument.FullName != Instrument.FullName)
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// EPIC-CCN-18: Check if order name has V12 prefix signature.
+        /// Returns true if name starts with Stop_, T1-T5_, Flatten_, or Trim_.
+        /// CYC: 9 (acceptable for pure boolean expression per Jane Street principles)
+        /// </summary>
+        private bool HasV12OrderPrefix(string name)
+        {
+            return name.StartsWith("Stop_")
+                || name.StartsWith("T1_")
+                || name.StartsWith("T2_")
+                || name.StartsWith("T3_")
+                || name.StartsWith("T4_")
+                || name.StartsWith("T5_")
+                || name.StartsWith("Flatten_")
+                || name.StartsWith("Trim_");
+        }
+
+        /// <summary>
+        /// EPIC-CCN-18: Extract entry name from order name.
+        /// Example: "Stop_TREND_20240605123456" -> "TREND"
+        /// Strips timestamp suffix if present (format: _YYYYMMDDHHMMSS, length > 10).
+        /// CYC: 3
+        /// </summary>
+        private string ExtractEntryNameFromOrderName(string name)
+        {
+            string entryName = "";
+            if (name.Contains("_"))
+            {
+                int firstUnderscore = name.IndexOf('_');
+                entryName = name.Substring(firstUnderscore + 1);
+                // Strip timestamp if present
+                int lastUnderscore = entryName.LastIndexOf('_');
+                if (lastUnderscore > 0 && entryName.Length - lastUnderscore > 10)
+                    entryName = entryName.Substring(0, lastUnderscore);
+            }
+            return entryName;
+        }
+
+        /// <summary>
+        /// EPIC-CCN-18: Check if entry name is orphaned (not in activePositions).
+        /// Returns true if entry name is empty or not found in activePositions dictionary.
+        /// CYC: 3
+        /// </summary>
+        private bool IsOrphanedOrder(string entryName)
+        {
+            return string.IsNullOrEmpty(entryName) || !activePositions.ContainsKey(entryName);
         }
 
         private HashSet<string> BuildLiveBrokerOrderIndex()
