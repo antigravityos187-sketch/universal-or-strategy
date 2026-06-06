@@ -79,8 +79,15 @@ PROTOCOL:
     1. IF $scope is "SRC-ONLY":
        - Run: git fetch origin <branch>
        - Run: git reset --hard origin/<branch>
+<<<<<<< Updated upstream
        - Emit: [SRC-ONLY-RESET] Skipped rebase to prevent non-src contamination
        - Rationale: Rebasing src-only PRs risks staging non-src commits from main
+=======
+       - CRITICAL: Run: git checkout main -- .bob/
+       - Emit: [SRC-ONLY-RESET] Skipped rebase, restored .bob/ infrastructure
+       - Rationale: Rebasing src-only PRs risks staging non-src commits from main
+       - Note: .bob/ must be restored after reset to enable custom modes/commands
+>>>>>>> Stashed changes
     2. ELSE IF $scope is "MIXED":
        - Run: git fetch origin main
        - Run: git rebase origin/main
