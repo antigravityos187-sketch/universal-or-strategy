@@ -16,17 +16,10 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region V12 REAPER Naked Position Detection
 
-        // Grace period tracking (key = account name)
-        private ConcurrentDictionary<string, DateTime> _nakedPositionFirstSeen =
-            new ConcurrentDictionary<string, DateTime>();
-
-        // In-flight guard (key = expectedKey = accountName_instrumentName)
-        private readonly ConcurrentDictionary<string, byte> _reaperNakedStopInFlight =
-            new ConcurrentDictionary<string, byte>();
-
-        // Emergency stop queue (marshalled to strategy thread)
-        private ConcurrentQueue<(string AccountName, MarketPosition Direction, int Qty)> _reaperNakedStopQueue =
-            new ConcurrentQueue<(string, MarketPosition, int)>();
+        // NOTE: Field declarations moved to V12_002.REAPER.cs to eliminate duplicate definitions
+        // - _nakedPositionFirstSeen
+        // - _reaperNakedStopInFlight
+        // - _reaperNakedStopQueue
 
         /// <summary>
         /// Detects naked positions (position without working stop) and enqueues emergency stop after grace period.
@@ -208,6 +201,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Fallback: If result is still invalid, use MinimumStop
             if (emergencyStopDist <= 0)
                 emergencyStopDist = Math.Max(tickSize, MinimumStop);
+
+            // REAPER Bounds Protocol: Enforce MinimumStop floor (handles MaximumStop < MinimumStop edge case)
+            emergencyStopDist = Math.Max(emergencyStopDist, MinimumStop);
 
             // Calculate stop price and close action based on direction
             double stopPrice;

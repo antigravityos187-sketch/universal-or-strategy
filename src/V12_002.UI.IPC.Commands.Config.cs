@@ -458,6 +458,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 Print("[DIAG_IPC] Invalid UTF-8 count   : " + _ipcInvalidUtf8Count);
                 Print("[DIAG_IPC] Allowlist reject count: " + _ipcAllowlistRejectCount);
+                Print("[DIAG_IPC] Hardening reject count: " + _ipcHardeningRejectCount);
                 Print("[DIAG_IPC] Queue depth peak      : " + _ipcQueueDepthPeak);
                 return true;
             }

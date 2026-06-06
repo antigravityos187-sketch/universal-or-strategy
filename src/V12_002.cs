@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.010-epic5-perf"; // EPIC-5 Ticket 04: Order Array Pooling
+        public const string BUILD_TAG = "1111.017-pr5-iter10"; // PR #5 Iteration 10: Fix narrow exception handling in FlattenAll()
 
         public class UILiveTargetSnapshot
         {
@@ -306,7 +306,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         // EPIC-4 Ticket 02: Sticky State persistence layer fields
         private bool _stickyStateEnabled = true;
-        private string _stickyStatePath = string.Empty;
         private long _lastSnapshotTicks = 0;
         private int _stickyDirtyFlag = 0; // Atomic dirty flag (0=clean, 1=dirty)
 
@@ -328,10 +327,34 @@ namespace NinjaTrader.NinjaScript.Strategies
         private DateTime lastDrawORBoxTime = DateTime.MinValue;
         private const int DRAW_ORBOX_THROTTLE_MS = 200;
 
+        /// <summary>
+        /// Default adaptive throttle interval in milliseconds.
+        /// Prevents CPU saturation during high-frequency tick processing.
+        /// </summary>
+        private const int DEFAULT_ADAPTIVE_THROTTLE_MS = 100;
+
+        /// <summary>
+        /// Actor queue depth warning threshold.
+        /// Triggers backlog warning when queue exceeds this depth.
+        /// </summary>
+        private const int ACTOR_QUEUE_DEPTH_WARNING_THRESHOLD = 100;
+
+        /// <summary>
+        /// Initial capacity for dispatch log StringBuilder.
+        /// Pre-allocated to avoid reallocation during hot path logging.
+        /// </summary>
+        private const int DISPATCH_LOG_INITIAL_CAPACITY = 512;
+
+        /// <summary>
+        /// Maximum items to drain from IPC queue during shutdown.
+        /// Prevents infinite loop if queue is continuously fed.
+        /// </summary>
+        private const int IPC_DRAIN_LIMIT = 100;
+
         // V8.30: Adaptive throttling based on tick frequency
         private int tickCountInLastSecond = 0;
         private DateTime lastTickCountReset = DateTime.MinValue;
-        private int adaptiveThrottleMs = 100;
+        private int adaptiveThrottleMs = DEFAULT_ADAPTIVE_THROTTLE_MS;
 
         // V9.1.8 IPC Integration
         private TcpListener ipcListener;
@@ -394,7 +417,14 @@ namespace NinjaTrader.NinjaScript.Strategies
         private volatile bool _dataLoadedComplete = false;
         private int _startupReadinessLogEmitted = 0;
         private volatile bool _diagFleet; // T-Q1: Fleet dispatch + account queue catch logging
-        private volatile bool _diagIpc; // T-Q1: MMIO mirror publish catch logging
+        private volatile bool _diagIpc; // IPC/MMIO diagnostic logging (restored for Dispatch.cs usage)
+
+        // UI callback failure counter
+        private int _uiCallbackFailures = 0;
+
+        // Build 1111.014 [PR#5]: Sticky state diagnostic counters
+        private int _stateTempCleanupFailures = 0;
+        private bool _stateCorruptionDetected = false;
 
         protected void Enqueue(Action<V12_002> action)
         {
@@ -554,7 +584,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             TouchStrategyHeartbeat();
             // Build 1109 [FREEZE-PROOF]: Early warning for queue saturation
             int _actorQd = _cmdQueue.Count;
-            if (_actorQd > 100)
+            if (_actorQd > ACTOR_QUEUE_DEPTH_WARNING_THRESHOLD)
                 Print("[ACTOR_WARN] Queue depth=" + _actorQd + " -- possible backlog");
             BeginActorCycle();
             try
@@ -643,6 +673,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         // if two enable/disable calls interleave (e.g. IPC toggle while UI toggle in progress).
         // 0=idle, 1=busy (Interlocked.CompareExchange acquire, Interlocked.Exchange release in finally)
         private int _simaToggleState = 0;
+
+        // V12.Phase7 [GAP-4]: SIMA toggle semaphore (legacy, replaced by lock-free _simaToggleState)
+        // Retained for disposal in Lifecycle cleanup
+        private SemaphoreSlim _simaToggleSem;
 
         // V12.Audit [H-10]: Tracks a toggle that could not complete due to gate contention.
         // ApplySimaState retries the pending toggle at the top of its next invocation.

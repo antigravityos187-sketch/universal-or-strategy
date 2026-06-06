@@ -20,9 +20,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private readonly ConcurrentDictionary<string, DateTime> _orphanedPositionFirstSeen =
             new ConcurrentDictionary<string, DateTime>();
 
-        // Orphan repair attempt counter (key = account name)
-        private readonly ConcurrentDictionary<string, int> _reaperOrphanRepairCount =
-            new ConcurrentDictionary<string, int>();
+        // NOTE: _reaperOrphanRepairCount declaration moved to V12_002.REAPER.cs to eliminate duplicate definition
 
         /// <summary>
         /// Detects orphaned FSM positions (broker flat but activePositions entry exists) after 10s grace.
@@ -158,7 +156,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 )
             );
 
-            // SetExpectedPositionLocked(..., 0) already removes from _dispatchSyncPendingExpKeys internally.
+            // V12 DNA: Blanket zeroing is acceptable here as a last-resort recovery path.
+            // This is triggered only after 3 failed repair attempts when PositionInfo is null,
+            // indicating a ghost position state. Zeroing prevents infinite repair loops.
+            // Alternative (per-entry clear) risks leaving partial state causing future desyncs.
             SetExpectedPositionLocked(ExpKey(accountName), 0);
 
             // Reset orphan counter

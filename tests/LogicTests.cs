@@ -125,7 +125,8 @@ namespace UniversalOrStrategy.Tests
                     "",
                     "[POSITIONS]",
                     "# key|extremePrice|trailLevel|beArmed|beTriggered|initialTargetCount",
-                    "ENTRY_1|5315.75|2|1|0|3") + Environment.NewLine;
+                    "ENTRY_1|5315.75|2|1|0|3"
+                ) + Environment.NewLine;
             string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".v12state");
 
             try
@@ -168,7 +169,7 @@ namespace UniversalOrStrategy.Tests
                     if (string.IsNullOrEmpty(line) || line.StartsWith("#", StringComparison.Ordinal))
                         continue;
 
-                    if (line.StartsWith('[') && line.EndsWith(']') && line.Length > 2)
+                    if (line.StartsWith("[") && line.EndsWith("]") && line.Length > 2)
                     {
                         currentSection = new StickyStateSection(line.Substring(1, line.Length - 2).ToUpperInvariant());
                         sections.Add(currentSection);
@@ -207,7 +208,8 @@ namespace UniversalOrStrategy.Tests
 
         private static bool StickyStateSectionsEqual(
             IReadOnlyList<StickyStateSection> left,
-            IReadOnlyList<StickyStateSection> right)
+            IReadOnlyList<StickyStateSection> right
+        )
         {
             if (ReferenceEquals(left, right))
                 return true;

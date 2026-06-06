@@ -266,6 +266,83 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Validates FSM event preconditions: FSM resolution and metadata guard.
+        /// Returns false if event should be ignored (FSM not found or guard failed).
+        /// </summary>
+        private bool ValidateFsmEventPreconditions(AccountEvent evt, out FollowerBracketFSM fsm)
+        {
+            fsm = ResolveFsmFromEvent(evt);
+            if (fsm == null)
+                return false;
+            if (!MetadataGuardFsmEvent(evt, fsm))
+                return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Transitions FSM to Accepted state if currently Submitted or PendingSubmit.
+        /// No-op if FSM is in any other state (idempotent).
+        /// </summary>
+        private void TransitionToAccepted(FollowerBracketFSM fsm)
+        {
+            if (fsm.State == FollowerBracketState.Submitted || fsm.State == FollowerBracketState.PendingSubmit)
+                fsm.State = FollowerBracketState.Accepted;
+        }
+
+        /// <summary>
+        /// Transitions FSM to Cancelled state, with special handling for Replace-cycle cancels.
+        /// If FSM is in Replacing state and the cancelled order matches ReplacingCancelOrderId,
+        /// the cancel is absorbed (FSM stays Replacing). Otherwise, transitions to Cancelled.
+        /// </summary>
+        private void TransitionToCancelled(AccountEvent evt, FollowerBracketFSM fsm)
+        {
+            if (
+                fsm.State == FollowerBracketState.Replacing
+                && string.Equals(fsm.ReplacingCancelOrderId, evt.OrderId, StringComparison.Ordinal)
+            )
+            {
+                Print("[FSM-C2] Replace-cycle cancel absorbed -- FSM stays Replacing");
+            }
+            else
+            {
+                fsm.State = FollowerBracketState.Cancelled;
+            }
+        }
+
+        /// <summary>
+        /// Transitions FSM to Rejected state and captures broker error message.
+        /// Terminal state - no further transitions possible.
+        /// </summary>
+        private void TransitionToRejected(AccountEvent evt, FollowerBracketFSM fsm)
+        {
+            fsm.State = FollowerBracketState.Rejected;
+            fsm.LastBrokerError = evt.ErrorMessage;
+        }
+
+        /// <summary>
+        /// Logs FSM state transitions for Shadow Mode observability.
+        /// Updates LastUpdateUtc timestamp when state changes.
+        /// No-op if state unchanged (idempotent).
+        /// </summary>
+        private void LogFsmTransition(FollowerBracketFSM fsm, FollowerBracketState oldState, AccountEvent evt)
+        {
+            if (fsm.State != oldState)
+            {
+                fsm.LastUpdateUtc = DateTime.UtcNow;
+                Print(
+                    string.Format(
+                        "[FSM-SHADOW] {0} Transition: {1} -> {2} | Event={3} | Order={4}",
+                        fsm.EntryName,
+                        oldState,
+                        fsm.State,
+                        evt.NewState,
+                        evt.SignalName
+                    )
+                );
+            }
+        }
+
+        /// <summary>
         /// Handles Filled/PartFilled events with stop/target detection and contract tracking.
         /// Updates FSM state based on remaining contracts after fill.
         /// </summary>
@@ -303,10 +380,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void ProcessBracketEvent(AccountEvent evt)
         {
-            FollowerBracketFSM fsm = ResolveFsmFromEvent(evt);
-            if (fsm == null)
-                return;
-            if (!MetadataGuardFsmEvent(evt, fsm))
+            if (!ValidateFsmEventPreconditions(evt, out FollowerBracketFSM fsm))
                 return;
 
             FollowerBracketState oldState = fsm.State;
@@ -315,8 +389,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 case OrderState.Accepted:
                 case OrderState.Working:
-                    if (fsm.State == FollowerBracketState.Submitted || fsm.State == FollowerBracketState.PendingSubmit)
-                        fsm.State = FollowerBracketState.Accepted;
+                    TransitionToAccepted(fsm);
                     break;
 
                 case OrderState.Filled:
@@ -325,22 +398,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                     break;
 
                 case OrderState.Cancelled:
-                    if (
-                        fsm.State == FollowerBracketState.Replacing
-                        && string.Equals(fsm.ReplacingCancelOrderId, evt.OrderId, StringComparison.Ordinal)
-                    )
-                    {
-                        Print("[FSM-C2] Replace-cycle cancel absorbed -- FSM stays Replacing");
-                    }
-                    else
-                    {
-                        fsm.State = FollowerBracketState.Cancelled;
-                    }
+                    TransitionToCancelled(evt, fsm);
                     break;
 
                 case OrderState.Rejected:
-                    fsm.State = FollowerBracketState.Rejected;
-                    fsm.LastBrokerError = evt.ErrorMessage;
+                    TransitionToRejected(evt, fsm);
                     break;
 
                 default:
@@ -348,20 +410,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     break;
             }
 
-            if (fsm.State != oldState)
-            {
-                fsm.LastUpdateUtc = DateTime.UtcNow;
-                Print(
-                    string.Format(
-                        "[FSM-SHADOW] {0} Transition: {1} -> {2} | Event={3} | Order={4}",
-                        fsm.EntryName,
-                        oldState,
-                        fsm.State,
-                        evt.NewState,
-                        evt.SignalName
-                    )
-                );
-            }
+            LogFsmTransition(fsm, oldState, evt);
         }
 
         /// <summary>
