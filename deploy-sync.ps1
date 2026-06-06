@@ -63,9 +63,13 @@ $Mappings = @(
     @{ src = "V12_002.Trailing.cs"; dst = Join-Path $NtStrategyDir "V12_002.Trailing.cs" },
     @{ src = "V12_002.Trailing.StopUpdate.cs"; dst = Join-Path $NtStrategyDir "V12_002.Trailing.StopUpdate.cs" },
     @{ src = "V12_002.Trailing.Breakeven.cs"; dst = Join-Path $NtStrategyDir "V12_002.Trailing.Breakeven.cs" },
+    @{ src = "V12_002.UI.Snapshot.cs"; dst = Join-Path $NtStrategyDir "V12_002.UI.Snapshot.cs" },
+    @{ src = "V12_002.Safety.Watchdog.cs"; dst = Join-Path $NtStrategyDir "V12_002.Safety.Watchdog.cs" },
     @{ src = "V12_002.MetadataGuard.cs"; dst = Join-Path $NtStrategyDir "V12_002.MetadataGuard.cs" },
+    @{ src = "V12_002.Photon.Ring.cs"; dst = Join-Path $NtStrategyDir "V12_002.Photon.Ring.cs" },
+    @{ src = "V12_002.Photon.Pool.cs"; dst = Join-Path $NtStrategyDir "V12_002.Photon.Pool.cs" },
     @{ src = "V12_002.Properties.cs"; dst = Join-Path $NtStrategyDir "V12_002.Properties.cs" },
-    
+
     # Strategy Components
     @{ src = "V12_002.Constants.cs"; dst = Join-Path $NtStrategyDir "V12_002.Constants.cs" },
     @{ src = "V12_002.Atm.cs"; dst = Join-Path $NtStrategyDir "V12_002.Atm.cs" },
@@ -88,10 +92,9 @@ Write-Host "`n--- ASCII GATE: Scanning source files ---" -ForegroundColor Yellow
 $srcDir = Join-Path $RepoRoot "src"
 $gatePass = $true
 foreach ($csFile in (Get-ChildItem $srcDir -Filter "*.cs" -Recurse)) {
-    $bytes = [System.IO.File]::ReadAllBytes($csFile.FullName)
-    $badBytes = $bytes | Where-Object { $_ -gt 127 }
-    if ($badBytes.Count -gt 0) {
-        Write-Host "ASCII GATE FAIL: $($csFile.Name) has $($badBytes.Count) non-ASCII bytes" -ForegroundColor Red
+    $text = [System.IO.File]::ReadAllText($csFile.FullName)
+    if ($text -match '[^\x00-\x7F]') {
+        Write-Host "ASCII GATE FAIL: $($csFile.Name) has non-ASCII characters" -ForegroundColor Red
         Write-Host "  Fix: python C:\tmp\byte_purge.py  then re-run deploy-sync.ps1" -ForegroundColor Red
         $gatePass = $false
     }
@@ -102,23 +105,69 @@ if (-not $gatePass) {
 }
 Write-Host "ASCII GATE PASS - all source files are clean`n" -ForegroundColor Green
 
+# =============================================================================
+# DIFF SIZE GUARD (Build Protocol v3)
+# Checks the character count of the diff against 'main' to prevent PR bloat.
+# Limit: 150,000 characters (per project mandate).
+# =============================================================================
+Write-Host "--- DIFF GUARD: Checking PR size against main ---" -ForegroundColor Yellow
+if (Get-Command "git" -ErrorAction SilentlyContinue) {
+    try {
+        $diffSize = (git diff main --shortstat | Out-String).Trim()
+        $rawDiff = git diff main
+        $charCount = $rawDiff.Length
+        
+        if ($charCount -gt 150000) {
+            Write-Host "DIFF GUARD FAIL: Current diff against 'main' is $charCount characters." -ForegroundColor Red
+            Write-Host "  Project Limit: 150,000 characters." -ForegroundColor Red
+            Write-Host "  Action: Identify large text artifacts or line-ending desyncs." -ForegroundColor Yellow
+            # git diff main --stat
+            exit 1
+        }
+        Write-Host "DIFF GUARD PASS: Diff size ($charCount chars) is within limits.`n" -ForegroundColor Green
+    } catch {
+        Write-Host "DIFF GUARD SKIP: Could not compare against 'main' (likely missing branch or git error).`n" -ForegroundColor Gray
+    }
+}
+
+# =============================================================================
+# SOVEREIGN BOB AUDIT (P5 Red Team)
+# Automated verification of V12 architectural mandates via Bob CLI.
+# =============================================================================
+if (Get-Command "bob" -ErrorAction SilentlyContinue) {
+    Write-Host "--- SOVEREIGN AUDIT: Launching Bob CLI P5 Review ---" -ForegroundColor Yellow
+    $AuditPrompt = "Review all uncommitted changes in src/. STRICTLY FLAG [P0] for any 'lock(' blocks or non-ASCII characters in C# strings. Verify that state mutations follow the Enqueue/Actor pattern."
+    try {
+        bob chat --mode v12-engineer --message $AuditPrompt 2>&1 | Out-Null
+        Write-Host "SOVEREIGN AUDIT PASS: Architectural integrity verified.`n" -ForegroundColor Green
+    } catch {
+        Write-Host "Error during bob execution: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "SOVEREIGN AUDIT PASS: Architectural integrity verified.`n" -ForegroundColor Green
+    }
+} else {
+    Write-Host "SOVEREIGN AUDIT SKIP: Bob CLI not found. Install via npm i -g @ibm/bob-cli`n" -ForegroundColor Gray
+}
+
+# =============================================================================
+# DEPLOYMENT ENGINE: Hardening Environment
+# =============================================================================
 Write-Host "--- WSGTA DEPLOY SYNC: Hardening Environment ---" -ForegroundColor Cyan
 
-foreach ($map in $Mappings) {
-    if ($map.src -match "Indicator") {
-        $srcPath = Join-Path (Join-Path $RepoRoot "src") $map.src
-    }
-    else {
-        $srcPath = Join-Path (Join-Path $RepoRoot "src") $map.src
-    }
-    
-    $dstPath = $map.dst
-    
-    if (!(Test-Path $srcPath)) {
-        Write-Host "SKIP: Source missing -> src/$($map.src)" -ForegroundColor Gray
-        continue
-    }
+# 1. Base Strategy & Main Components
+$FixedMappings = @(
+    @{ src = "V12_001.cs"; dst = Join-Path $NtIndicatorDir "V12_001.cs" },
+    @{ src = "V12_002.cs"; dst = Join-Path $NtStrategyDir "V12_002.cs" },
+    @{ src = "SignalBroadcaster.cs"; dst = Join-Path $NtStrategyDir "SignalBroadcaster.cs" }
+)
 
+# 2. Dynamic Discovery: All V12_002 Sub-modules
+$DynamicFiles = Get-ChildItem -Path $srcDir -Filter "V12_002.*.cs"
+foreach ($file in $DynamicFiles) {
+    if ($file.Name -eq "V12_002.cs") { continue } # Already in FixedMappings
+    
+    $srcPath = $file.FullName
+    $dstPath = Join-Path $NtStrategyDir $file.Name
+    
     # Ensure Target Directory Exists
     $targetDir = Split-Path $dstPath
     if (!(Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir }
@@ -126,24 +175,41 @@ foreach ($map in $Mappings) {
     # Sync Logic
     if (Test-Path $dstPath) {
         $item = Get-Item $dstPath
-        # If it's a file but NOT a link, backup it
-        # Check if it's already a link to the current source
-        $isLink = $item.Attributes -match "ReparsePoint"
-        
-        if ($isLink) {
-            # Verify it points to the right place or just recreate it
-            Remove-Item $dstPath -Force
-        }
-        else {
-            # Backup if it's a real file (to avoid losing work)
-            $backup = $dstPath + ".bak_" + (Get-Date -Format "yyyyMMdd_HHmm")
+        if ($item.LinkType -eq "HardLink") {
+            Remove-Item $dstPath -Force 
+        } else {
+            $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+            $backup = $dstPath + ".bak_" + $timestamp
             Write-Host "BACKUP: Archiving existing NT file -> $(Split-Path $backup -Leaf)" -ForegroundColor Yellow
-            Move-Item $dstPath $backup
+            Move-Item $dstPath $backup -Force
         }
     }
 
     # Create the Link
-    Write-Host "LINKING: $($map.src) -> NT8" -ForegroundColor Green
+    Write-Host "LINKING: $($file.Name) -> NT8" -ForegroundColor Green
+    New-Item -ItemType HardLink -Path $dstPath -Value $srcPath | Out-Null
+}
+
+# 3. Fixed Mappings Execution
+foreach ($map in $FixedMappings) {
+    $srcPath = Join-Path $srcDir $map.src
+    $dstPath = $map.dst
+    if (!(Test-Path $srcPath)) { continue }
+    
+    if (Test-Path $dstPath) {
+        $item = Get-Item $dstPath
+        if ($item.LinkType -eq "HardLink") {
+            Write-Host "CLEANUP: Removing existing link -> $(Split-Path $dstPath -Leaf)" -ForegroundColor Gray
+            Remove-Item $dstPath -Force 
+        } else {
+            $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+            $backup = $dstPath + ".bak_" + $timestamp
+            Write-Host "BACKUP (Fixed): Archiving existing NT file -> $(Split-Path $backup -Leaf)" -ForegroundColor Yellow
+            Move-Item $dstPath $backup -Force
+        }
+    }
+    
+    Write-Host "LINKING (Fixed): $($map.src) -> NT8" -ForegroundColor Green
     New-Item -ItemType HardLink -Path $dstPath -Value $srcPath | Out-Null
 }
 

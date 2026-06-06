@@ -1,13 +1,19 @@
+// <copyright file="V12_002.UI.Compliance.cs" company="BMad">
+// Copyright (c) BMad. All rights reserved.
+// </copyright>
 // V12.44 MODULAR: Apex Compliance Hub Module (Split from UI.cs)
 // Contains: Compliance tracking, daily summaries, account metrics, performance logging
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
 using System.Globalization;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Security;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,16 +23,14 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using NinjaTrader.Cbi;
+using NinjaTrader.Data;
 using NinjaTrader.Gui;
 using NinjaTrader.Gui.Chart;
 using NinjaTrader.Gui.Tools;
-using NinjaTrader.Data;
 using NinjaTrader.NinjaScript;
 using NinjaTrader.NinjaScript.DrawingTools;
 using NinjaTrader.NinjaScript.Indicators;
 using NinjaTrader.NinjaScript.Strategies;
-using System.Net;
-using System.Net.Sockets;
 
 namespace NinjaTrader.NinjaScript.Strategies
 {
@@ -48,7 +52,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void EnsureAccountComplianceTracking(string accountName, DateTime nowInZone)
         {
-            if (string.IsNullOrEmpty(accountName)) return;
+            if (string.IsNullOrEmpty(accountName))
+                return;
             accountDailyProfit.TryAdd(accountName, 0);
             accountTotalProfit.TryAdd(accountName, 0);
             accountTradeCount.TryAdd(accountName, 0);
@@ -61,13 +66,17 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void TrackTradeEntry(Account acct, Execution execution)
         {
-            if (acct == null || execution == null || execution.Order == null) return;
-            if (execution.Order.OrderState != OrderState.Filled) return;
+            if (acct == null || execution == null || execution.Order == null)
+                return;
+            if (execution.Order.OrderState != OrderState.Filled)
+                return;
 
             OrderAction action = execution.Order.OrderAction;
-            if (action != OrderAction.Buy && action != OrderAction.SellShort) return;
+            if (action != OrderAction.Buy && action != OrderAction.SellShort)
+                return;
 
-            if (EnableSIMA && !IsFleetAccount(acct)) return;
+            if (EnableSIMA && !IsFleetAccount(acct))
+                return;
 
             DateTime nowInZone = GetComplianceNow();
             EnsureAccountComplianceTracking(acct.Name, nowInZone);
@@ -89,8 +98,10 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void UpdateAccountMetricsFromAccount(Account acct)
         {
-            if (acct == null) return;
-            if (EnableSIMA && !IsFleetAccount(acct)) return;
+            if (acct == null)
+                return;
+            if (EnableSIMA && !IsFleetAccount(acct))
+                return;
 
             DateTime nowInZone = GetComplianceNow();
             EnsureAccountComplianceTracking(acct.Name, nowInZone);
@@ -121,33 +132,87 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void EnsureDailySummaryCsv()
         {
-            if (string.IsNullOrEmpty(dailySummaryCsvPath)) return;
-            if (Volatile.Read(ref _csvHeaderCreated) != 0) return;
-            if (System.IO.File.Exists(dailySummaryCsvPath))
+            if (string.IsNullOrEmpty(dailySummaryCsvPath))
+                return;
+            if (Volatile.Read(ref _csvHeaderCreated) != 0)
+                return;
+
+            try
             {
-                Interlocked.Exchange(ref _csvHeaderCreated, 1);
+                // EPIC-7-QUALITY-010: Validate CSV path before checking existence
+                string validCsvPath = PathValidation.ValidateAndCanonicalize(dailySummaryCsvPath, "CheckCSV");
+
+                if (System.IO.File.Exists(validCsvPath))
+                {
+                    Interlocked.Exchange(ref _csvHeaderCreated, 1);
+                    return;
+                }
+            }
+            catch (SecurityException ex)
+            {
+                Print(string.Format("[IO_SECURITY] CSV path validation failed: {0}", ex.Message));
                 return;
             }
-            if (Interlocked.CompareExchange(ref _csvHeaderCreated, 1, 0) != 0) return;
+
+            if (Interlocked.CompareExchange(ref _csvHeaderCreated, 1, 0) != 0)
+                return;
 
             string _csvPath = dailySummaryCsvPath;
             string _csvHeader = "Date,Account,DailyPL,DailyTrades,TotalProfit,TotalTrades,MaxDrawdown,UniqueDays";
             Task.Run(() =>
             {
-                try { System.IO.File.WriteAllText(_csvPath, _csvHeader + Environment.NewLine); }
-                catch { Interlocked.Exchange(ref _csvHeaderCreated, 0); }
+                try
+                {
+                    // EPIC-7-QUALITY-010: Validate path before write
+                    string validPath = PathValidation.ValidateAndCanonicalize(_csvPath, "WriteCSV");
+
+                    // EPIC-7-QUALITY-011: Retry logic for transient I/O failures
+                    RetryHelper.ExecuteWithRetry(
+                        () => System.IO.File.WriteAllText(validPath, _csvHeader + Environment.NewLine),
+                        RetryHelper.IsTransientIOError,
+                        "WriteCSVHeader"
+                    );
+                }
+                catch (SecurityException ex)
+                {
+                    Print(string.Format("[IO_SECURITY] {0}", ex.Message));
+                    // P0-3 FIX: Do NOT reset flag - prevents unbounded Task.Run spawn on persistent errors
+                }
+                catch (Exception ex)
+                {
+                    Print(string.Format("[IO_ERROR] CSV header creation failed: {0}", ex.Message));
+                    // P0-3 FIX: Do NOT reset flag - prevents unbounded Task.Run spawn on persistent errors
+                }
             });
         }
 
-        private void AppendDailySummary(DateTime summaryDate, string accountName, double dailyPL, int dailyTrades,
-            double totalProfit, int totalTrades, double maxDrawdown, int uniqueDays)
+        private void AppendDailySummary(
+            DateTime summaryDate,
+            string accountName,
+            double dailyPL,
+            int dailyTrades,
+            double totalProfit,
+            int totalTrades,
+            double maxDrawdown,
+            int uniqueDays
+        )
         {
-            if (string.IsNullOrEmpty(dailySummaryCsvPath)) return;
+            if (string.IsNullOrEmpty(dailySummaryCsvPath))
+                return;
 
             string safeName = (accountName ?? string.Empty).Replace("\"", "\"\"");
-            string line = string.Format(CultureInfo.InvariantCulture,
+            string line = string.Format(
+                CultureInfo.InvariantCulture,
                 "{0},\"{1}\",{2:F2},{3},{4:F2},{5},{6:F2},{7}",
-                summaryDate.ToString("yyyy-MM-dd"), safeName, dailyPL, dailyTrades, totalProfit, totalTrades, maxDrawdown, uniqueDays);
+                summaryDate.ToString("yyyy-MM-dd"),
+                safeName,
+                dailyPL,
+                dailyTrades,
+                totalProfit,
+                totalTrades,
+                maxDrawdown,
+                uniqueDays
+            );
 
             // Build 1109: Lock removed -- EnsureDailySummaryCsv uses atomic guard internally
             EnsureDailySummaryCsv();
@@ -157,14 +222,28 @@ namespace NinjaTrader.NinjaScript.Strategies
             string lineCopy = line + Environment.NewLine;
             Task.Run(() =>
             {
-                try { System.IO.File.AppendAllText(pathCopy, lineCopy); }
-                catch { /* swallow -- daily summary is best-effort */ }
+                try
+                {
+                    // EPIC-7-QUALITY-010: Validate path before append
+                    string validPath = PathValidation.ValidateAndCanonicalize(pathCopy, "AppendCSV");
+
+                    // EPIC-7-QUALITY-011: Retry logic for transient I/O failures
+                    RetryHelper.ExecuteWithRetry(
+                        () => System.IO.File.AppendAllText(validPath, lineCopy),
+                        RetryHelper.IsTransientIOError,
+                        "AppendCSVLine"
+                    );
+                }
+                catch
+                { /* swallow -- daily summary is best-effort */
+                }
             });
         }
 
         private void FinalizeDailySummaryForAccount(string accountName, DateTime summaryDate)
         {
-            if (string.IsNullOrEmpty(accountName)) return;
+            if (string.IsNullOrEmpty(accountName))
+                return;
 
             double dailyPL = accountDailyProfit.TryGetValue(accountName, out var dp) ? dp : 0;
             int dailyTrades = accountDailyTradeCount.TryGetValue(accountName, out var dt) ? dt : 0;
@@ -173,19 +252,31 @@ namespace NinjaTrader.NinjaScript.Strategies
             int uniqueDays = GetUniqueTradingDays(accountName);
 
             double totalProfit = accountTotalProfit.AddOrUpdate(accountName, dailyPL, (k, v) => v + dailyPL);
-            AppendDailySummary(summaryDate, accountName, dailyPL, dailyTrades, totalProfit, totalTrades, maxDrawdown, uniqueDays);
+            AppendDailySummary(
+                summaryDate,
+                accountName,
+                dailyPL,
+                dailyTrades,
+                totalProfit,
+                totalTrades,
+                maxDrawdown,
+                uniqueDays
+            );
         }
 
         private void MaybeFinalizeDailySummaries(DateTime nowInZone, List<Account> accounts)
         {
-            if (string.IsNullOrEmpty(dailySummaryCsvPath)) return;
+            if (string.IsNullOrEmpty(dailySummaryCsvPath))
+                return;
 
-            if ((nowInZone - lastDailySummaryCheck).TotalSeconds < 30) return;
+            if ((nowInZone - lastDailySummaryCheck).TotalSeconds < 30)
+                return;
             lastDailySummaryCheck = nowInZone;
 
             foreach (Account acct in accounts)
             {
-                if (acct == null) continue;
+                if (acct == null)
+                    continue;
                 EnsureAccountComplianceTracking(acct.Name, nowInZone);
 
                 DateTime lastDate = accountLastSummaryDate.GetOrAdd(acct.Name, nowInZone.Date);
@@ -229,12 +320,14 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Call this at the START of every entry method -- if false, abort and do not submit orders.
         /// Severity levels: 0 = OK, 1 = warning, 2 = hard block (drawdown breached or flat rule).
         /// </summary>
-        private bool IsOrderAllowed(string accountName = null)
+        private bool IsOrderAllowed(string? accountName = null)
         {
-            if (!EnableComplianceHub) return true;
+            if (!EnableComplianceHub)
+                return true;
 
             string acctName = accountName ?? Account?.Name;
-            if (string.IsNullOrEmpty(acctName)) return true;
+            if (string.IsNullOrEmpty(acctName))
+                return true;
 
             // Hard-block: trailing drawdown breached
             if (accountEquityPeak.TryGetValue(acctName, out double peak) && peak > 0 && TrailingDrawdownLimit > 0)
@@ -243,12 +336,31 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Account currentAccount = this.Account;
                 if (currentAccount != null)
                 {
-                    try { balance = currentAccount.Get(NinjaTrader.Cbi.AccountItem.CashValue, NinjaTrader.Cbi.Currency.UsDollar); } catch { }
+                    try
+                    {
+                        balance = currentAccount.Get(
+                            NinjaTrader.Cbi.AccountItem.CashValue,
+                            NinjaTrader.Cbi.Currency.UsDollar
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        // V12.EPIC-7-QUALITY-008: Log account balance retrieval errors
+                        Interlocked.Increment(ref _uiCallbackFailures);
+                        Print($"[UI_CALLBACK] Account balance retrieval failed: {ex.Message}");
+                        // Continue with balance=0 - compliance check will use cached value
+                    }
                 }
                 double buffer = balance - (peak - TrailingDrawdownLimit);
                 if (buffer <= 0)
                 {
-                    Print(string.Format("[COMPLIANCE BLOCKED] Entry suppressed for {0}: Trailing drawdown breached. Buffer=${1:F2}", acctName, buffer));
+                    Print(
+                        string.Format(
+                            "[COMPLIANCE BLOCKED] Entry suppressed for {0}: Trailing drawdown breached. Buffer=${1:F2}",
+                            acctName,
+                            buffer
+                        )
+                    );
                     return false;
                 }
             }
@@ -256,9 +368,19 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Hard-block: daily profit cap reached (for SIMA fleet accounts)
             if (EnableSIMA && EnableConsistencyLock)
             {
-                if (accountDailyProfit.TryGetValue(acctName, out double dp) && MaxDailyProfitCap > 0 && dp >= MaxDailyProfitCap)
+                if (
+                    accountDailyProfit.TryGetValue(acctName, out double dp)
+                    && MaxDailyProfitCap > 0
+                    && dp >= MaxDailyProfitCap
+                )
                 {
-                    Print(string.Format("[COMPLIANCE BLOCKED] Entry suppressed for {0}: Daily profit cap hit. DayPL=${1:F2}", acctName, dp));
+                    Print(
+                        string.Format(
+                            "[COMPLIANCE BLOCKED] Entry suppressed for {0}: Daily profit cap hit. DayPL=${1:F2}",
+                            acctName,
+                            dp
+                        )
+                    );
                     return false;
                 }
             }
@@ -278,21 +400,28 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void OnAccountExecutionUpdate(object sender, ExecutionEventArgs e)
         {
-            if (e == null) return;
+            if (e == null)
+                return;
 
             // V12.1101E [TM-02]: Broker-thread callback only enqueues work; state mutation stays on strategy thread.
             Account execAccount = sender as Account;
             _accountExecutionQueue.Enqueue(new QueuedAccountExecution { Account = execAccount, EventArgs = e });
-            try { TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null); } catch { }
-
+            try
+            {
+                TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null);
+            }
+            catch
+            {
+                // Swallow: TriggerCustomEvent may throw if strategy is terminating or chart is disposed
+            }
         }
 
-        // [BUILD 948] Cap per-invocation drain to prevent strategy-thread starvation during broker replay bursts.
+        // [BUILD 984] Cap per-invocation drain to prevent strategy-thread starvation during broker replay bursts.
         private const int MaxAccountExecutionsPerDrain = 16;
 
         /// <summary>
         /// V12.Phase6 [CONCURRENCY-01]: Processes queued account execution events on the STRATEGY THREAD.
-        /// [BUILD 948] Drain is capped at MaxAccountExecutionsPerDrain per invocation; remaining items
+        /// [BUILD 984] Drain is capped at MaxAccountExecutionsPerDrain per invocation; remaining items
         /// are rescheduled via TriggerCustomEvent to yield the strategy thread between bursts.
         /// </summary>
         private void ProcessAccountExecutionQueue()
@@ -301,7 +430,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Keep queued executions intact and retry when flatten releases.
             if (isFlattenRunning)
             {
-                try { TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null); } catch { }
+                try
+                {
+                    TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null);
+                }
+                catch
+                {
+                    // Swallow: TriggerCustomEvent may throw if strategy is terminating
+                }
                 return;
             }
 
@@ -313,19 +449,334 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (isFlattenRunning)
                 {
                     _accountExecutionQueue.Enqueue(item);
-                    try { TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null); } catch { }
+                    try
+                    {
+                        TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null);
+                    }
+                    catch
+                    {
+                        // Swallow: TriggerCustomEvent may throw if strategy is terminating
+                    }
                     return;
                 }
                 ProcessQueuedExecution(item);
             }
 
-            // [BUILD 948] Reschedule if items remain after hitting the drain cap
+            // [BUILD 984] Reschedule if items remain after hitting the drain cap
             if (!_accountExecutionQueue.IsEmpty)
-                try { TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null); } catch { }
+                try
+                {
+                    TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null);
+                }
+                catch
+                {
+                    // Swallow: TriggerCustomEvent may throw if strategy is terminating
+                }
 
             // Update the compliance log once after draining all queued events
             if (EnableComplianceHub && !isFlattenRunning)
                 LogApexPerformance();
+        }
+
+        /// <summary>
+        /// Processes a single dequeued account execution event on the strategy thread.
+        /// Handles compliance tracking, fleet bracket submission (V12.7), and
+        /// flat-clear sync [H-15] with Persistence Gate [1102Y-V4].
+        /// </summary>
+        private void ProcessQueuedExecution_HandleFleetBrackets(QueuedAccountExecution item)
+        {
+            try
+            {
+                Order filledOrder = item.EventArgs.Execution?.Order;
+                if (filledOrder != null && filledOrder.OrderState == OrderState.Filled)
+                {
+                    foreach (var kvp in entryOrders.ToArray())
+                    {
+                        if (kvp.Value == filledOrder)
+                        {
+                            string fleetKey = kvp.Key;
+                            if (
+                                activePositions.TryGetValue(fleetKey, out var pos)
+                                && pos.IsFollower
+                                && !pos.EntryFilled
+                            )
+                            {
+                                double fleetFillPrice =
+                                    item.EventArgs.Execution != null ? item.EventArgs.Execution.Price : 0;
+                                SymmetryGuardOnFollowerFill(fleetKey, pos, fleetFillPrice);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Print(string.Format("[SIMA V12.7] Error in fleet bracket submission: {0}", ex.Message));
+            }
+        }
+
+        private void HandleFleetStopFill(QueuedAccountExecution item, Order ocoOrder, Account ocoAcct, string ocoName)
+        {
+            // Phase 1: Cancel orphaned targets
+            int cancelledTargets = CancelOrphanedTargets(ocoAcct);
+            if (cancelledTargets > 0)
+                Print(
+                    string.Format(
+                        "[1104.1 OCO] Fleet {0}: stop filled -- cancelled {1} orphaned targets.",
+                        ocoAcct.Name,
+                        cancelledTargets
+                    )
+                );
+
+            // Phase 2: Update position state
+            _nakedPositionFirstSeen.TryRemove(ocoAcct.Name, out _);
+
+            string ocoEntryKey = ExtractEntryKeyFromStopName(ocoName);
+            if (string.IsNullOrEmpty(ocoEntryKey))
+                return;
+
+            PositionInfo ocoPos;
+            if (!activePositions.TryGetValue(ocoEntryKey, out ocoPos) || ocoPos == null)
+                return;
+
+            int stopQty = Math.Max(0, item.EventArgs.Execution.Quantity);
+            FinalizeStopFilledPosition(ocoEntryKey, ocoPos, stopQty);
+        }
+
+        /// <summary>
+        /// Cancel all working target orders (T1-T5) for the specified fleet account.
+        /// Called when a stop order fills to prevent orphaned profit targets.
+        /// </summary>
+        /// <param name="account">The fleet account whose targets should be cancelled</param>
+        /// <returns>Count of cancelled target orders</returns>
+        private int CancelOrphanedTargets(Account account)
+        {
+            int cancelledTargets = 0;
+            foreach (Order o in account.Orders.ToArray())
+            {
+                if (o == null || o.Instrument?.FullName != Instrument?.FullName)
+                    continue;
+                if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted)
+                    continue;
+                if (
+                    o.Name != null
+                    && (
+                        o.Name.StartsWith("T1_")
+                        || o.Name.StartsWith("T2_")
+                        || o.Name.StartsWith("T3_")
+                        || o.Name.StartsWith("T4_")
+                        || o.Name.StartsWith("T5_")
+                    )
+                )
+                {
+                    CancelOrderOnAccount(o, account);
+                    cancelledTargets++;
+                }
+            }
+            return cancelledTargets;
+        }
+
+        /// <summary>
+        /// Extract the entry key from a stop order name by stripping the "Stop_" prefix
+        /// and removing the trailing account-specific segment (after last underscore).
+        /// Example: "Stop_MOMO_1234_Sim101" -> "MOMO_1234"
+        /// </summary>
+        /// <param name="stopOrderName">The stop order name (e.g., "Stop_MOMO_1234_Sim101")</param>
+        /// <returns>Entry key string, or empty string if invalid</returns>
+        private string ExtractEntryKeyFromStopName(string stopOrderName)
+        {
+            if (string.IsNullOrEmpty(stopOrderName) || stopOrderName.Length <= 5)
+                return string.Empty;
+
+            string ocoEntryKey = stopOrderName.Substring(5); // Strip "Stop_"
+            int ocoLastUnderscore = ocoEntryKey.LastIndexOf('_');
+            if (ocoLastUnderscore > 0)
+                ocoEntryKey = ocoEntryKey.Substring(0, ocoLastUnderscore);
+
+            return ocoEntryKey;
+        }
+
+        /// <summary>
+        /// Update position state after a stop order fill. Decrements RemainingContracts
+        /// and performs full cleanup if position is fully closed.
+        /// </summary>
+        /// <param name="entryKey">The position entry key</param>
+        /// <param name="pos">The PositionInfo struct (pre-validated, non-null)</param>
+        /// <param name="filledQuantity">Quantity filled by the stop order</param>
+        private void FinalizeStopFilledPosition(string entryKey, PositionInfo pos, int filledQuantity)
+        {
+            int stopQty = Math.Max(0, filledQuantity);
+            pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - stopQty);
+
+            if (pos.RemainingContracts <= 0)
+            {
+                stopOrders.TryRemove(entryKey, out _);
+                if (pendingStopReplacements.TryRemove(entryKey, out _))
+                    Interlocked.Decrement(ref pendingReplacementCount);
+                activePositions.TryRemove(entryKey, out _);
+                entryOrders.TryRemove(entryKey, out _);
+                SymmetryGuardForgetEntry(entryKey);
+                Print(string.Format("[1104.1 OCO] Fleet position {0} fully closed by stop.", entryKey));
+            }
+        }
+
+        private void HandleFleetTargetFill(QueuedAccountExecution item, Order ocoOrder, Account ocoAcct, string ocoName)
+        {
+            int tgtNum = ocoName[1] - '0';
+            string tgtPrefix = "T" + tgtNum + "_";
+            string tgtEntryKey = ocoName.Substring(tgtPrefix.Length);
+            int tgtLastUnderscore = tgtEntryKey.LastIndexOf('_');
+            if (tgtLastUnderscore > 0)
+                tgtEntryKey = tgtEntryKey.Substring(0, tgtLastUnderscore);
+
+            PositionInfo tgtPos;
+            if (
+                !string.IsNullOrEmpty(tgtEntryKey)
+                && activePositions.TryGetValue(tgtEntryKey, out tgtPos)
+                && tgtPos != null
+            )
+            {
+                bool tgtTerminal = ocoOrder.OrderState == OrderState.Filled;
+                bool tgtAlreadyProcessed;
+                int tgtApplied;
+                int tgtRemaining;
+                ApplyTargetFill(
+                    tgtPos,
+                    tgtNum,
+                    item.EventArgs.Execution.Quantity,
+                    tgtTerminal,
+                    out tgtAlreadyProcessed,
+                    out tgtApplied,
+                    out tgtRemaining
+                );
+                if (tgtAlreadyProcessed)
+                {
+                    Print(
+                        string.Format(
+                            "[1104.1 GUARD] Fleet T{0} already processed for {1} -- skipping duplicate.",
+                            tgtNum,
+                            tgtEntryKey
+                        )
+                    );
+                }
+                else
+                {
+                    Print(
+                        string.Format(
+                            "[1104.1] Fleet TARGET {0} filled: {1} @ {2:F2}. Remaining: {3}",
+                            tgtNum,
+                            tgtApplied,
+                            item.EventArgs.Execution.Price,
+                            tgtRemaining
+                        )
+                    );
+                    if (tgtRemaining <= 0)
+                    {
+                        foreach (Order o in ocoAcct.Orders.ToArray())
+                        {
+                            if (o == null || o.Instrument?.FullName != Instrument?.FullName)
+                                continue;
+                            if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted)
+                                continue;
+                            if (o.Name != null && o.Name.StartsWith("Stop_"))
+                            {
+                                CancelOrderOnAccount(o, ocoAcct);
+                                Print(
+                                    string.Format(
+                                        "[1104.1 OCO] Fleet {0}: all targets filled -- cancelled stop.",
+                                        ocoAcct.Name
+                                    )
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ProcessQueuedExecution_HandleFleetOCO(QueuedAccountExecution item)
+        {
+            try
+            {
+                Order ocoOrder = item.EventArgs.Execution?.Order;
+                Account ocoAcct = item.Account;
+                if (
+                    ocoOrder != null
+                    && ocoAcct != null
+                    && IsFleetAccount(ocoAcct)
+                    && (ocoOrder.OrderState == OrderState.Filled || ocoOrder.OrderState == OrderState.PartFilled)
+                )
+                {
+                    string ocoName = ocoOrder.Name ?? "";
+
+                    if (ocoName.StartsWith("Stop_"))
+                    {
+                        HandleFleetStopFill(item, ocoOrder, ocoAcct, ocoName);
+                    }
+                    else if (ocoName.StartsWith("T") && ocoName.Length > 2 && ocoName[2] == '_')
+                    {
+                        HandleFleetTargetFill(item, ocoOrder, ocoAcct, ocoName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Print(string.Format("[1104.1 OCO] Fleet OCO error: {0}", ex.Message));
+            }
+        }
+
+        private void ProcessQueuedExecution_SyncFlatPosition(QueuedAccountExecution item)
+        {
+            try
+            {
+                Account fleetAcct = item.Account;
+                if (
+                    fleetAcct != null
+                    && expectedPositions != null
+                    && expectedPositions.ContainsKey(ExpKey(fleetAcct.Name))
+                )
+                {
+                    Order execOrder = item.EventArgs?.Execution?.Order;
+                    bool isEntryFill =
+                        execOrder != null
+                        && (execOrder.OrderAction == OrderAction.Buy || execOrder.OrderAction == OrderAction.SellShort);
+                    if (isEntryFill)
+                    {
+                        Print(
+                            string.Format(
+                                "[ProcessQueuedExecution] [1102Y-V4] Entry fill for {0} -- Persistence Gate active, flat-check skipped.",
+                                fleetAcct.Name
+                            )
+                        );
+                    }
+                    else
+                    {
+                        var brokerPos = fleetAcct.Positions.FirstOrDefault(p =>
+                            p.Instrument.FullName == Instrument.FullName
+                        );
+                        bool nowFlat = (brokerPos == null || brokerPos.MarketPosition == MarketPosition.Flat);
+                        if (nowFlat && !IsDispatchSyncPending(ExpKey(fleetAcct.Name)))
+                        {
+                            SetExpectedPositionLocked(ExpKey(fleetAcct.Name), 0);
+                            Print(
+                                string.Format(
+                                    "[ProcessQueuedExecution] Fleet {0} is Flat -- expectedPositions cleared for {1}",
+                                    fleetAcct.Name,
+                                    Instrument.FullName
+                                )
+                            );
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // V12.EPIC-7-QUALITY-008: Log flat position sync errors
+                Interlocked.Increment(ref _uiCallbackFailures);
+                Print($"[UI_CALLBACK] Flat position sync failed: {ex.Message}");
+                // Continue - position sync is best-effort
+            }
         }
 
         /// <summary>
@@ -344,175 +795,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 UpdateAccountMetricsFromAccount(item.Account);
             }
 
-            // V12.7: Check if this fill is for a fleet entry with deferred brackets
-            try
-            {
-                Order filledOrder = item.EventArgs.Execution?.Order;
-                if (filledOrder != null && filledOrder.OrderState == OrderState.Filled)
-                {
-                    foreach (var kvp in entryOrders.ToArray())
-                    {
-                        if (kvp.Value == filledOrder)
-                        {
-                            string fleetKey = kvp.Key;
-                            if (activePositions.TryGetValue(fleetKey, out var pos) && pos.IsFollower && !pos.EntryFilled)
-                            {
-                                double fleetFillPrice = item.EventArgs.Execution != null ? item.EventArgs.Execution.Price : 0;
-                                SymmetryGuardOnFollowerFill(fleetKey, pos, fleetFillPrice);
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Print(string.Format("[SIMA V12.7] Error in fleet bracket submission: {0}", ex.Message));
-            }
-
-            // ====================================================================
-            // Build 1104.1: Fleet Stop Fill OCO -- Cancel orphaned targets
-            // When a fleet follower's stop fills, all working targets on that
-            // account are orphaned and must be cancelled immediately.
-            // Mirrors the Master OCO logic at Orders.Callbacks.Execution.cs:257-304.
-            // ====================================================================
-            try
-            {
-                Order ocoOrder = item.EventArgs.Execution?.Order;
-                Account ocoAcct = item.Account;
-                if (ocoOrder != null && ocoAcct != null && IsFleetAccount(ocoAcct)
-                    && (ocoOrder.OrderState == OrderState.Filled || ocoOrder.OrderState == OrderState.PartFilled))
-                {
-                    string ocoName = ocoOrder.Name ?? "";
-
-                    // --- STOP FILL: Cancel all targets on this account ---
-                    if (ocoName.StartsWith("Stop_"))
-                    {
-                        int cancelledTargets = 0;
-                        foreach (Order o in ocoAcct.Orders.ToArray())
-                        {
-                            if (o == null || o.Instrument?.FullName != Instrument?.FullName) continue;
-                            if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted) continue;
-                            if (o.Name != null && (o.Name.StartsWith("T1_") || o.Name.StartsWith("T2_") ||
-                                o.Name.StartsWith("T3_") || o.Name.StartsWith("T4_") || o.Name.StartsWith("T5_")))
-                            {
-                                CancelOrderOnAccount(o, ocoAcct);
-                                cancelledTargets++;
-                            }
-                        }
-                        if (cancelledTargets > 0)
-                            Print(string.Format("[1104.1 OCO] Fleet {0}: stop filled -- cancelled {1} orphaned targets.",
-                                ocoAcct.Name, cancelledTargets));
-
-                        // Clear naked-position grace (stop exists = not naked)
-                        _nakedPositionFirstSeen.TryRemove(ocoAcct.Name, out _);
-
-                        // Update RemainingContracts if PositionInfo exists for this entry
-                        string ocoEntryKey = ocoName.Length > 5 ? ocoName.Substring(5) : "";
-                        int ocoLastUnderscore = ocoEntryKey.LastIndexOf('_');
-                        if (ocoLastUnderscore > 0)
-                            ocoEntryKey = ocoEntryKey.Substring(0, ocoLastUnderscore);
-                        PositionInfo ocoPos;
-                        if (!string.IsNullOrEmpty(ocoEntryKey) && activePositions.TryGetValue(ocoEntryKey, out ocoPos) && ocoPos != null)
-                        {
-                            int stopQty = Math.Max(0, item.EventArgs.Execution.Quantity);
-                            ocoPos.RemainingContracts = Math.Max(0, ocoPos.RemainingContracts - stopQty);
-                            if (ocoPos.RemainingContracts <= 0)
-                            {
-                                stopOrders.TryRemove(ocoEntryKey, out _);
-                                if (pendingStopReplacements.TryRemove(ocoEntryKey, out _))
-                                    Interlocked.Decrement(ref pendingReplacementCount);
-                                activePositions.TryRemove(ocoEntryKey, out _);
-                                entryOrders.TryRemove(ocoEntryKey, out _);
-                                SymmetryGuardForgetEntry(ocoEntryKey);
-                                Print(string.Format("[1104.1 OCO] Fleet position {0} fully closed by stop.", ocoEntryKey));
-                            }
-                        }
-                    }
-
-                    // --- TARGET FILL: First-Writer-Wins guard + RemainingContracts delta ---
-                    else if (ocoName.StartsWith("T") && ocoName.Length > 2 && ocoName[2] == '_')
-                    {
-                        int tgtNum = ocoName[1] - '0';
-                        string tgtPrefix = "T" + tgtNum + "_";
-                        string tgtEntryKey = ocoName.Substring(tgtPrefix.Length);
-                        int tgtLastUnderscore = tgtEntryKey.LastIndexOf('_');
-                        if (tgtLastUnderscore > 0)
-                            tgtEntryKey = tgtEntryKey.Substring(0, tgtLastUnderscore);
-
-                        PositionInfo tgtPos;
-                        if (!string.IsNullOrEmpty(tgtEntryKey) && activePositions.TryGetValue(tgtEntryKey, out tgtPos) && tgtPos != null)
-                        {
-                            bool tgtTerminal = ocoOrder.OrderState == OrderState.Filled;
-                            bool tgtAlreadyProcessed;
-                            int tgtApplied;
-                            int tgtRemaining;
-                            ApplyTargetFill(tgtPos, tgtNum, item.EventArgs.Execution.Quantity,
-                                tgtTerminal, out tgtAlreadyProcessed, out tgtApplied, out tgtRemaining);
-                            if (tgtAlreadyProcessed)
-                            {
-                                Print(string.Format("[1104.1 GUARD] Fleet T{0} already processed for {1} -- skipping duplicate.", tgtNum, tgtEntryKey));
-                            }
-                            else
-                            {
-                                Print(string.Format("[1104.1] Fleet TARGET {0} filled: {1} @ {2:F2}. Remaining: {3}",
-                                    tgtNum, tgtApplied, item.EventArgs.Execution.Price, tgtRemaining));
-                                if (tgtRemaining <= 0)
-                                {
-                                    // Position fully closed by targets -- cancel stop
-                                    foreach (Order o in ocoAcct.Orders.ToArray())
-                                    {
-                                        if (o == null || o.Instrument?.FullName != Instrument?.FullName) continue;
-                                        if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted) continue;
-                                        if (o.Name != null && o.Name.StartsWith("Stop_"))
-                                        {
-                                            CancelOrderOnAccount(o, ocoAcct);
-                                            Print(string.Format("[1104.1 OCO] Fleet {0}: all targets filled -- cancelled stop.", ocoAcct.Name));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Print(string.Format("[1104.1 OCO] Fleet OCO error: {0}", ex.Message));
-            }
-
-            // EMERGENCY FIX [H-15]: After any fleet execution, check if the account is now flat.
-            // Syncs expectedPositions when position is closed externally (e.g., manual UI flatten).
-            // [1102Y-V4 PERSISTENCE GATE]: Skip flat-clear for entry fills. The broker Positions
-            // collection may not yet reflect the new position at this point in the callback,
-            // producing a stale-flat read that wipes expectedPositions during fill registration.
-            // Only exit fills (Sell / BuyToCover) are safe to use as flat-check triggers.
-            try
-            {
-                Account fleetAcct = item.Account;
-                if (fleetAcct != null && expectedPositions != null && expectedPositions.ContainsKey(ExpKey(fleetAcct.Name)))
-                {
-                    Order execOrder = item.EventArgs?.Execution?.Order;
-                    bool isEntryFill = execOrder != null &&
-                        (execOrder.OrderAction == OrderAction.Buy || execOrder.OrderAction == OrderAction.SellShort);
-                    if (isEntryFill)
-                    {
-                        Print(string.Format("[ProcessQueuedExecution] [1102Y-V4] Entry fill for {0} -- Persistence Gate active, flat-check skipped.", fleetAcct.Name));
-                    }
-                    else
-                    {
-                        var brokerPos = fleetAcct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
-                        bool nowFlat = (brokerPos == null || brokerPos.MarketPosition == MarketPosition.Flat);
-                        if (nowFlat && !IsDispatchSyncPending(ExpKey(fleetAcct.Name)))
-                        {
-                            SetExpectedPositionLocked(ExpKey(fleetAcct.Name), 0);
-                            Print(string.Format("[ProcessQueuedExecution] Fleet {0} is Flat -- expectedPositions cleared for {1}",
-                                fleetAcct.Name, Instrument.FullName));
-                        }
-                    }
-                }
-            }
-            catch { }
+            ProcessQueuedExecution_HandleFleetBrackets(item);
+            ProcessQueuedExecution_HandleFleetOCO(item);
+            ProcessQueuedExecution_SyncFlatPosition(item);
         }
 
         /// <summary>
@@ -524,10 +809,12 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void LogApexPerformance()
         {
-            if (!EnableComplianceHub || string.IsNullOrEmpty(complianceLogPath)) return;
+            if (!EnableComplianceHub || string.IsNullOrEmpty(complianceLogPath))
+                return;
 
             // Throttle logging to once per 5 seconds to prevent disk thrashing during heavy fills
-            if ((DateTime.Now - lastComplianceLog).TotalSeconds < 5) return;
+            if ((DateTime.Now - lastComplianceLog).TotalSeconds < 5)
+                return;
 
             try
             {
@@ -544,9 +831,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 int count = 0;
                 foreach (Account acct in accounts)
                 {
-                    if (acct == null) continue;
+                    if (acct == null)
+                        continue;
 
-                    if (count > 0) sbCompliance.Append(",\n");
+                    if (count > 0)
+                        sbCompliance.Append(",\n");
 
                     UpdateAccountMetricsFromAccount(acct);
 
@@ -560,12 +849,19 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                     sbCompliance.AppendLine("    {");
                     sbCompliance.AppendLine("      \"Name\": \"" + acct.Name + "\",");
-                    
+
                     var brokerPos = acct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
-                    int actualQty = (brokerPos != null && brokerPos.MarketPosition != MarketPosition.Flat)
-                        ? (brokerPos.MarketPosition == MarketPosition.Long ? brokerPos.Quantity : -brokerPos.Quantity) : 0;
+                    int actualQty =
+                        (brokerPos != null && brokerPos.MarketPosition != MarketPosition.Flat)
+                            ? (
+                                brokerPos.MarketPosition == MarketPosition.Long
+                                    ? brokerPos.Quantity
+                                    : -brokerPos.Quantity
+                            )
+                            : 0;
                     int expectedQty = 0;
-                    if (expectedPositions != null) expectedPositions.TryGetValue(ExpKey(acct.Name), out expectedQty);
+                    if (expectedPositions != null)
+                        expectedPositions.TryGetValue(ExpKey(acct.Name), out expectedQty);
 
                     sbCompliance.AppendLine("      \"ActualQty\": " + actualQty + ",");
                     sbCompliance.AppendLine("      \"ExpectedQty\": " + expectedQty + ",");
@@ -576,7 +872,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                     sbCompliance.AppendLine("      \"UniqueDays\": " + uniqueDays + ",");
                     sbCompliance.AppendLine("      \"MaxDrawdown\": " + maxDrawdown.ToString("F2") + ",");
                     bool isConnected = acct.Connection?.Status == ConnectionStatus.Connected;
-                    sbCompliance.AppendLine("      \"Connection\": \"" + (isConnected ? "Connected" : "Disconnected") + "\"");
+                    sbCompliance.AppendLine(
+                        "      \"Connection\": \"" + (isConnected ? "Connected" : "Disconnected") + "\""
+                    );
                     sbCompliance.Append("    }");
                     count++;
                 }
@@ -590,8 +888,22 @@ namespace NinjaTrader.NinjaScript.Strategies
                 lastComplianceLog = DateTime.Now;
                 Task.Run(() =>
                 {
-                    try { if (path != null) System.IO.File.WriteAllText(path, jsonPayload); }
-                    catch { /* swallow -- compliance log is best-effort */ }
+                    try
+                    {
+                        if (path != null)
+                        {
+                            // EPIC-7-QUALITY-010: Validate compliance log path
+                            string validPath = PathValidation.ValidateAndCanonicalize(path, "WriteComplianceLog");
+                            System.IO.File.WriteAllText(validPath, jsonPayload);
+                        }
+                    }
+                    catch (SecurityException ex)
+                    {
+                        Print(string.Format("[IO_SECURITY] {0}", ex.Message));
+                    }
+                    catch
+                    { /* swallow -- compliance log is best-effort */
+                    }
                 });
             }
             catch (Exception ex)

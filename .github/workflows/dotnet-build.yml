@@ -22,19 +22,29 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2  # v5.3.0
         with:
           dotnet-version: "8.0.x"
 
-      - name: Restore dependencies (if .csproj present)
+      - name: Restore dependencies
         run: |
-          if (Test-Path "*.csproj") {
-            dotnet restore --nologo
+          if (Test-Path "Linting.csproj") {
+            dotnet restore Linting.csproj --nologo
           } else {
-            Write-Host "No .csproj found -- skipping restore (NinjaScript partial-class project)."
+            Write-Host "Linting.csproj not found -- skipping restore."
+          }
+        shell: pwsh
+
+      - name: Build and Compile Check
+        # [NOTE] Hosted CI lacks proprietary NinjaTrader assemblies. 
+        # We allow this to continue so that the ASCII Gate and local verification govern the merge.
+        continue-on-error: true
+        run: |
+          if (Test-Path "Linting.csproj") {
+            dotnet build Linting.csproj --no-restore --nologo
           }
         shell: pwsh
 
