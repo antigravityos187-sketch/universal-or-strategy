@@ -426,9 +426,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         private int _stateTempCleanupFailures = 0;
         private bool _stateCorruptionDetected = false;
 
-        // Keyboard command registry for hotkeys
-        private Dictionary<Key, Action> _keyCommands;
-
         protected void Enqueue(Action<V12_002> action)
         {
             if (action == null)
