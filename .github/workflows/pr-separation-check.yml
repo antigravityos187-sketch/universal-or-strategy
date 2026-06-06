@@ -33,24 +33,25 @@ jobs:
             exit 0
           fi
           
-          # Count src/ and non-src/ files
-          SRC_COUNT=$(echo "$CHANGED_FILES" | grep -c '^src/' || true)
-          NON_SRC_COUNT=$(echo "$CHANGED_FILES" | grep -cv '^src/' || true)
+          # Count src/tests (Tier 1) vs infrastructure (Tier 2/3) files
+          # Per BRANCH_STRATEGY.md: tests/ are allowed with src/ changes
+          SRC_COUNT=$(echo "$CHANGED_FILES" | grep -cE '^(src|tests)/' || true)
+          INFRA_COUNT=$(echo "$CHANGED_FILES" | grep -cvE '^(src|tests)/' || true)
           
           echo "Files changed:"
-          echo "  src/: $SRC_COUNT"
-          echo "  non-src/: $NON_SRC_COUNT"
+          echo "  src/tests (Tier 1): $SRC_COUNT"
+          echo "  infrastructure (Tier 2/3): $INFRA_COUNT"
           
-          if [ "$SRC_COUNT" -gt 0 ] && [ "$NON_SRC_COUNT" -gt 0 ]; then
+          if [ "$SRC_COUNT" -gt 0 ] && [ "$INFRA_COUNT" -gt 0 ]; then
             echo "status=fail" >> $GITHUB_OUTPUT
             echo ""
-            echo "❌ VIOLATION: This PR contains both src/ and non-src/ files"
+            echo "❌ VIOLATION: This PR mixes Tier 1 (src/tests) with Tier 2/3 (infrastructure)"
             echo ""
-            echo "src/ files ($SRC_COUNT):"
-            echo "$CHANGED_FILES" | grep '^src/' | sed 's/^/  - /'
+            echo "Tier 1 files (src/tests): $SRC_COUNT"
+            echo "$CHANGED_FILES" | grep -E '^(src|tests)/' | sed 's/^/  - /'
             echo ""
-            echo "non-src/ files ($NON_SRC_COUNT):"
-            echo "$CHANGED_FILES" | grep -v '^src/' | sed 's/^/  - /'
+            echo "Tier 2/3 files (infrastructure): $INFRA_COUNT"
+            echo "$CHANGED_FILES" | grep -vE '^(src|tests)/' | sed 's/^/  - /'
             echo ""
             echo "📋 ACTION REQUIRED:"
             echo "  1. Close this PR"
@@ -62,10 +63,10 @@ jobs:
             exit 1
           elif [ "$SRC_COUNT" -gt 0 ]; then
             echo "status=pass" >> $GITHUB_OUTPUT
-            echo "✅ PASS: src-only PR ($SRC_COUNT files)"
-          elif [ "$NON_SRC_COUNT" -gt 0 ]; then
+            echo "✅ PASS: Tier 1 PR (src/tests) - $SRC_COUNT files"
+          elif [ "$INFRA_COUNT" -gt 0 ]; then
             echo "status=pass" >> $GITHUB_OUTPUT
-            echo "✅ PASS: non-src PR ($NON_SRC_COUNT files)"
+            echo "✅ PASS: Tier 2/3 PR (infrastructure) - $INFRA_COUNT files"
           else
             echo "status=pass" >> $GITHUB_OUTPUT
             echo "✅ PASS: No changed files"
