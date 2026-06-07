@@ -396,6 +396,35 @@ namespace NinjaTrader.NinjaScript.Strategies
         private volatile bool _diagFleet; // T-Q1: Fleet dispatch + account queue catch logging
         private volatile bool _diagIpc; // T-Q1: MMIO mirror publish catch logging
 
+        // [PR #7 REAPER Infrastructure] Missing field declarations restored
+        // These fields support REAPER naked position detection and orphan repair
+        private const int DISPATCH_LOG_INITIAL_CAPACITY = 512;
+        private const int IPC_DRAIN_LIMIT = 100;
+
+        private readonly ConcurrentQueue<(
+            string AccountName,
+            MarketPosition Direction,
+            int Qty
+        )> _reaperNakedStopQueue = new ConcurrentQueue<(string, MarketPosition, int)>();
+
+        private readonly ConcurrentDictionary<string, DateTime> _nakedPositionFirstSeen =
+            new ConcurrentDictionary<string, DateTime>();
+
+        private readonly ConcurrentDictionary<string, byte> _reaperNakedStopInFlight =
+            new ConcurrentDictionary<string, byte>();
+
+        private readonly ConcurrentDictionary<string, int> _reaperOrphanRepairCount =
+            new ConcurrentDictionary<string, int>();
+
+        private int GetPhotonDispatchRingDepth()
+        {
+            return _photonDispatchRing?.Count ?? 0;
+        }
+
+        // V12.Phase7 [GAP-4]: SIMA toggle semaphore (legacy, replaced by lock-free _simaToggleState)
+        // Retained for disposal in Lifecycle cleanup
+        private SemaphoreSlim _simaToggleSem;
+
         protected void Enqueue(Action<V12_002> action)
         {
             if (action == null)

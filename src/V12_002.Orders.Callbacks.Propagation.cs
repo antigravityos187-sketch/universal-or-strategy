@@ -128,7 +128,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <param name="foundEntryName">Output: entry name if master order found</param>
         /// <returns>True if master order found and validated; false otherwise</returns>
         private bool ScanOrderDictionaryForMaster(
-            Dictionary<string, Order> orderDict,
+            ConcurrentDictionary<string, Order> orderDict,
             Order masterOrder,
             out string foundEntryName
         )
