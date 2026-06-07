@@ -1,0 +1,31 @@
+{
+  "hooks": {
+    "before_new_task": {
+      "enabled": true,
+      "script": ".bob/hooks/before_new_task.py",
+      "description": "Auto-create GitButler virtual branch for new tasks"
+    },
+    "after_task_complete": {
+      "enabled": true,
+      "script": ".bob/hooks/after_task_complete.py",
+      "description": "Auto-commit to GitButler virtual branch with V12 message format"
+    },
+    "after_edit": {
+      "enabled": false,
+      "script": ".bob/hooks/after_edit.py",
+      "description": "Auto-assign edited files to current virtual branch (experimental)"
+    }
+  },
+  "gitbutler": {
+    "enabled": true,
+    "cli_path": "but",
+    "auto_stage": true,
+    "auto_commit": false,
+    "branch_prefix": {
+      "src": "src/",
+      "docs": "docs/",
+      "infra": "infra/",
+      "protocol": "protocol/"
+    }
+  }
+}
