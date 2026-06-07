@@ -1,0 +1,253 @@
+# EPIC-CCN-14 Tickets
+
+## T1: Extract Helper Method 1 - ScanOrderDictionaryForMaster
+
+**Objective**: Create generic dictionary scanner for master order identification.
+
+**Steps**:
+1. Insert new method after line 146 (after `PropagateMaster_IdentifyMove`)
+2. Add method signature with XML doc comment
+3. Implement scanning logic (foreach + compound if)
+4. Verify CYC ≤5
+
+**Implementation**:
+```csharp
+/// <summary>
+/// Scan an order dictionary for a master order by object identity.
+/// Validates that the matched entry belongs to a master position (not a follower).
+/// </summary>
+/// <param name="orderDict">Dictionary to scan (entryOrders, stopOrders, or target dictionary)</param>
+/// <param name="masterOrder">Order to match by reference equality</param>
+/// <param name="foundEntryName">Output: entry name if master order found</param>
+/// <returns>True if master order found and validated; false otherwise</returns>
+private bool ScanOrderDictionaryForMaster(
+    Dictionary<string, Order> orderDict,
+    Order masterOrder,
+    out string foundEntryName
+)
+{
+    foundEntryName = null;
+    
+    foreach (var kvp in orderDict)
+    {
+        if (kvp.Value == masterOrder && activePositions.TryGetValue(kvp.Key, out var mp) && !mp.IsFollower)
+        {
+            foundEntryName = kvp.Key;
+            return true;
+        }
+    }
+    
+    return false;
+}
+```
+
+**Verification**:
+- [ ] Method compiles without errors
+- [ ] CYC = 5 (verified by complexity_audit.py)
+- [ ] No locks used
+- [ ] ASCII-only
+- [ ] Mandatory braces
+
+**Estimated CYC**: 5
+**Estimated LOC**: 15
+
+---
+
+## T2: Extract Helper Method 2 - ScanTargetDictionariesForMaster
+
+**Objective**: Create target dictionary scanner that delegates to Helper Method 1.
+
+**Steps**:
+1. Insert new method after T1 method
+2. Add method signature with XML doc comment
+3. Implement for-loop (1-5) with GetTargetOrdersDictionary
+4. Delegate to ScanOrderDictionaryForMaster
+5. Verify CYC ≤5
+
+**Implementation**:
+```csharp
+/// <summary>
+/// Scan all target dictionaries (T1-T5) for a master order.
+/// Uses ScanOrderDictionaryForMaster for each target dictionary.
+/// </summary>
+/// <param name="masterOrder">Order to match by reference equality</param>
+/// <param name="foundEntryName">Output: entry name if master order found</param>
+/// <param name="targetNum">Output: target number (1-5) where order was found</param>
+/// <returns>True if master order found in any target dictionary; false otherwise</returns>
+private bool ScanTargetDictionariesForMaster(
+    Order masterOrder,
+    out string foundEntryName,
+    out int targetNum
+)
+{
+    foundEntryName = null;
+    targetNum = 0;
+    
+    for (int t = 1; t <= 5; t++)
+    {
+        var tDict = GetTargetOrdersDictionary(t);
+        if (tDict == null)
+            continue;
+            
+        if (ScanOrderDictionaryForMaster(tDict, masterOrder, out foundEntryName))
+        {
+            targetNum = t;
+            return true;
+        }
+    }
+    
+    return false;
+}
+```
+
+**Verification**:
+- [ ] Method compiles without errors
+- [ ] CYC = 4 (verified by complexity_audit.py)
+- [ ] No locks used
+- [ ] ASCII-only
+- [ ] Mandatory braces
+- [ ] Correctly delegates to T1 method
+
+**Estimated CYC**: 4
+**Estimated LOC**: 20
+
+---
+
+## T3: Refactor Main Method - PropagateMaster_IdentifyMove
+
+**Objective**: Replace inline scanning logic with calls to helper methods.
+
+**Steps**:
+1. Locate `PropagateMaster_IdentifyMove` method (lines 82-146)
+2. Replace entry order scan (lines 98-106) with call to ScanOrderDictionaryForMaster
+3. Replace stop order scan (lines 108-119) with call to ScanOrderDictionaryForMaster
+4. Replace target order scan (lines 121-143) with call to ScanTargetDictionariesForMaster
+5. Verify logic equivalence
+6. Verify CYC ≤8
+
+**Implementation**:
+```csharp
+private bool PropagateMaster_IdentifyMove(
+    Order masterOrder,
+    out string masterEntryName,
+    out bool isEntryMove,
+    out bool isStopMove,
+    out bool isTargetMove,
+    out int masterTargetNum
+)
+{
+    // --- Step 1: Identify master position and move type via object identity ---
+    masterEntryName = null;
+    isEntryMove = false;
+    isStopMove = false;
+    isTargetMove = false;
+    masterTargetNum = 0;
+
+    // Scan entry orders
+    if (ScanOrderDictionaryForMaster(entryOrders, masterOrder, out masterEntryName))
+    {
+        isEntryMove = true;
+        return true;
+    }
+
+    // Scan stop orders
+    if (ScanOrderDictionaryForMaster(stopOrders, masterOrder, out masterEntryName))
+    {
+        isStopMove = true;
+        return true;
+    }
+
+    // Scan target orders (1-5)
+    if (ScanTargetDictionariesForMaster(masterOrder, out masterEntryName, out masterTargetNum))
+    {
+        isTargetMove = true;
+        return true;
+    }
+
+    return false; // Not a tracked master order
+}
+```
+
+**Verification**:
+- [ ] Method compiles without errors
+- [ ] CYC ≤8 (target: 4, verified by complexity_audit.py)
+- [ ] Logic equivalence confirmed (line-by-line comparison)
+- [ ] All out parameters set correctly
+- [ ] Early return behavior preserved
+- [ ] No locks used
+- [ ] ASCII-only
+- [ ] Mandatory braces
+
+**Estimated CYC**: 4
+**Estimated LOC**: 25 (reduced from 65)
+
+---
+
+## T4: Verification and Testing
+
+**Objective**: Verify the refactoring is correct and compliant.
+
+**Steps**:
+1. Run build: `dotnet build`
+2. Run complexity audit: `python scripts/complexity_audit.py`
+3. Verify CYC reduction:
+   - PropagateMaster_IdentifyMove: 18 → 4 ✅
+   - ScanOrderDictionaryForMaster: 5 ✅
+   - ScanTargetDictionariesForMaster: 4 ✅
+4. Run deploy-sync: `powershell -File .\deploy-sync.ps1`
+5. Verify ASCII gate passes
+6. Check for Jane Street P0 violations: `python scripts/jane_street_rule_checker.py src/V12_002.Orders.Callbacks.Propagation.cs`
+7. Manual code review for logic equivalence
+
+**Verification Checklist**:
+- [ ] Build succeeds (zero errors)
+- [ ] Complexity audit shows CYC reduction
+- [ ] PropagateMaster_IdentifyMove CYC = 4
+- [ ] ScanOrderDictionaryForMaster CYC = 5
+- [ ] ScanTargetDictionariesForMaster CYC = 4
+- [ ] Deploy-sync passes (ASCII gate)
+- [ ] No new Jane Street P0 violations
+- [ ] Logic equivalence confirmed
+- [ ] All out parameters set correctly
+- [ ] Early return behavior preserved
+
+**Success Criteria**:
+- ✅ 77.8% complexity reduction (18 → 4)
+- ✅ All helper methods CYC ≤5
+- ✅ V12 DNA compliance maintained
+- ✅ Zero logic drift
+- ✅ Build succeeds
+- ✅ ASCII gate passes
+
+---
+
+## Execution Order
+
+Execute tickets sequentially:
+1. **T1** → Create ScanOrderDictionaryForMaster
+2. **T2** → Create ScanTargetDictionariesForMaster
+3. **T3** → Refactor PropagateMaster_IdentifyMove
+4. **T4** → Verify and test
+
+After each ticket:
+- Commit with message: `refactor(epic-ccn-14): [ticket description]`
+- Verify compilation
+- Run complexity audit
+
+## Rollback Plan
+
+If any ticket fails:
+1. Revert last commit: `git reset --hard HEAD~1`
+2. Review failure reason
+3. Fix issue
+4. Retry ticket
+
+## Final Deliverables
+
+- ✅ PropagateMaster_IdentifyMove reduced from CYC 18 to CYC 4
+- ✅ Two helper methods (CYC 5 and 4)
+- ✅ V12 DNA compliance maintained
+- ✅ Zero logic drift
+- ✅ Build succeeds
+- ✅ ASCII gate passes
+- ✅ PR ready for `/pr-loop`

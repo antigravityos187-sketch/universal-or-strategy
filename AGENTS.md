@@ -150,6 +150,12 @@ powershell -File .\scripts\pre_push_validation.ps1 -SkipBuild -SkipTests
   - Audit for race conditions in lock-free code
 - V12 DNA mandates: "Make illegal states unrepresentable" - requires simple, verifiable logic
 
+**Complete Protocol**: See `docs/protocol/COMPLEXITY_REDUCTION_PROTOCOL.md` for:
+- Decision tree (no Director approval needed)
+- Parallel execution strategy
+- Bob Shell mode selection
+- Practical examples
+
 **Lizard Tool** (used by Codacy) has hardcoded threshold 8:
 - Too conservative for HFT hot-path co-location
 - Treat Lizard warnings (CYC 9-13) as technical debt visibility, not blockers
