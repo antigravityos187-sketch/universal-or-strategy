@@ -1,3 +1,6 @@
+// <copyright file="V12_002.UI.Panel.Lifecycle.cs" company="BMad">
+// Copyright (c) BMad. All rights reserved.
+// </copyright>
 // Build 1105: V12_001 panel port -- refresh timer + glow timer lifecycle
 using System.Threading;
 using System.Windows;
@@ -16,7 +19,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void StartPanelRefresh()
         {
-            if (_isTerminating || _panelRefreshTimer != null) return;
+            if (_isTerminating || _panelRefreshTimer != null)
+                return;
 
             System.Timers.Timer newTimer = new System.Timers.Timer(PanelRefreshMs);
             newTimer.AutoReset = true;
@@ -50,7 +54,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             StopGlowTimer();
 
             System.Timers.Timer timer = Interlocked.Exchange(ref _panelRefreshTimer, null);
-            if (timer == null) return;
+            if (timer == null)
+                return;
             timer.Elapsed -= OnPanelRefreshElapsed;
             timer.Stop();
             timer.Dispose();
@@ -58,10 +63,12 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void OnPanelRefreshElapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            if (_isTerminating || rootContainer == null) return;
+            if (_isTerminating || rootContainer == null)
+                return;
             // Build 1109 [FREEZE-PROOF]: Skip if previous UpdatePanelState hasn't completed.
             // Prevents WPF dispatcher queue backup under system stress.
-            if (Volatile.Read(ref _panelUpdateInProgress) != 0) return;
+            if (Volatile.Read(ref _panelUpdateInProgress) != 0)
+                return;
             try
             {
                 if (ChartControl != null)
@@ -69,8 +76,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Interlocked.Exchange(ref _panelUpdateInProgress, 1);
                     ChartControl.Dispatcher.InvokeAsync(() =>
                     {
-                        try { UpdatePanelState(); }
-                        finally { Interlocked.Exchange(ref _panelUpdateInProgress, 0); }
+                        try
+                        {
+                            UpdatePanelState();
+                        }
+                        finally
+                        {
+                            Interlocked.Exchange(ref _panelUpdateInProgress, 0);
+                        }
                     });
                 }
             }

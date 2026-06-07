@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      all:
+        patterns:
+          - "*"
+    reviewers:
+      - "malhitticrypto-debug"  # TODO: Make this dynamic via git remote parsing
+    commit-message:
+      prefix: "chore(deps)"
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      all:
+        patterns:
+          - "*"
+    reviewers:
+      - "malhitticrypto-debug"  # TODO: Make this dynamic via git remote parsing
+    commit-message:
+      prefix: "chore(deps)"

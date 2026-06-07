@@ -12,27 +12,30 @@ namespace NinjaTrader.NinjaScript.Strategies
         #region Signal Data Classes
 
         /// <summary>
-        /// Complete trade signal with all bracket order details
+        /// Complete trade signal with all bracket order details.
+        /// Struct for zero-allocation hot path (Jane Street HFT pattern).
+        /// Codacy CA1003 suppressed: EventArgs inheritance causes heap allocation.
+        /// Decision: docs/standards/JANE_STREET_DEVIATIONS.md #1.
         /// </summary>
-        public class TradeSignal
+        public struct TradeSignal
         {
             public string SignalId { get; set; }
-            public string Instrument { get; set; }        // V7.1: For instrument filtering
+            public string Instrument { get; set; } // V7.1: For instrument filtering
             public MarketPosition Direction { get; set; }
             public double EntryPrice { get; set; }
             public double StopPrice { get; set; }
             public double Target1Price { get; set; }
             public double Target2Price { get; set; }
-            public double Target3Price { get; set; }      // V8: T3 price
+            public double Target3Price { get; set; } // V8: T3 price
             public int T1Contracts { get; set; }
             public int T2Contracts { get; set; }
             public int T3Contracts { get; set; }
-            public int T4Contracts { get; set; }          // V8: Runner contracts
+            public int T4Contracts { get; set; } // V8: Runner contracts
             public bool IsRMA { get; set; }
             public DateTime Timestamp { get; set; }
-            public double SessionRange { get; set; }  // For reference
-            public double CurrentATR { get; set; }    // For RMA trades
-            
+            public double SessionRange { get; set; } // For reference
+            public double CurrentATR { get; set; } // For RMA trades
+
             // V8: Trail settings so slave can use master's configuration
             public double BeTrigger { get; set; }
             public double BeOffset { get; set; }
@@ -45,57 +48,72 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
-        /// Trailing stop update signal
+        /// Trailing stop update signal.
+        /// Struct for zero-allocation hot path (Jane Street HFT pattern).
+        /// Codacy CA1003 suppressed: EventArgs inheritance causes heap allocation.
+        /// Decision: docs/standards/JANE_STREET_DEVIATIONS.md #1.
         /// </summary>
-        public class TrailUpdateSignal
+        public struct TrailUpdateSignal
         {
             public string SignalId { get; set; }
             public double NewStopPrice { get; set; }
-            public int TrailLevel { get; set; }  // BE=0, 1=Trail1, 2=Trail2, 3=Trail3
+            public int TrailLevel { get; set; } // BE=0, 1=Trail1, 2=Trail2, 3=Trail3
             public DateTime Timestamp { get; set; }
         }
 
         /// <summary>
-        /// V8.1: Full stop synchronization signal
-        /// Master broadcasts every stop update, slaves mirror exact price
+        /// V8.1: Full stop synchronization signal.
+        /// Master broadcasts every stop update, slaves mirror exact price.
+        /// Struct for zero-allocation hot path (Jane Street HFT pattern).
+        /// Codacy CA1003 suppressed: EventArgs inheritance causes heap allocation.
+        /// Decision: docs/standards/JANE_STREET_DEVIATIONS.md #1.
         /// </summary>
-        public class StopUpdateSignal
+        public struct StopUpdateSignal
         {
-            public string TradeId { get; set; }        // Links to original entry
-            public double NewStopPrice { get; set; }   // Master's new stop price
-            public string StopLevel { get; set; }      // "BE", "T1", "T2", "T3" for logging
+            public string TradeId { get; set; } // Links to original entry
+            public double NewStopPrice { get; set; } // Master's new stop price
+            public string StopLevel { get; set; } // "BE", "T1", "T2", "T3" for logging
             public DateTime Timestamp { get; set; }
         }
 
         /// <summary>
-        /// V8.1: Entry order price update signal
-        /// Master broadcasts when pending entry order price changes
+        /// V8.1: Entry order price update signal.
+        /// Master broadcasts when pending entry order price changes.
+        /// Struct for zero-allocation hot path (Jane Street HFT pattern).
+        /// Codacy CA1003 suppressed: EventArgs inheritance causes heap allocation.
+        /// Decision: docs/standards/JANE_STREET_DEVIATIONS.md #1.
         /// </summary>
-        public class EntryUpdateSignal
+        public struct EntryUpdateSignal
         {
-            public string TradeId { get; set; }        // Links to original entry
-            public double NewEntryPrice { get; set; }  // Master's new entry price
+            public string TradeId { get; set; } // Links to original entry
+            public double NewEntryPrice { get; set; } // Master's new entry price
             public DateTime Timestamp { get; set; }
         }
 
         /// <summary>
-        /// V8.1: Order cancellation signal
-        /// Master broadcasts when pending entry order is cancelled
+        /// V8.1: Order cancellation signal.
+        /// Master broadcasts when pending entry order is cancelled.
+        /// Struct for zero-allocation hot path (Jane Street HFT pattern).
+        /// Codacy CA1003 suppressed: EventArgs inheritance causes heap allocation.
+        /// Decision: docs/standards/JANE_STREET_DEVIATIONS.md #1.
         /// </summary>
-        public class OrderCancelSignal
+        public struct OrderCancelSignal
         {
-            public string TradeId { get; set; }        // Links to original entry
-            public string Reason { get; set; }         // Why cancelled
+            public string TradeId { get; set; } // Links to original entry
+            public string Reason { get; set; } // Why cancelled
             public DateTime Timestamp { get; set; }
         }
 
         /// <summary>
-        /// Target management action signal (v5.12 feature)
+        /// Target management action signal (v5.12 feature).
+        /// Struct for zero-allocation hot path (Jane Street HFT pattern).
+        /// Codacy CA1003 suppressed: EventArgs inheritance causes heap allocation.
+        /// Decision: docs/standards/JANE_STREET_DEVIATIONS.md #1.
         /// </summary>
-        public class TargetActionSignal
+        public struct TargetActionSignal
         {
             public string SignalId { get; set; }
-            public TargetType Target { get; set; }  // T1, T2, or Runner
+            public TargetType Target { get; set; } // T1, T2, or Runner
             public TargetAction Action { get; set; }
             public DateTime Timestamp { get; set; }
         }
@@ -104,7 +122,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             T1,
             T2,
-            Runner
+            Runner,
         }
 
         public enum TargetAction
@@ -112,32 +130,41 @@ namespace NinjaTrader.NinjaScript.Strategies
             FillAtMarket,
             MoveToBreakeven,
             MoveStopToEntry,
-            CancelTarget
+            CancelTarget,
         }
 
         /// <summary>
-        /// Flatten all positions signal
+        /// Flatten all positions signal.
+        /// Struct for zero-allocation hot path (Jane Street HFT pattern).
+        /// Codacy CA1003 suppressed: EventArgs inheritance causes heap allocation.
+        /// Decision: docs/standards/JANE_STREET_DEVIATIONS.md #1.
         /// </summary>
-        public class FlattenSignal
+        public struct FlattenSignal
         {
             public string Reason { get; set; }
             public DateTime Timestamp { get; set; }
         }
 
         /// <summary>
-        /// Manual breakeven signal
+        /// Manual breakeven signal.
+        /// Struct for zero-allocation hot path (Jane Street HFT pattern).
+        /// Codacy CA1003 suppressed: EventArgs inheritance causes heap allocation.
+        /// Decision: docs/standards/JANE_STREET_DEVIATIONS.md #1.
         /// </summary>
-        public class BreakevenSignal
+        public struct BreakevenSignal
         {
-            public string SignalId { get; set; }  // Empty = all positions
+            public string SignalId { get; set; } // Empty = all positions
             public DateTime Timestamp { get; set; }
         }
 
         /// <summary>
-        /// V10.2: External command signal (from TCP Remote)
-        /// Allows the TCP owner to broadcast commands to all other strategy instances
+        /// V10.2: External command signal (from TCP Remote).
+        /// Allows the TCP owner to broadcast commands to all other strategy instances.
+        /// Struct for zero-allocation hot path (Jane Street HFT pattern).
+        /// Codacy CA1003 suppressed: EventArgs inheritance causes heap allocation.
+        /// Decision: docs/standards/JANE_STREET_DEVIATIONS.md #1.
         /// </summary>
-        public class ExternalCommandSignal
+        public struct ExternalCommandSignal
         {
             public string Command { get; set; }
             public string TargetSymbol { get; set; }
@@ -149,49 +176,58 @@ namespace NinjaTrader.NinjaScript.Strategies
         #region Events
 
         /// <summary>
-        /// Fired when Master generates a new trade signal
+        /// Fired when Master generates a new trade signal.
+        /// Action delegate for struct-based zero-allocation events.
         /// </summary>
-        public static event EventHandler<TradeSignal> OnTradeSignal;
+        public static event Action<TradeSignal> OnTradeSignal;
 
         /// <summary>
-        /// Fired when Master updates trailing stop
+        /// Fired when Master updates trailing stop.
+        /// Action delegate for struct-based zero-allocation events.
         /// </summary>
-        public static event EventHandler<TrailUpdateSignal> OnTrailUpdate;
+        public static event Action<TrailUpdateSignal> OnTrailUpdate;
 
         /// <summary>
-        /// Fired when Master updates trailing stop update request (v5.12)
+        /// Fired when Master updates trailing stop update request (v5.12).
+        /// Action delegate for struct-based zero-allocation events.
         /// </summary>
-        public static event EventHandler<TargetActionSignal> OnTargetAction;
+        public static event Action<TargetActionSignal> OnTargetAction;
 
         /// <summary>
-        /// Fired when Master requests flatten all
+        /// Fired when Master requests flatten all.
+        /// Action delegate for struct-based zero-allocation events.
         /// </summary>
-        public static event EventHandler<FlattenSignal> OnFlattenAll;
+        public static event Action<FlattenSignal> OnFlattenAll;
 
         /// <summary>
-        /// Fired when Master requests manual breakeven
+        /// Fired when Master requests manual breakeven.
+        /// Action delegate for struct-based zero-allocation events.
         /// </summary>
-        public static event EventHandler<BreakevenSignal> OnBreakevenRequest;
+        public static event Action<BreakevenSignal> OnBreakevenRequest;
 
         /// <summary>
-        /// V8.1: Fired when Master updates any stop (for full synchronization)
+        /// V8.1: Fired when Master updates any stop (for full synchronization).
+        /// Action delegate for struct-based zero-allocation events.
         /// </summary>
-        public static event EventHandler<StopUpdateSignal> OnStopUpdate;
+        public static event Action<StopUpdateSignal> OnStopUpdate;
 
         /// <summary>
-        /// V8.1: Fired when Master updates pending entry order price
+        /// V8.1: Fired when Master updates pending entry order price.
+        /// Action delegate for struct-based zero-allocation events.
         /// </summary>
-        public static event EventHandler<EntryUpdateSignal> OnEntryUpdate;
+        public static event Action<EntryUpdateSignal> OnEntryUpdate;
 
         /// <summary>
-        /// V8.1: Fired when Master cancels a pending entry order
+        /// V8.1: Fired when Master cancels a pending entry order.
+        /// Action delegate for struct-based zero-allocation events.
         /// </summary>
-        public static event EventHandler<OrderCancelSignal> OnOrderCancel;
+        public static event Action<OrderCancelSignal> OnOrderCancel;
 
         /// <summary>
-        /// V10.2: Fired when an external TCP command is received
+        /// V10.2: Fired when an external TCP command is received.
+        /// Action delegate for struct-based zero-allocation events.
         /// </summary>
-        public static event EventHandler<ExternalCommandSignal> OnExternalCommand;
+        public static event Action<ExternalCommandSignal> OnExternalCommand;
 
         #endregion
 
@@ -202,30 +238,40 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// the exception is caught and remaining subscribers still receive the signal.
         /// Prevents a single faulty handler from breaking the entire fan-out chain.
         /// V12.Phase7.2: Added performance profiling to detect slow subscribers.
+        /// V12.Phase8: Updated for Action<T> delegates (struct-based zero-allocation events).
         /// </summary>
-        private static void SafeInvoke<T>(EventHandler<T> handler, T args)
+        private static void SafeInvoke<T>(Action<T> handler, T args)
         {
-            if (handler == null) return;
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            if (handler == null)
+                return;
+            var probe = LatencyProbe.Start();
             var invocationList = handler.GetInvocationList();
 
             foreach (Delegate d in invocationList)
             {
                 try
                 {
-                    ((EventHandler<T>)d).Invoke(null, args);
+                    ((Action<T>)d).Invoke(args);
                 }
                 catch (Exception)
                 {
                     // Swallow -- subscriber isolation; don't break fan-out for other listeners
                 }
             }
-            sw.Stop();
+            probe = probe.Stop();
             // Log only if fan-out takes > 1ms to keep the output clean
-            if (sw.Elapsed.TotalMilliseconds > 1.0)
+            long micros = probe.ElapsedMicroseconds;
+            if (micros > 1000)
             {
-                NinjaTrader.Code.Output.Process(string.Format("[LATENCY_FANOUT] {0}: {1:F2}ms across {2} subscribers", 
-                    typeof(T).Name, sw.Elapsed.TotalMilliseconds, invocationList.Length), PrintTo.OutputTab1);
+                NinjaTrader.Code.Output.Process(
+                    LogBuffer.Format(
+                        "[LATENCY_FANOUT] {0}: {1:F2}ms across {2} subscribers",
+                        typeof(T).Name,
+                        micros / 1000.0,
+                        invocationList.Length
+                    ),
+                    PrintTo.OutputTab1
+                );
             }
         }
 
@@ -234,8 +280,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         public static void BroadcastTradeSignal(TradeSignal signal)
         {
-            if (signal == null)
-                throw new ArgumentNullException(nameof(signal));
+            // Struct validation: Check for uninitialized/default state
+            if (string.IsNullOrEmpty(signal.SignalId))
+            {
+                throw new ArgumentException("SignalId cannot be null or empty", nameof(signal));
+            }
 
             signal.Timestamp = DateTime.Now;
 
@@ -248,8 +297,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         public static void BroadcastTrailUpdate(TrailUpdateSignal update)
         {
-            if (update == null)
-                throw new ArgumentNullException(nameof(update));
+            // Struct validation: Check for uninitialized/default state
+            if (string.IsNullOrEmpty(update.SignalId))
+            {
+                throw new ArgumentException("SignalId cannot be null or empty", nameof(update));
+            }
 
             update.Timestamp = DateTime.Now;
             SafeInvoke(OnTrailUpdate, update);
@@ -260,8 +312,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         public static void BroadcastTargetAction(TargetActionSignal action)
         {
-            if (action == null)
-                throw new ArgumentNullException(nameof(action));
+            // Struct validation: Check for uninitialized/default state
+            if (string.IsNullOrEmpty(action.SignalId))
+            {
+                throw new ArgumentException("SignalId cannot be null or empty", nameof(action));
+            }
 
             action.Timestamp = DateTime.Now;
             SafeInvoke(OnTargetAction, action);
@@ -272,11 +327,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         public static void BroadcastFlatten(string reason)
         {
-            var signal = new FlattenSignal
-            {
-                Reason = reason ?? "Manual flatten",
-                Timestamp = DateTime.Now
-            };
+            var signal = new FlattenSignal { Reason = reason ?? "Manual flatten", Timestamp = DateTime.Now };
 
             SafeInvoke(OnFlattenAll, signal);
         }
@@ -286,11 +337,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         public static void BroadcastBreakeven(string signalId = "")
         {
-            var signal = new BreakevenSignal
-            {
-                SignalId = signalId,
-                Timestamp = DateTime.Now
-            };
+            var signal = new BreakevenSignal { SignalId = signalId, Timestamp = DateTime.Now };
 
             SafeInvoke(OnBreakevenRequest, signal);
         }
@@ -305,7 +352,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 TradeId = tradeId,
                 NewStopPrice = newStopPrice,
                 StopLevel = stopLevel,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.Now,
             };
 
             SafeInvoke(OnStopUpdate, signal);
@@ -320,7 +367,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 TradeId = tradeId,
                 NewEntryPrice = newEntryPrice,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.Now,
             };
 
             SafeInvoke(OnEntryUpdate, signal);
@@ -335,7 +382,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 TradeId = tradeId,
                 Reason = reason ?? "Manual cancel",
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.Now,
             };
 
             SafeInvoke(OnOrderCancel, signal);
@@ -350,7 +397,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Command = command,
                 TargetSymbol = targetSymbol,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.Now,
             };
 
             SafeInvoke(OnExternalCommand, signal);
