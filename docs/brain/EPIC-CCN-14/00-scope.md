@@ -1,0 +1,132 @@
+# EPIC-CCN-14: PropagateMaster_IdentifyMove Extraction
+
+**Target**: PropagateMaster_IdentifyMove
+**File**: src/V12_002.Orders.Callbacks.Propagation.cs
+**Line**: 82-146
+**Current CYC**: 18
+**Target CYC**: ≤8
+**Reduction**: 55.6% (18 → 8)
+
+## Method Signature
+
+```csharp
+private bool PropagateMaster_IdentifyMove(
+    Order masterOrder,
+    out string masterEntryName,
+    out bool isEntryMove,
+    out bool isStopMove,
+    out bool isTargetMove,
+    out int masterTargetNum
+)
+```
+
+## Complexity Breakdown
+
+**Control Flow Analysis**:
+- 3 sequential foreach loops (lines 98-106, 110-119, 123-143)
+- Each loop has nested if conditions
+- Target loop has additional nested for loop (1-5 iterations)
+- Multiple early returns and breaks
+
+**Cyclomatic Complexity Sources**:
+1. **Entry order scan** (lines 98-106): 3 decision points
+   - foreach loop (+1)
+   - if kvp.Value == masterOrder (+1)
+   - if activePositions.TryGetValue (+1)
+   - if !mp.IsFollower (+1)
+   - break statement (no additional CYC)
+
+2. **Stop order scan** (lines 108-119): 4 decision points
+   - if masterEntryName == null (+1)
+   - foreach loop (+1)
+   - if kvp.Value == masterOrder (+1)
+   - if activePositions.TryGetValue (+1)
+   - if !mp.IsFollower (+1)
+   - break statement (no additional CYC)
+
+3. **Target order scan** (lines 121-143): 11 decision points
+   - if masterEntryName == null (+1)
+   - for loop t=1 to 5 (+1)
+   - if masterEntryName == null (loop continuation) (+1)
+   - if tDict == null (+1)
+   - foreach loop (+1)
+   - if kvp.Value == masterOrder (+1)
+   - if activePositions.TryGetValue (+1)
+   - if !mp.IsFollower (+1)
+   - break statement (no additional CYC)
+
+**Total**: 1 (base) + 17 (decision points) = 18 CYC
+
+## Extraction Strategy
+
+The method performs **three distinct scans** with identical logic patterns:
+1. Scan entry orders
+2. Scan stop orders  
+3. Scan target orders (1-5)
+
+**Extraction Approach**: Extract the common scanning logic into a helper method.
+
+### Helper Method 1: `ScanOrderDictionary`
+- **Purpose**: Generic order dictionary scanner with master position validation
+- **Parameters**: 
+  - `Dictionary<string, Order> orderDict`
+  - `Order masterOrder`
+  - `out string foundEntryName`
+- **Returns**: `bool` (true if master order found)
+- **Estimated CYC**: 4 (foreach + 3 nested ifs)
+
+### Helper Method 2: `ScanTargetDictionaries`
+- **Purpose**: Scan all 5 target dictionaries
+- **Parameters**:
+  - `Order masterOrder`
+  - `out string foundEntryName`
+  - `out int targetNum`
+- **Returns**: `bool` (true if master order found)
+- **Estimated CYC**: 5 (for loop + nested scan logic)
+
+## Refactored Main Method
+
+**New CYC**: ≤8
+- Initialize out parameters (+0)
+- Call ScanOrderDictionary for entry orders (+1)
+- if found, set flags and return (+1)
+- Call ScanOrderDictionary for stop orders (+1)
+- if found, set flags and return (+1)
+- Call ScanTargetDictionaries (+1)
+- if found, set flags and return (+1)
+- Final return (+0)
+
+**Total**: 1 (base) + 6 (decision points) = 7 CYC ✅
+
+## V12 DNA Verification
+
+- [x] **Lock-free**: Method uses no locks, only dictionary lookups
+- [x] **ASCII-only**: No Unicode characters in method
+- [x] **Mandatory braces**: All control flow has explicit braces
+- [x] **Target CYC ≤8**: Refactored method will be 7 CYC
+- [x] **Helper CYC ≤5**: Both helpers will be ≤5 CYC
+
+## Jane Street P0 Violations
+
+**Current violations in target method**: None detected
+- No lock() usage
+- No nullable reference issues
+- No magic numbers (uses constants like 1, 5 for target range)
+- ASCII-only strings
+
+## Risk Assessment
+
+**Low Risk Refactoring**:
+- Pure structural extraction (no logic changes)
+- No state mutations (read-only dictionary scans)
+- No threading concerns (single-threaded callback)
+- Clear separation of concerns (scanning vs. identification)
+
+## Success Criteria
+
+- ✅ Main method CYC reduced from 18 to ≤8
+- ✅ Helper methods CYC ≤5 each
+- ✅ Zero logic drift (exact same behavior)
+- ✅ V12 DNA compliance maintained
+- ✅ Build succeeds
+- ✅ No new Jane Street P0 violations

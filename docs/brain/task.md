@@ -139,7 +139,7 @@ execution-complexity methods, or single-action handlers. See `docs/brain/forensi
 | PR-2 | GitHub audit (DNA compliance, diff limit, ASCII gate) | ✅ COMPLETE -- 35 threads resolved, advisory-only failures |
 | PR-3 | PR closure / merge on audit pass | ✅ MERGED squash #102 -> main (2026-05-15) |
 | T-W1-Perf | ShouldSkipFleet_RunHealthCheck: LINQ -> for-loop (2 enumerator allocs) | 🔵 IN PROGRESS |
-| GAP-5 | CRC16 -> debug sequence counter on Photon ring slots | NEXT |
+| GAP-5 | CRC16 -> debug sequence counter on Photon ring slots | ❌ CLOSED -- XorShadow 64-bit supersedes (LIVE at SIMA.Fleet.cs:298) |
 | GAP-2 | SPSC Ring Buffer full integration (3-4 Bob CLI tickets) | QUEUED -- Director approved |
 | JS-IMPL-5 | PositionInfo struct conversion | ❌ DEFERRED -- <10 trades/session, GC impact immeasurable |
 
