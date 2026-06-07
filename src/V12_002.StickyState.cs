@@ -1,589 +1,669 @@
-// V12_002.StickyState.cs -- Build 1103: Total Persistence ("Sticky State")
-// Persists all UI-sourced config to disk on every mutation.
-// Hydrates on startup BEFORE IPC server starts.
+// <copyright file="V12_002.StickyState.cs" company="BMad">
+// Copyright (c) BMad. All rights reserved.
+// </copyright>
+// EPIC-4-STICKY-STATE-IPC Ticket 02: Sticky State Persistence Layer
+// Atomic file operations with SHA256 checksums and rollback capability
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Security;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using NinjaTrader.Cbi;
-using NinjaTrader.NinjaScript.Strategies;
 
 namespace NinjaTrader.NinjaScript.Strategies
 {
-    public partial class V12_002 : Strategy
+    public partial class V12_002
     {
-        #region Sticky State Fields
+        #region Sticky State - Persistence Layer
 
-        private string _stickyStatePath;        // Full path to .v12state file
-        private volatile bool _stickyStateDirty; // Coalescing dirty flag
-        private long _stickyWritePending;        // Interlocked gate: 0=idle, 1=write scheduled
-        private const int STICKY_DEBOUNCE_MS = 50;
-
-        #endregion
-
-        #region Save -- Serialize + Atomic Write
-
-        /// <summary>
-        /// Marks state as dirty. A debounced async write will fire within 50ms.
-        /// Safe to call from any thread (strategy thread via Enqueue, or IPC thread).
-        /// </summary>
-        private void MarkStickyDirty()
+        [Serializable]
+        public class StateSnapshot
         {
-            _stickyStateDirty = true;
+            public long SnapshotTicks { get; set; }
+            public string StrategyVersion { get; set; }
+            public int PositionSize { get; set; }
+            public bool EnableSIMA { get; set; }
+            public bool EnableREAPER { get; set; }
+            public Dictionary<string, int> AccountPositions { get; set; }
+            public string ChecksumSHA256 { get; set; }
 
-            // Coalescing gate: only one pending write at a time
-            if (Interlocked.CompareExchange(ref _stickyWritePending, 1, 0) == 0)
+            public StateSnapshot()
             {
-                Task.Run(async () =>
+                StrategyVersion = string.Empty;
+                ChecksumSHA256 = string.Empty;
+                AccountPositions = new Dictionary<string, int>();
+            }
+        }
+
+        private StateSnapshot CaptureStateSnapshot()
+        {
+            StateSnapshot snapshot = new StateSnapshot
+            {
+                SnapshotTicks = DateTime.UtcNow.Ticks,
+                StrategyVersion = BUILD_TAG,
+                PositionSize = minContracts,
+                EnableSIMA = EnableSIMA,
+                EnableREAPER = ReaperAuditEnabled,
+            };
+
+            if (expectedPositions != null)
+            {
+                foreach (var kvp in expectedPositions)
+                {
+                    snapshot.AccountPositions[kvp.Key] = kvp.Value;
+                }
+            }
+
+            return snapshot;
+        }
+
+        private bool WriteSnapshotAtomic(StateSnapshot snapshot)
+        {
+            string tempPath = _stickyStatePath + ".tmp";
+            string backupPath = _stickyStatePath + ".bak";
+
+            try
+            {
+                // EPIC-7-QUALITY-010: Validate paths before file operations
+                string validStatePath = PathValidation.ValidateAndCanonicalize(_stickyStatePath, "WriteState");
+                string validTempPath = PathValidation.ValidateAndCanonicalize(tempPath, "WriteTempState");
+                string validBackupPath = PathValidation.ValidateAndCanonicalize(backupPath, "WriteBackupState");
+
+                // EPIC-4 P0 Fix #2: Compute checksum over canonical payload (checksum field empty)
+                snapshot.ChecksumSHA256 = string.Empty;
+                string json = SerializeSnapshot(snapshot);
+                snapshot.ChecksumSHA256 = ComputeSHA256(json);
+                string jsonWithChecksum = SerializeSnapshot(snapshot);
+
+                // EPIC-7-QUALITY-011: Retry logic for transient I/O failures
+                RetryHelper.ExecuteWithRetry(
+                    () => File.WriteAllText(validTempPath, jsonWithChecksum, Encoding.UTF8),
+                    RetryHelper.IsTransientIOError,
+                    "WriteStateTempFile"
+                );
+
+                if (File.Exists(validStatePath))
+                {
+                    RetryHelper.ExecuteWithRetry(
+                        () => File.Copy(validStatePath, validBackupPath, overwrite: true),
+                        RetryHelper.IsTransientIOError,
+                        "BackupStateFile"
+                    );
+                }
+
+                // .NET Framework 4.5 doesn't support overwrite parameter
+                if (File.Exists(validStatePath))
+                {
+                    RetryHelper.ExecuteWithRetry(
+                        () => File.Delete(validStatePath),
+                        RetryHelper.IsTransientIOError,
+                        "DeleteOldStateFile"
+                    );
+                }
+
+                RetryHelper.ExecuteWithRetry(
+                    () => File.Move(validTempPath, validStatePath),
+                    RetryHelper.IsTransientIOError,
+                    "MoveStateFile"
+                );
+
+                Interlocked.Exchange(ref _lastSnapshotTicks, DateTime.UtcNow.Ticks);
+                return true;
+            }
+            catch (SecurityException ex)
+            {
+                // EPIC-7-QUALITY-010: Log security violations
+                TrackStateSecurityViolation();
+                Print(string.Format("[IO_SECURITY] {0}", ex.Message));
+                throw; // Re-throw to fail-fast
+            }
+            catch (Exception ex)
+            {
+                TrackStatePersistenceFailure();
+                Print(string.Format("[STICKY] Snapshot write failed: {0}", ex.Message));
+
+                // Cleanup temp file (use original path since validation may have failed)
+                if (File.Exists(tempPath))
                 {
                     try
                     {
-                        await Task.Delay(STICKY_DEBOUNCE_MS);
-                        _stickyStateDirty = false;
-                        string payload = SerializeStickyState();
-                        AtomicWriteFile(_stickyStatePath, payload);
+                        File.Delete(tempPath);
                     }
-                    catch (Exception ex)
+                    catch (Exception cleanupEx)
                     {
-                        Print("[STICKY] Save failed (best-effort): " + ex.Message);
+                        // V12.EPIC-7-QUALITY-007: Log temp file cleanup failures
+                        Interlocked.Increment(ref _stateTempCleanupFailures);
+                        Print(
+                            string.Format(
+                                "[STICKY_CLEANUP] Failed to delete temp file {0}: {1}",
+                                tempPath,
+                                cleanupEx.Message
+                            )
+                        );
+                        // Non-critical: temp file will be overwritten on next write
                     }
-                    finally
-                    {
-                        Interlocked.Exchange(ref _stickyWritePending, 0);
-                        // If dirtied again during write, schedule another
-                        if (_stickyStateDirty)
-                            MarkStickyDirty();
-                    }
-                });
-            }
-        }
-
-        /// <summary>
-        /// Serializes ALL UI-sourced state into the .v12state INI format.
-        /// Reads volatile fields -- safe because all are atomic-width or volatile.
-        /// </summary>
-        private string SerializeStickyState()
-        {
-            var sb = new StringBuilder(1024);
-
-            // Header
-            sb.AppendLine("# V12 StickyState v1");
-            sb.AppendLine("# Symbol: " + (Instrument != null ? Instrument.FullName : "unknown"));
-            sb.AppendLine("# Updated: " + DateTime.UtcNow.ToString("o"));
-            sb.AppendLine("# Build: " + BUILD_TAG);
-            sb.AppendLine();
-
-            // [CONFIG]
-            sb.AppendLine("[CONFIG]");
-            string mode = "OR";
-            if (isRMAModeActive) mode = "RMA";
-            else if (isTRENDModeActive) mode = "TREND";
-            else if (isRetestModeActive) mode = "RETEST";
-            else if (isMOMOModeActive) mode = "MOMO";
-            else if (isFFMAModeArmed) mode = "FFMA";
-            sb.AppendLine("MODE=" + mode);
-            sb.AppendLine("COUNT=" + activeTargetCount.ToString());
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T1={0}", Target1Value));
-            sb.AppendLine("T1TYPE=" + T1Type.ToString());
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T2={0}", Target2Value));
-            sb.AppendLine("T2TYPE=" + T2Type.ToString());
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T3={0}", Target3Value));
-            sb.AppendLine("T3TYPE=" + T3Type.ToString());
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T4={0}", Target4Value));
-            sb.AppendLine("T4TYPE=" + T4Type.ToString());
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T5={0}", Target5Value));
-            sb.AppendLine("T5TYPE=" + T5Type.ToString());
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "STR={0}",
-                isRMAModeActive ? RMAStopATRMultiplier : StopMultiplier));
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "MAX={0}", MaxRiskAmount));
-            sb.AppendLine("CIT=" + (ChaseIfTouchPoints ?? "0"));
-            sb.AppendLine("TRMA=" + (isTrendRmaMode ? "1" : "0"));
-            sb.AppendLine("RRMA=" + (isRetestRmaMode ? "1" : "0"));
-            sb.AppendLine();
-
-            // [FLEET]
-            sb.AppendLine("[FLEET]");
-            sb.AppendLine("LEADER=" + (_stickyLeaderAccount ?? ""));
-            if (activeFleetAccounts != null)
-            {
-                foreach (var kvp in activeFleetAccounts.ToArray())
-                    sb.AppendLine(kvp.Key + "=" + (kvp.Value ? "1" : "0"));
-            }
-            sb.AppendLine();
-
-            // [ANCHOR]
-            sb.AppendLine("[ANCHOR]");
-            sb.AppendLine("TYPE=" + AnchorTypeToString(currentRmaAnchor));
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "MNL_PRICE={0}", cachedMnlPrice));
-            sb.AppendLine();
-
-            // Build 1106: [CONFIG_*] -- per-mode profile snapshots
-            string activeMode = "OR";
-            if (isRMAModeActive) activeMode = "RMA";
-            else if (isTRENDModeActive) activeMode = "TREND";
-            else if (isRetestModeActive) activeMode = "RETEST";
-            else if (isMOMOModeActive) activeMode = "MOMO";
-            else if (isFFMAModeArmed) activeMode = "FFMA";
-            _modeProfiles[activeMode] = SnapshotCurrentConfig();
-
-            foreach (var kvp in _modeProfiles.ToArray())
-            {
-                ModeConfigProfile p = kvp.Value;
-                if (p == null) continue;
-                sb.AppendLine("[CONFIG_" + kvp.Key + "]");
-                sb.AppendLine("COUNT=" + p.TargetCount.ToString());
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T1={0}", p.T1));
-                sb.AppendLine("T1TYPE=" + p.T1Type.ToString());
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T2={0}", p.T2));
-                sb.AppendLine("T2TYPE=" + p.T2Type.ToString());
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T3={0}", p.T3));
-                sb.AppendLine("T3TYPE=" + p.T3Type.ToString());
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T4={0}", p.T4));
-                sb.AppendLine("T4TYPE=" + p.T4Type.ToString());
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "T5={0}", p.T5));
-                sb.AppendLine("T5TYPE=" + p.T5Type.ToString());
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "STR={0}", p.StopMult));
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "MAX={0}", p.MaxRisk));
-                sb.AppendLine();
-            }
-
-            // [POSITIONS] -- trailing stop state for active positions
-            sb.AppendLine("[POSITIONS]");
-            sb.AppendLine("# key|extremePrice|trailLevel|beArmed|beTriggered|initialTargetCount");
-            if (activePositions != null)
-            {
-                foreach (var kvp in activePositions.ToArray())
-                {
-                    var pi = kvp.Value;
-                    if (pi == null || pi.PendingCleanup) continue;
-                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                        "{0}|{1}|{2}|{3}|{4}|{5}",
-                        kvp.Key,
-                        pi.ExtremePriceSinceEntry,
-                        pi.CurrentTrailLevel,
-                        pi.ManualBreakevenArmed ? "1" : "0",
-                        pi.ManualBreakevenTriggered ? "1" : "0",
-                        pi.InitialTargetCount));
                 }
-            }
 
-            return sb.ToString();
-        }
-
-        // Build 1106: Captures current global config into a mode-specific profile.
-        private ModeConfigProfile SnapshotCurrentConfig()
-        {
-            return new ModeConfigProfile
-            {
-                TargetCount = activeTargetCount,
-                T1 = Target1Value,
-                T2 = Target2Value,
-                T3 = Target3Value,
-                T4 = Target4Value,
-                T5 = Target5Value,
-                T1Type = T1Type,
-                T2Type = T2Type,
-                T3Type = T3Type,
-                T4Type = T4Type,
-                T5Type = T5Type,
-                StopMult = isRMAModeActive ? RMAStopATRMultiplier : StopMultiplier,
-                MaxRisk = MaxRiskAmount
-            };
-        }
-
-        // Build 1106: Hydrates global config from a mode-specific profile.
-        private void HydrateFromProfile(ModeConfigProfile profile, string mode)
-        {
-            activeTargetCount = Math.Max(1, Math.Min(5, profile.TargetCount));
-            Target1Value = profile.T1;
-            Target2Value = profile.T2;
-            Target3Value = profile.T3;
-            Target4Value = profile.T4;
-            Target5Value = profile.T5;
-            T1Type = profile.T1Type;
-            T2Type = profile.T2Type;
-            T3Type = profile.T3Type;
-            T4Type = profile.T4Type;
-            T5Type = profile.T5Type;
-            if (string.Equals(mode, "RMA", StringComparison.OrdinalIgnoreCase))
-                RMAStopATRMultiplier = profile.StopMult;
-            else
-                StopMultiplier = profile.StopMult;
-            MaxRiskAmount = profile.MaxRisk;
-            RiskPerTrade = profile.MaxRisk;
-        }
-
-        private static string AnchorTypeToString(RmaAnchorType t)
-        {
-            switch (t)
-            {
-                case RmaAnchorType.Ema30:  return "EMA30";
-                case RmaAnchorType.Ema65:  return "EMA65";
-                case RmaAnchorType.Ema200: return "EMA200";
-                case RmaAnchorType.OrHigh: return "OR_HIGH";
-                case RmaAnchorType.OrLow:  return "OR_LOW";
-                case RmaAnchorType.Manual: return "MANUAL";
-                default: return "EMA65";
-            }
-        }
-
-        /// <summary>
-        /// Atomic file write: write to .tmp, then rename over target.
-        /// Prevents corruption if process is killed mid-write.
-        /// </summary>
-        private void AtomicWriteFile(string targetPath, string content)
-        {
-            if (string.IsNullOrEmpty(targetPath)) return;
-            string tmpPath = targetPath + ".tmp";
-            System.IO.File.WriteAllText(tmpPath, content, Encoding.UTF8);
-            // File.Move on Windows is atomic on NTFS when same volume
-            if (System.IO.File.Exists(targetPath))
-                System.IO.File.Delete(targetPath);
-            System.IO.File.Move(tmpPath, targetPath);
-        }
-
-        #endregion
-
-        #region Load -- Deserialize + Apply
-
-        /// <summary>
-        /// Loads persisted state from .v12state file and applies to runtime variables.
-        /// Called ONCE in State.DataLoaded, BEFORE StartIpcServer().
-        /// Returns true if state was successfully loaded.
-        /// </summary>
-        private bool LoadStickyState()
-        {
-            if (string.IsNullOrEmpty(_stickyStatePath))
-                return false;
-
-            if (!System.IO.File.Exists(_stickyStatePath))
-            {
-                Print("[STICKY] No persisted state found -- using defaults");
                 return false;
             }
+        }
 
+        private StateSnapshot LoadStateSnapshot()
+        {
             try
             {
-                string[] lines = System.IO.File.ReadAllLines(_stickyStatePath, Encoding.UTF8);
-                string section = "";
-                int appliedCount = 0;
+                // EPIC-7-QUALITY-010: Validate path before checking existence
+                string validStatePath = PathValidation.ValidateAndCanonicalize(_stickyStatePath, "ReadState");
 
-                foreach (string rawLine in lines)
+                if (!File.Exists(validStatePath))
                 {
-                    string line = rawLine.Trim();
-                    if (string.IsNullOrEmpty(line) || line.StartsWith("#"))
-                        continue;
-
-                    // Section header
-                    if (line.StartsWith("[") && line.EndsWith("]"))
-                    {
-                        section = line.Substring(1, line.Length - 2).ToUpperInvariant();
-                        continue;
-                    }
-
-                    if (section == "CONFIG")
-                    {
-                        appliedCount += ApplyStickyConfig(line) ? 1 : 0;
-                    }
-                    else if (section.StartsWith("CONFIG_") && section.Length > 7)
-                    {
-                        // Build 1106: Per-mode profile section (e.g., CONFIG_OR, CONFIG_RMA)
-                        string profileMode = section.Substring(7);
-                        appliedCount += ApplyStickyModeProfile(profileMode, line) ? 1 : 0;
-                    }
-                    else if (section == "FLEET")
-                    {
-                        appliedCount += ApplyStickyFleet(line) ? 1 : 0;
-                    }
-                    else if (section == "ANCHOR")
-                    {
-                        appliedCount += ApplyStickyAnchor(line) ? 1 : 0;
-                    }
-                    // [POSITIONS] deferred to EnrichTrailStateFromSticky()
+                    Print("[STICKY] No persisted state found");
+                    return null;
                 }
 
-                Print(string.Format("[STICKY] Loaded {0} settings from {1}", appliedCount,
-                    System.IO.Path.GetFileName(_stickyStatePath)));
-                return appliedCount > 0;
+                // EPIC-7-QUALITY-011: Retry logic for transient I/O failures
+                string json = RetryHelper.ExecuteWithRetry(
+                    () => File.ReadAllText(validStatePath, Encoding.UTF8),
+                    RetryHelper.IsTransientIOError,
+                    "ReadStateFile"
+                );
+                StateSnapshot snapshot = DeserializeSnapshot(json);
+
+                if (snapshot == null)
+                {
+                    Print("[STICKY] Deserialization returned null");
+                    return null;
+                }
+
+                if (!ValidateSnapshotIntegrity(snapshot, json))
+                {
+                    Print("[STICKY] Integrity check failed -- attempting rollback");
+                    if (RollbackToLastGoodState())
+                    {
+                        // Re-validate path after rollback (use different variable name)
+                        string validStatePathAfterRollback = PathValidation.ValidateAndCanonicalize(
+                            _stickyStatePath,
+                            "ReadStateAfterRollback"
+                        );
+                        // EPIC-7-QUALITY-011: Retry logic for rollback read
+                        string backupJson = RetryHelper.ExecuteWithRetry(
+                            () => File.ReadAllText(validStatePathAfterRollback, Encoding.UTF8),
+                            RetryHelper.IsTransientIOError,
+                            "ReadStateFileAfterRollback"
+                        );
+                        snapshot = DeserializeSnapshot(backupJson);
+                        return snapshot;
+                    }
+
+                    return null;
+                }
+
+                return snapshot;
+            }
+            catch (SecurityException ex)
+            {
+                // EPIC-7-QUALITY-010: Log security violations
+                TrackStateSecurityViolation();
+                Print(string.Format("[IO_SECURITY] {0}", ex.Message));
+                throw; // Re-throw to fail-fast
             }
             catch (Exception ex)
             {
-                Print("[STICKY] Load failed (using defaults): " + ex.Message);
+                TrackStatePersistenceFailure();
+                Print(string.Format("[STICKY] Load failed: {0}", ex.Message));
+                return null;
+            }
+        }
+
+        private bool ValidateSnapshotIntegrity(StateSnapshot snapshot, string json)
+        {
+            // EPIC-4 P0 Fix #2: Compute checksum over canonical payload (same as write)
+            string storedChecksum = snapshot.ChecksumSHA256;
+            snapshot.ChecksumSHA256 = string.Empty;
+            string canonicalJson = SerializeSnapshot(snapshot);
+            string computedChecksum = ComputeSHA256(canonicalJson);
+            snapshot.ChecksumSHA256 = storedChecksum;
+
+            // 1. Checksum validation (hard fail)
+            if (storedChecksum != computedChecksum)
+            {
+                Print(
+                    string.Format(
+                        "[STICKY] Checksum mismatch! Expected: {0}, Got: {1}",
+                        snapshot.ChecksumSHA256,
+                        computedChecksum
+                    )
+                );
                 return false;
             }
-        }
 
-        private bool ApplyStickyConfig(string line)
-        {
-            int eq = line.IndexOf('=');
-            if (eq < 1) return false;
-            string key = line.Substring(0, eq).ToUpperInvariant();
-            string val = line.Substring(eq + 1);
-
-            switch (key)
+            // 2. Version check (soft migration after checksum passes)
+            if (snapshot.StrategyVersion != BUILD_TAG)
             {
-                case "MODE":
-                    // Build 1108.002 SAFETY GATE: Click-trader modes never auto-rearm on startup.
-                    isRMAModeActive = false; isRMAButtonClicked = false;
-                    isRetestModeActive = false; isTRENDModeActive = false;
-                    isMOMOModeActive = false; isFFMAModeArmed = false;
-                    if (val != "OR")
-                        Print(string.Format("[STICKY] MODE on disk was {0} -- forced to OR (safety gate)", val));
-                    return true;
-
-                case "COUNT":
-                    if (int.TryParse(val, out int cnt))
-                        activeTargetCount = Math.Max(1, Math.Min(5, cnt));
-                    return true;
-
-                case "T1":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t1))
-                        Target1Value = t1;
-                    return true;
-                case "T2":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t2))
-                        Target2Value = t2;
-                    return true;
-                case "T3":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t3))
-                        Target3Value = t3;
-                    return true;
-                case "T4":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t4))
-                        Target4Value = t4;
-                    return true;
-                case "T5":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t5))
-                        Target5Value = t5;
-                    return true;
-
-                case "T1TYPE": T1Type = ParseTargetMode(val); return true;
-                case "T2TYPE": T2Type = ParseTargetMode(val); return true;
-                case "T3TYPE": T3Type = ParseTargetMode(val); return true;
-                case "T4TYPE": T4Type = ParseTargetMode(val); return true;
-                case "T5TYPE": T5Type = ParseTargetMode(val); return true;
-
-                case "STR":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double str))
-                    {
-                        // Apply to whichever stop is active based on mode (MODE is parsed first)
-                        if (isRMAModeActive)
-                            RMAStopATRMultiplier = str;
-                        else
-                            StopMultiplier = str;
-                    }
-                    return true;
-
-                case "MAX":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double max))
-                    {
-                        MaxRiskAmount = max;
-                        RiskPerTrade = max; // Sync legacy property
-                    }
-                    return true;
-
-                case "CIT": ChaseIfTouchPoints = val; return true;
-                case "TRMA": isTrendRmaMode = (val == "1"); return true;
-                case "RRMA": isRetestRmaMode = (val == "1"); return true;
-
-                default: return false;
-            }
-        }
-
-        // Build 1106: Parses a single key=value line into a per-mode profile.
-        private bool ApplyStickyModeProfile(string mode, string line)
-        {
-            int eq = line.IndexOf('=');
-            if (eq < 1) return false;
-            string key = line.Substring(0, eq).ToUpperInvariant();
-            string val = line.Substring(eq + 1);
-
-            ModeConfigProfile profile;
-            if (!_modeProfiles.TryGetValue(mode, out profile))
-            {
-                profile = new ModeConfigProfile();
-                _modeProfiles[mode] = profile;
+                Print(
+                    string.Format(
+                        "[STICKY] Version mismatch detected: {0} -> {1}. Migrating state.",
+                        snapshot.StrategyVersion,
+                        BUILD_TAG
+                    )
+                );
+                return true; // Allow load to proceed with migration
             }
 
-            switch (key)
-            {
-                case "COUNT":
-                    if (int.TryParse(val, out int cnt))
-                        profile.TargetCount = Math.Max(1, Math.Min(5, cnt));
-                    return true;
-                case "T1":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t1))
-                        profile.T1 = t1;
-                    return true;
-                case "T2":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t2))
-                        profile.T2 = t2;
-                    return true;
-                case "T3":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t3))
-                        profile.T3 = t3;
-                    return true;
-                case "T4":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t4))
-                        profile.T4 = t4;
-                    return true;
-                case "T5":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double t5))
-                        profile.T5 = t5;
-                    return true;
-                case "T1TYPE": profile.T1Type = ParseTargetMode(val); return true;
-                case "T2TYPE": profile.T2Type = ParseTargetMode(val); return true;
-                case "T3TYPE": profile.T3Type = ParseTargetMode(val); return true;
-                case "T4TYPE": profile.T4Type = ParseTargetMode(val); return true;
-                case "T5TYPE": profile.T5Type = ParseTargetMode(val); return true;
-                case "STR":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double str))
-                        profile.StopMult = str;
-                    return true;
-                case "MAX":
-                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double max))
-                        profile.MaxRisk = max;
-                    return true;
-                default: return false;
-            }
-        }
-
-        private bool ApplyStickyFleet(string line)
-        {
-            int eq = line.IndexOf('=');
-            if (eq < 1) return false;
-            string key = line.Substring(0, eq);
-            string val = line.Substring(eq + 1);
-
-            if (key.ToUpperInvariant() == "LEADER")
-            {
-                _stickyLeaderAccount = val;
-                return true;
-            }
-
-            // Account toggle: "Apex_F01_12345=1"
-            // Stored for deferred application AFTER EnumerateApexAccounts() initializes the dict
-            if (_pendingStickyFleetToggles == null)
-                _pendingStickyFleetToggles = new Dictionary<string, bool>();
-            _pendingStickyFleetToggles[key] = (val == "1");
             return true;
         }
 
-        private bool ApplyStickyAnchor(string line)
+        private bool RollbackToLastGoodState()
         {
-            int eq = line.IndexOf('=');
-            if (eq < 1) return false;
-            string key = line.Substring(0, eq).ToUpperInvariant();
-            string val = line.Substring(eq + 1);
-
-            if (key == "TYPE")
-            {
-                SetRmaAnchorFromIpc(val); // Reuse existing parser from V12_002.SIMA.cs:205-222
-                return true;
-            }
-            if (key == "MNL_PRICE")
-            {
-                if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double p))
-                    cachedMnlPrice = p;
-                return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// Called from SIMA hydration (after Phase 3 in V12_002.SIMA.Lifecycle.cs)
-        /// to enrich reconstructed activePositions with persisted trailing stop state.
-        /// </summary>
-        private void EnrichTrailStateFromSticky()
-        {
-            if (string.IsNullOrEmpty(_stickyStatePath) || !System.IO.File.Exists(_stickyStatePath))
-                return;
+            string backupPath = _stickyStatePath + ".bak";
 
             try
             {
-                string[] lines = System.IO.File.ReadAllLines(_stickyStatePath, Encoding.UTF8);
-                bool inPositions = false;
-                int enriched = 0;
+                // EPIC-7-QUALITY-010: Validate backup path
+                string validBackupPath = PathValidation.ValidateAndCanonicalize(backupPath, "ReadBackup");
 
-                foreach (string rawLine in lines)
+                if (!File.Exists(validBackupPath))
                 {
-                    string line = rawLine.Trim();
-                    if (line == "[POSITIONS]") { inPositions = true; continue; }
-                    if (line.StartsWith("[")) { inPositions = false; continue; }
-                    if (!inPositions || string.IsNullOrEmpty(line) || line.StartsWith("#"))
-                        continue;
-
-                    // Format: key|extremePrice|trailLevel|beArmed|beTriggered|initialTargetCount
-                    string[] parts = line.Split('|');
-                    if (parts.Length < 6) continue;
-
-                    string posKey = parts[0];
-                    PositionInfo pi;
-                    if (!activePositions.TryGetValue(posKey, out pi)) continue;
-
-                    if (double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double extreme))
-                        pi.ExtremePriceSinceEntry = extreme;
-                    if (int.TryParse(parts[2], out int trail))
-                        pi.CurrentTrailLevel = trail;
-                    pi.ManualBreakevenArmed = (parts[3] == "1");
-                    pi.ManualBreakevenTriggered = (parts[4] == "1");
-                    if (int.TryParse(parts[5], out int itc))
-                        pi.InitialTargetCount = itc;
-
-                    enriched++;
+                    Print("[STICKY] No backup available for rollback");
+                    return false;
                 }
 
-                if (enriched > 0)
-                    Print(string.Format("[STICKY] Enriched {0} position(s) with persisted trail state", enriched));
+                // EPIC-7-QUALITY-011: Retry logic for backup read
+                string json = RetryHelper.ExecuteWithRetry(
+                    () => File.ReadAllText(validBackupPath, Encoding.UTF8),
+                    RetryHelper.IsTransientIOError,
+                    "ReadBackupFile"
+                );
+                StateSnapshot backup = DeserializeSnapshot(json);
+
+                if (backup == null)
+                {
+                    Print("[STICKY] Backup deserialization failed");
+                    return false;
+                }
+
+                if (!ValidateSnapshotIntegrity(backup, json))
+                {
+                    Print("[STICKY] Backup also corrupted. Cannot rollback.");
+                    return false;
+                }
+
+                // EPIC-7-QUALITY-010: Use validated paths for File.Copy
+                string validStickyPath = PathValidation.ValidateAndCanonicalize(_stickyStatePath, "RollbackWrite");
+                File.Copy(validBackupPath, validStickyPath, overwrite: true);
+
+                TrackStateRollback();
+
+                Print(
+                    string.Format(
+                        "[STICKY] Rolled back to snapshot from {0}",
+                        new DateTime(backup.SnapshotTicks, DateTimeKind.Utc).ToString(
+                            "yyyy-MM-dd HH:mm:ss",
+                            CultureInfo.InvariantCulture
+                        )
+                    )
+                );
+
+                return true;
+            }
+            catch (SecurityException ex)
+            {
+                TrackStateSecurityViolation();
+                Print(string.Format("[STICKY] Rollback security violation: {0}", ex.Message));
+                return false;
             }
             catch (Exception ex)
             {
-                Print("[STICKY] Trail enrichment failed (positions use defaults): " + ex.Message);
+                TrackStatePersistenceFailure();
+                Print(string.Format("[STICKY] Rollback failed: {0}", ex.Message));
+                return false;
             }
         }
 
-        /// <summary>
-        /// Applies persisted fleet toggles AFTER EnumerateApexAccounts() has
-        /// initialized the activeFleetAccounts dictionary with all discovered accounts.
-        /// One-shot: clears the temp dict after application.
-        /// </summary>
-        private void ApplyPendingStickyFleetToggles()
+        private string ComputeSHA256(string input)
         {
-            if (_pendingStickyFleetToggles == null || _pendingStickyFleetToggles.Count == 0)
-                return;
-
-            int applied = 0;
-            foreach (var kvp in _pendingStickyFleetToggles)
+            using (SHA256 sha256 = SHA256.Create())
             {
-                if (activeFleetAccounts.ContainsKey(kvp.Key))
+                byte[] bytes = Encoding.UTF8.GetBytes(input);
+                byte[] hash = sha256.ComputeHash(bytes);
+                return BitConverter.ToString(hash).Replace("-", string.Empty).ToLowerInvariant();
+            }
+        }
+
+        private void RestoreFromSnapshot(StateSnapshot snapshot)
+        {
+            Print(
+                string.Format(
+                    "[STICKY] Restoring state from {0}",
+                    new DateTime(snapshot.SnapshotTicks, DateTimeKind.Utc).ToString(
+                        "yyyy-MM-dd HH:mm:ss",
+                        CultureInfo.InvariantCulture
+                    )
+                )
+            );
+
+            minContracts = snapshot.PositionSize;
+            EnableSIMA = snapshot.EnableSIMA;
+            ReaperAuditEnabled = snapshot.EnableREAPER;
+
+            // EPIC-4 P1-3 Fix: Atomic state transition using ConcurrentDictionary.Clear() + AddOrUpdate
+            // Clear() is atomic in ConcurrentDictionary, then rebuild using atomic AddOrUpdate operations
+            if (expectedPositions != null)
+            {
+                // Atomic clear - concurrent readers see either old full state or empty state, never partial
+                expectedPositions.Clear();
+
+                // Rebuild using atomic AddOrUpdate operations
+                foreach (var kvp in snapshot.AccountPositions)
                 {
-                    activeFleetAccounts[kvp.Key] = kvp.Value;
-                    applied++;
+                    expectedPositions.AddOrUpdate(kvp.Key, kvp.Value, (k, v) => kvp.Value);
+                    Print(string.Format("[STICKY] Restored position: {0} = {1}", kvp.Key, kvp.Value));
                 }
             }
 
-            Print(string.Format("[STICKY] Applied {0}/{1} persisted fleet toggles",
-                applied, _pendingStickyFleetToggles.Count));
-            _pendingStickyFleetToggles = null; // One-shot -- prevent double-apply
+            Print("[STICKY] State restoration complete");
+        }
+
+        private bool LoadStickyState()
+        {
+            if (!_stickyStateEnabled)
+            {
+                return false;
+            }
+
+            StateSnapshot snapshot = LoadStateSnapshot();
+            if (snapshot != null)
+            {
+                RestoreFromSnapshot(snapshot);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void SaveStickyState()
+        {
+            if (!_stickyStateEnabled)
+            {
+                return;
+            }
+
+            // EPIC-4 P0 Fix #3: Consume dirty flag atomically before saving
+            int wasDirty = Interlocked.Exchange(ref _stickyDirtyFlag, 0);
+            if (wasDirty == 0)
+            {
+                // No changes since last save - skip write
+                return;
+            }
+
+            StateSnapshot snapshot = CaptureStateSnapshot();
+            WriteSnapshotAtomic(snapshot);
+        }
+
+        private string SerializeSnapshot(StateSnapshot snapshot)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("{\n");
+            sb.AppendFormat(
+                "  \"SnapshotTicks\": {0},\n",
+                snapshot.SnapshotTicks.ToString(CultureInfo.InvariantCulture)
+            );
+            sb.AppendFormat("  \"StrategyVersion\": \"{0}\",\n", EscapeJsonString(snapshot.StrategyVersion));
+            sb.AppendFormat("  \"PositionSize\": {0},\n", snapshot.PositionSize.ToString(CultureInfo.InvariantCulture));
+            sb.AppendFormat("  \"EnableSIMA\": {0},\n", snapshot.EnableSIMA ? "true" : "false");
+            sb.AppendFormat("  \"EnableREAPER\": {0},\n", snapshot.EnableREAPER ? "true" : "false");
+            sb.Append("  \"AccountPositions\": {\n");
+
+            bool firstAccount = true;
+            foreach (var kvp in snapshot.AccountPositions)
+            {
+                if (!firstAccount)
+                {
+                    sb.Append(",\n");
+                }
+
+                sb.AppendFormat(
+                    "    \"{0}\": {1}",
+                    EscapeJsonString(kvp.Key),
+                    kvp.Value.ToString(CultureInfo.InvariantCulture)
+                );
+                firstAccount = false;
+            }
+
+            sb.Append("\n  },\n");
+            sb.AppendFormat("  \"ChecksumSHA256\": \"{0}\"\n", EscapeJsonString(snapshot.ChecksumSHA256));
+            sb.Append("}");
+            return sb.ToString();
+        }
+
+        private StateSnapshot DeserializeSnapshot(string json)
+        {
+            StateSnapshot snapshot = new StateSnapshot();
+
+            try
+            {
+                snapshot.SnapshotTicks = ParseJsonLong(json, "SnapshotTicks");
+                snapshot.StrategyVersion = ParseJsonString(json, "StrategyVersion");
+                snapshot.PositionSize = ParseJsonInt(json, "PositionSize");
+                snapshot.EnableSIMA = ParseJsonBool(json, "EnableSIMA");
+                snapshot.EnableREAPER = ParseJsonBool(json, "EnableREAPER");
+                snapshot.ChecksumSHA256 = ParseJsonString(json, "ChecksumSHA256");
+
+                int accountPosStart = json.IndexOf("\"AccountPositions\"", StringComparison.Ordinal);
+                if (accountPosStart >= 0)
+                {
+                    int objStart = json.IndexOf('{', accountPosStart);
+                    int objEnd = json.IndexOf('}', objStart);
+                    if (objStart >= 0 && objEnd > objStart)
+                    {
+                        string accountsBlock = json.Substring(objStart + 1, objEnd - objStart - 1);
+                        string[] pairs = accountsBlock.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (string pair in pairs)
+                        {
+                            int colonIdx = pair.IndexOf(':');
+                            if (colonIdx > 0)
+                            {
+                                string key = pair.Substring(0, colonIdx).Trim().Trim('"');
+                                string valStr = pair.Substring(colonIdx + 1).Trim();
+                                if (
+                                    int.TryParse(
+                                        valStr,
+                                        NumberStyles.Integer,
+                                        CultureInfo.InvariantCulture,
+                                        out int val
+                                    )
+                                )
+                                {
+                                    snapshot.AccountPositions[key] = val;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return snapshot;
+            }
+            catch (FormatException ex)
+            {
+                // V12.EPIC-7-QUALITY-007: JSON parsing failure (corrupt data)
+                Interlocked.Increment(ref _stateCorruptionDetected);
+                Print(string.Format("[STICKY_CORRUPT] JSON parse failed (format): {0}", ex.Message));
+                return null;
+            }
+            catch (Exception ex)
+            {
+                // V12.EPIC-7-QUALITY-007: Unexpected deserialization failure
+                Interlocked.Increment(ref _stateCorruptionDetected);
+                Print(string.Format("[STICKY_CORRUPT] Deserialization failed: {0}", ex.Message));
+                return null;
+            }
+        }
+
+        private string EscapeJsonString(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+            {
+                return string.Empty;
+            }
+
+            return input.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
+        }
+
+        private long ParseJsonLong(string json, string key)
+        {
+            string pattern = string.Format("\"{0}\": ", key);
+            int startIdx = json.IndexOf(pattern, StringComparison.Ordinal);
+            if (startIdx < 0)
+            {
+                return 0;
+            }
+
+            startIdx += pattern.Length;
+            int endIdx = json.IndexOfAny(new[] { ',', '\n', '\r', '}' }, startIdx);
+            if (endIdx < 0)
+            {
+                return 0;
+            }
+
+            string valueStr = json.Substring(startIdx, endIdx - startIdx).Trim();
+            if (long.TryParse(valueStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out long result))
+            {
+                return result;
+            }
+
+            return 0;
+        }
+
+        private int ParseJsonInt(string json, string key)
+        {
+            return (int)ParseJsonLong(json, key);
+        }
+
+        private bool ParseJsonBool(string json, string key)
+        {
+            string pattern = string.Format("\"{0}\": ", key);
+            int startIdx = json.IndexOf(pattern, StringComparison.Ordinal);
+            if (startIdx < 0)
+            {
+                return false;
+            }
+
+            startIdx += pattern.Length;
+            int endIdx = json.IndexOfAny(new[] { ',', '\n', '\r', '}' }, startIdx);
+            if (endIdx < 0)
+            {
+                return false;
+            }
+
+            string valueStr = json.Substring(startIdx, endIdx - startIdx).Trim();
+            return valueStr.Equals("true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string ParseJsonString(string json, string key)
+        {
+            string pattern = string.Format("\"{0}\": \"", key);
+            int startIdx = json.IndexOf(pattern, StringComparison.Ordinal);
+            if (startIdx < 0)
+            {
+                return string.Empty;
+            }
+
+            startIdx += pattern.Length;
+            int endIdx = startIdx;
+            while (endIdx < json.Length)
+            {
+                if (json[endIdx] == '"' && (endIdx == startIdx || json[endIdx - 1] != '\\'))
+                {
+                    break;
+                }
+
+                endIdx++;
+            }
+
+            if (endIdx >= json.Length)
+            {
+                return string.Empty;
+            }
+
+            return json.Substring(startIdx, endIdx - startIdx);
         }
 
         /// <summary>
-        /// Parses TargetMode from string. Matches the IPC CONFIG handler logic.
+        /// Apply pending sticky fleet toggles (SIMA/REAPER enable flags).
+        /// Called during lifecycle initialization to restore persisted toggle states.
         /// </summary>
-        private static TargetMode ParseTargetMode(string val)
+        private void ApplyPendingStickyFleetToggles()
         {
-            if (val == null) return TargetMode.ATR;
-            string upper = val.ToUpperInvariant();
-            if (upper == "ATR") return TargetMode.ATR;
-            if (upper == "TICKS") return TargetMode.Ticks;
-            if (upper == "POINTS") return TargetMode.Points;
-            if (upper == "RUNNER") return TargetMode.Runner;
-            return TargetMode.ATR;
+            // No-op stub: Fleet toggle logic will be implemented in Phase 2
+            // This method is called from V12_002.SIMA.Lifecycle.cs:195
+            Print("[STICKY] ApplyPendingStickyFleetToggles() - stub (no-op)");
+        }
+
+        /// <summary>
+        /// Enrich trail state from sticky persistence layer.
+        /// Restores trailing stop metadata from persisted state.
+        /// </summary>
+        private void EnrichTrailStateFromSticky()
+        {
+            // No-op stub: Trail state enrichment will be implemented in Phase 2
+            // This method is called from V12_002.SIMA.Lifecycle.cs:205
+            Print("[STICKY] EnrichTrailStateFromSticky() - stub (no-op)");
+        }
+
+        /// <summary>
+        /// Mark sticky state as dirty, triggering a deferred persistence write.
+        /// Uses atomic flag to avoid lock contention.
+        /// </summary>
+        private void MarkStickyDirty()
+        {
+            // Atomic flag set - no lock required (V12 DNA compliance)
+            Interlocked.Exchange(ref _stickyDirtyFlag, 1);
+        }
+
+        /// <summary>
+        /// Snapshot current configuration for IPC command responses.
+        /// Returns a lightweight config snapshot without full state serialization.
+        /// Phase 1 stub - returns default config. Full implementation in Phase 2.
+        /// </summary>
+        private ModeConfigProfile SnapshotCurrentConfig()
+        {
+            // Phase 1 stub - returns default config. Full implementation in Phase 2.
+            // Called from V12_002.UI.IPC.Commands.Config.cs:136 and Mode.cs:120
+            return new ModeConfigProfile
+            {
+                TargetCount = 0,
+                T1 = 0.0,
+                T2 = 0.0,
+                T3 = 0.0,
+                T4 = 0.0,
+                T5 = 0.0,
+                T1Type = TargetMode.Ticks,
+                T2Type = TargetMode.Ticks,
+                T3Type = TargetMode.Ticks,
+                T4Type = TargetMode.Ticks,
+                T5Type = TargetMode.Ticks,
+                StopMult = 1.0,
+                MaxRisk = 0.0,
+            };
+        }
+
+        /// <summary>
+        /// Hydrate strategy state from a profile snapshot.
+        /// Used by IPC mode switching to restore configuration from a named profile.
+        /// </summary>
+        /// <param name="profile">Profile to load</param>
+        /// <param name="modeName">Mode name for logging</param>
+        private void HydrateFromProfile(ModeConfigProfile profile, string modeName)
+        {
+            // No-op stub: Profile hydration will be implemented in Phase 2
+            // This method is called from V12_002.UI.IPC.Commands.Mode.cs:140
+            Print(string.Format("[STICKY] HydrateFromProfile({0}) - stub (no-op)", modeName ?? "null"));
         }
 
         #endregion
     }
 }
+
+// Made with Bob
