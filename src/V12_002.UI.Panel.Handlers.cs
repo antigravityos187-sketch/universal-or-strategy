@@ -1,5 +1,6 @@
 // Build 1105: V12_001 panel port -- handlers rewired through PanelCommand
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Windows;
@@ -12,73 +13,223 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002
     {
+        #region Panel Handler Structs
+
+        private struct TargetConfig
+        {
+            public string T1Type,
+                T2Type,
+                T3Type,
+                T4Type,
+                T5Type;
+            public string T1Val,
+                T2Val,
+                T3Val,
+                T4Val,
+                T5Val;
+            public string Str,
+                Max,
+                Cit;
+            public bool TrendRma,
+                RetestRma;
+            public int Count;
+        }
+
+        #endregion
+
         #region Panel Handlers
 
         private void AttachPanelHandlers()
         {
-            if (floatingAnchor != null) floatingAnchor.Click += ToggleLayout_Click;
-
-            if (fleetSelectButton != null) fleetSelectButton.Click += (s, e) =>
-            {
-                if (fleetPopup != null) fleetPopup.IsOpen = !fleetPopup.IsOpen;
-            };
-            if (submitButton != null) submitButton.Click += OnSubmitClick;
-
-            if (orLongButton != null) orLongButton.Click += (s, e) =>
-                { PanelCommand("OR_LONG"); ResetExecutionMode(); TriggerGlow(CyanAccent); };
-            if (orShortButton != null) orShortButton.Click += (s, e) =>
-                { PanelCommand("OR_SHORT"); ResetExecutionMode(); TriggerGlow(PinkFg); };
-            if (retestButton != null) retestButton.Click += OnRetestClick;
-            if (retestRmaToggle != null) retestRmaToggle.Click += OnRetestRmaToggleClick;
-            if (rmaButton != null) rmaButton.Click += OnRmaClick;
-            if (momoButton != null) momoButton.Click += (s, e) =>
-                { PanelCommand("MODE_MOMO"); ResetExecutionMode(); TriggerGlow(GreenFg); };
-            if (ffmaButton != null) ffmaButton.Click += (s, e) =>
-                { PanelCommand("MODE_FFMA"); ResetExecutionMode(); TriggerGlow(PinkFg); };
-            if (ffmaManualButton != null) ffmaManualButton.Click += (s, e) =>
-                { PanelCommand("FFMA_MANUAL_MARKET"); ResetExecutionMode(); TriggerGlow(PinkFg); };
-            if (mButton != null) mButton.Click += (s, e) =>
-                { PanelCommand("MODE_M"); TriggerGlow(OrangeFg); };
-            if (trendButton != null) trendButton.Click += OnTrendClick;
-            if (trendRmaToggle != null) trendRmaToggle.Click += OnTrendRmaToggleClick;
-
-            if (t1Button != null) AttachTargetDropdown(t1Button, 1, GreenFg);
-            if (t2Button != null) AttachTargetDropdown(t2Button, 2, YellowFg);
-            if (t3Button != null) AttachTargetDropdown(t3Button, 3, OrangeFg);
-            if (t4Button != null) AttachTargetDropdown(t4Button, 4, RedFg);
-            if (t5Button != null) AttachTargetDropdown(t5Button, 5, PinkFg);
-            if (trim50Button != null) trim50Button.Click += (s, e) =>
-                { PanelCommand("TRIM_50"); TriggerGlow(OrangeFg); };
-            if (beButton != null) beButton.Click += OnBeClick;
-            if (trailButton != null) trailButton.Click += OnTrailClick;
-            if (cancelButton != null) cancelButton.Click += (s, e) =>
-                { PanelCommand("CANCEL_ALL"); TriggerGlow(RedFg); };
-            if (flattenButton != null) flattenButton.Click += (s, e) =>
-                { PanelCommand("FLATTEN_ONLY"); TriggerGlow(RedFg); };
-
-            if (mktSyncButton != null) mktSyncButton.Click += (s, e) =>
-                PanelCommand("MKT_SYNC");
-
-            if (modeOrbButton != null) modeOrbButton.Click += (s, e) => SelectConfigMode("ORB", modeOrbButton);
-            if (modeRmaButton != null) modeRmaButton.Click += (s, e) => SelectConfigMode("RMA", modeRmaButton);
-            if (modeRetestButton != null) modeRetestButton.Click += (s, e) => SelectConfigMode("RETEST", modeRetestButton);
-            if (modeMomoButton != null) modeMomoButton.Click += (s, e) => SelectConfigMode("MOMO", modeMomoButton);
-            if (modeFfmaButton != null) modeFfmaButton.Click += (s, e) => SelectConfigMode("FFMA", modeFfmaButton);
-            if (modeTrendButton != null) modeTrendButton.Click += (s, e) => SelectConfigMode("TREND", modeTrendButton);
-
-            if (cnt1 != null) cnt1.Click += (s, e) => SelectTargetCount(1, cnt1);
-            if (cnt2 != null) cnt2.Click += (s, e) => SelectTargetCount(2, cnt2);
-            if (cnt3 != null) cnt3.Click += (s, e) => SelectTargetCount(3, cnt3);
-            if (cnt4 != null) cnt4.Click += (s, e) => SelectTargetCount(4, cnt4);
-            if (cnt5 != null) cnt5.Click += (s, e) => SelectTargetCount(5, cnt5);
-
-            if (syncAllButton != null) syncAllButton.Click += OnSyncAllClick;
+            InitKeyCommandRegistry();
+            AttachMiscellaneousHandlers();
+            AttachExecutionPanelHandlers();
+            AttachTargetButtonHandlers();
+            AttachActionButtonHandlers();
+            AttachSyncButtonHandlers();
+            AttachConfigModeHandlers();
+            AttachTargetCountHandlers();
             AttachLiveTargetHandlers();
+        }
+
+        // [Phase7-UI T-A] Initialize command registry for basic hotkeys (CYC 3)
+        // NOTE: Lambda closures allocate on heap. Acceptable as existing pattern.
+        // If profiling shows impact, consider method references (e.g., [Key.L] = ExecuteLongHotkey).
+        private void InitKeyCommandRegistry()
+        {
+            _keyCommands = new Dictionary<Key, Action>
+            {
+                // Basic hotkeys (no modifiers)
+                [Key.L] = () =>
+                {
+                    double orStopDist = CalculateORStopDistance();
+                    int orContracts = CalculatePositionSize(orStopDist);
+                    Enqueue(ctx => ctx.ExecuteLong(orContracts));
+                },
+                [Key.S] = () =>
+                {
+                    double orStopDist = CalculateORStopDistance();
+                    int orContracts = CalculatePositionSize(orStopDist);
+                    Enqueue(ctx => ctx.ExecuteShort(orContracts));
+                },
+                // V12.1101E [PH5-COLLIDE-01]: Panic hotkey routes through lifecycle-safe flatten pipeline
+                [Key.F] = () => FlattenAll(),
+            };
+        }
+
+        private void AttachMiscellaneousHandlers()
+        {
+            if (floatingAnchor != null)
+                floatingAnchor.Click += ToggleLayout_Click;
+
+            if (fleetSelectButton != null)
+                fleetSelectButton.Click += (s, e) =>
+                {
+                    if (fleetPopup != null)
+                        fleetPopup.IsOpen = !fleetPopup.IsOpen;
+                };
+
+            if (submitButton != null)
+                submitButton.Click += OnSubmitClick;
+        }
+
+        private void AttachExecutionPanelHandlers()
+        {
+            if (orLongButton != null)
+                orLongButton.Click += (s, e) =>
+                {
+                    PanelCommand("OR_LONG");
+                    ResetExecutionMode();
+                    TriggerGlow(CyanAccent);
+                };
+            if (orShortButton != null)
+                orShortButton.Click += (s, e) =>
+                {
+                    PanelCommand("OR_SHORT");
+                    ResetExecutionMode();
+                    TriggerGlow(PinkFg);
+                };
+            if (retestButton != null)
+                retestButton.Click += OnRetestClick;
+            if (retestRmaToggle != null)
+                retestRmaToggle.Click += OnRetestRmaToggleClick;
+            if (rmaButton != null)
+                rmaButton.Click += OnRmaClick;
+            if (momoButton != null)
+                momoButton.Click += (s, e) =>
+                {
+                    PanelCommand("MODE_MOMO");
+                    ResetExecutionMode();
+                    TriggerGlow(GreenFg);
+                };
+            if (ffmaButton != null)
+                ffmaButton.Click += (s, e) =>
+                {
+                    PanelCommand("MODE_FFMA");
+                    ResetExecutionMode();
+                    TriggerGlow(PinkFg);
+                };
+            if (ffmaManualButton != null)
+                ffmaManualButton.Click += (s, e) =>
+                {
+                    PanelCommand("FFMA_MANUAL_MARKET");
+                    ResetExecutionMode();
+                    TriggerGlow(PinkFg);
+                };
+            if (mButton != null)
+                mButton.Click += (s, e) =>
+                {
+                    PanelCommand("MODE_M");
+                    TriggerGlow(OrangeFg);
+                };
+            if (trendButton != null)
+                trendButton.Click += OnTrendClick;
+            if (trendRmaToggle != null)
+                trendRmaToggle.Click += OnTrendRmaToggleClick;
+        }
+
+        private void AttachTargetButtonHandlers()
+        {
+            if (t1Button != null)
+                AttachTargetDropdown(t1Button, 1, GreenFg);
+            if (t2Button != null)
+                AttachTargetDropdown(t2Button, 2, YellowFg);
+            if (t3Button != null)
+                AttachTargetDropdown(t3Button, 3, OrangeFg);
+            if (t4Button != null)
+                AttachTargetDropdown(t4Button, 4, RedFg);
+            if (t5Button != null)
+                AttachTargetDropdown(t5Button, 5, PinkFg);
+        }
+
+        private void AttachActionButtonHandlers()
+        {
+            if (trim50Button != null)
+                trim50Button.Click += (s, e) =>
+                {
+                    PanelCommand("TRIM_50");
+                    TriggerGlow(OrangeFg);
+                };
+            if (beButton != null)
+                beButton.Click += OnBeClick;
+            if (trailButton != null)
+                trailButton.Click += OnTrailClick;
+            if (cancelButton != null)
+                cancelButton.Click += (s, e) =>
+                {
+                    PanelCommand("CANCEL_ALL");
+                    TriggerGlow(RedFg);
+                };
+            if (flattenButton != null)
+                flattenButton.Click += (s, e) =>
+                {
+                    PanelCommand("FLATTEN_ONLY");
+                    TriggerGlow(RedFg);
+                };
+        }
+
+        private void AttachSyncButtonHandlers()
+        {
+            if (mktSyncButton != null)
+                mktSyncButton.Click += (s, e) => PanelCommand("MKT_SYNC");
+            if (syncAllButton != null)
+                syncAllButton.Click += OnSyncAllClick;
+        }
+
+        private void AttachConfigModeHandlers()
+        {
+            if (modeOrbButton != null)
+                modeOrbButton.Click += (s, e) => SelectConfigMode("ORB", modeOrbButton);
+            if (modeRmaButton != null)
+                modeRmaButton.Click += (s, e) => SelectConfigMode("RMA", modeRmaButton);
+            if (modeRetestButton != null)
+                modeRetestButton.Click += (s, e) => SelectConfigMode("RETEST", modeRetestButton);
+            if (modeMomoButton != null)
+                modeMomoButton.Click += (s, e) => SelectConfigMode("MOMO", modeMomoButton);
+            if (modeFfmaButton != null)
+                modeFfmaButton.Click += (s, e) => SelectConfigMode("FFMA", modeFfmaButton);
+            if (modeTrendButton != null)
+                modeTrendButton.Click += (s, e) => SelectConfigMode("TREND", modeTrendButton);
+        }
+
+        private void AttachTargetCountHandlers()
+        {
+            if (cnt1 != null)
+                cnt1.Click += (s, e) => SelectTargetCount(1, cnt1);
+            if (cnt2 != null)
+                cnt2.Click += (s, e) => SelectTargetCount(2, cnt2);
+            if (cnt3 != null)
+                cnt3.Click += (s, e) => SelectTargetCount(3, cnt3);
+            if (cnt4 != null)
+                cnt4.Click += (s, e) => SelectTargetCount(4, cnt4);
+            if (cnt5 != null)
+                cnt5.Click += (s, e) => SelectTargetCount(5, cnt5);
         }
 
         private void DetachPanelHandlers()
         {
-            if (floatingAnchor != null) floatingAnchor.Click -= ToggleLayout_Click;
+            if (floatingAnchor != null)
+                floatingAnchor.Click -= ToggleLayout_Click;
         }
 
         private void ToggleLayout_Click(object sender, RoutedEventArgs e)
@@ -109,9 +260,10 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void OnSubmitClick(object sender, RoutedEventArgs e)
         {
-            string direction = (directionCombo != null && directionCombo.SelectedItem is ComboBoxItem directionItem)
-                ? (directionItem.Content as string ?? "OR LONG")
-                : "OR LONG";
+            string direction =
+                (directionCombo != null && directionCombo.SelectedItem is ComboBoxItem directionItem)
+                    ? (directionItem.Content as string ?? "OR LONG")
+                    : "OR LONG";
             string price = priceInput != null ? priceInput.Text.Trim() : string.Empty;
             string mode = _panelLastSyncedMode;
             if (string.IsNullOrEmpty(mode))
@@ -119,9 +271,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (string.Equals(mode, "OR", StringComparison.OrdinalIgnoreCase))
                 mode = "ORB";
 
-            string symbol = Instrument != null && Instrument.MasterInstrument != null
-                ? Instrument.MasterInstrument.Name
-                : string.Empty;
+            string symbol =
+                Instrument != null && Instrument.MasterInstrument != null
+                    ? Instrument.MasterInstrument.Name
+                    : string.Empty;
             string dir = direction.IndexOf("SHORT", StringComparison.OrdinalIgnoreCase) >= 0 ? "SHORT" : "LONG";
             string cmd;
 
@@ -155,15 +308,18 @@ namespace NinjaTrader.NinjaScript.Strategies
             switch (retestCycleState)
             {
                 case 0:
-                    if (retestButton != null) retestButton.Content = "RETEST";
+                    if (retestButton != null)
+                        retestButton.Content = "RETEST";
                     PanelCommand("EXEC_RETEST");
                     break;
                 case 1:
-                    if (retestButton != null) retestButton.Content = "RET +";
+                    if (retestButton != null)
+                        retestButton.Content = "RET +";
                     PanelCommand("EXEC_RETEST_PLUS");
                     break;
                 default:
-                    if (retestButton != null) retestButton.Content = "RET -";
+                    if (retestButton != null)
+                        retestButton.Content = "RET -";
                     PanelCommand("EXEC_RETEST_MINUS");
                     break;
             }
@@ -222,7 +378,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void OnBeClick(object sender, RoutedEventArgs e)
         {
             string ticks = beOffsetInput != null ? beOffsetInput.Text.Trim() : "2";
-            if (string.IsNullOrEmpty(ticks)) ticks = "2";
+            if (string.IsNullOrEmpty(ticks))
+                ticks = "2";
             PanelCommand("BE_CUSTOM|" + ticks);
             TriggerGlow(CyanFg);
         }
@@ -230,46 +387,99 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void OnTrailClick(object sender, RoutedEventArgs e)
         {
             string dist = trailDistInput != null ? trailDistInput.Text.Trim() : "1.0";
-            if (string.IsNullOrEmpty(dist)) dist = "1.0";
+            if (string.IsNullOrEmpty(dist))
+                dist = "1.0";
             PanelCommand("SET_TRAIL|" + dist);
             TriggerGlow(CyanFg);
         }
 
         private void OnSyncAllClick(object sender, RoutedEventArgs e)
         {
+            string mode = ResolveEffectiveSyncMode();
+            TargetConfig config = ExtractTargetConfiguration();
+            string configString = BuildConfigString(mode, config);
+
+            PanelCommand(configString);
+            Print("V12 PANEL: SYNC ALL -> " + mode + " / count " + config.Count);
+        }
+
+        private string ResolveEffectiveSyncMode()
+        {
             string mode = _panelLastSyncedMode;
             if (string.IsNullOrEmpty(mode))
                 mode = GetCurrentConfigMode();
             if (string.Equals(mode, "OR", StringComparison.OrdinalIgnoreCase))
                 mode = "ORB";
+            return mode;
+        }
 
-            string t1Type = (svT1Type != null && svT1Type.SelectedItem is ComboBoxItem t1Item) ? (t1Item.Content as string ?? "ATR") : "ATR";
-            string t2Type = (svT2Type != null && svT2Type.SelectedItem is ComboBoxItem t2Item) ? (t2Item.Content as string ?? "ATR") : "ATR";
-            string t3Type = (svT3Type != null && svT3Type.SelectedItem is ComboBoxItem t3Item) ? (t3Item.Content as string ?? "ATR") : "ATR";
-            string t4Type = (svT4Type != null && svT4Type.SelectedItem is ComboBoxItem t4Item) ? (t4Item.Content as string ?? "ATR") : "ATR";
-            string t5Type = (svT5Type != null && svT5Type.SelectedItem is ComboBoxItem t5Item) ? (t5Item.Content as string ?? "ATR") : "ATR";
+        private TargetConfig ExtractTargetConfiguration()
+        {
+            var config = new TargetConfig();
+
+            config.T1Type =
+                (svT1Type != null && svT1Type.SelectedItem is ComboBoxItem t1Item)
+                    ? (t1Item.Content as string ?? "ATR")
+                    : "ATR";
+            config.T2Type =
+                (svT2Type != null && svT2Type.SelectedItem is ComboBoxItem t2Item)
+                    ? (t2Item.Content as string ?? "ATR")
+                    : "ATR";
+            config.T3Type =
+                (svT3Type != null && svT3Type.SelectedItem is ComboBoxItem t3Item)
+                    ? (t3Item.Content as string ?? "ATR")
+                    : "ATR";
+            config.T4Type =
+                (svT4Type != null && svT4Type.SelectedItem is ComboBoxItem t4Item)
+                    ? (t4Item.Content as string ?? "ATR")
+                    : "ATR";
+            config.T5Type =
+                (svT5Type != null && svT5Type.SelectedItem is ComboBoxItem t5Item)
+                    ? (t5Item.Content as string ?? "ATR")
+                    : "ATR";
+
+            config.T1Val = svT1Val != null ? svT1Val.Text : "0";
+            config.T2Val = svT2Val != null ? svT2Val.Text : "0";
+            config.T3Val = svT3Val != null ? svT3Val.Text : "0";
+            config.T4Val = svT4Val != null ? svT4Val.Text : "0";
+            config.T5Val = svT5Val != null ? svT5Val.Text : "0";
+
+            config.Str = strVal != null ? strVal.Text : "0";
+            config.Cit = citVal != null ? citVal.Text : "0";
+
             string maxText = maxVal != null ? maxVal.Text : string.Empty;
-            if (maxText == null) maxText = string.Empty;
-            maxText = maxText.Replace("$", string.Empty).Replace(" ", string.Empty);
+            if (maxText == null)
+                maxText = string.Empty;
+            config.Max = maxText.Replace("$", string.Empty).Replace(" ", string.Empty);
 
+            config.TrendRma = isTrendRmaMode;
+            config.RetestRma = isRetestRmaMode;
+            config.Count = Math.Max(
+                1,
+                Math.Min(5, _panelLastSyncedTargetCount > 0 ? _panelLastSyncedTargetCount : activeTargetCount)
+            );
+
+            return config;
+        }
+
+        private string BuildConfigString(string mode, TargetConfig config)
+        {
             StringBuilder sb = new StringBuilder();
             sb.Append("CONFIG|");
             sb.Append(string.Equals(mode, "ORB", StringComparison.OrdinalIgnoreCase) ? "OR" : mode);
             sb.Append("|");
-            sb.Append("COUNT:").Append(Math.Max(1, Math.Min(5, _panelLastSyncedTargetCount > 0 ? _panelLastSyncedTargetCount : activeTargetCount))).Append(";");
-            sb.Append("T1:").Append(svT1Val != null ? svT1Val.Text : "0").Append(";T1TYPE:").Append(t1Type).Append(";");
-            sb.Append("T2:").Append(svT2Val != null ? svT2Val.Text : "0").Append(";T2TYPE:").Append(t2Type).Append(";");
-            sb.Append("T3:").Append(svT3Val != null ? svT3Val.Text : "0").Append(";T3TYPE:").Append(t3Type).Append(";");
-            sb.Append("T4:").Append(svT4Val != null ? svT4Val.Text : "0").Append(";T4TYPE:").Append(t4Type).Append(";");
-            sb.Append("T5:").Append(svT5Val != null ? svT5Val.Text : "0").Append(";T5TYPE:").Append(t5Type).Append(";");
-            sb.Append("STR:").Append(strVal != null ? strVal.Text : "0").Append(";");
-            sb.Append("MAX:").Append(maxText).Append(";");
-            sb.Append("CIT:").Append(citVal != null ? citVal.Text : "0").Append(";");
-            sb.Append("TRMA:").Append(isTrendRmaMode ? "1" : "0").Append(";");
-            sb.Append("RRMA:").Append(isRetestRmaMode ? "1" : "0").Append(";");
-
-            PanelCommand(sb.ToString());
-            Print("V12 PANEL: SYNC ALL -> " + mode + " / count " + (_panelLastSyncedTargetCount > 0 ? _panelLastSyncedTargetCount : activeTargetCount));
+            sb.Append("COUNT:").Append(config.Count).Append(";");
+            sb.Append("T1:").Append(config.T1Val).Append(";T1TYPE:").Append(config.T1Type).Append(";");
+            sb.Append("T2:").Append(config.T2Val).Append(";T2TYPE:").Append(config.T2Type).Append(";");
+            sb.Append("T3:").Append(config.T3Val).Append(";T3TYPE:").Append(config.T3Type).Append(";");
+            sb.Append("T4:").Append(config.T4Val).Append(";T4TYPE:").Append(config.T4Type).Append(";");
+            sb.Append("T5:").Append(config.T5Val).Append(";T5TYPE:").Append(config.T5Type).Append(";");
+            sb.Append("STR:").Append(config.Str).Append(";");
+            sb.Append("MAX:").Append(config.Max).Append(";");
+            sb.Append("CIT:").Append(config.Cit).Append(";");
+            sb.Append("TRMA:").Append(config.TrendRma ? "1" : "0").Append(";");
+            sb.Append("RRMA:").Append(config.RetestRma ? "1" : "0").Append(";");
+            return sb.ToString();
         }
 
         private void AttachTargetDropdown(Button btn, int targetNum, SolidColorBrush glowColor)
@@ -278,7 +488,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Background = BgSlate,
                 BorderBrush = BorderSlate,
-                Foreground = TextPrimary
+                Foreground = TextPrimary,
             };
 
             MenuItem closeItem = new MenuItem
@@ -287,7 +497,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Foreground = RedFg,
                 Background = BgSlate,
                 FontFamily = ConsolasFont,
-                FontSize = 10
+                FontSize = 10,
             };
             closeItem.Click += (s, e) =>
             {
@@ -305,7 +515,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Foreground = GreenFg,
                 Background = BgSlate,
                 FontFamily = ConsolasFont,
-                FontSize = 10
+                FontSize = 10,
             };
             move1PtItem.Click += (s, e) =>
             {
@@ -321,7 +531,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Foreground = YellowFg,
                 Background = BgSlate,
                 FontFamily = ConsolasFont,
-                FontSize = 10
+                FontSize = 10,
             };
             move2PtItem.Click += (s, e) =>
             {
@@ -356,20 +566,23 @@ namespace NinjaTrader.NinjaScript.Strategies
             UpdateRmaButtonVisual(false);
 
             retestCycleState = 0;
-            if (retestButton != null) retestButton.Content = "RETEST";
+            if (retestButton != null)
+                retestButton.Content = "RETEST";
 
             if (isTrendRmaToggle)
             {
                 isTrendRmaToggle = false;
                 PanelCommand("MODE_TREND_STD");
-                if (trendRmaToggle != null) trendRmaToggle.Opacity = 0.5;
+                if (trendRmaToggle != null)
+                    trendRmaToggle.Opacity = 0.5;
             }
 
             if (isRetestRmaToggle)
             {
                 isRetestRmaToggle = false;
                 PanelCommand("MODE_RETEST_STD");
-                if (retestRmaToggle != null) retestRmaToggle.Opacity = 0.5;
+                if (retestRmaToggle != null)
+                    retestRmaToggle.Opacity = 0.5;
             }
 
             Print("V12 PANEL: ResetExecutionMode -- one click = one order");
@@ -377,12 +590,25 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void SelectConfigMode(string mode, Button clickedBtn)
         {
-            string uiMode = string.Equals(mode, "OR", StringComparison.OrdinalIgnoreCase) ? "ORB" : mode.ToUpperInvariant();
+            string uiMode = string.Equals(mode, "OR", StringComparison.OrdinalIgnoreCase)
+                ? "ORB"
+                : mode.ToUpperInvariant();
             string transportMode = string.Equals(uiMode, "ORB", StringComparison.OrdinalIgnoreCase) ? "OR" : uiMode;
 
-            foreach (Button btn in new[] { modeOrbButton, modeRmaButton, modeRetestButton, modeMomoButton, modeFfmaButton, modeTrendButton })
+            foreach (
+                Button btn in new[]
+                {
+                    modeOrbButton,
+                    modeRmaButton,
+                    modeRetestButton,
+                    modeMomoButton,
+                    modeFfmaButton,
+                    modeTrendButton,
+                }
+            )
             {
-                if (btn == null) continue;
+                if (btn == null)
+                    continue;
                 btn.Background = BtnBg;
                 btn.Foreground = TextMuted;
                 btn.BorderBrush = BtnBorder;
@@ -408,7 +634,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             foreach (Button btn in new[] { cnt1, cnt2, cnt3, cnt4, cnt5 })
             {
-                if (btn == null) continue;
+                if (btn == null)
+                    continue;
                 btn.Background = BtnBg;
                 btn.Foreground = TextPrimary;
                 btn.BorderBrush = BtnBorder;
@@ -430,97 +657,219 @@ namespace NinjaTrader.NinjaScript.Strategies
                 ? "ORB"
                 : (mode ?? "ORB").ToUpperInvariant();
 
-            if (execRetestRow != null) execRetestRow.Visibility = Visibility.Collapsed;
-            if (execTrendRow != null) execTrendRow.Visibility = Visibility.Collapsed;
-            if (rmaButton != null) rmaButton.Visibility = Visibility.Collapsed;
-            if (momoButton != null) momoButton.Visibility = Visibility.Collapsed;
-            if (ffmaButton != null) ffmaButton.Visibility = Visibility.Collapsed;
-            if (ffmaManualButton != null) ffmaManualButton.Visibility = Visibility.Collapsed;
-            if (mButton != null) mButton.Visibility = Visibility.Collapsed;
-            if (orLongButton != null) orLongButton.Visibility = Visibility.Collapsed;
-            if (orShortButton != null) orShortButton.Visibility = Visibility.Collapsed;
-            if (manualEntryRow != null) manualEntryRow.Visibility = Visibility.Visible;
+            CollapseAllExecutionControls();
+            ShowModeSpecificControls(upperMode);
+            PopulateDirectionCombo(upperMode);
+        }
 
-            switch (upperMode)
+        private void CollapseAllExecutionControls()
+        {
+            if (execRetestRow != null)
+                execRetestRow.Visibility = Visibility.Collapsed;
+            if (execTrendRow != null)
+                execTrendRow.Visibility = Visibility.Collapsed;
+            if (rmaButton != null)
+                rmaButton.Visibility = Visibility.Collapsed;
+            if (momoButton != null)
+                momoButton.Visibility = Visibility.Collapsed;
+            if (ffmaButton != null)
+                ffmaButton.Visibility = Visibility.Collapsed;
+            if (ffmaManualButton != null)
+                ffmaManualButton.Visibility = Visibility.Collapsed;
+            if (mButton != null)
+                mButton.Visibility = Visibility.Collapsed;
+            if (orLongButton != null)
+                orLongButton.Visibility = Visibility.Collapsed;
+            if (orShortButton != null)
+                orShortButton.Visibility = Visibility.Collapsed;
+            if (manualEntryRow != null)
+                manualEntryRow.Visibility = Visibility.Visible;
+        }
+
+        // [EPIC-CCN-15] Refactored to dispatch-only pattern (CYC 8, Jane Street ultra-aligned)
+        private void ShowModeSpecificControls(string mode)
+        {
+            switch (mode)
             {
                 case "ORB":
-                    if (orLongButton != null) orLongButton.Visibility = Visibility.Visible;
-                    if (orShortButton != null) orShortButton.Visibility = Visibility.Visible;
+                    ShowOrbControls();
                     break;
                 case "RMA":
-                    if (rmaButton != null) rmaButton.Visibility = Visibility.Visible;
+                    ShowRmaControls();
                     break;
                 case "RETEST":
-                    if (execRetestRow != null) execRetestRow.Visibility = Visibility.Visible;
+                    ShowRetestControls();
                     break;
                 case "MOMO":
-                    if (momoButton != null) momoButton.Visibility = Visibility.Visible;
+                    ShowMomoControls();
                     break;
                 case "FFMA":
-                    if (ffmaButton != null) ffmaButton.Visibility = Visibility.Visible;
-                    if (ffmaManualButton != null) ffmaManualButton.Visibility = Visibility.Visible;
-                    if (manualEntryRow != null) manualEntryRow.Visibility = Visibility.Collapsed;
+                    ShowFfmaControls();
                     break;
                 case "TREND":
-                    if (execTrendRow != null) execTrendRow.Visibility = Visibility.Visible;
+                    ShowTrendControls();
                     break;
                 case "MNL":
-                    if (mButton != null) mButton.Visibility = Visibility.Visible;
+                    ShowMnlControls();
                     break;
                 default:
-                    if (orLongButton != null) orLongButton.Visibility = Visibility.Visible;
-                    if (orShortButton != null) orShortButton.Visibility = Visibility.Visible;
+                    ShowOrbControls();
                     break;
-            }
-
-            if (directionCombo != null)
-            {
-                directionCombo.Items.Clear();
-                if (upperMode == "ORB")
-                {
-                    directionCombo.Items.Add(new ComboBoxItem { Content = "OR LONG", Foreground = TextPrimary });
-                    directionCombo.Items.Add(new ComboBoxItem { Content = "OR SHORT", Foreground = TextPrimary });
-                }
-                else
-                {
-                    directionCombo.Items.Add(new ComboBoxItem { Content = "LONG", Foreground = TextPrimary });
-                    directionCombo.Items.Add(new ComboBoxItem { Content = "SHORT", Foreground = TextPrimary });
-                }
-                directionCombo.SelectedIndex = 0;
             }
         }
 
+        // [EPIC-CCN-15] Mode-specific visibility helpers (CYC 2-4 each)
+        // Extracted from ShowModeSpecificControls to achieve Jane Street ultra-alignment (CYC <=8)
+
+        private void ShowOrbControls()
+        {
+            if (orLongButton != null)
+                orLongButton.Visibility = Visibility.Visible;
+            if (orShortButton != null)
+                orShortButton.Visibility = Visibility.Visible;
+        }
+
+        private void ShowRmaControls()
+        {
+            if (rmaButton != null)
+                rmaButton.Visibility = Visibility.Visible;
+        }
+
+        private void ShowRetestControls()
+        {
+            if (execRetestRow != null)
+                execRetestRow.Visibility = Visibility.Visible;
+        }
+
+        private void ShowMomoControls()
+        {
+            if (momoButton != null)
+                momoButton.Visibility = Visibility.Visible;
+        }
+
+        private void ShowFfmaControls()
+        {
+            if (ffmaButton != null)
+                ffmaButton.Visibility = Visibility.Visible;
+            if (ffmaManualButton != null)
+                ffmaManualButton.Visibility = Visibility.Visible;
+            if (manualEntryRow != null)
+                manualEntryRow.Visibility = Visibility.Collapsed;
+        }
+
+        private void ShowTrendControls()
+        {
+            if (execTrendRow != null)
+                execTrendRow.Visibility = Visibility.Visible;
+        }
+
+        private void ShowMnlControls()
+        {
+            if (mButton != null)
+                mButton.Visibility = Visibility.Visible;
+        }
+
+        private void PopulateDirectionCombo(string mode)
+        {
+            if (directionCombo == null)
+                return;
+
+            directionCombo.Items.Clear();
+            if (mode == "ORB")
+            {
+                directionCombo.Items.Add(new ComboBoxItem { Content = "OR LONG", Foreground = TextPrimary });
+                directionCombo.Items.Add(new ComboBoxItem { Content = "OR SHORT", Foreground = TextPrimary });
+            }
+            else
+            {
+                directionCombo.Items.Add(new ComboBoxItem { Content = "LONG", Foreground = TextPrimary });
+                directionCombo.Items.Add(new ComboBoxItem { Content = "SHORT", Foreground = TextPrimary });
+            }
+            directionCombo.SelectedIndex = 0;
+        }
+
+        // [EPIC-CCN-16] Refactored to dispatch-only pattern (CYC 19 -> 1, Jane Street ultra-aligned)
         public void UpdateTargetVisibility(int count)
         {
-            if (svT2Val != null) svT2Val.IsEnabled = count >= 2;
-            if (svT2Type != null) svT2Type.IsEnabled = count >= 2;
-            if (svT3Val != null) svT3Val.IsEnabled = count >= 3;
-            if (svT3Type != null) svT3Type.IsEnabled = count >= 3;
-            if (svT4Val != null) svT4Val.IsEnabled = count >= 4;
-            if (svT4Type != null) svT4Type.IsEnabled = count >= 4;
-            if (svT5Val != null) svT5Val.IsEnabled = count >= 5;
-            if (svT5Type != null) svT5Type.IsEnabled = count >= 5;
+            UpdateConfigControlsEnabled(count);
+            UpdateConfigRowsVisibility(count);
+            UpdateLiveButtonsVisibility(count);
+        }
 
-            if (t2Row != null) t2Row.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed;
-            if (t3Row != null) t3Row.Visibility = count >= 3 ? Visibility.Visible : Visibility.Collapsed;
-            if (t4Row != null) t4Row.Visibility = count >= 4 ? Visibility.Visible : Visibility.Collapsed;
-            if (t5Row != null) t5Row.Visibility = count >= 5 ? Visibility.Visible : Visibility.Collapsed;
+        // [EPIC-CCN-16] Extracted from UpdateTargetVisibility (CYC 19 -> 8)
+        // Enable/disable config panel Val+Type controls based on target count
+        private void UpdateConfigControlsEnabled(int count)
+        {
+            if (svT2Val != null)
+                svT2Val.IsEnabled = count >= 2;
+            if (svT2Type != null)
+                svT2Type.IsEnabled = count >= 2;
+            if (svT3Val != null)
+                svT3Val.IsEnabled = count >= 3;
+            if (svT3Type != null)
+                svT3Type.IsEnabled = count >= 3;
+            if (svT4Val != null)
+                svT4Val.IsEnabled = count >= 4;
+            if (svT4Type != null)
+                svT4Type.IsEnabled = count >= 4;
+            if (svT5Val != null)
+                svT5Val.IsEnabled = count >= 5;
+            if (svT5Type != null)
+                svT5Type.IsEnabled = count >= 5;
+        }
 
-            // Build 1107: In live mode, Section 1 buttons stay collapsed (live rows replace them).
-            // Only manage button visibility when in config mode (flat).
+        // [EPIC-CCN-16] Extracted from UpdateTargetVisibility (CYC 19 -> 8)
+        // Show/hide config panel rows based on target count
+        private void UpdateConfigRowsVisibility(int count)
+        {
+            if (t2Row != null)
+                t2Row.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+            if (t3Row != null)
+                t3Row.Visibility = count >= 3 ? Visibility.Visible : Visibility.Collapsed;
+            if (t4Row != null)
+                t4Row.Visibility = count >= 4 ? Visibility.Visible : Visibility.Collapsed;
+            if (t5Row != null)
+                t5Row.Visibility = count >= 5 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // [EPIC-CCN-16] Extracted from UpdateTargetVisibility (CYC 19 -> 2)
+        // Show/hide live target buttons (only in config mode, not live mode)
+        // Build 1107: In live mode, Section 1 buttons stay collapsed (live rows replace them).
+        private void UpdateLiveButtonsVisibility(int count)
+        {
             if (_currentLiveEntryName == null)
             {
-                if (t1Button != null) t1Button.Visibility = Visibility.Visible;
-                if (t2Button != null) t2Button.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed;
-                if (t3Button != null) t3Button.Visibility = count >= 3 ? Visibility.Visible : Visibility.Collapsed;
-                if (t4Button != null) t4Button.Visibility = count >= 4 ? Visibility.Visible : Visibility.Collapsed;
-                if (t5Button != null) t5Button.Visibility = count >= 5 ? Visibility.Visible : Visibility.Collapsed;
+                SetT1ButtonVisible();
+                SetT2T5ButtonsVisible(count);
             }
+        }
+
+        // [EPIC-CCN-16] Helper for UpdateLiveButtonsVisibility (CYC 1)
+        // T1 button always visible in config mode (no count threshold)
+        private void SetT1ButtonVisible()
+        {
+            if (t1Button != null)
+                t1Button.Visibility = Visibility.Visible;
+        }
+
+        // [EPIC-CCN-16] Helper for UpdateLiveButtonsVisibility (CYC 8)
+        // T2-T5 buttons visibility based on target count
+        private void SetT2T5ButtonsVisible(int count)
+        {
+            if (t2Button != null)
+                t2Button.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+            if (t3Button != null)
+                t3Button.Visibility = count >= 3 ? Visibility.Visible : Visibility.Collapsed;
+            if (t4Button != null)
+                t4Button.Visibility = count >= 4 ? Visibility.Visible : Visibility.Collapsed;
+            if (t5Button != null)
+                t5Button.Visibility = count >= 5 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void UpdateRmaButtonVisual(bool active)
         {
-            if (rmaButton == null) return;
+            if (rmaButton == null)
+                return;
             if (active)
             {
                 rmaButton.Background = PurpleFg;
@@ -550,7 +899,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void AttachLiveTargetPriceHandler(TextBox priceBox, int targetNum)
         {
-            if (priceBox == null) return;
+            if (priceBox == null)
+                return;
             priceBox.PreviewKeyDown += (s, e) =>
             {
                 if (e.Key == Key.Enter)
@@ -568,14 +918,16 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void CommitLiveTargetPrice(int targetNum, string priceText)
         {
-            if (string.IsNullOrWhiteSpace(priceText) || priceText == "--") return;
-            double testParse;
-            if (!double.TryParse(priceText, NumberStyles.Float,
-                CultureInfo.InvariantCulture, out testParse))
+            if (string.IsNullOrWhiteSpace(priceText) || priceText == "--")
                 return;
-            if (testParse <= 0) return;
-            PanelCommand(string.Format(CultureInfo.InvariantCulture,
-                "SET_TARGET_PRICE|T{0}|{1}", targetNum, testParse));
+            double testParse;
+            if (!double.TryParse(priceText, NumberStyles.Float, CultureInfo.InvariantCulture, out testParse))
+                return;
+            if (testParse <= 0)
+                return;
+            PanelCommand(
+                string.Format(CultureInfo.InvariantCulture, "SET_TARGET_PRICE|T{0}|{1}", targetNum, testParse)
+            );
             TriggerGlow(CyanAccent);
             Print(string.Format("V12 PANEL: SET_TARGET_PRICE T{0} -> {1}", targetNum, priceText));
         }
@@ -587,15 +939,20 @@ namespace NinjaTrader.NinjaScript.Strategies
             Enqueue(ctx =>
             {
                 string[] parts = captured.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length == 0) return;
+                if (parts.Length == 0)
+                    return;
                 string action = parts[0].Trim().ToUpperInvariant();
 
                 Print("V12 PANEL: Dispatch -> " + action);
 
-                if (ctx.TryHandleModeCommand(action, parts)) return;
-                if (ctx.TryHandleRiskCommand(action, parts)) return;
-                if (ctx.TryHandleFleetCommand(action, parts, senderTicks)) return;
-                if (ctx.TryHandleConfigCommand(action, parts)) return;
+                if (ctx.TryHandleModeCommand(action, parts))
+                    return;
+                if (ctx.TryHandleRiskCommand(action, parts))
+                    return;
+                if (ctx.TryHandleFleetCommand(action, parts, senderTicks))
+                    return;
+                if (ctx.TryHandleConfigCommand(action, parts))
+                    return;
             });
         }
 

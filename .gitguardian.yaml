@@ -1,0 +1,147 @@
+# GitGuardian Full-Pass Review Configuration
+# V12 Universal OR Strategy - Unified 5/5 Scoring
+# Protocol: GitGuardian reviews EVERYTHING, not just secrets
+
+version: 2
+review_mode: full_pass
+
+# Core Principle: NO SPECIALIZATION
+# GitGuardian must evaluate ALL dimensions
+dimensions:
+  security:
+    enabled: true
+    weight: 20
+    checks:
+      - secrets_detection
+      - api_keys
+      - credentials
+      - tokens
+      - certificates
+      - private_keys
+      - connection_strings
+      - hardcoded_passwords
+  
+  code_quality:
+    enabled: true
+    weight: 20
+    checks:
+      - code_patterns
+      - anti_patterns
+      - complexity
+      - maintainability
+  
+  testing:
+    enabled: true
+    weight: 20
+    checks:
+      - test_coverage
+      - test_security
+      - mock_credentials
+  
+  performance:
+    enabled: true
+    weight: 20
+    checks:
+      - crypto_performance
+      - hashing_algorithms
+      - encryption_overhead
+  
+  standards:
+    enabled: true
+    weight: 20
+    checks:
+      - security_standards
+      - compliance
+      - best_practices
+      - documentation
+
+# Secrets Detection Configuration
+secrets:
+  # Sensitivity
+  minimum_occurrences: 1
+  ignore_known_secrets: false
+  
+  # Detectors (all enabled)
+  detectors:
+    - generic_high_entropy
+    - generic_api_key
+    - aws
+    - azure
+    - gcp
+    - github
+    - slack
+    - stripe
+    - twilio
+    - mailgun
+    - sendgrid
+    - jwt
+    - private_key
+    - connection_string
+    - database_url
+
+# Exclusions (test fixtures only)
+paths-ignore:
+  - infrastructure/paperclip/**  # Test fixtures with intentional mock secrets
+  - "**/*.Designer.cs"
+  - "**/*.g.cs"
+  - "**/*.generated.cs"
+  - "**/obj/**"
+  - "**/bin/**"
+  - "**/.vs/**"
+  - "**/packages/**"
+
+# Allowlist (from .gitleaks.toml)
+allowlist:
+  description: "Test fixtures and mock data"
+  paths:
+    - infrastructure/paperclip/test_data/**
+  
+  regexes:
+    - "test_api_key_.*"
+    - "mock_secret_.*"
+    - "dummy_token_.*"
+
+# Scoring Configuration
+scoring:
+  format: "X/5"
+  threshold_excellent: 90  # 5/5 stars
+  threshold_good: 75       # 4/5 stars
+  threshold_fair: 60       # 3/5 stars
+  threshold_poor: 40       # 2/5 stars
+
+# Output Template
+output:
+  format: markdown
+  template: |
+    ## GitGuardian Full-Pass Review
+    
+    **Overall Score**: {score}/5 ⭐⭐⭐⭐⭐
+    
+    ### Dimension Breakdown
+    - **Security**: {security_score}/5 ({secrets_found} secrets)
+    - **Code Quality**: {quality_score}/5 ({quality_issues} issues)
+    - **Testing**: {testing_score}/5 ({test_issues} issues)
+    - **Performance**: {performance_score}/5 ({perf_issues} issues)
+    - **Standards**: {standards_score}/5 ({standards_issues} issues)
+    
+    ### Verdict
+    {verdict}
+
+# Integration
+integrations:
+  github:
+    enabled: true
+    comment_on_pr: true
+    block_merge_on_secrets: true
+  
+  slack:
+    enabled: false
+    webhook_url: ""
+
+# Remediation
+remediation:
+  auto_revoke: false  # Manual review required
+  notify_on_detection: true
+  create_incident: true
+
+# Made with Bob

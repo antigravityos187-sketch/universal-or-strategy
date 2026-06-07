@@ -1,12 +1,14 @@
 // Build 971: V12_002 Lifecycle -- OnStateChange, OnConnectionStatusUpdate, OnMarketData
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
 using System.Globalization;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,16 +18,14 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using NinjaTrader.Cbi;
+using NinjaTrader.Data;
 using NinjaTrader.Gui;
 using NinjaTrader.Gui.Chart;
 using NinjaTrader.Gui.Tools;
-using NinjaTrader.Data;
 using NinjaTrader.NinjaScript;
 using NinjaTrader.NinjaScript.DrawingTools;
 using NinjaTrader.NinjaScript.Indicators;
 using NinjaTrader.NinjaScript.Strategies;
-using System.Net;
-using System.Net.Sockets;
 
 namespace NinjaTrader.NinjaScript.Strategies
 {
@@ -51,7 +51,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 ResetTelemetry();
                 Description = "Universal OR Strategy V12.12 - Build " + BUILD_TAG;
                 Name = "V12_002";
-                Calculate = Calculate.OnPriceChange;  // CRITICAL FIX: Updates on every price tick for real-time trailing
+                Calculate = Calculate.OnPriceChange; // CRITICAL FIX: Updates on every price tick for real-time trailing
                 EntriesPerDirection = 10;
                 EntryHandling = EntryHandling.UniqueEntries;
                 IsExitOnSessionCloseStrategy = false;
@@ -80,11 +80,10 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Stop defaults
                 StopMultiplier = 0.5;
-                MinimumStop = 4.0;  // 1102Z-A F2: raised floor from 1.0 to 4.0 for current volatility
-                MaximumStop = 15.0;  // V8.31: Increased from 8.0
+                MinimumStop = 4.0; // 1102Z-A F2: raised floor from 1.0 to 4.0 for current volatility
+                MaximumStop = 15.0; // V8.31: Increased from 8.0
                 IpcPort = 5001;
                 IpcExposeSensitiveFleetIdentity = false;
-
 
                 // V12.1101E: 5-target system with configurable runner selection
                 Target1Value = 1.0;
@@ -101,7 +100,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Trailing stop defaults
                 BreakEvenTriggerPoints = 2.0;
-                BreakEvenOffsetTicks = 2;              // BE stop offset in ticks (0 = exact entry)
+                BreakEvenOffsetTicks = 2; // BE stop offset in ticks (0 = exact entry)
                 Trail1TriggerPoints = 3.0;
                 Trail1DistancePoints = 2.0;
                 Trail2TriggerPoints = 4.0;
@@ -120,20 +119,20 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // V8.2: TREND defaults (V8.31: E1 now uses ATR from live EMA9)
                 TRENDEnabled = true;
-                TRENDEntry1ATRMultiplier = 1.1;   // V8.31: 1.1x ATR stop from live 9 EMA (was fixed 2pt)
-                TRENDEntry2ATRMultiplier = 1.1;   // 1.1x ATR trailing for 15 EMA entry
+                TRENDEntry1ATRMultiplier = 1.1; // V8.31: 1.1x ATR stop from live 9 EMA (was fixed 2pt)
+                TRENDEntry2ATRMultiplier = 1.1; // 1.1x ATR trailing for 15 EMA entry
 
                 // V8.4: RETEST defaults
                 RetestEnabled = true;
-                RetestATRMultiplier = 1.1;        // 1.1x ATR for both stop and trail
+                RetestATRMultiplier = 1.1; // 1.1x ATR for both stop and trail
 
                 // V8.6: MOMO defaults
                 MOMOEnabled = true;
-                MOMOStopPoints = 0.5;             // Fixed 0.5pt stop for MOMO trades
+                MOMOStopPoints = 0.5; // Fixed 0.5pt stop for MOMO trades
 
                 // V8.7: FFMA defaults
                 FFMAEnabled = true;
-                FFMAEMADistance = 10.0;           // 10 points from 9 EMA
+                FFMAEMADistance = 10.0; // 10 points from 9 EMA
                 FFMARSIOverbought = 80;
                 FFMARSIOversold = 20;
 
@@ -141,8 +140,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 AccountPrefix = "Apex";
                 EnableSIMA = false; // SAFETY: Default to OFF
                 ReaperAuditEnabled = true;
-                ReaperIntervalMs = 1000;          // 1 second audit cycle
-                NakedPositionGraceSec = 5;        // Build 1104: extend naked-position grace to 5s for stop replace round-trips
+                ReaperIntervalMs = 1000; // 1 second audit cycle
+                NakedPositionGraceSec = 5; // Build 1104: extend naked-position grace to 5s for stop replace round-trips
                 EnablePathB = false;
                 AutoFlattenDesync = false;
                 RepairTickFence = 8;
@@ -164,7 +163,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 RmaIntelligenceEnabled = false; // Default to isolated/OFF
                 RmaProximityTicks = 2;
                 RmaCancellationTicks = 4;
-                RmaMaxProbeCount = 3;         // Phase 9.2: 3 probes before exhaustion
+                RmaMaxProbeCount = 3; // Phase 9.2: 3 probes before exhaustion
                 RmaExhaustionEnabled = false; // Phase 9.2: Off by default, opt-in
             }
             else if (state == State.Configure)
@@ -179,7 +178,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 stopOrders = new ConcurrentDictionary<string, Order>(2, 4);
                 target1Orders = new ConcurrentDictionary<string, Order>(2, 4);
                 target2Orders = new ConcurrentDictionary<string, Order>(2, 4);
-                target3Orders = new ConcurrentDictionary<string, Order>(2, 4);  // v5.13
+                target3Orders = new ConcurrentDictionary<string, Order>(2, 4); // v5.13
                 target4Orders = new ConcurrentDictionary<string, Order>(2, 4);
                 target5Orders = new ConcurrentDictionary<string, Order>(2, 4);
 
@@ -191,10 +190,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // V8.30: Thread-safe dictionary
                 pendingStopReplacements = new ConcurrentDictionary<string, PendingStopReplacement>(2, 4);
 
-
                 // IPC Queue
                 ipcCommandQueue = new ConcurrentQueue<string>();
                 connectedClients = new ConcurrentDictionary<int, IpcClientSession>(); // Build 935 [Fix-1]: prevent NullReferenceException in StopIpcServer
+
+                // EPIC-4 Ticket 03: Initialize IPC hardening layer (rate limiting, circuit breakers, validation)
+                InitializeIpcHardening();
 
                 // V12 SIMA: Initialize expected positions tracking
                 expectedPositions = new ConcurrentDictionary<string, int>(2, 20); // Up to 20 accounts
@@ -209,12 +210,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Static assert: Shadow must be the last 8 bytes of FleetDispatchSlot (ADR-016)
                 {
                     int _slotSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(FleetDispatchSlot));
-                    int _shadowOffset = System.Runtime.InteropServices.Marshal.OffsetOf(typeof(FleetDispatchSlot), "Shadow").ToInt32();
+                    int _shadowOffset = System
+                        .Runtime.InteropServices.Marshal.OffsetOf(typeof(FleetDispatchSlot), "Shadow")
+                        .ToInt32();
                     if (_slotSize != 64 || _shadowOffset != 56)
                     {
-                        throw new InvalidOperationException(string.Format(
-                            "FleetDispatchSlot layout invariant violated: size={0}, shadowOffset={1}; expected size=64, offset=56",
-                            _slotSize, _shadowOffset));
+                        throw new InvalidOperationException(
+                            string.Format(
+                                "FleetDispatchSlot layout invariant violated: size={0}, shadowOffset={1}; expected size=64, offset=56",
+                                _slotSize,
+                                _shadowOffset
+                            )
+                        );
                     }
                 }
 
@@ -222,7 +229,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Failure is non-fatal: hot path runs against the heap ring even if the mirror fails.
                 try
                 {
-                    string _mmfName = "V12_FleetDispatch_" + System.Diagnostics.Process.GetCurrentProcess().Id.ToString() + "_" + _photonShadowSalt.ToString("X16");
+                    string _mmfName =
+                        "V12_FleetDispatch_"
+                        + System.Diagnostics.Process.GetCurrentProcess().Id.ToString()
+                        + "_"
+                        + _photonShadowSalt.ToString("X16");
                     _photonMmioMirror = new MmioDispatchMirror(_mmfName, PhotonPoolCapacity, 64, _photonShadowSalt);
                     Print(string.Format("[PHOTON MMIO] mirror online: {0}", _mmfName));
                 }
@@ -238,11 +249,16 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // V12.1: Initialize Compliance Hub -- create log directory early (idempotent).
                 // Build 935 [Fix-2/3]: Symbol-specific log paths and LogicAudit moved to DataLoaded.
-                string logsDirInit = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "NinjaTrader 8", "SIMA_Logs");
-                if (!System.IO.Directory.Exists(logsDirInit)) System.IO.Directory.CreateDirectory(logsDirInit);
+                string logsDirInit = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "NinjaTrader 8",
+                    "SIMA_Logs"
+                );
+                if (!System.IO.Directory.Exists(logsDirInit))
+                    System.IO.Directory.CreateDirectory(logsDirInit);
 
                 // Add data series for MTF RMA Intelligence (Phase 9.2)
-                AddDataSeries(BarsPeriodType.Minute, 5);  // Index 1 (Primary for ATR)
+                AddDataSeries(BarsPeriodType.Minute, 5); // Index 1 (Primary for ATR)
                 AddDataSeries(BarsPeriodType.Minute, 10); // Index 2
                 AddDataSeries(BarsPeriodType.Minute, 15); // Index 3
 
@@ -281,11 +297,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 else
                 {
                     // Backward compatibility for templates saved before ConfiguredTargetCount existed.
-                    int loadedTargetCount = (Target1Value > 0 ? 1 : 0)
-                                          + (Target2Value > 0 ? 1 : 0)
-                                          + (Target3Value > 0 ? 1 : 0)
-                                          + (Target4Value > 0 ? 1 : 0)
-                                          + (Target5Value > 0 ? 1 : 0);
+                    int loadedTargetCount =
+                        (Target1Value > 0 ? 1 : 0)
+                        + (Target2Value > 0 ? 1 : 0)
+                        + (Target3Value > 0 ? 1 : 0)
+                        + (Target4Value > 0 ? 1 : 0)
+                        + (Target5Value > 0 ? 1 : 0);
                     activeTargetCount = Math.Max(1, Math.Min(5, loadedTargetCount));
                     ConfiguredTargetCount = activeTargetCount;
                 }
@@ -301,31 +318,91 @@ namespace NinjaTrader.NinjaScript.Strategies
                 ema30 = this.EMA(30);
                 ema65 = this.EMA(65);
                 ema200 = this.EMA(200);
-                
+
                 // V8.7: Initialize RSI for FFMA trades
                 rsiIndicator = this.RSI(14, 3);
-                
+
                 // V8.2 DEBUG: Verify EMA periods are correct
                 Print(string.Format("EMA INIT DEBUG: ema9.Period={0} ema15.Period={1}", ema9.Period, ema15.Period));
 
                 ResetOR();
 
-                Print(string.Format("UniversalORStrategy {0} | {1} | Tick: {2} | PV: ${3}", BUILD_TAG, symbol, tickSize, pointValue));
-                Print(string.Format("Session: {0} - {1} {2} | OR: {3} min",
-                    SessionStart.ToString("HH:mm"), SessionEnd.ToString("HH:mm"), SelectedTimeZone, (int)ORTimeframe));
-                Print(string.Format("Targets: T1={0}({1}) T2={2}({3}) T3={4}({5}) T4={6}({7}) T5={8}({9}) | Stop={10}xOR",
-                    Target1Value, T1Type, Target2Value, T2Type, Target3Value, T3Type, Target4Value, T4Type, Target5Value, T5Type, StopMultiplier));
-                Print(string.Format("RMA: Enabled={0} ATR({1}) Stop={2}xATR",
-                    RMAEnabled, RMAATRPeriod, RMAStopATRMultiplier));
+                Print(
+                    string.Format(
+                        "UniversalORStrategy {0} | {1} | Tick: {2} | PV: ${3}",
+                        BUILD_TAG,
+                        symbol,
+                        tickSize,
+                        pointValue
+                    )
+                );
+                Print(
+                    string.Format(
+                        "Session: {0} - {1} {2} | OR: {3} min",
+                        SessionStart.ToString("HH:mm"),
+                        SessionEnd.ToString("HH:mm"),
+                        SelectedTimeZone,
+                        (int)ORTimeframe
+                    )
+                );
+                Print(
+                    string.Format(
+                        "Targets: T1={0}({1}) T2={2}({3}) T3={4}({5}) T4={6}({7}) T5={8}({9}) | Stop={10}xOR",
+                        Target1Value,
+                        T1Type,
+                        Target2Value,
+                        T2Type,
+                        Target3Value,
+                        T3Type,
+                        Target4Value,
+                        T4Type,
+                        Target5Value,
+                        T5Type,
+                        StopMultiplier
+                    )
+                );
+                Print(
+                    string.Format(
+                        "RMA: Enabled={0} ATR({1}) Stop={2}xATR",
+                        RMAEnabled,
+                        RMAATRPeriod,
+                        RMAStopATRMultiplier
+                    )
+                );
                 Print(string.Format("{0} REPAIRED: Definitive Chart-Click Fix + Logic Refresh", BUILD_TAG));
-                Print(string.Format("TREND: Enabled={0} E1Stop={1}xATR E2Trail={2}xATR", TRENDEnabled, TRENDEntry1ATRMultiplier, TRENDEntry2ATRMultiplier));
-                Print(string.Format("FFMA: Enabled={0} Distance={1}pt RSI={2}/{3}", FFMAEnabled, FFMAEMADistance, FFMARSIOversold, FFMARSIOverbought));
-                Print(string.Format("V12 SIMA: {0} | AccountPrefix: \"{1}\"", EnableSIMA ? "ENABLED - Fleet mode" : "DISABLED - Single account", AccountPrefix));
+                Print(
+                    string.Format(
+                        "TREND: Enabled={0} E1Stop={1}xATR E2Trail={2}xATR",
+                        TRENDEnabled,
+                        TRENDEntry1ATRMultiplier,
+                        TRENDEntry2ATRMultiplier
+                    )
+                );
+                Print(
+                    string.Format(
+                        "FFMA: Enabled={0} Distance={1}pt RSI={2}/{3}",
+                        FFMAEnabled,
+                        FFMAEMADistance,
+                        FFMARSIOversold,
+                        FFMARSIOverbought
+                    )
+                );
+                Print(
+                    string.Format(
+                        "V12 SIMA: {0} | AccountPrefix: \"{1}\"",
+                        EnableSIMA ? "ENABLED - Fleet mode" : "DISABLED - Single account",
+                        AccountPrefix
+                    )
+                );
 
                 // Build 935 [Fix-2]: Symbol-specific log paths prevent file-lock collisions
                 // when MES and MCL instances run concurrently on the same machine.
-                string logsDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "NinjaTrader 8", "SIMA_Logs");
-                complianceLogPath   = System.IO.Path.Combine(logsDir, $"ApexPerformance_{symbol}.json");
+                string logsDir = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "NinjaTrader 8",
+                    "SIMA_Logs"
+                );
+                complianceLogPath = System.IO.Path.Combine(logsDir, $"ApexPerformance_{symbol}.json");
                 dailySummaryCsvPath = System.IO.Path.Combine(logsDir, $"DailySummaries_{symbol}.csv");
                 EnsureDailySummaryCsv();
 
@@ -337,8 +414,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Build 1103: Initialize sticky state path + hydrate persisted config.
                 // MUST run BEFORE StartIpcServer() so GET_LAYOUT serves last-synced state.
-                _stickyStatePath = System.IO.Path.Combine(logsDir,
-                    string.Format("StickyState_{0}.v12state", symbol));
+                _stickyStatePath = System.IO.Path.Combine(logsDir, string.Format("StickyState_{0}.v12state", symbol));
                 bool stickyLoaded = LoadStickyState();
                 if (stickyLoaded)
                     Print("[STICKY] Persisted state hydrated -- GET_LAYOUT will serve last-synced config");
@@ -377,22 +453,30 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (ChartControl != null)
                 {
                     // Hotkeys attach at Normal priority (fast, no visual tree dependency)
-                    ChartControl.Dispatcher.InvokeAsync(() =>
-                    {
-                        if (_isTerminating) return;
-                        AttachHotkeys();
-                        AttachChartClickHandler();
-                    }, System.Windows.Threading.DispatcherPriority.Normal);
+                    ChartControl.Dispatcher.InvokeAsync(
+                        () =>
+                        {
+                            if (_isTerminating)
+                                return;
+                            AttachHotkeys();
+                            AttachChartClickHandler();
+                        },
+                        System.Windows.Threading.DispatcherPriority.Normal
+                    );
 
                     // Panel creation deferred to Loaded priority (runs AFTER Render pass)
                     // This ensures the Chart Trader control is in the visual tree before discovery
-                    ChartControl.Dispatcher.InvokeAsync(() =>
-                    {
-                        if (_isTerminating) return;
-                        CreatePanel();
-                        StartPanelRefresh();
-                        Print("REALTIME - Hotkeys: L=Long, S=Short, Shift+Click=RMA, F=Flatten");
-                    }, System.Windows.Threading.DispatcherPriority.Loaded);
+                    ChartControl.Dispatcher.InvokeAsync(
+                        () =>
+                        {
+                            if (_isTerminating)
+                                return;
+                            CreatePanel();
+                            StartPanelRefresh();
+                            Print("REALTIME - Hotkeys: L=Long, S=Short, Shift+Click=RMA, F=Flatten");
+                        },
+                        System.Windows.Threading.DispatcherPriority.Loaded
+                    );
                 }
             }
             else if (state == State.Terminated)
@@ -426,10 +510,10 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Stop IPC Server
                 StopIpcServer();
-                
+
                 // V12 SIMA: Stop Reaper audit thread
                 StopReaperAudit();
-                
+
                 // V12.7: Always unsubscribe from account updates (subscribed for fleet bracket management)
                 // V12.1101E [A-4]: Use shared UnsubscribeFromFleetAccounts() -- unconditional (no EnableSIMA guard)
                 // to handle cases where flag was toggled OFF mid-session while handlers were still subscribed.
@@ -438,7 +522,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // v28.0 MMIO mirror teardown
                 if (_photonMmioMirror != null)
                 {
-                    try { _photonMmioMirror.Dispose(); } catch { }
+                    try
+                    {
+                        _photonMmioMirror.Dispose();
+                    }
+                    catch { }
                     _photonMmioMirror = null;
                 }
 
@@ -456,11 +544,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                 stopOrders?.Clear();
                 target1Orders?.Clear();
                 target2Orders?.Clear();
-                target3Orders?.Clear();  // v5.13
+                target3Orders?.Clear(); // v5.13
                 target4Orders?.Clear();
                 target5Orders?.Clear();
                 _followerBrackets?.Clear();
-                if (_accountMailbox != null) { while (_accountMailbox.TryDequeue(out var _)) ; }
+                if (_accountMailbox != null)
+                {
+                    while (_accountMailbox.TryDequeue(out var _))
+                        ;
+                }
                 accountDailyProfit?.Clear();
                 accountTotalProfit?.Clear();
                 accountTradeCount?.Clear();
@@ -469,7 +561,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 accountMaxDrawdown?.Clear();
                 accountTradingDays?.Clear();
                 accountLastSummaryDate?.Clear();
-
             }
         }
 
@@ -481,7 +572,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 int ipcDrained = 0;
                 if (ipcCommandQueue != null)
                 {
-                    while (ipcDrained < 100 && ipcCommandQueue.TryDequeue(out string _))
+                    while (ipcDrained < IPC_DRAIN_LIMIT && ipcCommandQueue.TryDequeue(out string _))
                     {
                         ipcDrained++;
                     }
@@ -490,7 +581,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 int actorDrained = 0;
                 while (actorDrained < 50 && _cmdQueue.TryDequeue(out StrategyCommand cmd))
                 {
-                    try { cmd.Execute(this); } catch { }
+                    try
+                    {
+                        cmd.Execute(this);
+                    }
+                    catch { }
                     actorDrained++;
                 }
                 Print(string.Format("[SHUTDOWN] Drained {0} IPC cmds and {1} Actor cmds.", ipcDrained, actorDrained));
@@ -515,7 +610,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void ProcessOnConnectionStatusUpdate(ConnectionStatus status, bool enableSima, State strategyState)
         {
-            if (!enableSima || strategyState != State.Realtime) return;
+            if (!enableSima || strategyState != State.Realtime)
+                return;
 
             if (status == ConnectionStatus.Disconnecting || status == ConnectionStatus.ConnectionLost)
             {
@@ -527,7 +623,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 // Re-adopt working orders after reconnect; runs on strategy thread via TriggerCustomEvent
                 Print("[BUILD 948] Reconnected -- scheduling working order re-adoption.");
-                try { Enqueue(ctx => ctx.HydrateWorkingOrdersFromBroker()); } catch { }
+                try
+                {
+                    Enqueue(ctx => ctx.HydrateWorkingOrdersFromBroker());
+                }
+                catch { }
             }
         }
 
@@ -542,13 +642,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Only process on primary instrument
             if (marketDataUpdate.MarketDataType == MarketDataType.Last)
             {
-                if (!EnsureStartupReady(nameof(OnMarketData))) return;
+                if (!EnsureStartupReady(nameof(OnMarketData)))
+                    return;
                 TouchStrategyHeartbeat();
 
                 // Update last known price for real-time tracking
                 lastKnownPrice = marketDataUpdate.Price;
                 PublishUiSnapshot();
-                
+
                 // Process IPC commands immediately on every tick
                 // This ensures Remote App buttons work even outside session time
                 ProcessIpcCommands();

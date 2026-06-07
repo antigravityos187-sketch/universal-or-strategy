@@ -3,12 +3,23 @@ bin/
 obj/
 *.bak*
 *.202*
+__pycache__/
+*.pyc
+*.pyo
+*.extracted.py
+
+# ...
+artifacts/
+*.patch
+*.diff
+
 # Zero-Waste Discovery Rule: .agent/rules/zero_waste_discovery.md
 
 # AI System Plumbing (Claude Code / MCP / Antigravity)
 .agent/
 .agents/
 .mcp/
+.antigravitycli/
 
 # JavaScript / TestSprite noise
 node_modules/
@@ -21,11 +32,14 @@ testsprite_tests/
 ~$*
 *.tmp
 *.log
+.dotnet-home/
 
 # Sensitive Info / Env
 .env
 auth.json
 *.key
+firebase-credentials.json
+*firebase-adminsdk*.json
 
 # Audit & PR artifacts (never commit these)
 audit_report.md
@@ -39,7 +53,25 @@ diff.txt
 gh_log.txt
 help.txt
 test-vertex.js
+artifacts/rdp_ocr*.txt
 
+# V12.22 Quality Protocol Artifacts
+codacy_warnings.json
+coderabbit_review.json
+complexity_violations.txt
+
+# Persistent ignores
+tmp/
+.claude/
+.gemini/
+.agent/
+graphify-out/
+
+# Project pollution ignore rules
+infrastructure/
+experts/
+docs/brain/run2-stickystate/
+agy_log.txt
 
 #Ignore vscode AI rules
 .github\instructions\codacy.instructions.md

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -16,7 +17,13 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private static readonly FontFamily ConsolasFont = new FontFamily("Consolas");
 
-        private Button CreateButton(string text, double width, SolidColorBrush bg, SolidColorBrush fg, SolidColorBrush border)
+        private Button CreateButton(
+            string text,
+            double width,
+            SolidColorBrush bg,
+            SolidColorBrush fg,
+            SolidColorBrush border
+        )
         {
             var btn = new Button
             {
@@ -31,7 +38,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Height = 22,
                 Padding = new Thickness(2, 0, 2, 0),
                 Cursor = System.Windows.Input.Cursors.Hand,
-                HorizontalAlignment = HorizontalAlignment.Stretch
+                HorizontalAlignment = HorizontalAlignment.Stretch,
             };
             if (width > 0)
                 btn.Width = width;
@@ -52,11 +59,19 @@ namespace NinjaTrader.NinjaScript.Strategies
                 FontWeight = FontWeights.Bold,
                 Height = 22,
                 Cursor = System.Windows.Input.Cursors.Hand,
-                HorizontalAlignment = HorizontalAlignment.Stretch
+                HorizontalAlignment = HorizontalAlignment.Stretch,
             };
         }
 
+        // Phase 7 Sprint 5 T09: CYC reduction (26 -> <20) via sub-helper extraction
         private TextBox CreateTextBox(string defaultText, double width)
+        {
+            var tb = CreateTextBoxBase(defaultText, width);
+            ApplyTextBoxKeyboardHandlers(tb);
+            return tb;
+        }
+
+        private TextBox CreateTextBoxBase(string defaultText, double width)
         {
             var tb = new TextBox
             {
@@ -69,63 +84,121 @@ namespace NinjaTrader.NinjaScript.Strategies
                 FontSize = 9,
                 Height = 20,
                 TextAlignment = TextAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center
+                VerticalContentAlignment = VerticalAlignment.Center,
             };
             if (width > 0)
                 tb.Width = width;
-            // Phase 7 [KB-R1]: Manual Text Pipeline -- soaks chart-level keyboard hijack
-            // while explicitly managing TextBox content (port from V12_001 baseline).
-            tb.PreviewKeyDown += (s, e) =>
+            return tb;
+        }
+
+        private void HandleTextBoxKeyInput(TextBox textBox, KeyEventArgs e)
+        {
+            // Navigation keys bubble to parent (no e.Handled)
+            if (TryHandleNavigationKey(e.Key))
+                return;
+
+            // Stop event from bubbling to NinjaTrader chart - prevents symbol search
+            e.Handled = true;
+
+            // Null safety
+            if (textBox == null)
+                return;
+
+            // Deletion operations (modify TextBox directly)
+            if (TryHandleBackspace(textBox, e.Key))
+                return;
+            if (TryHandleDelete(textBox, e.Key))
+                return;
+
+            // Character mapping (numeric, special, space)
+            string keyChar;
+            if (TryMapNumericKey(e.Key, out keyChar) || TryMapSpecialCharacter(e.Key, out keyChar))
             {
-                // Let Tab/Enter/Escape bubble for navigation
-                if (e.Key == Key.Tab || e.Key == Key.Enter || e.Key == Key.Escape)
-                    return;
-
-                // Stop event from bubbling to NinjaTrader chart - prevents symbol search
-                e.Handled = true;
-
-                // Manually handle the key input for the TextBox
-                TextBox textBox = s as TextBox;
-                if (textBox == null) return;
-
-                string keyChar = "";
-                if (e.Key >= Key.D0 && e.Key <= Key.D9)
-                    keyChar = ((char)('0' + (e.Key - Key.D0))).ToString();
-                else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
-                    keyChar = ((char)('0' + (e.Key - Key.NumPad0))).ToString();
-                else if (e.Key == Key.Back && textBox.Text.Length > 0 && textBox.SelectionStart > 0)
-                {
-                    int pos = textBox.SelectionStart;
-                    textBox.Text = textBox.Text.Remove(pos - 1, 1);
-                    textBox.SelectionStart = pos - 1;
-                    return;
-                }
-                else if (e.Key == Key.Delete && textBox.SelectionStart < textBox.Text.Length)
-                {
-                    int pos = textBox.SelectionStart;
-                    textBox.Text = textBox.Text.Remove(pos, 1);
-                    textBox.SelectionStart = pos;
-                    return;
-                }
-                else if (e.Key == Key.OemPeriod || e.Key == Key.Decimal)
-                    keyChar = ".";
-                else if (e.Key == Key.OemMinus || e.Key == Key.Subtract)
-                    keyChar = "-";
-                else if (e.Key == Key.Space)
-                    keyChar = " ";
-                else
-                    return;  // Ignore other keys
-
                 int caret = textBox.SelectionStart;
                 textBox.Text = textBox.Text.Insert(caret, keyChar);
                 textBox.SelectionStart = caret + 1;
-            };
+                return;
+            }
+
+            // All other keys ignored (no-op)
+        }
+
+        private static bool TryHandleNavigationKey(Key key)
+        {
+            return key == Key.Tab || key == Key.Enter || key == Key.Escape;
+        }
+
+        private static bool TryMapNumericKey(Key key, out string keyChar)
+        {
+            if (key >= Key.D0 && key <= Key.D9)
+            {
+                keyChar = ((char)('0' + (key - Key.D0))).ToString();
+                return true;
+            }
+            if (key >= Key.NumPad0 && key <= Key.NumPad9)
+            {
+                keyChar = ((char)('0' + (key - Key.NumPad0))).ToString();
+                return true;
+            }
+            keyChar = null;
+            return false;
+        }
+
+        private static bool TryHandleBackspace(TextBox textBox, Key key)
+        {
+            if (key == Key.Back && textBox.Text.Length > 0 && textBox.SelectionStart > 0)
+            {
+                int pos = textBox.SelectionStart;
+                textBox.Text = textBox.Text.Remove(pos - 1, 1);
+                textBox.SelectionStart = pos - 1;
+                return true;
+            }
+            return false;
+        }
+
+        private static bool TryHandleDelete(TextBox textBox, Key key)
+        {
+            if (key == Key.Delete && textBox.SelectionStart < textBox.Text.Length)
+            {
+                int pos = textBox.SelectionStart;
+                textBox.Text = textBox.Text.Remove(pos, 1);
+                textBox.SelectionStart = pos;
+                return true;
+            }
+            return false;
+        }
+
+        private static bool TryMapSpecialCharacter(Key key, out string keyChar)
+        {
+            if (key == Key.OemPeriod || key == Key.Decimal)
+            {
+                keyChar = ".";
+                return true;
+            }
+            if (key == Key.OemMinus || key == Key.Subtract)
+            {
+                keyChar = "-";
+                return true;
+            }
+            if (key == Key.Space)
+            {
+                keyChar = " ";
+                return true;
+            }
+            keyChar = null;
+            return false;
+        }
+
+        private void ApplyTextBoxKeyboardHandlers(TextBox tb)
+        {
+            // Phase 7 [KB-R1]: Manual Text Pipeline -- soaks chart-level keyboard hijack
+            // while explicitly managing TextBox content (port from V12_001 baseline).
+            tb.PreviewKeyDown += (s, e) => HandleTextBoxKeyInput(s as TextBox, e);
             tb.GotKeyboardFocus += (s, e) =>
             {
                 // Stop bubbling to prevent NT8 chart keyboard shortcuts
                 e.Handled = true;
             };
-            return tb;
         }
 
         private ComboBox CreateCombo(double width, params string[] items)
@@ -138,7 +211,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 BorderThickness = new Thickness(1),
                 FontFamily = ConsolasFont,
                 FontSize = 10,
-                IsTextSearchEnabled = false
+                IsTextSearchEnabled = false,
             };
             if (width > 0)
                 cb.Width = width;
@@ -164,7 +237,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Padding = new Thickness(2, 0, 2, 0),
                 Margin = new Thickness(0, 0, 0, 2),
                 Cursor = System.Windows.Input.Cursors.Hand,
-                HorizontalAlignment = HorizontalAlignment.Stretch
+                HorizontalAlignment = HorizontalAlignment.Stretch,
             };
         }
 
@@ -185,16 +258,29 @@ namespace NinjaTrader.NinjaScript.Strategies
             SolidColorBrush color;
             switch (targetNum)
             {
-                case 1: color = GreenFg; break;
-                case 2: color = YellowFg; break;
-                case 3: color = OrangeFg; break;
-                case 4: color = RedFg; break;
-                case 5: color = PinkFg; break;
-                default: color = TextPrimary; break;
+                case 1:
+                    color = GreenFg;
+                    break;
+                case 2:
+                    color = YellowFg;
+                    break;
+                case 3:
+                    color = OrangeFg;
+                    break;
+                case 4:
+                    color = RedFg;
+                    break;
+                case 5:
+                    color = PinkFg;
+                    break;
+                default:
+                    color = TextPrimary;
+                    break;
             }
 
             Grid row = new Grid { Visibility = Visibility.Collapsed, Height = 22 };
-            if (targetNum > 1) row.Margin = new Thickness(0, 2, 0, 0);
+            if (targetNum > 1)
+                row.Margin = new Thickness(0, 2, 0, 0);
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -207,7 +293,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 FontFamily = ConsolasFont,
                 FontSize = 9,
                 FontWeight = FontWeights.Bold,
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = VerticalAlignment.Center,
             };
             Grid.SetColumn(label, 0);
             row.Children.Add(label);
@@ -226,7 +312,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 FontFamily = ConsolasFont,
                 FontSize = 8,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2, 0, 2, 0)
+                Margin = new Thickness(2, 0, 2, 0),
             };
             Grid.SetColumn(ctsBlock, 2);
             row.Children.Add(ctsBlock);
@@ -253,7 +339,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 FontSize = 11,
                 FontFamily = ConsolasFont,
                 FontWeight = FontWeights.Bold,
-                Margin = new Thickness(0, 0, 10, 0)
+                Margin = new Thickness(0, 0, 10, 0),
             };
             tb.Inlines.Add(new System.Windows.Documents.Run(label) { Foreground = TextMuted });
             tb.Inlines.Add(new System.Windows.Documents.Run(value) { Foreground = valueColor });
@@ -278,20 +364,36 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string info = "  [" + depth + "] " + shortName;
 
                     if (current is FrameworkElement fe)
-                        info += " Name=" + fe.Name + " W=" + fe.ActualWidth.ToString("F0")
-                              + " H=" + fe.ActualHeight.ToString("F0") + " Vis=" + fe.Visibility;
+                        info +=
+                            " Name="
+                            + fe.Name
+                            + " W="
+                            + fe.ActualWidth.ToString("F0")
+                            + " H="
+                            + fe.ActualHeight.ToString("F0")
+                            + " Vis="
+                            + fe.Visibility;
 
                     if (current is Grid grid)
                     {
-                        info += " Cols=" + grid.ColumnDefinitions.Count
-                              + " Rows=" + grid.RowDefinitions.Count
-                              + " Children=" + grid.Children.Count;
+                        info +=
+                            " Cols="
+                            + grid.ColumnDefinitions.Count
+                            + " Rows="
+                            + grid.RowDefinitions.Count
+                            + " Children="
+                            + grid.Children.Count;
 
                         for (int i = 0; i < grid.ColumnDefinitions.Count; i++)
                         {
                             var cd = grid.ColumnDefinitions[i];
-                            info += "\n      Col[" + i + "]: Width=" + cd.Width
-                                  + " Actual=" + cd.ActualWidth.ToString("F0");
+                            info +=
+                                "\n      Col["
+                                + i
+                                + "]: Width="
+                                + cd.Width
+                                + " Actual="
+                                + cd.ActualWidth.ToString("F0");
                         }
 
                         for (int i = 0; i < grid.Children.Count; i++)
@@ -299,14 +401,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                             var ch = grid.Children[i];
                             string childType = ch.GetType().Name;
                             if (childType.Contains("ChartTrader") || childType.Contains("Trader"))
-                                info += "\n      ** Trader child at index " + i
-                                      + ": " + ch.GetType().FullName;
+                                info += "\n      ** Trader child at index " + i + ": " + ch.GetType().FullName;
                         }
                     }
 
                     Print(info);
 
-                    if (current is Window) break;
+                    if (current is Window)
+                        break;
                     current = VisualTreeHelper.GetParent(current);
                     depth++;
                 }
@@ -322,7 +424,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             try
             {
-                if (ChartControl == null) return null;
+                if (ChartControl == null)
+                    return null;
                 var ownerChart = ChartControl.OwnerChart;
                 if (ownerChart == null)
                 {
@@ -335,8 +438,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     var found = FindChildElementByTypeName(chartDO, "ChartTrader");
                     if (found != null)
                     {
-                        Print("V12 PANEL: Strategy 0 found " + found.GetType().FullName
-                            + " Vis=" + found.Visibility);
+                        Print("V12 PANEL: Strategy 0 found " + found.GetType().FullName + " Vis=" + found.Visibility);
                         if (found.Visibility == Visibility.Visible)
                             return found;
                         Print("V12 PANEL: Strategy 0 -- ChartTrader not Visible, skipping");
@@ -358,7 +460,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private Grid FindDescendantGrid(DependencyObject parent, int minColumns)
         {
-            if (parent == null) return null;
+            if (parent == null)
+                return null;
             int childCount = VisualTreeHelper.GetChildrenCount(parent);
             for (int i = 0; i < childCount; i++)
             {
@@ -366,7 +469,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (child is Grid g && g.ColumnDefinitions.Count >= minColumns)
                     return g;
                 var result = FindDescendantGrid(child, minColumns);
-                if (result != null) return result;
+                if (result != null)
+                    return result;
             }
             return null;
         }
@@ -426,34 +530,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             try
             {
-                DependencyObject current = ChartControl;
-                object chartTab = null;
-
-                while (current != null)
-                {
-                    string typeName = current.GetType().Name;
-                    if (typeName == "ChartTab" || typeName.Contains("ChartTab"))
-                    {
-                        chartTab = current;
-                        break;
-                    }
-                    current = VisualTreeHelper.GetParent(current);
-                }
-
+                // Phase 1+2: Find ChartTab (visual then logical)
+                DependencyObject chartTab = TryFindChartTabViaVisualTree(ChartControl);
                 if (chartTab == null)
-                {
-                    current = ChartControl;
-                    while (current != null)
-                    {
-                        string typeName = current.GetType().Name;
-                        if (typeName == "ChartTab" || typeName.Contains("ChartTab"))
-                        {
-                            chartTab = current;
-                            break;
-                        }
-                        current = LogicalTreeHelper.GetParent(current);
-                    }
-                }
+                    chartTab = TryFindChartTabViaLogicalTree(ChartControl);
 
                 if (chartTab == null)
                 {
@@ -461,38 +541,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return null;
                 }
 
-                Type tabType = chartTab.GetType();
+                // Phase 3-5: Try all reflection strategies
+                FrameworkElement result =
+                    TryGetChartTraderViaProperty(chartTab)
+                    ?? TryGetChartTraderViaFields(chartTab)
+                    ?? TryGetChartTraderViaDescendants(chartTab);
 
-                PropertyInfo ctProp = tabType.GetProperty("ChartTrader",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (ctProp != null)
-                {
-                    object ct = ctProp.GetValue(chartTab);
-                    if (ct is FrameworkElement fe && fe.Visibility == Visibility.Visible)
-                        return fe;
-                }
+                if (result == null)
+                    Print(
+                        "V12 PANEL: Strategy 1 -- ChartTab found ("
+                            + chartTab.GetType().Name
+                            + ") but no ChartTrader property/field/child"
+                    );
 
-                string[] fieldNames = new string[] { "chartTrader", "ChartTrader", "chartTraderControl", "_chartTrader" };
-                for (int f = 0; f < fieldNames.Length; f++)
-                {
-                    FieldInfo fi = tabType.GetField(fieldNames[f], BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (fi != null)
-                    {
-                        object ct = fi.GetValue(chartTab);
-                        if (ct is FrameworkElement fe && fe.Visibility == Visibility.Visible)
-                            return fe;
-                    }
-                }
-
-                if (chartTab is DependencyObject depObj)
-                {
-                    var found = FindChildElementByTypeName(depObj, "ChartTrader");
-                    if (found != null && found.Visibility == Visibility.Visible)
-                        return found;
-                }
-
-                Print("V12 PANEL: Strategy 1 -- ChartTab found (" + chartTab.GetType().Name
-                    + ") but no ChartTrader property/field/child");
+                return result;
             }
             catch (Exception ex)
             {
@@ -513,15 +575,21 @@ namespace NinjaTrader.NinjaScript.Strategies
                     {
                         foreach (UIElement child in grid.Children)
                         {
-                            if (child is FrameworkElement fe && child.GetType().Name.Contains("ChartTrader")
-                                && fe.Visibility == Visibility.Visible)
+                            if (
+                                child is FrameworkElement fe
+                                && child.GetType().Name.Contains("ChartTrader")
+                                && fe.Visibility == Visibility.Visible
+                            )
                                 return fe;
                         }
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                // V12.EPIC-7-QUALITY-006: Log UI element traversal errors
+                Print($"[IPC_CLEANUP] ChartTrader search failed: {ex.Message}");
+                // Return null - non-fatal UI navigation failure
             }
             return null;
         }
@@ -537,8 +605,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (found != null && found.Visibility == Visibility.Visible)
                     return found;
             }
-            catch
+            catch (Exception ex)
             {
+                // V12.EPIC-7-QUALITY-008: Log UI element traversal errors
+                Interlocked.Increment(ref _uiCallbackFailures);
+                Print($"[UI_CALLBACK] ChartTrader type search failed: {ex.Message}");
+                // Return null - non-fatal UI navigation failure
             }
             return null;
         }
@@ -590,8 +662,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                     var descendantGrid = FindDescendantGrid(current, 2);
                     if (descendantGrid != null)
                     {
-                        Print("V12 PANEL: FindChartTabGrid -- found descendant Grid inside "
-                            + current.GetType().Name + " Cols=" + descendantGrid.ColumnDefinitions.Count);
+                        Print(
+                            "V12 PANEL: FindChartTabGrid -- found descendant Grid inside "
+                                + current.GetType().Name
+                                + " Cols="
+                                + descendantGrid.ColumnDefinitions.Count
+                        );
                         return descendantGrid;
                     }
                 }
@@ -644,6 +720,77 @@ namespace NinjaTrader.NinjaScript.Strategies
                 list.AddRange(FindAllButtonsByText(child, text));
             }
             return list;
+        }
+
+        // EPIC-CCN-17: Extracted helpers for FindChartTraderViaChartTab (CYC 20 -> 4)
+        private DependencyObject TryFindChartTabViaVisualTree(DependencyObject start)
+        {
+            DependencyObject current = start;
+            while (current != null)
+            {
+                string typeName = current.GetType().Name;
+                if (typeName == "ChartTab" || typeName.Contains("ChartTab"))
+                    return current;
+                current = VisualTreeHelper.GetParent(current);
+            }
+            return null;
+        }
+
+        private DependencyObject TryFindChartTabViaLogicalTree(DependencyObject start)
+        {
+            DependencyObject current = start;
+            while (current != null)
+            {
+                string typeName = current.GetType().Name;
+                if (typeName == "ChartTab" || typeName.Contains("ChartTab"))
+                    return current;
+                current = LogicalTreeHelper.GetParent(current);
+            }
+            return null;
+        }
+
+        private FrameworkElement TryGetChartTraderViaProperty(object chartTab)
+        {
+            Type tabType = chartTab.GetType();
+            PropertyInfo ctProp = tabType.GetProperty(
+                "ChartTrader",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            if (ctProp != null)
+            {
+                object ct = ctProp.GetValue(chartTab);
+                if (ct is FrameworkElement fe && fe.Visibility == Visibility.Visible)
+                    return fe;
+            }
+            return null;
+        }
+
+        private FrameworkElement TryGetChartTraderViaFields(object chartTab)
+        {
+            Type tabType = chartTab.GetType();
+            string[] fieldNames = new string[] { "chartTrader", "ChartTrader", "chartTraderControl", "_chartTrader" };
+            for (int f = 0; f < fieldNames.Length; f++)
+            {
+                FieldInfo fi = tabType.GetField(fieldNames[f], BindingFlags.NonPublic | BindingFlags.Instance);
+                if (fi != null)
+                {
+                    object ct = fi.GetValue(chartTab);
+                    if (ct is FrameworkElement fe && fe.Visibility == Visibility.Visible)
+                        return fe;
+                }
+            }
+            return null;
+        }
+
+        private FrameworkElement TryGetChartTraderViaDescendants(object chartTab)
+        {
+            if (chartTab is DependencyObject depObj)
+            {
+                var found = FindChildElementByTypeName(depObj, "ChartTrader");
+                if (found != null && found.Visibility == Visibility.Visible)
+                    return found;
+            }
+            return null;
         }
 
         #endregion

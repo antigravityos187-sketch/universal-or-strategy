@@ -1,0 +1,107 @@
+# Snyk Full-Pass Review Configuration
+# V12 Universal OR Strategy - Unified 5/5 Scoring
+# Protocol: Snyk reviews EVERYTHING, not just security
+
+# Core Configuration
+version: v1.22.0
+review_mode: full_pass
+
+# Dimension Configuration (ALL enabled)
+dimensions:
+  security:
+    enabled: true
+    weight: 20
+    severity_threshold: medium
+    checks:
+      - vulnerabilities
+      - license_issues
+      - code_security
+      - container_security
+      - iac_security
+  
+  code_quality:
+    enabled: true
+    weight: 20
+    checks:
+      - code_smells
+      - complexity
+      - duplication
+      - maintainability
+      - technical_debt
+  
+  testing:
+    enabled: true
+    weight: 20
+    checks:
+      - test_coverage
+      - test_quality
+      - missing_tests
+  
+  performance:
+    enabled: true
+    weight: 20
+    checks:
+      - inefficient_algorithms
+      - memory_issues
+      - resource_leaks
+  
+  standards:
+    enabled: true
+    weight: 20
+    checks:
+      - coding_standards
+      - best_practices
+      - documentation
+
+# Language Settings
+language-settings:
+  csharp:
+    enabled: true
+    version: "12.0"
+
+# Exclude Patterns
+exclude:
+  global:
+    - "**/*.Designer.cs"
+    - "**/*.g.cs"
+    - "**/*.generated.cs"
+    - "**/obj/**"
+    - "**/bin/**"
+    - "**/.vs/**"
+    - "**/packages/**"
+
+# Scoring Configuration
+scoring:
+  format: "X/5"
+  output_template: |
+    ## Snyk Full-Pass Review
+    
+    **Overall Score**: {score}/5 ⭐⭐⭐⭐⭐
+    
+    ### Dimension Breakdown
+    - **Security**: {security_score}/5
+    - **Code Quality**: {quality_score}/5
+    - **Testing**: {testing_score}/5
+    - **Performance**: {performance_score}/5
+    - **Standards**: {standards_score}/5
+
+# Vulnerability Settings
+vulnerability-settings:
+  fail-on: upgradable
+  severity-threshold: medium
+
+# License Policy
+license-policy:
+  severity-threshold: medium
+  fail-on: all
+
+# Ignore Specific Issues (Jane Street Deviations)
+ignore:
+  # Add specific CVE/issue IDs that conflict with Jane Street patterns
+  # Example: SNYK-DOTNET-SYSTEMTHREADING-12345
+
+# Reporting
+reporting:
+  format: markdown
+  include_remediation: true
+  include_references: true

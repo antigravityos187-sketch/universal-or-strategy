@@ -1,0 +1,48 @@
+name: .NET Test
+
+on:
+  push:
+    branches:
+      - main
+      - build/**
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test and Coverage
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore test project
+        run: |
+          dotnet restore Testing.csproj
+        shell: pwsh
+
+      - name: Run tests with OpenCover coverage
+        continue-on-error: true
+        run: |
+          dotnet test Testing.csproj --no-restore /p:CollectCoverage=true /p:IncludeTestAssembly=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./TestResults/coverage.opencover.xml --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
+        shell: pwsh
+
+      - name: Upload TRX results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: test-results
+          path: TestResults/**/*.trx
+
+      - name: Upload OpenCover results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: coverage-opencover
+          path: TestResults/coverage.opencover.xml
