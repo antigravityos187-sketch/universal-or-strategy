@@ -419,21 +419,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         private volatile bool _diagFleet; // T-Q1: Fleet dispatch + account queue catch logging
         private volatile bool _diagIpc; // IPC/MMIO diagnostic logging (restored for Dispatch.cs usage)
 
-        // REAPER infrastructure (missing declarations from incomplete earlier refactoring)
-        private readonly ConcurrentQueue<(
-            string AccountName,
-            MarketPosition Direction,
-            int Qty
-        )> _reaperNakedStopQueue = new ConcurrentQueue<(string, MarketPosition, int)>();
-        private string _stickyStatePath = string.Empty;
-        private readonly ConcurrentDictionary<string, DateTime> _nakedPositionFirstSeen =
-            new ConcurrentDictionary<string, DateTime>();
-        private readonly ConcurrentDictionary<string, byte> _reaperNakedStopInFlight =
-            new ConcurrentDictionary<string, byte>();
-        private readonly ConcurrentDictionary<string, int> _reaperOrphanRepairCount =
-            new ConcurrentDictionary<string, int>();
+        // UI callback failure counter
+        private int _uiCallbackFailures = 0;
 
-        private int GetPhotonDispatchRingDepth() => _photonDispatchRing?.Count ?? 0;
+        // Build 1111.014 [PR#5]: Sticky state diagnostic counters
+        private int _stateTempCleanupFailures = 0;
+        private bool _stateCorruptionDetected = false;
 
         protected void Enqueue(Action<V12_002> action)
         {
