@@ -317,80 +317,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 try
                 {
-                    Account masterBroker996h = Account;
-                    foreach (Order ord in masterBroker996h.Orders.ToArray())
-                    {
-                        if (ord.Instrument?.FullName != Instrument?.FullName)
-                            continue;
-                        // Build 994: Also accept Unknown -- NT8 Sim marks previous-session orders as Unknown.
-                        if (
-                            ord.OrderState != OrderState.Working
-                            && ord.OrderState != OrderState.Accepted
-                            && ord.OrderState != OrderState.Submitted
-                            && ord.OrderState != OrderState.ChangePending
-                            && ord.OrderState != OrderState.ChangeSubmitted
-                            && ord.OrderState != OrderState.Unknown
-                        )
-                            continue;
-
-                        string name = ord.Name ?? string.Empty;
-                        string classification = ClassifyOrderByPrefix(name);
-                        if (classification == null || classification == "entry")
-                            continue; // Skip unrecognized orders and Fleet_ entries (master has no Fleet_ orders)
-
-                        ConcurrentDictionary<string, Order> targetDict = null;
-                        string key = null;
-                        string dictName = null;
-
-                        // Route to appropriate dictionary based on classification
-                        switch (classification)
-                        {
-                            case "stop":
-                                targetDict = stopOrders;
-                                key = name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase)
-                                    ? name.Substring(5)
-                                    : name.Substring(2);
-                                dictName = "stopOrders";
-                                break;
-                            case "target1":
-                                targetDict = target1Orders;
-                                key = name.Substring(3);
-                                dictName = "target1Orders";
-                                break;
-                            case "target2":
-                                targetDict = target2Orders;
-                                key = name.Substring(3);
-                                dictName = "target2Orders";
-                                break;
-                            case "target3":
-                                targetDict = target3Orders;
-                                key = name.Substring(3);
-                                dictName = "target3Orders";
-                                break;
-                            case "target4":
-                                targetDict = target4Orders;
-                                key = name.Substring(3);
-                                dictName = "target4Orders";
-                                break;
-                            case "target5":
-                                targetDict = target5Orders;
-                                key = name.Substring(3);
-                                dictName = "target5Orders";
-                                break;
-                        }
-
-                        targetDict[key] = ord;
-                        adoptedCount++;
-                        Print(
-                            string.Format(
-                                "[SIMA HYDRATE] {0} (Master): Adopted {1} -> {2}[{3}]",
-                                Account.Name,
-                                name,
-                                dictName,
-                                key
-                            )
-                        );
-                    }
+                    adoptedCount += AdoptMasterOrders();
                 }
                 catch (Exception ex)
                 {
@@ -1045,6 +972,74 @@ namespace NinjaTrader.NinjaScript.Strategies
                 pos.IsRMATrade = false; // MOMO overrides generic RMA flag
 
             return pos;
+        }
+
+        /// <summary>
+        /// Adopts working orders from the master account into tracking dictionaries.
+        /// ACTOR-SERIALIZED: Must be called on strategy thread (via EnumerateApexAccounts).
+        /// THREAD-SAFETY: Single-write operations to ConcurrentDictionary are safe.
+        /// ORDERING: Must execute AFTER fleet adoption (Phase 1) and BEFORE FSM hydration (Phase 5).
+        /// </summary>
+        /// <returns>Count of orders adopted (for logging)</returns>
+        private int AdoptMasterOrders()
+        {
+            int adoptedCount = 0;
+
+            // Single account loop (master account only)
+            foreach (Order ord in Account.Orders.ToArray())
+            {
+                if (ord.Instrument?.FullName != Instrument?.FullName)
+                    continue;
+
+                // State guard (includes master unknown state)
+                // Build 994: Also accept Unknown -- NT8 Sim marks previous-session orders as Unknown.
+                if (
+                    ord.OrderState != OrderState.Working
+                    && ord.OrderState != OrderState.Accepted
+                    && ord.OrderState != OrderState.Submitted
+                    && ord.OrderState != OrderState.ChangePending
+                    && ord.OrderState != OrderState.ChangeSubmitted
+                    && ord.OrderState != OrderState.Unknown
+                )
+                    continue;
+
+                // Use shared classification helper (eliminates duplication)
+                string name = ord.Name ?? string.Empty;
+                string classification = ClassifyOrderByPrefix(name);
+                if (classification == null || classification == "entry")
+                    continue; // Skip unrecognized orders and Fleet_ entries (master has no Fleet_ orders)
+
+                // Build dictionary key
+                string key = name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase)
+                    ? name.Substring(5)
+                    : name.Substring(2);
+
+                // Route to appropriate dictionary based on classification
+                switch (classification)
+                {
+                    case "stop":
+                        stopOrders[key] = ord;
+                        break;
+                    case "target1":
+                        target1Orders[key] = ord;
+                        break;
+                    case "target2":
+                        target2Orders[key] = ord;
+                        break;
+                    case "target3":
+                        target3Orders[key] = ord;
+                        break;
+                    case "target4":
+                        target4Orders[key] = ord;
+                        break;
+                    case "target5":
+                        target5Orders[key] = ord;
+                        break;
+                }
+                adoptedCount++;
+            }
+
+            return adoptedCount;
         }
 
         /// <summary>
