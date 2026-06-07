@@ -3,4 +3,22 @@
 **CRITICAL INSTRUCTION FOR CURSOR AI:**
 You must read, ingest, and strictly adhere to the permanent project standards defined in the `c:\WSGTA\universal-or-strategy\.agent\standards_manifesto.md` file before making any code suggestions or architectural decisions.
 
+- **UltraThink Always**: Perform P2 Diagnosis and P5 Side-Effect Audits for all edits.
+- **UltraPlan Always**: Use Claude Ultraplan for architectural designs.
+- **No Internal Locks**: Use the Actor/FSM `Enqueue` model for state mutations.
+- **Jane Street Alignment (V12.17)**: You MUST load and apply the Jane Street Intel from `docs/intel/jane-street/` for every architectural decision.
+- **Tool Parity**: You have full access to the following project-specific tools:
+    - **Context7 CLI**: `python scripts/context7_cli.py` (query docs, resolve IDs).
+    - **jCodemunch-MCP**: Use for deep codebase navigation (refer to `.mcp.json`).
+    - **Graphify**: `graphify update .` (sync knowledge graph).
+    - **Hard-Link Sync**: `powershell -File .\deploy-sync.ps1` (MANDATORY after `src/` edits).
+
+## V12.20: Documentation & Output Hardening (MANDATORY)
+- **500-Line Threshold**: Any documentation or planning artifact exceeding 500 lines MUST be modularized into subgraph-specific sub-files.
+- **Master Index Pattern**: Use a parent index file pointing to child modules.
+- **Buffer Flush Verification**: After writing any artifact > 200 lines, verify the file size on disk (`ls`) before reporting completion.
+- **Skipping modularization for large scopes is a protocol violation.**
+
+## V12 Project DNA
+
 Do not deviate from those rules. The manifesto is the absolute single source of truth for architecture, locking, repo hygiene, and multi-agent parity.

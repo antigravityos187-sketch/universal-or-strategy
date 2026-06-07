@@ -1,47 +1,554 @@
-# V12 Universal OR Strategy -- Codex Agent Instructions
-# Source of truth: .agent/standards_manifesto.md
-# Role: PRIMARY ENGINEER (P4). Backups: Gemini CLI, Jules CLI.
+# AGENTS.md - Sovereign Agent Protocol
 
-## Director's Gate (NON-NEGOTIABLE)
-- Every code change requires Director-approved implementation_plan.md BEFORE execution.
-- You are BANNED from self-approving plans. Present plans to the Director only.
-- Use Plan Mode for all Phase work. Confirm scope before writing a single line.
+Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repository. This environment is optimized for autonomous multi-agent development under the **Sovereign Droid Protocol (SDP)**.
+## ⚠️ CRITICAL: CodeFactor Protocol
+**MANDATORY READING**: Before accepting ANY automated fixes from CodeFactor or similar tools, read `docs/protocol/CODEFACTOR_PROTOCOL.md`. 
 
-## V12 Permanent DNA
+**TL;DR**: NEVER use CodeFactor's "Apply fixes" button. It caused 320 compilation errors and required emergency rollback. Manual fixes only, with build verification after every batch.
 
-### Concurrency
-- BANNED: lock(stateLock) for internal state mutations.
-- REQUIRED: All state mutations via Enqueue(ctx => ...) actor model.
-- BUILD 981 EXCEPTION: Direct writes to stopOrders MANDATORY during bracket submission only.
 
-### Order Safety
-- BANNED: Raw Cancel() + Submit() for follower orders. Creates ghost orders.
-- REQUIRED: Two-phase Replace FSM (_followerReplaceSpecs) for all follower order replaces.
-- FSM states: PendingCancel -> OnAccountOrderUpdate confirm -> Submitting -> SubmitFollowerReplacement.
+## 1. Agent Hierarchy (The Director's Gate)
 
-### String Safety (CRITICAL -- compiler safety)
-- BANNED: Emoji, curly quotes, em-dashes, Unicode arrows, box-drawing in C# strings.
-- Non-ASCII inside C# strings causes 300+ compiler errors (Build 936).
-- Use: (!) not emoji, -- not em-dash, -> not arrow, straight " not curly quotes.
+- **ORCHESTRATOR (P1)**: Central Switchboard (Antigravity / Gemini CLI). Controls context and cross-agent routing.
 
-### File Operations
-- BANNED: Manual copy-paste for file splits exceeding 50 lines.
-- REQUIRED: Use scripts/<module>_split.py for all file splits.
-- Semaphores (_simaToggleSem) MUST be released in finally blocks.
+## ⚠️ CRITICAL: Code Mode Deprecation (V12.18)
 
-## Self-Audit (run before every handoff)
-1. Invoke the internal **architect** subagent for **`/loop-critic`** review.
-2. Invoke the **forensics** subagent for **`lock(stateLock)`** and ASCII audit.
-3. Verify FSM guard lines present (grep PendingCancel, Submitting).
-4. Dry-run regression vs. Mission Brief.
+**EFFECTIVE IMMEDIATELY**: Code mode is **BANNED** for all code modification tasks.
 
-## Agentic Workflows
-Workflows are defined in .agent/workflows/:
-- /loop-critic        ENGINEER generates, ARCHITECT critiques, max 3 iterations.
-- /coordinator        Antigravity routes tasks to right agent.
-- /agent-as-tool      Stateless single-use diagnostic or edit.
-- /multi-agent-audit  Red-team cross-audit.
+**Enforcement**:
+- ❌ **Code mode** (`code`): DEPRECATED - Do not use for any task
+- ✅ **Advanced mode** (`advanced`): PRIMARY for all code changes
+- ✅ **Bob CLI** (`v12-engineer`): PRIMARY for src/ architectural work
 
-## Phase 6 Objectives (current)
-1. FSM Promotion: FollowerBracketFSM to primary authority.
-2. MetadataGuard: Create V12_002.MetadataGuard.cs for signal validation.
+**Rationale**: Advanced mode provides:
+- MCP tool access (jcodemunch, graphify)
+- Browser tools for research
+- Superior context management
+- Full feature parity with code mode
+
+**Violation Protocol**: Any agent attempting to use code mode must:
+1. Immediately switch to advanced mode
+2. Document the attempted violation
+3. Report to Director for protocol review
+
+- **ARCHITECT + ENGINEER (P3/P4/P5)   src/ tasks**: **Bob CLI** (`v12-engineer`) is the unified Architect-Engineer for all `src/` work. Bob handles design (planning), extraction, refactoring, and surgical implementation in a single Orchestrator session. No separate P3 handoff to Claude is required for `src/` tickets.
+  - **Bob CLI** (`v12-engineer`): Primary. Handles design-only gates, God-function splitting, and full implementation.
+  - **Codex CLI** (`codex-rescue`): Secondary. Specialist for surgical logic hardening and lock-free kernel updates when Bob delegates.
+- **ARCHITECT (P3)   escalation only**: **Claude Opus 4.7** is reserved for (a) non-src architectural review, (b) $battlezip compound intelligence sessions, and (c) cross-subgraph design decisions that span >3 files outside Bob's current context. Claude remains PLAN-ONLY when invoked.
+- **ADJUDICATOR (Arena AI)**: **P4 Vetting Gate**. Adversarial consensus and **PR Audit** required BEFORE surgery.
+- **ENGINEER (P4/P5)   non-src tasks**: Target selection follows strict routing logic:
+    - **Advanced Mode** (`advanced`): Primary non-src engineer for all code modification tasks
+    - **Jules AI**: GitHub-based workflows only
+    - **Gemini CLI** (`yolo`): Secondary for tasks requiring local file access or visual context
+    - ~~**Code Mode** (`code`): DEPRECATED - DO NOT USE~~
+- **FORENSICS (P2/P6)**: Diagnosis (P2) and Adversarial Audit (P6).
+
+## 2. Architectural Mandates (THE PLATINUM STANDARD)
+
+- **Correctness by Construction ("Make illegal states unrepresentable")**: Structure types, enums, and data models so that it is mathematically impossible for the compiler to allow an invalid state. Do not rely on runtime if/else guards for weird edge cases   design the architecture so the edge case literally cannot exist.
+- **Lock-Free Actor Pattern**: Legacy `lock(stateLock)` blocks are **STRICTLY BANNED**. All state mutations must use the FSM/Actor `Enqueue` model or atomic primitives.
+- **ASCII-Only Compliance**: NEVER use Unicode, emoji, or curly quotes in C# string literals.
+- **Jane Street Alignment (V12.17)**: ALL agents (Bob, Codex, Qwen, Antigravity, Jules, Rovo Dev, Cursor, etc.) MUST load and apply the ingested Jane Street Intel from `docs/intel/jane-street/` for every architectural decision.
+- **Hard-Link Integrity**: Every `src/` modification MUST be followed by `powershell -File .\deploy-sync.ps1` to re-synchronize NinjaTrader hard links.
+- **Three-Tier Branch Model (V12.18)**: ALL agents MUST follow the branch strategy documented in `docs/protocol/BRANCH_STRATEGY.md`. Source code, infrastructure, and protocol changes MUST be on separate branches.
+
+
+## 3. Standard Commands
+
+- **Build & Sync** (Build Pillar): `powershell -File .\scripts\build_readiness.ps1` (Now includes CSharpier formatting check)
+- **Format Code** (CSharpier): `dotnet csharpier format src/` (Adds missing braces, fixes line endings)
+- **Format Check** (CSharpier): `dotnet csharpier check src/` (Verify formatting without changes)
+- **Lint Audit** (Style Pillar): `powershell -File .\scripts\lint.ps1`
+- **Stress Test** (Testing Pillar): `powershell -File .\scripts\test_stress.ps1`
+- **Sovereign Audit**: `droid /review` (Focus on P0-P3 severity findings).
+- **Readiness Check**: `droid /readiness-report` (Maintain Level 2+).
+- **Forensic Scan**: `grep -r "lock(" src/` (Zero-match requirement).
+- **Hotspot Analysis** (CodeScene): Open files in VS Code, check status bar for Code Health Score. See `docs/protocol/CODESCENE_INTEGRATION.md` for workflow.
+- **Jane Street KB Query**: `& "%USERPROFILE%\AppData\Local\Programs\Python\Python312\python.exe" scripts/query_kb.py "<term>"` (Retrieves HFT and high-performance system guidelines from the Firestore knowledge base).
+
+## 3.5. Pre-Push Validation Protocol (V12.22)
+
+**MANDATORY**: ALL agents MUST run `pre_push_validation.ps1` before EVERY push.
+
+### Local Quality Gates (13 checks)
+
+| # | Check | Tool | Threshold | Blocking? |
+|---|-------|------|-----------|-----------|
+| 1 | ASCII-Only | PowerShell | Zero non-ASCII | ✅ YES |
+| 2 | Build | dotnet build | Zero errors | ✅ YES |
+| 3 | Unit Tests | dotnet test | 100% pass | ✅ YES |
+| 4 | Lint | Roslyn | Zero violations | ✅ YES |
+| 5 | Formatting | CSharpier | Zero issues | ✅ YES |
+| 6 | Security | Gitleaks + Snyk | Zero secrets | ⚠️ WARNING |
+| 7 | Markdown Links | verify_links.ps1 | Zero broken | ⚠️ WARNING |
+| 8 | PR Hygiene | verify_pr_hygiene.ps1 | Diff <10k | ✅ YES |
+| 9 | Complexity | complexity_audit.py | CYC ≤ 15 | ✅ YES |
+| 10 | Dead Code | dead_code_scan.py | Zero dead methods | ⚠️ WARNING |
+| 11 | Codacy Preview | query_codacy_issues.ps1 | Zero errors | ⚠️ WARNING |
+| 12 | Semgrep | semgrep CLI | Zero findings | ⚠️ WARNING |
+| 13 | CodeRabbit AI | coderabbit CLI | Zero critical/high | ⚠️ WARNING* |
+
+**\*CodeRabbit**: WARNING mode during 2-week validation period (ends 2026-06-09). Will become BLOCKING after validation.
+
+### Usage
+
+**Fast mode** (skip slow checks 10-13):
+```powershell
+powershell -File .\scripts\pre_push_validation.ps1 -Fast
+```
+
+**Full mode** (all 13 checks):
+```powershell
+powershell -File .\scripts\pre_push_validation.ps1
+```
+
+**Skip specific checks**:
+```powershell
+powershell -File .\scripts\pre_push_validation.ps1 -SkipBuild -SkipTests
+```
+
+### Enforcement
+
+- **Bob CLI**: Automatically runs `-Fast` mode before every commit
+- **PR Loop**: Runs FULL mode in Step 2 (Local Repair)
+- **Epic Run**: Runs FULL mode in Step C (Verification)
+- **Manual TDD**: Developer must run FULL mode in Step 2
+
+### Codacy Integration
+
+- **Local Preview**: Requires `$env:CODACY_API_TOKEN` (set in `.env` or session)
+- **API Endpoint**: `https://app.codacy.com/api/v3`
+- **Rate Limit**: 100 requests/hour (sufficient for PR workflow)
+- **Output**: `codacy_warnings.json` (gitignored)
+
+### CodeRabbit Integration
+
+- **Installation**: `curl -fsSL https://cli.coderabbit.ai/install.sh | sh` or `brew install coderabbit`
+- **Authentication**: `cr auth login` (browser-based) or `cr auth login --api-key` (CI/CD)
+- **Review Mode**: `--agent` (structured JSON for automation) or `--plain` (human-readable)
+- **Timeout**: 30 minutes max (background execution)
+- **Output**: `coderabbit_review.json` (gitignored)
+- **Pricing**: Free tier (limited) or Usage-based Add-on ($0.25/file, unlimited)
+- **Validation Period**: WARNING mode until 2026-06-09, then BLOCKING
+
+### Test Quality Audit
+
+**Current Status**: 1 test file (`tests/V12_Performance.Tests/Core/FSMActorTests.cs`)
+- ✅ Tests FSM/Actor Enqueue model (lock-free correctness)
+- ✅ Validates atomic state transitions
+- ❌ **Coverage Gap**: No tests for complexity-extracted methods (45 methods with CYC > 20)
+
+**Action Required**: Add TDD tests for EPIC-8 through EPIC-14 extractions.
+
+### Complexity Threshold Rationale
+
+**V12 uses CYC ≤ 15** (Jane Street aligned):
+- Jane Street's HFT systems prioritize **cognitive simplicity** over clever abstractions
+- Functions with CYC >15 are harder to:
+  - Reason about under microsecond latency constraints
+  - Test exhaustively (exponential path growth)
+  - Audit for race conditions in lock-free code
+- V12 DNA mandates: "Make illegal states unrepresentable" - requires simple, verifiable logic
+
+**Lizard Tool** (used by Codacy) has hardcoded threshold 8:
+- Too conservative for HFT hot-path co-location
+- Treat Lizard warnings (CYC 9-13) as technical debt visibility, not blockers
+- Track in EPIC-CCN-10 backlog for future refactoring to CCN 10
+
+
+## 4. Communication & Context
+
+- **Active Task**: Always check `docs/brain/task.md` before initiating work.
+- **Handoffs**: Use the `docs/brain/nexus_a2a.json` via the **Nexus Bridge** for inter-agent state synchronization.
+- **Expert Knowledge Base (RAG)**: Before starting complex design, refactoring, or performance engineering tasks, query the Jane Street Knowledge Base using `scripts/query_kb.py` to retrieve verified microsecond-latency patterns and testing standards.
+- **Branch Strategy**: Follow the Three-Tier Branch Model documented in `docs/protocol/BRANCH_STRATEGY.md`. NEVER mix source code, infrastructure, and protocol changes on the same branch.
+
+## 5. Karpathy Behavioral Protocols (LLM Coding Hygiene)
+
+Derived from Andrej Karpathy's observations on LLM coding pitfalls.
+These principles apply to all agents including Gemini CLI as Orchestrator.
+Bias toward caution over speed. For trivial tasks, use judgment.
+
+### Think Before Coding
+
+- State assumptions explicitly. If uncertain, ASK -- do not silently pick an interpretation.
+- If multiple interpretations exist, surface them to the Director before proceeding.
+- If a simpler approach exists, say so. Push back when warranted.
+
+### Simplicity First
+
+- Minimum code that solves the problem. Nothing speculative.
+- No features beyond what was asked. No abstractions for single-use code.
+- If 200 lines could be 50, rewrite it before submission.
+
+### Surgical Changes
+
+- Touch only what you must. Clean up only your own mess.
+- Do NOT "improve" adjacent code, comments, or formatting.
+- **WHITESPACE MUTATION BANNED**: Never mutate whitespace, line endings, or indentation across files. This creates bloated diffs that obscure logic and break CI limits.
+- **STRICT DIFF LIMIT**: Pull Request diffs MUST target less than 10,000 characters of source code changes (in `src/`). Split larger epics into smaller, focused PRs.
+- **DIFF PRE-CHECK**: Before pushing, run `powershell -File .\deploy-sync.ps1`. If the **DIFF GUARD** fails, you must isolate the logic changes and revert whitespace/artifact bloat.
+- If unrelated dead code is noticed, REPORT it -- do not act on it.
+- Every changed line must trace directly to the Mission Brief.
+
+### Goal-Driven Execution
+
+- State verify criteria before each implementation stage:
+  1. [Step] -> verify: [check]
+  2. [Step] -> verify: [check]
+- Strong success criteria let you loop independently. "Make it work" is not a criterion.
+
+## 6. Autonomous Skill Creation & Self-Improvement (MANDATORY PILLAR)
+
+**All agents MUST perform a post-use audit after every skill or tool use:**
+1. Check if any instruction was ambiguous or produced an unexpected result.
+2. Update the corresponding `SKILL.md` or persistent rule file if a gap or quirk is found.
+3. State `skill(name): no gaps identified` if no gap is found.
+4. Skipping the post-use audit is a protocol violation.
+
+## Graphify Protocols (Universal Knowledge Layer)
+
+- **Check First**: Before deep architectural exploration, always check for `graphify-out/graph.json` or `graphify-out/GRAPH_REPORT.md`.
+- **Update**: Use `graphify update .` to refresh the repo knowledge graph after major structural changes.
+- **Efficiency**: Use the graph to navigate codebase relationships with 71x fewer tokens than raw file reading.
+
+## Code Exploration Policy
+
+Always use jCodemunch-MCP tools for code navigation. Never fall back to Read, Grep, Glob, or Bash for code exploration.
+**Exception:** Use `Read` when you need to edit a file     the agent harness requires a `Read` before `Edit`/`Write` will succeed. Use jCodemunch tools to *find and understand* code, then `Read` only the specific file you're about to modify.
+
+**Start any session:**
+1. `resolve_repo { "path": "." }`     confirm the project is indexed. If not: `index_folder { "path": "." }`
+2. `suggest_queries`     when the repo is unfamiliar
+
+**Finding code:**
+- symbol by name     `search_symbols` (add `kind=`, `language=`, `file_pattern=`, `decorator=` to narrow)
+- decorator-aware queries     `search_symbols(decorator="X")` to find symbols with a specific decorator (e.g. `@property`, `@route`); combine with set-difference to find symbols *lacking* a decorator (e.g. "which endpoints lack CSRF protection?")
+- string, comment, config value     `search_text` (supports regex, `context_lines`)
+- database columns (dbt/SQLMesh)     `search_columns`
+
+**Reading code:**
+- before opening any file     `get_file_outline` first
+- one or more symbols     `get_symbol_source` (single ID     flat object; array     batch)
+- symbol + its imports     `get_context_bundle`
+- specific line range only     `get_file_content` (last resort)
+
+**Repo structure:**
+- `get_repo_outline`     dirs, languages, symbol counts
+- `get_file_tree`     file layout, filter with `path_prefix`
+
+**Relationships & impact:**
+- what imports this file     `find_importers`
+- where is this name used     `find_references`
+- is this identifier used anywhere     `check_references`
+- file dependency graph     `get_dependency_graph`
+- what breaks if I change X     `get_blast_radius`
+- what symbols actually changed since last commit     `get_changed_symbols`
+- find unreachable/dead code     `find_dead_code`
+- class hierarchy     `get_class_hierarchy`
+
+## Session-Aware Routing
+
+**Opening move for any task:**
+1. `plan_turn { "repo": "...", "query": "your task description", "model": "<your-model-id>" }`     get confidence + recommended files; the `model` parameter narrows the exposed tool list to match your capabilities at zero extra requests.
+2. Obey the confidence level:
+   - `high`     go directly to recommended symbols, max 2 supplementary reads
+   - `medium`     explore recommended files, max 5 supplementary reads
+   - `low`     the feature likely doesn't exist. Report the gap to the user. Do NOT search further hoping to find it.
+
+**Interpreting search results:**
+- If `search_symbols` returns `negative_evidence` with `verdict: "no_implementation_found"`:
+  - Do NOT re-search with different terms hoping to find it
+  - Do NOT assume a related file (e.g. auth middleware) implements the missing feature (e.g. CSRF)
+  - DO report: "No existing implementation found for X. This would need to be created."
+  - DO check `related_existing` files     they show what's nearby, not what exists
+- If `verdict: "low_confidence_matches"`: examine the matches critically before assuming they implement the feature
+
+**After editing files:**
+- If PostToolUse hooks are installed (Claude Code only), edited files are auto-reindexed
+- Otherwise, call `register_edit` with edited file paths to invalidate caches and keep the index fresh
+- For bulk edits (5+ files), always use `register_edit` with all paths to batch-invalidate
+
+**Token efficiency:**
+- If `_meta` contains `budget_warning`: stop exploring and work with what you have
+- If `auto_compacted: true` appears: results were automatically compressed due to turn budget
+- Use `get_session_context` to check what you've already read     avoid re-reading the same files
+
+## Model-Driven Tool Tiering
+
+Your jcodemunch-mcp server narrows the exposed tool list based on the model you are running as. To avoid wasting requests on primitives when a composite would do, always include `model="<your-model-id>"` in your opening `plan_turn` call.
+
+Replace `<your-model-id>` with your active model:
+- Claude Opus variants     `claude-opus-4-7` (or any `claude-opus-*`)
+- Claude Sonnet variants     `claude-sonnet-4-6`
+- Claude Haiku variants     `claude-haiku-4-5`
+- GPT-4o / GPT-5 / o1 / Llama     use the model id as printed by your runner
+
+The `model=` parameter rides on the existing `plan_turn` call     it does **not** add a separate tool invocation. If `plan_turn` is not appropriate for a non-code task, call `announce_model(model="...")` once instead.
+
+## 7. Phase 6 Recursive Protocol (V15.4)
+
+This protocol governs the **SIMA Subgraph Extraction** and all complex refactoring missions.
+
+### Stage 0: Forensic Intake (Orchestrator)
+- **Tool**: `jcodemunch-mcp` + `graphify`
+- **Goal**: Generate "Platinum Standard" prompts for the ARCHITECT.
+- **Output**: Forensic report in `docs/brain/forensics_report.md`.
+
+### Stage 1: Vision/Spec (Architect)
+- **Agent**: Bob CLI (`v12-engineer`)
+- **Goal**: Dialogue with Director to generate `mini-spec.md`.
+- **Constraint**: Must verify logic against V12 DNA.
+
+### Stage 2: Arch Planning (Architect)
+- **Agent**: Bob CLI (`v12-engineer`)
+- **Goal**: Generate `implementation_plan.md` + Mermaid diagrams.
+- **Audit**: Triple-Agent UltraThink audit required.
+
+### Stage 3: DNA & PR Audit (Adjudicator)
+- **Agent**: Arena AI (Red Team)
+- **Goal**: Verify plan and PR health against V12 constraints (No locks, Atomic, ASCII-only).
+- **Gate**: PASS/FAIL. Fail triggers Stage 2 rework.
+
+### Stage 4: Recursive Execution (Engineer Selection)
+- **Action**: Hand off to the selected Engineer via the Bob CLI Orchestrator session.
+- **Targets**: 
+  - **Bob CLI** for extraction/splitting (P5 Surgical).
+  - **Codex CLI** for logic hardening (P5 Logic).
+  - **Gemini CLI** for **Utility/Non-src** tasks (P5 Utility). Always use Gemini for model-agnostic tasks to conserve specialized tokens.
+- **Safety**: Mandatory checkpointing enabled.
+
+### Stage 5: Verification/Review (Forensics)
+- **Agent**: Bob CLI (verify cycle) + Orchestrator
+- **Goal**: Compare implementation against `implementation_plan.md`.
+- **Loop**: Automated "Fix-all" loop if logic drifts.
+
+### Stage 6: Sign-off (Director)
+- **Action**: `powershell -File .\deploy-sync.ps1`
+- **Final Test**: F5 in NinjaTrader + BUILD_TAG verification.
+
+## 8. IBM Bob Shell Integration
+
+- **Binary**: `bob` (via alias or path)
+- **Mode**: `v12-engineer` (custom mode defined in `.bob/custom_modes.yaml`)
+- **Rules**: Enforced via `.bob/rules-v12-engineer/`
+
+## 9. Codacy Quality Integration
+
+**Purpose**: Automated code quality tracking and technical debt management aligned with V12 DNA principles.
+
+### Configuration Overview
+
+The repository uses `.codacy.yml` to enforce V12 architectural standards:
+
+**Key Settings**:
+- **Complexity Threshold**: 15 (Jane Street alignment - keep functions simple)
+- **Roslyn Analyzer**: Enabled for C# code quality checks
+- **Duplication Detection**: Enabled (excludes tests/benchmarks)
+- **Excluded Paths**: docs/, scripts/, .github/, conductor/, Traycerrefactor/, and tool directories
+
+### Complexity Threshold Rationale
+
+**Why 15?** (Jane Street Alignment)
+- Jane Street's HFT systems prioritize **cognitive simplicity** over clever abstractions
+- Functions with cyclomatic complexity >15 are harder to:
+  - Reason about under microsecond latency constraints
+  - Test exhaustively (exponential path growth)
+  - Audit for race conditions in lock-free code
+- V12 DNA mandates: "Make illegal states unrepresentable" - this requires simple, verifiable logic
+
+**Enforcement**:
+- Codacy flags functions exceeding threshold 15
+- Refactor into smaller, single-purpose functions
+- Use the Actor/FSM pattern to decompose complex state machines
+
+### Validating Configuration
+
+**After pushing `.codacy.yml` to GitHub**:
+
+1. **Check Codacy Dashboard**:
+   - Navigate to: https://app.codacy.com/gh/malhitticrypto-debug/universal-or-strategy/settings
+   # Note: Update this URL when GitHub account changes
+   - Verify "Configuration file" shows `.codacy.yml` detected
+   - Confirm complexity threshold displays as 15
+
+2. **Verify Exclusions**:
+   - Go to "Ignored Files" tab
+   - Confirm docs/, scripts/, .github/ are excluded
+   - Verify tests/ and benchmarks/ excluded from duplication checks
+
+3. **Test on PR**:
+   - Create a test PR with a function exceeding complexity 15
+   - Verify Codacy flags it as "Code complexity" issue
+   - Confirm PR shows "Up to quality standards" if no new issues
+
+### Current Baseline (2026-05-22)
+
+- **Total Issues**: 3,100 (technical debt)
+- **Grade**: B
+- **Coverage**: 0% (coverage integration pending)
+- **Complexity**: 32% of files (31/207 exceed threshold)
+
+**Strategy**: Boy Scout Rule - fix issues in files you touch, chip away at debt incrementally.
+
+### Integration with V12 Workflows
+
+**Before Surgery** (P4/P5 tasks):
+- Check Codacy dashboard for file-specific issues
+- Prioritize: Security (29) > Error-prone (1k) > Complexity (288) > Style (1k)
+
+**After Surgery**:
+- Verify PR shows "Up to quality standards" (no new issues)
+- If new issues appear: fix before merge (quality gate enforcement)
+
+**Debt Reduction**:
+- Dedicate 20% of sprint capacity to debt reduction
+- Target high-complexity files first (V12_002.DrawingHelpers.cs, V12_002.Atm.cs)
+- Use `scripts/complexity_audit.py` for local pre-checks
+
+### Commands
+
+- **Local Complexity Audit**: `python scripts/complexity_audit.py`
+- **View Codacy Dashboard**: https://app.codacy.com/gh/malhitticrypto-debug/universal-or-strategy/dashboard
+# Note: Update this URL when GitHub account changes
+- **Check PR Quality**: Codacy bot comments on every PR with issue delta
+
+- **Checkpointing**: Always enabled via `.bob/settings.json`. Restore via `/restore`.
+
+## 10. Code Quality Toolchain
+
+### CSharpier (Mandatory)
+
+**Purpose**: Opinionated C# formatter that enforces V12 DNA curly braces mandate.
+
+**Installation**:
+```powershell
+dotnet tool install -g csharpier
+```
+
+**Integration**:
+- ✅ **Pre-Push Validation** (Check #5): Blocks push if formatting issues detected
+- ✅ **Build Readiness**: Runs before compilation
+- ✅ **Bob CLI**: Auto-formats before every commit
+
+**Commands**:
+- Format: `dotnet csharpier format src/`
+- Check: `dotnet csharpier check src/`
+
+**Why Mandatory**:
+- Automatically adds missing braces (V12 DNA requirement)
+- Fixes line ending inconsistencies (CRLF/LF)
+- Prevents whitespace mutation in diffs
+- Fast: <1 second for entire codebase
+
+### CodeScene (Recommended)
+
+**Purpose**: Behavioral code analysis for hotspot detection and refactoring prioritization.
+
+**Installation**: VS Code Extension (free) or Enterprise CLI (paid)
+
+**Key Features**:
+- **Hotspot Detection**: Identifies high-complexity + high-churn files
+- **Change Coupling**: Shows files that change together (God-module detection)
+- **Code Health Score**: 0-10 metric for file maintainability
+- **Refactoring Priorities**: Data-driven guidance for EPIC-CCN-10
+
+**Integration**: See `docs/protocol/CODESCENE_INTEGRATION.md` for complete workflow.
+
+**Jane Street Alignment**:
+- Hotspots = cognitively complex code
+- High churn = unpredictable behavior
+- Coupling = hidden dependencies
+
+**Usage**:
+1. Open file in VS Code
+2. Check CodeScene status bar for Code Health Score
+3. Red/yellow hotspots = prioritize for refactoring
+4. Track improvement after extraction
+
+### Codacy (Automated)
+
+**Purpose**: Static analysis for complexity, style, and security.
+
+**Integration**: Automatic via `.codacy.yml` and GitHub PR checks.
+
+**Threshold**: CYC ≤ 15 (Jane Street aligned)
+
+### Tool Synergy
+
+| Tool | Analysis Type | Use Case |
+|------|---------------|----------|
+| **CSharpier** | Formatting | Enforce braces, line endings |
+| **CodeScene** | Behavioral | Identify hotspots (complexity + churn) |
+| **Codacy** | Static | Catch violations in PR |
+| **complexity_audit.py** | Local | Pre-commit complexity check |
+
+**Workflow**:
+1. **Before refactoring**: Check CodeScene hotspots + complexity audit
+2. **During refactoring**: CSharpier auto-formats on save
+3. **Before push**: Pre-push validation runs all checks
+4. **In PR**: Codacy + CodeRabbit review changes
+
+## graphify
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Rules:
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+
+## Mode Selection Rules (V12.18)
+
+When delegating code modification tasks:
+- ✅ ALWAYS use `advanced` mode for non-src code work
+- ✅ ALWAYS use `v12-engineer` (Bob CLI) for src/ work
+- ❌ NEVER use `code` mode (deprecated V12.18)
+
+**Routing Decision Tree**:
+```
+Is task modifying code?
+├─ YES → Is task in src/?
+│  ├─ YES → Use Bob CLI (`v12-engineer`)
+│  └─ NO → Use Advanced mode (`advanced`)
+└─ NO → Use Ask mode (`ask`) or Plan mode (`plan`)
+```
+
+**Code Mode**: BANNED - Any delegation to code mode is a protocol violation.
+
+
+## 11. No Scope Creep Protocol (V12.23 - MANDATORY)
+
+**Effective**: 2026-06-01 (Post-EPIC-13 PR #12 Failure)
+
+### Rule
+**ONE EPIC = ONE CONCERN**. Never mix unrelated fixes in a single PR.
+
+### Violations
+- ❌ Fixing pre-existing compilation errors during an epic
+- ❌ Adding "while we're here" improvements
+- ❌ Bundling multiple concerns in one commit
+- ❌ Expanding scope mid-epic without Director approval
+
+### Enforcement
+1. **Before Starting Epic**: Verify codebase compiles cleanly
+2. **During Epic**: If unrelated issues found, STOP and report to Director
+3. **Separate PRs**: Create dedicated PR for each concern
+4. **PR Review**: Reject any PR mixing multiple concerns
+
+### Example (EPIC-13 Failure)
+**Wrong** ❌:
+- EPIC-13 extraction + pre-existing error fixes = 3 P0 blockers
+
+**Right** ✅:
+- PR #1: Pre-existing compilation fixes (separate)
+- PR #2: EPIC-13 extraction only (clean)
+
+### Recovery Protocol
+If scope creep detected:
+1. Close PR immediately
+2. Document failure in `docs/brain/EPIC-X/failure-analysis.md`
+3. Separate concerns into individual PRs
+4. Restart epic cleanly
+
+**Reference**: `docs/brain/EPIC-13/09-pr12-failure-analysis.md`

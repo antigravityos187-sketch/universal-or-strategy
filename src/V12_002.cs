@@ -1,3 +1,6 @@
+// <copyright file="V12_002.cs" company="BMad">
+// Copyright (c) BMad. All rights reserved.
+// </copyright>
 // V12.12 FLEET SYMMETRY & SAFETY HARDENING - Single-Instance Multi-Account Copy Trading Engine
 // Based on UniversalORStrategyV10_3.cs (BUILD 1702)
 // SIMA Architecture: One strategy instance on Master account broadcasts to all Apex accounts
@@ -9,39 +12,44 @@
 //   - IPC command distribution to multiple accounts
 //   - Reaper Audit thread for position verification
 //   - [SIMA] logging prefix for all multi-account operations
+
 using System;
+using System.Collections.Concurrent; // V8.30: Thread-safe collections
 using System.Collections.Generic;
-using System.Collections.Concurrent;  // V8.30: Thread-safe collections
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;  // V8.30: For .Values.Contains() on ConcurrentDictionary
-using System.Text;
 using System.Globalization;
-using System.Threading;  // V8.30: For Interlocked operations
+using System.Linq; // V8.30: For .Values.Contains() on ConcurrentDictionary
+using System.Net;
+using System.Net.Sockets;
+// EPIC-CCN-12: Enable unit testing of internal helper methods
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading; // V8.30: For Interlocked operations
 using System.Threading.Tasks; // V12.2: For Task.Run in async operations
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;  // V11: For UniformGrid
+using System.Windows.Controls.Primitives; // V11: For UniformGrid
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;  // V11: For Ellipse in header
+using System.Windows.Shapes; // V11: For Ellipse in header
 using NinjaTrader.Cbi;
+using NinjaTrader.Data;
 using NinjaTrader.Gui;
 using NinjaTrader.Gui.Chart;
 using NinjaTrader.Gui.Tools;
-using NinjaTrader.Data;
 using NinjaTrader.NinjaScript;
 using NinjaTrader.NinjaScript.DrawingTools;
 using NinjaTrader.NinjaScript.Indicators;
 using NinjaTrader.NinjaScript.Strategies;
-using System.Net;
-using System.Net.Sockets;
+
+[assembly: InternalsVisibleTo("V12_Performance.Tests")]
 
 namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.002-v28.0";  // R28 v28.0 -- blittable slot + XorShadow + optional MMIO mirror
+        public const string BUILD_TAG = "1111.017-pr5-iter10"; // PR #5 Iteration 10: Fix narrow exception handling in FlattenAll()
 
         public class UILiveTargetSnapshot
         {
@@ -63,7 +71,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 new UILiveTargetSnapshot(),
                 new UILiveTargetSnapshot(),
                 new UILiveTargetSnapshot(),
-                new UILiveTargetSnapshot()
+                new UILiveTargetSnapshot(),
             };
         }
 
@@ -133,7 +141,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private double sessionRange;
         private bool isInORWindow;
         private bool orComplete;
-        private volatile bool retestFiredThisSession;  // V12.1101E [B-2]: Latch -- prevent multiple RETEST entries per session | V12.Phase8 [F-06]: volatile for cross-thread visibility
+        private volatile bool retestFiredThisSession; // V12.1101E [B-2]: Latch -- prevent multiple RETEST entries per session | V12.Phase8 [F-06]: volatile for cross-thread visibility
         private DateTime orStartDateTime;
         private DateTime orEndDateTime;
         private DateTime sessionStartDateTime;
@@ -146,12 +154,17 @@ namespace NinjaTrader.NinjaScript.Strategies
         private double pointValue;
         private int minContracts;
         private int activeTargetCount = 1; // V12.Phase8.3: Dashboard target count (1--5). Isolated from minContracts to prevent risk floor corruption.
-        private int ConfiguredTargetCount { get { return activeTargetCount; } set { activeTargetCount = value; } } // B981 Alias for legacy files
-        private int maxContracts;  // V12.1101E [B-9]: Upper bound from MESMaximum/MGCMaximum -- prevents runaway ATR sizer
+        private int ConfiguredTargetCount
+        {
+            get { return activeTargetCount; }
+            set { activeTargetCount = value; }
+        } // B981 Alias for legacy files
+        private int maxContracts; // V12.1101E [B-9]: Upper bound from MESMaximum/MGCMaximum -- prevents runaway ATR sizer
 
         // ATR Indicator for RMA
         private ATR atrIndicator;
         private double currentATR;
+
         // Cross-thread price cache. Strategy callbacks write it; UI/WPF readers access it atomically.
         private long _lastKnownPriceBits = BitConverter.DoubleToInt64Bits(0.0);
         private double lastKnownPrice
@@ -163,6 +176,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // V8.2: EMA indicators for TREND trades
         private EMA ema9;
         private EMA ema15;
+
         // V11: Additional EMAs for Telemetry & RMA Anchors
         private EMA ema30;
         private EMA ema65;
@@ -187,7 +201,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private ConcurrentDictionary<string, Order> stopOrders;
         private ConcurrentDictionary<string, Order> target1Orders;
         private ConcurrentDictionary<string, Order> target2Orders;
-        private ConcurrentDictionary<string, Order> target3Orders;  // v5.13: New T3 orders
+        private ConcurrentDictionary<string, Order> target3Orders; // v5.13: New T3 orders
         private ConcurrentDictionary<string, Order> target4Orders;
         private ConcurrentDictionary<string, Order> target5Orders;
 
@@ -202,29 +216,50 @@ namespace NinjaTrader.NinjaScript.Strategies
         private ExecutionIdRing _executionIdFallbackRing;
 
         // V12.Phase6 [CONCURRENCY-01]: Marshal broker-thread account execution events to strategy thread
-        private struct QueuedAccountExecution { public Account Account; public ExecutionEventArgs EventArgs; }
-        private readonly ConcurrentQueue<QueuedAccountExecution> _accountExecutionQueue = new ConcurrentQueue<QueuedAccountExecution>();
-        // V12.1101E [TM-01]: Marshal broker-thread account order events to strategy thread.
-        private struct QueuedAccountOrderUpdate { public Account Account; public OrderEventArgs EventArgs; }
-        private readonly ConcurrentQueue<QueuedAccountOrderUpdate> _accountOrderQueue = new ConcurrentQueue<QueuedAccountOrderUpdate>();
+        private struct QueuedAccountExecution
+        {
+            public Account Account;
+            public ExecutionEventArgs EventArgs;
+        }
 
-        // [BUILD 948] Order adoption gate -- REAPER skips audit cycles until working orders have been re-adopted.
+        private readonly ConcurrentQueue<QueuedAccountExecution> _accountExecutionQueue =
+            new ConcurrentQueue<QueuedAccountExecution>();
+
+        // V12.1101E [TM-01]: Marshal broker-thread account order events to strategy thread.
+        private struct QueuedAccountOrderUpdate
+        {
+            public Account Account;
+            public OrderEventArgs EventArgs;
+        }
+
+        private readonly ConcurrentQueue<QueuedAccountOrderUpdate> _accountOrderQueue =
+            new ConcurrentQueue<QueuedAccountOrderUpdate>();
+
+        // [BUILD 984] Order adoption gate -- REAPER skips audit cycles until working orders have been re-adopted.
         private volatile bool _orderAdoptionComplete = false;
 
         // RMA Mode tracking
         private volatile bool isRMAModeActive;
-        private volatile bool isRMAButtonClicked;  // One-shot mode from button
+        private volatile bool isRMAButtonClicked; // One-shot mode from button
         private volatile bool _chartHoverRedActive; // Build 1108.002: Red border gate for click-trader hover
 
         // V8.2: TREND Mode tracking
         private volatile bool isTRENDModeActive;
-        private bool pendingTRENDEntry;  // V8.2 FIX: Flag to execute TREND in OnBarUpdate when BarsInProgress=0
-        private ConcurrentDictionary<string, string> linkedTRENDEntries;  // V8.30: Thread-safe - Links E1 and E2 by group ID
+        private bool pendingTRENDEntry; // V8.2 FIX: Flag to execute TREND in OnBarUpdate when BarsInProgress=0
+        private ConcurrentDictionary<string, string> linkedTRENDEntries; // V8.30: Thread-safe - Links E1 and E2 by group ID
 
-        // V12 PERFORMANCE: Locks are BANNED in favor of the Actor model (Enqueue).
-        // Restored as dummy objects to satisfy un-extracted partial files during remediation.
+        // V12 PERFORMANCE / ADR-019: Locks are BANNED. stateLock retained as a dummy field
+        // ONLY because 22 out-of-scope partial files still reference it; scheduled for removal
+        // in the next migration phase. Legacy CSV-header lock removed (DNA audit violation cleared).
         private readonly object stateLock = new object();
-        private readonly object dailySummaryLock = new object();
+
+        // [EPIC-5-PERF T04] Order array pool for zero-allocation SIMA propagation
+        private OrderArrayPool _orderArrayPool;
+
+        // ADR-019: One-shot guard replacing the legacy CSV-header lock around file creation.
+        // 0 = not yet ensured, 1 = header ensured (or file pre-existed). Reset to 0 on I/O failure
+        // so the next caller can retry. Read/written exclusively via Interlocked.
+        private int _dailySummaryHeaderEnsured = 0;
 
         // V8.4: RETEST Mode tracking
         private volatile bool isRetestModeActive;
@@ -239,6 +274,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         private volatile bool isTrendRmaMode = false; // False = STD (All-in), True = RMA (9/15 Split)
         private volatile bool isRetestRmaMode = false; // V12: RETEST RMA toggle state
 
+        // MP0: Dictionary dispatch tables for IPC command routing
+        private Dictionary<string, Action> _modeSetFlagsDispatch;
+        private Dictionary<string, Action> _modeExecDispatch;
+
         // V12.2 Hybrid Sync: Logic State
         private volatile bool isTosSyncMode = false;
         private bool isLongArmed = false;
@@ -246,20 +285,36 @@ namespace NinjaTrader.NinjaScript.Strategies
         private DateTime lastArmedTime = DateTime.MinValue;
 
         // V11: RMA Anchor Logic
-        public enum RmaAnchorType { Ema30, Ema65, Ema200, OrHigh, OrLow, Manual }
+        public enum RmaAnchorType
+        {
+            Ema30,
+            Ema65,
+            Ema200,
+            OrHigh,
+            OrLow,
+            Manual,
+        }
+
         private RmaAnchorType currentRmaAnchor = RmaAnchorType.Ema65; // Default to 65
+
         // V12.1101E [D-02]: Removed unused V11 manual-anchor remnants (lastMnlPrice, isMnlArmed).
         private double cachedMnlPrice = 0; // Thread-safe cache
+
         // Build 1103: Sticky State persistence
-        private string _stickyLeaderAccount;                        // Persisted leader account name
+        private string _stickyLeaderAccount; // Persisted leader account name
         private Dictionary<string, bool> _pendingStickyFleetToggles; // Deferred fleet toggles (applied after enumeration)
+
+        // EPIC-4 Ticket 02: Sticky State persistence layer fields
+        private bool _stickyStateEnabled = true;
+        private long _lastSnapshotTicks = 0;
+        private int _stickyDirtyFlag = 0; // Atomic dirty flag (0=clean, 1=dirty)
 
         private DateTime lastStopManagementTime; // V8.13: Stop management throttling (100ms)
 
         // V8.30: Circuit breaker state - prevents cascade when too many pending replacements
         private volatile int pendingReplacementCount = 0;
         private const int CIRCUIT_BREAKER_THRESHOLD = 5;
-        private const int STALE_PENDING_FAST_PATH_SEC = 3;  // Build 1104.2: staleness threshold for pending stop replacements
+        private const int STALE_PENDING_FAST_PATH_SEC = 3; // Build 1104.2: staleness threshold for pending stop replacements
         private volatile bool circuitBreakerActive = false;
         private long circuitBreakerActivatedTicks = 0; // V12.Phase8 [F-07]: long with Volatile barriers for cross-thread visibility
         private DateTime circuitBreakerActivatedTime
@@ -272,11 +327,34 @@ namespace NinjaTrader.NinjaScript.Strategies
         private DateTime lastDrawORBoxTime = DateTime.MinValue;
         private const int DRAW_ORBOX_THROTTLE_MS = 200;
 
+        /// <summary>
+        /// Default adaptive throttle interval in milliseconds.
+        /// Prevents CPU saturation during high-frequency tick processing.
+        /// </summary>
+        private const int DEFAULT_ADAPTIVE_THROTTLE_MS = 100;
+
+        /// <summary>
+        /// Actor queue depth warning threshold.
+        /// Triggers backlog warning when queue exceeds this depth.
+        /// </summary>
+        private const int ACTOR_QUEUE_DEPTH_WARNING_THRESHOLD = 100;
+
+        /// <summary>
+        /// Initial capacity for dispatch log StringBuilder.
+        /// Pre-allocated to avoid reallocation during hot path logging.
+        /// </summary>
+        private const int DISPATCH_LOG_INITIAL_CAPACITY = 512;
+
+        /// <summary>
+        /// Maximum items to drain from IPC queue during shutdown.
+        /// Prevents infinite loop if queue is continuously fed.
+        /// </summary>
+        private const int IPC_DRAIN_LIMIT = 100;
+
         // V8.30: Adaptive throttling based on tick frequency
         private int tickCountInLastSecond = 0;
         private DateTime lastTickCountReset = DateTime.MinValue;
-        private int adaptiveThrottleMs = 100;
-
+        private int adaptiveThrottleMs = DEFAULT_ADAPTIVE_THROTTLE_MS;
 
         // V9.1.8 IPC Integration
         private TcpListener ipcListener;
@@ -287,12 +365,20 @@ namespace NinjaTrader.NinjaScript.Strategies
         // All state mutations run inside Enqueue closures; _drainToken ensures serial execution.
         // Actor work must stay on the strategy thread even when enqueued from UI/broker/reaper threads.
         // Zero locks: no monitor is ever held across a broker call (CancelOrder/SubmitOrder).
-        private abstract class StrategyCommand { public abstract void Execute(V12_002 ctx); }
-        private sealed class DelegateCommand : StrategyCommand {
+        private abstract class StrategyCommand
+        {
+            public abstract void Execute(V12_002 ctx);
+        }
+
+        private sealed class DelegateCommand : StrategyCommand
+        {
             private readonly Action<V12_002> _action;
+
             public DelegateCommand(Action<V12_002> action) => _action = action;
+
             public override void Execute(V12_002 ctx) => _action?.Invoke(ctx);
         }
+
         private readonly ConcurrentQueue<StrategyCommand> _cmdQueue = new ConcurrentQueue<StrategyCommand>();
         private volatile int _drainToken = 0;
         private volatile int _actorOwnerThreadId = 0;
@@ -305,85 +391,123 @@ namespace NinjaTrader.NinjaScript.Strategies
         private volatile int _actorYieldRequested = 0;
         private string _actorYieldReason = string.Empty;
         private string _actorYieldDetail = string.Empty;
+
         // Build 1109 [FREEZE-PROOF]: Chunked flatten queue -- one account per TriggerCustomEvent cycle.
         // Mirrors PumpFleetDispatch pattern. Prevents multi-second strategy thread freeze during fleet flatten.
-        private readonly ConcurrentQueue<FlattenWorkItem> _pendingFlattenOps
-            = new ConcurrentQueue<FlattenWorkItem>();
+        private readonly ConcurrentQueue<FlattenWorkItem> _pendingFlattenOps = new ConcurrentQueue<FlattenWorkItem>();
 
         private struct FlattenWorkItem
         {
             public Account Account;
-            public bool CancelOnly;        // true = cancel orders only, no market close
-            public bool ZombieSweepOnly;   // true = only cancel zombie targets (EMERGENCY_STOP_, T1_-T5_)
-            public bool IsMaster;          // true = use SubmitOrderUnmanaged; false = use Account.Submit
-            public string Source;          // logging tag
+            public bool CancelOnly; // true = cancel orders only, no market close
+            public bool ZombieSweepOnly; // true = only cancel zombie targets (EMERGENCY_STOP_, T1_-T5_)
+            public bool IsMaster; // true = use SubmitOrderUnmanaged; false = use Account.Submit
+            public string Source; // logging tag
         }
+
         // V14.2 Sovereign Photon [ADR-012]: Zero-allocation fleet dispatch infrastructure
         private PhotonOrderPool _photonPool;
         private SPSCRing<FleetDispatchSlot> _photonDispatchRing;
         private MmioDispatchMirror _photonMmioMirror; // v28.0 -- optional MMIO write-through; may be null if CreateOrOpen throws
+
         // Diagnostic: CRC16 verification failures (defense-in-depth -- see Ring.cs notes)
         private long _photonCrcFailures = 0;
         private readonly System.Diagnostics.Stopwatch _actorCycleStopwatch = new System.Diagnostics.Stopwatch();
         private volatile bool _configureComplete = false;
         private volatile bool _dataLoadedComplete = false;
         private int _startupReadinessLogEmitted = 0;
-        protected void Enqueue(Action<V12_002> action) {
-            if (action == null) return;
+        private volatile bool _diagFleet; // T-Q1: Fleet dispatch + account queue catch logging
+        private volatile bool _diagIpc; // IPC/MMIO diagnostic logging (restored for Dispatch.cs usage)
+
+        // UI callback failure counter
+        private int _uiCallbackFailures = 0;
+
+        // Build 1111.014 [PR#5]: Sticky state diagnostic counters
+        private int _stateTempCleanupFailures = 0;
+        private bool _stateCorruptionDetected = false;
+
+        protected void Enqueue(Action<V12_002> action)
+        {
+            if (action == null)
+                return;
             _cmdQueue.Enqueue(new DelegateCommand(action));
             if (IsActorThread())
                 TryDrain();
             else
                 ScheduleActorDrain();
         }
-        private bool IsActorThread() {
+
+        private bool IsActorThread()
+        {
             int actorThreadId = Volatile.Read(ref _actorOwnerThreadId);
             return actorThreadId != 0 && Thread.CurrentThread.ManagedThreadId == actorThreadId;
         }
-        private void RefreshActorOwnerThread() {
+
+        private void RefreshActorOwnerThread()
+        {
             Interlocked.Exchange(ref _actorOwnerThreadId, Thread.CurrentThread.ManagedThreadId);
         }
-        private bool EnsureStartupReady(string callbackName) {
+
+        private bool EnsureStartupReady(string callbackName)
+        {
             if (_configureComplete && _dataLoadedComplete)
                 return true;
 
-            if (Interlocked.CompareExchange(ref _startupReadinessLogEmitted, 1, 0) == 0) {
+            if (Interlocked.CompareExchange(ref _startupReadinessLogEmitted, 1, 0) == 0)
+            {
                 StringBuilder missingPhases = new StringBuilder();
                 if (!_configureComplete)
                     missingPhases.Append("Configure");
-                if (!_dataLoadedComplete) {
+                if (!_dataLoadedComplete)
+                {
                     if (missingPhases.Length > 0)
                         missingPhases.Append(", ");
                     missingPhases.Append("DataLoaded");
                 }
 
-                Print(string.Format(
-                    "[BUILD 976 STARTUP GUARD] {0} skipped until initialization completes. State={1} Thread={2} Missing={3}",
-                    callbackName,
-                    State,
-                    Thread.CurrentThread.ManagedThreadId,
-                    missingPhases.ToString()));
+                Print(
+                    string.Format(
+                        "[BUILD 976 STARTUP GUARD] {0} skipped until initialization completes. State={1} Thread={2} Missing={3}",
+                        callbackName,
+                        State,
+                        Thread.CurrentThread.ManagedThreadId,
+                        missingPhases.ToString()
+                    )
+                );
             }
 
             return false;
         }
-        private void ScheduleActorDrain() {
-            if (Interlocked.CompareExchange(ref _actorWakeScheduled, 1, 0) != 0) return;
-            try {
-                TriggerCustomEvent(o => {
-                    Interlocked.Exchange(ref _actorWakeScheduled, 0);
-                    TryDrain();
-                }, null);
+
+        private void ScheduleActorDrain()
+        {
+            if (Interlocked.CompareExchange(ref _actorWakeScheduled, 1, 0) != 0)
+                return;
+            try
+            {
+                TriggerCustomEvent(
+                    o =>
+                    {
+                        Interlocked.Exchange(ref _actorWakeScheduled, 0);
+                        TryDrain();
+                    },
+                    null
+                );
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 Interlocked.Exchange(ref _actorWakeScheduled, 0);
                 Print("[V12_INLINE_ACTOR] schedule failed: " + ex.Message);
             }
         }
-        private void TryDrain() {
-            if (Interlocked.CompareExchange(ref _drainToken, 1, 0) != 0) return;
+
+        private void TryDrain()
+        {
+            if (Interlocked.CompareExchange(ref _drainToken, 1, 0) != 0)
+                return;
             DrainActor();
         }
+
         private void BeginActorCycle()
         {
             _activeActorCycleId = Interlocked.Increment(ref _actorCycleSequence);
@@ -393,6 +517,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             _actorYieldDetail = string.Empty;
             _actorCycleStopwatch.Restart();
         }
+
         private string GetActorBudgetQueueState()
         {
             return string.Format(
@@ -400,8 +525,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 _cmdQueue.Count,
                 _reaperRepairQueue.Count,
                 _reaperFlattenQueue.Count,
-                _reaperNakedStopQueue.Count);
+                _reaperNakedStopQueue.Count
+            );
         }
+
         private void RequestActorYield(string reason, string detail = null)
         {
             if (Interlocked.CompareExchange(ref _actorYieldRequested, 1, 0) != 0)
@@ -409,16 +536,20 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             _actorYieldReason = reason ?? string.Empty;
             _actorYieldDetail = detail ?? string.Empty;
-            Print(string.Format(
-                "[ACTOR_BUDGET] cycle={0} reason={1} elapsedMs={2} brokerCalls={3} remainingActorQueue={4} detail={5} state={6}",
-                _activeActorCycleId,
-                _actorYieldReason,
-                _actorCycleStopwatch.ElapsedMilliseconds,
-                _actorBrokerCallsThisCycle,
-                _cmdQueue.Count,
-                _actorYieldDetail,
-                GetActorBudgetQueueState()));
+            Print(
+                string.Format(
+                    "[ACTOR_BUDGET] cycle={0} reason={1} elapsedMs={2} brokerCalls={3} remainingActorQueue={4} detail={5} state={6}",
+                    _activeActorCycleId,
+                    _actorYieldReason,
+                    _actorCycleStopwatch.ElapsedMilliseconds,
+                    _actorBrokerCallsThisCycle,
+                    _cmdQueue.Count,
+                    _actorYieldDetail,
+                    GetActorBudgetQueueState()
+                )
+            );
         }
+
         private bool TryYieldActorForTime(string scope, string detail)
         {
             if (Volatile.Read(ref _actorYieldRequested) != 0)
@@ -430,6 +561,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             RequestActorYield("time", string.Format("{0}:{1}", scope, detail));
             return true;
         }
+
         private bool TryConsumeActorBrokerCall(string scope, string detail)
         {
             int nextCall = _actorBrokerCallsThisCycle + 1;
@@ -442,22 +574,32 @@ namespace NinjaTrader.NinjaScript.Strategies
             _actorBrokerCallsThisCycle = nextCall;
             return true;
         }
+
         // V12.963: Non-recursive drain -- prevents stack growth from immediate broker callbacks
         // (SubmitOrder/CancelOrder can re-trigger OnExecutionUpdate -> Enqueue -> TryDrain on same stack).
         // Instead of recursing, schedule a new drain cycle via TriggerCustomEvent.
-        private void DrainActor() {
+        private void DrainActor()
+        {
             RefreshActorOwnerThread();
             TouchStrategyHeartbeat();
             // Build 1109 [FREEZE-PROOF]: Early warning for queue saturation
             int _actorQd = _cmdQueue.Count;
-            if (_actorQd > 100)
+            if (_actorQd > ACTOR_QUEUE_DEPTH_WARNING_THRESHOLD)
                 Print("[ACTOR_WARN] Queue depth=" + _actorQd + " -- possible backlog");
             BeginActorCycle();
-            try {
+            try
+            {
                 StrategyCommand cmd;
-                while (_cmdQueue.TryDequeue(out cmd)) {
-                    try { cmd.Execute(this); }
-                    catch (Exception ex) { Print("[V12_INLINE_ACTOR] " + ex); }
+                while (_cmdQueue.TryDequeue(out cmd))
+                {
+                    try
+                    {
+                        cmd.Execute(this);
+                    }
+                    catch (Exception ex)
+                    {
+                        Print("[V12_INLINE_ACTOR] " + ex);
+                    }
                     if (Volatile.Read(ref _actorYieldRequested) != 0)
                         break;
                     if (_actorCycleStopwatch.ElapsedMilliseconds >= MaxActorDurationMs)
@@ -467,13 +609,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                 }
             }
-            finally {
+            finally
+            {
                 _actorCycleStopwatch.Stop();
                 Interlocked.Exchange(ref _drainToken, 0);
                 if (!_cmdQueue.IsEmpty)
                     ScheduleActorDrain();
             }
         }
+
         private sealed class IpcClientSession
         {
             public readonly int ClientId;
@@ -502,6 +646,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         private ConcurrentQueue<string> ipcCommandQueue;
+
         // V12.2: Multi-Client Support
         private ConcurrentDictionary<int, IpcClientSession> connectedClients;
 
@@ -511,6 +656,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private int _watchdogStage = 0; // 0=idle, 1=enqueued, 2=direct fallback fired
         private volatile bool isFlattenRunning; // V12.8: Guard to pause Reaper during flatten
         private volatile int _flattenScopeDepth = 0;
+
         /// <summary>
         /// [DEPRECATED for follower REAPER audit -- Build 1105] Master account audit still reads this dictionary.
         /// Follower REAPER truth is owned by FollowerBracketFSM via GetFsmExpectedPosition().
@@ -523,20 +669,29 @@ namespace NinjaTrader.NinjaScript.Strategies
         // V12.Phase6 [UNSUB-TRACK]: Deterministic unsubscribe -- tracks which accounts have active event handlers
         private readonly HashSet<string> _subscribedAccountNames = new HashSet<string>();
 
-
-        // V12.Phase7 [H-10]: Mutex guard for SIMA enable/disable transitions -- prevents partial state
+        // V12.Phase7 [H-10]: Lock-free gate for SIMA enable/disable transitions -- prevents partial state
         // if two enable/disable calls interleave (e.g. IPC toggle while UI toggle in progress).
-        private readonly SemaphoreSlim _simaToggleSem = new SemaphoreSlim(1, 1);
-        // V12.Audit [H-10]: Tracks a toggle that could not complete due to semaphore timeout.
+        // 0=idle, 1=busy (Interlocked.CompareExchange acquire, Interlocked.Exchange release in finally)
+        private int _simaToggleState = 0;
+
+        // V12.Phase7 [GAP-4]: SIMA toggle semaphore (legacy, replaced by lock-free _simaToggleState)
+        // Retained for disposal in Lifecycle cleanup
+        private SemaphoreSlim _simaToggleSem;
+
+        // V12.Audit [H-10]: Tracks a toggle that could not complete due to gate contention.
         // ApplySimaState retries the pending toggle at the top of its next invocation.
-        private volatile bool _simaTogglePending = false;
+        // 0=no retry, 1=retry pending (Volatile.Read/Write)
+        private int _simaTogglePending = 0;
         private volatile int _accountOrderPumpScheduled = 0;
         private volatile int _accountOrderPumpDeferredWhileFlatten = 0;
         private volatile int _accountExecutionPumpScheduled = 0;
         private volatile int _accountExecutionPumpDeferredWhileFlatten = 0;
+
         // Build 935: Tracks accounts with reserved expectedPositions whose follower dispatch is still syncing.
         // Key = ExpKey(accountName). Used to suppress false REAPER repairs and flat-clears during submit windows.
-        private readonly ConcurrentDictionary<string, byte> _dispatchSyncPendingExpKeys = new ConcurrentDictionary<string, byte>(); // [B967-FIX-02]
+        private readonly ConcurrentDictionary<string, byte> _dispatchSyncPendingExpKeys =
+            new ConcurrentDictionary<string, byte>(); // [B967-FIX-02]
+
         // Build 1105: Shadow Mode -- leader-follower autonomous propagation
         private readonly ConcurrentDictionary<string, double> _leaderLastStopPrice =
             new ConcurrentDictionary<string, double>();
@@ -568,9 +723,17 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Build 936 [FIX-1]: Async fleet dispatch -- defers acct.Submit() to TriggerCustomEvent pump cycles.
         // Each enqueued request is one account's Submit payload. PumpFleetDispatch() consumes one per cycle,
         // preventing the strategy thread from blocking for the full fleet Submit window (~7s for 5 accounts).
-        private readonly ConcurrentQueue<FleetDispatchRequest> _pendingFleetDispatches
-            = new ConcurrentQueue<FleetDispatchRequest>();
+        private readonly ConcurrentQueue<FleetDispatchRequest> _pendingFleetDispatches =
+            new ConcurrentQueue<FleetDispatchRequest>();
         private volatile int _pendingFleetDispatchCount = 0;
+
+        // REAPER-EXPANSION Ticket 2: Circuit breaker to prevent unbounded queue growth
+        private volatile int _reaperCircuitBreakerTripped = 0; // 0=open, 1=tripped
+        private const int REAPER_MAX_PENDING_DISPATCHES = 1000; // Threshold
+
+        // D7: _dispatchInvocationCount / _dispatchPeakElapsedTicks / _dispatchTotalElapsedTicks
+        // removed (Build-983). Fields were declared but never wired into EmitMetricsSummary.
+        // Re-introduce if/when FleetDispatch performance telemetry is instrumented (M5).
 
         // REAP-01: UTC ticks captured each time expectedPositions is set to a non-zero value.
         // REAPER uses this to suppress false "Critical Desync" alerts within a 5-second grace window
@@ -589,51 +752,60 @@ namespace NinjaTrader.NinjaScript.Strategies
         private ConcurrentDictionary<string, int> accountDailyTradeCount = new ConcurrentDictionary<string, int>();
         private ConcurrentDictionary<string, double> accountEquityPeak = new ConcurrentDictionary<string, double>();
         private ConcurrentDictionary<string, double> accountMaxDrawdown = new ConcurrentDictionary<string, double>();
-        private ConcurrentDictionary<string, ConcurrentDictionary<int, byte>> accountTradingDays = new ConcurrentDictionary<string, ConcurrentDictionary<int, byte>>();
-        private ConcurrentDictionary<string, DateTime> accountLastSummaryDate = new ConcurrentDictionary<string, DateTime>();
+        private ConcurrentDictionary<string, ConcurrentDictionary<int, byte>> accountTradingDays =
+            new ConcurrentDictionary<string, ConcurrentDictionary<int, byte>>();
+        private ConcurrentDictionary<string, DateTime> accountLastSummaryDate =
+            new ConcurrentDictionary<string, DateTime>();
         private string dailySummaryCsvPath;
         private DateTime lastDailySummaryCheck = DateTime.MinValue;
-        
+
         // [BUILD 924 - Fix C] CIT suppression flag: set true during PropagateMasterPriceMove,
         // cleared in finally block. Prevents CIT from market-firing freshly resubmitted follower
         // limit entries before the propagation sync cycle completes.
         private volatile bool _propagationActive = false;
 
         // Build 947: Two-phase FSM for follower entry replace (ghost-order prevention)
-        private enum FollowerReplaceState { Idle, PendingCancel, Submitting, SubmitFailed }
+        private enum FollowerReplaceState
+        {
+            Idle,
+            PendingCancel,
+            Submitting,
+            SubmitFailed,
+        }
 
         private class FollowerReplaceSpec
         {
             public FollowerReplaceState State;
             public string CancellingOrderId;
-            public int    PendingQty;
+            public int PendingQty;
             public double PendingPrice;
             public string AccountName;
             public string SignalName;
             public string MasterSignalName;
-            public OrderAction EntryAction;    // captured from pos.Direction at spec creation
-            public OrderType   EntryOrderType; // captured from fEntry.OrderType at spec creation
-            public bool        IsStopType;     // true when EntryOrderType is StopMarket or StopLimit
+            public OrderAction EntryAction; // captured from pos.Direction at spec creation
+            public OrderType EntryOrderType; // captured from fEntry.OrderType at spec creation
+            public bool IsStopType; // true when EntryOrderType is StopMarket or StopLimit
             public string LastSubmitError;
         }
 
-        private readonly ConcurrentDictionary<string, FollowerReplaceSpec>
-            _followerReplaceSpecs = new ConcurrentDictionary<string, FollowerReplaceSpec>();
+        private readonly ConcurrentDictionary<string, FollowerReplaceSpec> _followerReplaceSpecs =
+            new ConcurrentDictionary<string, FollowerReplaceSpec>();
 
         // B957/C1: Two-phase FSM for follower TARGET order replacement (same pattern as entry replace FSM).
         // Replaces the banned Cancel+Submit anti-pattern in MoveSpecificTarget follower path.
         private class FollowerTargetReplaceSpec
         {
-            public string      EntryName;
-            public int         TargetNum;
-            public double      NewTargetPrice;
-            public int         Quantity;
+            public string EntryName;
+            public int TargetNum;
+            public double NewTargetPrice;
+            public int Quantity;
             public OrderAction ExitAction;
-            public Account     TargetAccount;
-            public string      CancellingOrderId; // matched by order ID in OnAccountOrderUpdate
+            public Account TargetAccount;
+            public string CancellingOrderId; // matched by order ID in OnAccountOrderUpdate
         }
-        private readonly ConcurrentDictionary<string, FollowerTargetReplaceSpec>
-            _followerTargetReplaceSpecs = new ConcurrentDictionary<string, FollowerTargetReplaceSpec>();
+
+        private readonly ConcurrentDictionary<string, FollowerTargetReplaceSpec> _followerTargetReplaceSpecs =
+            new ConcurrentDictionary<string, FollowerTargetReplaceSpec>();
 
         // Build 1106: Per-mode config profile for sticky memory across mode switches.
         // Each mode (OR, RMA, RETEST, TREND, MOMO, FFMA) stores its own target/risk snapshot.
@@ -641,55 +813,75 @@ namespace NinjaTrader.NinjaScript.Strategies
         private class ModeConfigProfile
         {
             public int TargetCount = 1;
-            public double T1, T2, T3, T4, T5;
-            public TargetMode T1Type, T2Type, T3Type, T4Type, T5Type;
+            public double T1,
+                T2,
+                T3,
+                T4,
+                T5;
+            public TargetMode T1Type,
+                T2Type,
+                T3Type,
+                T4Type,
+                T5Type;
             public double StopMult;
             public double MaxRisk;
         }
 
-        private readonly ConcurrentDictionary<string, ModeConfigProfile> _modeProfiles
-            = new ConcurrentDictionary<string, ModeConfigProfile>();
+        private readonly ConcurrentDictionary<string, ModeConfigProfile> _modeProfiles =
+            new ConcurrentDictionary<string, ModeConfigProfile>();
 
         // Phase 2: Follower Bracket FSMs (Shadow Mode)
-        private readonly ConcurrentDictionary<string, FollowerBracketFSM>
-            _followerBrackets = new ConcurrentDictionary<string, FollowerBracketFSM>();
+        private readonly ConcurrentDictionary<string, FollowerBracketFSM> _followerBrackets =
+            new ConcurrentDictionary<string, FollowerBracketFSM>();
 
         // Phase 2: Actor Mailbox for account events
-        private readonly ConcurrentQueue<AccountEvent>
-            _accountMailbox = new ConcurrentQueue<AccountEvent>();
+        private readonly ConcurrentQueue<AccountEvent> _accountMailbox = new ConcurrentQueue<AccountEvent>();
 
         // Phase 3: O(1) lookup for FSM events
-        private readonly ConcurrentDictionary<string, string>
-            _orderIdToFsmKey = new ConcurrentDictionary<string, string>();
+        private readonly ConcurrentDictionary<string, string> _orderIdToFsmKey =
+            new ConcurrentDictionary<string, string>();
 
         // [BUILD 949] CIT one-shot guard: tracks keys that have already been nudged.
         // Prevents re-nudging on subsequent bars after the first limit move.
-        private readonly ConcurrentDictionary<string, bool> _citNudgedKeys
-            = new ConcurrentDictionary<string, bool>();
+        private readonly ConcurrentDictionary<string, bool> _citNudgedKeys = new ConcurrentDictionary<string, bool>();
+
+        // [EPIC-5-PERF] Latency histograms for hot path instrumentation
+        private readonly LatencyHistogram _histOnBarUpdate = new LatencyHistogram("OnBarUpdate");
+        private readonly LatencyHistogram _histOnMarketData = new LatencyHistogram("OnMarketData");
+        private readonly LatencyHistogram _histProcessOnOrderUpdate = new LatencyHistogram("ProcessOnOrderUpdate");
+        private readonly LatencyHistogram _histHandleEntryOrderFilled = new LatencyHistogram("HandleEntryOrderFilled");
+        private readonly LatencyHistogram _histMonitorRmaProximity = new LatencyHistogram("MonitorRmaProximity");
+        private readonly LatencyHistogram _histPublishUiSnapshot = new LatencyHistogram("PublishUiSnapshot");
 
         // Build 950: Target snapshot for OCO cascade detection during stop replacement.
         private class TargetSnapshot
         {
-            public int    TargetNum;     // 1-5
-            public double Price;         // LimitPrice at snapshot time
-            public int    Qty;           // Quantity at snapshot time
-            public Order  CapturedOrder; // Order ref -- check .OrderState for cascade detection
+            public int TargetNum; // 1-5
+            public double Price; // LimitPrice at snapshot time
+            public int Qty; // Quantity at snapshot time
+            public Order CapturedOrder; // Order ref -- check .OrderState for cascade detection
         }
 
         #endregion
 
         #region Fleet Helpers
 
-        private bool IsFleetAccount(Account acct)
-            => acct != null && acct.Name.IndexOf(AccountPrefix, StringComparison.OrdinalIgnoreCase) >= 0;
+        private bool IsFleetAccount(Account acct) =>
+            acct != null && acct.Name.IndexOf(AccountPrefix, StringComparison.OrdinalIgnoreCase) >= 0;
 
         #endregion
 
         #region SIMA Method Wrappers (Legacy Compatibility)
         // Maps legacy method names to the B966 'Locked' extraction variants.
-        private void AddExpectedPositionDelta(string accountName, int delta) => AddExpectedPositionDeltaLocked(accountName, delta);
-        private void SetExpectedPosition(string accountName, int value) => SetExpectedPositionLocked(accountName, value);
-        private void AddOrUpdateExpectedPosition(string accountName, int addValue, Func<int, int> updateExisting) => AddOrUpdateExpectedPositionLocked(accountName, addValue, updateExisting);
+        private void AddExpectedPositionDelta(string accountName, int delta) =>
+            AddExpectedPositionDeltaLocked(accountName, delta);
+
+        private void SetExpectedPosition(string accountName, int value) =>
+            SetExpectedPositionLocked(accountName, value);
+
+        private void AddOrUpdateExpectedPosition(string accountName, int addValue, Func<int, int> updateExisting) =>
+            AddOrUpdateExpectedPositionLocked(accountName, addValue, updateExisting);
+
         private void ApplySimaState(bool enabled) => ProcessApplySimaState(enabled);
         #endregion
 
@@ -698,13 +890,21 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void ResumeAccountOrderQueuePump()
         {
             if (!_accountOrderQueue.IsEmpty)
-                try { TriggerCustomEvent(o => ProcessAccountOrderQueue(), null); } catch { }
+                try
+                {
+                    TriggerCustomEvent(o => ProcessAccountOrderQueue(), null);
+                }
+                catch { }
         }
 
         private void ResumeAccountExecutionQueuePump()
         {
             if (!_accountExecutionQueue.IsEmpty)
-                try { TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null); } catch { }
+                try
+                {
+                    TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null);
+                }
+                catch { }
         }
 
         #endregion

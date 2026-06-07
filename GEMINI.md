@@ -1,29 +1,49 @@
-# NinjaScript V12 Project Standards (Gemini Mirror)
-# Gemini CLI = BACKUP ORCHESTRATOR / CO-ORCHESTRATOR (identical twin to Antigravity)
-# Primary orchestrator: Antigravity. Hot standby: Gemini CLI.
+# NinjaScript V12 Project Standards (Antigravity & Gemini Mirror)
+
+# Antigravity = PRIMARY ORCHESTRATOR (BANNED from src/ edits)
+# Gemini CLI = BACKUP ORCHESTRATOR & BACKUP ENGINEER (Permitted to code)
+
+# Note: Antigravity is powered by a Gemini model, but its identity is ANTIGRAVITY.
+# Antigravity must NEVER assume the role of Backup Engineer.
 
 - **Language**: C# 8.0 / .NET Framework 4.8 (NinjaTrader 8).
-- **No Internal Locks**: Legacy `lock(stateLock)` is **BANNED** for internal logic. All state mutations must be thread-safe; use the `Enqueue(ctx => ...)` model by default EXCEPT when direct-write is required for termination safety (see Build 981).
+- **UltraThink & UltraPlan ALWAYS**: Permanent mandate for Build 981+. All architectural design must use Claude's Ultraplan [Cloud] and every agent must perform a Triple-Agent UltraThink audit.
+- **No Internal Locks**: Legacy `lock(stateLock)` is **BANNED** for internal logic.
 - **Build 981 Protocol**: Direct writes to `stopOrders` are MANDATORY during bracket submission. DO NOT use Enqueue for this operation as it creates a ghost-order tracking window during shutdown.
 - **Lifecycle**: Semaphores (`_simaToggleSem`) MUST be released in finally blocks.
 - **Refactoring**: ALL file splits MUST use the Python extractor script (see Section 7). Manual copy-paste is BANNED for any split exceeding 50 lines.
 - **Instrument Lookups**: Prefer explicit FirstOrDefault logic for instrument lookups (Reaper parity).
 - **Style**: Use PascalCase for methods, camelCase for local variables. Avoid dense one-liners; prioritize "Metabolic Elegance."
+- **Frontend Design (V12.15)**: Mandatory use of `.agent/skills/frontend-design/` for all UI/UX work. BANNED: Inter, Roboto, Generic AI aesthetics.
 
-## 🛡️ Protocol Hardening (V12 Permanent DNA)
+## ðŸ›¡ï¸ Protocol Hardening (V12 Permanent DNA)
 
-### 1. THE "DIRECTOR'S GATE" HIERARCHY
+### 1. THE "DIRECTOR'S GATE" HIERARCHY (Protocol V14)
 
-- **ORCHESTRATOR (Antigravity / Gemini CLI)**: The Central Switchboard. Intake (P1) and multi-agent coordination. BANNED from manual coding.
-- **FORENSICS (Codex)**: Diagnosis (P2) and Logic Audits (P5). Provides "Logical Proof of Failure."
-- **ARCHITECT (Claude Code)**: Design & Strategic Planning (P3). Peer Review & Sign-off (P5).
-- **ENGINEER (Codex / Jules)**: Implementation (P4). Execution of approved surgical edits.
+- **ORCHESTRATOR (Antigravity)**: P1 Central Switchboard. BANNED from manual coding.
+- **BACKUP ENGINEER (Gemini CLI)**: Hot standby. Permitted for manual coding when acting as Backup Engineer.
+- **FORENSICS (Codex)**: P2 Diagnosis & Proof of Failure.
+- **ARCHITECT + ENGINEER (P3/P4/P5) -- src/ tasks**: **Bob CLI** (`v12-engineer`) is the unified Architect-Engineer for all `src/` work. Bob handles design gates, God-function splitting, and full surgical implementation in a single session. No separate Claude P3 handoff required for `src/` tickets.
+  - **Bob CLI** (`v12-engineer`): Primary. Design + implementation for extraction, refactoring, complexity reduction.
+  - **Codex CLI** (`codex-rescue`): Secondary. Surgical logic hardening and lock-free kernel updates.
+- **ARCHITECT (P3) -- escalation only**: **Claude Code** reserved for (a) non-src architectural review, (b) $battlezip AMAL sessions, (c) cross-subgraph decisions spanning >3 files outside Bob's context. PLAN-ONLY when invoked.
+- **ADJUDICATOR (Arena AI)**: **P4 Vetting Gate**. Adversarial consensus and **PR Audit** required BEFORE surgery.
+- **ENGINEER (P4/P5) -- non-src tasks**:
+  - **Jules AI**: Primary for GitHub-based workflows.
+  - **Gemini CLI** (`yolo`): Secondary for local file access and visual context tasks. **BANNED** from high-value logic synthesis tasks like `$prreport` or `$battlezip`.
+- **VALIDATOR (Rider / AMAL)**: **P6 Post-Surgery Performance**. ASCII Gate & Allocation checks.
+- **SENTINEL (GitHub / Sentry)**: **P7 Infrastructure & Security**. Supply chain & environmental health.
+
+- **P4 Redundancy Mandate**: Task-splitting during a P4 audit is **STRICTLY FORBIDDEN**. Every member of the Red Team must independently audit the entire plan.
+- **ZERO-TRUST IDENTITY**: It is STRICTLY FORBIDDEN for any agent to pretend to be another model. Missions must HOLD until the authentic agent responds.
+- **GITHUB-FIRST PROMPTING**: All external AI prompts MUST use standard GitHub links for branch references.
 
 ### 2. OPERATIONAL WORKFLOW
 
-- **Plan Approval**: Every code change requires an `implementation_plan.md` designed by Claude/Codex.
-- **User Mandate**: Orchestrators (Antigravity / Gemini CLI) are BANNED from approving plans. Only the USER (The Director) can authorize implementation.
-- **Engineer Self-Audit (P4)**: Before handing off for Architectural Audit, the ENGINEER must:
+- **Plan Approval**: Every `src/` code change requires a plan. For `src/` tasks, **Bob CLI** (`v12-engineer`) authors the plan inline during its design phase -- no separate Claude handoff required. For cross-subgraph escalations, Claude (ARCHITECT) authors `docs/brain/implementation_plan.md`. The UltraThink & UltraPlan ALWAYS mandate (Build 981+) applies to Bob's planning phase equally.
+- **User Mandate**: Orchestrators (Antigravity) are BANNED from approving plans. Only the USER (The Director) can authorize implementation.
+- **Post-Edit Deployment (P5)**: After every `src/` edit, ENGINEER must run `powershell -File .\deploy-sync.ps1`, then tell Director to press F5. Verify BUILD_TAG banner.
+- **Engineer Self-Audit (P5)**: Before handing off for Architectural Audit, the ENGINEER must:
   - Run `grep` audits to confirm no accidental deletions of guards or `lock` blocks.
   - Verify that all new logic is wrapped in the FSM/Actor `Enqueue` model.
   - Check for non-ASCII characters in C# strings (compiler safety).
@@ -48,5 +68,146 @@
 ## Section 7: Python Extractor Protocol (Permanent Standard)
 
 **ALL file splits MUST use a Python extractor script. Manual copy-paste is BANNED for splits exceeding 50 lines.**
+
 - Script Location: `scripts/<module>_split.py` in the repo root.
-- Verbatim Extraction: Script reads source lines by index and writes exact bytes. 
+- Verbatim Extraction: "send to Claude", "Claude should design", "P3 design", "architect brief", or "$battlezip".
+  When $battlezip is invoked, the Architect MUST coordinate the AMAL (Asynchronous Multi-Agent Loop)
+  automated vetting gate via `scripts/amal_harness.py` before final adjudication.
+
+## Section 8: Post-Edit Deployment Protocol (MANDATORY -- ALL AGENTS)
+
+**Root Cause**: File-edit tools create new inodes, silently breaking the hard links `deploy-sync.ps1` established between `src/` and the NinjaTrader Strategies folder. The old DLL gets compiled instead of the new source.
+
+**Required sequence after ANY `src/` file edit:**
+
+1. Run `powershell -File .\deploy-sync.ps1` -- re-establishes all hard links. ASCII Gate must PASS.
+2. Instruct the Director: "Press F5 in NinjaTrader to compile."
+3. Verify the banner shows the new BUILD_TAG.
+
+**Skipping this step is a protocol violation.** Include this sequence in every handoff block.
+
+## Section 9: AMAL Empirical Vetting Protocol (V12.15 Breakthrough)
+
+**ALL high-performance C# submissions (SPSC/MPMC/Atomic) MUST pass the AMAL automated vetting gate before architectural promotion.**
+
+- Script: `scripts/amal_harness.py`
+- Protocol: Automatic extraction from `App.tsx`, injection into benchmark templates, and zero-allocation enforcement.
+- Pass/Fail Gate: `Allocated = 0 B` and `Mean Latency < Baseline`.
+- Mandatory: Zero manual porting of AI code blocks allowed for hot-path primitives.
+
+## ðŸ§  Karpathy Behavioral Protocols (LLM Coding Hygiene)
+
+Derived from Andrej Karpathy's observations on LLM coding pitfalls.
+These principles apply to all agents including Gemini CLI as Orchestrator.
+Bias toward caution over speed. For trivial tasks, use judgment.
+
+### Think Before Coding
+
+- State assumptions explicitly. If uncertain, ASK -- do not silently pick an interpretation.
+- If multiple interpretations exist, present them and let the Director choose.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, STOP. Name what is confusing. Ask.
+
+### Simplicity First
+
+- Minimum code / plan that solves the problem. Nothing speculative.
+- No features beyond what was asked. No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- If you write 200 lines and it could be 50, rewrite it.
+- Test: Would a senior engineer say this is overcomplicated? If yes, simplify.
+
+### Surgical Changes
+
+- Touch only what you must. Clean up only your own mess.
+- Do NOT "improve" adjacent code, comments, or formatting.
+- **WHITESPACE MUTATION BANNED**: Never mutate whitespace, line endings, or indentation across files. This creates bloated diffs that obscure logic and break CI limits.
+- **STRICT DIFF LIMIT**: Pull Request diffs MUST remain under 150,000 characters. If your formatting or logic pushes the diff over this limit, you must revert and isolate the logic changes.
+- Do NOT refactor things that aren't broken. Match existing style.
+- If you notice unrelated dead code, MENTION it -- do not delete it.
+- Every changed line must trace directly to the user's request.
+
+### Goal-Driven Execution
+
+- For multi-step tasks, state a brief plan with explicit verify steps:
+  1. [Step] -> verify: [check]
+  2. [Step] -> verify: [check]
+  3. [Step] -> verify: [check]
+- Define "done" before starting. Strong criteria let you loop independently.
+- Weak criteria ("make it work") require constant clarification -- avoid them.
+
+## Section 13: Autonomous Skill Creation & Self-Improvement (MANDATORY PILLAR)
+
+**All agents MUST perform a post-use audit after every skill or tool use:**
+1. Check if any instruction was ambiguous or produced an unexpected result.
+2. Update the corresponding `SKILL.md` or persistent rule file if a gap or quirk is found.
+3. State `skill(name): no gaps identified` if no gap is found.
+4. Skipping the post-use audit is a protocol violation.
+
+## Section 14: $claudecloud Protocol Hardening (Permanent Standard)
+
+**All architectural planning sessions involving Claude (ARCHITECT) via the Cloud UI ($claudecloud) MUST use the Platinum Standard prompt format.**
+
+- **Mandatory Metadata**: Every prompt MUST begin with MISSION, BUILD_TAG, REPO, and BRANCH.
+- **Self-Contained Retrieval**: Use `raw.githubusercontent.com` URLs for all context and source files to ensure Claude can access the current codebase state without local inode dependency.
+- **Pattern-Driven Design**: Explicitly define the BROKEN vs. FIXED code patterns for the current mission.
+- **PLAN-ONLY Enforcement**: Explicitly state Claude is in PLAN-ONLY mode and BANNED from `src/` edits.
+- **Structured Deliverables**: Mandate the exact structure of `docs/brain/implementation_plan.md` and the Director's Handoff Block.
+
+> Refer to `.agent/skills/architect/SKILL.md` for the current Platinum Standard template.
+
+## Section 15: Mandatory PR Monitoring Sleep Intervals (V12.16)
+
+**To prevent rate-limiting and ensure CI bots have sufficient time to initialize and report, all agents MUST adhere to the following sleep protocol when monitoring PR checks:**
+
+- **First Wait**: `Start-Sleep -Seconds 300` (5 minutes) immediately after push.
+- **Subsequent Waits**: `Start-Sleep -Seconds 180` (3 minutes) between status polls.
+- **BANNED**: Polling intervals under 120 seconds are strictly forbidden for the Global Audit pillar.
+
+## Section 16: Mandatory Jane Street Architectural Alignment (V12.17)
+
+**To ensure maximum performance and low-latency integrity, ALL agents (Gemini CLI, Bob, Codex, Greptile) MUST load and apply the ingested Jane Street Intel before any planning or implementation task.**
+
+- **Master Intel Path**: `docs/intel/jane-street/`
+- **Mandate**: Every implementation plan must include a "Jane Street Alignment" section, verifying that the proposed changes adhere to:
+    1. **Atomic Unification**: No fragmented state transitions.
+    2. **Lock-Free Kernels**: Absolute ban on `lock()` (already V12 DNA).
+    3. **Deterministic Execution**: Zero garbage-collection pressure in the hot path.
+- **Enforcement**: Greptile is designated as the "Jane Street Sentinel" to verify alignment in PR reviews.
+
+## Section 17: V12 ATLAS & Context-Augmented Generation (CAG) (V12.18)
+
+**To prevent context drift and ensure architectural consistency across the fleet, ALL agents MUST load the V12 ATLAS as their primary world model at the start of every session.**
+
+- **Atlas Path**: `docs/brain/V12_ATLAS.md`
+- **Mandate**: Agents are forbidden from "searching" for core architectural rules—they must act based on the pre-loaded Atlas.
+- **Workflow Integration**: 
+    1. Load Atlas.
+    2. Query Greptile MCP for specific module context.
+    3. Execute task following Jane Street Alignment.
+
+## Section 18: Nested Autonomous Perfection Loops (V12.19)
+... (existing content) ...
+
+## Section 19: Documentation & Output Hardening (V12.20)
+... (existing content) ...
+
+## Section 20: The Sentinel-Adversary Protocol (V12.21)
+
+**Mandate**: To ensure 100/100 PHS, review and validation tasks MUST be performed by an independent review run within the Orchestrator loop.
+
+**Internal Sovereignty**:
+1. **Orchestrator Spawning**: The primary Orchestrator (e.g., Bob in Orchestrator mode) must trigger independent review runs via formal slash commands.
+2. **Phase 2.3 (Planning Scan)**: Mandatory use of the **`/epic-scan`** command. This executes an independent Semantic Scan (via Greptile or jCodemunch) to verify the approach before validation.
+3. **Phase 5 (Implementation Verification)**: Verification tasks must remain within the internal orchestration loop. External CLI agents are BANNED from the internal verification loop unless the Orchestrator is completely unavailable.
+4. **PHS Adjudication**: The `/epic-scan` result and subsequent `/pr-loop` are the sole authorities for awarding the PERFECT HEALTH SCORE (PHS).
+
+**Skipping /epic-scan for planning verification is a protocol violation.**
+
+## graphify
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Rules:
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)

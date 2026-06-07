@@ -1,3 +1,6 @@
+// <copyright file="V12_002.Properties.cs" company="BMad">
+// Copyright (c) BMad. All rights reserved.
+// </copyright>
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -10,10 +13,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Xml.Serialization;
 using NinjaTrader.Cbi;
+using NinjaTrader.Data;
 using NinjaTrader.Gui;
 using NinjaTrader.Gui.Chart;
 using NinjaTrader.Gui.Tools;
-using NinjaTrader.Data;
 using NinjaTrader.NinjaScript;
 using NinjaTrader.NinjaScript.DrawingTools;
 using NinjaTrader.NinjaScript.Indicators;
@@ -32,7 +35,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             Minutes_3 = 3,
             Minutes_5 = 5,
             Minutes_15 = 15,
-            Minutes_30 = 30
+            Minutes_30 = 30,
         }
 
         public enum TargetMode
@@ -40,7 +43,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             ATR,
             Ticks,
             Points,
-            Runner
+            Runner,
         }
 
         #endregion
@@ -77,10 +80,10 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         [NinjaScriptProperty]
         [Display(Name = "Max Risk Amount ($)", GroupName = "2. Risk", Order = 3)]
-        public double MaxRiskAmount 
-        { 
-            get { return RiskPerTrade; } 
-            set { RiskPerTrade = value; } 
+        public double MaxRiskAmount
+        {
+            get { return RiskPerTrade; }
+            set { RiskPerTrade = value; }
         }
 
         [NinjaScriptProperty]
@@ -135,7 +138,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         [Display(Name = "Target 5 Value", GroupName = "3. Targets", Order = 5)]
         public double Target5Value { get; set; }
 
-
         [NinjaScriptProperty]
         [Display(Name = "T1 Mode", GroupName = "3. Targets", Order = 11)]
         public TargetMode T1Type { get; set; }
@@ -175,7 +177,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         [NinjaScriptProperty]
         [Range(0, 100)]
         [Display(Name = "Break Even Offset (Ticks)", GroupName = "5. Trailing", Order = 2)]
-        public int BreakEvenOffsetTicks { get; set; }  // Ticks above/below entry for BE stop
+        public int BreakEvenOffsetTicks { get; set; } // Ticks above/below entry for BE stop
 
         [NinjaScriptProperty]
         [Display(Name = "Trail 1 Trigger", GroupName = "5. Trailing", Order = 3)]
@@ -283,7 +285,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         public int IpcPort { get; set; }
 
         [NinjaScriptProperty]
-        [Display(Name = "Expose Fleet Identity Over IPC", Description = "When false (default), IPC uses aliases (F01/F02) instead of real account names.", GroupName = "12. SIMA", Order = 3)]
+        [Display(
+            Name = "Expose Fleet Identity Over IPC",
+            Description = "When false (default), IPC uses aliases (F01/F02) instead of real account names.",
+            GroupName = "12. SIMA",
+            Order = 3
+        )]
         public bool IpcExposeSensitiveFleetIdentity { get; set; }
 
         [NinjaScriptProperty]
@@ -321,7 +328,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Stored values below 5 are clamped by REAPER at runtime.
         [NinjaScriptProperty]
         [Range(0, 10)]
-        [Display(Name = "Naked Position Grace (sec)", Description = "Seconds REAPER waits before declaring a no-stop position a true emergency. Minimum: 5 (enforced). Prevents false EF_ during bracket confirmation lag.", GroupName = "12. SIMA", Order = 10)]
+        [Display(
+            Name = "Naked Position Grace (sec)",
+            Description = "Seconds REAPER waits before declaring a no-stop position a true emergency. Minimum: 5 (enforced). Prevents false EF_ during bracket confirmation lag.",
+            GroupName = "12. SIMA",
+            Order = 10
+        )]
         public int NakedPositionGraceSec { get; set; }
 
         [NinjaScriptProperty]
@@ -331,11 +343,21 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         [NinjaScriptProperty]
         [Range(1, 100)]
-        [Display(Name = "Fleet Parity Multiplier", Description = "Lot-size scaling for followers (e.g. 10 for ES->MES)", GroupName = "12. SIMA", Order = 12)]
+        [Display(
+            Name = "Fleet Parity Multiplier",
+            Description = "Lot-size scaling for followers (e.g. 10 for ES->MES)",
+            GroupName = "12. SIMA",
+            Order = 12
+        )]
         public int FleetParityMultiplier { get; set; }
 
         [NinjaScriptProperty]
-        [Display(Name = "Shadow Mode", Description = "Followers auto-mirror leader stop moves and flattens", GroupName = "12. SIMA", Order = 13)]
+        [Display(
+            Name = "Shadow Mode",
+            Description = "Followers auto-mirror leader stop moves and flattens",
+            GroupName = "12. SIMA",
+            Order = 13
+        )]
         public bool ShadowModeEnabled { get; set; }
 
         [NinjaScriptProperty]
@@ -383,9 +405,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         [Display(Name = "Enable RMA Intelligence", GroupName = "14. RMA Intelligence", Order = 1)]
         public bool RmaIntelligenceEnabled { get; set; }
 
-
-
-
         [NinjaScriptProperty]
         [Display(Name = "Proximity Ticks", GroupName = "14. RMA Intelligence", Order = 2)]
         public int RmaProximityTicks { get; set; }
@@ -396,13 +415,34 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         [NinjaScriptProperty]
         [Range(1, 20)]
-        [Display(Name = "Max Probe Count", Description = "Probe-and-retreat cycles before exhaustion cancellation.", GroupName = "14. RMA Intelligence", Order = 4)]
+        [Display(
+            Name = "Max Probe Count",
+            Description = "Probe-and-retreat cycles before exhaustion cancellation.",
+            GroupName = "14. RMA Intelligence",
+            Order = 4
+        )]
         public int RmaMaxProbeCount { get; set; }
 
         [NinjaScriptProperty]
-        [Display(Name = "Exhaustion Cancel Enabled", Description = "Cancel orders after RmaMaxProbeCount probes without fill.", GroupName = "14. RMA Intelligence", Order = 5)]
+        [Display(
+            Name = "Exhaustion Cancel Enabled",
+            Description = "Cancel orders after RmaMaxProbeCount probes without fill.",
+            GroupName = "14. RMA Intelligence",
+            Order = 5
+        )]
         public bool RmaExhaustionEnabled { get; set; }
 
+        /// <summary>REMOVED (Build-983). Photon CPU affinity deferred to M4.
+        /// Stub retained for workspace XML backward compatibility.</summary>
+        [Browsable(false)]
+        [System.Xml.Serialization.XmlIgnore]
+        public bool EnablePhotonAffinityBind { get; set; }
+
+        /// <summary>REMOVED (Build-983). Photon CPU affinity deferred to M4.
+        /// Stub retained for workspace XML backward compatibility.</summary>
+        [Browsable(false)]
+        [System.Xml.Serialization.XmlIgnore]
+        public int CpuAffinityMask { get; set; }
 
         #endregion
     }

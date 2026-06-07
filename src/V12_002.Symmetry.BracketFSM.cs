@@ -1,8 +1,8 @@
 // Build 982: BracketFSM (Shadow Mode) - Phase 2 Definitions
 // V12 Symmetry Module - Follower Bracket Finite State Machine
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using NinjaTrader.Cbi;
 using NinjaTrader.NinjaScript;
@@ -20,17 +20,17 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private enum FollowerBracketState
         {
-            None,            // Initial state
-            PendingSubmit,   // Strategic intent to submit, pre-submission validation/anchoring
-            Submitted,       // acct.Submit() called, awaiting broker ack
-            Accepted,        // Broker acknowledged (OrderState.Accepted/Working)
-            Active,          // Entry filled, protective bracket (Stop + Targets) live
-            Replacing,       // In-flight two-phase cancel+resubmit (MOVE-SYNC FSM active)
-            Modifying,       // Price change (trailing) in flight, awaiting confirm
-            Filled,          // Final: Position closed via Stop or Target fill
-            Cancelled,       // Final: All orders cancelled
-            Rejected,        // Final: Broker rejected (requires audit)
-            Disconnected     // Temporary: Account connection lost, FSM frozen
+            None, // Initial state
+            PendingSubmit, // Strategic intent to submit, pre-submission validation/anchoring
+            Submitted, // acct.Submit() called, awaiting broker ack
+            Accepted, // Broker acknowledged (OrderState.Accepted/Working)
+            Active, // Entry filled, protective bracket (Stop + Targets) live
+            Replacing, // In-flight two-phase cancel+resubmit (MOVE-SYNC FSM active)
+            Modifying, // Price change (trailing) in flight, awaiting confirm
+            Filled, // Final: Position closed via Stop or Target fill
+            Cancelled, // Final: All orders cancelled
+            Rejected, // Final: Broker rejected (requires audit)
+            Disconnected, // Temporary: Account connection lost, FSM frozen
         }
 
         /// <summary>
@@ -40,8 +40,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         private class FollowerBracketFSM
         {
             public string AccountName;
-            public string EntryName;         // Links to Master Position key (fleetEntryName)
-            public string OcoGroupId;        // Shared ID for broker OCO
+            public string EntryName; // Links to Master Position key (fleetEntryName)
+            public string OcoGroupId; // Shared ID for broker OCO
             public FollowerBracketState State = FollowerBracketState.None;
             public int RemainingContracts;
             public string ReplacingCancelOrderId;
@@ -54,7 +54,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Shadow Mode Diagnostics
             public bool IsInSync = true;
             public string LastBrokerError;
-            
+
             // Metadata for reconciliation
             public double ExpectedEntryPrice;
             public double ExpectedStopPrice;
@@ -87,7 +87,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void DrainAccountMailbox()
         {
-            if (!EnsureStartupReady("DrainAccountMailbox")) return;
+            if (!EnsureStartupReady("DrainAccountMailbox"))
+                return;
 
             int processed = 0;
             const int MAX_PER_DRAIN = 100;
@@ -101,7 +102,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void RemoveFsmOrderIdMappings(FollowerBracketFSM fsm)
         {
-            if (fsm == null) return;
+            if (fsm == null)
+                return;
 
             if (fsm.EntryOrder != null && !string.IsNullOrEmpty(fsm.EntryOrder.OrderId))
                 _orderIdToFsmKey.TryRemove(fsm.EntryOrder.OrderId, out _);
@@ -112,7 +114,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (fsm.StopOrder != null && !string.IsNullOrEmpty(fsm.StopOrder.OrderId))
                 _orderIdToFsmKey.TryRemove(fsm.StopOrder.OrderId, out _);
 
-            if (fsm.Targets == null) return;
+            if (fsm.Targets == null)
+                return;
 
             foreach (Order target in fsm.Targets)
             {
@@ -124,8 +127,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool TryTerminateFollowerBracket(string entryName, out FollowerBracketFSM removedFsm)
         {
             removedFsm = null;
-            if (string.IsNullOrEmpty(entryName)) return false;
-            if (!_followerBrackets.TryRemove(entryName, out removedFsm)) return false;
+            if (string.IsNullOrEmpty(entryName))
+                return false;
+            if (!_followerBrackets.TryRemove(entryName, out removedFsm))
+                return false;
 
             RemoveFsmOrderIdMappings(removedFsm);
             return true;
@@ -133,10 +138,12 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void SetFsmReplacing(string fleetEntryName, string cancelOrderId)
         {
-            if (string.IsNullOrEmpty(fleetEntryName) || string.IsNullOrEmpty(cancelOrderId)) return;
+            if (string.IsNullOrEmpty(fleetEntryName) || string.IsNullOrEmpty(cancelOrderId))
+                return;
 
             FollowerBracketFSM fsm;
-            if (!_followerBrackets.TryGetValue(fleetEntryName, out fsm) || fsm == null) return;
+            if (!_followerBrackets.TryGetValue(fleetEntryName, out fsm) || fsm == null)
+                return;
 
             fsm.State = FollowerBracketState.Replacing;
             fsm.ReplacingCancelOrderId = cancelOrderId;
@@ -145,122 +152,265 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Resolves AccountEvent to FollowerBracketFSM via 3-tier lookup strategy.
+        /// Tier 1: O(1) OrderId map lookup (primary).
+        /// Tier 2: SignalName parsing and matching (secondary).
+        /// Tier 3: O(N) fallback scan across all FSMs (last resort).
+        /// Back-fills OrderId map when found via fallback for future O(1) access.
+        /// </summary>
+        /// <summary>
+        /// Tier 1: O(1) primary lookup via OrderId map.
+        /// </summary>
+        private FollowerBracketFSM ResolveFsm_ByOrderId(string orderId)
+        {
+            if (string.IsNullOrEmpty(orderId))
+                return null;
+
+            if (_orderIdToFsmKey.TryGetValue(orderId, out var entryName))
+            {
+                _followerBrackets.TryGetValue(entryName, out var fsm);
+                return fsm;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Tier 2: Secondary lookup via SignalName parsing with backfill.
+        /// Signal names are like "Stop_Fleet_Apex_1" or "T1_Fleet_Apex_1".
+        /// The fleetEntryName is the part after the first underscore.
+        /// </summary>
+        private FollowerBracketFSM ResolveFsm_BySignalName(string signalName, string orderId)
+        {
+            if (string.IsNullOrEmpty(signalName))
+                return null;
+
+            int firstUnder = signalName.IndexOf('_');
+            if (firstUnder >= 0 && firstUnder < signalName.Length - 1)
+            {
+                string fleetEntryName = signalName.Substring(firstUnder + 1);
+                if (_followerBrackets.TryGetValue(fleetEntryName, out var fsm))
+                {
+                    // Back-fill the OrderId map if we found it via signal
+                    if (!string.IsNullOrEmpty(orderId))
+                        _orderIdToFsmKey[orderId] = fleetEntryName;
+
+                    return fsm;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Tier 3: Last-resort O(N) scan with backfill.
+        /// Scan order: StopOrder -> Targets[0-4] -> EntryOrder.
+        /// </summary>
+        private FollowerBracketFSM ResolveFsm_ByScan(string accountAlias, string orderId)
+        {
+            if (string.IsNullOrEmpty(orderId))
+                return null;
+
+            foreach (var f in _followerBrackets.Values)
+            {
+                if (f.AccountName != accountAlias)
+                    continue;
+
+                if (f.StopOrder != null && f.StopOrder.OrderId == orderId)
+                {
+                    _orderIdToFsmKey[orderId] = f.EntryName;
+                    return f;
+                }
+
+                bool foundT = false;
+                for (int i = 0; i < 5; i++)
+                {
+                    if (f.Targets[i] != null && f.Targets[i].OrderId == orderId)
+                    {
+                        _orderIdToFsmKey[orderId] = f.EntryName;
+                        foundT = true;
+                        return f;
+                    }
+                }
+                if (foundT)
+                    break;
+
+                if (f.EntryOrder != null && f.EntryOrder.OrderId == orderId)
+                {
+                    _orderIdToFsmKey[orderId] = f.EntryName;
+                    return f;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 3-tier FSM resolution router: OrderId (O(1)) -> SignalName -> Scan (O(N)).
+        /// </summary>
+        private FollowerBracketFSM ResolveFsmFromEvent(AccountEvent evt)
+        {
+            // Tier 1: O(1) OrderId lookup (primary)
+            FollowerBracketFSM fsm = ResolveFsm_ByOrderId(evt.OrderId);
+            if (fsm != null)
+                return fsm;
+
+            // Tier 2: SignalName parsing (secondary)
+            fsm = ResolveFsm_BySignalName(evt.SignalName, evt.OrderId);
+            if (fsm != null)
+                return fsm;
+
+            // Tier 3: O(N) scan (last resort)
+            fsm = ResolveFsm_ByScan(evt.AccountAlias, evt.OrderId);
+            return fsm;
+        }
+
+        /// <summary>
+        /// Validates FSM event preconditions: FSM resolution and metadata guard.
+        /// Returns false if event should be ignored (FSM not found or guard failed).
+        /// </summary>
+        private bool ValidateFsmEventPreconditions(AccountEvent evt, out FollowerBracketFSM fsm)
+        {
+            fsm = ResolveFsmFromEvent(evt);
+            if (fsm == null)
+                return false;
+            if (!MetadataGuardFsmEvent(evt, fsm))
+                return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Transitions FSM to Accepted state if currently Submitted or PendingSubmit.
+        /// No-op if FSM is in any other state (idempotent).
+        /// </summary>
+        private void TransitionToAccepted(FollowerBracketFSM fsm)
+        {
+            if (fsm.State == FollowerBracketState.Submitted || fsm.State == FollowerBracketState.PendingSubmit)
+                fsm.State = FollowerBracketState.Accepted;
+        }
+
+        /// <summary>
+        /// Transitions FSM to Cancelled state, with special handling for Replace-cycle cancels.
+        /// If FSM is in Replacing state and the cancelled order matches ReplacingCancelOrderId,
+        /// the cancel is absorbed (FSM stays Replacing). Otherwise, transitions to Cancelled.
+        /// </summary>
+        private void TransitionToCancelled(AccountEvent evt, FollowerBracketFSM fsm)
+        {
+            if (
+                fsm.State == FollowerBracketState.Replacing
+                && string.Equals(fsm.ReplacingCancelOrderId, evt.OrderId, StringComparison.Ordinal)
+            )
+            {
+                Print("[FSM-C2] Replace-cycle cancel absorbed -- FSM stays Replacing");
+            }
+            else
+            {
+                fsm.State = FollowerBracketState.Cancelled;
+            }
+        }
+
+        /// <summary>
+        /// Transitions FSM to Rejected state and captures broker error message.
+        /// Terminal state - no further transitions possible.
+        /// </summary>
+        private void TransitionToRejected(AccountEvent evt, FollowerBracketFSM fsm)
+        {
+            fsm.State = FollowerBracketState.Rejected;
+            fsm.LastBrokerError = evt.ErrorMessage;
+        }
+
+        /// <summary>
+        /// Logs FSM state transitions for Shadow Mode observability.
+        /// Updates LastUpdateUtc timestamp when state changes.
+        /// No-op if state unchanged (idempotent).
+        /// </summary>
+        private void LogFsmTransition(FollowerBracketFSM fsm, FollowerBracketState oldState, AccountEvent evt)
+        {
+            if (fsm.State != oldState)
+            {
+                fsm.LastUpdateUtc = DateTime.UtcNow;
+                Print(
+                    string.Format(
+                        "[FSM-SHADOW] {0} Transition: {1} -> {2} | Event={3} | Order={4}",
+                        fsm.EntryName,
+                        oldState,
+                        fsm.State,
+                        evt.NewState,
+                        evt.SignalName
+                    )
+                );
+            }
+        }
+
+        /// <summary>
+        /// Handles Filled/PartFilled events with stop/target detection and contract tracking.
+        /// Updates FSM state based on remaining contracts after fill.
+        /// </summary>
+        private void HandleFsmFilled(AccountEvent evt, FollowerBracketFSM fsm)
+        {
+            // Phase 2 [D2/D3]: Precise target matching with null guards
+            bool isStop =
+                !string.IsNullOrEmpty(evt.SignalName)
+                && (evt.SignalName.StartsWith("Stop_") || evt.SignalName.StartsWith("S_"));
+            bool isTarget =
+                !string.IsNullOrEmpty(evt.SignalName)
+                && (
+                    evt.SignalName.StartsWith("T1_")
+                    || evt.SignalName.StartsWith("T2_")
+                    || evt.SignalName.StartsWith("T3_")
+                    || evt.SignalName.StartsWith("T4_")
+                    || evt.SignalName.StartsWith("T5_")
+                );
+
+            if (isStop || isTarget)
+            {
+                fsm.RemainingContracts = Math.Max(0, fsm.RemainingContracts - Math.Max(0, evt.FilledQty));
+                fsm.State = fsm.RemainingContracts <= 0 ? FollowerBracketState.Filled : FollowerBracketState.Active;
+            }
+            else if (fsm.State == FollowerBracketState.Accepted || fsm.State == FollowerBracketState.Submitted)
+            {
+                // Entry filled -> Bracket is now ACTIVE
+                fsm.State = FollowerBracketState.Active;
+            }
+        }
+
+        /// <summary>
         /// Core FSM transition logic. Driven exclusively by broker confirmations.
         /// Shadow Mode: Observes reality and logs divergences.
         /// </summary>
         private void ProcessBracketEvent(AccountEvent evt)
         {
-            // V12.Phase2: Implement FSM transition logic based on docs/copy_trader_design.md Section 1.3
-            
-            // 1. Find the FSM by OrderId, SignalName, or fallback scan
-            FollowerBracketFSM fsm = null;
-            
-            // Phase 3 [Step 4]: O(1) Lookup via OrderId map (primary)
-            if (!string.IsNullOrEmpty(evt.OrderId))
-            {
-                if (_orderIdToFsmKey.TryGetValue(evt.OrderId, out var entryName))
-                {
-                    _followerBrackets.TryGetValue(entryName, out fsm);
-                }
-            }
+            if (!ValidateFsmEventPreconditions(evt, out FollowerBracketFSM fsm))
+                return;
 
-            // Fallback: Try matching by SignalName (secondary)
-            if (fsm == null && !string.IsNullOrEmpty(evt.SignalName))
-            {
-                // Signal names are like "Stop_Fleet_Apex_1" or "T1_Fleet_Apex_1"
-                // The fleetEntryName is the part after the first underscore.
-                int firstUnder = evt.SignalName.IndexOf('_');
-                if (firstUnder >= 0 && firstUnder < evt.SignalName.Length - 1)
-                {
-                    string fleetEntryName = evt.SignalName.Substring(firstUnder + 1);
-                    if (_followerBrackets.TryGetValue(fleetEntryName, out fsm))
-                    {
-                        // Back-fill the OrderId map if we found it via signal
-                        if (!string.IsNullOrEmpty(evt.OrderId))
-                            _orderIdToFsmKey[evt.OrderId] = fleetEntryName;
-                    }
-                }
-            }
-            
-            // Last resort: search all FSMs (slow O(N) scan)
-            if (fsm == null)
-            {
-                foreach (var f in _followerBrackets.Values)
-                {
-                    if (f.AccountName != evt.AccountAlias) continue;
-                    
-                    if (f.StopOrder != null && f.StopOrder.OrderId == evt.OrderId) { fsm = f; break; }
-                    bool foundT = false;
-                    for (int i = 0; i < 5; i++)
-                    {
-                        if (f.Targets[i] != null && f.Targets[i].OrderId == evt.OrderId) { fsm = f; foundT = true; break; }
-                    }
-                    if (foundT) break;
-                    if (f.EntryOrder != null && f.EntryOrder.OrderId == evt.OrderId) { fsm = f; break; }
-                }
-                
-                // Back-fill if found
-                if (fsm != null && !string.IsNullOrEmpty(evt.OrderId))
-                    _orderIdToFsmKey[evt.OrderId] = fsm.EntryName;
-            }
-
-            if (fsm == null) return; // Not tracked by FSM system yet
-            if (!MetadataGuardFsmEvent(evt, fsm)) return;
-
-            // 2. Process State Transition
             FollowerBracketState oldState = fsm.State;
-            
+
             switch (evt.NewState)
             {
                 case OrderState.Accepted:
                 case OrderState.Working:
-                    if (fsm.State == FollowerBracketState.Submitted || fsm.State == FollowerBracketState.PendingSubmit)
-                        fsm.State = FollowerBracketState.Accepted;
+                    TransitionToAccepted(fsm);
                     break;
 
                 case OrderState.Filled:
                 case OrderState.PartFilled:
-                    // Phase 2 [D2/D3]: Precise target matching with null guards
-                    bool isStop = !string.IsNullOrEmpty(evt.SignalName) && (evt.SignalName.StartsWith("Stop_") || evt.SignalName.StartsWith("S_"));
-                    bool isTarget = !string.IsNullOrEmpty(evt.SignalName) && (evt.SignalName.StartsWith("T1_") || evt.SignalName.StartsWith("T2_") || 
-                                     evt.SignalName.StartsWith("T3_") || evt.SignalName.StartsWith("T4_") || evt.SignalName.StartsWith("T5_"));
-
-                    if (isStop || isTarget)
-                    {
-                        fsm.RemainingContracts = Math.Max(0, fsm.RemainingContracts - Math.Max(0, evt.FilledQty));
-                        fsm.State = fsm.RemainingContracts <= 0 ? FollowerBracketState.Filled : FollowerBracketState.Active;
-                    }
-                    else if (fsm.State == FollowerBracketState.Accepted || fsm.State == FollowerBracketState.Submitted)
-                    {
-                        // Entry filled -> Bracket is now ACTIVE
-                        fsm.State = FollowerBracketState.Active;
-                    }
+                    HandleFsmFilled(evt, fsm);
                     break;
 
                 case OrderState.Cancelled:
-                    if (fsm.State == FollowerBracketState.Replacing
-                        && string.Equals(fsm.ReplacingCancelOrderId, evt.OrderId, StringComparison.Ordinal))
-                    {
-                        Print("[FSM-C2] Replace-cycle cancel absorbed -- FSM stays Replacing");
-                    }
-                    else
-                    {
-                        fsm.State = FollowerBracketState.Cancelled;
-                    }
+                    TransitionToCancelled(evt, fsm);
                     break;
 
                 case OrderState.Rejected:
-                    fsm.State = FollowerBracketState.Rejected;
-                    fsm.LastBrokerError = evt.ErrorMessage;
+                    TransitionToRejected(evt, fsm);
+                    break;
+
+                default:
+                    // Unhandled order state - no FSM transition
                     break;
             }
 
-            if (fsm.State != oldState)
-            {
-                fsm.LastUpdateUtc = DateTime.UtcNow;
-                Print(string.Format("[FSM-SHADOW] {0} Transition: {1} -> {2} | Event={3} | Order={4}",
-                    fsm.EntryName, oldState, fsm.State, evt.NewState, evt.SignalName));
-            }
+            LogFsmTransition(fsm, oldState, evt);
         }
 
         /// <summary>
@@ -275,19 +425,27 @@ namespace NinjaTrader.NinjaScript.Strategies
             foreach (var kvp in _followerBrackets)
             {
                 FollowerBracketFSM f = kvp.Value;
-                if (f == null || f.AccountName != accountName) continue;
+                if (f == null || f.AccountName != accountName)
+                    continue;
 
-                if (f.State == FollowerBracketState.Active
+                if (
+                    f.State == FollowerBracketState.Active
                     || f.State == FollowerBracketState.Accepted
                     || f.State == FollowerBracketState.Submitted
                     || f.State == FollowerBracketState.PendingSubmit
                     || f.State == FollowerBracketState.Replacing
-                    || f.State == FollowerBracketState.Modifying)
+                    || f.State == FollowerBracketState.Modifying
+                )
                 {
                     if (f.EntryOrder != null)
                     {
-                        int entrySign = (f.EntryOrder.OrderAction == OrderAction.Buy
-                            || f.EntryOrder.OrderAction == OrderAction.BuyToCover) ? 1 : -1;
+                        int entrySign =
+                            (
+                                f.EntryOrder.OrderAction == OrderAction.Buy
+                                || f.EntryOrder.OrderAction == OrderAction.BuyToCover
+                            )
+                                ? 1
+                                : -1;
                         sum += f.EntryOrder.Quantity * entrySign;
                     }
                     else if (f.State == FollowerBracketState.Active)
