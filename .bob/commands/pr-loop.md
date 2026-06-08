@@ -30,77 +30,71 @@ You are the V12 Perfection Orchestrator. You MUST NOT STOP until PHS is 100/100.
 
 ## THE PERFECTION CYCLE
 
-### Step -1: PR Existence Check (NEW - MANDATORY)
+### Step -1: PR Existence Check (GITBUTLER-AWARE)
 
 **Switch to: Advanced mode**
 
 Hand off:
 ```
-TASK: Check if PR Already Exists
+TASK: Check if PR Already Exists (GitButler Workflow)
 PR: $1
 PROTOCOL:
-  1. Run: gh pr view $1 --json headRefName --jq '.headRefName'
-  2. If PR exists (exit code 0):
-     - Checkout the existing branch: git checkout <branch_name>
-     - Emit: [PR-EXISTS] Checked out branch <branch_name>
-     - Skip Step 0, proceed to Step 1 (Pre-Flight Hygiene)
-  3. If PR doesn't exist (exit code 1):
-     - Emit: [PR-NEW] PR does not exist yet
-     - Proceed to Step 0 (create new branch)
+  1. Verify on gitbutler/workspace: git branch --show-current
+     - If NOT on gitbutler/workspace: HALT and report violation
+  
+  2. Check if PR exists: gh pr view $1 --json headRefName --jq '.headRefName'
+  
+  3. If PR exists (exit code 0):
+     - Extract branch name from output
+     - Check GitButler virtual branches: cat .git/gitbutler/virtual_branches.toml
+     - Look for virtual branch linked to PR branch
+     - Emit: [PR-EXISTS] PR #$1 exists, branch: <branch_name>, virtual branch: <status>
+     - Proceed to Step 1 (Pre-Flight Hygiene)
+  
+  4. If PR doesn't exist (exit code 1):
+     - Emit: [PR-NEW] PR #$1 does not exist yet
+     - Proceed to Step 0 (create virtual branch)
+
+CRITICAL: NEVER run 'git checkout <branch>'. Stay on gitbutler/workspace permanently.
 ```
 
 **Gate:**
-- If PR exists: Skip Step 0, proceed to Step 1
-- If PR doesn't exist: Proceed to Step 0
+- If PR exists: Proceed to Step 1 (work in existing virtual branch)
+- If PR doesn't exist: Proceed to Step 0 (create new virtual branch)
 
-**Rationale:** Prevents branch confusion when resuming work on existing PRs. Ensures fixes are pushed to the correct branch.
+**Rationale:** GitButler workflow requires staying on `gitbutler/workspace` permanently. Virtual branches handle PR work without branch switching.
 
 ---
 
-### Step 0: Pre-Flight Hygiene (MANDATORY)
+### Step 0: Pre-Flight Hygiene (GITBUTLER-AWARE)
 
 **Switch to: Advanced mode**
 
 Hand off:
 ```
-TASK: Verify PR Hygiene with Scope-Aware Rebase
+TASK: Verify PR Hygiene (GitButler Workflow)
 PR: $1
 PROTOCOL:
-  CRITICAL SAFETY CHECK (ALL PRs):
-    1. Check PR scope: powershell -File .\scripts\check_pr_scope.ps1 -PrNumber $1
-    2. Store result in $scope variable
+  CRITICAL: Verify on gitbutler/workspace: git branch --show-current
+  - If NOT on gitbutler/workspace: HALT and report violation
   
   IF PR is new (from Step -1):
-    1. Create branch: git checkout -b <branch_name>
-    2. Run `git fetch origin main && git rebase origin/main`.
-    3. Run `powershell -File .\scripts\verify_pr_hygiene.ps1`.
+    1. Create virtual branch via GitButler UI or CLI:
+       - Open GitButler UI
+       - Click "New Virtual Branch"
+       - Name: epic-ccn-XX-pr (or appropriate name)
+       - Commit changes to virtual branch
+    2. Run `powershell -File .\scripts\verify_pr_hygiene.ps1`.
   
   IF PR already exists (from Step -1):
-    1. IF $scope is "SRC-ONLY":
-       - Run: git fetch origin <branch>
-       - Run: git reset --hard origin/<branch>
-<<<<<<< Updated upstream
-       - Emit: [SRC-ONLY-RESET] Skipped rebase to prevent non-src contamination
-       - Rationale: Rebasing src-only PRs risks staging non-src commits from main
-=======
-       - CRITICAL: Run: git checkout main -- .bob/
-       - Emit: [SRC-ONLY-RESET] Skipped rebase, restored .bob/ infrastructure
-       - Rationale: Rebasing src-only PRs risks staging non-src commits from main
-       - Note: .bob/ must be restored after reset to enable custom modes/commands
->>>>>>> Stashed changes
-    2. ELSE IF $scope is "MIXED":
-       - Run: git fetch origin main
-       - Run: git rebase origin/main
-       - If conflicts in non-src files: resolve them
-       - If conflicts in src/ files: HALT and report (likely merge issue)
-       - Emit: [MIXED-REBASE] Completed rebase with conflict resolution
-    3. ELSE IF $scope is "EMPTY":
-       - Emit: [EMPTY-PR] No files changed, skipping hygiene
-       - Skip to Step 1
-    4. Run `powershell -File .\scripts\verify_pr_hygiene.ps1`.
+    1. Verify virtual branch is active in GitButler UI
+    2. Pull latest changes: git pull origin <pr-branch-name>
+    3. Run `powershell -File .\scripts\verify_pr_hygiene.ps1`.
   
-  5. If FAIL: HALT and report the violation (e.g. "Diff > 10k" or "Branch is dirty").
-  6. If PASS: Emit [HYGIENE-PASS] and advance to Step 1.
+  4. If FAIL: HALT and report the violation (e.g. "Diff > 10k" or "Branch is dirty").
+  5. If PASS: Emit [HYGIENE-PASS] and advance to Step 1.
+
+CRITICAL: NEVER run 'git checkout -b', 'git rebase', or 'git reset'. All work happens in virtual branches on gitbutler/workspace.
 ```
 
 ---
