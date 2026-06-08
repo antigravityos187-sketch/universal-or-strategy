@@ -51,10 +51,10 @@ exclude_paths:
   - 'scaffolds/**'
   - 'graphify-out/**'
 
-# Complexity threshold (Jane Street alignment: keep functions simple)
+# Complexity threshold (Jane Street GODMODE: keep functions simple)
 # Functions exceeding this threshold will be flagged for refactoring
 complexity:
-  threshold: 15
+  threshold: 8  # Jane Street GODMODE (was 15)
 
 # Ignore patterns for legacy files (to be refactored separately)
 # These files have known technical debt and are tracked separately

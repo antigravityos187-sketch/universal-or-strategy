@@ -2,11 +2,12 @@
 
 ## Mandatory Thresholds (No Questions Asked)
 
-### Primary Gate: CYC ≤ 15 (BLOCKING)
-**Rule**: ALL methods MUST be reduced to CYC ≤ 15 before merge.
+### Primary Gate: CYC ≤ 8 (BLOCKING)
+**Rule**: ALL methods MUST be reduced to CYC ≤ 8 before merge.
 - **Enforcement**: Pre-push validation (Check #9) - BLOCKING
 - **Tool**: `complexity_audit.py`
-- **Rationale**: Jane Street HFT alignment - cognitive simplicity for microsecond-latency code
+- **Rationale**: Jane Street GODMODE - cognitive simplicity for microsecond-latency code
+- **Note**: Legacy threshold 15 deprecated as of V12.23
 
 ### Stretch Goal: CYC ≤ 10 (Boy Scout Rule)
 **Rule**: If achievable within the same extraction pass WITHOUT adding new helpers, reduce to ≤10.
@@ -25,11 +26,10 @@
 
 ```
 Current CYC > 20?
-├─ YES → Extract to CYC ≤ 15 (REQUIRED)
-│  └─ Natural result ≤ 10? → DONE (bonus achieved)
-│  └─ Natural result 11-15? → DONE (gate passed)
-│  └─ Natural result 16-20? → Extract further (gate failed)
-└─ NO (CYC 15-20) → Extract to CYC ≤ 15 (REQUIRED)
+├─ YES → Extract to CYC ≤ 8 (REQUIRED)
+│  └─ Natural result ≤ 8? → DONE (gate passed)
+│  └─ Natural result 9-20? → Extract further (gate failed)
+└─ NO (CYC 9-20) → Extract to CYC ≤ 8 (REQUIRED)
    └─ Same decision tree as above
 ```
 

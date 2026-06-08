@@ -37,7 +37,7 @@ chat:
 # CRITICAL REQUIREMENTS:
 # 1. V12 NAMING: All files/classes must have V12_001 (Panel) or V12_002 (Strategy) prefix
 # 2. LOCK-FREE: Flag any lock() usage as CRITICAL - require Interlocked or Actor model
-# 3. COMPLEXITY: Flag functions with cyclomatic complexity >15 (Jane Street threshold)
+# 3. COMPLEXITY: Flag functions with cyclomatic complexity >8 (Jane Street GODMODE)
 # 4. ATOMIC OPS: Verify Interlocked.CompareExchange operates on shared state, not local copies
 # 5. ASCII-ONLY: No emoji, curly quotes, em-dashes, Unicode arrows in string literals
 # 6. STRUCT BUGS: Check for struct copy mutations (should use ref parameters)

@@ -4,7 +4,7 @@
 # This configuration defines custom rules for V12 DNA compliance:
 # - Lock-free kernel (no lock() statements)
 # - ASCII-only strings (no Unicode/emoji)
-# - Complexity limits (CYC ≤15 per Jane Street)
+# - Complexity limits (CYC ≤8 per Jane Street GODMODE)
 # - Atomic operation correctness
 # - Zero-allocation hot paths
 #

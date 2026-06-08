@@ -82,7 +82,7 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 | 6 | Security | Gitleaks + Snyk | Zero secrets | ⚠️ WARNING |
 | 7 | Markdown Links | verify_links.ps1 | Zero broken | ⚠️ WARNING |
 | 8 | PR Hygiene | verify_pr_hygiene.ps1 | Diff <10k | ✅ YES |
-| 9 | Complexity | complexity_audit.py | CYC ≤ 15 | ✅ YES |
+| 9 | Complexity | complexity_audit.py | CYC ≤ 8 | ✅ YES |
 | 10 | Dead Code | dead_code_scan.py | Zero dead methods | ⚠️ WARNING |
 | 11 | Codacy Preview | query_codacy_issues.ps1 | Zero errors | ⚠️ WARNING |
 | 12 | Semgrep | semgrep CLI | Zero findings | ⚠️ WARNING |
@@ -142,9 +142,9 @@ powershell -File .\scripts\pre_push_validation.ps1 -SkipBuild -SkipTests
 
 ### Complexity Threshold Rationale
 
-**V12 uses CYC ≤ 15** (Jane Street aligned):
+**V12 uses CYC ≤ 8** (Jane Street GODMODE):
 - Jane Street's HFT systems prioritize **cognitive simplicity** over clever abstractions
-- Functions with CYC >15 are harder to:
+- Functions with CYC >8 are harder to:
   - Reason about under microsecond latency constraints
   - Test exhaustively (exponential path growth)
   - Audit for race conditions in lock-free code
@@ -156,10 +156,10 @@ powershell -File .\scripts\pre_push_validation.ps1 -SkipBuild -SkipTests
 - Bob Shell mode selection
 - Practical examples
 
-**Lizard Tool** (used by Codacy) has hardcoded threshold 8:
-- Too conservative for HFT hot-path co-location
-- Treat Lizard warnings (CYC 9-13) as technical debt visibility, not blockers
-- Track in EPIC-CCN-10 backlog for future refactoring to CCN 10
+**Lizard Tool** (used by Codacy) uses threshold 8:
+- Aligned with Jane Street GODMODE standard for cognitive simplicity
+- Enforces microsecond-latency reasoning constraints
+- Prevents exponential test path growth in lock-free code
 
 
 ## 4. Communication & Context
