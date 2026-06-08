@@ -457,6 +457,30 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Links a target order to the FSM's Targets array and indexes it in _orderIdToFsmKey.
+        /// Extracted to eliminate 10x duplication across Pass 1 and Pass 2 hydration.
+        /// </summary>
+        private void LinkTargetOrderToFSM(
+            ref FollowerBracketFSM fsm,
+            string entryKey,
+            int targetIndex,
+            ConcurrentDictionary<string, Order> targetDict,
+            ref int ordersIndexed
+        )
+        {
+            Order targetOrd;
+            if (targetDict.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
+            {
+                fsm.Targets[targetIndex] = targetOrd;
+                if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                {
+                    _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
+                    ordersIndexed++;
+                }
+            }
+        }
+
+        /// <summary>
         /// Phase 5: Rebuilds _followerBrackets and _orderIdToFsmKey from already-adopted
         /// working orders. Called from HydrateWorkingOrdersFromBroker() before the
         /// adoption-complete gate is set. Idempotent -- safe to call on every reconnect.
@@ -540,52 +564,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // Link target orders (match exact property names on FollowerBracketFSM)
-                Order targetOrd;
-                if (target1Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[0] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target2Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[1] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target3Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[2] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target4Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[3] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target5Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[4] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
+                LinkTargetOrderToFSM(ref fsm, entryKey, 0, target1Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, entryKey, 1, target2Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, entryKey, 2, target3Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, entryKey, 3, target4Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, entryKey, 4, target5Orders, ref ordersIndexed);
 
                 _followerBrackets.TryAdd(entryKey, fsm);
 
@@ -681,52 +664,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // Link target orders
-                Order targetOrd;
-                if (target1Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[0] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target2Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[1] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target3Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[2] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target4Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[3] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target5Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[4] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
+                LinkTargetOrderToFSM(ref fsm, recoveredKey, 0, target1Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, recoveredKey, 1, target2Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, recoveredKey, 2, target3Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, recoveredKey, 3, target4Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, recoveredKey, 4, target5Orders, ref ordersIndexed);
 
                 _followerBrackets.TryAdd(recoveredKey, fsm);
 

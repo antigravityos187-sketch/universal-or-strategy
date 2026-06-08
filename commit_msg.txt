@@ -1,0 +1,21 @@
+fix(complexity): Correct CYC threshold from 15 to 8 (Jane Street GODMODE)
+
+SYSTEMIC FIX: Updated 7 files to use correct Jane Street GODMODE threshold
+
+Files Updated:
+- .codacy.yml: threshold 15 → 8
+- AGENTS.md: Updated CYC references and Lizard rationale
+- docs/protocol/PRE_PUSH_VALIDATION.md: --threshold 15 → 8
+- docs/protocol/COMPLEXITY_REDUCTION_PROTOCOL.md: Gate 15 → 8
+- .coderabbit.yaml: >15 → >8
+- .codeant.yml: threshold 15 → 8
+- .semgrep.yml: ≤15 → ≤8
+
+Root Cause: Initial Codacy setup (2026-05-22) used threshold 15 with
+incorrect claim that "15 is Jane Street aligned". Actual Jane Street
+standard is CYC ≤ 8 for cognitive simplicity.
+
+Impact: Pre-push validation, CI/CD enforcement, and epic planning now
+correctly target CYC ≤ 8 instead of 15.
+
+Ref: V12.23 Protocol, Jane Street GODMODE

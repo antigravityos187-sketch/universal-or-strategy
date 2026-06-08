@@ -1,0 +1,1123 @@
+﻿
+.agent\skills\architect\SKILL.md:5:  Use this skill whenever the user sends a forensic report, asks Claude to design a 
+repair,
+.agent\skills\architect\SKILL.md:8:  This skill makes Claude operate in PLAN-ONLY mode by default: it verifies 
+evidence, designs the
+.agent\skills\architect\SKILL.md:14:  Always trigger this skill for any V12 structural design or repair task.
+.agent\skills\architect\SKILL.md:79:### IV. Skills + Workflows to Activate (every session)
+.agent\skills\architect\SKILL.md:81:Always activate the following at session start — load their SKILL.md/workflow 
+files:
+.agent\skills\architect\SKILL.md:85:| Any P3 session                         | `validate-implementation-plan` skill    
+               |
+.agent\skills\architect\SKILL.md:86:| Any P3 session                         | `verify-before-completion` skill        
+               |
+.agent\skills\architect\SKILL.md:87:| Any forensic/repair task               | `systematic-debugging` skill            
+               |
+.agent\skills\architect\SKILL.md:88:| After plan is produced                 | `nexus-bridge` skill (update 
+`nexus_a2a.json`)         |
+.agent\skills\architect\SKILL.md:267:After completing any design session, audit this skill:
+.agent\skills\architect\SKILL.md:274:If yes to any: **update the relevant SKILL.md or references/ file immediately**, 
+then commit:
+.agent\skills\architect\SKILL.md:277:skill(architect): [what was fixed]
+.agent\skills\architect\SKILL.md:280:If no gaps found: state `skill(architect): no gaps identified.` in your response.
+.agent\skills\architect\SKILL.md:281:No Director approval required for skill-only edits.
+.agent\skills\architect\SKILL.md:322:### SKILLS + WORKFLOWS
+.agent\skills\architecture\SKILL.md:8:# Architecture Skill
+.agent\skills\architecture\SKILL.md:10:You are an **Architecture** specialist. Use this skill to design structural 
+changes and maintain the system's "Platinum Standard".
+.agent\skills\architecture\SKILL.md:33:## When to use this skill
+.agent\skills\architecture\SKILL.md:42:After completing any session using this skill, perform an audit:
+.agent\skills\architecture\SKILL.md:49:If yes to any: **update this SKILL.md or references/ file immediately**, then 
+commit:
+.agent\skills\architecture\SKILL.md:50:skill(architecture): [what was fixed]
+.agent\skills\architecture\SKILL.md:52:If no gaps found: state skill(architecture): no gaps identified. in your 
+response.
+.agent\skills\architecture\SKILL.md:53:No Director approval required for skill-only edits.
+.agent\skills\autonomous-repair-loop\SKILL.md:1:# SKILL: Autonomous Repair Loop (100/100 Perfection Gate)
+.agent\skills\code-review-quality\SKILL.md:8:# Code Review Quality Skill
+.agent\skills\code-review-quality\SKILL.md:10:You are a **Code Review Quality** specialist. Use this skill during P2 
+Forensics and P4 Arena Adjudication gates.
+.agent\skills\code-review-quality\SKILL.md:35:## When to use this skill
+.agent\skills\code-review-quality\SKILL.md:44:After completing any session using this skill, perform an audit:
+.agent\skills\code-review-quality\SKILL.md:51:If yes to any: **update this SKILL.md or references/ file immediately**, 
+then commit:
+.agent\skills\code-review-quality\SKILL.md:52:skill(code-review-quality): [what was fixed]
+.agent\skills\code-review-quality\SKILL.md:54:If no gaps found: state skill(code-review-quality): no gaps identified. 
+in your response.
+.agent\skills\code-review-quality\SKILL.md:55:No Director approval required for skill-only edits.
+.agent\skills\code-structure\SKILL.md:8:  Adapted from Michael Shimeles (@rasmic) code-structure skill for C# / 
+NinjaTrader 8.
+.agent\skills\code-structure\SKILL.md:130:After using this skill, state:
+.agent\skills\code-structure\SKILL.md:132:- `skill(code-structure): no gaps identified` if no ambiguity was encountered
+.agent\skills\code-structure\SKILL.md:133:- Update this SKILL.md if a new V12-specific extraction pattern or 
+anti-pattern is discovered
+.agent\skills\csharp-testing\SKILL.md:8:# C# Testing Skill
+.agent\skills\csharp-testing\SKILL.md:10:You are a **C# Testing** specialist. Use this skill to design, write, and 
+execute tests for the V12 Universal OR Strategy.
+.agent\skills\csharp-testing\SKILL.md:34:## When to use this skill
+.agent\skills\csharp-testing\SKILL.md:43:After completing any session using this skill, perform an audit:
+.agent\skills\csharp-testing\SKILL.md:50:If yes to any: **update this SKILL.md or references/ file immediately**, then 
+commit:
+.agent\skills\csharp-testing\SKILL.md:51:skill(csharp-testing): [what was fixed]
+.agent\skills\csharp-testing\SKILL.md:53:If no gaps found: state skill(csharp-testing): no gaps identified. in your 
+response.
+.agent\skills\csharp-testing\SKILL.md:54:No Director approval required for skill-only edits.
+.agent\skills\data-visualization\SKILL.md:8:# Data Visualization Skill
+.agent\skills\data-visualization\SKILL.md:10:You are a **Data Visualization** specialist. Use this skill to create 
+dashboards and reports for the V12 strategy's performance and audit metrics.
+.agent\skills\data-visualization\SKILL.md:32:## When to use this skill
+.agent\skills\data-visualization\SKILL.md:41:After completing any session using this skill, perform an audit:
+.agent\skills\data-visualization\SKILL.md:48:If yes to any: **update this SKILL.md or references/ file immediately**, 
+then commit:
+.agent\skills\data-visualization\SKILL.md:49:skill(data-visualization): [what was fixed]
+.agent\skills\data-visualization\SKILL.md:51:If no gaps found: state skill(data-visualization): no gaps identified. in 
+your response.
+.agent\skills\data-visualization\SKILL.md:52:No Director approval required for skill-only edits.
+.agent\skills\github-repo-migration\SKILL.md:8:This skill governs the migration of a "Golden Master" repository state 
+from an old GitHub account to a new one.
+.agent\skills\github-repo-migration\SKILL.md:75:3. Update this skill if a new SaaS platform (e.g. Greptile) requires 
+specific migration steps.
+.agent\skills\github-repo-migration\SKILL.md:76:4. State: `skill(github-repo-migration): no gaps identified` or 
+`skill(github-repo-migration): [fix applied]`.
+.agent\skills\knowledge-synthesis\SKILL.md:8:# Knowledge Synthesis Skill
+.agent\skills\knowledge-synthesis\SKILL.md:10:You are a **Knowledge Synthesis** specialist. Use this skill to merge 
+complex data sets into a single "Source of Truth".
+.agent\skills\knowledge-synthesis\SKILL.md:25:- Use this skill to aggregate the 12 deferred Arena findings for the 
+Build-984 mission brief.
+.agent\skills\knowledge-synthesis\SKILL.md:26:- Use this skill to synthesize "Metabolic Elegance" principles from the 
+V12 DNA and Karpathy protocols.
+.agent\skills\knowledge-synthesis\SKILL.md:30:## When to use this skill
+.agent\skills\knowledge-synthesis\SKILL.md:39:After completing any session using this skill, perform an audit:
+.agent\skills\knowledge-synthesis\SKILL.md:46:If yes to any: **update this SKILL.md or references/ file immediately**, 
+then commit:
+.agent\skills\knowledge-synthesis\SKILL.md:47:skill(knowledge-synthesis): [what was fixed]
+.agent\skills\knowledge-synthesis\SKILL.md:49:If no gaps found: state skill(knowledge-synthesis): no gaps identified. 
+in your response.
+.agent\skills\knowledge-synthesis\SKILL.md:50:No Director approval required for skill-only edits.
+.agent\skills\risk-assessment\SKILL.md:8:# Risk Assessment Skill
+.agent\skills\risk-assessment\SKILL.md:10:You are a **Risk Assessment** specialist. Use this skill during P4 Arena 
+Adjudication and mission planning.
+.agent\skills\risk-assessment\SKILL.md:31:## When to use this skill
+.agent\skills\risk-assessment\SKILL.md:40:After completing any session using this skill, perform an audit:
+.agent\skills\risk-assessment\SKILL.md:47:If yes to any: **update this SKILL.md or references/ file immediately**, 
+then commit:
+.agent\skills\risk-assessment\SKILL.md:48:skill(risk-assessment): [what was fixed]
+.agent\skills\risk-assessment\SKILL.md:50:If no gaps found: state skill(risk-assessment): no gaps identified. in your 
+response.
+.agent\skills\risk-assessment\SKILL.md:51:No Director approval required for skill-only edits.
+.agent\skills\spec-workflow\SKILL.md:9:# Spec Workflow Skill
+.agent\skills\spec-workflow\SKILL.md:11:You are a **Spec Workflow** specialist. This skill mandates a strict 
+progression through four distinct phases for any feature, refactor, or hardening task.
+.agent\skills\spec-workflow\SKILL.md:34:Break down the design into discrete, reviewable tasks using the 
+**Implementation Plan Standards** (§VII in Architect skill).
+.agent\skills\spec-workflow\SKILL.md:54:## When to use this skill
+.agent\skills\spec-workflow\SKILL.md:64:After completing any session using this skill, perform an audit:
+.agent\skills\spec-workflow\SKILL.md:71:If yes to any: **update this SKILL.md or references/ file immediately**, then 
+commit:
+.agent\skills\spec-workflow\SKILL.md:72:skill(spec-workflow): [what was fixed]
+.agent\skills\spec-workflow\SKILL.md:74:If no gaps found: state skill(spec-workflow): no gaps identified. in your 
+response.
+.agent\skills\spec-workflow\SKILL.md:75:No Director approval required for skill-only edits.
+.agent\skills\systematic-debugging\CREATION-LOG.md:1:# Creation Log: Systematic Debugging Skill
+.agent\skills\systematic-debugging\CREATION-LOG.md:3:Reference example of extracting, structuring, and bulletproofing 
+a critical skill.
+.agent\skills\systematic-debugging\CREATION-LOG.md:25:## Structure Following skill-creation/SKILL.md
+.agent\skills\systematic-debugging\CREATION-LOG.md:32:6. **Anti-patterns section** - What NOT to do (critical for this 
+skill)
+.agent\skills\systematic-debugging\CREATION-LOG.md:57:Created 4 validation tests following 
+skills/meta/testing-skills-with-subagents:
+.agent\skills\systematic-debugging\CREATION-LOG.md:85:- Added link to skills/testing/test-driven-development
+.agent\skills\systematic-debugging\CREATION-LOG.md:91:Bulletproof skill that:
+.agent\skills\systematic-debugging\CREATION-LOG.md:107:1. Load skill: skills/debugging/systematic-debugging
+.agent\skills\systematic-debugging\CREATION-LOG.md:119:*Purpose: Reference example for skill extraction and 
+bulletproofing*
+.agent\skills\systematic-debugging\SKILL.md:179:   - Use the `superpowers:test-driven-development` skill for writing 
+proper failing tests
+.agent\skills\systematic-debugging\SKILL.md:286:**Related skills:**
+.agent\skills\systematic-debugging\SKILL.md:302:After completing any session using this skill, perform an audit:
+.agent\skills\systematic-debugging\SKILL.md:309:If yes to any: **update this SKILL.md or references/ file 
+immediately**, then commit:
+.agent\skills\systematic-debugging\SKILL.md:310:skill(systematic-debugging): [what was fixed]
+.agent\skills\systematic-debugging\SKILL.md:312:If no gaps found: state skill(systematic-debugging): no gaps 
+identified. in your response.
+.agent\skills\systematic-debugging\SKILL.md:313:No Director approval required for skill-only edits.
+.agent\skills\systematic-debugging\test-academic.md:1:# Academic Test: Systematic Debugging Skill
+.agent\skills\systematic-debugging\test-academic.md:3:You have access to the systematic debugging skill at 
+skills/debugging/systematic-debugging
+.agent\skills\systematic-debugging\test-academic.md:5:Read the skill and answer these questions based SOLELY on what 
+the skill says:
+.agent\skills\systematic-debugging\test-academic.md:10:4. What does the skill say about fixing multiple things at once?
+.agent\skills\systematic-debugging\test-academic.md:14:Return your answers with direct quotes from the skill where 
+applicable.
+.agent\skills\systematic-debugging\test-pressure-1.md:5:You have access to: skills/debugging/systematic-debugging
+.agent\skills\systematic-debugging\test-pressure-1.md:23:**The systematic debugging skill says you must:**
+.agent\skills\systematic-debugging\test-pressure-2.md:5:You have access to: skills/debugging/systematic-debugging
+.agent\skills\systematic-debugging\test-pressure-3.md:5:You have access to: skills/debugging/systematic-debugging
+.agent\skills\systematic-debugging\test-pressure-3.md:32:Your systematic debugging skill says:
+.agent\skills\tdd-test-writer\SKILL.md:8:# TDD Test Writer Skill
+.agent\skills\tdd-test-writer\SKILL.md:10:You are a **TDD Test Writer** specialist. Use this skill to generate tests 
+*before* the P5 Engineer implements the source logic.
+.agent\skills\tdd-test-writer\SKILL.md:29:## When to use this skill
+.agent\skills\tdd-test-writer\SKILL.md:38:After completing any session using this skill, perform an audit:
+.agent\skills\tdd-test-writer\SKILL.md:45:If yes to any: **update this SKILL.md or references/ file immediately**, 
+then commit:
+.agent\skills\tdd-test-writer\SKILL.md:46:skill(tdd-test-writer): [what was fixed]
+.agent\skills\tdd-test-writer\SKILL.md:48:If no gaps found: state skill(tdd-test-writer): no gaps identified. in your 
+response.
+.agent\skills\tdd-test-writer\SKILL.md:49:No Director approval required for skill-only edits.
+.agent\workflows\graphify.md:6:Follow the graphify skill installed at ~/.agent/skills/graphify/SKILL.md to run the 
+full pipeline.
+.bob\commands\epic-plan.md:160:### Step 2.5a -- Apply Architecture-Validation Skill
+.bob\commands\epic-plan.md:161:Read and apply: `@plugins/architecture-validation/SKILL.md`
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:1:# SKILL: Knowledge Management & RAG Organization
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:7:## Skill Name
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:10:## Skill Description
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:11:This skill governs how agents organize, maintain, and expand 
+the auto-loaded knowledge base (RAG system) that provides permanent architectural constraints and domain expertise. It 
+ensures knowledge sources remain under 10% of context budget while maximizing agent expertise.
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:149:After using this skill, answer these questions:
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:169:5. **Skill Gaps Found?**
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:170:   - [ ] Yes - Update this skill document with: 
+_______________
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:171:   - [ ] No - Skill is complete
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:177:**Completion Statement**: `skill(knowledge_management): [no 
+gaps identified | gaps documented above]`
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:194:- Update this skill document if gaps found
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:225:4. Add conflict resolution note to this skill
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:242:## Related Skills
+.bob\rules-v12-engineer\SKILL-knowledge-management.md:249:**Skill Maintenance Log**:
+.cursor\skills\audit-and-add-project-skills\SKILL.md:2:name: audit-and-add-project-skills
+.cursor\skills\audit-and-add-project-skills\SKILL.md:3:description: Audits project skills in .agent/skills/ and Codex 
+skills for Cursor compatibility, then helps add compatible skills to .cursor/skills/. Use when the user wants to 
+migrate project skills to Cursor, check if skills work with Cursor, or add existing skills to Cursor.
+.cursor\skills\audit-and-add-project-skills\SKILL.md:6:# Audit and Add Project Skills to Cursor
+.cursor\skills\audit-and-add-project-skills\SKILL.md:8:This skill scans project and Codex skills, checks Cursor 
+compatibility, and guides adding them to Cursor.
+.cursor\skills\audit-and-add-project-skills\SKILL.md:10:## Skill Sources
+.cursor\skills\audit-and-add-project-skills\SKILL.md:14:| Project skills | 
+`{workspaceFolder}/.agent/skills/*/SKILL.md` | Often Codex/Claude format |
+.cursor\skills\audit-and-add-project-skills\SKILL.md:15:| Codex skills | `~/.codex/skills/**/SKILL.md` | May need 
+adaptation |
+.cursor\skills\audit-and-add-project-skills\SKILL.md:17:## Cursor Skill Format (Required)
+.cursor\skills\audit-and-add-project-skills\SKILL.md:23:name: skill-name
+.cursor\skills\audit-and-add-project-skills\SKILL.md:24:description: What the skill does and when to use it (third 
+person, specific)
+.cursor\skills\audit-and-add-project-skills\SKILL.md:48:| `~/.codex/skills/` paths | Use project `.cursor/skills/` or 
+`~/.cursor/skills/` |
+.cursor\skills\audit-and-add-project-skills\SKILL.md:52:1. **Discover skills**: List SKILL.md files in 
+`.agent/skills/` and optionally `~/.codex/skills/`
+.cursor\skills\audit-and-add-project-skills\SKILL.md:53:2. **Read each SKILL.md**: Extract frontmatter (name, 
+description)
+.cursor\skills\audit-and-add-project-skills\SKILL.md:62:**Target**: Project skills → `.cursor/skills/{skill-name}/`
+.cursor\skills\audit-and-add-project-skills\SKILL.md:64:1. Create `.cursor/skills/` if it doesn't exist
+.cursor\skills\audit-and-add-project-skills\SKILL.md:65:2. For each compatible skill:
+.cursor\skills\audit-and-add-project-skills\SKILL.md:66:   - Create `.cursor/skills/{skill-name}/`
+.cursor\skills\audit-and-add-project-skills\SKILL.md:67:   - Copy `SKILL.md` (and optional `reference.md`, `scripts/` 
+if present)
+.cursor\skills\audit-and-add-project-skills\SKILL.md:69:3. Preserve original `.agent/skills/`—do not delete
+.cursor\skills\audit-and-add-project-skills\SKILL.md:71:**Do NOT** add skills to `~/.cursor/skills-cursor/`. That 
+directory is reserved for Cursor built-in skills.
+.cursor\skills\audit-and-add-project-skills\SKILL.md:75:**List project skills:**
+.cursor\skills\audit-and-add-project-skills\SKILL.md:77:Get-ChildItem -Path ".agent/skills" -Directory | 
+ForEach-Object { $_.Name }
+.cursor\skills\audit-and-add-project-skills\SKILL.md:80:**Check if SKILL.md exists:**
+.cursor\skills\audit-and-add-project-skills\SKILL.md:82:Test-Path ".agent/skills/{skill-name}/SKILL.md"
+.cursor\skills\audit-and-add-project-skills\SKILL.md:85:**Copy a skill to Cursor:**
+.cursor\skills\audit-and-add-project-skills\SKILL.md:87:Copy-Item -Path ".agent/skills/{skill-name}" -Destination 
+".cursor/skills/{skill-name}" -Recurse
+.cursor\skills\audit-and-add-project-skills\SKILL.md:92:- **Project** (`.cursor/skills/`): Skills shared with the 
+repo; available only in this workspace
+.cursor\skills\audit-and-add-project-skills\SKILL.md:93:- **Personal** (`~/.cursor/skills/`): Skills for all your 
+projects
+.cursor\skills\audit-and-add-project-skills\SKILL.md:95:Use project scope for workspace-specific skills (NinjaTrader, 
+UniversalOR, etc.). Use personal for generic skills (pdf, docx, code-formatter).
+.cursor\skills\crawl\SKILL.md:6:# Crawl Skill
+.cursor\skills\extract\SKILL.md:6:# Extract Skill
+.cursor\skills\research\SKILL.md:5:# Research Skill
+.cursor\skills\search\SKILL.md:6:# Search Skill
+docs\Bob_phase7_refactor\bob_orchestrator_header.md:22:2. If any new logic constraints or workflow quirks were 
+discovered, append them to .agent/skills/bob-cli-mastery/SKILL.md before returning success.
+docs\brain\EPIC-POSINFO\phase1.5-complete.md:80:## Reusable Skill
+docs\brain\EPIC-POSINFO\phase1.5-complete.md:82:### 1. Skill Template
+docs\brain\EPIC-POSINFO\phase1.5-complete.md:83:**File**: 
+[`plugins/scope-boundary-check/SKILL.md`](../../../plugins/scope-boundary-check/SKILL.md)
+docs\brain\EPIC-POSINFO\phase1.5-complete.md:86:- Skill name: `scope-boundary-check`
+docs\brain\EPIC-POSINFO\phase1.5-complete.md:96:**Note**: Skill file has a linter warning about name format, but is 
+functionally complete.
+docs\brain\EPIC-POSINFO\phase1.5-complete.md:98:### 2. Skill Specification
+docs\brain\EPIC-POSINFO\phase1.5-complete.md:99:**File**: 
+[`plugins/scope-boundary-check/skill-spec.md`](../../../plugins/scope-boundary-check/skill-spec.md)
+docs\brain\EPIC-POSINFO\phase1.5-complete.md:102:- Detailed specification for skill-creator
+docs\brain\EPIC-POSINFO\phase1.5-complete.md:191:- [x] Skill template created
+docs\brain\EPIC-POSINFO\skill-analysis.md:1:# Skill Analysis: Code Structure Cleanup Pattern
+docs\brain\EPIC-POSINFO\skill-analysis.md:4:**Source**: [micky-podcast-agentic-engineering/code-structure-cleanup](http
+s://github.com/pawel-cell/micky-podcast-agentic-engineering/blob/main/skills/code-structure-cleanup/SKILL.md)  
+docs\brain\EPIC-POSINFO\skill-analysis.md:12:The external skill demonstrates a **post-implementation cleanup pattern** 
+that is MISSING from our current epic workflow. It provides a structured approach to eliminating duplication and 
+improving code structure AFTER a feature works, which aligns perfectly with EPIC-POSINFO's goal of refactoring working 
+code.
+docs\brain\EPIC-POSINFO\skill-analysis.md:18:## External Skill Structure Analysis
+docs\brain\EPIC-POSINFO\skill-analysis.md:92:| Element | External Skill | V12 Workflow | Status |
+docs\brain\EPIC-POSINFO\skill-analysis.md:110:**External Skill Solution**: 
+docs\brain\EPIC-POSINFO\skill-analysis.md:123:**External Skill Solution**: Step 2 - "Identify repeated logic and 
+**name the duplication clearly**"
+docs\brain\EPIC-POSINFO\skill-analysis.md:133:**External Skill Solution**: 5 consolidated anti-patterns with clear 
+rationale
+docs\brain\EPIC-POSINFO\skill-analysis.md:220:## Should We Adopt This Skill Pattern?
+docs\brain\EPIC-POSINFO\skill-analysis.md:236:### Proposed V12 Skill: `refactoring-scope-boundary`
+docs\brain\EPIC-POSINFO\skill-analysis.md:238:**File**: `plugins/refactoring-scope-boundary/SKILL.md`
+docs\brain\EPIC-POSINFO\skill-analysis.md:258:### Current State (Without Skill)
+docs\brain\EPIC-POSINFO\skill-analysis.md:267:### Proposed State (With Skill)
+docs\brain\EPIC-POSINFO\skill-analysis.md:295:4. 📋 Backlog: Create `plugins/refactoring-scope-boundary/SKILL.md` for 
+future epics
+docs\brain\EPIC-POSINFO\skill-analysis.md:301:### From External Skill
+docs\brain\EPIC-POSINFO\skill-analysis.md:311:4. **Create reusable skill** - `refactoring-scope-boundary` for future 
+epics
+docs\brain\EPIC-POSINFO\skill-analysis.md:334:1. Create `plugins/refactoring-scope-boundary/SKILL.md`
+docs\brain\EPIC-POSINFO\skill-analysis.md:342:The external skill reveals a **critical gap** in our workflow: we lack 
+an explicit phase for articulating scope boundaries and anti-patterns before planning refactoring work. Adding Phase 
+1.5 (Scope Boundary Explanation) is a **low-cost, high-value** improvement that:
+docs\brain\BRANCH_CATEGORIZATION_ANALYSIS.md:47:| `feature/infra-github-migration-skill` | 2 | 2 | ⚠️ AUDIT - Skill 
+work, check completion |
+docs\brain\CHRONOLOGICAL_CONSOLIDATION_STRATEGY.md:83:1. **feature/infra-github-migration-skill** (2026-05-31 
+21:12:38) - INFRA
+docs\brain\FILTERED_CONSOLIDATION_PLAN.md:90:17. **feature/infra-github-migration-skill** - 2 commits ahead
+docs\brain\GITHUB_BRANCH_CLEANUP_STRATEGY.md:83:- `origin/feature/infra-github-migration-skill`
+docs\brain\handover_r28.md:15:- **Opus Version:** [r28_opus_super_prompt.md](docs/brain/r28_opus_super_prompt.md) 
+(Full Skill/DNA access).
+docs\brain\integration-brainstorm.md:1:# Integration Brainstorm: Jane Street + Source Code Context Skill
+docs\brain\integration-brainstorm.md:12:2. **Source Code Context Skill** - Session-aware code navigation using 
+jcodemunch-mcp
+docs\brain\integration-brainstorm.md:108:## Part 2: Source Code Context Skill Integration
+docs\brain\jane-street-analysis.md:107:## Part 2: Source Code Context Skill Analysis
+docs\brain\jane-street-analysis.md:109:### What the Skill Offers
+docs\brain\jane-street-analysis.md:353:### Source Code Context Skill - Top 3 Patterns
+docs\brain\morpheus_agent_aliases.md:23:The aliasing is transparent to the end-user but must be tracked for binary 
+updates or skill registrations.
+docs\brain\pr_11_forensics_report.md:203:### GitHub Migration Skill Update Required
+docs\brain\pr_11_forensics_report.md:204:**New Bots Since Skill Creation**:
+docs\brain\pr_11_forensics_report.md:210:**Action Required**: Update `github-migrate` skill to handle new bot checks 
+before PR migration.
+docs\brain\PR_7_AUDIT.md:229:  - `plugins/check-pr/SKILL.md`
+docs\brain\PR_7_AUDIT.md:230:  - `plugins/pr-loop-auto/SKILL.md`
+docs\brain\pr_8_forensics.md:101:<file name="plugins/check-pr/SKILL.md">
+docs\brain\pr_8_forensics.md:103:<violation number="1" location="plugins/check-pr/SKILL.md:29">
+docs\brain\pr_loop_rebase_fix.md:9:During PR Loop execution for PR #8 (src-only changes), Step 0 (Pre-Flight Hygiene) 
+performed a blind `git rebase origin/main` without checking PR scope. This caused non-src files 
+(`plugins/check-pr/SKILL.md`) to be staged, violating the src-only protocol for that PR.
+docs\brain\r28_opus_super_prompt.md:25:1.  **READ** the project identity: `.agent/skills/architect/SKILL.md`
+docs\brain\skills-conversion-report.md:1:# Skills Conversion Report - Anthropic Self-Improving Format
+docs\brain\skills-conversion-report.md:5:**Task**: Convert V12 skills to Anthropic self-improving format
+docs\brain\skills-conversion-report.md:11:Audited 6 project skills for compliance with Anthropic's self-improving 
+skill format. Found 3 skills already compliant, 1 partially compliant, and 2 requiring full conversion.
+docs\brain\skills-conversion-report.md:19:### ✅ Compliant Skills (3)
+docs\brain\skills-conversion-report.md:22:- **Location**: `plugins/architecture-validation/SKILL.md`
+docs\brain\skills-conversion-report.md:33:- **Location**: `plugins/check-pr/SKILL.md`
+docs\brain\skills-conversion-report.md:44:- **Location**: `plugins/pr-loop-auto/SKILL.md`
+docs\brain\skills-conversion-report.md:55:### ⚠️ Partially Compliant Skills (1)
+docs\brain\skills-conversion-report.md:58:- **Location**: `plugins/frontend-design/SKILL.md`
+docs\brain\skills-conversion-report.md:70:### ❌ Non-Compliant Skills (2)
+docs\brain\skills-conversion-report.md:73:- **Location**: `plugins/github-migration/SKILL.md`
+docs\brain\skills-conversion-report.md:84:- **Location**: `plugins/scope-boundary-check/SKILL.md`
+docs\brain\skills-conversion-report.md:95:## Skill References in Workflow Commands
+docs\brain\skills-conversion-report.md:97:Analyzed 5 workflow commands for skill dependencies:
+docs\brain\skills-conversion-report.md:99:| Command | Skills Referenced |
+docs\brain\skills-conversion-report.md:108:**Note**: Skills are invoked implicitly through workflow steps rather than 
+explicit references.
+docs\brain\skills-conversion-report.md:121:- Added skill metadata
+docs\brain\skills-conversion-report.md:131:- Added skill metadata
+docs\brain\skills-conversion-report.md:141:- Added skill metadata
+docs\brain\skills-conversion-report.md:147:All converted skills now include:
+docs\brain\skills-conversion-report.md:151:## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
+docs\brain\skills-conversion-report.md:153:**All agents MUST perform this audit after EVERY use of this skill:**
+docs\brain\skills-conversion-report.md:158:3. **Audit Statement**: If no gaps found, state: `skill(name): no gaps 
+identified`
+docs\brain\skills-conversion-report.md:168:### 3. Skill Metadata
+docs\brain\skills-conversion-report.md:181:- ✅ All original skill functionality maintained
+docs\brain\skills-conversion-report.md:182:- ✅ No breaking changes to skill interfaces
+docs\brain\skills-conversion-report.md:198:- `plugins/frontend-design/SKILL.md`
+docs\brain\skills-conversion-report.md:199:- `plugins/github-migration/SKILL.md`
+docs\brain\skills-conversion-report.md:200:- `plugins/scope-boundary-check/SKILL.md`
+docs\brain\skills-conversion-report.md:203:- `plugins/architecture-validation/SKILL.md`
+docs\brain\skills-conversion-report.md:204:- `plugins/check-pr/SKILL.md`
+docs\brain\skills-conversion-report.md:205:- `plugins/pr-loop-auto/SKILL.md`
+docs\brain\skills-conversion-report.md:213:| Compliant Skills | 3/6 (50%) | 6/6 (100%) | +50% |
+docs\brain\skills-conversion-report.md:222:1. ✅ All skills converted to self-improving format
+docs\brain\skills-conversion-report.md:223:2. ⏳ Monitor skill usage for gap detection
+docs\brain\skills-conversion-report.md:225:4. ⏳ Create skill usage analytics dashboard
+docs\brain\skills-conversion-report.md:226:5. ⏳ Establish quarterly skill review protocol
+docs\brain\skills-conversion-report.md:232:- **Anthropic Skill-Creator Template**: 
+https://github.com/anthropics/skills/tree/main/skills/skill-creator
+docs\brain\skills-conversion-report.md:235:- **Autonomous Skill Creation**: `AGENTS.md` Section 6
+docs\brain\skills-conversion-report.md:240:**Conversion Success Rate**: 100% (6/6 skills)  
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:1:# Source Code Context Skill Integration
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:4:**Reference**: 
+https://github.com/pawel-cell/micky-podcast-agentic-engineering/blob/main/skills/source-code-context/SKILL.md
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:11:The **source-code-context** skill from Micky Podcast's agentic 
+engineering framework was the **foundational inspiration** for Phase 1 of the Jane Street Cyborg Transformation. We 
+implemented its core principles (negative evidence tracking, session snapshots, budget-aware exploration) and 
+integrated them into all V12 workflows.
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:13:**KEY SPECIALIZATION**: While the original skill suggests using "open 
+source code" generically, we **specialized it to use Jane Street code exclusively** as our guidance source. This 
+ensures all patterns, rules, and examples come from a single, world-class HFT codebase rather than mixed sources.
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:22:## Original Skill Principles
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:24:### From Micky Podcast's SKILL.md
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:26:The source-code-context skill defines three core capabilities:
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:66:## How We Adapted the Skill
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:70:We took Micky Podcast's skill and **productionized** it for V12:
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:291:## Comparison: Original Skill vs Our Implementation
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:293:| Aspect | Original Skill | Our Implementation |
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:300:| **Documentation** | Skill spec | Ô£à Phase 1 summary + AGENTS.md |
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:308:The source-code-context skill was **critical** to Phase 1 success:
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:348:### Original Skill
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:349:- **Source**: 
+https://github.com/pawel-cell/micky-podcast-agentic-engineering/blob/main/skills/source-code-context/SKILL.md
+docs\brain\SOURCE_CODE_CONTEXT_INTEGRATION.md:368:**Thank you to Pawel (Micky Podcast)** for the foundational 
+source-code-context skill. Your work inspired Phase 1 of the Jane Street Cyborg Transformation and enabled the entire 
+5-phase process.
+docs\brain\TDD_INTEGRATION_AUDIT.md:85:4. **Skill Documentation Gap**
+docs\brain\TDD_INTEGRATION_AUDIT.md:86:   - **Issue:** No agent skill documentation for TDD patterns
+docs\brain\TDD_INTEGRATION_AUDIT.md:88:   - **Evidence:** No `.bob/skills/tdd-*.md` files exist
+docs\brain\TDD_INTEGRATION_AUDIT.md:260:3. Create `.bob/skills/tdd-*.md` skill files
+docs\brain\tracing-paperclip-integration.md:17:- ✅ Agent skills: `wiki-ingest`, `wiki-query`, `wiki-lint`
+docs\brain\tracing-paperclip-integration.md:32:  ↓ [wiki-ingest skill]
+docs\brain\tracing-paperclip-integration.md:100:### 3.2 Trace Ingestion via `wiki-ingest` Skill
+docs\brain\tracing-paperclip-integration.md:111:   - Use `wiki-ingest` skill to process new trace files
+docs\brain\tracing-paperclip-integration.md:174:**Implementation**: Use `wiki-query` skill with natural language 
+queries.
+docs\brain\tracing-paperclip-integration.md:287:2. Paperclip agent runs `wiki-ingest` skill
+docs\brain\tracing-paperclip-integration.md:405:# Run Paperclip wiki-ingest skill
+docs\brain\tracing-paperclip-integration.md:456:- **Wiki Skills**: `wiki-ingest`, `wiki-query`, `wiki-lint`
+docs\brain\tracing-unified-integration.md:540:    # 3. Query Paperclip Wiki (via wiki-query skill)
+docs\brain\zero_gc_nexus_handoff.md:170:4. **Skills**: Document reusable patterns in `.bob/skills/` or `.agent/skills/`
+docs\protocol\CODACY_COVERAGE_WORKFLOW.md:8:This skill governs the migration of a "Golden Master" repository state 
+from an old GitHub account to a new one.
+docs\protocol\CODACY_COVERAGE_WORKFLOW.md:75:3. Update this skill if a new SaaS platform (e.g. Greptile) requires 
+specific migration steps.
+docs\protocol\CODACY_COVERAGE_WORKFLOW.md:76:4. State: `skill(github-repo-migration): no gaps identified` or 
+`skill(github-repo-migration): [fix applied]`.
+docs\protocol\GITHUB_MIGRATION_SKILL.md:1:# GitHub Migration Skill
+docs\protocol\GITHUB_MIGRATION_SKILL.md:357:- **1.0** (2026-05-25): Initial skill based on PR #11 migration experience
+docs\protocol\JANE_STREET_PREREQUISITES.md:13:**Skill Level**: Intermediate (command-line experience required)
+docs\protocol\KNOWLEDGE_MANAGEMENT_SYSTEM.md:263:7. **Document in Skill**
+docs\protocol\KNOWLEDGE_MANAGEMENT_SYSTEM.md:264:   - Update `.bob/rules-v12-engineer/SKILL-knowledge-management.md`
+docs\protocol\KNOWLEDGE_MANAGEMENT_SYSTEM.md:310:- **Skill Document**: 
+`.bob/rules-v12-engineer/SKILL-knowledge-management.md`
+docs\protocol\MASTER_HANDOFF_PROTOCOL.md:22:### 3. Tactical Skills (The Tools)
+docs\standards\jane-street\JANE_STREET_PHILOSOPHY.md:1168:- [`AGENTS.md`](../../AGENTS.md) - Section 6: Autonomous 
+Skill Creation
+docs\workflow\LOCAL_BRANCH_AUDIT_2026-06-07.md:76:- `feature/infra-github-migration-skill` - 2 commits
+docs\workflow\LOCAL_BRANCH_AUDIT_2026-06-07.md:135:  feature/infra-github-migration-skill `
+docs\workflow\PR5_ORCHESTRATION_WORKFLOW.md:23:- `docs/protocol/GITHUB_MIGRATION_SKILL.md` (updated)
+docs\workflow\PR5_ORCHESTRATION_WORKFLOW.md:55:git add docs/protocol/GITHUB_MIGRATION_SKILL.md
+docs\Gitbutlerdocs.md:400:You do not need to tell the agent which command to use. The GitButler skill gives it the 
+relevant operations. For background, see but absorb and but amend.
+docs\Gitbutlerdocs.md:578:skill: Manage AI agent skills for GitButler
+docs\Gitbutlerdocs.md:835:but skill
+docs\Gitbutlerdocs.md:836:Manage AI agent skills for GitButler.
+docs\Gitbutlerdocs.md:838:Skills provide enhanced AI capabilities for working with GitButler through Claude Code, 
+Codex, and other AI assistants.
+docs\Gitbutlerdocs.md:840:Use but skill install to install the GitButler skill files. By default, it prompts for scope 
+(repository or global home directory) and then format. When run outside a git repository, local scope is unavailable 
+and the default install location is global (home directory). You can still install to a custom location with --path 
+using an absolute or ~ path.
+docs\Gitbutlerdocs.md:846:but skill install
+docs\Gitbutlerdocs.md:847:Install the skill globally:
+docs\Gitbutlerdocs.md:850:but skill install --global
+docs\Gitbutlerdocs.md:851:Usage: but skill <COMMAND>
+docs\Gitbutlerdocs.md:854:but skill install
+docs\Gitbutlerdocs.md:855:Install the GitButler CLI skill files for Coding agents
+docs\Gitbutlerdocs.md:857:By default, the command prompts you to choose installation scope first (current repository 
+or global home directory), then prompts you to select a skill folder format (Agent Skills / .agents, Claude Code, 
+OpenCode, Codex, GitHub Copilot, Cursor, Windsurf) unless you specify a custom path with --path. When run outside a 
+git repository, local scope is unavailable and the default install location is global (home directory). You can still 
+install to a custom location with --path using an absolute or ~ path.
+docs\Gitbutlerdocs.md:859:Use --global to install the skill in a global location instead of the current repository.
+docs\Gitbutlerdocs.md:867:but skill install
+docs\Gitbutlerdocs.md:871:but skill install --global
+docs\Gitbutlerdocs.md:875:but skill install --path .agents/skills/gitbutler
+docs\Gitbutlerdocs.md:879:but skill install --detect
+docs\Gitbutlerdocs.md:880:Usage: but skill install [OPTIONS]
+docs\Gitbutlerdocs.md:884:-g, --global — Install the skill globally instead of in the current repository
+docs\Gitbutlerdocs.md:885:-p, --path <PATH> — Custom path where to install the skill (relative to repository root or 
+absolute). Outside a repository, relative paths require --global
+docs\Gitbutlerdocs.md:887:but skill check
+docs\Gitbutlerdocs.md:888:Check if installed GitButler skills are up to date with the CLI version
+docs\Gitbutlerdocs.md:890:Scans for installed skill files and compares their version with the current CLI version. By 
+default, checks both local (repository) and global installations.
+docs\Gitbutlerdocs.md:893:Check all installed skills:
+docs\Gitbutlerdocs.md:896:but skill check
+docs\Gitbutlerdocs.md:897:Check and automatically update outdated skills:
+docs\Gitbutlerdocs.md:900:but skill check --update
+docs\Gitbutlerdocs.md:904:but skill check --global
+docs\Gitbutlerdocs.md:905:Usage: but skill check [OPTIONS]
+docs\Gitbutlerdocs.md:911:-u, --update — Automatically update any outdated skills found
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:16:| AGENTS.md  | agent   | One 
+role, instructions, and attached skills       |
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:19:| SKILL.md   | skill   | Agent 
+Skills capability package (do not redefine) |
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:37:├── skills/
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:38:│   └── <slug>/SKILL.md
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:84:skills:
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:85:  - skill-shortname
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:89:- Skills resolve by shortname: 
+`skills/<shortname>/SKILL.md`
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:101:  - 
+../../skills/skill-slug/SKILL.md
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:128:## Source References (for 
+external skills/content)
+infrastructure\paperclip\.agents\skills\company-creator\references\companies-spec.md:134:    path: path/to/SKILL.md
+infrastructure\paperclip\.agents\skills\company-creator\references\example-company.md:23:├── skills/
+infrastructure\paperclip\.agents\skills\company-creator\references\example-company.md:24:│   └── code-review/SKILL.md
+infrastructure\paperclip\.agents\skills\company-creator\references\example-company.md:55:skills:
+infrastructure\paperclip\.agents\skills\company-creator\references\example-company.md:75:skills:
+infrastructure\paperclip\.agents\skills\company-creator\references\example-company.md:96:skills:
+infrastructure\paperclip\.agents\skills\company-creator\references\example-company.md:128:  - 
+../../skills/code-review/SKILL.md
+infrastructure\paperclip\.agents\skills\company-creator\references\example-company.md:172:## 
+skills/code-review/SKILL.md (with external reference)
+infrastructure\paperclip\.agents\skills\company-creator\references\example-company.md:177:description: Thorough code 
+review skill for pull requests and diffs
+infrastructure\paperclip\.agents\skills\company-creator\references\example-company.md:182:      path: 
+skills/code-review/SKILL.md
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:8:2. **Scan for existing 
+agent/skill files** - Look for SKILL.md, AGENTS.md, CLAUDE.md, .claude/ directories, or similar agent configuration
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:12:## Handling Existing Skills
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:14:Many repos already contain 
+skills (SKILL.md files). When you find them:
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:18:Instead of copying skill 
+content into your company package, create a source reference:
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:25:      path: path/to/SKILL.md
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:38:Only vendor (copy) skills 
+when:
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:41:- The skill is very small and 
+tightly coupled to the company
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:52:## Repo-Only Skills (No 
+Agents)
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:54:When a repo contains only 
+skills and no agents:
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:56:- Create agents that would 
+naturally use those skills
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:57:- The agents should be 
+minimal - just enough to give the skills a runtime context
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:58:- A single agent may use 
+multiple skills from the repo
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:59:- Name agents based on the 
+domain the skills cover
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:61:Example: A repo with 
+`code-review`, `testing`, and `deployment` skills might become:
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:63:- A "Lead Engineer" agent 
+with all three skills
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:64:- Or separate "Reviewer", "QA 
+Engineer", and "DevOps" agents if the skills are distinct enough
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:71:- Reference any existing 
+skills
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:77:- Skills from the repo become 
+agent capabilities
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:84:### Skills Collection repos 
+(e.g. skills.sh repos)
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:86:- Each skill or skill group 
+gets an agent
+infrastructure\paperclip\.agents\skills\company-creator\references\from-repo-guide.md:88:- Keep the agent count 
+proportional to the skill diversity
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:6:  scratch, build a company around an existing git 
+repo or skills collection, or
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:44:- **From repo**: Clone/read the repo. Scan for 
+existing skills, agent configs, README, source structure.
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:55:- Any specific skills the agents should have
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:62:- Whether to reference or vendor any discovered 
+skills (default: reference)
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:63:- Any additional agents or skills beyond what the 
+repo provides
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:69:A company is not just a list of agents with 
+skills. It's an organization that takes ideas and turns them into work products. You need to understand the workflow 
+so each agent knows:
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:85:For from-repo companies, infer the pattern from 
+the repo's structure. If skills have a clear sequential dependency (like `plan-ceo-review → plan-eng-review → review → 
+ship → qa`), that's a pipeline. If skills are independent capabilities, it's more likely hub-and-spoke or on-demand. 
+State your inference in the interview so the user can confirm or adjust.
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:123:├── skills/
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:124:│   └── <slug>/SKILL.md       (if custom skills 
+are needed)
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:133:- Skills referenced by shortname in AGENTS.md 
+resolve to `skills/<shortname>/SKILL.md`
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:134:- For external skills, use `sources` with `usage: 
+referenced` (see spec section 12)
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:138:  `Generated from [repo-name](repo-url) with the 
+company-creator skill from [Paperclip](https://github.com/paperclipai/paperclip)`
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:179:- Org chart as a markdown list or table showing 
+agents, titles, reporting structure, and skills
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:184:**LICENSE** — include a LICENSE file. The 
+copyright holder is the user creating the company, not the upstream repo author (they made the skills, the user is 
+making the company). Use the same license type as the source repo (if from-repo) or ask the user (if from-scratch). 
+Default to MIT if unclear.
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:192:- Skills (custom + referenced)
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:216:- The repo or its skills clearly target a 
+specific runtime (e.g. gstack is built for Claude Code, so `claude_local` is appropriate)
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:222:**Do not add boilerplate env variables.** Only 
+add env inputs that the agent actually needs based on its skills or role:
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:225:- API keys only when a skill explicitly requires 
+them
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:260:## External Skill References
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:262:When referencing skills from a GitHub repo, 
+always use the references pattern:
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:269:      path: path/to/SKILL.md
+infrastructure\paperclip\.agents\skills\company-creator\SKILL.md:282:Do NOT copy external skill content into the 
+package unless the user explicitly asks.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:573:### Paperclip Skills Injection
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:575:Paperclip ships shared skills (in the repo's 
+top-level `skills/` directory) that agents need at runtime — things like the `paperclip` API skill and the 
+`paperclip-create-agent` workflow skill. Each adapter is responsible for making these skills discoverable by its agent 
+runtime **without polluting the agent's working directory**.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:577:**The constraint:** never copy or symlink 
+skills into the agent's `cwd`. The cwd is the user's project checkout — writing `.claude/skills/` or any other files 
+into it would contaminate the repo with Paperclip internals, break git status, and potentially leak into commits.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:579:**The pattern:** create a clean, isolated 
+location for skills and tell the agent runtime to look there.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:583:1. At execution time, create a fresh tmpdir: 
+`mkdtemp("paperclip-skills-")`
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:584:2. Inside it, create `.claude/skills/` (the 
+directory structure Claude Code expects)
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:585:3. Symlink each skill directory from the 
+repo's `skills/` into the tmpdir's `.claude/skills/`
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:586:4. Pass the tmpdir to Claude Code via 
+`--add-dir <tmpdir>` — this makes Claude Code discover the skills as if they were registered in that directory, 
+without touching the agent's actual cwd
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:591:async function buildSkillsDir(): 
+Promise<string> {
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:592:  const tmp = await 
+fs.mkdtemp(path.join(os.tmpdir(), "paperclip-skills-"));
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:593:  const target = path.join(tmp, ".claude", 
+"skills");
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:595:  const entries = await 
+fs.readdir(PAPERCLIP_SKILLS_DIR, { withFileTypes: true });
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:599:        path.join(PAPERCLIP_SKILLS_DIR, 
+entry.name),
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:608:const skillsDir = await buildSkillsDir();
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:609:args.push("--add-dir", skillsDir);
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:611:// In finally: fs.rm(skillsDir, { recursive: 
+true, force: true })
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:616:Codex has a global personal skills directory 
+(`$CODEX_HOME/skills` or `~/.codex/skills`). The adapter symlinks Paperclip skills there if they don't already exist. 
+This is acceptable because it's the agent tool's own config directory, not the user's project.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:620:async function 
+ensureCodexSkillsInjected(onLog) {
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:621:  const skillsHome = 
+path.join(codexHomeDir(), "skills");
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:622:  await fs.mkdir(skillsHome, { recursive: 
+true });
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:624:    const target = path.join(skillsHome, 
+entry.name);
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:626:    if (existing) continue;  // Don't 
+overwrite user's own skills
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:632:**For a new adapter:** figure out how your 
+agent runtime discovers skills/plugins, then choose the cleanest injection path:
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:634:1. **Best: tmpdir + flag** (like 
+claude-local) — if the runtime supports an "additional directory" flag, create a tmpdir, symlink skills in, pass the 
+flag, clean up after. Zero side effects.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:635:2. **Acceptable: global config dir** (like 
+codex-local) — if the runtime has a global skills/plugins directory separate from the project, symlink there. Skip 
+existing entries to avoid overwriting user customizations.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:636:3. **Acceptable: env var** — if the runtime 
+reads a skills/plugin path from an environment variable, point it at the repo's `skills/` directory directly.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:637:4. **Last resort: prompt injection** — if 
+the runtime has no plugin system, include skill content in the prompt template itself. This uses tokens but avoids 
+filesystem side effects entirely.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:639:**Skills as loaded procedures, not prompt 
+bloat.** The Paperclip skills (like `paperclip` and `paperclip-create-agent`) are designed as on-demand procedures: 
+the agent sees skill metadata (name + description) in its context, but only loads the full SKILL.md content when it 
+decides to invoke a skill. This keeps the base prompt small. When writing `agentConfigurationDoc` or prompt templates 
+for your adapter, do not inline skill content — let the agent runtime's skill discovery do the work. The descriptions 
+in each SKILL.md frontmatter act as routing logic: they tell the agent when to load the full skill, not what the skill 
+contains.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:641:**Explicit vs. fuzzy skill invocation.** For 
+production workflows where reliability matters (e.g. an agent that must always call the Paperclip API to report 
+status), use explicit instructions in the prompt template: "Use the paperclip skill to report your progress." Fuzzy 
+routing (letting the model decide based on description matching) is fine for exploratory tasks but unreliable for 
+mandatory procedures.
+infrastructure\paperclip\.agents\skills\create-agent-adapter\SKILL.md:668:- Skills + network = amplified risk. A skill 
+that teaches the agent to make HTTP requests combined with unrestricted network access creates an exfiltration path. 
+Constrain one or the other.
+infrastructure\paperclip\.agents\skills\doc-maintenance\references\section-map.md:3:Maps feature areas to specific 
+document sections so the skill knows where to
+infrastructure\paperclip\.agents\skills\doc-maintenance\references\section-map.md:18:| Skills / Skill Injection | "Why 
+special" | — | — |
+infrastructure\paperclip\.agents\skills\doc-maintenance\SKILL.md:11:# Doc Maintenance Skill
+infrastructure\paperclip\.agents\skills\doc-maintenance\SKILL.md:30:Out of scope: DEVELOPING.md, DATABASE.md, CLI.md, 
+doc/plans/, skill files,
+infrastructure\paperclip\.agents\skills\doc-maintenance\SKILL.md:80:- STRUCTURAL: New .agents/skills/ directory 
+convention
+infrastructure\paperclip\.agents\skills\doc-maintenance\SKILL.md:154:🤖 Generated by doc-maintenance skill
+infrastructure\paperclip\.agents\skills\doc-maintenance\SKILL.md:195:When the skill completes, report:
+infrastructure\paperclip\.agents\skills\pr-report\SKILL.md:10:# PR Report Skill
+infrastructure\paperclip\.agents\skills\pr-report\SKILL.md:23:Use this skill when the user asks for things like:
+infrastructure\paperclip\.agents\skills\pr-report\SKILL.md:42:Resources bundled with this skill:
+infrastructure\paperclip\.agents\skills\prcheckloop\SKILL.md:197:When the skill completes, report:
+infrastructure\paperclip\.agents\skills\prcheckloop\SKILL.md:208:- This skill is intentionally narrower than 
+`check-pr`: it is a repair loop for
+infrastructure\paperclip\.agents\skills\prcheckloop\SKILL.md:210:- This skill complements `greploop`: Greptile can be 
+perfect while CI is still
+infrastructure\paperclip\.agents\skills\release\SKILL.md:9:# Release Coordination Skill
+infrastructure\paperclip\.agents\skills\release\SKILL.md:13:This skill coordinates:
+infrastructure\paperclip\.agents\skills\release\SKILL.md:24:Use this skill when leadership asks for:
+infrastructure\paperclip\.agents\skills\release\SKILL.md:35:1. `.agents/skills/release-changelog/SKILL.md` exists and 
+is usable.
+infrastructure\paperclip\.agents\skills\release\SKILL.md:238:When the skill completes, provide:
+infrastructure\paperclip\.agents\skills\release-changelog\SKILL.md:8:# Release Changelog Skill
+infrastructure\paperclip\.agents\skills\release-changelog\SKILL.md:196:This skill never publishes anything. It only 
+prepares the stable changelog artifact.
+infrastructure\paperclip\.agents\skills\release-changelog-discord-message\SKILL.md:5:  to `release-changelog` — that 
+skill produces the file at `releases/vYYYY.MDD.P.md`;
+infrastructure\paperclip\.agents\skills\release-changelog-discord-message\SKILL.md:11:# Release Discord Announcement 
+Skill
+infrastructure\paperclip\.agents\skills\release-changelog-discord-message\SKILL.md:15:This is the companion to 
+`.agents/skills/release-changelog/SKILL.md`. That skill
+infrastructure\paperclip\.agents\skills\release-changelog-discord-message\SKILL.md:16:generates the file at 
+`releases/vYYYY.MDD.P.md`. This skill turns that file into
+infrastructure\paperclip\.agents\skills\release-changelog-discord-message\SKILL.md:169:  Exclude bots and Paperclip 
+founders, same rules as the changelog skill.
+infrastructure\paperclip\.agents\skills\release-changelog-discord-message\SKILL.md:194:Do not publish to Discord. This 
+skill only prepares the artifact.
+infrastructure\paperclip\.agents\skills\release-changelog-discord-message\SKILL.md:414:This skill never posts to 
+Discord. It only prepares the announcement artifact.
+infrastructure\paperclip\node_modules\@playwright\test\README.md:121:Optionally install skills for richer agent 
+integration:
+infrastructure\paperclip\node_modules\@playwright\test\README.md:124:playwright-cli install --skills
+infrastructure\paperclip\node_modules\playwright\README.md:121:Optionally install skills for richer agent integration:
+infrastructure\paperclip\node_modules\playwright\README.md:124:playwright-cli install --skills
+plugins\architecture-validation\SKILL.md:6:# Architecture Validation Skill
+plugins\architecture-validation\SKILL.md:370:5. **`03-architecture.md`** - Architectural validation (THIS SKILL)
+plugins\architecture-validation\SKILL.md:390:After using this skill:
+plugins\architecture-validation\SKILL.md:395:2. **Update this skill if gaps are found**:
+plugins\architecture-validation\SKILL.md:400:   - `skill(architecture-validation): no gaps identified` if successful
+plugins\architecture-validation\SKILL.md:401:   - `skill(architecture-validation): gap found - {description}` if 
+issues detected
+plugins\architecture-validation\SKILL.md:405:- **Matt Pocock**: "Architectural Improvement Methodology" (source of 
+this skill)
+plugins\check-pr\SKILL.md:10:# Check PR Skill (V12.19 Autonomous Polling)
+plugins\check-pr\SKILL.md:12:This skill polls a GitHub Pull Request for bot responses and calculates the Project 
+Health Score (PHS). It implements the sleep/polling protocol specified in `.bob/commands/pr-loop.md` lines 146-147.
+plugins\check-pr\SKILL.md:70:This skill is called automatically by `pr-loop-auto` after Step 3 (push). It replaces the 
+manual handoff to Orchestrator.
+plugins\check-pr\SKILL.md:86:Agent: "Invoking check-pr skill..."
+plugins\check-pr\SKILL.md:87:[Skill sleeps 5 min, polls every 3 min]
+plugins\check-pr\SKILL.md:102:## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
+plugins\check-pr\SKILL.md:104:**All agents MUST perform this audit after EVERY use of this skill:**
+plugins\check-pr\SKILL.md:113:   - Did the skill exit cleanly? (No hanging processes)
+plugins\check-pr\SKILL.md:116:   - Document the gap in this SKILL.md immediately
+plugins\check-pr\SKILL.md:123:   skill(check-pr): no gaps identified
+plugins\check-pr\SKILL.md:145:- `plugins/pr-loop-auto/SKILL.md` - Autonomous loop skill
+plugins\frontend-design\SKILL.md:6:Use this skill whenever the user mentions "tabs", "layout", "design", "colors", 
+"UI", or "charts",
+plugins\frontend-design\SKILL.md:11:# Frontend Design Skill (V12.15 Platinum Standard)
+plugins\frontend-design\SKILL.md:13:This skill guides the creation of distinctive, production-grade frontend 
+interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to 
+aesthetic details and creative choices.
+plugins\frontend-design\SKILL.md:55:## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
+plugins\frontend-design\SKILL.md:57:**All agents MUST perform this audit after EVERY use of this skill:**
+plugins\frontend-design\SKILL.md:72:   - Document the gap in this SKILL.md immediately
+plugins\frontend-design\SKILL.md:78:   skill(frontend-design): no gaps identified
+plugins\github-migration\SKILL.md:1:# GitHub Migration Skill
+plugins\github-migration\SKILL.md:277:## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
+plugins\github-migration\SKILL.md:279:**All agents MUST perform this audit after EVERY use of this skill:**
+plugins\github-migration\SKILL.md:294:   - Document the gap in this SKILL.md immediately
+plugins\github-migration\SKILL.md:300:   skill(github-migration): no gaps identified
+plugins\pr-loop-auto\SKILL.md:10:# PR Loop Auto Skill (V12.19 Full Autonomy)
+plugins\pr-loop-auto\SKILL.md:12:This skill implements the complete PR Loop V2 workflow autonomously, eliminating the 
+need for manual Director intervention between iterations. It's the V12 equivalent of Greptile's `greploop` skill.
+plugins\pr-loop-auto\SKILL.md:42:The skill monitors and responds to **ALL** GitHub PR feedback sources dynamically:
+plugins\pr-loop-auto\SKILL.md:86:   - Invoke `check-pr` skill
+plugins\pr-loop-auto\SKILL.md:202:## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
+plugins\pr-loop-auto\SKILL.md:204:**All agents MUST perform this audit after EVERY use of this skill:**
+plugins\pr-loop-auto\SKILL.md:217:   - Document the gap in this SKILL.md immediately
+plugins\pr-loop-auto\SKILL.md:223:   skill(pr-loop-auto): no gaps identified
+plugins\pr-loop-auto\SKILL.md:245:- `plugins/check-pr/SKILL.md` - Feedback polling skill
+plugins\pr-loop-auto\SKILL.md:252:This skill orchestrates multiple sub-skills and scripts:
+plugins\pr-loop-auto\SKILL.md:255:- Polling: `check-pr` skill (monitors ALL check types)
+plugins\pr-loop-auto\SKILL.md:258:The skill maintains state in `docs/brain/pr_N_loop_state.json` for checkpoint 
+recovery.
+plugins\pr-loop-auto\SKILL.md:262:The skill does NOT hardcode specific audit tools. It:
+plugins\pr-loop-auto\SKILL.md:268:This ensures the skill remains functional as the audit fleet evolves.
+plugins\scope-boundary-check\skill-spec.md:1:# Skill Specification: scope-boundary-check
+plugins\scope-boundary-check\skill-spec.md:3:## Skill Name
+plugins\scope-boundary-check\SKILL.md:6:# Scope Boundary Check Skill
+plugins\scope-boundary-check\SKILL.md:168:## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
+plugins\scope-boundary-check\SKILL.md:170:**All agents MUST perform this audit after EVERY use of this skill:**
+plugins\scope-boundary-check\SKILL.md:184:   - Document the gap in this SKILL.md immediately
+plugins\scope-boundary-check\SKILL.md:190:   skill(scope-boundary-check): no gaps identified
+routa-tools\.agents\skills\agent-browser\references\authentication.md:5:**Related**: 
+[session-management.md](session-management.md) for state persistence details, [SKILL.md](../SKILL.md) for quick start.
+routa-tools\.agents\skills\agent-browser\references\commands.md:3:Complete reference for all agent-browser commands. 
+For quick start and common patterns, see SKILL.md.
+routa-tools\.agents\skills\agent-browser\references\profiling.md:5:**Related**: [commands.md](commands.md) for full 
+command reference, [SKILL.md](../SKILL.md) for quick start.
+routa-tools\.agents\skills\agent-browser\references\proxy-support.md:5:**Related**: [commands.md](commands.md) for 
+global options, [SKILL.md](../SKILL.md) for quick start.
+routa-tools\.agents\skills\agent-browser\references\session-management.md:5:**Related**: 
+[authentication.md](authentication.md) for login patterns, [SKILL.md](../SKILL.md) for quick start.
+routa-tools\.agents\skills\agent-browser\references\snapshot-refs.md:5:**Related**: [commands.md](commands.md) for 
+full command reference, [SKILL.md](../SKILL.md) for quick start.
+routa-tools\.agents\skills\agent-browser\references\video-recording.md:5:**Related**: [commands.md](commands.md) for 
+full command reference, [SKILL.md](../SKILL.md) for quick start.
+routa-tools\.agents\skills\dogfood\SKILL.md:47:cp {SKILL_DIR}/templates/dogfood-report-template.md 
+{OUTPUT_DIR}/report.md
+routa-tools\tools\office-skills\.agents\skills\docx\tasks\comments_manage.md:11:> Word "resolved" state is not 
+reliably round-trippable with `python-docx` alone. This skill focuses on **reliable** operations.
+routa-tools\tools\office-skills\.agents\skills\docx\SKILL.md:3:description: Use this skill for creating, editing, and 
+reviewing DOCX files, including generation, formatting, content controls, tracked changes, comments, accessibility 
+checks, redaction, rendering, and diff-based QA workflows.
+routa-tools\tools\office-skills\.agents\skills\docx\SKILL.md:8:# DOCX Skill (Read • Create • Edit • Redline • Comment)
+routa-tools\tools\office-skills\.agents\skills\docx\SKILL.md:10:Use this skill when you need to create or modify 
+`.docx` files **in this container environment** and verify them visually.
+routa-tools\tools\office-skills\.agents\skills\docx\SKILL.md:119:This skill is organized for progressive discovery: 
+start here, then jump into task- or OOXML-specific docs.
+routa-tools\tools\office-skills\.agents\skills\docx\SKILL.md:121:DOCS SKILL PACKAGE
+routa-tools\tools\office-skills\.agents\skills\docx\SKILL.md:124:- SKILL.md: short overview + routing
+routa-tools\tools\office-skills\.agents\skills\docx\SKILL.md:246:## Skill folder contents
+routa-tools\tools\office-skills\.agents\skills\pdf\SKILL.md:3:description: Use this skill for PDF generation, 
+conversion, inspection, extraction, editing, form filling, OCR, redaction, or render comparison. Triggers include 
+requests to create a PDF, convert Markdown or HTML or LaTeX or DOCX or PPTX to PDF, extract text or tables or images, 
+fill or inspect forms, OCR scans, compare revisions, or redact content.
+routa-tools\tools\office-skills\.agents\skills\pdf\SKILL.md:8:# PDF Skill
+routa-tools\tools\office-skills\.agents\skills\slide\diagram_renderers\README.md:1:# Reference diagram renderers — 
+slide-skill integrated
+routa-tools\tools\office-skills\.agents\skills\slide\diagram_renderers\README.md:3:This package contains reusable 
+diagram patterns adapted from reference slides and rebuilt as maintainable PptxGenJS renderers for the local 
+slide-skill bundle.
+routa-tools\tools\office-skills\.agents\skills\slide\diagram_renderers\README.md:21:- `runtime/slide-skill.js` — 
+bridge to the local slide-skill helper bundle
+routa-tools\tools\office-skills\.agents\skills\slide\diagram_renderers\README.md:41:node 
+.agents/skills/slide-skill/diagram_renderers/build-demo.js
+routa-tools\tools\office-skills\.agents\skills\slide\diagram_renderers\README.md:47:node 
+.agents/skills/slide-skill/diagram_renderers/build-demo.js /tmp/diagram_renderer_demo.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\diagram_renderers\README.md:52:This package intentionally uses 
+the local slide-skill helpers. If you want to run it outside this environment, replace `runtime/slide-skill.js` with 
+your own helper bridge or a local helper package that exposes equivalent APIs.
+routa-tools\tools\office-skills\.agents\skills\slide\SKILL.md:3:description: Use this skill as reference material when 
+creating or editing presentation slide decks.
+routa-tools\tools\office-skills\.agents\skills\slide\SKILL.md:6:# Slides Skill
+routa-tools\tools\office-skills\.agents\skills\slide\SKILL.md:8:Use this skill as reference material when creating or 
+editing presentation slide decks.
+routa-tools\tools\office-skills\.agents\skills\slide\SKILL.md:10:## Skill Folder Contents
+routa-tools\tools\office-skills\.agents\skills\slide\SKILL.md:12:Contents of the `slides/` skill folder:
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:1:--- slides skill tree (depth 2) ---
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:2:/home/oai/skills/slides/LICENSE.txt
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:3:/home/oai/skills/slides/SKILL.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:4:/home/oai/skills/slides/artifact_tool
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:5:/home/oai/skills/slides/artifact_tool/README.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:6:/home/oai/skills/slides/artifact_tool/auto-layou
+t.spec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:7:/home/oai/skills/slides/artifact_tool/charts.spe
+c.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:8:/home/oai/skills/slides/artifact_tool/examples
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:9:/home/oai/skills/slides/artifact_tool/fill.spec.
+md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:10:/home/oai/skills/slides/artifact_tool/images.sp
+ec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:11:/home/oai/skills/slides/artifact_tool/inspect.s
+pec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:12:/home/oai/skills/slides/artifact_tool/layout.sp
+ec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:13:/home/oai/skills/slides/artifact_tool/master.sp
+ec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:14:/home/oai/skills/slides/artifact_tool/presentat
+ion.spec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:15:/home/oai/skills/slides/artifact_tool/rich-text
+.spec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:16:/home/oai/skills/slides/artifact_tool/shapes.sp
+ec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:17:/home/oai/skills/slides/artifact_tool/slide.spe
+c.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:18:/home/oai/skills/slides/artifact_tool/speaker-n
+otes.spec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:19:/home/oai/skills/slides/artifact_tool/styles.sp
+ec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:20:/home/oai/skills/slides/artifact_tool/tables.sp
+ec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:21:/home/oai/skills/slides/artifact_tool/theme.spe
+c.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:22:/home/oai/skills/slides/container_tools
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:23:/home/oai/skills/slides/container_tools/create_
+montage.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:24:/home/oai/skills/slides/container_tools/detect_
+font.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:25:/home/oai/skills/slides/container_tools/ensure_
+raster_image.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:26:/home/oai/skills/slides/container_tools/render_
+slides.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:27:/home/oai/skills/slides/container_tools/slides_
+test.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:28:/home/oai/skills/slides/pptxgenjs_helpers
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:29:/home/oai/skills/slides/pptxgenjs_helpers/code.
+js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:30:/home/oai/skills/slides/pptxgenjs_helpers/image
+.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:31:/home/oai/skills/slides/pptxgenjs_helpers/index
+.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:32:/home/oai/skills/slides/pptxgenjs_helpers/latex
+.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:33:/home/oai/skills/slides/pptxgenjs_helpers/layou
+t.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:34:/home/oai/skills/slides/pptxgenjs_helpers/layou
+t_builders.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:35:/home/oai/skills/slides/pptxgenjs_helpers/svg.j
+s
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:36:/home/oai/skills/slides/pptxgenjs_helpers/text.
+js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:37:/home/oai/skills/slides/pptxgenjs_helpers/util.
+js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:38:/home/oai/skills/slides/slide_templates
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:39:/home/oai/skills/slides/slide_templates/._Acade
+mic_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:40:/home/oai/skills/slides/slide_templates/._Acade
+mic_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:41:/home/oai/skills/slides/slide_templates/._Acade
+mic_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:42:/home/oai/skills/slides/slide_templates/._Acade
+mic_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:43:/home/oai/skills/slides/slide_templates/._Brand
+_Design_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:44:/home/oai/skills/slides/slide_templates/._Brand
+_Design_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:45:/home/oai/skills/slides/slide_templates/._Brand
+_Design_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:46:/home/oai/skills/slides/slide_templates/._Brand
+_Design_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:47:/home/oai/skills/slides/slide_templates/._Consu
+lting_Proposal_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:48:/home/oai/skills/slides/slide_templates/._Consu
+lting_Proposal_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:49:/home/oai/skills/slides/slide_templates/._Consu
+lting_Proposal_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:50:/home/oai/skills/slides/slide_templates/._Consu
+lting_Proposal_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:51:/home/oai/skills/slides/slide_templates/._Marke
+t_Research_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:52:/home/oai/skills/slides/slide_templates/._Overv
+iew.png
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:53:/home/oai/skills/slides/slide_templates/._Pitch
+_Deck.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:54:/home/oai/skills/slides/slide_templates/._Proje
+ct_Kick-off_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:55:/home/oai/skills/slides/slide_templates/._Proje
+ct_Kick-off_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:56:/home/oai/skills/slides/slide_templates/Academi
+c_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:57:/home/oai/skills/slides/slide_templates/Academi
+c_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:58:/home/oai/skills/slides/slide_templates/Academi
+c_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:59:/home/oai/skills/slides/slide_templates/Academi
+c_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:60:/home/oai/skills/slides/slide_templates/Brand_D
+esign_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:61:/home/oai/skills/slides/slide_templates/Brand_D
+esign_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:62:/home/oai/skills/slides/slide_templates/Brand_D
+esign_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:63:/home/oai/skills/slides/slide_templates/Brand_D
+esign_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:64:/home/oai/skills/slides/slide_templates/Consult
+ing_Proposal_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:65:/home/oai/skills/slides/slide_templates/Consult
+ing_Proposal_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:66:/home/oai/skills/slides/slide_templates/Consult
+ing_Proposal_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:67:/home/oai/skills/slides/slide_templates/Consult
+ing_Proposal_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:68:/home/oai/skills/slides/slide_templates/Market_
+Research_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:69:/home/oai/skills/slides/slide_templates/Overvie
+w.png
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:70:/home/oai/skills/slides/slide_templates/Pitch_D
+eck.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:71:/home/oai/skills/slides/slide_templates/Project
+_Kick-off_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:72:/home/oai/skills/slides/slide_templates/Project
+_Kick-off_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:75:EXISTS 
+/home/oai/skills/slides/container_tools/create_montage.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:76:EXISTS 
+/home/oai/skills/slides/container_tools/ensure_raster_image.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:77:EXISTS 
+/home/oai/skills/slides/pptxgenjs_helpers/index.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:78:EXISTS /home/oai/skills/slides/artifact_tool
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:79:EXISTS /home/oai/skills/slides/slide_templates
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:80:EXISTS 
+/home/oai/skills/slides/slide_templates/Overview.png
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:83:/home/oai/skills/slides/artifact_tool
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:84:/home/oai/skills/slides/artifact_tool/README.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:85:/home/oai/skills/slides/artifact_tool/auto-layo
+ut.spec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:86:/home/oai/skills/slides/artifact_tool/charts.sp
+ec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:87:/home/oai/skills/slides/artifact_tool/examples
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:88:/home/oai/skills/slides/artifact_tool/examples/
+auto_layout_bottom_right_alignment.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:89:/home/oai/skills/slides/artifact_tool/examples/
+auto_layout_center_card.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:90:/home/oai/skills/slides/artifact_tool/examples/
+auto_layout_header_footer_layout.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:91:/home/oai/skills/slides/artifact_tool/examples/
+auto_layout_horizontal_layout.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:92:/home/oai/skills/slides/artifact_tool/examples/
+auto_layout_static_engine_api.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:93:/home/oai/skills/slides/artifact_tool/examples/
+giraffe.png
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:94:/home/oai/skills/slides/artifact_tool/examples/
+images_quick_start_local_path.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:95:/home/oai/skills/slides/artifact_tool/examples/
+integrated_example.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:96:/home/oai/skills/slides/artifact_tool/examples/
+presentation_edit.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:97:/home/oai/skills/slides/artifact_tool/examples/
+presentation_quick_start.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:98:/home/oai/skills/slides/artifact_tool/examples/
+slide_move_to.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:99:/home/oai/skills/slides/artifact_tool/examples/
+slide_quick_start.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:100:/home/oai/skills/slides/artifact_tool/examples
+/starter_presentation.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:101:/home/oai/skills/slides/artifact_tool/examples
+/tower.jpeg
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:102:/home/oai/skills/slides/artifact_tool/examples
+/warn_about_overlaps.py
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:103:/home/oai/skills/slides/artifact_tool/fill.spe
+c.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:104:/home/oai/skills/slides/artifact_tool/images.s
+pec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:105:/home/oai/skills/slides/artifact_tool/inspect.
+spec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:106:/home/oai/skills/slides/artifact_tool/layout.s
+pec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:107:/home/oai/skills/slides/artifact_tool/master.s
+pec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:108:/home/oai/skills/slides/artifact_tool/presenta
+tion.spec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:109:/home/oai/skills/slides/artifact_tool/rich-tex
+t.spec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:110:/home/oai/skills/slides/artifact_tool/shapes.s
+pec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:111:/home/oai/skills/slides/artifact_tool/slide.sp
+ec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:112:/home/oai/skills/slides/artifact_tool/speaker-
+notes.spec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:113:/home/oai/skills/slides/artifact_tool/styles.s
+pec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:114:/home/oai/skills/slides/artifact_tool/tables.s
+pec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:115:/home/oai/skills/slides/artifact_tool/theme.sp
+ec.md
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:118:/home/oai/skills/slides/pptxgenjs_helpers
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:119:/home/oai/skills/slides/pptxgenjs_helpers/code
+.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:120:/home/oai/skills/slides/pptxgenjs_helpers/imag
+e.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:121:/home/oai/skills/slides/pptxgenjs_helpers/inde
+x.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:122:/home/oai/skills/slides/pptxgenjs_helpers/late
+x.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:123:/home/oai/skills/slides/pptxgenjs_helpers/layo
+ut.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:124:/home/oai/skills/slides/pptxgenjs_helpers/layo
+ut_builders.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:125:/home/oai/skills/slides/pptxgenjs_helpers/svg.
+js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:126:/home/oai/skills/slides/pptxgenjs_helpers/text
+.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:127:/home/oai/skills/slides/pptxgenjs_helpers/util
+.js
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:130:/home/oai/skills/slides/slide_templates
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:131:/home/oai/skills/slides/slide_templates/._Acad
+emic_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:132:/home/oai/skills/slides/slide_templates/._Acad
+emic_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:133:/home/oai/skills/slides/slide_templates/._Acad
+emic_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:134:/home/oai/skills/slides/slide_templates/._Acad
+emic_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:135:/home/oai/skills/slides/slide_templates/._Bran
+d_Design_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:136:/home/oai/skills/slides/slide_templates/._Bran
+d_Design_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:137:/home/oai/skills/slides/slide_templates/._Bran
+d_Design_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:138:/home/oai/skills/slides/slide_templates/._Bran
+d_Design_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:139:/home/oai/skills/slides/slide_templates/._Cons
+ulting_Proposal_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:140:/home/oai/skills/slides/slide_templates/._Cons
+ulting_Proposal_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:141:/home/oai/skills/slides/slide_templates/._Cons
+ulting_Proposal_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:142:/home/oai/skills/slides/slide_templates/._Cons
+ulting_Proposal_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:143:/home/oai/skills/slides/slide_templates/._Mark
+et_Research_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:144:/home/oai/skills/slides/slide_templates/._Over
+view.png
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:145:/home/oai/skills/slides/slide_templates/._Pitc
+h_Deck.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:146:/home/oai/skills/slides/slide_templates/._Proj
+ect_Kick-off_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:147:/home/oai/skills/slides/slide_templates/._Proj
+ect_Kick-off_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:148:/home/oai/skills/slides/slide_templates/Academ
+ic_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:149:/home/oai/skills/slides/slide_templates/Academ
+ic_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:150:/home/oai/skills/slides/slide_templates/Academ
+ic_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:151:/home/oai/skills/slides/slide_templates/Academ
+ic_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:152:/home/oai/skills/slides/slide_templates/Brand_
+Design_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:153:/home/oai/skills/slides/slide_templates/Brand_
+Design_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:154:/home/oai/skills/slides/slide_templates/Brand_
+Design_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:155:/home/oai/skills/slides/slide_templates/Brand_
+Design_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:156:/home/oai/skills/slides/slide_templates/Consul
+ting_Proposal_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:157:/home/oai/skills/slides/slide_templates/Consul
+ting_Proposal_02.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:158:/home/oai/skills/slides/slide_templates/Consul
+ting_Proposal_03.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:159:/home/oai/skills/slides/slide_templates/Consul
+ting_Proposal_04.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:160:/home/oai/skills/slides/slide_templates/Market
+_Research_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:161:/home/oai/skills/slides/slide_templates/Overvi
+ew.png
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:162:/home/oai/skills/slides/slide_templates/Pitch_
+Deck.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:163:/home/oai/skills/slides/slide_templates/Projec
+t_Kick-off_01.pptx
+routa-tools\tools\office-skills\.agents\skills\slide\template.dir.md:164:/home/oai/skills/slides/slide_templates/Projec
+t_Kick-off_02.pptx
+routa-tools\tools\office-skills\.agents\skills\spreadsheets\SKILL.md:3:description: Use this skill for spreadsheet 
+creation, editing, analysis, formatting, formula modeling, charting, or workbook review. Triggers include requests to 
+create or modify an .xlsx file, build a model or tracker, format a workbook, add formulas or charts, or prepare a 
+shareable spreadsheet deliverable.
+routa-tools\tools\office-skills\.agents\skills\spreadsheets\SKILL.md:8:# Spreadsheet Skill (Create • Edit • Analyze • 
+Visualize)
+routa-tools\tools\office-skills\.agents\skills\spreadsheets\SKILL.md:30:- If an API call is unclear, check the 
+`artifact_tool` docs already referenced by this skill before writing code. `artifact_tool_spreadsheet.md` has exact 
+code blocks to get started quickly.
+AGENTS.md:207:## 6. Autonomous Skill Creation & Self-Improvement (MANDATORY PILLAR)
+AGENTS.md:209:**All agents MUST perform a post-use audit after every skill or tool use:**
+AGENTS.md:211:2. Update the corresponding `SKILL.md` or persistent rule file if a gap or quirk is found.
+AGENTS.md:212:3. State `skill(name): no gaps identified` if no gap is found.
+CODEX.md:24:- **Deployment**: Local builds MUST be synced to `C:\Users\Mohammed Khalid\Documents\NinjaTrader 
+8\bin\Custom\Strategies\` using the `/deploy` skill.
+CODEX.md:33:- **$AUDIT**: Trigger the `/audit` skill to scan the `src/` directory.
+GEMINI.md:17:- **Frontend Design (V12.15)**: Mandatory use of `.agent/skills/frontend-design/` for all UI/UX work. 
+BANNED: Inter, Roboto, Generic AI aesthetics.
+GEMINI.md:138:## Section 13: Autonomous Skill Creation & Self-Improvement (MANDATORY PILLAR)
+GEMINI.md:140:**All agents MUST perform a post-use audit after every skill or tool use:**
+GEMINI.md:142:2. Update the corresponding `SKILL.md` or persistent rule file if a gap or quirk is found.
+GEMINI.md:143:3. State `skill(name): no gaps identified` if no gap is found.
+GEMINI.md:156:> Refer to `.agent/skills/architect/SKILL.md` for the current Platinum Standard template.
+
+

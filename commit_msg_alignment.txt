@@ -1,0 +1,21 @@
+fix(workflow): Align /autonomous-refactor with integrated fix-as-we-go strategy
+
+STRATEGIC ALIGNMENT: Jane Street violations fixed DURING refactoring, not before
+
+Changes:
+- Removed BLOCKING prerequisite for 299 Jane Street P0 violations
+- Changed "Jane Street GODMODE Violations Fixed" → "Jane Street GODMODE Baseline Established"
+- Added integrated strategy documentation (fix CYC + Jane Street + audit issues simultaneously)
+- Updated GATE 0 to document baseline instead of blocking
+- Added Step C.1 for per-epic Jane Street compliance verification
+- Updated SUCCESS CRITERIA to include Jane Street fixes during refactoring
+- Updated ESTIMATED TIMELINE assumptions (integrated vs pre-fixed)
+- Updated ORCHESTRATION RULES line 25
+
+Strategy: Each file touched will be brought to 100% compliance:
+- CYC ≤ 8 (Jane Street GODMODE)
+- Zero Jane Street violations
+- Zero local/GitHub audit issues
+- Leave each file in perfect state before moving to next
+
+Ref: V12.23 Protocol, Director clarification 2026-06-08
