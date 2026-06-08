@@ -22,7 +22,7 @@ You do NOT read files, run commands, or edit files directly. You ONLY orchestrat
 - **AUTONOMOUS MANDATE**: You run continuously until ALL hotspots reach CYC ≤ 8
 - **NESTED LOOPS**: Each epic runs `/epic-run`, each PR runs `/pr-loop` to 100/100
 - **DIRECTOR GATES**: Only manual actions are F5 verification and approval to continue
-- **JANE STREET GODMODE**: ALL 299 violations MUST be fixed before autonomous mode
+- **JANE STREET GODMODE**: Violations fixed DURING refactoring (integrated strategy)
 - **CHECKPOINT SYSTEM**: Save progress after each epic completion
 - **FAILURE RECOVERY**: If any epic fails, log failure and continue with next epic
 
@@ -52,14 +52,20 @@ PROTOCOL:
   4. If ANY missing: HALT and report "GitHub rules incomplete - run Phase 6 first"
 ```
 
-### 2. Jane Street GODMODE Violations Fixed
+### 2. Jane Street GODMODE Baseline Established
 ```
-TASK: Check Jane Street Compliance
+TASK: Establish Jane Street Violation Baseline
 PROTOCOL:
-  1. Run: python scripts/jane_street_rule_checker.py src/ --severity P0 --json
-  2. Count P0 violations
-  3. If P0 violations > 0: HALT and report "299 Jane Street violations must be fixed first"
-  4. Emit: [GODMODE-READY] Zero P0 violations
+  1. Run: python scripts/jane_street_rule_checker.py src/ --severity ALL --json
+  2. Count violations by severity (P0, P1, P2, P3)
+  3. Document baseline in docs/brain/autonomous_refactor_baseline_corrected.md
+  4. Emit: [BASELINE-ESTABLISHED] X P0, Y P1, Z P2 violations
+  
+STRATEGY: Jane Street violations will be fixed DURING autonomous refactoring:
+  - Each file touched will be brought to 100% compliance
+  - Fix CYC ≤ 8 + Jane Street issues + audit issues simultaneously
+  - Leave each file in perfect state before moving to next
+  - Track violations fixed in progress log
 ```
 
 ### 3. Baseline Metrics Established
@@ -74,7 +80,7 @@ PROTOCOL:
 ```
 
 **GATE 0:**
-> "Prerequisites check: GitHub rules [PASS/FAIL], Jane Street GODMODE [PASS/FAIL], Baseline [X hotspots, Y CYC debt]. Type START to begin autonomous refactoring or FIX to address prerequisites."
+> "Prerequisites check: GitHub rules [PASS/FAIL], Jane Street Baseline [X violations documented], Complexity Baseline [Y hotspots, Z CYC debt]. Type START to begin autonomous refactoring."
 
 - START: Proceed to Phase 1
 - FIX: HALT and report which prerequisites failed
@@ -152,6 +158,13 @@ When `/epic-run` outputs [EPIC-COMPLETE], verify:
 - CYC reduction achieved
 - All tickets merged
 - No Jane Street violations introduced
+
+### Step C.1: Verify Jane Street Compliance
+
+When `/epic-run` outputs [EPIC-COMPLETE], also verify:
+- Jane Street violations in modified files: ZERO
+- Run: python scripts/jane_street_rule_checker.py <modified-files> --severity ALL
+- If violations found: Re-run epic with Jane Street fixes included
 
 ### Step D: Update Progress Log
 
@@ -393,7 +406,7 @@ Based on EPIC-CCN-13 benchmark (1 epic = ~2 hours):
 | **Estimated Duration** | **2 work weeks** |
 
 **Assumptions:**
-- 299 Jane Street violations fixed before starting
+- Jane Street violations fixed during refactoring (integrated)
 - GitHub rules complete
 - Director available for F5 verification
 - No major infrastructure issues
@@ -406,7 +419,7 @@ Autonomous refactoring is complete when:
 
 - ✅ ALL methods in src/ have CYC ≤ 8
 - ✅ ALL PRs merged with PHS = 100/100
-- ✅ Zero Jane Street P0/P1/P2 violations
+- ✅ Zero Jane Street P0/P1/P2 violations (fixed during refactoring)
 - ✅ Zero lock() usage in src/
 - ✅ ASCII-only compliance
 - ✅ All CodeScene files have Code Health ≥ 7.0
