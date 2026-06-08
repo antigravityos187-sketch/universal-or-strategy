@@ -12,6 +12,9 @@
       ]
     }
   },
+  "hooks": {
+    "after_task": ".bob/hooks/after_task.py"
+  },
   "shell": {
     "preferredEditor": "code",
     "autoApprove": [
