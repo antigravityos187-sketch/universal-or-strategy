@@ -14,7 +14,51 @@ This protocol documents the complete process for migrating a repository between 
 
 ## Pre-Migration Checklist
 
-### 1. Account Verification
+### 1. Token Cleanup (MANDATORY - Run First)
+
+**⚠️ CRITICAL**: Remove old `GITHUB_TOKEN` from previous account BEFORE migration.
+
+**Why This Step is Mandatory**:
+- Old tokens from previous accounts persist in PowerShell profile and environment variables
+- They override `gh` CLI authentication silently
+- Cause permission errors that are hard to diagnose (e.g., "Resource not accessible by personal access token")
+- **This was the root cause of PR #9 closure failure**
+
+**Automated Cleanup Script**:
+```powershell
+powershell -File .\scripts\cleanup_github_token.ps1
+```
+
+**What It Does**:
+1. Removes `GITHUB_TOKEN` from Process environment
+2. Removes `GITHUB_TOKEN` from User environment variables
+3. Removes `GITHUB_TOKEN` from System environment variables (if admin)
+4. Comments out `GITHUB_TOKEN` in `.env` file
+5. **Detects `GITHUB_TOKEN` in PowerShell profile** (manual removal required)
+
+**Manual Step Required**:
+If script reports "FOUND in PowerShell profile":
+```powershell
+# Open profile in editor
+notepad $PROFILE
+
+# Remove or comment out lines like:
+# $env:GITHUB_TOKEN = "github_pat_..."
+
+# Save and close
+```
+
+**Verification**:
+```powershell
+Get-ChildItem Env: | Where-Object { $_.Name -like "*GITHUB*" }
+# Should show NO GITHUB_TOKEN
+```
+
+**IMPORTANT**: Restart terminal/IDE after cleanup for changes to take effect.
+
+---
+
+### 2. Account Verification
 
 **Identify Primary Account**:
 ```powershell
