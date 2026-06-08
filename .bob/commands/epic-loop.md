@@ -1,5 +1,19 @@
 # /epic-loop - Autonomous Multi-Epic Orchestration
 
+⚠️ **DEPRECATED**: This command is deprecated as of 2026-06-08. Use `/autonomous-refactor` instead.
+
+**Reason**: `/autonomous-refactor` provides more comprehensive orchestration with:
+- Prerequisites validation (GODMODE checks)
+- Checkpointing and failure recovery
+- GitButler workspace integration
+- Complete documentation of all phases
+
+**Migration**: Replace `/epic-loop START END` with `/autonomous-refactor` (interactive mode will guide you).
+
+---
+
+# Original Documentation (Preserved for Reference)
+
 **Purpose**: Execute multiple consecutive epics autonomously with minimal human intervention.
 
 **Target**: Process 31 methods (CYC 15-20 → ≤8) via EPIC-CCN-15 through EPIC-CCN-45.
