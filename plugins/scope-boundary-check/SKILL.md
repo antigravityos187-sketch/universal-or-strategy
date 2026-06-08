@@ -165,9 +165,56 @@ Updated epic workflow (5 phases):
 4. Phase 3: Validation → [VALIDATE-GATE]
 5. Phase 4: Tickets → [TICKETS-GATE]
 
+## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
+
+**All agents MUST perform this audit after EVERY use of this skill:**
+
+### Audit Checklist
+
+1. **Ambiguity Check**: Were any instructions unclear or produce unexpected results?
+   - Was pattern analysis created with quantitative metrics? (Verify numbers, not "lots"/"many")
+   - Did pattern name avoid vague terms? (Not "Duplication Pattern", but specific like "Switch-Based Field Accessor")
+   - Were all OUT OF SCOPE items explained with WHY? (Reason + impact + code example)
+   - Did anti-patterns include actual code examples? (Not pseudocode)
+   - Were success AND anti-success criteria defined? (Both required)
+   - Was [SCOPE-BOUNDARY-GATE] checkpoint added? (Mandatory gate)
+   - Did agent STOP at gate without proceeding to Phase 2? (Critical)
+
+2. **Gap Detection**: If ANY instruction was ambiguous or produced unexpected results:
+   - Document the gap in this SKILL.md immediately
+   - Add the quirk to the Common Mistakes section
+   - Update version history with the fix
+
+3. **Audit Statement**: If no gaps found, state:
+   ```
+   skill(scope-boundary-check): no gaps identified
+   ```
+
+4. **Protocol Violation**: Skipping this audit is a V12 protocol violation.
+
+### Known Quirks (Updated During Audits)
+
+- **Quantitative Metrics (2026-06-08)**: "Several methods" is NOT quantitative - must be "6 methods", "72 lines", etc.
+- **Pattern Names (2026-06-08)**: Generic names like "Duplication Pattern" fail validation - must be specific
+- **Gate Enforcement (2026-06-08)**: Agents often skip [SCOPE-BOUNDARY-GATE] - MUST stop and wait for Director approval
+- **Pseudocode Ban (2026-06-08)**: Code examples MUST be actual source code, not simplified pseudocode
+
+## V12 DNA Alignment
+
+- **Correctness by Construction**: Mandatory gate prevents scope creep before it starts
+- **ASCII-Only**: All documentation must be ASCII-safe
+- **Jane Street Alignment**: Explicit boundaries reduce cognitive load during implementation
+- **Karpathy Protocol**: Explicit success criteria (quantitative metrics, specific names, WHY explanations)
+
 ## References
 
 - V12.23 No Scope Creep Protocol
 - EPIC-13 PR #12 failure analysis
 - Jane Street Intel
 - `.bob/custom_modes.yaml` (v12-epic-planner)
+
+---
+
+**Last Updated**: 2026-06-08
+**Maintainer**: Gemini CLI (Advanced Mode)
+**Status**: ✅ Active - Converted to self-improving format
