@@ -32,6 +32,16 @@ You do NOT read files, run commands, or edit files directly. You ONLY orchestrat
 
 Before starting autonomous refactoring, verify:
 
+### 0. Codebase Architecture Skill Available
+```
+TASK: Verify Skill Integration
+PROTOCOL:
+  1. Check: @plugins/codebase-architecture/SKILL.md exists
+  2. This skill identifies deepening opportunities before each epic
+  3. Integrated into /epic-plan Phase 0 (Architectural Exploration)
+  4. If missing: HALT and report "Codebase architecture skill not integrated"
+```
+
 ### 1. GitHub Branch Protection Complete
 ```
 TASK: Verify GitHub Rules Setup

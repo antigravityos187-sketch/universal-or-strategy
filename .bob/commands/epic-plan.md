@@ -28,6 +28,58 @@ Value system:
 
 ---
 
+## PART 0: ARCHITECTURAL EXPLORATION (OPTIONAL BUT RECOMMENDED)
+
+**When to Use:**
+- Starting a new refactoring epic (EPIC-8 through EPIC-14)
+- God-file splitting (CYC > 20)
+- Identifying untested seams
+- Consolidating tightly-coupled modules
+
+**Skip if:** Simple single-method extraction, cosmetic refactoring, no architectural changes.
+
+### Step 0a -- Apply Codebase-Architecture Skill
+Read and apply: `@plugins/codebase-architecture/SKILL.md`
+
+This skill helps identify **deepening opportunities** - refactors that turn shallow modules into deep ones using John Ousterhout's "deep module" principle.
+
+### Step 0b -- Generate Architecture Review Report
+Using jCodemunch tools, explore the codebase organically:
+
+```bash
+# Identify hotspots (high complexity + high churn)
+jcodemunch get_hotspots --repo universal-or-strategy --top_n 20 --days 90
+
+# For each hotspot, explore structure
+jcodemunch get_file_outline --repo universal-or-strategy --file_path src/V12_002.cs
+jcodemunch search_symbols --repo universal-or-strategy --query "position management" --kind function
+jcodemunch find_references --repo universal-or-strategy --identifier UpdatePositionInfo
+```
+
+The skill will generate an HTML report in `$TMPDIR/architecture-review-<timestamp>.html` with:
+- 3-5 deepening candidates
+- Before/after visualizations
+- Top recommendation with rationale
+
+### Step 0c -- Select Candidate with Director
+Present the HTML report to the Director and ask:
+> "Which of these candidates would you like to explore?"
+
+Once selected, enter the **grilling loop** to design the interface:
+- What invariants must the module maintain?
+- What's the minimal interface that provides maximum leverage?
+- Where should the seam live?
+- How will we test through the interface?
+
+**Side Effects:**
+- Updates `CONTEXT.md` with new domain concepts (if any)
+- Offers ADR if user rejects with load-bearing reason
+- Designs clear interface before proceeding to analysis
+
+**Output:** Clear understanding of the deepening opportunity and interface design.
+
+---
+
 ## PART 1: ANALYSIS
 
 ### Step 1a -- Internalize Scope

@@ -91,6 +91,8 @@ EPIC: $1
 TASK: Run /epic-plan
 INPUT: @docs/brain/$1/00-scope.md
 OUTPUT: Write docs/brain/$1/01-analysis.md and docs/brain/$1/02-approach.md
+NOTE: /epic-plan includes optional Phase 0 (Architectural Exploration) using @plugins/codebase-architecture/SKILL.md
+      to identify deepening opportunities before analysis begins.
 STOP at [PLAN-GATE] and do not proceed.
 ```
 

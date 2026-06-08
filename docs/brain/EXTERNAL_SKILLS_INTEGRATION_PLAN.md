@@ -1,19 +1,21 @@
 # External Skills Integration Plan
 
-**Date**: 2026-06-08  
-**Status**: DRAFT - Awaiting Director Approval  
-**Priority**: HIGH (Director-requested analysis)
+**Date**: 2026-06-08
+**Last Updated**: 2026-06-08 (V12.23 - Matt Pocock Integration Complete)
+**Status**: PARTIAL - 1 of 2 skills integrated
+**Priority**: MEDIUM (1 remaining skill)
 
 ---
 
 ## Executive Summary
 
-This plan addresses the integration of 2 external skills referenced by the Director but not yet analyzed:
+This plan addresses the integration of 2 external skills referenced by the Director:
 
 1. **agentic-engineering-workflow** (Micky Podcast) - ⚠️ NOT ANALYZED
-2. **improve-codebase-architecture** (Matt Pocock) - ⚠️ NOT ANALYZED
+2. **improve-codebase-architecture** (Matt Pocock) - ✅ COMPLETE (V12.23)
 
-**Estimated Effort**: 6-8 hours total (3-4 hours per skill)
+**Completed**: 1 skill (6 hours)
+**Remaining**: 1 skill (3-4 hours estimated)
 
 ---
 
@@ -82,22 +84,75 @@ This plan addresses the integration of 2 external skills referenced by the Direc
 
 ### Source
 
-**URL**: https://www.skills.sh/mattpocock/skills/improve-codebase-architecture  
-**Author**: Matt Pocock  
+**URL**: https://www.skills.sh/mattpocock/skills/improve-codebase-architecture
+**Author**: Matt Pocock
 **Platform**: skills.sh
 
 ### Analysis Status
 
-**Current**: ⚠️ REFERENCED but not analyzed  
-**Evidence**: Mentioned in task brief as external skill to audit
+**Current**: ✅ COMPLETE (V12.23)
+**Integration Date**: 2026-06-08
+**Integration Report**: `docs/brain/MATTPOCOCK_ARCHITECTURE_INTEGRATION.md`
 
-### Integration Approach
+### Integration Summary
 
-**Phase 1: Fetch and Analyze** (1.5 hours)
-1. Fetch skill content from skills.sh
-2. Extract architectural improvement patterns
-3. Compare to V12 architectural validation skill
-4. Identify gaps and overlaps
+**Phase 1: Fetch and Analyze** (✅ COMPLETE - 1 hour)
+1. ✅ Fetched skill content from skills.sh
+2. ✅ Extracted core principles (John Ousterhout's "deep module" principle)
+3. ✅ Compared to V12 architectural validation skill (complementary, not overlapping)
+4. ✅ Identified gaps (no pre-analysis exploration phase)
+
+**Phase 2: Adaptation** (✅ COMPLETE - 2 hours)
+1. ✅ Created `plugins/codebase-architecture/SKILL.md` (598 lines)
+2. ✅ Applied Anthropic self-improving format
+3. ✅ Added V12 DNA constraints (CYC ≤ 15, zero-allocation, lock-free, ASCII-only)
+4. ✅ Integrated jCodemunch tools for exploration
+5. ✅ Added post-use audit protocol
+
+**Phase 3: Workflow Integration** (✅ COMPLETE - 2 hours)
+1. ✅ Added Phase 0 to `/epic-plan` (Architectural Exploration)
+2. ✅ Updated `/epic-run` (Phase 2 note)
+3. ✅ Updated `/autonomous-refactor` (prerequisite check)
+4. ✅ Updated `AGENTS.md` (Section 6 documentation)
+
+**Phase 4: Validation** (✅ COMPLETE - 1 hour)
+1. ✅ Validated integration (no conflicts)
+2. ✅ Created 3 usage examples (God-file splitting, untested seams, coupling)
+3. ✅ Updated skills inventory
+
+### Key Principles Integrated
+
+**Deep Module Principle** (John Ousterhout):
+- Small interfaces hiding large implementations (high leverage)
+- Deletion test: Concentrate vs scatter complexity
+- Seams: Alter behavior without editing in place
+
+**V12 DNA Alignment**:
+- Correctness by Construction: Small interfaces make illegal states unrepresentable
+- CYC ≤ 15: Shallow modules indicate over-extraction
+- Jane Street Cognitive Simplicity: Small interfaces reduce mental load
+- Lock-Free Actor Pattern: Deep modules can encapsulate FSM patterns
+
+### Workflow Integration Points
+
+1. **`/epic-plan`**: Phase 0 (Architectural Exploration) - OPTIONAL but RECOMMENDED
+2. **`/epic-run`**: Phase 2 note documenting Phase 0 availability
+3. **`/autonomous-refactor`**: Prerequisite check for skill existence
+4. **`AGENTS.md`**: Section 6 documentation
+
+### Deliverables
+
+- ✅ `plugins/codebase-architecture/SKILL.md` (598 lines)
+- ✅ `docs/brain/external-skills/mattpocock-improve-codebase-architecture-raw.md` (95 lines)
+- ✅ `docs/brain/MATTPOCOCK_ARCHITECTURE_INTEGRATION.md` (698 lines)
+- ✅ Updated 4 workflow commands
+- ✅ Updated 3 documentation files
+
+### Status
+
+**Integration**: ✅ COMPLETE
+**Blocking Task**: ✅ RESOLVED - Ready for `/autonomous-refactor 15 179`
+**Total Time**: 6 hours
 
 **Phase 2: Gap Analysis** (1 hour)
 1. Map skill concepts to V12 architecture workflows

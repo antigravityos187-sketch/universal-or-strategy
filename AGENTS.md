@@ -212,6 +212,35 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 3. State `skill(name): no gaps identified` if no gap is found.
 4. Skipping the post-use audit is a protocol violation.
 
+## Codebase Architecture Skill (V12.23)
+
+**Purpose**: Surface architectural friction and propose module-deepening refactors using John Ousterhout's "deep module" principle.
+
+**When to Use**:
+- Before starting refactoring epics (EPIC-8 through EPIC-14)
+- God-file splitting (CYC > 20)
+- Identifying untested seams
+- Consolidating tightly-coupled modules
+
+**Integration Points**:
+- `/epic-plan` Phase 0 (Architectural Exploration) - OPTIONAL but RECOMMENDED
+- Complements `architecture-validation` skill (this skill identifies candidates, architecture-validation validates metrics)
+
+**Key Concepts**:
+- **Deep modules**: Small interfaces hiding large implementations (high leverage, high locality)
+- **Shallow modules**: Interface nearly as complex as implementation (low leverage, scattered knowledge)
+- **Deletion test**: Would deleting this module concentrate complexity or just move it?
+- **Seams**: Where interfaces live; places behavior can be altered without editing in place
+
+**Workflow**:
+1. Organic exploration using jCodemunch tools (hotspots, file outlines, references)
+2. Generate HTML report with 3-5 deepening candidates
+3. Grilling loop to design interface with Director
+4. Updates `CONTEXT.md` with new domain concepts
+5. Offers ADR if user rejects with load-bearing reason
+
+**Reference**: `@plugins/codebase-architecture/SKILL.md`
+
 ## Graphify Protocols (Universal Knowledge Layer)
 
 - **Check First**: Before deep architectural exploration, always check for `graphify-out/graph.json` or `graphify-out/GRAPH_REPORT.md`.
