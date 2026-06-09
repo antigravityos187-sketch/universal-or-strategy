@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.026-epic-ccn-14-t02"; // EPIC-CCN-14 Ticket 02: Extract IsCommandForThisInstrument (CYC 70->62)
+        public const string BUILD_TAG = "1111.027-epic-ccn-14-t03"; // EPIC-CCN-14 Ticket 03: Extract HandleValidationFailure (CYC 62->57)
 
         public class UILiveTargetSnapshot
         {
