@@ -257,6 +257,40 @@ namespace NinjaTrader.NinjaScript.Strategies
             return null;
         }
 
+        private bool ValidateCommandFormat(string command, out string[] parts, out long senderTicks)
+        {
+            parts = null;
+            senderTicks = 0;
+
+            if (string.IsNullOrWhiteSpace(command) || command.Length > IpcMaxCommandLength)
+            {
+                Print($"V12 IPC REJECT: malformed/oversize command '{command}'");
+                return false;
+            }
+
+            parts = command.Split('|');
+            if (parts.Length == 0 || string.IsNullOrWhiteSpace(parts[0]))
+            {
+                Print($"V12 IPC REJECT: empty action in '{command}'");
+                return false;
+            }
+
+            senderTicks = 0;
+            for (int i = 1; i < parts.Length; i++)
+            {
+                if (parts[i].StartsWith("ts=", StringComparison.OrdinalIgnoreCase))
+                {
+                    long.TryParse(parts[i].Substring(3), out senderTicks);
+                    break;
+                }
+            }
+
+            if (!MetadataGuardCommandTimestamp(senderTicks, parts[0].Trim().ToUpperInvariant()))
+                return false;
+
+            return true;
+        }
+
         private void ProcessIpcCommands()
         {
             if (_isTerminating)
@@ -278,30 +312,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 drainedCount++;
                 try
                 {
-                    if (string.IsNullOrWhiteSpace(command) || command.Length > IpcMaxCommandLength)
-                    {
-                        Print($"V12 IPC REJECT: malformed/oversize command '{command}'");
+                    if (!ValidateCommandFormat(command, out string[] parts, out long senderTicks))
                         continue;
-                    }
 
-                    string[] parts = command.Split('|');
-                    if (parts.Length == 0 || string.IsNullOrWhiteSpace(parts[0]))
-                    {
-                        Print($"V12 IPC REJECT: empty action in '{command}'");
-                        continue;
-                    }
                     string action = parts[0].Trim().ToUpperInvariant();
-                    long senderTicks = 0;
-                    for (int i = 1; i < parts.Length; i++)
-                    {
-                        if (parts[i].StartsWith("ts=", StringComparison.OrdinalIgnoreCase))
-                        {
-                            long.TryParse(parts[i].Substring(3), out senderTicks);
-                            break;
-                        }
-                    }
-                    if (!MetadataGuardCommandTimestamp(senderTicks, action))
-                        continue;
 
                     // EPIC-4 Ticket 03: IPC Hardening validation (rate limiting, circuit breakers, anomaly detection)
                     ValidationResult validationResult = ValidateIpcCommand(action, parts);
