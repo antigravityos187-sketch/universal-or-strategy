@@ -540,6 +540,34 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Registers FSM in tracking dictionaries and updates counters.
+        /// Centralizes dictionary update logic for easier auditing.
+        /// </summary>
+        /// <param name="entryKey">FSM key</param>
+        /// <param name="fsm">FSM to register</param>
+        /// <param name="entryOrder">Entry order (may be null for position pass)</param>
+        /// <param name="ordersIndexed">Counter (incremented if entry order linked)</param>
+        /// <param name="fsmCreated">Counter (always incremented)</param>
+        private void RegisterFSM(
+            string entryKey,
+            FollowerBracketFSM fsm,
+            Order entryOrder,
+            ref int ordersIndexed,
+            ref int fsmCreated
+        )
+        {
+            _followerBrackets.TryAdd(entryKey, fsm);
+
+            if (entryOrder != null && !string.IsNullOrEmpty(entryOrder.OrderId))
+            {
+                _orderIdToFsmKey[entryOrder.OrderId] = entryKey;
+                ordersIndexed++;
+            }
+
+            fsmCreated++;
+        }
+
+        /// <summary>
         /// Phase 5: Rebuilds _followerBrackets and _orderIdToFsmKey from already-adopted
         /// working orders. Called from HydrateWorkingOrdersFromBroker() before the
         /// adoption-complete gate is set. Idempotent -- safe to call on every reconnect.
@@ -659,15 +687,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                 }
 
-                _followerBrackets.TryAdd(entryKey, fsm);
-
-                if (!string.IsNullOrEmpty(entryOrder.OrderId))
-                {
-                    _orderIdToFsmKey[entryOrder.OrderId] = entryKey;
-                    ordersIndexed++;
-                }
-
-                fsmCreated++;
+                RegisterFSM(entryKey, fsm, entryOrder, ref ordersIndexed, ref fsmCreated);
             }
 
             // Position Pass: handle accounts with open positions but terminal entry orders

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using V12_Performance.Tests.Mocks;
 using Xunit;
 
@@ -625,7 +626,327 @@ namespace V12_Performance.Tests.SIMA
             Assert.Equal(result1, result2);
             Assert.Equal(result2, result3);
         }
+
+        /// <summary>
+        /// Test helper that mirrors RegisterFSM logic.
+        /// Registers FSM in tracking dictionaries and updates counters.
+        /// </summary>
+        private void RegisterFSM(
+            string entryKey,
+            TestFollowerBracketFSM fsm,
+            MockOrder entryOrder,
+            Dictionary<string, TestFollowerBracketFSM> followerBrackets,
+            Dictionary<string, string> orderIdToFsmKey,
+            ref int ordersIndexed,
+            ref int fsmCreated
+        )
+        {
+            // Add FSM to tracking dictionary (idempotent via TryAdd pattern)
+            // TryAdd returns false if key exists, but doesn't throw
+            if (!followerBrackets.ContainsKey(entryKey))
+            {
+                followerBrackets.Add(entryKey, fsm);
+            }
+
+            // Link entry order to FSM key if present and has OrderId
+            if (entryOrder != null && !string.IsNullOrEmpty(entryOrder.OrderId))
+            {
+                orderIdToFsmKey[entryOrder.OrderId] = entryKey;
+                ordersIndexed++;
+            }
+
+            // Always increment FSM created counter
+            fsmCreated++;
+        }
+
+        [Fact]
+        public void RegisterFSM_ValidFSM_AddsToDictionary()
+        {
+            // Arrange
+            string entryKey = "ENTRY_001";
+            var fsm = new TestFollowerBracketFSM { EntryName = entryKey };
+            MockOrder entryOrder = new MockOrder("ORDER_001", MockOrderState.Working, new MockAccount("Sim101"));
+            var followerBrackets = new Dictionary<string, TestFollowerBracketFSM>();
+            var orderIdToFsmKey = new Dictionary<string, string>();
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            RegisterFSM(
+                entryKey,
+                fsm,
+                entryOrder,
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+
+            // Assert
+            Assert.True(followerBrackets.ContainsKey(entryKey));
+            Assert.Equal(fsm, followerBrackets[entryKey]);
+        }
+
+        [Fact]
+        public void RegisterFSM_ValidEntryOrder_LinksOrderIdToFsmKey()
+        {
+            // Arrange
+            string entryKey = "ENTRY_002";
+            var fsm = new TestFollowerBracketFSM { EntryName = entryKey };
+            MockOrder entryOrder = new MockOrder("ENTRY_002", MockOrderState.Working, new MockAccount("Sim102"));
+            entryOrder.OrderId = "ORDER_002"; // Set explicit OrderId
+            var followerBrackets = new Dictionary<string, TestFollowerBracketFSM>();
+            var orderIdToFsmKey = new Dictionary<string, string>();
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            RegisterFSM(
+                entryKey,
+                fsm,
+                entryOrder,
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+
+            // Assert
+            Assert.True(orderIdToFsmKey.ContainsKey("ORDER_002"));
+            Assert.Equal(entryKey, orderIdToFsmKey["ORDER_002"]);
+        }
+
+        [Fact]
+        public void RegisterFSM_ValidEntryOrder_IncrementsOrdersIndexed()
+        {
+            // Arrange
+            string entryKey = "ENTRY_003";
+            var fsm = new TestFollowerBracketFSM { EntryName = entryKey };
+            MockOrder entryOrder = new MockOrder("ORDER_003", MockOrderState.Working, new MockAccount("Sim103"));
+            var followerBrackets = new Dictionary<string, TestFollowerBracketFSM>();
+            var orderIdToFsmKey = new Dictionary<string, string>();
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            RegisterFSM(
+                entryKey,
+                fsm,
+                entryOrder,
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+
+            // Assert
+            Assert.Equal(1, ordersIndexed);
+        }
+
+        [Fact]
+        public void RegisterFSM_AlwaysIncrementsFsmCreated()
+        {
+            // Arrange
+            string entryKey = "ENTRY_004";
+            var fsm = new TestFollowerBracketFSM { EntryName = entryKey };
+            MockOrder entryOrder = new MockOrder("ORDER_004", MockOrderState.Working, new MockAccount("Sim104"));
+            var followerBrackets = new Dictionary<string, TestFollowerBracketFSM>();
+            var orderIdToFsmKey = new Dictionary<string, string>();
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            RegisterFSM(
+                entryKey,
+                fsm,
+                entryOrder,
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+
+            // Assert
+            Assert.Equal(1, fsmCreated);
+        }
+
+        [Fact]
+        public void RegisterFSM_NullEntryOrder_DoesNotLinkOrderId()
+        {
+            // Arrange
+            string entryKey = "ENTRY_005";
+            var fsm = new TestFollowerBracketFSM { EntryName = entryKey };
+            MockOrder entryOrder = null;
+            var followerBrackets = new Dictionary<string, TestFollowerBracketFSM>();
+            var orderIdToFsmKey = new Dictionary<string, string>();
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            RegisterFSM(
+                entryKey,
+                fsm,
+                entryOrder,
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+
+            // Assert
+            Assert.Empty(orderIdToFsmKey);
+            Assert.Equal(0, ordersIndexed);
+            Assert.Equal(1, fsmCreated); // FSM still created
+        }
+
+        [Fact]
+        public void RegisterFSM_EmptyOrderId_DoesNotLinkOrderId()
+        {
+            // Arrange
+            string entryKey = "ENTRY_006";
+            var fsm = new TestFollowerBracketFSM { EntryName = entryKey };
+            MockOrder entryOrder = new MockOrder("ENTRY_006", MockOrderState.Working, new MockAccount("Sim106"));
+            entryOrder.OrderId = ""; // Set empty OrderId explicitly
+            var followerBrackets = new Dictionary<string, TestFollowerBracketFSM>();
+            var orderIdToFsmKey = new Dictionary<string, string>();
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            RegisterFSM(
+                entryKey,
+                fsm,
+                entryOrder,
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+
+            // Assert
+            Assert.Empty(orderIdToFsmKey);
+            Assert.Equal(0, ordersIndexed);
+            Assert.Equal(1, fsmCreated);
+        }
+
+        [Fact]
+        public void RegisterFSM_DuplicateKey_DoesNotOverwrite()
+        {
+            // Arrange
+            string entryKey = "ENTRY_007";
+            var fsm1 = new TestFollowerBracketFSM { EntryName = entryKey, RemainingContracts = 1 };
+            var fsm2 = new TestFollowerBracketFSM { EntryName = entryKey, RemainingContracts = 2 };
+            MockOrder entryOrder1 = new MockOrder("ORDER_007A", MockOrderState.Working, new MockAccount("Sim107"));
+            MockOrder entryOrder2 = new MockOrder("ORDER_007B", MockOrderState.Working, new MockAccount("Sim107"));
+            var followerBrackets = new Dictionary<string, TestFollowerBracketFSM>();
+            var orderIdToFsmKey = new Dictionary<string, string>();
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            RegisterFSM(
+                entryKey,
+                fsm1,
+                entryOrder1,
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+            RegisterFSM(
+                entryKey,
+                fsm2,
+                entryOrder2,
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+
+            // Assert
+            Assert.Equal(fsm1, followerBrackets[entryKey]); // First FSM preserved
+            Assert.Equal(1, followerBrackets[entryKey].RemainingContracts);
+            Assert.Equal(2, fsmCreated); // Both counted
+        }
+
+        [Fact]
+        public void RegisterFSM_MultipleRegistrations_AccumulatesCounters()
+        {
+            // Arrange
+            var followerBrackets = new Dictionary<string, TestFollowerBracketFSM>();
+            var orderIdToFsmKey = new Dictionary<string, string>();
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act - Register 3 FSMs
+            RegisterFSM(
+                "ENTRY_008A",
+                new TestFollowerBracketFSM { EntryName = "ENTRY_008A" },
+                new MockOrder("ORDER_008A", MockOrderState.Working, new MockAccount("Sim108")),
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+            RegisterFSM(
+                "ENTRY_008B",
+                new TestFollowerBracketFSM { EntryName = "ENTRY_008B" },
+                new MockOrder("ORDER_008B", MockOrderState.Working, new MockAccount("Sim108")),
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+            RegisterFSM(
+                "ENTRY_008C",
+                new TestFollowerBracketFSM { EntryName = "ENTRY_008C" },
+                null, // No entry order
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+
+            // Assert
+            Assert.Equal(3, followerBrackets.Count);
+            Assert.Equal(2, ordersIndexed); // Only 2 had valid entry orders
+            Assert.Equal(3, fsmCreated); // All 3 FSMs created
+        }
+
+        [Fact]
+        public void RegisterFSM_CollectionStateAfterRegistration_IsCorrect()
+        {
+            // Arrange
+            string entryKey = "ENTRY_009";
+            var fsm = new TestFollowerBracketFSM { EntryName = entryKey, State = TestFollowerBracketState.Active };
+            MockOrder entryOrder = new MockOrder("ENTRY_009", MockOrderState.Filled, new MockAccount("Sim109"));
+            entryOrder.OrderId = "ORDER_009"; // Set explicit OrderId
+            var followerBrackets = new Dictionary<string, TestFollowerBracketFSM>();
+            var orderIdToFsmKey = new Dictionary<string, string>();
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            RegisterFSM(
+                entryKey,
+                fsm,
+                entryOrder,
+                followerBrackets,
+                orderIdToFsmKey,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
+
+            // Assert - Verify complete state
+            Assert.Single(followerBrackets);
+            Assert.Single(orderIdToFsmKey);
+            Assert.Equal(1, ordersIndexed);
+            Assert.Equal(1, fsmCreated);
+            Assert.Equal(entryKey, followerBrackets[entryKey].EntryName);
+            Assert.Equal(TestFollowerBracketState.Active, followerBrackets[entryKey].State);
+            Assert.Equal(entryKey, orderIdToFsmKey["ORDER_009"]);
+        }
     }
 }
 
-// Made with Bob (EPIC-CCN-16 Ticket 1, 2 & 3 TDD)
+// Made with Bob (EPIC-CCN-16 Ticket 1, 2, 3 & 4 TDD)
