@@ -50,7 +50,13 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 - **ASCII-Only Compliance**: NEVER use Unicode, emoji, or curly quotes in C# string literals.
 - **Jane Street Alignment (V12.17)**: ALL agents (Bob, Codex, Qwen, Antigravity, Jules, Rovo Dev, Cursor, etc.) MUST load and apply the ingested Jane Street Intel from `docs/intel/jane-street/` for every architectural decision.
 - **Hard-Link Integrity**: Every `src/` modification MUST be followed by `powershell -File .\deploy-sync.ps1` to re-synchronize NinjaTrader hard links.
-- **Three-Tier Branch Model (V12.18)**: ALL agents MUST follow the branch strategy documented in `docs/protocol/BRANCH_STRATEGY.md`. Source code, infrastructure, and protocol changes MUST be on separate branches.
+- **Branch Strategy Mandate (V12.24)**:
+  * PRIMARY: GitButler virtual branches ONLY (`but branch new <name>`). All work on `gitbutler/workspace` physical branch.
+  * ALTERNATIVE: Git worktrees for true isolation (`git worktree add`).
+  * BANNED: Regular git branches (`git checkout -b`) for development work.
+  * ENFORCEMENT: epic-run Phase -1 MUST verify branch strategy compliance.
+  * VIOLATION: P0 blocker - epic will not start.
+  * REFERENCE: See `docs/protocol/BRANCH_STRATEGY_ENFORCEMENT.md` for complete protocol.
 
 
 ## 3. Standard Commands
