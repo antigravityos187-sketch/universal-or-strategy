@@ -15,17 +15,17 @@ namespace V12_Performance.Tests.Orders
     /// - No NT8 runtime required - pure unit tests
     ///
     /// Coverage:
-    /// - Test 1-6: HasPendingEntryForAccount (entry order detection)
-    /// - Test 7-11: HasActivePositionForAccount (active position detection)
+    /// - Test 1-6: HasPendingEntryOrderForAccount (entry order detection)
+    /// - Test 7-11: HasUnfilledPositionForAccount (active position detection)
     /// </summary>
     public class HandleFlatPositionUpdateTests
     {
         // ============================================================================
-        // Helper 1 Tests: HasPendingEntryForAccount (6 tests)
+        // Helper 1 Tests: HasPendingEntryOrderForAccount (6 tests)
         // ============================================================================
 
         [Fact]
-        public void HasPendingEntryForAccount_WithPendingOrder_ReturnsTrue()
+        public void HasPendingEntryOrderForAccount_WithPendingOrder_ReturnsTrue()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
@@ -37,27 +37,27 @@ namespace V12_Performance.Tests.Orders
             testHelper.AddEntryOrder("pos1", entryOrder, position);
 
             // Act
-            bool result = testHelper.HasPendingEntryForAccount("Apex01");
+            bool result = testHelper.HasPendingEntryOrderForAccount("Apex01");
 
             // Assert
             Assert.True(result, "Should return true when account has pending entry order");
         }
 
         [Fact]
-        public void HasPendingEntryForAccount_WithNoOrders_ReturnsFalse()
+        public void HasPendingEntryOrderForAccount_WithNoOrders_ReturnsFalse()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
 
             // Act
-            bool result = testHelper.HasPendingEntryForAccount("Apex01");
+            bool result = testHelper.HasPendingEntryOrderForAccount("Apex01");
 
             // Assert
             Assert.False(result, "Should return false when entryOrders is empty");
         }
 
         [Fact]
-        public void HasPendingEntryForAccount_WithCompletedOrder_ReturnsFalse()
+        public void HasPendingEntryOrderForAccount_WithCompletedOrder_ReturnsFalse()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
@@ -69,14 +69,14 @@ namespace V12_Performance.Tests.Orders
             testHelper.AddEntryOrder("pos1", entryOrder, position);
 
             // Act
-            bool result = testHelper.HasPendingEntryForAccount("Apex01");
+            bool result = testHelper.HasPendingEntryOrderForAccount("Apex01");
 
             // Assert
             Assert.False(result, "Should return false when order is in terminal state (Filled)");
         }
 
         [Fact]
-        public void HasPendingEntryForAccount_WithDifferentAccount_ReturnsFalse()
+        public void HasPendingEntryOrderForAccount_WithDifferentAccount_ReturnsFalse()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
@@ -88,14 +88,14 @@ namespace V12_Performance.Tests.Orders
             testHelper.AddEntryOrder("pos1", entryOrder, position);
 
             // Act
-            bool result = testHelper.HasPendingEntryForAccount("Apex01");
+            bool result = testHelper.HasPendingEntryOrderForAccount("Apex01");
 
             // Assert
             Assert.False(result, "Should return false when searching for different account");
         }
 
         [Fact]
-        public void HasPendingEntryForAccount_WithMultipleAccounts_ReturnsCorrectly()
+        public void HasPendingEntryOrderForAccount_WithMultipleAccounts_ReturnsCorrectly()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
@@ -112,14 +112,14 @@ namespace V12_Performance.Tests.Orders
             testHelper.AddEntryOrder("pos2", entryOrder2, position2);
 
             // Act
-            bool result = testHelper.HasPendingEntryForAccount("Apex01");
+            bool result = testHelper.HasPendingEntryOrderForAccount("Apex01");
 
             // Assert
             Assert.True(result, "Should return true for Apex01 when it has pending entry");
         }
 
         [Fact]
-        public void HasPendingEntryForAccount_WithNullAccount_ThrowsException()
+        public void HasPendingEntryOrderForAccount_WithNullAccount_ThrowsException()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
@@ -127,18 +127,18 @@ namespace V12_Performance.Tests.Orders
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
             {
-                testHelper.HasPendingEntryForAccount(null);
+                testHelper.HasPendingEntryOrderForAccount(null);
             });
 
             Assert.Contains("accountName", exception.Message);
         }
 
         // ============================================================================
-        // Helper 2 Tests: HasActivePositionForAccount (5 tests)
+        // Helper 2 Tests: HasUnfilledPositionForAccount (5 tests)
         // ============================================================================
 
         [Fact]
-        public void HasActivePositionForAccount_WithActivePosition_ReturnsTrue()
+        public void HasUnfilledPositionForAccount_WithActivePosition_ReturnsTrue()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
@@ -149,27 +149,27 @@ namespace V12_Performance.Tests.Orders
             testHelper.AddActivePosition("pos1", position);
 
             // Act
-            bool result = testHelper.HasActivePositionForAccount("Apex01");
+            bool result = testHelper.HasUnfilledPositionForAccount("Apex01");
 
             // Assert
             Assert.True(result, "Should return true when account has active unfilled position");
         }
 
         [Fact]
-        public void HasActivePositionForAccount_WithNoPositions_ReturnsFalse()
+        public void HasUnfilledPositionForAccount_WithNoPositions_ReturnsFalse()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
 
             // Act
-            bool result = testHelper.HasActivePositionForAccount("Apex01");
+            bool result = testHelper.HasUnfilledPositionForAccount("Apex01");
 
             // Assert
             Assert.False(result, "Should return false when activePositions is empty");
         }
 
         [Fact]
-        public void HasActivePositionForAccount_WithDifferentAccount_ReturnsFalse()
+        public void HasUnfilledPositionForAccount_WithDifferentAccount_ReturnsFalse()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
@@ -180,14 +180,14 @@ namespace V12_Performance.Tests.Orders
             testHelper.AddActivePosition("pos1", position);
 
             // Act
-            bool result = testHelper.HasActivePositionForAccount("Apex01");
+            bool result = testHelper.HasUnfilledPositionForAccount("Apex01");
 
             // Assert
             Assert.False(result, "Should return false when searching for different account");
         }
 
         [Fact]
-        public void HasActivePositionForAccount_WithMultipleAccounts_ReturnsCorrectly()
+        public void HasUnfilledPositionForAccount_WithMultipleAccounts_ReturnsCorrectly()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
@@ -202,14 +202,14 @@ namespace V12_Performance.Tests.Orders
             testHelper.AddActivePosition("pos2", position2);
 
             // Act
-            bool result = testHelper.HasActivePositionForAccount("Apex01");
+            bool result = testHelper.HasUnfilledPositionForAccount("Apex01");
 
             // Assert
             Assert.True(result, "Should return true for Apex01 when it has active position");
         }
 
         [Fact]
-        public void HasActivePositionForAccount_WithNullAccount_ThrowsException()
+        public void HasUnfilledPositionForAccount_WithNullAccount_ThrowsException()
         {
             // Arrange
             var testHelper = new HandleFlatPositionUpdateTestHelper();
@@ -217,16 +217,269 @@ namespace V12_Performance.Tests.Orders
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
             {
-                testHelper.HasActivePositionForAccount(null);
+                testHelper.HasUnfilledPositionForAccount(null);
             });
 
             Assert.Contains("accountName", exception.Message);
+        // ============================================================================
+        // Helper 3 Tests: CancelOrphanedOrdersForPosition (8 tests)
+        // ============================================================================
+
+        [Fact]
+        public void CancelOrphanedOrdersForPosition_WithWorkingStopOrder_CancelsStop()
+        {
+            // Arrange
+            var testHelper = new CancellationTestHelper();
+            var account = new MockAccount("Apex01");
+            var position = testHelper.CreateMockPositionInfo(account, entryFilled: true);
+            string posKey = "pos1";
+
+            // Add working stop order
+            var stopOrder = new MockOrder("Stop_1", MockOrderState.Working, account);
+            testHelper.AddStopOrder(posKey, stopOrder);
+
+            // Act
+            testHelper.CancelOrphanedOrdersForPosition(posKey, position);
+
+            // Assert
+            Assert.Equal(1, testHelper.CancelCallCount);
+            Assert.Contains(stopOrder, testHelper.CancelledOrders);
+        }
+
+        [Fact]
+        public void CancelOrphanedOrdersForPosition_WithAcceptedStopOrder_CancelsStop()
+        {
+            // Arrange
+            var testHelper = new CancellationTestHelper();
+            var account = new MockAccount("Apex01");
+            var position = testHelper.CreateMockPositionInfo(account, entryFilled: true);
+            string posKey = "pos1";
+
+            // Add accepted stop order
+            var stopOrder = new MockOrder("Stop_1", MockOrderState.Accepted, account);
+            testHelper.AddStopOrder(posKey, stopOrder);
+
+            // Act
+            testHelper.CancelOrphanedOrdersForPosition(posKey, position);
+
+            // Assert
+            Assert.Equal(1, testHelper.CancelCallCount);
+            Assert.Contains(stopOrder, testHelper.CancelledOrders);
+        }
+
+        [Fact]
+        public void CancelOrphanedOrdersForPosition_WithFilledStopOrder_DoesNotCancel()
+        {
+            // Arrange
+            var testHelper = new CancellationTestHelper();
+            var account = new MockAccount("Apex01");
+            var position = testHelper.CreateMockPositionInfo(account, entryFilled: true);
+            string posKey = "pos1";
+
+            // Add filled stop order (terminal state)
+            var stopOrder = new MockOrder("Stop_1", MockOrderState.Filled, account);
+            testHelper.AddStopOrder(posKey, stopOrder);
+
+            // Act
+            testHelper.CancelOrphanedOrdersForPosition(posKey, position);
+
+            // Assert
+            Assert.Equal(0, testHelper.CancelCallCount);
+        }
+
+        [Fact]
+        public void CancelOrphanedOrdersForPosition_WithNoStopOrder_DoesNotThrow()
+        {
+            // Arrange
+            var testHelper = new CancellationTestHelper();
+            var account = new MockAccount("Apex01");
+            var position = testHelper.CreateMockPositionInfo(account, entryFilled: true);
+            string posKey = "pos1";
+
+            // Act & Assert (no exception)
+            testHelper.CancelOrphanedOrdersForPosition(posKey, position);
+            Assert.Equal(0, testHelper.CancelCallCount);
+        }
+
+        [Fact]
+        public void CancelOrphanedOrdersForPosition_WithWorkingTargetOrders_CancelsAll()
+        {
+            // Arrange
+            var testHelper = new CancellationTestHelper();
+            var account = new MockAccount("Apex01");
+            var position = testHelper.CreateMockPositionInfo(account, entryFilled: true);
+            string posKey = "pos1";
+
+            // Add all 5 target orders with Working state
+            for (int t = 1; t <= 5; t++)
+            {
+                var targetOrder = new MockOrder($"Target_{t}", MockOrderState.Working, account);
+                testHelper.AddTargetOrder(posKey, t, targetOrder);
+            }
+
+            // Act
+            testHelper.CancelOrphanedOrdersForPosition(posKey, position);
+
+            // Assert
+            Assert.Equal(5, testHelper.CancelCallCount);
+        }
+
+        [Fact]
+        public void CancelOrphanedOrdersForPosition_WithAcceptedTargetOrders_CancelsAll()
+        {
+            // Arrange
+            var testHelper = new CancellationTestHelper();
+            var account = new MockAccount("Apex01");
+            var position = testHelper.CreateMockPositionInfo(account, entryFilled: true);
+            string posKey = "pos1";
+
+            // Add all 5 target orders with Accepted state
+            for (int t = 1; t <= 5; t++)
+            {
+                var targetOrder = new MockOrder($"Target_{t}", MockOrderState.Accepted, account);
+                testHelper.AddTargetOrder(posKey, t, targetOrder);
+            }
+
+            // Act
+            testHelper.CancelOrphanedOrdersForPosition(posKey, position);
+
+            // Assert
+            Assert.Equal(5, testHelper.CancelCallCount);
+        }
+
+        [Fact]
+        public void CancelOrphanedOrdersForPosition_WithFilledTargetOrders_DoesNotCancel()
+        {
+            // Arrange
+            var testHelper = new CancellationTestHelper();
+            var account = new MockAccount("Apex01");
+            var position = testHelper.CreateMockPositionInfo(account, entryFilled: true);
+            string posKey = "pos1";
+
+            // Add all 5 target orders with Filled state (terminal)
+            for (int t = 1; t <= 5; t++)
+            {
+                var targetOrder = new MockOrder($"Target_{t}", MockOrderState.Filled, account);
+                testHelper.AddTargetOrder(posKey, t, targetOrder);
+            }
+
+            // Act
+            testHelper.CancelOrphanedOrdersForPosition(posKey, position);
+
+            // Assert
+            Assert.Equal(0, testHelper.CancelCallCount);
+        }
+
+        [Fact]
+        public void CancelOrphanedOrdersForPosition_WithMissingTargetOrders_DoesNotThrow()
+        {
+            // Arrange
+            var testHelper = new CancellationTestHelper();
+            var account = new MockAccount("Apex01");
+            var position = testHelper.CreateMockPositionInfo(account, entryFilled: true);
+            string posKey = "pos1";
+
+            // Act & Assert (no exception, no target orders exist)
+            testHelper.CancelOrphanedOrdersForPosition(posKey, position);
+            Assert.Equal(0, testHelper.CancelCallCount);
+        }
+    }
+
+    /// <summary>
+    /// Test helper for CancelOrphanedOrdersForPosition tests.
+    /// Simulates stop/target order dictionaries and tracks cancellation calls.
+    /// </summary>
+    internal class CancellationTestHelper
+    {
+        private readonly Dictionary<string, MockOrder> _stopOrders;
+        private readonly Dictionary<int, Dictionary<string, MockOrder>> _targetOrders;
+        public List<MockOrder> CancelledOrders { get; }
+        public int CancelCallCount => CancelledOrders.Count;
+
+        public CancellationTestHelper()
+        {
+            _stopOrders = new Dictionary<string, MockOrder>();
+            _targetOrders = new Dictionary<int, Dictionary<string, MockOrder>>();
+            CancelledOrders = new List<MockOrder>();
+
+            // Initialize 5 target dictionaries
+            for (int t = 1; t <= 5; t++)
+            {
+                _targetOrders[t] = new Dictionary<string, MockOrder>();
+            }
+        }
+
+        public void AddStopOrder(string posKey, MockOrder order)
+        {
+            _stopOrders[posKey] = order;
+        }
+
+        public void AddTargetOrder(string posKey, int targetNum, MockOrder order)
+        {
+            if (targetNum < 1 || targetNum > 5)
+                throw new ArgumentOutOfRangeException(nameof(targetNum), "Target number must be 1-5");
+
+            _targetOrders[targetNum][posKey] = order;
+        }
+
+        public MockPositionInfo CreateMockPositionInfo(MockAccount account, bool entryFilled)
+        {
+            return new MockPositionInfo
+            {
+                ExecutingAccount = account,
+                EntryFilled = entryFilled,
+                RemainingContracts = entryFilled ? 0 : 1,
+            };
+        }
+
+        /// <summary>
+        /// Mock implementation of CancelOrphanedOrdersForPosition.
+        /// This simulates the logic from V12_002.Orders.Callbacks.Execution.cs lines 118-140.
+        /// Will be replaced by actual method call after extraction.
+        /// </summary>
+        public void CancelOrphanedOrdersForPosition(string posKey, MockPositionInfo pos)
+        {
+            // Cancel stop order if active
+            if (_stopOrders.TryGetValue(posKey, out var stopOrder))
+            {
+                if (
+                    stopOrder != null
+                    && (
+                        stopOrder.OrderState == MockOrderState.Working
+                        || stopOrder.OrderState == MockOrderState.Accepted
+                    )
+                )
+                {
+                    CancelledOrders.Add(stopOrder);
+                }
+            }
+
+            // Cancel all 5 target orders if active
+            for (int tNum = 1; tNum <= 5; tNum++)
+            {
+                var tDict = _targetOrders[tNum];
+                if (tDict != null && tDict.TryGetValue(posKey, out var tOrder))
+                {
+                    if (
+                        tOrder != null
+                        && (
+                            tOrder.OrderState == MockOrderState.Working
+                            || tOrder.OrderState == MockOrderState.Accepted
+                        )
+                    )
+                    {
+                        CancelledOrders.Add(tOrder);
+                    }
+                }
+            }
+        }
+    }
         }
     }
 
     /// <summary>
     /// Test helper class that simulates the V12_002 strategy's internal state.
-    /// Provides mock implementations of HasPendingEntryForAccount and HasActivePositionForAccount
+    /// Provides mock implementations of HasPendingEntryOrderForAccount and HasUnfilledPositionForAccount
     /// that will be replaced by the actual extracted methods after implementation.
     /// </summary>
     internal class HandleFlatPositionUpdateTestHelper
@@ -261,11 +514,11 @@ namespace V12_Performance.Tests.Orders
         }
 
         /// <summary>
-        /// Mock implementation of HasPendingEntryForAccount.
+        /// Mock implementation of HasPendingEntryOrderForAccount.
         /// This simulates the logic from V12_002.Orders.Callbacks.Execution.cs lines 78-92.
         /// Will be replaced by actual method call after extraction.
         /// </summary>
-        public bool HasPendingEntryForAccount(string accountName)
+        public bool HasPendingEntryOrderForAccount(string accountName)
         {
             if (accountName == null)
                 throw new ArgumentNullException(nameof(accountName));
@@ -290,11 +543,11 @@ namespace V12_Performance.Tests.Orders
         }
 
         /// <summary>
-        /// Mock implementation of HasActivePositionForAccount.
+        /// Mock implementation of HasUnfilledPositionForAccount.
         /// This simulates the logic from V12_002.Orders.Callbacks.Execution.cs lines 97-109.
         /// Will be replaced by actual method call after extraction.
         /// </summary>
-        public bool HasActivePositionForAccount(string accountName)
+        public bool HasUnfilledPositionForAccount(string accountName)
         {
             if (accountName == null)
                 throw new ArgumentNullException(nameof(accountName));
