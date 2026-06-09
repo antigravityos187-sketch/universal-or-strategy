@@ -568,6 +568,56 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Links a target order to FSM and indexes it in _orderIdToFsmKey.
+        /// Eliminates repetitive target linking logic.
+        /// </summary>
+        /// <param name="fsm">FSM to update (passed by ref for struct mutation)</param>
+        /// <param name="entryKey">FSM key for order ID mapping</param>
+        /// <param name="targetIndex">Target slot index (0-4)</param>
+        /// <param name="targetOrders">Target order dictionary</param>
+        /// <param name="ordersIndexed">Counter (incremented if order linked)</param>
+        private void LinkTargetOrderToFSM(
+            ref FollowerBracketFSM fsm,
+            string entryKey,
+            int targetIndex,
+            ConcurrentDictionary<string, Order> targetOrders,
+            ref int ordersIndexed
+        )
+        {
+            Order targetOrd;
+            if (targetOrders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
+            {
+                fsm.Targets[targetIndex] = targetOrd;
+                if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                {
+                    _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
+                    ordersIndexed++;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Finds live position for Active state FSM hydration.
+        /// Returns null if no matching position found.
+        /// </summary>
+        /// <param name="pi">PositionInfo containing executing account</param>
+        /// <returns>Live position or null</returns>
+        private Position FindLivePosition(PositionInfo pi)
+        {
+            if (pi.ExecutingAccount == null)
+                return null;
+
+            return pi
+                .ExecutingAccount.Positions.ToArray()
+                .FirstOrDefault(p =>
+                    p != null
+                    && p.Instrument != null
+                    && p.Instrument.FullName == Instrument.FullName
+                    && p.MarketPosition != MarketPosition.Flat
+                );
+        }
+
+        /// <summary>
         /// Phase 5 Position Pass: Creates FSMs for accounts with open positions but terminal entry orders.
         /// Handles edge case where entry order is cancelled/rejected but position remains open.
         /// Implements REAPER grace window (5 minutes) for failed stop order key recovery.
@@ -739,6 +789,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             int fsmCreated = 0;
             int ordersIndexed = 0;
 
+            Print("[SIMA] Phase 5 FSM Hydration: Starting entry order pass...");
+
+            // Entry Order Pass
             foreach (var kvp in entryOrders.ToArray())
             {
                 string entryKey = kvp.Key;
@@ -753,41 +806,30 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (pi.ExecutingAccount == null)
                     continue;
 
-                // Idempotent: skip if FSM already exists (safe on repeated reconnects)
+                // Idempotent guard
                 if (_followerBrackets.ContainsKey(entryKey))
                     continue;
 
-                // Map broker order state to FSM state
-                FollowerBracketState? hydrationState = MapOrderStateToFSMState(entryOrder.OrderState);
-                if (hydrationState == null)
+                // Map state
+                FollowerBracketState? state = MapOrderStateToFSMState(entryOrder.OrderState);
+                if (state == null)
                     continue; // Terminal state - skip FSM creation
 
+                // Resolve contracts
                 Position livePosition = null;
-                if (hydrationState.Value == FollowerBracketState.Active)
+                if (state.Value == FollowerBracketState.Active)
                 {
-                    livePosition = pi
-                        .ExecutingAccount.Positions.ToArray()
-                        .FirstOrDefault(p =>
-                            p != null
-                            && p.Instrument != null
-                            && p.Instrument.FullName == Instrument.FullName
-                            && p.MarketPosition != MarketPosition.Flat
-                        );
+                    livePosition = FindLivePosition(pi);
                 }
 
-                int hydratedRemainingContracts = ResolveRemainingContracts(
-                    hydrationState.Value,
+                int remainingContracts = ResolveRemainingContracts(
+                    state.Value,
                     entryOrder.Quantity,
                     livePosition?.Quantity
                 );
 
-                var fsm = BuildFSM(
-                    entryKey,
-                    pi.ExecutingAccount.Name,
-                    entryOrder,
-                    hydrationState.Value,
-                    hydratedRemainingContracts
-                );
+                // Build FSM
+                var fsm = BuildFSM(entryKey, pi.ExecutingAccount.Name, entryOrder, state.Value, remainingContracts);
 
                 // Link stop order
                 Order stopOrd;
@@ -801,58 +843,26 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                 }
 
-                // Link target orders (match exact property names on FollowerBracketFSM)
-                Order targetOrd;
-                if (target1Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[0] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target2Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[1] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target3Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[2] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target4Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[3] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target5Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[4] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
+                // Link target orders
+                LinkTargetOrderToFSM(ref fsm, entryKey, 0, target1Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, entryKey, 1, target2Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, entryKey, 2, target3Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, entryKey, 3, target4Orders, ref ordersIndexed);
+                LinkTargetOrderToFSM(ref fsm, entryKey, 4, target5Orders, ref ordersIndexed);
 
+                // Register FSM
                 RegisterFSM(entryKey, fsm, entryOrder, ref ordersIndexed, ref fsmCreated);
             }
 
-            // Position Pass: handle accounts with open positions but terminal entry orders
+            Print(
+                string.Format(
+                    "[SIMA] Phase 5 FSM Hydration (Entry Pass): {0} FSMs created, {1} order IDs indexed.",
+                    fsmCreated,
+                    ordersIndexed
+                )
+            );
+
+            // Position Pass
             int positionFsmCreated = HydrateFromOpenPositions(
                 stopOrders,
                 target1Orders,
