@@ -573,12 +573,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Implements REAPER grace window (5 minutes) for failed stop order key recovery.
         /// </summary>
         private int HydrateFromOpenPositions(
-            Dictionary<string, Order> stopOrders,
-            Dictionary<string, Order> target1Orders,
-            Dictionary<string, Order> target2Orders,
-            Dictionary<string, Order> target3Orders,
-            Dictionary<string, Order> target4Orders,
-            Dictionary<string, Order> target5Orders,
+            ConcurrentDictionary<string, Order> stopOrders,
+            ConcurrentDictionary<string, Order> target1Orders,
+            ConcurrentDictionary<string, Order> target2Orders,
+            ConcurrentDictionary<string, Order> target3Orders,
+            ConcurrentDictionary<string, Order> target4Orders,
+            ConcurrentDictionary<string, Order> target5Orders,
             ref int ordersIndexed,
             ref int fsmCreated
         )
