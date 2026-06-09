@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.033-epic-ccn-16-t1"; // EPIC-CCN-16 Ticket 1: Extract MapOrderStateToFSMState (pure state mapping)
+        public const string BUILD_TAG = "1111.034-epic-ccn-16-t2"; // EPIC-CCN-16 Ticket 2: Extract BuildFSM (FSM factory method)
 
         public class UILiveTargetSnapshot
         {
