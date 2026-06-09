@@ -57,57 +57,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else if (state == State.Realtime)
             {
-                Print("+--------------------------------------------------------------+");
-                Print("|          [OK] BMad HARDENED DEPLOYMENT PROTOCOL ACTIVE       |");
-                Print(string.Format("|          Build: {0,-10} |  Sync: ONE SOURCE OF TRUTH    |", BUILD_TAG));
-                Print("+--------------------------------------------------------------+");
-                TouchStrategyHeartbeat();
-                PublishUiSnapshot();
-                StartWatchdog();
-
-                if (EnableSIMA)
-                {
-                    // Route realtime SIMA startup through the actor queue so lifecycle state
-                    // mutation and optional REAPER start stay ordered on the strategy thread.
-                    Enqueue(ctx =>
-                    {
-                        ctx.EnumerateApexAccounts();
-                        if (ctx.ReaperAuditEnabled)
-                            ctx.StartReaperAudit();
-                    });
-                }
-
-                // V10.3: Subscribe to external signals for multi-chart sync
-                // SignalBroadcaster.OnExternalCommand += HandleExternalSignal;
-
-                if (ChartControl != null)
-                {
-                    // Hotkeys attach at Normal priority (fast, no visual tree dependency)
-                    ChartControl.Dispatcher.InvokeAsync(
-                        () =>
-                        {
-                            if (_isTerminating)
-                                return;
-                            AttachHotkeys();
-                            AttachChartClickHandler();
-                        },
-                        System.Windows.Threading.DispatcherPriority.Normal
-                    );
-
-                    // Panel creation deferred to Loaded priority (runs AFTER Render pass)
-                    // This ensures the Chart Trader control is in the visual tree before discovery
-                    ChartControl.Dispatcher.InvokeAsync(
-                        () =>
-                        {
-                            if (_isTerminating)
-                                return;
-                            CreatePanel();
-                            StartPanelRefresh();
-                            Print("REALTIME - Hotkeys: L=Long, S=Short, Shift+Click=RMA, F=Flatten");
-                        },
-                        System.Windows.Threading.DispatcherPriority.Loaded
-                    );
-                }
+                HandleRealtime();
             }
             else if (state == State.Terminated)
             {
@@ -683,6 +633,66 @@ namespace NinjaTrader.NinjaScript.Strategies
                     + (Target5Value > 0 ? 1 : 0);
                 activeTargetCount = Math.Max(1, Math.Min(5, loadedTargetCount));
                 ConfiguredTargetCount = activeTargetCount;
+            }
+        }
+
+        private void HandleRealtime()
+        {
+            Print("+--------------------------------------------------------------+");
+            Print("|          [OK] BMad HARDENED DEPLOYMENT PROTOCOL ACTIVE       |");
+            Print(string.Format("|          Build: {0,-10} |  Sync: ONE SOURCE OF TRUTH    |", BUILD_TAG));
+            Print("+--------------------------------------------------------------+");
+            TouchStrategyHeartbeat();
+            PublishUiSnapshot();
+            StartWatchdog();
+
+            if (EnableSIMA)
+            {
+                // Route realtime SIMA startup through the actor queue so lifecycle state
+                // mutation and optional REAPER start stay ordered on the strategy thread.
+                Enqueue(ctx =>
+                {
+                    ctx.EnumerateApexAccounts();
+                    if (ctx.ReaperAuditEnabled)
+                        ctx.StartReaperAudit();
+                });
+            }
+
+            // V10.3: Subscribe to external signals for multi-chart sync
+            // SignalBroadcaster.OnExternalCommand += HandleExternalSignal;
+
+            AttachUiComponents();
+        }
+
+        private void AttachUiComponents()
+        {
+            if (ChartControl != null)
+            {
+                // Hotkeys attach at Normal priority (fast, no visual tree dependency)
+                ChartControl.Dispatcher.InvokeAsync(
+                    () =>
+                    {
+                        if (_isTerminating)
+                            return;
+                        AttachHotkeys();
+                        AttachChartClickHandler();
+                    },
+                    System.Windows.Threading.DispatcherPriority.Normal
+                );
+
+                // Panel creation deferred to Loaded priority (runs AFTER Render pass)
+                // This ensures the Chart Trader control is in the visual tree before discovery
+                ChartControl.Dispatcher.InvokeAsync(
+                    () =>
+                    {
+                        if (_isTerminating)
+                            return;
+                        CreatePanel();
+                        StartPanelRefresh();
+                        Print("REALTIME - Hotkeys: L=Long, S=Short, Shift+Click=RMA, F=Flatten");
+                    },
+                    System.Windows.Threading.DispatcherPriority.Loaded
+                );
             }
         }
         #endregion
