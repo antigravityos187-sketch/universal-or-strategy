@@ -303,16 +303,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     bool isForMe = IsCommandForThisChart(action, targetSymbol, isGlobalCommand, out string mySym);
 
                     // V12.2: Global IPC Diagnostic Log
-                    Print(
-                        string.Format(
-                            "V12 IPC: Received '{0}' for '{1}'. For Me? {2} (My Symbol: {3}){4}",
-                            action,
-                            targetSymbol,
-                            isForMe,
-                            mySym,
-                            isGlobalCommand ? " [GLOBAL CMD]" : ""
-                        )
-                    );
+                    LogIpcCommandReceived(action, targetSymbol, isForMe, mySym, isGlobalCommand);
 
                     if (!isForMe)
                     {
@@ -526,6 +517,27 @@ namespace NinjaTrader.NinjaScript.Strategies
                     || (tgt == "MYM" && my.Contains("YM"))
                     || (tgt == "MGC" && my.Contains("GC"));
             }
+        }
+
+        private void LogIpcCommandReceived(
+            string action,
+            string target,
+            bool isForMe,
+            string mySym,
+            bool isGlobalCommand
+        )
+        {
+            // CYC 2 (1 method entry + 1 conditional)
+            Print(
+                string.Format(
+                    "V12 IPC: Received '{0}' for '{1}'. For Me? {2} (My Symbol: {3}){4}",
+                    action,
+                    target,
+                    isForMe,
+                    mySym,
+                    isGlobalCommand ? " [GLOBAL CMD]" : ""
+                )
+            );
         }
 
         // Build 935 [B935-P2]: Extracted IPC sub-handlers
