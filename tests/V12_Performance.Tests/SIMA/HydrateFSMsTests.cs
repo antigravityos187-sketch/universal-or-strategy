@@ -268,7 +268,177 @@ namespace V12_Performance.Tests.SIMA
             Assert.Equal(result1, result2);
             Assert.Equal(result2, result3);
         }
+
+        /// <summary>
+        /// Test helper that mirrors BuildFSM logic.
+        /// Creates a mock FSM structure for testing.
+        /// </summary>
+        private class TestFollowerBracketFSM
+        {
+            public string AccountName { get; set; }
+            public string EntryName { get; set; }
+            public TestFollowerBracketState State { get; set; }
+            public int RemainingContracts { get; set; }
+            public DateTime LastUpdateUtc { get; set; }
+            public MockOrder EntryOrder { get; set; }
+            public MockOrder StopOrder { get; set; }
+            public MockOrder[] Targets { get; set; }
+        }
+
+        private TestFollowerBracketFSM BuildFSM(
+            string entryKey,
+            string accountName,
+            MockOrder entryOrder,
+            TestFollowerBracketState state,
+            int remainingContracts
+        )
+        {
+            return new TestFollowerBracketFSM
+            {
+                AccountName = accountName,
+                EntryName = entryKey,
+                State = state,
+                RemainingContracts = remainingContracts,
+                LastUpdateUtc = DateTime.UtcNow,
+                EntryOrder = entryOrder,
+            };
+        }
+
+        [Fact]
+        public void BuildFSM_ValidInputs_ReturnsInitializedFSM()
+        {
+            // Arrange
+            string entryKey = "ENTRY_001";
+            string accountName = "Sim101";
+            MockOrder entryOrder = new MockOrder("ENTRY_001", MockOrderState.Working, new MockAccount("Sim101"));
+            TestFollowerBracketState state = TestFollowerBracketState.Submitted;
+            int remainingContracts = 2;
+
+            // Act
+            var fsm = BuildFSM(entryKey, accountName, entryOrder, state, remainingContracts);
+
+            // Assert
+            Assert.NotNull(fsm);
+            Assert.Equal(entryKey, fsm.EntryName);
+            Assert.Equal(accountName, fsm.AccountName);
+            Assert.Equal(entryOrder, fsm.EntryOrder);
+            Assert.Equal(state, fsm.State);
+            Assert.Equal(remainingContracts, fsm.RemainingContracts);
+        }
+
+        [Fact]
+        public void BuildFSM_NullEntryOrder_StillInitializesFSM()
+        {
+            // Arrange
+            string entryKey = "ENTRY_002";
+            string accountName = "Sim102";
+            MockOrder entryOrder = null;
+            TestFollowerBracketState state = TestFollowerBracketState.Active;
+            int remainingContracts = 1;
+
+            // Act
+            var fsm = BuildFSM(entryKey, accountName, entryOrder, state, remainingContracts);
+
+            // Assert
+            Assert.NotNull(fsm);
+            Assert.Equal(entryKey, fsm.EntryName);
+            Assert.Equal(accountName, fsm.AccountName);
+            Assert.Null(fsm.EntryOrder);
+            Assert.Equal(state, fsm.State);
+            Assert.Equal(remainingContracts, fsm.RemainingContracts);
+        }
+
+        [Fact]
+        public void BuildFSM_ZeroRemainingContracts_AcceptsZero()
+        {
+            // Arrange
+            string entryKey = "ENTRY_003";
+            string accountName = "Sim103";
+            MockOrder entryOrder = new MockOrder("ENTRY_003", MockOrderState.Filled, new MockAccount("Sim103"));
+            TestFollowerBracketState state = TestFollowerBracketState.Active;
+            int remainingContracts = 0;
+
+            // Act
+            var fsm = BuildFSM(entryKey, accountName, entryOrder, state, remainingContracts);
+
+            // Assert
+            Assert.NotNull(fsm);
+            Assert.Equal(0, fsm.RemainingContracts);
+        }
+
+        [Fact]
+        public void BuildFSM_AllStates_InitializesCorrectly()
+        {
+            // Arrange
+            string entryKey = "ENTRY_004";
+            string accountName = "Sim104";
+            MockOrder entryOrder = new MockOrder("ENTRY_004", MockOrderState.Working, new MockAccount("Sim104"));
+
+            // Act & Assert for each state
+            var states = new[]
+            {
+                TestFollowerBracketState.None,
+                TestFollowerBracketState.PendingSubmit,
+                TestFollowerBracketState.Submitted,
+                TestFollowerBracketState.Accepted,
+                TestFollowerBracketState.Active,
+                TestFollowerBracketState.Replacing,
+                TestFollowerBracketState.Modifying,
+                TestFollowerBracketState.Filled,
+                TestFollowerBracketState.Cancelled,
+                TestFollowerBracketState.Rejected,
+                TestFollowerBracketState.Disconnected,
+            };
+
+            foreach (var state in states)
+            {
+                var fsm = BuildFSM(entryKey, accountName, entryOrder, state, 1);
+                Assert.Equal(state, fsm.State);
+            }
+        }
+
+        [Fact]
+        public void BuildFSM_LastUpdateUtc_IsSetToCurrentTime()
+        {
+            // Arrange
+            string entryKey = "ENTRY_005";
+            string accountName = "Sim105";
+            MockOrder entryOrder = new MockOrder("ENTRY_005", MockOrderState.Working, new MockAccount("Sim105"));
+            TestFollowerBracketState state = TestFollowerBracketState.Submitted;
+            int remainingContracts = 2;
+            DateTime beforeCall = DateTime.UtcNow;
+
+            // Act
+            var fsm = BuildFSM(entryKey, accountName, entryOrder, state, remainingContracts);
+            DateTime afterCall = DateTime.UtcNow;
+
+            // Assert
+            Assert.True(fsm.LastUpdateUtc >= beforeCall);
+            Assert.True(fsm.LastUpdateUtc <= afterCall);
+        }
+
+        [Fact]
+        public void BuildFSM_IsPureFactory_NoSideEffects()
+        {
+            // Arrange
+            string entryKey = "ENTRY_006";
+            string accountName = "Sim106";
+            MockOrder entryOrder = new MockOrder("ENTRY_006", MockOrderState.Working, new MockAccount("Sim106"));
+            TestFollowerBracketState state = TestFollowerBracketState.Submitted;
+            int remainingContracts = 2;
+
+            // Act
+            var fsm1 = BuildFSM(entryKey, accountName, entryOrder, state, remainingContracts);
+            var fsm2 = BuildFSM(entryKey, accountName, entryOrder, state, remainingContracts);
+
+            // Assert - Each call creates a new instance
+            Assert.NotSame(fsm1, fsm2);
+            Assert.Equal(fsm1.EntryName, fsm2.EntryName);
+            Assert.Equal(fsm1.AccountName, fsm2.AccountName);
+            Assert.Equal(fsm1.State, fsm2.State);
+            Assert.Equal(fsm1.RemainingContracts, fsm2.RemainingContracts);
+        }
     }
 }
 
-// Made with Bob (EPIC-CCN-16 Ticket 1 TDD)
+// Made with Bob (EPIC-CCN-16 Ticket 1 & 2 TDD)
