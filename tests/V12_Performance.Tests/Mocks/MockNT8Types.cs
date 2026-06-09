@@ -37,6 +37,7 @@ namespace V12_Performance.Tests.Mocks
     public enum MockOrderState
     {
         Unknown,
+        Initialized,
         Submitted,
         Accepted,
         Working,
