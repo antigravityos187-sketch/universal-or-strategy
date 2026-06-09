@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.028-epic-ccn-15-t01"; // EPIC-CCN-15 Ticket 01: Extract entry name helper (CYC 67->45)
+        public const string BUILD_TAG = "1111.029-epic-ccn-15-t02"; // EPIC-CCN-15 Ticket 02: Extract dedup guard (CYC 45->43)
 
         public class UILiveTargetSnapshot
         {

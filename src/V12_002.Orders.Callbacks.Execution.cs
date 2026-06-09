@@ -246,6 +246,59 @@ namespace NinjaTrader.NinjaScript.Strategies
             return entryPart;
         }
 
+        /// <summary>
+        /// V12.CCN-15 [T2]: Deduplication guard using FNV-1a hash rings.
+        /// Prevents double-decrement if OnOrderUpdate + OnExecutionUpdate both fire.
+        /// V12.962 INLINE ACTOR: Lock-free, serial execution guaranteed by _drainToken.
+        /// </summary>
+        /// <param name="executionId">Execution ID from broker (may be null/empty)</param>
+        /// <param name="execution">Execution object for fallback dedup</param>
+        /// <param name="orderName">Order name for logging</param>
+        /// <param name="quantity">Execution quantity for fallback dedup</param>
+        /// <returns>True if duplicate (skip processing), false if new (proceed)</returns>
+        private bool CheckExecutionDeduplication(
+            string executionId,
+            Execution execution,
+            string orderName,
+            int quantity
+        )
+        {
+            if (!string.IsNullOrEmpty(executionId))
+            {
+                // V14.2 [ADR-011]: Zero-allocation dedup via FNV-1a hash ring
+                long execHash = FnvHash64(executionId);
+                if (_executionIdRing.ContainsOrAdd(execHash))
+                {
+                    Print(string.Format("[DEDUP] Skipping duplicate execution {0} for {1}", executionId, orderName));
+                    return true;
+                }
+            }
+            else
+            {
+                // V14.2 [ADR-011]: Fallback dedup when executionId is missing
+                // Uses execution.Order properties -- FIX-D5: correct variable mapping
+                string uniqueOrderId = !string.IsNullOrEmpty(execution.Order.OrderId)
+                    ? execution.Order.OrderId
+                    : execution.Order.Name;
+                int dedupFilledQty = execution.Order.Filled > 0 ? execution.Order.Filled : Math.Max(0, quantity);
+                string fallbackKey = string.Format("{0}|{1}", uniqueOrderId, dedupFilledQty);
+                long fallbackHash = FnvHash64(fallbackKey);
+
+                if (_executionIdFallbackRing.ContainsOrAdd(fallbackHash))
+                {
+                    Print(
+                        string.Format(
+                            "[DEDUP] Skipping duplicate execution (fallback) orderId={0}",
+                            execution.Order.OrderId
+                        )
+                    );
+                    return true;
+                }
+            }
+
+            return false; // Not a duplicate, proceed with processing
+        }
+
         private void ProcessOnExecutionUpdate(
             string orderName,
             string executionId,
@@ -262,41 +315,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (string.IsNullOrEmpty(orderName))
                     return;
 
-                // V12.962 INLINE ACTOR: Dedup guard -- lock-free, serial execution guaranteed by _drainToken.
-                // V12.Phase7 [C-01]: Prevent double-decrement if OnOrderUpdate + OnExecutionUpdate both fire.
-                if (!string.IsNullOrEmpty(executionId))
-                {
-                    // V14.2 [ADR-011]: Zero-allocation dedup via FNV-1a hash ring
-                    long _execHash = FnvHash64(executionId);
-                    if (_executionIdRing.ContainsOrAdd(_execHash))
-                    {
-                        Print(
-                            string.Format("[DEDUP] Skipping duplicate execution {0} for {1}", executionId, orderName)
-                        );
-                        return;
-                    }
-                }
-                else
-                {
-                    // V14.2 [ADR-011]: Fallback dedup when executionId is missing
-                    // Uses execution.Order properties -- FIX-D5: correct variable mapping
-                    string uniqueOrderId = !string.IsNullOrEmpty(execution.Order.OrderId)
-                        ? execution.Order.OrderId
-                        : execution.Order.Name;
-                    int dedupFilledQty = execution.Order.Filled > 0 ? execution.Order.Filled : Math.Max(0, quantity);
-                    string _fallbackKey = string.Format("{0}|{1}", uniqueOrderId, dedupFilledQty);
-                    long _fallbackHash = FnvHash64(_fallbackKey);
-                    if (_executionIdFallbackRing.ContainsOrAdd(_fallbackHash))
-                    {
-                        Print(
-                            string.Format(
-                                "[DEDUP] Skipping duplicate execution (fallback) orderId={0}",
-                                execution.Order.OrderId
-                            )
-                        );
-                        return;
-                    }
-                }
+                // V12.CCN-15 [T2]: Deduplication guard
+                if (CheckExecutionDeduplication(executionId, execution, orderName, quantity))
+                    return;
 
                 // V12.12: Compliance tracking for single-account mode
                 // [939-P0]: Marshal Account.Get() off broker thread via TriggerCustomEvent.
