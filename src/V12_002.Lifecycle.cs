@@ -49,101 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else if (state == State.Configure)
             {
-                _configureComplete = false;
-                _dataLoadedComplete = false;
-
-                // V8.30: Initialize thread-safe collections
-                // ConcurrentDictionary(concurrencyLevel, initialCapacity)
-                activePositions = new ConcurrentDictionary<string, PositionInfo>(2, 4);
-                entryOrders = new ConcurrentDictionary<string, Order>(2, 4);
-                stopOrders = new ConcurrentDictionary<string, Order>(2, 4);
-                target1Orders = new ConcurrentDictionary<string, Order>(2, 4);
-                target2Orders = new ConcurrentDictionary<string, Order>(2, 4);
-                target3Orders = new ConcurrentDictionary<string, Order>(2, 4); // v5.13
-                target4Orders = new ConcurrentDictionary<string, Order>(2, 4);
-                target5Orders = new ConcurrentDictionary<string, Order>(2, 4);
-
-                // V8.2: TREND linked entries tracking
-                // V8.30: Thread-safe dictionary
-                linkedTRENDEntries = new ConcurrentDictionary<string, string>(2, 4);
-
-                // V8.11: Initialize pending stop replacements tracking
-                // V8.30: Thread-safe dictionary
-                pendingStopReplacements = new ConcurrentDictionary<string, PendingStopReplacement>(2, 4);
-
-                // IPC Queue
-                ipcCommandQueue = new ConcurrentQueue<string>();
-                connectedClients = new ConcurrentDictionary<int, IpcClientSession>(); // Build 935 [Fix-1]: prevent NullReferenceException in StopIpcServer
-
-                // EPIC-4 Ticket 03: Initialize IPC hardening layer (rate limiting, circuit breakers, validation)
-                InitializeIpcHardening();
-
-                // V12 SIMA: Initialize expected positions tracking
-                expectedPositions = new ConcurrentDictionary<string, int>(2, 20); // Up to 20 accounts
-
-                // v28.0 Sovereign Photon [ADR-012 + ADR-016]: pool + ring + sideband + salt + MMIO mirror
-                // Capacity 64: 5 concurrent signals x 12 accounts = 60 < 64
-                _photonPool = new PhotonOrderPool(PhotonPoolCapacity);
-                _photonDispatchRing = new SPSCRing<FleetDispatchSlot>(PhotonPoolCapacity);
-                _photonSideband = new FleetDispatchSideband[PhotonPoolCapacity];
-                _photonShadowSalt = unchecked((ulong)Guid.NewGuid().GetHashCode() * 0x9E3779B97F4A7C15UL);
-
-                // Static assert: Shadow must be the last 8 bytes of FleetDispatchSlot (ADR-016)
-                {
-                    int _slotSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(FleetDispatchSlot));
-                    int _shadowOffset = System
-                        .Runtime.InteropServices.Marshal.OffsetOf(typeof(FleetDispatchSlot), "Shadow")
-                        .ToInt32();
-                    if (_slotSize != 64 || _shadowOffset != 56)
-                    {
-                        throw new InvalidOperationException(
-                            string.Format(
-                                "FleetDispatchSlot layout invariant violated: size={0}, shadowOffset={1}; expected size=64, offset=56",
-                                _slotSize,
-                                _shadowOffset
-                            )
-                        );
-                    }
-                }
-
-                // Optional MMIO mirror. Named per-process so multiple NT instances do not collide.
-                // Failure is non-fatal: hot path runs against the heap ring even if the mirror fails.
-                try
-                {
-                    string _mmfName =
-                        "V12_FleetDispatch_"
-                        + System.Diagnostics.Process.GetCurrentProcess().Id.ToString()
-                        + "_"
-                        + _photonShadowSalt.ToString("X16");
-                    _photonMmioMirror = new MmioDispatchMirror(_mmfName, PhotonPoolCapacity, 64, _photonShadowSalt);
-                    Print(string.Format("[PHOTON MMIO] mirror online: {0}", _mmfName));
-                }
-                catch (Exception _mmioEx)
-                {
-                    _photonMmioMirror = null;
-                    Print("[PHOTON MMIO] mirror unavailable (hot path unaffected): " + _mmioEx.Message);
-                }
-
-                // V14.2 Sovereign Photon [ADR-011]: Pre-allocate execution ID dedup rings
-                _executionIdRing = new ExecutionIdRing(512, 1024);
-                _executionIdFallbackRing = new ExecutionIdRing(512, 1024);
-
-                // V12.1: Initialize Compliance Hub -- create log directory early (idempotent).
-                // Build 935 [Fix-2/3]: Symbol-specific log paths and LogicAudit moved to DataLoaded.
-                string logsDirInit = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    "NinjaTrader 8",
-                    "SIMA_Logs"
-                );
-                if (!System.IO.Directory.Exists(logsDirInit))
-                    System.IO.Directory.CreateDirectory(logsDirInit);
-
-                // Add data series for MTF RMA Intelligence (Phase 9.2)
-                AddDataSeries(BarsPeriodType.Minute, 5); // Index 1 (Primary for ATR)
-                AddDataSeries(BarsPeriodType.Minute, 10); // Index 2
-                AddDataSeries(BarsPeriodType.Minute, 15); // Index 3
-
-                _configureComplete = true;
+                HandleConfigure();
             }
             else if (state == State.DataLoaded)
             {
@@ -666,6 +572,109 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        private void HandleConfigure()
+        {
+            _configureComplete = false;
+            _dataLoadedComplete = false;
+
+            // V8.30: Initialize thread-safe collections
+            // ConcurrentDictionary(concurrencyLevel, initialCapacity)
+            activePositions = new ConcurrentDictionary<string, PositionInfo>(2, 4);
+            entryOrders = new ConcurrentDictionary<string, Order>(2, 4);
+            stopOrders = new ConcurrentDictionary<string, Order>(2, 4);
+            target1Orders = new ConcurrentDictionary<string, Order>(2, 4);
+            target2Orders = new ConcurrentDictionary<string, Order>(2, 4);
+            target3Orders = new ConcurrentDictionary<string, Order>(2, 4); // v5.13
+            target4Orders = new ConcurrentDictionary<string, Order>(2, 4);
+            target5Orders = new ConcurrentDictionary<string, Order>(2, 4);
+
+            // V8.2: TREND linked entries tracking
+            // V8.30: Thread-safe dictionary
+            linkedTRENDEntries = new ConcurrentDictionary<string, string>(2, 4);
+
+            // V8.11: Initialize pending stop replacements tracking
+            // V8.30: Thread-safe dictionary
+            pendingStopReplacements = new ConcurrentDictionary<string, PendingStopReplacement>(2, 4);
+
+            // IPC Queue
+            ipcCommandQueue = new ConcurrentQueue<string>();
+            connectedClients = new ConcurrentDictionary<int, IpcClientSession>(); // Build 935 [Fix-1]: prevent NullReferenceException in StopIpcServer
+
+            // EPIC-4 Ticket 03: Initialize IPC hardening layer (rate limiting, circuit breakers, validation)
+            InitializeIpcHardening();
+
+            // V12 SIMA: Initialize expected positions tracking
+            expectedPositions = new ConcurrentDictionary<string, int>(2, 20); // Up to 20 accounts
+
+            // v28.0 Sovereign Photon [ADR-012 + ADR-016]: pool + ring + sideband + salt + MMIO mirror
+            // Capacity 64: 5 concurrent signals x 12 accounts = 60 < 64
+            _photonPool = new PhotonOrderPool(PhotonPoolCapacity);
+            _photonDispatchRing = new SPSCRing<FleetDispatchSlot>(PhotonPoolCapacity);
+            _photonSideband = new FleetDispatchSideband[PhotonPoolCapacity];
+            _photonShadowSalt = unchecked((ulong)Guid.NewGuid().GetHashCode() * 0x9E3779B97F4A7C15UL);
+
+            // Static assert: Shadow must be the last 8 bytes of FleetDispatchSlot (ADR-016)
+            {
+                int _slotSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(FleetDispatchSlot));
+                int _shadowOffset = System
+                    .Runtime.InteropServices.Marshal.OffsetOf(typeof(FleetDispatchSlot), "Shadow")
+                    .ToInt32();
+                if (_slotSize != 64 || _shadowOffset != 56)
+                {
+                    throw new InvalidOperationException(
+                        string.Format(
+                            "FleetDispatchSlot layout invariant violated: size={0}, shadowOffset={1}; expected size=64, offset=56",
+                            _slotSize,
+                            _shadowOffset
+                        )
+                    );
+                }
+            }
+
+            InitializeMmioMirror();
+
+            // V14.2 Sovereign Photon [ADR-011]: Pre-allocate execution ID dedup rings
+            _executionIdRing = new ExecutionIdRing(512, 1024);
+            _executionIdFallbackRing = new ExecutionIdRing(512, 1024);
+
+            // V12.1: Initialize Compliance Hub -- create log directory early (idempotent).
+            // Build 935 [Fix-2/3]: Symbol-specific log paths and LogicAudit moved to DataLoaded.
+            string logsDirInit = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "NinjaTrader 8",
+                "SIMA_Logs"
+            );
+            if (!System.IO.Directory.Exists(logsDirInit))
+                System.IO.Directory.CreateDirectory(logsDirInit);
+
+            // Add data series for MTF RMA Intelligence (Phase 9.2)
+            AddDataSeries(BarsPeriodType.Minute, 5); // Index 1 (Primary for ATR)
+            AddDataSeries(BarsPeriodType.Minute, 10); // Index 2
+            AddDataSeries(BarsPeriodType.Minute, 15); // Index 3
+
+            _configureComplete = true;
+        }
+
+        private void InitializeMmioMirror()
+        {
+            // Optional MMIO mirror. Named per-process so multiple NT instances do not collide.
+            // Failure is non-fatal: hot path runs against the heap ring even if the mirror fails.
+            try
+            {
+                string _mmfName =
+                    "V12_FleetDispatch_"
+                    + System.Diagnostics.Process.GetCurrentProcess().Id.ToString()
+                    + "_"
+                    + _photonShadowSalt.ToString("X16");
+                _photonMmioMirror = new MmioDispatchMirror(_mmfName, PhotonPoolCapacity, 64, _photonShadowSalt);
+                Print(string.Format("[PHOTON MMIO] mirror online: {0}", _mmfName));
+            }
+            catch (Exception _mmioEx)
+            {
+                _photonMmioMirror = null;
+                Print("[PHOTON MMIO] mirror unavailable (hot path unaffected): " + _mmioEx.Message);
+            }
+        }
         #endregion
     }
 }
