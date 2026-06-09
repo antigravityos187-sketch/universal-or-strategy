@@ -274,8 +274,50 @@ Get-ChildItem Env: | Where-Object { $_.Name -like "*GITHUB*" }
 - GitHub CLI Documentation: https://cli.github.com/manual/
 - Repository Transfer: https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository
 
+## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
+
+**All agents MUST perform this audit after EVERY use of this skill:**
+
+### Audit Checklist
+
+1. **Ambiguity Check**: Were any instructions unclear or produce unexpected results?
+   - Did Phase 0 (Token Cleanup) execute successfully? (Verify old tokens removed)
+   - Was the PAT token generated with ALL required scopes? (repo, workflow, admin:org)
+   - Did `gh auth status --show-token` confirm authentication? (Verify token active)
+   - Was the token set persistently at User level? (Check environment variables)
+   - Did repository transfer complete? (Verify new owner in `gh repo view`)
+   - Were all CI/CD secrets reconfigured? (Codacy, CodeScene, SonarCloud)
+   - Did local git remote update? (Verify `git remote -v` shows new URL)
+   - Were all documentation URLs updated? (README, CONTRIBUTING, docs/)
+
+2. **Gap Detection**: If ANY instruction was ambiguous or produced unexpected results:
+   - Document the gap in this SKILL.md immediately
+   - Add the quirk to the relevant section (Common Issues, Phase instructions, etc.)
+   - Update version history with the fix
+
+3. **Audit Statement**: If no gaps found, state:
+   ```
+   skill(github-migration): no gaps identified
+   ```
+
+4. **Protocol Violation**: Skipping this audit is a V12 protocol violation.
+
+### Known Quirks (Updated During Audits)
+
+- **Token Cleanup (2026-06-08)**: Old `GITHUB_TOKEN` from previous accounts persists in PowerShell profile - MUST be manually removed
+- **Token Scopes (2026-06-08)**: Missing `workflow` scope causes "Resource not accessible" errors - regenerate with all scopes
+- **OAuth Issues (2026-06-08)**: Some MCP servers (Cubic) don't support OAuth in Bob IDE - use CLI fallback
+- **PowerShell Profile (2026-06-08)**: `cleanup_github_token.ps1` detects but cannot auto-remove tokens from `$PROFILE` - manual edit required
+
+## V12 DNA Alignment
+
+- **Correctness by Construction**: Phase 0 cleanup prevents silent authentication failures
+- **ASCII-Only**: All commit messages and documentation must be ASCII-safe
+- **Jane Street Alignment**: Explicit token scope checklist prevents permission errors
+- **Karpathy Protocol**: Explicit success criteria at each phase (token verified, transfer complete, etc.)
+
 ---
 
 **Last Updated**: 2026-06-08
 **Maintainer**: Gemini CLI (Advanced Mode)
-**Status**: ✅ Active - Updated with mandatory token cleanup (Phase 0)
+**Status**: ✅ Active - Converted to self-improving format with Phase 0 token cleanup
