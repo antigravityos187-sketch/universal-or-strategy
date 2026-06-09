@@ -1,8 +1,110 @@
 ---
-description: Full YOLO-mode Epic Run. Orchestrates the entire V12 refactoring epic end-to-end -- planning, execution, and verification -- with minimal manual intervention.
+description: "[DEPRECATED] Full YOLO-mode Epic Run. Use new manifest-based workflow instead. See docs/workflow/EPIC_WORKFLOW_MIGRATION_GUIDE.md"
 argument-hint: <epic-slug> <target-description>
 ---
-# EPIC RUN -- FULL ORCHESTRATION
+
+# ⚠️ DEPRECATION NOTICE
+
+**This command is DEPRECATED as of 2026-06-09 (V12.25)**
+
+## Use New Manifest-Based Workflow Instead
+
+The monolithic `epic-run` workflow has been replaced with a **manifest-based independent subtask architecture** that provides:
+
+- ✅ No context window exhaustion (each phase is a fresh session)
+- ✅ Resume from any phase after failure
+- ✅ Parallel execution of independent phases
+- ✅ Clear artifact handoff via manifest.json
+- ✅ Watsonx Orchestrate integration ready
+
+## Migration Path
+
+### For New Epics (Recommended)
+
+Use individual phase commands instead of `epic-run`:
+
+```bash
+# Phase 0: Hotspot Analysis
+epic-intake EPIC-CCN-X "Description"
+
+# Phase 1: Scope Definition
+epic-scope-boundary EPIC-CCN-X --phase 1
+
+# Phase 1.5: Scope Boundary Validation
+epic-scope-boundary EPIC-CCN-X --phase 1.5
+
+# Phase 2: Architecture Planning
+epic-plan EPIC-CCN-X
+
+# Phase 3: DNA & PR Audit
+epic-scan EPIC-CCN-X
+
+# Phase 4: Ticket Generation
+epic-tickets EPIC-CCN-X
+
+# Phase 5.X: Ticket Execution
+epic-validate EPIC-CCN-X --ticket 1
+epic-validate EPIC-CCN-X --ticket 2
+
+# Phase 5.X.V: Per-Ticket Verification
+epic-verify-ticket EPIC-CCN-X --ticket 1
+epic-verify-ticket EPIC-CCN-X --ticket 2
+
+# Phase 6: Final Review
+epic-review-final EPIC-CCN-X
+```
+
+### For In-Progress Epics
+
+**Option 1**: Complete with old workflow (if >50% done)
+**Option 2**: Migrate to new workflow (if <50% done or stalled)
+
+```bash
+# Migrate existing epic to new workflow
+python scripts/epic_manifest.py migrate EPIC-CCN-X
+
+# Resume from next phase
+python scripts/epic_manifest.py next EPIC-CCN-X
+```
+
+## Documentation
+
+- **Workflow Walkthrough**: `docs/workflow/EPIC_WORKFLOW_WALKTHROUGH.md`
+- **Migration Guide**: `docs/workflow/EPIC_WORKFLOW_MIGRATION_GUIDE.md`
+- **Architecture Design**: `docs/workflow/V12_EPIC_WORKFLOW_REFACTORING_DESIGN.md`
+- **Manifest Schema**: `docs/workflow/EPIC_MANIFEST_SCHEMA.md`
+
+## Deprecation Timeline
+
+- **Week 1-4** (Current): Both workflows coexist, old workflow marked deprecated
+- **Week 5-8**: Gradual migration, old workflow discouraged
+- **Week 9-12**: Old workflow deprecated, warnings added
+- **Week 13+** (2026-09-01): Old workflow removed, new workflow mandatory
+
+## Why Migrate?
+
+**Old Workflow Problems**:
+- ❌ Context window exhaustion in long epics
+- ❌ No checkpointing (must restart from Phase 0 on failure)
+- ❌ Cannot parallelize independent tickets
+- ❌ Manual artifact management
+
+**New Workflow Benefits**:
+- ✅ Each phase is independent (no context exhaustion)
+- ✅ Resume from any phase (automatic checkpointing)
+- ✅ Parallel ticket execution (3x faster)
+- ✅ Automated state management via manifest.json
+
+## Support
+
+If you need help migrating, see:
+- Migration guide: `docs/workflow/EPIC_WORKFLOW_MIGRATION_GUIDE.md`
+- Contact: V12 Architecture Team
+- Slack: #v12-epic-workflow
+
+---
+
+# EPIC RUN -- FULL ORCHESTRATION (DEPRECATED)
 **Epic Slug:** $1
 **Target:** $2
 **Mode:** Orchestrator (YOLO-parity)
