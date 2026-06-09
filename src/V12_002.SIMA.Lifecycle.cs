@@ -936,53 +936,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (classification == null)
                             continue; // Skip unrecognized orders
 
-                        // Route to appropriate dictionary based on classification
-                        ConcurrentDictionary<string, Order> targetDict = RouteOrderToTargetDict(
-                            classification,
-                            name,
-                            out string key,
-                            out string dictName
-                        );
-
-                        targetDict[key] = ord;
-
-                        // [Build 980 Nexus] Rebuild activePositions structs so Rehydration does not lead to divergent REAPER audits.
-                        if (targetDict == entryOrders && !activePositions.ContainsKey(key))
-                        {
-                            PositionInfo pos = RebuildFleetPositionFromEntry(ord, key);
-                            activePositions[key] = pos;
-                            Print(
-                                string.Format(
-                                    "[SIMA HYDRATE] Rebuilt activePositions struct for {0} | DNA: IsMOMO={1} IsRMA={2} IsTREND={3} IsRetest={4}",
-                                    key,
-                                    pos.IsMOMOTrade,
-                                    pos.IsRMATrade,
-                                    pos.IsTRENDTrade,
-                                    pos.IsRetestTrade
-                                )
-                            );
-                        }
-                        else
-                        {
-                            // [Build 980 Phase 3]: Force-sync TotalContracts and ExecutingAccount if struct already exists.
-                            PositionInfo existingPos;
-                            if (activePositions.TryGetValue(key, out existingPos))
-                            {
-                                existingPos.TotalContracts = ord.Quantity;
-                                existingPos.ExecutingAccount = acct;
-                                Print(
-                                    string.Format(
-                                        "[SIMA HYDRATE] Force-synced TotalContracts={0} ExecutingAccount={1} for {2}",
-                                        ord.Quantity,
-                                        acct.Name,
-                                        key
-                                    )
-                                );
-                            }
-                        }
-
-                        Print(string.Format("[SIMA HYDRATE] Adopted working order {0} into {1}", name, dictName));
-                        adoptedCount++;
+                        // Adopt single order using extracted helper
+                        AdoptSingleOrder(ord, acct, classification, ref adoptedCount);
                     }
                 }
                 catch (Exception ex)
@@ -1057,6 +1012,76 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             return targetDict;
+        }
+
+        /// <summary>
+        /// Adopts a single order into tracking dictionaries with position synchronization.
+        /// Orchestrates: dictionary routing, order insertion, position tracking.
+        /// Side effects: Updates tracking dictionaries, activePositions, increments adoptedCount.
+        /// </summary>
+        /// <param name="ord">Order to adopt</param>
+        /// <param name="acct">Executing account</param>
+        /// <param name="classification">Order classification from ClassifyOrderByPrefix()</param>
+        /// <param name="adoptedCount">Reference to adoption counter (incremented on success)</param>
+        private void AdoptSingleOrder(Order ord, Account acct, string classification, ref int adoptedCount)
+        {
+            // 1. Route to target dictionary
+            ConcurrentDictionary<string, Order> targetDict = RouteOrderToTargetDict(
+                classification,
+                ord.Name,
+                out string key,
+                out string dictName
+            );
+
+            if (targetDict == null)
+            {
+                // Invalid classification - skip order
+                return;
+            }
+
+            // 2. Insert order into dictionary
+            targetDict[key] = ord;
+
+            // 3. Handle position tracking for entry orders
+            if (targetDict == entryOrders && !activePositions.ContainsKey(key))
+            {
+                // Rebuild position from entry order
+                PositionInfo pos = RebuildFleetPositionFromEntry(ord, key);
+                activePositions[key] = pos;
+                Print(
+                    string.Format(
+                        "[SIMA HYDRATE] Rebuilt activePositions struct for {0} | DNA: IsMOMO={1} IsRMA={2} IsTREND={3} IsRetest={4}",
+                        key,
+                        pos.IsMOMOTrade,
+                        pos.IsRMATrade,
+                        pos.IsTRENDTrade,
+                        pos.IsRetestTrade
+                    )
+                );
+            }
+            else
+            {
+                // Force-sync TotalContracts and ExecutingAccount if struct already exists
+                PositionInfo existingPos;
+                if (activePositions.TryGetValue(key, out existingPos))
+                {
+                    existingPos.TotalContracts = ord.Quantity;
+                    existingPos.ExecutingAccount = acct;
+                    activePositions[key] = existingPos;
+                    Print(
+                        string.Format(
+                            "[SIMA HYDRATE] Force-synced TotalContracts={0} ExecutingAccount={1} for {2}",
+                            ord.Quantity,
+                            acct.Name,
+                            key
+                        )
+                    );
+                }
+            }
+
+            // 4. Log adoption
+            Print(string.Format("[SIMA HYDRATE] Adopted working order {0} into {1}", ord.Name, dictName));
+            adoptedCount++;
         }
 
         /// <summary>
