@@ -1,0 +1,92 @@
+{
+  "epic_id": "EPIC-CCN-16",
+  "description": "Extract HydrateFSMsFromWorkingOrders (CYC 45 \u2192 \u22648)",
+  "status": "in_progress",
+  "created_at": "2026-06-09T05:28:34.274241+00:00",
+  "updated_at": "2026-06-09T05:32:16.136981+00:00",
+  "phases": {
+    "0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "mode": "ask",
+      "started_at": "2026-06-09T05:30:01.678822+00:00",
+      "completed_at": "2026-06-09T05:32:16.136981+00:00",
+      "input_artifacts": [],
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-16/00-hotspots.md"
+      ],
+      "notes": "Hotspot analysis complete. Target: HydrateFSMsFromWorkingOrders (CYC 45 \u2192 \u22648)"
+    },
+    "1": {
+      "name": "Scope Definition",
+      "status": "pending",
+      "mode": "plan",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "1.5": {
+      "name": "Scope Boundary",
+      "status": "pending",
+      "mode": "plan",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "2": {
+      "name": "Architecture Planning",
+      "status": "pending",
+      "mode": "plan",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "3": {
+      "name": "DNA & PR Audit",
+      "status": "pending",
+      "mode": "advanced",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "4": {
+      "name": "Ticket Generation",
+      "status": "pending",
+      "mode": "plan",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    }
+  },
+  "dependencies": {
+    "1": [
+      "0"
+    ],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ]
+  },
+  "parallel_groups": [],
+  "metadata": {
+    "total_tickets": null,
+    "completed_tickets": 0,
+    "failed_phases": [],
+    "retry_count": 0,
+    "estimated_duration_minutes": null,
+    "actual_duration_minutes": null
+  }
+}
