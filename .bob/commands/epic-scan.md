@@ -4,13 +4,39 @@ argument-hint: <epic-slug>
 ---
 # PHASE 2.3: EPIC SCAN (SENTINEL AUDIT)
 **Epic Slug:** $1
-**Input:** docs/brain/$1/01-analysis.md + docs/brain/$1/02-approach.md
-**Output:** docs/brain/$1/02-greptile-report.md
-**Protocol:** V12 Photon Kernel -- Sentinel-Adversary Independent Review
+**Protocol:** V12 Photon Kernel -- Manifest-Based Independent Subtask
 
 > You are a Sentinel Auditor performing an independent adversarial review of the refactoring approach.
 > You use **Greptile MCP** (primary) or **jCodemunch-MCP** (mandatory fallback) to verify the approach.
 > Your goal is to find "hidden" gaps, regressions, or DNA violations that the Planner missed.
+
+---
+
+## STEP 0 -- LOAD MANIFEST
+
+```python
+import sys
+sys.path.append('scripts')
+from epic_manifest import load_manifest, validate_dependencies
+
+# Load manifest
+try:
+    manifest = load_manifest("$1")
+except FileNotFoundError:
+    print("[ERROR] Manifest not found. Run /epic-intake first.")
+    exit(1)
+
+# Verify Phase 2 complete
+if not validate_dependencies("$1", "2.3"):
+    print("[ERROR] Phase 2 (Architecture Planning) must be completed first")
+    print("Dependencies not satisfied for Phase 2.3")
+    exit(1)
+
+print("[✓] Manifest loaded. Phase 2 complete.")
+print(f"[✓] Inputs:")
+for artifact in manifest['phases']['2']['output_artifacts']:
+    print(f"    - {artifact}")
+```
 
 ---
 
@@ -27,10 +53,20 @@ Value system:
 
 ---
 
-## STEP 1 -- PREPARE QUERIES
+## STEP 1 -- READ PHASE 2 OUTPUTS
 
-Read the Master Index in `docs/brain/$1/02-approach.md`.
-Identify the 4-6 most critical integration points or risky extractions.
+Read the analysis and approach documents from manifest:
+
+```python
+# Get Phase 2 outputs
+phase2_outputs = manifest['phases']['2']['output_artifacts']
+
+print(f"[→] Reading Phase 2 outputs:")
+for artifact in phase2_outputs:
+    print(f"    - {artifact}")
+```
+
+Use `read_file` to load the documents. Identify the 4-6 most critical integration points or risky extractions.
 
 Standard V12 Queries (customize for epic $1):
 1. "What are the current safety gaps in [subgraph]? Focus on [risk hotspot]."
@@ -59,7 +95,7 @@ Captured Intel:
 
 ## STEP 3 -- WRITE SENTINEL REPORT
 
-Produce `docs/brain/$1/02-greptile-report.md`:
+Produce `docs/brain/$1/02-sentinel-report.md`:
 
 ```markdown
 # Epic: $1 -- Sentinel Audit (Semantic Scan)
@@ -79,8 +115,45 @@ Produce `docs/brain/$1/02-greptile-report.md`:
 
 ---
 
+## STEP 4 -- UPDATE MANIFEST
+
+```python
+from epic_manifest import update_manifest
+
+# Write output artifact
+output_path = f"docs/brain/$1/02-sentinel-report.md"
+
+# Determine status based on verdict
+import os
+if os.path.exists(output_path):
+    with open(output_path, 'r') as f:
+        content = f.read()
+        if "REVISION REQUIRED" in content:
+            status = "completed"
+            notes = "Sentinel audit found issues. Revision required before Phase 3."
+        else:
+            status = "completed"
+            notes = "Sentinel audit passed. Ready for Phase 3."
+else:
+    print("[ERROR] Sentinel report not created")
+    exit(1)
+
+# Update manifest
+update_manifest(
+    "$1",
+    "2.3",
+    status,
+    outputs=[output_path],
+    notes=notes
+)
+
+print(f"[✓] Phase 2.3 complete. Output: {output_path}")
+```
+
+---
+
 ## !! SENTINEL-GATE !!
-**STOP HERE.** Present the `02-greptile-report.md`.
+**STOP HERE.** Present the `02-sentinel-report.md`.
 If `REVISION REQUIRED` is issued, the Director must re-run `/epic-plan` with the findings.
 If `PASSED` is issued, the Director can proceed to `/epic-validate`.
 
