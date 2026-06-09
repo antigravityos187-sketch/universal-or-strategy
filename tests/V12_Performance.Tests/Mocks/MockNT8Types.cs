@@ -37,6 +37,7 @@ namespace V12_Performance.Tests.Mocks
     public enum MockOrderState
     {
         Unknown,
+        Initialized,
         Submitted,
         Accepted,
         Working,
@@ -54,10 +55,12 @@ namespace V12_Performance.Tests.Mocks
     public class MockAccount
     {
         public string Name { get; set; }
+        public System.Collections.Generic.List<MockPosition> Positions { get; set; }
 
         public MockAccount(string name)
         {
             Name = name;
+            Positions = new System.Collections.Generic.List<MockPosition>();
         }
     }
 
@@ -69,6 +72,20 @@ namespace V12_Performance.Tests.Mocks
         public MockMarketPosition MarketPosition { get; set; }
         public int Quantity { get; set; }
         public double AveragePrice { get; set; }
+        public MockInstrument Instrument { get; set; }
+    }
+
+    /// <summary>
+    /// Mock Instrument for testing.
+    /// </summary>
+    public class MockInstrument
+    {
+        public string FullName { get; set; }
+
+        public MockInstrument(string fullName)
+        {
+            FullName = fullName;
+        }
     }
 
     /// <summary>

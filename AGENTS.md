@@ -50,7 +50,13 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 - **ASCII-Only Compliance**: NEVER use Unicode, emoji, or curly quotes in C# string literals.
 - **Jane Street Alignment (V12.17)**: ALL agents (Bob, Codex, Qwen, Antigravity, Jules, Rovo Dev, Cursor, etc.) MUST load and apply the ingested Jane Street Intel from `docs/intel/jane-street/` for every architectural decision.
 - **Hard-Link Integrity**: Every `src/` modification MUST be followed by `powershell -File .\deploy-sync.ps1` to re-synchronize NinjaTrader hard links.
-- **Three-Tier Branch Model (V12.18)**: ALL agents MUST follow the branch strategy documented in `docs/protocol/BRANCH_STRATEGY.md`. Source code, infrastructure, and protocol changes MUST be on separate branches.
+- **Branch Strategy Mandate (V12.24)**:
+  * PRIMARY: GitButler virtual branches ONLY (`but branch new <name>`). All work on `gitbutler/workspace` physical branch.
+  * ALTERNATIVE: Git worktrees for true isolation (`git worktree add`).
+  * BANNED: Regular git branches (`git checkout -b`) for development work.
+  * ENFORCEMENT: epic-run Phase -1 MUST verify branch strategy compliance.
+  * VIOLATION: P0 blocker - epic will not start.
+  * REFERENCE: See `docs/protocol/BRANCH_STRATEGY_ENFORCEMENT.md` for complete protocol.
 
 
 ## 3. Standard Commands
@@ -292,46 +298,219 @@ Replace `<your-model-id>` with your active model:
 
 The `model=` parameter rides on the existing `plan_turn` call     it does **not** add a separate tool invocation. If `plan_turn` is not appropriate for a non-code task, call `announce_model(model="...")` once instead.
 
-## 7. Phase 6 Recursive Protocol (V15.4)
+## 7. V12 Epic Workflow (Manifest-Based Architecture)
 
-This protocol governs the **SIMA Subgraph Extraction** and all complex refactoring missions.
+**Version**: V12.25 (Manifest-Based Independent Subtasks)
+**Effective**: 2026-06-09
+**Reference**: `docs/workflow/V12_EPIC_WORKFLOW_REFACTORING_DESIGN.md`
 
-### Stage 0: Forensic Intake (Orchestrator)
-- **Tool**: `jcodemunch-mcp` + `graphify`
-- **Goal**: Generate "Platinum Standard" prompts for the ARCHITECT.
-- **Output**: Forensic report in `docs/brain/forensics_report.md`.
+This protocol governs all V12 epic workflows using a **manifest-based independent subtask architecture**. Each phase runs as a separate session with clear inputs/outputs tracked in a central `manifest.json`.
 
-### Stage 1: Vision/Spec (Architect)
-- **Agent**: Bob CLI (`v12-engineer`)
-- **Goal**: Dialogue with Director to generate `mini-spec.md`.
-- **Constraint**: Must verify logic against V12 DNA.
+### Architecture Overview
 
-### Stage 2: Arch Planning (Architect)
-- **Agent**: Bob CLI (`v12-engineer`)
-- **Goal**: Generate `implementation_plan.md` + Mermaid diagrams.
-- **Audit**: Triple-Agent UltraThink audit required.
+**Old Model (Deprecated)**: Monolithic single-session workflow
+- ❌ Context window exhaustion
+- ❌ No checkpointing between phases
+- ❌ Cannot parallelize independent work
+- ❌ Difficult to resume after failure
 
-### Stage 3: DNA & PR Audit (Adjudicator)
-- **Agent**: Arena AI (Red Team)
-- **Goal**: Verify plan and PR health against V12 constraints (No locks, Atomic, ASCII-only).
-- **Gate**: PASS/FAIL. Fail triggers Stage 2 rework.
+**New Model (Current)**: Independent subtask workflow
+- ✅ Each phase is a fresh session (no context exhaustion)
+- ✅ Clear artifact handoff via manifest
+- ✅ Parallel execution of independent phases
+- ✅ Resume from any phase after failure
+- ✅ Watsonx Orchestrate integration ready
 
-### Stage 4: Recursive Execution (Engineer Selection)
-- **Action**: Hand off to the selected Engineer via the Bob CLI Orchestrator session.
-- **Targets**: 
-  - **Bob CLI** for extraction/splitting (P5 Surgical).
-  - **Codex CLI** for logic hardening (P5 Logic).
-  - **Gemini CLI** for **Utility/Non-src** tasks (P5 Utility). Always use Gemini for model-agnostic tasks to conserve specialized tokens.
-- **Safety**: Mandatory checkpointing enabled.
+### Workflow Phases
 
-### Stage 5: Verification/Review (Forensics)
-- **Agent**: Bob CLI (verify cycle) + Orchestrator
-- **Goal**: Compare implementation against `implementation_plan.md`.
-- **Loop**: Automated "Fix-all" loop if logic drifts.
+```mermaid
+graph TD
+    P0[Phase 0: Hotspot Analysis] --> P1[Phase 1: Scope Definition]
+    P1 --> P1.5[Phase 1.5: Scope Boundary]
+    P1.5 --> P2[Phase 2: Architecture Planning]
+    P2 --> P3[Phase 3: DNA & PR Audit]
+    P3 --> P4[Phase 4: Ticket Generation]
+    P4 --> P5.1[Phase 5.1: Ticket 1]
+    P4 --> P5.2[Phase 5.2: Ticket 2]
+    P4 --> P5.N[Phase 5.N: Ticket N]
+    P5.1 --> P5.1.V[Phase 5.1.V: Verify Ticket 1]
+    P5.2 --> P5.2.V[Phase 5.2.V: Verify Ticket 2]
+    P5.N --> P5.N.V[Phase 5.N.V: Verify Ticket N]
+    P5.1.V --> P6[Phase 6: Final Review]
+    P5.2.V --> P6
+    P5.N.V --> P6
+    
+    P5.1 -.parallel.-> P5.2
+    P5.2 -.parallel.-> P5.N
+```
 
-### Stage 6: Sign-off (Director)
-- **Action**: `powershell -File .\deploy-sync.ps1`
-- **Final Test**: F5 in NinjaTrader + BUILD_TAG verification.
+### Phase Definitions
+
+| Phase | Command | Mode | Purpose | Inputs | Outputs |
+|-------|---------|------|---------|--------|---------|
+| **0** | `epic-intake` | `ask` | Hotspot analysis | None | `00-hotspots.md`, `manifest.json` |
+| **1** | `epic-scope-boundary` | `plan` | Scope definition | `00-hotspots.md` | `00-scope.md` |
+| **1.5** | `epic-scope-boundary` | `plan` | Scope validation | `00-scope.md` | `01-scope-boundary.md` |
+| **2** | `epic-plan` | `plan` | Architecture design | `01-scope-boundary.md` | `02-architecture-plan.md` |
+| **3** | `epic-scan` | `advanced` | DNA & PR audit | `02-architecture-plan.md` | `03-audit-report.md` |
+| **4** | `epic-tickets` | `plan` | Ticket generation | `02-architecture-plan.md` | `04-tickets.md` |
+| **5.X** | `epic-validate` | `v12-engineer` | Ticket execution | `04-tickets.md` | `ticket-X-completion.md` |
+| **5.X.V** | `epic-verify-ticket` | `advanced` | Per-ticket verification | `ticket-X-completion.md` | `ticket-X-verification.md` |
+| **6** | `epic-review-final` | `advanced` | Final review | All verification reports | `05-completion-report.md` |
+
+### Manifest-Based State Management
+
+**Central Manifest**: `docs/brain/EPIC-{ID}/manifest.json`
+
+Each phase:
+1. **Reads manifest** to verify dependencies satisfied
+2. **Loads input artifacts** specified in manifest
+3. **Executes work** using input artifacts
+4. **Writes output artifacts** to standard locations
+5. **Updates manifest** with status and output paths
+
+**Manifest Helper**: `scripts/epic_manifest.py`
+- `load_manifest(epic_id)` - Load and validate manifest
+- `update_manifest(epic_id, phase, status, outputs)` - Update phase status
+- `validate_dependencies(epic_id, phase)` - Check dependencies satisfied
+- `get_next_phases(epic_id)` - Determine executable phases
+
+### Parallel Execution
+
+**Independent Phases** (can run concurrently):
+- **Ticket Execution**: Phase 5.1, 5.2, ..., 5.N (if tickets are independent)
+- **Verification**: Phase 5.1.V, 5.2.V, ..., 5.N.V (after respective tickets)
+
+**Orchestration**: Use Bob CLI orchestrator or Watsonx Orchestrate to manage parallel execution.
+
+### Standard Artifacts
+
+```
+docs/brain/EPIC-{ID}/
+  ├─ manifest.json              # Central state tracker
+  ├─ 00-hotspots.md            # Phase 0 output
+  ├─ 00-scope.md               # Phase 1 output
+  ├─ 01-scope-boundary.md      # Phase 1.5 output
+  ├─ 02-architecture-plan.md   # Phase 2 output
+  ├─ 02-diagrams.mmd           # Phase 2 diagrams
+  ├─ 03-audit-report.md        # Phase 3 output
+  ├─ 04-tickets.md             # Phase 4 output
+  ├─ ticket-1-completion.md    # Phase 5.1 output
+  ├─ ticket-1-verification.md  # Phase 5.1.V output
+  ├─ ticket-2-completion.md    # Phase 5.2 output
+  ├─ ticket-2-verification.md  # Phase 5.2.V output
+  └─ 05-completion-report.md   # Phase 6 output
+```
+
+### Agent Selection by Phase
+
+| Phase | Agent | Rationale |
+|-------|-------|-----------|
+| 0 | Ask mode | Analysis only, no code changes |
+| 1, 1.5, 2, 4 | Plan mode | Strategic planning, no code changes |
+| 3, 5.X.V, 6 | Advanced mode | Requires MCP tools (jcodemunch, graphify) |
+| 5.X | Bob CLI (`v12-engineer`) | Surgical refactoring in src/ |
+
+### Failure Recovery
+
+**Resume from Any Phase**:
+```bash
+# Check current status
+python scripts/epic_manifest.py status EPIC-CCN-X
+
+# Resume from failed phase
+epic-validate EPIC-CCN-X --ticket 2  # Resume Phase 5.2
+```
+
+**Rollback Protocol**:
+1. Identify failed phase in manifest
+2. Review phase output artifacts
+3. Fix issues in separate session
+4. Update manifest status to `pending`
+5. Re-run phase
+
+### Watsonx Orchestrate Integration
+
+**Skills Available**:
+- `v12-epic-start` - Initialize epic workflow
+- `v12-epic-phase` - Execute single phase
+- `v12-epic-status` - Check workflow status
+
+**Orchestration Flow**:
+1. Watsonx reads manifest for dependencies
+2. Launches independent phase subtasks
+3. Monitors completion via manifest updates
+4. Triggers next phases when dependencies satisfied
+
+**Reference**: `docs/workflow/WATSONX_ORCHESTRATE_INTEGRATION.md`
+
+### Migration from Old Workflow
+
+**Deprecated Command**: `epic-run` (monolithic workflow)
+- ⚠️ Use individual phase commands instead
+- ⚠️ See `docs/workflow/EPIC_WORKFLOW_MIGRATION_GUIDE.md`
+
+**New Workflow Commands**:
+- `epic-intake` - Start new epic (Phase 0)
+- `epic-scope-boundary` - Define and validate scope (Phase 1, 1.5)
+- `epic-plan` - Architecture planning (Phase 2)
+- `epic-scan` - DNA & PR audit (Phase 3)
+- `epic-tickets` - Generate tickets (Phase 4)
+- `epic-validate` - Execute ticket (Phase 5.X)
+- `epic-verify-ticket` - Verify ticket (Phase 5.X.V)
+- `epic-review-final` - Final review (Phase 6)
+
+### Complete Walkthrough
+
+**Reference**: `docs/workflow/EPIC_WORKFLOW_WALKTHROUGH.md`
+
+**Quick Start**:
+```bash
+# 1. Start epic (Phase 0)
+epic-intake EPIC-CCN-X "Description"
+
+# 2. Define scope (Phase 1)
+epic-scope-boundary EPIC-CCN-X --phase 1
+
+# 3. Validate scope (Phase 1.5)
+epic-scope-boundary EPIC-CCN-X --phase 1.5
+
+# 4. Plan architecture (Phase 2)
+epic-plan EPIC-CCN-X
+
+# 5. Audit plan (Phase 3)
+epic-scan EPIC-CCN-X
+
+# 6. Generate tickets (Phase 4)
+epic-tickets EPIC-CCN-X
+
+# 7. Execute tickets (Phase 5.X)
+epic-validate EPIC-CCN-X --ticket 1
+epic-validate EPIC-CCN-X --ticket 2
+
+# 8. Verify tickets (Phase 5.X.V)
+epic-verify-ticket EPIC-CCN-X --ticket 1
+epic-verify-ticket EPIC-CCN-X --ticket 2
+
+# 9. Final review (Phase 6)
+epic-review-final EPIC-CCN-X
+```
+
+### Success Criteria
+
+**Per Phase**:
+- ✅ Dependencies satisfied before execution
+- ✅ Input artifacts loaded successfully
+- ✅ Output artifacts written to standard locations
+- ✅ Manifest updated with status and outputs
+- ✅ Build passes (for code-changing phases)
+
+**Epic Completion**:
+- ✅ All phases status = `completed`
+- ✅ All tickets verified
+- ✅ Final review passed
+- ✅ `deploy-sync.ps1` executed successfully
+- ✅ F5 in NinjaTrader successful
 
 ## 8. IBM Bob Shell Integration
 
