@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.037-epic-ccn-16-t5"; // EPIC-CCN-16 Ticket 5: Extract HydrateFromOpenPositions (Position Pass logic)
+        public const string BUILD_TAG = "1111.038-epic-ccn-16-t5-fix"; // EPIC-CCN-16 Ticket 5: Fix HydrateFromOpenPositions signature (ConcurrentDictionary)
 
         public class UILiveTargetSnapshot
         {
