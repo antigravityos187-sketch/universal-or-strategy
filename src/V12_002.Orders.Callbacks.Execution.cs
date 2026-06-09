@@ -74,12 +74,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 string flatExpKey = ExpKey(flatAcctName);
                 bool hasSyncPending = IsDispatchSyncPending(flatExpKey);
-                bool hasPendingEntry = HasPendingEntryForAccount(flatAcctName);
+                bool hasPendingEntry = HasPendingEntryOrderForAccount(flatAcctName);
 
                 bool hasActivePositionForAcct = false;
                 if (!hasPendingEntry)
                 {
-                    hasActivePositionForAcct = HasActivePositionForAccount(flatAcctName);
+                    hasActivePositionForAcct = HasUnfilledPositionForAccount(flatAcctName);
                 }
 
                 if (hasPendingEntry || hasActivePositionForAcct || hasSyncPending)
@@ -115,29 +115,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (pos.EntryFilled && pos.RemainingContracts > 0)
                 {
                     Print("EXTERNAL CLOSE DETECTED - Position went flat. Cancelling orphaned orders...");
-                    if (stopOrders.TryGetValue(kvp.Key, out var stopOrder))
-                    {
-                        if (
-                            stopOrder != null
-                            && (
-                                stopOrder.OrderState == OrderState.Working
-                                || stopOrder.OrderState == OrderState.Accepted
-                            )
-                        )
-                            CancelOrderSafe(stopOrder, pos);
-                    }
-                    for (int tNum = 1; tNum <= 5; tNum++)
-                    {
-                        var tDict = GetTargetOrdersDictionary(tNum);
-                        if (tDict != null && tDict.TryGetValue(kvp.Key, out var tOrder))
-                        {
-                            if (
-                                tOrder != null
-                                && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted)
-                            )
-                                CancelOrderSafe(tOrder, pos);
-                        }
-                    }
+                    CancelOrphanedOrdersForPosition(kvp.Key, pos);
                     positionsToCleanup.Add(kvp.Key);
                 }
             }
@@ -150,7 +128,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // EPIC-CCN-18 Ticket 1: Boolean helper methods (CYC 37->23, -14 points)
-        private bool HasPendingEntryForAccount(string accountName)
+        private bool HasPendingEntryOrderForAccount(string accountName)
         {
             foreach (var kvp in entryOrders.ToArray())
             {
@@ -169,7 +147,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             return false;
         }
 
-        private bool HasActivePositionForAccount(string accountName)
+        private bool HasUnfilledPositionForAccount(string accountName)
         {
             foreach (var kvp in activePositions.ToArray())
             {
@@ -183,6 +161,38 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
             }
             return false;
+        }
+
+        // EPIC-CCN-18 Ticket 2: Cancellation helper method (CYC 23->13, -10 points)
+        private void CancelOrphanedOrdersForPosition(string posKey, PositionInfo pos)
+        {
+            // Cancel stop order if active
+            if (stopOrders.TryGetValue(posKey, out var stopOrder))
+            {
+                if (
+                    stopOrder != null
+                    && (stopOrder.OrderState == OrderState.Working || stopOrder.OrderState == OrderState.Accepted)
+                )
+                {
+                    CancelOrderSafe(stopOrder, pos);
+                }
+            }
+
+            // Cancel all 5 target orders if active
+            for (int tNum = 1; tNum <= 5; tNum++)
+            {
+                var tDict = GetTargetOrdersDictionary(tNum);
+                if (tDict != null && tDict.TryGetValue(posKey, out var tOrder))
+                {
+                    if (
+                        tOrder != null
+                        && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted)
+                    )
+                    {
+                        CancelOrderSafe(tOrder, pos);
+                    }
+                }
+            }
         }
 
         // Build 935 [CB-B935-002]: Target count broadcast extracted from OnPositionUpdate.
