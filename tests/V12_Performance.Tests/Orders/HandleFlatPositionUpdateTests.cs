@@ -221,6 +221,8 @@ namespace V12_Performance.Tests.Orders
             });
 
             Assert.Contains("accountName", exception.Message);
+        }
+
         // ============================================================================
         // Helper 3 Tests: CancelOrphanedOrdersForPosition (8 tests)
         // ============================================================================
