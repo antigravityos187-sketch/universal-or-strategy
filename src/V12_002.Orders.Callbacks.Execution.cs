@@ -225,6 +225,27 @@ namespace NinjaTrader.NinjaScript.Strategies
             Enqueue(ctx => ctx.ProcessOnExecutionUpdate(_on, _eid, _oid, _of, _ost, _pr, _qty, _ex));
         }
 
+        /// <summary>
+        /// V12.CCN-15 [T1]: Extracts entry name from order name by removing prefix and optional timestamp suffix.
+        /// </summary>
+        /// <param name="orderName">Full order name (e.g., "Stop_Entry1_123456789012345")</param>
+        /// <param name="prefix">Prefix to remove (e.g., "Stop_", "T1_", "Trim_")</param>
+        /// <returns>Entry name without prefix or timestamp (e.g., "Entry1"), or empty string if prefix doesn't match</returns>
+        private static string ExtractEntryNameFromOrder(string orderName, string prefix)
+        {
+            if (!orderName.StartsWith(prefix))
+                return "";
+
+            string entryPart = orderName.Substring(prefix.Length);
+
+            // Strip timestamp suffix if present (format: _123456789012345)
+            int lastUnderscore = entryPart.LastIndexOf('_');
+            if (lastUnderscore > 0 && entryPart.Length - lastUnderscore > 10)
+                entryPart = entryPart.Substring(0, lastUnderscore);
+
+            return entryPart;
+        }
+
         private void ProcessOnExecutionUpdate(
             string orderName,
             string executionId,
@@ -286,25 +307,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                     LogApexPerformance();
                 }
 
-                // Helper: Extract entry name from order name (removes prefix and optional timestamp suffix)
-                Func<string, string, string> extractEntryName = (name, prefix) =>
-                {
-                    if (!name.StartsWith(prefix))
-                        return "";
-                    string entryPart = name.Substring(prefix.Length);
-                    // Strip timestamp suffix if present (format: _123456789012345)
-                    int lastUnderscore = entryPart.LastIndexOf('_');
-                    if (lastUnderscore > 0 && entryPart.Length - lastUnderscore > 10)
-                        entryPart = entryPart.Substring(0, lastUnderscore);
-                    return entryPart;
-                };
-
                 // ============================================================
                 // 1. STOP LOSS FILL - Manual OCO: Cancel all remaining targets
                 // ============================================================
                 if (orderName.StartsWith("Stop_"))
                 {
-                    string entryName = extractEntryName(orderName, "Stop_");
+                    string entryName = ExtractEntryNameFromOrder(orderName, "Stop_");
                     if (
                         !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
                     )
@@ -376,7 +384,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // Extract target number from prefix (T1_, T2_, etc.)
                     int targetNum = orderName[1] - '0';
                     string targetPrefix = "T" + targetNum + "_";
-                    string entryName = extractEntryName(orderName, targetPrefix);
+                    string entryName = ExtractEntryNameFromOrder(orderName, targetPrefix);
 
                     if (
                         !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
@@ -457,7 +465,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // getting stopped out would SELL 4 (close 2 + go SHORT 2) = DISASTER.
                 else if (orderName.StartsWith("Trim_"))
                 {
-                    string entryName = extractEntryName(orderName, "Trim_");
+                    string entryName = ExtractEntryNameFromOrder(orderName, "Trim_");
                     if (
                         !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
                     )
