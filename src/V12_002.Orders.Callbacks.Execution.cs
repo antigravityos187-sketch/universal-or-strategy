@@ -299,6 +299,74 @@ namespace NinjaTrader.NinjaScript.Strategies
             return false; // Not a duplicate, proceed with processing
         }
 
+        /// <summary>
+        /// V12.CCN-15 [T3-SUB]: Cancels all working target orders for an entry (manual OCO).
+        /// V12.1101E [F-07]: Keep target dictionary refs until terminal broker confirmation.
+        /// </summary>
+        /// <param name="entryName">Entry name</param>
+        /// <param name="pos">Position info</param>
+        /// <returns>Count of cancelled target orders</returns>
+        private int CancelTargetOrdersForEntry(string entryName, PositionInfo pos)
+        {
+            int cancelledTargets = 0;
+            for (int tNum = 1; tNum <= 5; tNum++)
+            {
+                var tDict = GetTargetOrdersDictionary(tNum);
+                if (tDict != null && tDict.TryGetValue(entryName, out var tOrder))
+                {
+                    if (
+                        tOrder != null
+                        && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted)
+                    )
+                    {
+                        CancelOrderSafe(tOrder, pos);
+                        cancelledTargets++;
+                    }
+                }
+            }
+            return cancelledTargets;
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T3]: Handles stop loss fill execution.
+        /// Reduces position, cancels remaining targets (manual OCO), and cleans up if fully closed.
+        /// </summary>
+        /// <param name="orderName">Stop order name (e.g., "Stop_Entry1")</param>
+        /// <param name="quantity">Fill quantity</param>
+        /// <param name="price">Fill price</param>
+        private void HandleStopLossFill(string orderName, int quantity, double price)
+        {
+            string entryName = ExtractEntryNameFromOrder(orderName, "Stop_");
+            if (string.IsNullOrEmpty(entryName) || !activePositions.TryGetValue(entryName, out PositionInfo pos))
+                return;
+
+            // Reduce position
+            pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
+            int remainingAfterStop = pos.RemainingContracts;
+
+            Print(string.Format("STOP FILLED: {0} @ {1:F2}. Cancelling targets.", quantity, price));
+
+            // Manual OCO: Cancel all remaining profit targets
+            int cancelledTargets = CancelTargetOrdersForEntry(entryName, pos);
+            if (cancelledTargets > 0)
+            {
+                Print(string.Format("OCO: Cancelled {0} target orders for {1}", cancelledTargets, entryName));
+            }
+
+            // Cleanup if position fully closed
+            // B957/D1: Only remove stopOrders and pendingStopReplacements when position is fully closed.
+            if (remainingAfterStop <= 0)
+            {
+                stopOrders.TryRemove(entryName, out _);
+                if (pendingStopReplacements.TryRemove(entryName, out _))
+                    Interlocked.Decrement(ref pendingReplacementCount);
+                activePositions.TryRemove(entryName, out _);
+                entryOrders.TryRemove(entryName, out _);
+                SymmetryGuardForgetEntry(entryName);
+                Print(string.Format("Position {0} fully closed by stop.", entryName));
+            }
+        }
+
         private void ProcessOnExecutionUpdate(
             string orderName,
             string executionId,
@@ -328,67 +396,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     LogApexPerformance();
                 }
 
-                // ============================================================
-                // 1. STOP LOSS FILL - Manual OCO: Cancel all remaining targets
-                // ============================================================
+                // V12.CCN-15 [T3]: Stop loss fill handler
                 if (orderName.StartsWith("Stop_"))
                 {
-                    string entryName = ExtractEntryNameFromOrder(orderName, "Stop_");
-                    if (
-                        !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
-                    )
-                    {
-                        int remainingAfterStop;
-                        pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
-                        remainingAfterStop = pos.RemainingContracts;
-
-                        Print(string.Format("STOP FILLED: {0} @ {1:F2}. Cancelling targets.", quantity, price));
-
-                        // Manual OCO: Cancel all remaining profit targets immediately
-                        // V12.1101E [F-07]: Keep target dictionary refs until terminal broker confirmation.
-                        int cancelledTargets = 0;
-                        for (int tNum = 1; tNum <= 5; tNum++)
-                        {
-                            var tDict = GetTargetOrdersDictionary(tNum);
-                            if (tDict != null && tDict.TryGetValue(entryName, out var tOrder))
-                            {
-                                if (
-                                    tOrder != null
-                                    && (
-                                        tOrder.OrderState == OrderState.Working
-                                        || tOrder.OrderState == OrderState.Accepted
-                                    )
-                                )
-                                {
-                                    CancelOrderSafe(tOrder, pos);
-                                    cancelledTargets++;
-                                }
-                            }
-                        }
-
-                        if (cancelledTargets > 0)
-                        {
-                            Print(
-                                string.Format("OCO: Cancelled {0} target orders for {1}", cancelledTargets, entryName)
-                            );
-                        }
-
-                        // B957/D1: Only remove stopOrders and pendingStopReplacements when position is fully closed.
-                        // Do NOT remove on partial fills -- the stop may still be tracking residual contracts.
-                        if (remainingAfterStop <= 0)
-                        {
-                            stopOrders.TryRemove(entryName, out _);
-                            if (pendingStopReplacements.TryRemove(entryName, out _))
-                                Interlocked.Decrement(ref pendingReplacementCount);
-                            activePositions.TryRemove(entryName, out _);
-                            entryOrders.TryRemove(entryName, out _);
-                        }
-                        if (remainingAfterStop <= 0)
-                        {
-                            SymmetryGuardForgetEntry(entryName);
-                            Print(string.Format("Position {0} fully closed by stop.", entryName));
-                        }
-                    }
+                    HandleStopLossFill(orderName, quantity, price);
                 }
                 // ============================================================
                 // 2. TARGET 1-5 FILL - Reduce stop quantity (unified loop)
