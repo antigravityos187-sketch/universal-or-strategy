@@ -522,6 +522,24 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Resolves remaining contracts for FSM hydration based on state and position.
+        /// Pure function: returns order quantity for non-Active states, position quantity for Active.
+        /// </summary>
+        /// <param name="state">FSM state</param>
+        /// <param name="orderQuantity">Order quantity</param>
+        /// <param name="positionQuantity">Live position quantity (nullable)</param>
+        /// <returns>Remaining contracts to hydrate</returns>
+        private int ResolveRemainingContracts(FollowerBracketState state, int orderQuantity, int? positionQuantity)
+        {
+            int remainingContracts = Math.Max(0, orderQuantity);
+            if (state == FollowerBracketState.Active && positionQuantity.HasValue)
+            {
+                remainingContracts = Math.Abs(positionQuantity.Value);
+            }
+            return remainingContracts;
+        }
+
+        /// <summary>
         /// Phase 5: Rebuilds _followerBrackets and _orderIdToFsmKey from already-adopted
         /// working orders. Called from HydrateWorkingOrdersFromBroker() before the
         /// adoption-complete gate is set. Idempotent -- safe to call on every reconnect.
@@ -554,10 +572,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (hydrationState == null)
                     continue; // Terminal state - skip FSM creation
 
-                int hydratedRemainingContracts = Math.Max(0, entryOrder.Quantity);
+                Position livePosition = null;
                 if (hydrationState.Value == FollowerBracketState.Active)
                 {
-                    Position livePosition = pi
+                    livePosition = pi
                         .ExecutingAccount.Positions.ToArray()
                         .FirstOrDefault(p =>
                             p != null
@@ -565,9 +583,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                             && p.Instrument.FullName == Instrument.FullName
                             && p.MarketPosition != MarketPosition.Flat
                         );
-                    if (livePosition != null)
-                        hydratedRemainingContracts = Math.Abs(livePosition.Quantity);
                 }
+
+                int hydratedRemainingContracts = ResolveRemainingContracts(
+                    hydrationState.Value,
+                    entryOrder.Quantity,
+                    livePosition?.Quantity
+                );
 
                 var fsm = BuildFSM(
                     entryKey,
