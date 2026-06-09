@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.042-epic-ccn-17-t3"; // EPIC-CCN-17 Ticket 3: Refactor AdoptFleetOrders main method (CYC 14->3, extracted AdoptOrdersFromAccount CYC 8)
+        public const string BUILD_TAG = "1111.043-epic-ccn-18-t1"; // EPIC-CCN-18 Ticket 1: Extract boolean helpers (CYC 37->8, HasPendingEntryForAccount CYC 7, HasActivePositionForAccount CYC 6)
 
         public class UILiveTargetSnapshot
         {
