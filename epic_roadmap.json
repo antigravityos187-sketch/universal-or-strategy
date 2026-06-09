@@ -21,7 +21,10 @@
     "hotspot_score": 194.9362,
     "codescene_score": null,
     "composite_score": 83.97,
-    "codescene_issues": []
+    "codescene_issues": [],
+    "status": "complete",
+    "final_cyc": 15,
+    "completion_date": "2026-06-09"
   },
   {
     "epic_number": "EPIC-CCN-15",
