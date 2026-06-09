@@ -314,8 +314,12 @@ def update_manifest(
     
     # Use file locking for atomic updates
     with open(manifest_path, 'r+', encoding='utf-8') as f:
-        # Acquire exclusive lock
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        # Acquire exclusive lock (platform-specific)
+        if HAS_FCNTL:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        else:
+            # Windows: lock first byte of file
+            msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
         
         try:
             manifest = json.load(f)
@@ -390,8 +394,12 @@ def update_manifest(
             f.write('\n')  # Add trailing newline
             
         finally:
-            # Release lock
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            # Release lock (platform-specific)
+            if HAS_FCNTL:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            else:
+                # Windows: unlock first byte of file
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
 
 
 def validate_dependencies(epic_id: str, phase: str) -> bool:
