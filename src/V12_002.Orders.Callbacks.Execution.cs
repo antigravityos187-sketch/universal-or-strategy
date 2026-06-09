@@ -367,6 +367,101 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        /// <summary>
+        /// V12.CCN-15 [T4-SUB]: Cleans up target order reference after terminal fill.
+        /// V12.1101E [F-07]: Clear target ref only after broker confirms Filled.
+        /// </summary>
+        /// <param name="entryName">Entry name</param>
+        /// <param name="targetNum">Target number (1-5)</param>
+        /// <param name="terminalFill">True if order reached Filled state</param>
+        private void CleanupTerminalTargetFill(string entryName, int targetNum, bool terminalFill)
+        {
+            if (terminalFill)
+            {
+                var tDict = GetTargetOrdersDictionary(targetNum);
+                if (tDict != null)
+                    tDict.TryRemove(entryName, out _);
+            }
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T4]: Handles target (T1-T5) fill execution.
+        /// Reduces stop quantity, updates position, and cleans up if fully closed.
+        /// V12.1101E [SK-01/A-1]: First-Writer-Wins guard prevents double-decrement.
+        /// </summary>
+        /// <param name="orderName">Target order name (e.g., "T1_Entry1")</param>
+        /// <param name="quantity">Fill quantity</param>
+        /// <param name="price">Fill price</param>
+        /// <param name="execution">Execution object for terminal state check</param>
+        private void HandleTargetFill(string orderName, int quantity, double price, Execution execution)
+        {
+            // Extract target number from prefix (T1_, T2_, etc.)
+            int targetNum = orderName[1] - '0';
+            string targetPrefix = "T" + targetNum + "_";
+            string entryName = ExtractEntryNameFromOrder(orderName, targetPrefix);
+
+            if (string.IsNullOrEmpty(entryName) || !activePositions.TryGetValue(entryName, out PositionInfo pos))
+                return;
+
+            bool terminalFill = execution.Order.OrderState == OrderState.Filled;
+
+            // Apply fill with First-Writer-Wins guard
+            bool alreadyProcessed;
+            int appliedQty;
+            int remainingAfter;
+            ApplyTargetFill(
+                pos,
+                targetNum,
+                quantity,
+                terminalFill,
+                out alreadyProcessed,
+                out appliedQty,
+                out remainingAfter
+            );
+
+            if (alreadyProcessed)
+            {
+                Print(
+                    string.Format(
+                        "[1101E GUARD] T{0} already processed for {1} -- skipping duplicate OnExecutionUpdate fill",
+                        targetNum,
+                        entryName
+                    )
+                );
+                CleanupTerminalTargetFill(entryName, targetNum, terminalFill);
+                return;
+            }
+
+            Print(
+                string.Format(
+                    "TARGET FILLED: {0} @ {1:F2}. Reducing stop. Remaining: {2}",
+                    appliedQty,
+                    price,
+                    remainingAfter
+                )
+            );
+
+            // Update stop or cancel if fully closed
+            if (remainingAfter > 0)
+            {
+                UpdateStopQuantity(entryName, pos);
+            }
+            else
+            {
+                // Position fully closed, cancel stop
+                // A2-2: Defer activePositions.TryRemove to broker-confirmed stop terminal state (Build 960)
+                RequestStopCancelLifecycleSafe(entryName);
+                PositionInfo closedPos;
+                if (activePositions.TryGetValue(entryName, out closedPos) && closedPos != null)
+                    closedPos.PendingCleanup = true; // B957/A: stateLock guards PositionInfo field writes
+                else
+                    SymmetryGuardForgetEntry(entryName); // already gone -- clean up now
+            }
+
+            // V12.1101E [F-07]: Clear target ref only after broker confirms Filled
+            CleanupTerminalTargetFill(entryName, targetNum, terminalFill);
+        }
+
         private void ProcessOnExecutionUpdate(
             string orderName,
             string executionId,
@@ -401,10 +496,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     HandleStopLossFill(orderName, quantity, price);
                 }
-                // ============================================================
-                // 2. TARGET 1-5 FILL - Reduce stop quantity (unified loop)
-                // V12.1101E [SK-01/A-1]: First-Writer-Wins guard prevents double-decrement.
-                // ============================================================
+                // V12.CCN-15 [T4]: Target fill handler (T1-T5)
                 else if (
                     orderName.StartsWith("T1_")
                     || orderName.StartsWith("T2_")
@@ -413,79 +505,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     || orderName.StartsWith("T5_")
                 )
                 {
-                    // Extract target number from prefix (T1_, T2_, etc.)
-                    int targetNum = orderName[1] - '0';
-                    string targetPrefix = "T" + targetNum + "_";
-                    string entryName = ExtractEntryNameFromOrder(orderName, targetPrefix);
-
-                    if (
-                        !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
-                    )
-                    {
-                        bool terminalFill = execution.Order.OrderState == OrderState.Filled;
-                        bool alreadyProcessed;
-                        int appliedQty;
-                        int remainingAfter;
-                        ApplyTargetFill(
-                            pos,
-                            targetNum,
-                            quantity,
-                            terminalFill,
-                            out alreadyProcessed,
-                            out appliedQty,
-                            out remainingAfter
-                        );
-                        if (alreadyProcessed)
-                        {
-                            Print(
-                                string.Format(
-                                    "[1101E GUARD] T{0} already processed for {1} -- skipping duplicate OnExecutionUpdate fill",
-                                    targetNum,
-                                    entryName
-                                )
-                            );
-                            if (terminalFill)
-                            {
-                                var tDict = GetTargetOrdersDictionary(targetNum);
-                                if (tDict != null)
-                                    tDict.TryRemove(entryName, out _);
-                            }
-                            return;
-                        }
-
-                        Print(
-                            string.Format(
-                                "TARGET FILLED: {0} @ {1:F2}. Reducing stop. Remaining: {2}",
-                                appliedQty,
-                                price,
-                                remainingAfter
-                            )
-                        );
-
-                        if (remainingAfter > 0)
-                        {
-                            UpdateStopQuantity(entryName, pos);
-                        }
-                        else
-                        {
-                            // Position fully closed, cancel stop
-                            // A2-2: Defer activePositions.TryRemove to broker-confirmed stop terminal state (Build 960)
-                            RequestStopCancelLifecycleSafe(entryName);
-                            PositionInfo closedPos;
-                            if (activePositions.TryGetValue(entryName, out closedPos) && closedPos != null)
-                                closedPos.PendingCleanup = true; // B957/A: stateLock guards PositionInfo field writes
-                            else
-                                SymmetryGuardForgetEntry(entryName); // already gone -- clean up now
-                        }
-
-                        // V12.1101E [F-07]: Clear target ref only after broker confirms Filled.
-                        if (terminalFill)
-                        {
-                            var tDict = GetTargetOrdersDictionary(targetNum);
-                            if (tDict != null)
-                                tDict.TryRemove(entryName, out _);
-                        }
-                    }
+                    HandleTargetFill(orderName, quantity, price, execution);
                 }
                 // ============================================================
                 // 5. TRIM EXECUTION - V10.3.1: Enhanced Stop Integrity
