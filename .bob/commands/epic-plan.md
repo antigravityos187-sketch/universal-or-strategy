@@ -4,13 +4,41 @@ argument-hint: <epic-slug>
 ---
 # PHASE 2: EPIC PLAN
 **Epic Slug:** $1
-**Input:** docs/brain/$1/00-scope.md (from /epic-intake)
-**Output:** docs/brain/$1/01-analysis.md + docs/brain/$1/02-approach.md + docs/brain/$1/03-architecture.md (if complex)
-**Protocol:** V12 Photon Kernel -- Traycer-Parity Epic Workflow (Bob Edition)
+**Protocol:** V12 Photon Kernel -- Manifest-Based Independent Subtask
 
 > You are a Technical Architect who thoroughly analyzes and plans before executing.
 > You do NOT touch src/ files in this phase.
-> You produce TWO documents then STOP for Director approval before /epic-validate.
+> You produce TWO or THREE documents then STOP for Director approval before /epic-validate.
+
+---
+
+## STEP 0 -- LOAD MANIFEST
+
+```python
+import sys
+sys.path.append('scripts')
+from epic_manifest import load_manifest, validate_dependencies
+
+# Load manifest
+try:
+    manifest = load_manifest("$1")
+except FileNotFoundError:
+    print("[ERROR] Manifest not found. Run /epic-intake first.")
+    exit(1)
+
+# Verify Phase 1.5 complete
+if not validate_dependencies("$1", "2"):
+    print("[ERROR] Phase 1.5 (Scope Boundary) must be completed first")
+    print("Dependencies not satisfied for Phase 2")
+    exit(1)
+
+print("[✓] Manifest loaded. Phase 1.5 complete.")
+print(f"[✓] Inputs:")
+for artifact in manifest['phases']['1']['output_artifacts']:
+    print(f"    - {artifact}")
+for artifact in manifest['phases']['1.5']['output_artifacts']:
+    print(f"    - {artifact}")
+```
 
 ---
 
@@ -30,8 +58,24 @@ Value system:
 
 ## PART 1: ANALYSIS
 
-### Step 1a -- Internalize Scope
-Read docs/brain/$1/00-scope.md. Confirm you understand the agreed scope and boundaries.
+### Step 1a -- Internalize Scope and Boundary
+Read the scope and boundary documents from manifest:
+
+```python
+# Get input documents from manifest
+scope_doc = manifest['phases']['1']['output_artifacts'][0]
+boundary_doc = manifest['phases']['1.5']['output_artifacts'][0]
+
+print(f"[→] Reading scope: {scope_doc}")
+print(f"[→] Reading boundary: {boundary_doc}")
+```
+
+Use `read_file` to load both documents. Confirm you understand:
+- Agreed scope and boundaries
+- Validated complexity metrics
+- Pre-existing issues (OUT OF SCOPE)
+- Scope expansion risks
+
 If anything is unclear, ask the Director before proceeding.
 
 ### Step 1b -- Map Dependencies and Coupling
@@ -61,7 +105,7 @@ Identify areas that need extra care in this epic:
   (Note: V12 NinjaTrader code is tested via F5 compile + live session. No unit test harness exists.)
 
 ### Step 1e -- Write Analysis Document
-Produce `docs/brain/$1/01-analysis.md`:
+Produce `docs/brain/$1/02-analysis.md`:
 
 ```markdown
 # Epic: $1 -- Refactoring Analysis
@@ -108,7 +152,7 @@ Example: "Should we extract by flow (HandleOrderShortcuts, HandleUIShortcuts) or
 type (HandleInvalidStateGuard, HandleActiveTradeActions)? Here are the trade-offs: ..."
 
 ### Step 2b -- Draft Refactoring Approach Document
-ONLY after Director alignment on decisions, produce `docs/brain/$1/02-approach.md`:
+ONLY after Director alignment on decisions, produce `docs/brain/$1/03-approach.md`:
 
 ```markdown
 # Epic: $1 -- Refactoring Approach
@@ -196,6 +240,9 @@ Using jCodemunch MCP tools:
 ### Step 2.5c -- Write Architecture Validation Document
 Produce `docs/brain/$1/03-architecture.md` using the template from `scaffolds/03-architecture.md`.
 
+**Note**: This is the SAME file as 03-approach.md if architecture validation is required.
+If architecture validation is needed, merge the approach content into the architecture template.
+
 Key sections:
 - **Dependency Impact Analysis**: Cycles, new dependencies, risk assessment
 - **Coupling Metrics**: Ca/Ce/Instability scores, trend analysis
@@ -211,7 +258,7 @@ Verify:
 - [ ] No layer violations (if layer rules defined)
 - [ ] Architectural decisions documented with rationale
 
-**If this step was skipped** (simple epic), document why in 02-approach.md under a new section:
+**If this step was skipped** (simple epic), document why in 03-approach.md under a new section:
 ```markdown
 ## Architecture Validation
 **Status:** SKIPPED - Simple single-file extraction, no new abstractions
@@ -219,13 +266,50 @@ Verify:
 
 ---
 
+## STEP 3 -- UPDATE MANIFEST
+
+```python
+from epic_manifest import update_manifest
+
+# Collect output artifacts
+outputs = [
+    f"docs/brain/$1/02-analysis.md",
+    f"docs/brain/$1/03-approach.md"
+]
+
+# Add architecture doc if created (check if it exists and is different from approach)
+arch_doc = f"docs/brain/$1/03-architecture.md"
+if os.path.exists(arch_doc):
+    # If architecture validation was done, we have approach merged into architecture
+    # Replace approach with architecture in outputs
+    outputs = [
+        f"docs/brain/$1/02-analysis.md",
+        f"docs/brain/$1/03-architecture.md"
+    ]
+
+# Update manifest
+update_manifest(
+    "$1",
+    "2",
+    "completed",
+    outputs=outputs,
+    notes="Analysis and approach complete. Architecture validated if complex."
+)
+
+print(f"[✓] Phase 2 complete. Outputs:")
+for output in outputs:
+    print(f"    - {output}")
+```
+
+---
+
 ## !! DIRECTOR APPROVAL GATE !!
-**STOP HERE.** Present all documents (01-analysis.md, 02-approach.md, and 03-architecture.md if created).
+**STOP HERE.** Present all documents (02-analysis.md, 03-approach.md or 03-architecture.md).
 Ask the Director:
 - Does the approach match your intent?
 - Are the key decisions aligned with how you want to refactor this?
 - Are the invariants complete?
 
-**Do NOT proceed to /epic-validate until the Director explicitly types: APPROVED**
+**Do NOT proceed to /epic-scan or /epic-validate until the Director explicitly types: APPROVED**
 
 Output: "[PLAN-GATE] Analysis and Approach documents complete. Awaiting Director approval."

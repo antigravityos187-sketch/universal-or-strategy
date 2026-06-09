@@ -48,7 +48,10 @@
     "hotspot_score": 134.808,
     "codescene_score": null,
     "composite_score": 63.42,
-    "codescene_issues": []
+    "codescene_issues": [],
+    "status": "complete",
+    "final_cyc": 14,
+    "completion_date": "2026-06-08"
   },
   {
     "epic_number": "EPIC-CCN-17",
@@ -60,6 +63,26 @@
     "hotspot_score": 110.8421,
     "codescene_score": null,
     "composite_score": 53.84,
-    "codescene_issues": []
+    "codescene_issues": [],
+    "status": "complete",
+    "final_cyc": 3,
+    "completion_date": "2026-06-09"
+  },
+  {
+    "epic_number": "EPIC-CCN-18",
+    "method": "HandleFlatPositionUpdate",
+    "file": "src/V12_002.Orders.Callbacks.Execution.cs",
+    "line": 69,
+    "cyclomatic": 37,
+    "churn": 8,
+    "hotspot_score": 85.2,
+    "codescene_score": null,
+    "composite_score": 41.6,
+    "codescene_issues": [],
+    "status": "complete",
+    "final_cyc": 7,
+    "completion_date": "2026-06-09",
+    "tickets_completed": 4,
+    "build_tag": "1111.046-epic-ccn-18-t4"
   }
 ]

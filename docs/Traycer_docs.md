@@ -1093,5 +1093,3 @@ Create reusable templates for both plan and verification contexts, or any custom
 <Note>
   More handlebars will be added in the future.
 </Note>
-
-

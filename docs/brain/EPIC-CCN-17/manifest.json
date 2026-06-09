@@ -1,0 +1,397 @@
+{
+  "epic_id": "EPIC-CCN-17",
+  "title": "AdoptFleetOrders Complexity Reduction",
+  "target_method": "AdoptFleetOrders",
+  "target_file": "src/V12_002.SIMA.Lifecycle.cs",
+  "target_line": 713,
+  "created_at": "2026-06-09T07:32:00Z",
+  "status": "in_progress",
+  "current_phase": 4,
+  "phases": {
+    "0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "command": "epic-intake",
+      "mode": "ask",
+      "inputs": [],
+      "outputs": [
+        "00-hotspots.md"
+      ],
+      "completed_at": "2026-06-09T07:32:00Z"
+    },
+    "1": {
+      "name": "Scope Definition",
+      "status": "completed",
+      "command": "epic-scope-boundary --phase 1",
+      "mode": "plan",
+      "inputs": [
+        "00-hotspots.md"
+      ],
+      "outputs": [
+        "00-scope.md"
+      ],
+      "started_at": "2026-06-09T07:32:00Z",
+      "completed_at": "2026-06-09T07:35:00Z"
+    },
+    "1.5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "command": "epic-scope-boundary --phase 1.5",
+      "mode": "plan",
+      "inputs": [
+        "00-scope.md"
+      ],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "dependencies": [
+        "1"
+      ],
+      "started_at": "2026-06-09T07:36:00Z",
+      "completed_at": "2026-06-09T07:39:00Z",
+      "validation_result": "PASS",
+      "scope_creep_detected": false,
+      "pre_existing_issues": 0,
+      "boundary_enforcement": "clear"
+    },
+    "2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "command": "epic-plan",
+      "mode": "plan",
+      "inputs": [
+        "01-scope-boundary.md"
+      ],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "dependencies": [
+        "1.5"
+      ],
+      "started_at": "2026-06-09T07:40:00Z",
+      "completed_at": "2026-06-09T07:58:00Z",
+      "method_signatures_designed": 4,
+      "sequence_diagrams_created": 3,
+      "thread_safety_verified": true,
+      "tdd_tests_planned": 30,
+      "complexity_targets_defined": true
+    },
+    "2.3": {
+      "name": "Sentinel Audit (DNA & PR Audit)",
+      "status": "completed",
+      "command": "epic-scan (Phase 2.3 variant)",
+      "mode": "advanced",
+      "inputs": [
+        "02-architecture-plan.md"
+      ],
+      "outputs": [
+        "02-sentinel-report.md"
+      ],
+      "dependencies": [
+        "2"
+      ],
+      "started_at": "2026-06-09T07:59:00Z",
+      "completed_at": "2026-06-09T08:01:00Z",
+      "audit_findings": {
+        "lock_statements_found": 0,
+        "ascii_compliance": true,
+        "extraction_floor_satisfied": true,
+        "duplicate_helpers_found": 0,
+        "existing_helpers_reusable": 2,
+        "new_helpers_required": 2,
+        "estimated_diff_chars": 3500,
+        "pr_hygiene_status": "PASS",
+        "blockers_detected": 0,
+        "warnings_detected": 0
+      },
+      "dna_compliance": {
+        "lock_free_actor_pattern": true,
+        "ascii_only_strings": true,
+        "extraction_floor_15_loc": true,
+        "correctness_by_construction": true,
+        "thread_safety_verified": true
+      },
+      "helper_analysis": {
+        "ClassifyOrderByPrefix": {
+          "exists": true,
+          "location": "src/V12_002.SIMA.Lifecycle.cs:993",
+          "action": "reuse"
+        },
+        "RebuildFleetPositionFromEntry": {
+          "exists": true,
+          "location": "src/V12_002.SIMA.Lifecycle.cs:858",
+          "action": "reuse"
+        },
+        "RouteOrderToTargetDict": {
+          "exists": false,
+          "estimated_loc": 45,
+          "action": "create"
+        },
+        "AdoptSingleOrder": {
+          "exists": false,
+          "estimated_loc": 60,
+          "action": "create"
+        }
+      },
+      "jane_street_alignment": {
+        "cognitive_simplicity": true,
+        "bounded_latency_principle": "not_applicable_cold_path",
+        "post_extraction_cyc": 8,
+        "post_extraction_nesting": 3,
+        "post_extraction_loc": 51
+      }
+    },
+    "3": {
+      "name": "Architecture Validation",
+      "status": "completed",
+      "command": "epic-validate (Phase 3 variant)",
+      "mode": "plan",
+      "inputs": [
+        "02-architecture-plan.md",
+        "02-sentinel-report.md"
+      ],
+      "outputs": [
+        "03-approach.md"
+      ],
+      "dependencies": [
+        "2",
+        "2.3"
+      ],
+      "started_at": "2026-06-09T08:02:00Z",
+      "completed_at": "2026-06-09T08:05:00Z",
+      "validation_result": "APPROVED",
+      "architecture_adjustments": {
+        "original_helper_count": 4,
+        "adjusted_helper_count": 2,
+        "code_reuse_percentage": 50,
+        "ticket_count_reduction": "5_to_3",
+        "effort_reduction_hours": 3
+      },
+      "helper_design_validation": {
+        "RouteOrderToTargetDict": {
+          "signature_validated": true,
+          "complexity_target": 8,
+          "loc_estimate": 45,
+          "thread_safety": "pure_function",
+          "extraction_lines": "755-791"
+        },
+        "AdoptSingleOrder": {
+          "signature_validated": true,
+          "complexity_target": 10,
+          "loc_estimate": 60,
+          "thread_safety": "actor_serialized",
+          "extraction_lines": "793-838"
+        }
+      },
+      "extraction_boundaries": {
+        "validated": true,
+        "main_method_loc": 51,
+        "total_extracted_loc": 83,
+        "remaining_loc": 53,
+        "complexity_reduction_verified": true
+      },
+      "ticket_breakdown_optimized": {
+        "original_tickets": 5,
+        "optimized_tickets": 3,
+        "ticket_1": "Extract RouteOrderToTargetDict()",
+        "ticket_2": "Extract AdoptSingleOrder()",
+        "ticket_3": "Refactor Main Method",
+        "total_effort_hours": 7
+      },
+      "risk_assessment": {
+        "technical_risk": "low",
+        "pr_hygiene_risk": "low",
+        "diff_size_estimate": 3500,
+        "whitespace_mutation_risk": "low"
+      }
+    },
+    "4": {
+      "name": "Ticket Generation",
+      "status": "completed",
+      "command": "epic-tickets",
+      "mode": "plan",
+      "inputs": [
+        "03-approach.md"
+      ],
+      "outputs": [
+        "04-tickets.md",
+        "ticket-01-extract-route-dict.md",
+        "ticket-02-extract-adopt-order.md",
+        "ticket-03-refactor-main.md"
+      ],
+      "dependencies": [
+        "3"
+      ],
+      "started_at": "2026-06-09T08:06:00Z",
+      "completed_at": "2026-06-09T08:11:00Z",
+      "tickets_generated": 3,
+      "total_effort_hours": 7,
+      "tdd_tests_planned": 15,
+      "execution_order": "sequential",
+      "ticket_breakdown": {
+        "ticket_1": {
+          "name": "Extract RouteOrderToTargetDict()",
+          "effort_hours": 2,
+          "complexity_target": 8,
+          "loc_estimate": 45,
+          "test_count": 9
+        },
+        "ticket_2": {
+          "name": "Extract AdoptSingleOrder()",
+          "effort_hours": 3,
+          "complexity_target": 10,
+          "loc_estimate": 60,
+          "test_count": 6,
+          "dependencies": ["ticket_1"]
+        },
+        "ticket_3": {
+          "name": "Refactor Main Method",
+          "effort_hours": 2,
+          "complexity_target": 8,
+          "loc_estimate": 51,
+          "test_count": 0,
+          "dependencies": ["ticket_1", "ticket_2"]
+        }
+      }
+    },
+    "5.1": {
+      "name": "Execute Ticket 1",
+      "status": "pending",
+      "command": "epic-validate --ticket 1",
+      "mode": "v12-engineer",
+      "inputs": [
+        "ticket-01-extract-route-dict.md"
+      ],
+      "outputs": [
+        "ticket-01-completion.md"
+      ],
+      "dependencies": [
+        "4"
+      ],
+      "ticket_details": {
+        "objective": "Extract RouteOrderToTargetDict()",
+        "effort_hours": 2,
+        "complexity_target": 8,
+        "test_count": 9
+      }
+    },
+    "5.2": {
+      "name": "Execute Ticket 2",
+      "status": "pending",
+      "command": "epic-validate --ticket 2",
+      "mode": "v12-engineer",
+      "inputs": [
+        "ticket-02-extract-adopt-order.md"
+      ],
+      "outputs": [
+        "ticket-02-completion.md"
+      ],
+      "dependencies": [
+        "5.1"
+      ],
+      "ticket_details": {
+        "objective": "Extract AdoptSingleOrder()",
+        "effort_hours": 3,
+        "complexity_target": 10,
+        "test_count": 6
+      }
+    },
+    "5.3": {
+      "name": "Execute Ticket 3",
+      "status": "pending",
+      "command": "epic-validate --ticket 3",
+      "mode": "v12-engineer",
+      "inputs": [
+        "ticket-03-refactor-main.md"
+      ],
+      "outputs": [
+        "ticket-03-completion.md"
+      ],
+      "dependencies": [
+        "5.1",
+        "5.2"
+      ],
+      "ticket_details": {
+        "objective": "Refactor Main Method",
+        "effort_hours": 2,
+        "complexity_target": 8,
+        "test_count": 0
+      }
+    },
+    "6": {
+      "name": "Final Review",
+      "status": "pending",
+      "command": "epic-review-final",
+      "mode": "advanced",
+      "inputs": [
+        "ticket-01-completion.md",
+        "ticket-02-completion.md",
+        "ticket-03-completion.md"
+      ],
+      "outputs": [
+        "05-completion-report.md"
+      ],
+      "dependencies": [
+        "5"
+      ]
+    }
+  },
+  "metrics": {
+    "current_cyc": 37,
+    "target_cyc": 8,
+    "current_nesting": 8,
+    "target_nesting": 3,
+    "current_lines": 136,
+    "target_lines": 51,
+    "hotspot_score": 110.84,
+    "hotspot_rank": 5,
+    "reduction_percentage": 78,
+    "helper_cyc_distribution": {
+      "RouteOrderToTargetDict": 8,
+      "AdoptSingleOrder": 10,
+      "main_method": 8
+    }
+  },
+  "risk_assessment": {
+    "blast_radius": "zero",
+    "importer_count": 0,
+    "direct_dependents": 0,
+    "overall_risk_score": 0.0,
+    "risk_level": "low"
+  },
+  "scope_boundary_validation": {
+    "validated_at": "2026-06-09T07:39:00Z",
+    "validator": "v12-epic-planner",
+    "result": "PASS",
+    "confidence": "HIGH",
+    "one_epic_one_concern": true,
+    "pre_existing_issues_count": 0,
+    "extraction_boundaries_clear": true,
+    "while_we_are_here_improvements": 0,
+    "scope_creep_risk_score": 0.0,
+    "anti_patterns_detected": 0,
+    "recommendation": "PROCEED_TO_PHASE_2"
+  },
+  "sentinel_audit_summary": {
+    "audited_at": "2026-06-09T08:01:00Z",
+    "auditor": "advanced_mode_jcodemunch",
+    "status": "PASSED",
+    "blockers": 0,
+    "warnings": 0,
+    "dna_violations": 0,
+    "pr_hygiene_violations": 0,
+    "recommendation": "PROCEED_TO_PHASE_3"
+  },
+  "architecture_validation_summary": {
+    "validated_at": "2026-06-09T08:05:00Z",
+    "validator": "v12-epic-planner",
+    "status": "APPROVED",
+    "architecture_adjustments": "leveraged_existing_helpers",
+    "code_reuse_percentage": 50,
+    "ticket_count_optimized": "5_to_3",
+    "effort_reduction_hours": 3,
+    "all_helpers_cyc_compliant": true,
+    "extraction_boundaries_validated": true,
+    "recommendation": "PROCEED_TO_PHASE_4"
+  }
+}
