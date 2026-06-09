@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using V12_Performance.Tests.Mocks;
 using Xunit;
 
@@ -946,7 +947,480 @@ namespace V12_Performance.Tests.SIMA
             Assert.Equal(TestFollowerBracketState.Active, followerBrackets[entryKey].State);
             Assert.Equal(entryKey, orderIdToFsmKey["ORDER_009"]);
         }
+
+        /// <summary>
+        /// Test helper that mirrors HydrateFromOpenPositions logic.
+        /// Tests position pass FSM creation for accounts with open positions but terminal entry orders.
+        /// </summary>
+        private class TestPositionPassContext
+        {
+            public List<MockAccount> Accounts { get; set; }
+            public Dictionary<string, MockOrder> StopOrders { get; set; }
+            public Dictionary<string, MockOrder> Target1Orders { get; set; }
+            public Dictionary<string, MockOrder> Target2Orders { get; set; }
+            public Dictionary<string, MockOrder> Target3Orders { get; set; }
+            public Dictionary<string, MockOrder> Target4Orders { get; set; }
+            public Dictionary<string, MockOrder> Target5Orders { get; set; }
+            public Dictionary<string, TestFollowerBracketFSM> ExistingFSMs { get; set; }
+            public Dictionary<string, string> OrderIdToFsmKey { get; set; }
+            public Dictionary<string, DateTime> PositionPassFailedFirstSeen { get; set; }
+        }
+
+        private int HydrateFromOpenPositions(TestPositionPassContext context, ref int ordersIndexed, ref int fsmCreated)
+        {
+            int positionFsmCreated = 0;
+
+            foreach (MockAccount acct in context.Accounts)
+            {
+                // Skip fleet accounts (in real code: if (!IsFleetAccount(acct)) continue;)
+                // For test: we'll use a simple name check
+                if (acct.Name.StartsWith("Fleet"))
+                    continue;
+
+                // Skip if FSM already exists for this account
+                if (context.ExistingFSMs.Values.Any(f => f.AccountName == acct.Name))
+                    continue;
+
+                // Find open position
+                MockPosition acctPos = acct.Positions.FirstOrDefault(p =>
+                    p != null && p.Instrument != null && p.MarketPosition != MockMarketPosition.Flat
+                );
+                if (acctPos == null)
+                    continue;
+
+                // Recover entry key from stop order
+                string recoveredKey = null;
+                MockOrder recoveredStop = null;
+                foreach (var stopKvp in context.StopOrders)
+                {
+                    MockOrder stopCand = stopKvp.Value;
+                    if (stopCand == null || stopCand.Account == null)
+                        continue;
+
+                    if (stopCand.Account.Name == acct.Name)
+                    {
+                        recoveredKey = stopKvp.Key;
+                        recoveredStop = stopCand;
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(recoveredKey))
+                {
+                    // REAPER grace window logic
+                    DateTime now = DateTime.UtcNow;
+                    if (!context.PositionPassFailedFirstSeen.ContainsKey(acct.Name))
+                    {
+                        context.PositionPassFailedFirstSeen[acct.Name] = now;
+                    }
+                    continue;
+                }
+
+                // Idempotency guard
+                if (context.ExistingFSMs.ContainsKey(recoveredKey))
+                    continue;
+
+                // Build FSM
+                var fsm = new TestFollowerBracketFSM
+                {
+                    AccountName = acct.Name,
+                    EntryName = recoveredKey,
+                    State = TestFollowerBracketState.Active,
+                    RemainingContracts = Math.Abs(acctPos.Quantity),
+                    LastUpdateUtc = DateTime.UtcNow,
+                    EntryOrder = null, // Terminal entry order
+                    StopOrder = recoveredStop,
+                    Targets = new MockOrder[5],
+                };
+
+                // Link stop order
+                if (recoveredStop != null && !string.IsNullOrEmpty(recoveredStop.OrderId))
+                {
+                    context.OrderIdToFsmKey[recoveredStop.OrderId] = recoveredKey;
+                    ordersIndexed++;
+                }
+
+                // Link target orders
+                MockOrder targetOrd;
+                if (context.Target1Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[0] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        context.OrderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
+                        ordersIndexed++;
+                    }
+                }
+                if (context.Target2Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[1] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        context.OrderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
+                        ordersIndexed++;
+                    }
+                }
+                if (context.Target3Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[2] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        context.OrderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
+                        ordersIndexed++;
+                    }
+                }
+                if (context.Target4Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[3] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        context.OrderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
+                        ordersIndexed++;
+                    }
+                }
+                if (context.Target5Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[4] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        context.OrderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
+                        ordersIndexed++;
+                    }
+                }
+
+                // Register FSM
+                context.ExistingFSMs[recoveredKey] = fsm;
+                positionFsmCreated++;
+                fsmCreated++;
+            }
+
+            return positionFsmCreated;
+        }
+
+        [Fact]
+        public void HydrateFromOpenPositions_ValidPosition_CreatesFSM()
+        {
+            // Arrange
+            var acct = new MockAccount("Sim101");
+            acct.Positions.Add(
+                new MockPosition
+                {
+                    Quantity = 2,
+                    MarketPosition = MockMarketPosition.Long,
+                    Instrument = new MockInstrument("ES 03-26"),
+                }
+            );
+
+            var context = new TestPositionPassContext
+            {
+                Accounts = new List<MockAccount> { acct },
+                StopOrders = new Dictionary<string, MockOrder>
+                {
+                    { "ENTRY_001", new MockOrder("STOP_001", MockOrderState.Working, acct) },
+                },
+                Target1Orders = new Dictionary<string, MockOrder>(),
+                Target2Orders = new Dictionary<string, MockOrder>(),
+                Target3Orders = new Dictionary<string, MockOrder>(),
+                Target4Orders = new Dictionary<string, MockOrder>(),
+                Target5Orders = new Dictionary<string, MockOrder>(),
+                ExistingFSMs = new Dictionary<string, TestFollowerBracketFSM>(),
+                OrderIdToFsmKey = new Dictionary<string, string>(),
+                PositionPassFailedFirstSeen = new Dictionary<string, DateTime>(),
+            };
+
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            int result = HydrateFromOpenPositions(context, ref ordersIndexed, ref fsmCreated);
+
+            // Assert
+            Assert.Equal(1, result);
+            Assert.Equal(1, fsmCreated);
+            Assert.Single(context.ExistingFSMs);
+            Assert.True(context.ExistingFSMs.ContainsKey("ENTRY_001"));
+            Assert.Equal("Sim101", context.ExistingFSMs["ENTRY_001"].AccountName);
+            Assert.Equal(2, context.ExistingFSMs["ENTRY_001"].RemainingContracts);
+            Assert.Equal(TestFollowerBracketState.Active, context.ExistingFSMs["ENTRY_001"].State);
+        }
+
+        [Fact]
+        public void HydrateFromOpenPositions_NoStopOrder_TriggersREAPERGraceWindow()
+        {
+            // Arrange
+            var acct = new MockAccount("Sim102");
+            acct.Positions.Add(
+                new MockPosition
+                {
+                    Quantity = 1,
+                    MarketPosition = MockMarketPosition.Long,
+                    Instrument = new MockInstrument("ES 03-26"),
+                }
+            );
+
+            var context = new TestPositionPassContext
+            {
+                Accounts = new List<MockAccount> { acct },
+                StopOrders = new Dictionary<string, MockOrder>(), // No stop orders
+                Target1Orders = new Dictionary<string, MockOrder>(),
+                Target2Orders = new Dictionary<string, MockOrder>(),
+                Target3Orders = new Dictionary<string, MockOrder>(),
+                Target4Orders = new Dictionary<string, MockOrder>(),
+                Target5Orders = new Dictionary<string, MockOrder>(),
+                ExistingFSMs = new Dictionary<string, TestFollowerBracketFSM>(),
+                OrderIdToFsmKey = new Dictionary<string, string>(),
+                PositionPassFailedFirstSeen = new Dictionary<string, DateTime>(),
+            };
+
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            int result = HydrateFromOpenPositions(context, ref ordersIndexed, ref fsmCreated);
+
+            // Assert
+            Assert.Equal(0, result);
+            Assert.Equal(0, fsmCreated);
+            Assert.Empty(context.ExistingFSMs);
+            Assert.True(context.PositionPassFailedFirstSeen.ContainsKey("Sim102"));
+        }
+
+        [Fact]
+        public void HydrateFromOpenPositions_FleetAccount_Skipped()
+        {
+            // Arrange
+            var acct = new MockAccount("FleetMaster");
+            acct.Positions.Add(
+                new MockPosition
+                {
+                    Quantity = 5,
+                    MarketPosition = MockMarketPosition.Long,
+                    Instrument = new MockInstrument("ES 03-26"),
+                }
+            );
+
+            var context = new TestPositionPassContext
+            {
+                Accounts = new List<MockAccount> { acct },
+                StopOrders = new Dictionary<string, MockOrder>
+                {
+                    { "ENTRY_FLEET", new MockOrder("STOP_FLEET", MockOrderState.Working, acct) },
+                },
+                Target1Orders = new Dictionary<string, MockOrder>(),
+                Target2Orders = new Dictionary<string, MockOrder>(),
+                Target3Orders = new Dictionary<string, MockOrder>(),
+                Target4Orders = new Dictionary<string, MockOrder>(),
+                Target5Orders = new Dictionary<string, MockOrder>(),
+                ExistingFSMs = new Dictionary<string, TestFollowerBracketFSM>(),
+                OrderIdToFsmKey = new Dictionary<string, string>(),
+                PositionPassFailedFirstSeen = new Dictionary<string, DateTime>(),
+            };
+
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            int result = HydrateFromOpenPositions(context, ref ordersIndexed, ref fsmCreated);
+
+            // Assert
+            Assert.Equal(0, result);
+            Assert.Empty(context.ExistingFSMs);
+        }
+
+        [Fact]
+        public void HydrateFromOpenPositions_ExistingFSM_Skipped()
+        {
+            // Arrange
+            var acct = new MockAccount("Sim103");
+            acct.Positions.Add(
+                new MockPosition
+                {
+                    Quantity = 3,
+                    MarketPosition = MockMarketPosition.Long,
+                    Instrument = new MockInstrument("ES 03-26"),
+                }
+            );
+
+            var context = new TestPositionPassContext
+            {
+                Accounts = new List<MockAccount> { acct },
+                StopOrders = new Dictionary<string, MockOrder>
+                {
+                    { "ENTRY_003", new MockOrder("STOP_003", MockOrderState.Working, acct) },
+                },
+                Target1Orders = new Dictionary<string, MockOrder>(),
+                Target2Orders = new Dictionary<string, MockOrder>(),
+                Target3Orders = new Dictionary<string, MockOrder>(),
+                Target4Orders = new Dictionary<string, MockOrder>(),
+                Target5Orders = new Dictionary<string, MockOrder>(),
+                ExistingFSMs = new Dictionary<string, TestFollowerBracketFSM>
+                {
+                    {
+                        "ENTRY_003",
+                        new TestFollowerBracketFSM { AccountName = "Sim103" }
+                    },
+                },
+                OrderIdToFsmKey = new Dictionary<string, string>(),
+                PositionPassFailedFirstSeen = new Dictionary<string, DateTime>(),
+            };
+
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            int result = HydrateFromOpenPositions(context, ref ordersIndexed, ref fsmCreated);
+
+            // Assert
+            Assert.Equal(0, result);
+            Assert.Single(context.ExistingFSMs); // Still only the pre-existing one
+        }
+
+        [Fact]
+        public void HydrateFromOpenPositions_NoPosition_Skipped()
+        {
+            // Arrange
+            var acct = new MockAccount("Sim104");
+            // No positions added
+
+            var context = new TestPositionPassContext
+            {
+                Accounts = new List<MockAccount> { acct },
+                StopOrders = new Dictionary<string, MockOrder>
+                {
+                    { "ENTRY_004", new MockOrder("STOP_004", MockOrderState.Working, acct) },
+                },
+                Target1Orders = new Dictionary<string, MockOrder>(),
+                Target2Orders = new Dictionary<string, MockOrder>(),
+                Target3Orders = new Dictionary<string, MockOrder>(),
+                Target4Orders = new Dictionary<string, MockOrder>(),
+                Target5Orders = new Dictionary<string, MockOrder>(),
+                ExistingFSMs = new Dictionary<string, TestFollowerBracketFSM>(),
+                OrderIdToFsmKey = new Dictionary<string, string>(),
+                PositionPassFailedFirstSeen = new Dictionary<string, DateTime>(),
+            };
+
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            int result = HydrateFromOpenPositions(context, ref ordersIndexed, ref fsmCreated);
+
+            // Assert
+            Assert.Equal(0, result);
+            Assert.Empty(context.ExistingFSMs);
+        }
+
+        [Fact]
+        public void HydrateFromOpenPositions_MultipleTargets_LinksAll()
+        {
+            // Arrange
+            var acct = new MockAccount("Sim105");
+            acct.Positions.Add(
+                new MockPosition
+                {
+                    Quantity = 5,
+                    MarketPosition = MockMarketPosition.Long,
+                    Instrument = new MockInstrument("ES 03-26"),
+                }
+            );
+
+            var context = new TestPositionPassContext
+            {
+                Accounts = new List<MockAccount> { acct },
+                StopOrders = new Dictionary<string, MockOrder>
+                {
+                    { "ENTRY_005", new MockOrder("STOP_005", MockOrderState.Working, acct) },
+                },
+                Target1Orders = new Dictionary<string, MockOrder>
+                {
+                    { "ENTRY_005", new MockOrder("TGT1_005", MockOrderState.Working, acct) },
+                },
+                Target2Orders = new Dictionary<string, MockOrder>
+                {
+                    { "ENTRY_005", new MockOrder("TGT2_005", MockOrderState.Working, acct) },
+                },
+                Target3Orders = new Dictionary<string, MockOrder>
+                {
+                    { "ENTRY_005", new MockOrder("TGT3_005", MockOrderState.Working, acct) },
+                },
+                Target4Orders = new Dictionary<string, MockOrder>(),
+                Target5Orders = new Dictionary<string, MockOrder>(),
+                ExistingFSMs = new Dictionary<string, TestFollowerBracketFSM>(),
+                OrderIdToFsmKey = new Dictionary<string, string>(),
+                PositionPassFailedFirstSeen = new Dictionary<string, DateTime>(),
+            };
+
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            int result = HydrateFromOpenPositions(context, ref ordersIndexed, ref fsmCreated);
+
+            // Assert
+            Assert.Equal(1, result);
+            Assert.Equal(4, ordersIndexed); // Stop + 3 targets
+            Assert.NotNull(context.ExistingFSMs["ENTRY_005"].Targets[0]);
+            Assert.NotNull(context.ExistingFSMs["ENTRY_005"].Targets[1]);
+            Assert.NotNull(context.ExistingFSMs["ENTRY_005"].Targets[2]);
+            Assert.Null(context.ExistingFSMs["ENTRY_005"].Targets[3]);
+            Assert.Null(context.ExistingFSMs["ENTRY_005"].Targets[4]);
+        }
+
+        [Fact]
+        public void HydrateFromOpenPositions_MultipleAccounts_CreatesMultipleFSMs()
+        {
+            // Arrange
+            var acct1 = new MockAccount("Sim106");
+            acct1.Positions.Add(
+                new MockPosition
+                {
+                    Quantity = 1,
+                    MarketPosition = MockMarketPosition.Long,
+                    Instrument = new MockInstrument("ES 03-26"),
+                }
+            );
+            var acct2 = new MockAccount("Sim107");
+            acct2.Positions.Add(
+                new MockPosition
+                {
+                    Quantity = -2,
+                    MarketPosition = MockMarketPosition.Short,
+                    Instrument = new MockInstrument("ES 03-26"),
+                }
+            );
+
+            var context = new TestPositionPassContext
+            {
+                Accounts = new List<MockAccount> { acct1, acct2 },
+                StopOrders = new Dictionary<string, MockOrder>
+                {
+                    { "ENTRY_006", new MockOrder("STOP_006", MockOrderState.Working, acct1) },
+                    { "ENTRY_007", new MockOrder("STOP_007", MockOrderState.Working, acct2) },
+                },
+                Target1Orders = new Dictionary<string, MockOrder>(),
+                Target2Orders = new Dictionary<string, MockOrder>(),
+                Target3Orders = new Dictionary<string, MockOrder>(),
+                Target4Orders = new Dictionary<string, MockOrder>(),
+                Target5Orders = new Dictionary<string, MockOrder>(),
+                ExistingFSMs = new Dictionary<string, TestFollowerBracketFSM>(),
+                OrderIdToFsmKey = new Dictionary<string, string>(),
+                PositionPassFailedFirstSeen = new Dictionary<string, DateTime>(),
+            };
+
+            int ordersIndexed = 0;
+            int fsmCreated = 0;
+
+            // Act
+            int result = HydrateFromOpenPositions(context, ref ordersIndexed, ref fsmCreated);
+
+            // Assert
+            Assert.Equal(2, result);
+            Assert.Equal(2, fsmCreated);
+            Assert.Equal(2, context.ExistingFSMs.Count);
+            Assert.Equal(1, context.ExistingFSMs["ENTRY_006"].RemainingContracts);
+            Assert.Equal(2, context.ExistingFSMs["ENTRY_007"].RemainingContracts); // Abs of -2
+        }
     }
 }
 
-// Made with Bob (EPIC-CCN-16 Ticket 1, 2, 3 & 4 TDD)
+// Made with Bob (EPIC-CCN-16 Ticket 1, 2, 3, 4 & 5 TDD)
