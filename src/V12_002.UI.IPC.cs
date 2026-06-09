@@ -299,43 +299,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // positions act. This is the correct fix for the "For Me? False [target=T1]" rejection.
                     bool isGlobalCommand = IsGlobalCommand(action);
 
-                    // V10.3: Robust Symbol Matching (Matches MGC to GC/MGC, MES to ES/MES, etc.)
-                    string mySym = Instrument.MasterInstrument.Name.ToUpperInvariant();
-                    string myFull = Instrument.FullName.ToUpperInvariant();
-                    string target = targetSymbol.Trim().ToUpperInvariant();
-
-                    bool isForMe =
-                        isGlobalCommand
-                        || // V12.9: SIMA/Fleet commands always pass through
-                        target == "GLOBAL"
-                        || target == "ALL"
-                        || // V12.13: Universal broadcast target (FLATTEN|ALL, REQUEST_FLEET_STATE|ALL)
-                        target == "ON"
-                        || target == "OFF"
-                        || // V12.4: Mode toggle commands (SET_RMA_MODE|ON)
-                        target == "RMA"
-                        || target == "ORB"
-                        || target == "OR"
-                        || target == "MOMO"
-                        || // V12.6: Mode-switch keywords are global
-                        mySym == target
-                        || mySym.StartsWith(target)
-                        || // "MES" matches "MES 03-26"
-                        target.StartsWith(mySym)
-                        || // "GC" matches "GC/MGC"
-                        myFull.Contains(target)
-                        || (target == "MES" && mySym.Contains("ES"))
-                        || // Robustness for MES/ES
-                        (target == "MYM" && mySym.Contains("YM"))
-                        || // Robustness for MYM/YM
-                        (target == "MGC" && mySym.Contains("GC")); // Robustness for MGC/GC
+                    // V10.3: Robust Symbol Matching (extracted to IsCommandForThisChart)
+                    bool isForMe = IsCommandForThisChart(action, targetSymbol, isGlobalCommand, out string mySym);
 
                     // V12.2: Global IPC Diagnostic Log
                     Print(
                         string.Format(
                             "V12 IPC: Received '{0}' for '{1}'. For Me? {2} (My Symbol: {3}){4}",
                             action,
-                            target,
+                            targetSymbol,
                             isForMe,
                             mySym,
                             isGlobalCommand ? " [GLOBAL CMD]" : ""
@@ -516,6 +488,44 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             bool IsTargetCommand(string a) => // CYC 4
                 a.StartsWith("MOVE_TARGET") || a == "LOCK_50" || a == "RESET_MEMORY" || a == "DIAG_IPC";
+        }
+
+        private bool IsCommandForThisChart(string action, string targetSymbol, bool isGlobalCommand, out string mySym)
+        {
+            // CYC 6 (guard clauses + symbol matching)
+            mySym = Instrument.MasterInstrument.Name.ToUpperInvariant();
+            string target = targetSymbol.Trim().ToUpperInvariant();
+
+            // Early exit for global commands (CYC 1)
+            if (isGlobalCommand)
+                return true;
+
+            // Early exit for broadcast targets (CYC 3)
+            if (target == "GLOBAL" || target == "ALL")
+                return true;
+
+            // Mode toggle keywords (CYC 1)
+            if (IsModeKeyword(target))
+                return true;
+
+            // Symbol matching (CYC 1)
+            return MatchesSymbol(mySym, target);
+
+            // Local functions (not extracted - avoid 15-LOC floor)
+            bool IsModeKeyword(string t) => // CYC 6
+                t == "ON" || t == "OFF" || t == "RMA" || t == "ORB" || t == "OR" || t == "MOMO";
+
+            bool MatchesSymbol(string my, string tgt) // CYC 8
+            {
+                string myFull = Instrument.FullName.ToUpperInvariant();
+                return my == tgt
+                    || my.StartsWith(tgt)
+                    || tgt.StartsWith(my)
+                    || myFull.Contains(tgt)
+                    || (tgt == "MES" && my.Contains("ES"))
+                    || (tgt == "MYM" && my.Contains("YM"))
+                    || (tgt == "MGC" && my.Contains("GC"));
+            }
         }
 
         // Build 935 [B935-P2]: Extracted IPC sub-handlers

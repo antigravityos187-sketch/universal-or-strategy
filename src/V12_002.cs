@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.018-epic-ccn-2-t2"; // EPIC-CCN-2-T2: IsGlobalCommand extraction CYC 49->33
+        public const string BUILD_TAG = "1111.019-epic-ccn-2-t3"; // EPIC-CCN-2-T3: IsCommandForThisChart extraction CYC 33->15
 
         public class UILiveTargetSnapshot
         {
