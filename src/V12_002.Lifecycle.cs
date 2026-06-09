@@ -362,86 +362,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else if (state == State.Terminated)
             {
-                _isTerminating = true;
-                StopWatchdog();
-
-                _configureComplete = false;
-                _dataLoadedComplete = false;
-                Interlocked.Exchange(ref _startupReadinessLogEmitted, 0);
-
-                StopPanelRefresh();
-
-                if (ChartControl != null)
-                {
-                    ChartControl.Dispatcher.InvokeAsync(() =>
-                    {
-                        DetachHotkeys();
-                        DetachChartClickHandler();
-                        DestroyPanel();
-                    });
-                }
-
-                // [BUILD 948] GTC Cancel Sweep -- cancel all tracked/broker V12 orders before teardown.
-                // Must run while dicts are still populated and accounts still subscribed.
-                // force=false: soft terminate, protects brackets for open positions.
-                CancelAllV12GtcOrders(false);
-
-                DrainQueuesForShutdown();
-                EmitMetricsSummary();
-
-                // Stop IPC Server
-                StopIpcServer();
-
-                // V12 SIMA: Stop Reaper audit thread
-                StopReaperAudit();
-
-                // V12.7: Always unsubscribe from account updates (subscribed for fleet bracket management)
-                // V12.1101E [A-4]: Use shared UnsubscribeFromFleetAccounts() -- unconditional (no EnableSIMA guard)
-                // to handle cases where flag was toggled OFF mid-session while handlers were still subscribed.
-                UnsubscribeFromFleetAccounts();
-
-                // v28.0 MMIO mirror teardown
-                if (_photonMmioMirror != null)
-                {
-                    try
-                    {
-                        _photonMmioMirror.Dispose();
-                    }
-                    catch { }
-                    _photonMmioMirror = null;
-                }
-
-                // V12.Phase7 [C-08]: Clear ALL static SignalBroadcaster event handlers on termination.
-                // Static events survive instance disposal -- without this, dead instance handlers accumulate
-                // and fire into garbage-collected strategy contexts on reload, causing phantom order submissions.
-                SignalBroadcaster.ClearAllSubscribers();
-
-                // V12.Phase7 [GAP-4]: Dispose SIMA toggle semaphore to release OS handle.
-                _simaToggleSem?.Dispose();
-
-                // Clear references
-                activePositions?.Clear();
-                entryOrders?.Clear();
-                stopOrders?.Clear();
-                target1Orders?.Clear();
-                target2Orders?.Clear();
-                target3Orders?.Clear(); // v5.13
-                target4Orders?.Clear();
-                target5Orders?.Clear();
-                _followerBrackets?.Clear();
-                if (_accountMailbox != null)
-                {
-                    while (_accountMailbox.TryDequeue(out var _))
-                        ;
-                }
-                accountDailyProfit?.Clear();
-                accountTotalProfit?.Clear();
-                accountTradeCount?.Clear();
-                accountDailyTradeCount?.Clear();
-                accountEquityPeak?.Clear();
-                accountMaxDrawdown?.Clear();
-                accountTradingDays?.Clear();
-                accountLastSummaryDate?.Clear();
+                HandleTerminated();
             }
         }
 
@@ -567,6 +488,90 @@ namespace NinjaTrader.NinjaScript.Strategies
             RmaCancellationTicks = 4;
             RmaMaxProbeCount = 3; // Phase 9.2: 3 probes before exhaustion
             RmaExhaustionEnabled = false; // Phase 9.2: Off by default, opt-in
+        }
+
+        private void HandleTerminated()
+        {
+            _isTerminating = true;
+            StopWatchdog();
+
+            _configureComplete = false;
+            _dataLoadedComplete = false;
+            Interlocked.Exchange(ref _startupReadinessLogEmitted, 0);
+
+            StopPanelRefresh();
+
+            if (ChartControl != null)
+            {
+                ChartControl.Dispatcher.InvokeAsync(() =>
+                {
+                    DetachHotkeys();
+                    DetachChartClickHandler();
+                    DestroyPanel();
+                });
+            }
+
+            // [BUILD 948] GTC Cancel Sweep -- cancel all tracked/broker V12 orders before teardown.
+            // Must run while dicts are still populated and accounts still subscribed.
+            // force=false: soft terminate, protects brackets for open positions.
+            CancelAllV12GtcOrders(false);
+
+            DrainQueuesForShutdown();
+            EmitMetricsSummary();
+
+            // Stop IPC Server
+            StopIpcServer();
+
+            // V12 SIMA: Stop Reaper audit thread
+            StopReaperAudit();
+
+            // V12.7: Always unsubscribe from account updates (subscribed for fleet bracket management)
+            // V12.1101E [A-4]: Use shared UnsubscribeFromFleetAccounts() -- unconditional (no EnableSIMA guard)
+            // to handle cases where flag was toggled OFF mid-session while handlers were still subscribed.
+            UnsubscribeFromFleetAccounts();
+
+            // v28.0 MMIO mirror teardown
+            if (_photonMmioMirror != null)
+            {
+                try
+                {
+                    _photonMmioMirror.Dispose();
+                }
+                catch { }
+                _photonMmioMirror = null;
+            }
+
+            // V12.Phase7 [C-08]: Clear ALL static SignalBroadcaster event handlers on termination.
+            // Static events survive instance disposal -- without this, dead instance handlers accumulate
+            // and fire into garbage-collected strategy contexts on reload, causing phantom order submissions.
+            SignalBroadcaster.ClearAllSubscribers();
+
+            // V12.Phase7 [GAP-4]: Dispose SIMA toggle semaphore to release OS handle.
+            _simaToggleSem?.Dispose();
+
+            // Clear references
+            activePositions?.Clear();
+            entryOrders?.Clear();
+            stopOrders?.Clear();
+            target1Orders?.Clear();
+            target2Orders?.Clear();
+            target3Orders?.Clear(); // v5.13
+            target4Orders?.Clear();
+            target5Orders?.Clear();
+            _followerBrackets?.Clear();
+            if (_accountMailbox != null)
+            {
+                while (_accountMailbox.TryDequeue(out var _))
+                    ;
+            }
+            accountDailyProfit?.Clear();
+            accountTotalProfit?.Clear();
+            accountTradeCount?.Clear();
+            accountDailyTradeCount?.Clear();
+            accountEquityPeak?.Clear();
+            accountMaxDrawdown?.Clear();
+            accountTradingDays?.Clear();
+            accountLastSummaryDate?.Clear();
         }
 
         private void DrainQueuesForShutdown()
