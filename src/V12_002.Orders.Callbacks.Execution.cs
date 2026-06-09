@@ -74,38 +74,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 string flatExpKey = ExpKey(flatAcctName);
                 bool hasSyncPending = IsDispatchSyncPending(flatExpKey);
-                bool hasPendingEntry = false;
-                foreach (var kvp in entryOrders.ToArray())
-                {
-                    var ord = kvp.Value;
-                    if (
-                        ord != null
-                        && !IsOrderTerminal(ord.OrderState)
-                        && activePositions.TryGetValue(kvp.Key, out var pos)
-                        && pos.ExecutingAccount != null
-                        && pos.ExecutingAccount.Name == flatAcctName
-                    )
-                    {
-                        hasPendingEntry = true;
-                        break;
-                    }
-                }
+                bool hasPendingEntry = HasPendingEntryForAccount(flatAcctName);
 
                 bool hasActivePositionForAcct = false;
                 if (!hasPendingEntry)
                 {
-                    foreach (var kvp in activePositions.ToArray())
-                    {
-                        if (
-                            kvp.Value.ExecutingAccount != null
-                            && kvp.Value.ExecutingAccount.Name == flatAcctName
-                            && !kvp.Value.EntryFilled
-                        )
-                        {
-                            hasActivePositionForAcct = true;
-                            break;
-                        }
-                    }
+                    hasActivePositionForAcct = HasActivePositionForAccount(flatAcctName);
                 }
 
                 if (hasPendingEntry || hasActivePositionForAcct || hasSyncPending)
@@ -173,6 +147,42 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             if (positionsToCleanup.Count > 0)
                 Print("Cleanup complete - Strategy still running, ready for new entries.");
+        }
+
+        // EPIC-CCN-18 Ticket 1: Boolean helper methods (CYC 37->23, -14 points)
+        private bool HasPendingEntryForAccount(string accountName)
+        {
+            foreach (var kvp in entryOrders.ToArray())
+            {
+                var ord = kvp.Value;
+                if (
+                    ord != null
+                    && !IsOrderTerminal(ord.OrderState)
+                    && activePositions.TryGetValue(kvp.Key, out var pos)
+                    && pos.ExecutingAccount != null
+                    && pos.ExecutingAccount.Name == accountName
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool HasActivePositionForAccount(string accountName)
+        {
+            foreach (var kvp in activePositions.ToArray())
+            {
+                if (
+                    kvp.Value.ExecutingAccount != null
+                    && kvp.Value.ExecutingAccount.Name == accountName
+                    && !kvp.Value.EntryFilled
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Build 935 [CB-B935-002]: Target count broadcast extracted from OnPositionUpdate.
@@ -462,6 +472,122 @@ namespace NinjaTrader.NinjaScript.Strategies
             CleanupTerminalTargetFill(entryName, targetNum, terminalFill);
         }
 
+        /// <summary>
+        /// V12.CCN-15 [T5]: Handles trim execution (partial position close).
+        /// CRITICAL: Reduces stop quantity to prevent reverse position on stop-out.
+        /// V10.3.1: Enhanced Stop Integrity - prevents unintended reverse position.
+        /// Example: Long 4 contracts, stop at 4. Trim 2 (now Long 2). If stop stays at 4,
+        /// getting stopped out would SELL 4 (close 2 + go SHORT 2) = DISASTER.
+        /// </summary>
+        /// <param name="orderName">Trim order name (e.g., "Trim_Entry1")</param>
+        /// <param name="quantity">Trim quantity</param>
+        /// <param name="price">Trim price</param>
+        private void HandleTrimExecution(string orderName, int quantity, double price)
+        {
+            string entryName = ExtractEntryNameFromOrder(orderName, "Trim_");
+            if (string.IsNullOrEmpty(entryName) || !activePositions.TryGetValue(entryName, out PositionInfo pos))
+                return;
+
+            // Reduce position
+            int previousQty = pos.RemainingContracts;
+            pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
+            int remainingAfterTrim = pos.RemainingContracts;
+
+            Print(
+                string.Format(
+                    "TRIM EXECUTION: {0} contracts closed for {1}. Position: {2} -> {3}",
+                    quantity,
+                    entryName,
+                    previousQty,
+                    remainingAfterTrim
+                )
+            );
+
+            // V10.3.1 FIX: MANDATORY stop quantity reduction to prevent reverse position
+            if (remainingAfterTrim > 0)
+            {
+                Print(
+                    string.Format(
+                        "STOP INTEGRITY: Reducing stop quantity from {0} to {1} for {2}",
+                        previousQty,
+                        remainingAfterTrim,
+                        entryName
+                    )
+                );
+                UpdateStopQuantity(entryName, pos);
+            }
+            else
+            {
+                // Position fully closed by trim
+                Print(string.Format("TRIM FLATTEN: Position {0} fully closed. Cancelling stop.", entryName));
+                // A2-2: Defer activePositions.TryRemove to broker-confirmed stop terminal state (Build 960)
+                RequestStopCancelLifecycleSafe(entryName);
+
+                // Also clean up any pending replacements
+                if (pendingStopReplacements.TryRemove(entryName, out _))
+                    Interlocked.Decrement(ref pendingReplacementCount);
+
+                PositionInfo trimPos;
+                if (activePositions.TryGetValue(entryName, out trimPos) && trimPos != null)
+                    trimPos.PendingCleanup = true; // B957/A: stateLock guards PositionInfo field writes
+                else
+                    SymmetryGuardForgetEntry(entryName); // already gone -- clean up now
+            }
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T5-SUB]: Checks if order name matches any target prefix (T1-T5).
+        /// </summary>
+        /// <param name="orderName">Order name to check</param>
+        /// <returns>True if order is a target order (T1-T5), false otherwise</returns>
+        private static bool IsTargetOrder(string orderName)
+        {
+            return orderName.StartsWith("T1_")
+                || orderName.StartsWith("T2_")
+                || orderName.StartsWith("T3_")
+                || orderName.StartsWith("T4_")
+                || orderName.StartsWith("T5_");
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T5-SUB2]: Handles compliance tracking for single-account mode.
+        /// V12.12: Compliance tracking for single-account mode.
+        /// [939-P0]: Marshal Account.Get() off broker thread via TriggerCustomEvent.
+        /// </summary>
+        /// <param name="execution">Execution object for tracking</param>
+        private void ProcessComplianceTracking(Execution execution)
+        {
+            if (EnableComplianceHub && !EnableSIMA)
+            {
+                TrackTradeEntry(Account, execution);
+                TriggerCustomEvent(o => UpdateAccountMetricsFromAccount(Account), null);
+                LogApexPerformance();
+            }
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T5-SUB3]: Routes execution to appropriate handler based on order name prefix.
+        /// </summary>
+        /// <param name="orderName">Order name</param>
+        /// <param name="quantity">Execution quantity</param>
+        /// <param name="price">Execution price</param>
+        /// <param name="execution">Execution object</param>
+        private void RouteExecutionToHandler(string orderName, int quantity, double price, Execution execution)
+        {
+            if (orderName.StartsWith("Stop_"))
+            {
+                HandleStopLossFill(orderName, quantity, price);
+            }
+            else if (IsTargetOrder(orderName))
+            {
+                HandleTargetFill(orderName, quantity, price, execution);
+            }
+            else if (orderName.StartsWith("Trim_"))
+            {
+                HandleTrimExecution(orderName, quantity, price);
+            }
+        }
+
         private void ProcessOnExecutionUpdate(
             string orderName,
             string executionId,
@@ -482,98 +608,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (CheckExecutionDeduplication(executionId, execution, orderName, quantity))
                     return;
 
-                // V12.12: Compliance tracking for single-account mode
-                // [939-P0]: Marshal Account.Get() off broker thread via TriggerCustomEvent.
-                if (EnableComplianceHub && !EnableSIMA)
-                {
-                    TrackTradeEntry(Account, execution);
-                    TriggerCustomEvent(o => UpdateAccountMetricsFromAccount(Account), null);
-                    LogApexPerformance();
-                }
+                // V12.CCN-15 [T5-SUB2]: Compliance tracking
+                ProcessComplianceTracking(execution);
 
-                // V12.CCN-15 [T3]: Stop loss fill handler
-                if (orderName.StartsWith("Stop_"))
-                {
-                    HandleStopLossFill(orderName, quantity, price);
-                }
-                // V12.CCN-15 [T4]: Target fill handler (T1-T5)
-                else if (
-                    orderName.StartsWith("T1_")
-                    || orderName.StartsWith("T2_")
-                    || orderName.StartsWith("T3_")
-                    || orderName.StartsWith("T4_")
-                    || orderName.StartsWith("T5_")
-                )
-                {
-                    HandleTargetFill(orderName, quantity, price, execution);
-                }
-                // ============================================================
-                // 5. TRIM EXECUTION - V10.3.1: Enhanced Stop Integrity
-                // ============================================================
-                // (!) CRITICAL: When a TRIM executes, we MUST reduce the stop order quantity
-                // to match the new position size. If we don't, hitting the stop after a trim
-                // would close more contracts than we hold, creating an unintended REVERSE position.
-                // Example: Long 4 contracts, stop at 4. Trim 2 (now Long 2). If stop stays at 4,
-                // getting stopped out would SELL 4 (close 2 + go SHORT 2) = DISASTER.
-                else if (orderName.StartsWith("Trim_"))
-                {
-                    string entryName = ExtractEntryNameFromOrder(orderName, "Trim_");
-                    if (
-                        !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
-                    )
-                    {
-                        int previousQty;
-                        int remainingAfterTrim;
-                        previousQty = pos.RemainingContracts;
-                        pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
-                        remainingAfterTrim = pos.RemainingContracts;
-
-                        Print(
-                            string.Format(
-                                "TRIM EXECUTION: {0} contracts closed for {1}. Position: {2} -> {3}",
-                                quantity,
-                                entryName,
-                                previousQty,
-                                remainingAfterTrim
-                            )
-                        );
-
-                        // V10.3.1 FIX: MANDATORY stop quantity reduction to prevent reverse position
-                        if (remainingAfterTrim > 0)
-                        {
-                            Print(
-                                string.Format(
-                                    "STOP INTEGRITY: Reducing stop quantity from {0} to {1} for {2}",
-                                    previousQty,
-                                    remainingAfterTrim,
-                                    entryName
-                                )
-                            );
-                            UpdateStopQuantity(entryName, pos);
-                        }
-                        else
-                        {
-                            // Position fully closed by trim, cancel stop
-                            Print(
-                                string.Format("TRIM FLATTEN: Position {0} fully closed. Cancelling stop.", entryName)
-                            );
-                            // A2-2: Defer activePositions.TryRemove to broker-confirmed stop terminal state (Build 960)
-                            RequestStopCancelLifecycleSafe(entryName);
-
-                            // Also clean up any pending replacements
-                            if (pendingStopReplacements.TryRemove(entryName, out _))
-                            {
-                                Interlocked.Decrement(ref pendingReplacementCount);
-                            }
-
-                            PositionInfo trimPos;
-                            if (activePositions.TryGetValue(entryName, out trimPos) && trimPos != null)
-                                trimPos.PendingCleanup = true; // B957/A: stateLock guards PositionInfo field writes
-                            else
-                                SymmetryGuardForgetEntry(entryName); // already gone -- clean up now
-                        }
-                    }
-                }
+                // V12.CCN-15 [T5-SUB3]: Route to handler
+                RouteExecutionToHandler(orderName, quantity, price, execution);
 
                 // Build 1105: Shadow callback injection -- closes 100-500ms leader flatten gap.
                 // ManageTrailingStops covers steady-state trailing. This covers immediate
