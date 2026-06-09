@@ -911,42 +911,74 @@ namespace NinjaTrader.NinjaScript.Strategies
             foreach (Account acct in accountSnapshot)
             {
                 if (!IsFleetAccount(acct))
+                {
                     continue;
-                try
-                {
-                    foreach (Order ord in acct.Orders.ToArray())
-                    {
-                        if (ord.Instrument?.FullName != Instrument?.FullName)
-                            continue;
-                        // [Codex P2] Include all live in-flight states -- Submitted/ChangePending/ChangeSubmitted
-                        // can be active during an in-flight FSM replace at reconnect time.
-                        // Setting _orderAdoptionComplete=true while these are skipped leaves REAPER
-                        // auditing against incomplete order tracking and can fire false repair cycles.
-                        if (
-                            ord.OrderState != OrderState.Working
-                            && ord.OrderState != OrderState.Accepted
-                            && ord.OrderState != OrderState.Submitted
-                            && ord.OrderState != OrderState.ChangePending
-                            && ord.OrderState != OrderState.ChangeSubmitted
-                        )
-                            continue;
-
-                        string name = ord.Name ?? string.Empty;
-                        string classification = ClassifyOrderByPrefix(name);
-                        if (classification == null)
-                            continue; // Skip unrecognized orders
-
-                        // Adopt single order using extracted helper
-                        AdoptSingleOrder(ord, acct, classification, ref adoptedCount);
-                    }
                 }
-                catch (Exception ex)
-                {
-                    Print(string.Format("[HYDRATE-ERROR] Fleet adoption failed for {0}: {1}", acct.Name, ex.Message));
-                }
+
+                AdoptOrdersFromAccount(acct, ref adoptedCount);
             }
 
             return adoptedCount;
+        }
+
+        /// <summary>
+        /// Adopts all valid orders from a single fleet account.
+        /// Handles exceptions at the account level to prevent cascade failures.
+        /// </summary>
+        /// <param name="acct">Fleet account to process</param>
+        /// <param name="adoptedCount">Running count of adopted orders (passed by ref)</param>
+        private void AdoptOrdersFromAccount(Account acct, ref int adoptedCount)
+        {
+            try
+            {
+                foreach (Order ord in acct.Orders.ToArray())
+                {
+                    // Guard: Skip wrong instrument
+                    if (ord.Instrument?.FullName != Instrument?.FullName)
+                    {
+                        continue;
+                    }
+
+                    // Guard: Skip invalid order states
+                    if (!IsValidOrderState(ord))
+                    {
+                        continue;
+                    }
+
+                    // Guard: Skip unrecognized orders
+                    string name = ord.Name ?? string.Empty;
+                    string classification = ClassifyOrderByPrefix(name);
+                    if (classification == null)
+                    {
+                        continue;
+                    }
+
+                    // Adopt single order using extracted helper
+                    AdoptSingleOrder(ord, acct, classification, ref adoptedCount);
+                }
+            }
+            catch (Exception ex)
+            {
+                Print(string.Format("[HYDRATE-ERROR] Fleet adoption failed for {0}: {1}", acct.Name, ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Validates whether an order is in a valid state for adoption.
+        /// [Codex P2] Include all live in-flight states -- Submitted/ChangePending/ChangeSubmitted
+        /// can be active during an in-flight FSM replace at reconnect time.
+        /// Setting _orderAdoptionComplete=true while these are skipped leaves REAPER
+        /// auditing against incomplete order tracking and can fire false repair cycles.
+        /// </summary>
+        /// <param name="ord">Order to validate</param>
+        /// <returns>True if order state is valid for adoption, false otherwise</returns>
+        private bool IsValidOrderState(Order ord)
+        {
+            return ord.OrderState == OrderState.Working
+                || ord.OrderState == OrderState.Accepted
+                || ord.OrderState == OrderState.Submitted
+                || ord.OrderState == OrderState.ChangePending
+                || ord.OrderState == OrderState.ChangeSubmitted;
         }
 
         /// <summary>
