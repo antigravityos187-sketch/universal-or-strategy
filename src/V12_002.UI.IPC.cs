@@ -278,58 +278,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                 drainedCount++;
                 try
                 {
-                    if (string.IsNullOrWhiteSpace(command) || command.Length > IpcMaxCommandLength)
+                    if (
+                        !ValidateIpcCommandSyntax(
+                            command,
+                            out string action,
+                            out string[] parts,
+                            out long senderTicks,
+                            out string rejectReason
+                        )
+                    )
                     {
-                        Print($"V12 IPC REJECT: malformed/oversize command '{command}'");
-                        continue;
-                    }
-
-                    string[] parts = command.Split('|');
-                    if (parts.Length == 0 || string.IsNullOrWhiteSpace(parts[0]))
-                    {
-                        Print($"V12 IPC REJECT: empty action in '{command}'");
-                        continue;
-                    }
-                    string action = parts[0].Trim().ToUpperInvariant();
-                    long senderTicks = 0;
-                    for (int i = 1; i < parts.Length; i++)
-                    {
-                        if (parts[i].StartsWith("ts=", StringComparison.OrdinalIgnoreCase))
-                        {
-                            long.TryParse(parts[i].Substring(3), out senderTicks);
-                            break;
-                        }
-                    }
-                    if (!MetadataGuardCommandTimestamp(senderTicks, action))
-                        continue;
-
-                    // EPIC-4 Ticket 03: IPC Hardening validation (rate limiting, circuit breakers, anomaly detection)
-                    ValidationResult validationResult = ValidateIpcCommand(action, parts);
-                    if (validationResult != ValidationResult.Valid)
-                    {
-                        Interlocked.Increment(ref _ipcHardeningRejectCount);
-                        switch (validationResult)
-                        {
-                            case ValidationResult.InvalidSyntax:
-                                Print($"V12 IPC REJECT [HARDENING]: Invalid syntax for '{action}'");
-                                break;
-                            case ValidationResult.RateLimitExceeded:
-                                SendBackpressureNack(action);
-                                break;
-                            case ValidationResult.CircuitBreakerOpen:
-                                Print($"V12 IPC REJECT [HARDENING]: Circuit breaker open for '{action}'");
-                                break;
-                            case ValidationResult.AllowlistBypass:
-                                Print($"V12 IPC REJECT [HARDENING]: Allowlist bypass attempt detected for '{action}'");
-                                break;
-                        }
-                        continue;
-                    }
-
-                    if (!IsAllowedIpcAction(action))
-                    {
-                        Interlocked.Increment(ref _ipcAllowlistRejectCount);
-                        Print($"V12 IPC REJECT: action '{action}' is not allowed");
+                        Print($"V12 IPC REJECT: {rejectReason}");
                         continue;
                     }
                     string targetSymbol = parts.Length > 1 ? parts[1] : "Global";
@@ -469,6 +428,90 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Print("Error ProcessIpcCommandCore: " + ex.Message);
             }
+        }
+
+        private bool ValidateIpcCommandSyntax(
+            string command,
+            out string action,
+            out string[] parts,
+            out long senderTicks,
+            out string rejectReason
+        )
+        {
+            // Initialize out parameters
+            action = string.Empty;
+            parts = null;
+            senderTicks = 0;
+            rejectReason = string.Empty;
+
+            // 1. Malformed/oversize check
+            if (string.IsNullOrWhiteSpace(command) || command.Length > IpcMaxCommandLength)
+            {
+                rejectReason = $"malformed/oversize command '{command}'";
+                return false;
+            }
+
+            // 2. Split command
+            parts = command.Split('|');
+
+            // 3. Empty action check
+            if (parts.Length == 0 || string.IsNullOrWhiteSpace(parts[0]))
+            {
+                rejectReason = $"empty action in '{command}'";
+                return false;
+            }
+            action = parts[0].Trim().ToUpperInvariant();
+
+            // 4. Timestamp extraction
+            for (int i = 1; i < parts.Length; i++)
+            {
+                if (parts[i].StartsWith("ts=", StringComparison.OrdinalIgnoreCase))
+                {
+                    long.TryParse(parts[i].Substring(3), out senderTicks);
+                    break;
+                }
+            }
+
+            // 5. Metadata guard
+            if (!MetadataGuardCommandTimestamp(senderTicks, action))
+            {
+                rejectReason = "metadata guard rejected timestamp";
+                return false;
+            }
+
+            // 6. IPC hardening validation (rate limiting, circuit breakers, anomaly detection)
+            ValidationResult validationResult = ValidateIpcCommand(action, parts);
+            if (validationResult != ValidationResult.Valid)
+            {
+                Interlocked.Increment(ref _ipcHardeningRejectCount);
+                switch (validationResult)
+                {
+                    case ValidationResult.InvalidSyntax:
+                        rejectReason = $"[HARDENING]: Invalid syntax for '{action}'";
+                        break;
+                    case ValidationResult.RateLimitExceeded:
+                        SendBackpressureNack(action);
+                        rejectReason = $"[HARDENING]: Rate limit exceeded for '{action}'";
+                        break;
+                    case ValidationResult.CircuitBreakerOpen:
+                        rejectReason = $"[HARDENING]: Circuit breaker open for '{action}'";
+                        break;
+                    case ValidationResult.AllowlistBypass:
+                        rejectReason = $"[HARDENING]: Allowlist bypass attempt detected for '{action}'";
+                        break;
+                }
+                return false;
+            }
+
+            // 7. Allowlist validation
+            if (!IsAllowedIpcAction(action))
+            {
+                Interlocked.Increment(ref _ipcAllowlistRejectCount);
+                rejectReason = $"action '{action}' is not allowed";
+                return false;
+            }
+
+            return true;
         }
 
         // Build 935 [B935-P2]: Extracted IPC sub-handlers
