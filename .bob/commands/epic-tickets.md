@@ -4,14 +4,40 @@ argument-hint: <epic-slug>
 ---
 # PHASE 4: EPIC TICKETS
 **Epic Slug:** $1
-**Input:** docs/brain/$1/02-approach.md (validated and approved)
-**Output:** docs/brain/$1/ticket-XX-[name].md (one file per ticket)
-**Protocol:** V12 Photon Kernel -- Traycer-Parity Epic Workflow (Bob Edition)
+**Protocol:** V12 Photon Kernel -- Manifest-Based Independent Subtask
 
 > You are an Implementation Planner who translates architectural decisions into executable work units.
 > Each ticket file must be SELF-CONTAINED and ready for Bob to execute in a NEW isolated session.
 > The Director opens a new Bob session in /v12-engineer mode and pastes /ticket <path> for each one.
 > You do NOT touch src/ files in this phase.
+
+---
+
+## STEP 0 -- LOAD MANIFEST
+
+```python
+import sys
+sys.path.append('scripts')
+from epic_manifest import load_manifest, validate_dependencies
+
+# Load manifest
+try:
+    manifest = load_manifest("$1")
+except FileNotFoundError:
+    print("[ERROR] Manifest not found. Run /epic-intake first.")
+    exit(1)
+
+# Verify Phase 3 complete
+if not validate_dependencies("$1", "4"):
+    print("[ERROR] Phase 3 (DNA & PR Audit) must be completed first")
+    print("Dependencies not satisfied for Phase 4")
+    exit(1)
+
+print("[✓] Manifest loaded. Phase 3 complete.")
+print(f"[✓] Inputs:")
+for artifact in manifest['phases']['3']['output_artifacts']:
+    print(f"    - {artifact}")
+```
 
 ---
 
@@ -27,10 +53,25 @@ Anti-pattern: DO NOT include code or business logic in tickets. Reference the ap
 
 ## STEP 1 -- INTERNALIZE THE APPROACH
 
-Read:
-- docs/brain/$1/00-scope.md
-- docs/brain/$1/01-analysis.md
-- docs/brain/$1/02-approach.md
+Read all previous phase outputs:
+
+```python
+# Collect all input artifacts
+all_inputs = []
+for phase_id in ['1', '1.5', '2', '3']:
+    if phase_id in manifest['phases']:
+        all_inputs.extend(manifest['phases'][phase_id]['output_artifacts'])
+
+print(f"[→] Reading all previous outputs:")
+for artifact in all_inputs:
+    print(f"    - {artifact}")
+```
+
+Use `read_file` to load:
+- Scope document
+- Boundary analysis
+- Analysis document
+- Approach/architecture document (validated)
 
 Identify:
 - The natural work units (by method group, by concern, by file)
@@ -166,11 +207,73 @@ For each ticket in sequence order:
 
 ---
 
+## STEP 6 -- ADD TICKET PHASES TO MANIFEST
+
+```python
+from epic_manifest import add_ticket_phases
+import os
+import re
+
+# Count ticket files created
+ticket_files = [f for f in os.listdir(f"docs/brain/$1") if f.startswith("ticket-")]
+ticket_count = len(ticket_files)
+
+# Extract ticket names from files
+ticket_names = []
+for ticket_file in sorted(ticket_files):
+    # Parse ticket name from filename: ticket-01-name.md -> name
+    match = re.match(r'ticket-\d+-(.+)\.md', ticket_file)
+    if match:
+        ticket_names.append(match.group(1).replace('-', ' ').title())
+
+print(f"[→] Adding {ticket_count} ticket phases to manifest...")
+
+# Add ticket execution and verification phases
+add_ticket_phases("$1", ticket_count, ticket_names)
+
+print(f"[✓] Added phases 5.1 through 5.{ticket_count} (execution)")
+print(f"[✓] Added phases 5.1.V through 5.{ticket_count}.V (verification)")
+print(f"[✓] Added phase 6 (final review)")
+```
+
+---
+
+## STEP 7 -- UPDATE MANIFEST
+
+```python
+from epic_manifest import update_manifest
+
+# Collect output artifacts
+outputs = [
+    f"docs/brain/$1/EXECUTION_GUIDE.md"
+]
+
+# Add all ticket files
+for ticket_file in sorted(ticket_files):
+    outputs.append(f"docs/brain/$1/{ticket_file}")
+
+# Update manifest
+update_manifest(
+    "$1",
+    "4",
+    "completed",
+    outputs=outputs,
+    notes=f"Generated {ticket_count} tickets with execution guide. Ticket phases added to manifest."
+)
+
+print(f"[✓] Phase 4 complete. Outputs:")
+for output in outputs:
+    print(f"    - {output}")
+```
+
+---
+
 ## !! DIRECTOR APPROVAL GATE !!
 **STOP HERE.** Present:
 1. The list of ticket files created with their scope
 2. The dependency diagram
 3. The execution guide
+4. Manifest updated with ticket phases (5.1, 5.1.V, etc.)
 
 Ask the Director to review:
 - Does the scope boundary between tickets make sense?
@@ -179,4 +282,4 @@ Ask the Director to review:
 
 **Do NOT tell the Director to execute anything until they explicitly approve the ticket breakdown.**
 
-Output: "[TICKETS-GATE] $1 epic ticket breakdown complete. X tickets created. Awaiting Director approval to begin execution."
+Output: "[TICKETS-GATE] $1 epic ticket breakdown complete. {ticket_count} tickets created. Awaiting Director approval to begin execution."
