@@ -936,56 +936,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                         if (classification == null)
                             continue; // Skip unrecognized orders
 
-                        ConcurrentDictionary<string, Order> targetDict = null;
-                        string key = null;
-                        string dictName = null;
-
                         // Route to appropriate dictionary based on classification
-                        switch (classification)
-                        {
-                            case "stop":
-                                targetDict = stopOrders;
-                                key = name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase)
-                                    ? name.Substring(5)
-                                    : name.Substring(2);
-                                dictName = "stopOrders";
-                                break;
-                            case "target1":
-                                targetDict = target1Orders;
-                                key = name.Substring(3);
-                                dictName = "target1Orders";
-                                break;
-                            case "target2":
-                                targetDict = target2Orders;
-                                key = name.Substring(3);
-                                dictName = "target2Orders";
-                                break;
-                            case "target3":
-                                targetDict = target3Orders;
-                                key = name.Substring(3);
-                                dictName = "target3Orders";
-                                break;
-                            case "target4":
-                                targetDict = target4Orders;
-                                key = name.Substring(3);
-                                dictName = "target4Orders";
-                                break;
-                            case "target5":
-                                targetDict = target5Orders;
-                                key = name.Substring(3);
-                                dictName = "target5Orders";
-                                break;
-                            // [Codex P1] Adopt Fleet_ prefixed follower entry orders into entryOrders.
-                            // Without this, broker-resident follower entries are invisible after reconnect.
-                            // ProcessQueuedExecution finds them by object ref in entryOrders, so a missed
-                            // adoption means SymmetryGuardOnFollowerFill is bypassed and the new filled
-                            // position launches without its protective bracket orders.
-                            case "entry":
-                                targetDict = entryOrders;
-                                key = name;
-                                dictName = "entryOrders";
-                                break;
-                        }
+                        ConcurrentDictionary<string, Order> targetDict = RouteOrderToTargetDict(
+                            classification,
+                            name,
+                            out string key,
+                            out string dictName
+                        );
 
                         targetDict[key] = ord;
 
@@ -1035,6 +992,71 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             return adoptedCount;
+        }
+
+        /// <summary>
+        /// Routes order to appropriate tracking dictionary based on classification.
+        /// Extracts dictionary key from order name using classification-specific logic.
+        /// Pure function - no side effects, deterministic output.
+        /// </summary>
+        /// <param name="classification">Order classification from ClassifyOrderByPrefix()</param>
+        /// <param name="orderName">Full order name (e.g., "Stop_MOMO_001", "T1_TREND_002")</param>
+        /// <param name="key">Output: Extracted dictionary key (e.g., "MOMO_001")</param>
+        /// <param name="dictName">Output: Dictionary name for logging (e.g., "stopOrders")</param>
+        /// <returns>Target ConcurrentDictionary reference, or null if classification invalid</returns>
+        internal ConcurrentDictionary<string, Order> RouteOrderToTargetDict(
+            string classification,
+            string orderName,
+            out string key,
+            out string dictName
+        )
+        {
+            ConcurrentDictionary<string, Order> targetDict = null;
+            key = null;
+            dictName = null;
+
+            switch (classification)
+            {
+                case "stop":
+                    targetDict = stopOrders;
+                    key = orderName.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase)
+                        ? orderName.Substring(5)
+                        : orderName.Substring(2);
+                    dictName = "stopOrders";
+                    break;
+                case "target1":
+                    targetDict = target1Orders;
+                    key = orderName.Substring(3);
+                    dictName = "target1Orders";
+                    break;
+                case "target2":
+                    targetDict = target2Orders;
+                    key = orderName.Substring(3);
+                    dictName = "target2Orders";
+                    break;
+                case "target3":
+                    targetDict = target3Orders;
+                    key = orderName.Substring(3);
+                    dictName = "target3Orders";
+                    break;
+                case "target4":
+                    targetDict = target4Orders;
+                    key = orderName.Substring(3);
+                    dictName = "target4Orders";
+                    break;
+                case "target5":
+                    targetDict = target5Orders;
+                    key = orderName.Substring(3);
+                    dictName = "target5Orders";
+                    break;
+                case "entry":
+                    targetDict = entryOrders;
+                    key = orderName;
+                    dictName = "entryOrders";
+                    break;
+            }
+
+            return targetDict;
         }
 
         /// <summary>
