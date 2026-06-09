@@ -493,6 +493,35 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Factory method to construct FollowerBracketFSM instance.
+        /// Centralizes FSM initialization logic.
+        /// </summary>
+        /// <param name="entryKey">FSM key (entry order name)</param>
+        /// <param name="accountName">Account name from PositionInfo</param>
+        /// <param name="entryOrder">Entry order (may be null for position pass)</param>
+        /// <param name="state">Initial FSM state</param>
+        /// <param name="remainingContracts">Remaining contracts</param>
+        /// <returns>Initialized FSM instance</returns>
+        private FollowerBracketFSM BuildFSM(
+            string entryKey,
+            string accountName,
+            Order entryOrder,
+            FollowerBracketState state,
+            int remainingContracts
+        )
+        {
+            return new FollowerBracketFSM
+            {
+                AccountName = accountName,
+                EntryName = entryKey,
+                State = state,
+                RemainingContracts = remainingContracts,
+                LastUpdateUtc = DateTime.UtcNow,
+                EntryOrder = entryOrder,
+            };
+        }
+
+        /// <summary>
         /// Phase 5: Rebuilds _followerBrackets and _orderIdToFsmKey from already-adopted
         /// working orders. Called from HydrateWorkingOrdersFromBroker() before the
         /// adoption-complete gate is set. Idempotent -- safe to call on every reconnect.
@@ -540,15 +569,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                         hydratedRemainingContracts = Math.Abs(livePosition.Quantity);
                 }
 
-                var fsm = new FollowerBracketFSM
-                {
-                    AccountName = pi.ExecutingAccount.Name,
-                    EntryName = entryKey,
-                    State = hydrationState.Value,
-                    RemainingContracts = hydratedRemainingContracts,
-                    LastUpdateUtc = DateTime.UtcNow,
-                    EntryOrder = entryOrder,
-                };
+                var fsm = BuildFSM(
+                    entryKey,
+                    pi.ExecutingAccount.Name,
+                    entryOrder,
+                    hydrationState.Value,
+                    hydratedRemainingContracts
+                );
 
                 // Link stop order
                 Order stopOrd;
