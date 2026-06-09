@@ -297,26 +297,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // [1102Z-F] MOVE_TARGET and LOCK_50 use parts[1] for parameters (not symbol), so they must bypass
                     // the symbol filter. Each handler internally filters by activePositions so only charts with live
                     // positions act. This is the correct fix for the "For Me? False [target=T1]" rejection.
-                    bool isGlobalCommand =
-                        action == "TOGGLE_ACCOUNT"
-                        || action == "SET_SIMA"
-                        || action == "GET_FLEET"
-                        || action == "DIAG_FLEET"
-                        || action == "CANCEL_ALL"
-                        || action == "FLATTEN"
-                        || action == "SYNC_ALL"
-                        || action == "MKT_SYNC"
-                        || action == "REQUEST_FLEET_STATE"
-                        || action == "RESET_MEMORY"
-                        || action == "DIAG_IPC"
-                        || action.StartsWith("MOVE_TARGET")
-                        || action == "LOCK_50"
-                        || // [1102Z-F]
-                        action == "SET_TARGETS"
-                        || action == "SET_TRAIL"
-                        || // [Build 945] numeric parts[1] bypasses symbol filter
-                        action == "SET_CIT"
-                        || action == "BE_CUSTOM"; // [Build 945] numeric parts[1] bypasses symbol filter
+                    bool isGlobalCommand = IsGlobalCommand(action);
 
                     // V10.3: Robust Symbol Matching (Matches MGC to GC/MGC, MES to ES/MES, etc.)
                     string mySym = Instrument.MasterInstrument.Name.ToUpperInvariant();
@@ -512,6 +493,29 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             return true;
+        }
+
+        private bool IsGlobalCommand(string action)
+        {
+            // CYC 4 (3 OR conditions + 1 method entry)
+            return IsFleetCommand(action) || IsModeCommand(action) || IsTargetCommand(action);
+
+            // Local functions (not extracted as separate methods - avoid 15-LOC floor)
+            bool IsFleetCommand(string a) => // CYC 8
+                a == "TOGGLE_ACCOUNT"
+                || a == "GET_FLEET"
+                || a == "DIAG_FLEET"
+                || a == "REQUEST_FLEET_STATE"
+                || a == "CANCEL_ALL"
+                || a == "FLATTEN"
+                || a == "SYNC_ALL"
+                || a == "MKT_SYNC";
+
+            bool IsModeCommand(string a) => // CYC 5
+                a == "SET_SIMA" || a == "SET_TARGETS" || a == "SET_TRAIL" || a == "SET_CIT" || a == "BE_CUSTOM";
+
+            bool IsTargetCommand(string a) => // CYC 4
+                a.StartsWith("MOVE_TARGET") || a == "LOCK_50" || a == "RESET_MEMORY" || a == "DIAG_IPC";
         }
 
         // Build 935 [B935-P2]: Extracted IPC sub-handlers
