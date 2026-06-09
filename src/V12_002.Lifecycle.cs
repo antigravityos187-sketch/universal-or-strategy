@@ -53,164 +53,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else if (state == State.DataLoaded)
             {
-                _dataLoadedComplete = false;
-
-                tickSize = Instrument.MasterInstrument.TickSize;
-                pointValue = Instrument.MasterInstrument.PointValue;
-                lastKnownPrice = 0; // V11 FIX: Reset price on load to prevent stale data (e.g. MES->MGC switch)
-
-                string symbol = Instrument.MasterInstrument.Name;
-                if (symbol.Contains("MES") || symbol.Contains("ES"))
-                {
-                    minContracts = MESMinimum;
-                    maxContracts = MESMaximum; // V12.1101E [B-9]: Upper bound for ATR sizer
-                }
-                else if (symbol.Contains("MGC") || symbol.Contains("GC"))
-                {
-                    minContracts = MGCMinimum;
-                    maxContracts = MGCMaximum; // V12.1101E [B-9]
-                }
-                else
-                {
-                    minContracts = 1;
-                    maxContracts = 20; // V12.1101E [B-9]: Conservative default for unknown instruments
-                }
-
-                int persistedTargetCount = Math.Max(0, Math.Min(5, ConfiguredTargetCount));
-                if (persistedTargetCount >= 1)
-                {
-                    activeTargetCount = persistedTargetCount;
-                }
-                else
-                {
-                    // Backward compatibility for templates saved before ConfiguredTargetCount existed.
-                    int loadedTargetCount =
-                        (Target1Value > 0 ? 1 : 0)
-                        + (Target2Value > 0 ? 1 : 0)
-                        + (Target3Value > 0 ? 1 : 0)
-                        + (Target4Value > 0 ? 1 : 0)
-                        + (Target5Value > 0 ? 1 : 0);
-                    activeTargetCount = Math.Max(1, Math.Min(5, loadedTargetCount));
-                    ConfiguredTargetCount = activeTargetCount;
-                }
-
-                // Initialize ATR indicator on 5-min bars (BarsArray[1])
-                atrIndicator = this.ATR(BarsArray[1], RMAATRPeriod);
-
-                // V8.2: Initialize EMA indicators for TREND trades
-                // Using simple form - default is primary bars series
-                ema9 = this.EMA(9);
-                ema15 = this.EMA(15);
-                // V11: Telemetry & Multi-Anchor EMAs
-                ema30 = this.EMA(30);
-                ema65 = this.EMA(65);
-                ema200 = this.EMA(200);
-
-                // V8.7: Initialize RSI for FFMA trades
-                rsiIndicator = this.RSI(14, 3);
-
-                // V8.2 DEBUG: Verify EMA periods are correct
-                Print(string.Format("EMA INIT DEBUG: ema9.Period={0} ema15.Period={1}", ema9.Period, ema15.Period));
-
-                ResetOR();
-
-                Print(
-                    string.Format(
-                        "UniversalORStrategy {0} | {1} | Tick: {2} | PV: ${3}",
-                        BUILD_TAG,
-                        symbol,
-                        tickSize,
-                        pointValue
-                    )
-                );
-                Print(
-                    string.Format(
-                        "Session: {0} - {1} {2} | OR: {3} min",
-                        SessionStart.ToString("HH:mm"),
-                        SessionEnd.ToString("HH:mm"),
-                        SelectedTimeZone,
-                        (int)ORTimeframe
-                    )
-                );
-                Print(
-                    string.Format(
-                        "Targets: T1={0}({1}) T2={2}({3}) T3={4}({5}) T4={6}({7}) T5={8}({9}) | Stop={10}xOR",
-                        Target1Value,
-                        T1Type,
-                        Target2Value,
-                        T2Type,
-                        Target3Value,
-                        T3Type,
-                        Target4Value,
-                        T4Type,
-                        Target5Value,
-                        T5Type,
-                        StopMultiplier
-                    )
-                );
-                Print(
-                    string.Format(
-                        "RMA: Enabled={0} ATR({1}) Stop={2}xATR",
-                        RMAEnabled,
-                        RMAATRPeriod,
-                        RMAStopATRMultiplier
-                    )
-                );
-                Print(string.Format("{0} REPAIRED: Definitive Chart-Click Fix + Logic Refresh", BUILD_TAG));
-                Print(
-                    string.Format(
-                        "TREND: Enabled={0} E1Stop={1}xATR E2Trail={2}xATR",
-                        TRENDEnabled,
-                        TRENDEntry1ATRMultiplier,
-                        TRENDEntry2ATRMultiplier
-                    )
-                );
-                Print(
-                    string.Format(
-                        "FFMA: Enabled={0} Distance={1}pt RSI={2}/{3}",
-                        FFMAEnabled,
-                        FFMAEMADistance,
-                        FFMARSIOversold,
-                        FFMARSIOverbought
-                    )
-                );
-                Print(
-                    string.Format(
-                        "V12 SIMA: {0} | AccountPrefix: \"{1}\"",
-                        EnableSIMA ? "ENABLED - Fleet mode" : "DISABLED - Single account",
-                        AccountPrefix
-                    )
-                );
-
-                // Build 935 [Fix-2]: Symbol-specific log paths prevent file-lock collisions
-                // when MES and MCL instances run concurrently on the same machine.
-                string logsDir = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    "NinjaTrader 8",
-                    "SIMA_Logs"
-                );
-                complianceLogPath = System.IO.Path.Combine(logsDir, $"ApexPerformance_{symbol}.json");
-                dailySummaryCsvPath = System.IO.Path.Combine(logsDir, $"DailySummaries_{symbol}.csv");
-                EnsureDailySummaryCsv();
-
-                // Build 935 [Fix-3]: Run Risk Logic Audit here (DataLoaded) so instrument properties
-                // (tickSize, pointValue, minContracts, maxContracts) are populated before audit runs.
-                ExecuteRiskLogicAudit();
-
-                _dataLoadedComplete = true;
-
-                // Build 1103: Initialize sticky state path + hydrate persisted config.
-                // MUST run BEFORE StartIpcServer() so GET_LAYOUT serves last-synced state.
-                _stickyStatePath = System.IO.Path.Combine(logsDir, string.Format("StickyState_{0}.v12state", symbol));
-                bool stickyLoaded = LoadStickyState();
-                if (stickyLoaded)
-                    Print("[STICKY] Persisted state hydrated -- GET_LAYOUT will serve last-synced config");
-
-                // V12.2 HEADLESS SAFETY: Start core services even if ChartControl is null (for background execution)
-                // [Build 932]: Start IPC in DataLoaded so Control Surface connects even if market is closed/offline.
-                StartIpcServer();
-                TouchStrategyHeartbeat();
-                PublishUiSnapshot();
+                HandleDataLoaded();
             }
             else if (state == State.Realtime)
             {
@@ -673,6 +516,173 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 _photonMmioMirror = null;
                 Print("[PHOTON MMIO] mirror unavailable (hot path unaffected): " + _mmioEx.Message);
+            }
+        }
+
+        private void HandleDataLoaded()
+        {
+            _dataLoadedComplete = false;
+
+            tickSize = Instrument.MasterInstrument.TickSize;
+            pointValue = Instrument.MasterInstrument.PointValue;
+            lastKnownPrice = 0; // V11 FIX: Reset price on load to prevent stale data (e.g. MES->MGC switch)
+
+            InitializeInstrumentSettings();
+            InitializeTargetConfiguration();
+
+            // Initialize ATR indicator on 5-min bars (BarsArray[1])
+            atrIndicator = this.ATR(BarsArray[1], RMAATRPeriod);
+
+            // V8.2: Initialize EMA indicators for TREND trades
+            // Using simple form - default is primary bars series
+            ema9 = this.EMA(9);
+            ema15 = this.EMA(15);
+            // V11: Telemetry & Multi-Anchor EMAs
+            ema30 = this.EMA(30);
+            ema65 = this.EMA(65);
+            ema200 = this.EMA(200);
+
+            // V8.7: Initialize RSI for FFMA trades
+            rsiIndicator = this.RSI(14, 3);
+
+            // V8.2 DEBUG: Verify EMA periods are correct
+            Print(string.Format("EMA INIT DEBUG: ema9.Period={0} ema15.Period={1}", ema9.Period, ema15.Period));
+
+            ResetOR();
+
+            string symbol = Instrument.MasterInstrument.Name;
+            Print(
+                string.Format(
+                    "UniversalORStrategy {0} | {1} | Tick: {2} | PV: ${3}",
+                    BUILD_TAG,
+                    symbol,
+                    tickSize,
+                    pointValue
+                )
+            );
+            Print(
+                string.Format(
+                    "Session: {0} - {1} {2} | OR: {3} min",
+                    SessionStart.ToString("HH:mm"),
+                    SessionEnd.ToString("HH:mm"),
+                    SelectedTimeZone,
+                    (int)ORTimeframe
+                )
+            );
+            Print(
+                string.Format(
+                    "Targets: T1={0}({1}) T2={2}({3}) T3={4}({5}) T4={6}({7}) T5={8}({9}) | Stop={10}xOR",
+                    Target1Value,
+                    T1Type,
+                    Target2Value,
+                    T2Type,
+                    Target3Value,
+                    T3Type,
+                    Target4Value,
+                    T4Type,
+                    Target5Value,
+                    T5Type,
+                    StopMultiplier
+                )
+            );
+            Print(
+                string.Format("RMA: Enabled={0} ATR({1}) Stop={2}xATR", RMAEnabled, RMAATRPeriod, RMAStopATRMultiplier)
+            );
+            Print(string.Format("{0} REPAIRED: Definitive Chart-Click Fix + Logic Refresh", BUILD_TAG));
+            Print(
+                string.Format(
+                    "TREND: Enabled={0} E1Stop={1}xATR E2Trail={2}xATR",
+                    TRENDEnabled,
+                    TRENDEntry1ATRMultiplier,
+                    TRENDEntry2ATRMultiplier
+                )
+            );
+            Print(
+                string.Format(
+                    "FFMA: Enabled={0} Distance={1}pt RSI={2}/{3}",
+                    FFMAEnabled,
+                    FFMAEMADistance,
+                    FFMARSIOversold,
+                    FFMARSIOverbought
+                )
+            );
+            Print(
+                string.Format(
+                    "V12 SIMA: {0} | AccountPrefix: \"{1}\"",
+                    EnableSIMA ? "ENABLED - Fleet mode" : "DISABLED - Single account",
+                    AccountPrefix
+                )
+            );
+
+            // Build 935 [Fix-2]: Symbol-specific log paths prevent file-lock collisions
+            // when MES and MCL instances run concurrently on the same machine.
+            string logsDir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "NinjaTrader 8",
+                "SIMA_Logs"
+            );
+            complianceLogPath = System.IO.Path.Combine(logsDir, $"ApexPerformance_{symbol}.json");
+            dailySummaryCsvPath = System.IO.Path.Combine(logsDir, $"DailySummaries_{symbol}.csv");
+            EnsureDailySummaryCsv();
+
+            // Build 935 [Fix-3]: Run Risk Logic Audit here (DataLoaded) so instrument properties
+            // (tickSize, pointValue, minContracts, maxContracts) are populated before audit runs.
+            ExecuteRiskLogicAudit();
+
+            _dataLoadedComplete = true;
+
+            // Build 1103: Initialize sticky state path + hydrate persisted config.
+            // MUST run BEFORE StartIpcServer() so GET_LAYOUT serves last-synced state.
+            _stickyStatePath = System.IO.Path.Combine(logsDir, string.Format("StickyState_{0}.v12state", symbol));
+            bool stickyLoaded = LoadStickyState();
+            if (stickyLoaded)
+                Print("[STICKY] Persisted state hydrated -- GET_LAYOUT will serve last-synced config");
+
+            // V12.2 HEADLESS SAFETY: Start core services even if ChartControl is null (for background execution)
+            // [Build 932]: Start IPC in DataLoaded so Control Surface connects even if market is closed/offline.
+            StartIpcServer();
+            TouchStrategyHeartbeat();
+            PublishUiSnapshot();
+        }
+
+        private void InitializeInstrumentSettings()
+        {
+            string symbol = Instrument.MasterInstrument.Name;
+            if (symbol.Contains("MES") || symbol.Contains("ES"))
+            {
+                minContracts = MESMinimum;
+                maxContracts = MESMaximum; // V12.1101E [B-9]: Upper bound for ATR sizer
+            }
+            else if (symbol.Contains("MGC") || symbol.Contains("GC"))
+            {
+                minContracts = MGCMinimum;
+                maxContracts = MGCMaximum; // V12.1101E [B-9]
+            }
+            else
+            {
+                minContracts = 1;
+                maxContracts = 20; // V12.1101E [B-9]: Conservative default for unknown instruments
+            }
+        }
+
+        private void InitializeTargetConfiguration()
+        {
+            int persistedTargetCount = Math.Max(0, Math.Min(5, ConfiguredTargetCount));
+            if (persistedTargetCount >= 1)
+            {
+                activeTargetCount = persistedTargetCount;
+            }
+            else
+            {
+                // Backward compatibility for templates saved before ConfiguredTargetCount existed.
+                int loadedTargetCount =
+                    (Target1Value > 0 ? 1 : 0)
+                    + (Target2Value > 0 ? 1 : 0)
+                    + (Target3Value > 0 ? 1 : 0)
+                    + (Target4Value > 0 ? 1 : 0)
+                    + (Target5Value > 0 ? 1 : 0);
+                activeTargetCount = Math.Max(1, Math.Min(5, loadedTargetCount));
+                ConfiguredTargetCount = activeTargetCount;
             }
         }
         #endregion
