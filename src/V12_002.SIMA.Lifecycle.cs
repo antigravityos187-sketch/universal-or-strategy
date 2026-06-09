@@ -568,129 +568,21 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
-        /// Phase 5: Rebuilds _followerBrackets and _orderIdToFsmKey from already-adopted
-        /// working orders. Called from HydrateWorkingOrdersFromBroker() before the
-        /// adoption-complete gate is set. Idempotent -- safe to call on every reconnect.
+        /// Phase 5 Position Pass: Creates FSMs for accounts with open positions but terminal entry orders.
+        /// Handles edge case where entry order is cancelled/rejected but position remains open.
+        /// Implements REAPER grace window (5 minutes) for failed stop order key recovery.
         /// </summary>
-        private void HydrateFSMsFromWorkingOrders()
+        private int HydrateFromOpenPositions(
+            Dictionary<string, Order> stopOrders,
+            Dictionary<string, Order> target1Orders,
+            Dictionary<string, Order> target2Orders,
+            Dictionary<string, Order> target3Orders,
+            Dictionary<string, Order> target4Orders,
+            Dictionary<string, Order> target5Orders,
+            ref int ordersIndexed,
+            ref int fsmCreated
+        )
         {
-            int fsmCreated = 0;
-            int ordersIndexed = 0;
-
-            foreach (var kvp in entryOrders.ToArray())
-            {
-                string entryKey = kvp.Key;
-                Order entryOrder = kvp.Value;
-                if (entryOrder == null)
-                    continue;
-
-                // Skip master account entries
-                PositionInfo pi;
-                if (!activePositions.TryGetValue(entryKey, out pi) || !pi.IsFollower)
-                    continue;
-                if (pi.ExecutingAccount == null)
-                    continue;
-
-                // Idempotent: skip if FSM already exists (safe on repeated reconnects)
-                if (_followerBrackets.ContainsKey(entryKey))
-                    continue;
-
-                // Map broker order state to FSM state
-                FollowerBracketState? hydrationState = MapOrderStateToFSMState(entryOrder.OrderState);
-                if (hydrationState == null)
-                    continue; // Terminal state - skip FSM creation
-
-                Position livePosition = null;
-                if (hydrationState.Value == FollowerBracketState.Active)
-                {
-                    livePosition = pi
-                        .ExecutingAccount.Positions.ToArray()
-                        .FirstOrDefault(p =>
-                            p != null
-                            && p.Instrument != null
-                            && p.Instrument.FullName == Instrument.FullName
-                            && p.MarketPosition != MarketPosition.Flat
-                        );
-                }
-
-                int hydratedRemainingContracts = ResolveRemainingContracts(
-                    hydrationState.Value,
-                    entryOrder.Quantity,
-                    livePosition?.Quantity
-                );
-
-                var fsm = BuildFSM(
-                    entryKey,
-                    pi.ExecutingAccount.Name,
-                    entryOrder,
-                    hydrationState.Value,
-                    hydratedRemainingContracts
-                );
-
-                // Link stop order
-                Order stopOrd;
-                if (stopOrders.TryGetValue(entryKey, out stopOrd) && stopOrd != null)
-                {
-                    fsm.StopOrder = stopOrd;
-                    if (!string.IsNullOrEmpty(stopOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[stopOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-
-                // Link target orders (match exact property names on FollowerBracketFSM)
-                Order targetOrd;
-                if (target1Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[0] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target2Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[1] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target3Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[2] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target4Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[3] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target5Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[4] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-
-                RegisterFSM(entryKey, fsm, entryOrder, ref ordersIndexed, ref fsmCreated);
-            }
-
-            // Position Pass: handle accounts with open positions but terminal entry orders
             int positionFsmCreated = 0;
             foreach (Account acct in Account.All)
             {
@@ -833,6 +725,144 @@ namespace NinjaTrader.NinjaScript.Strategies
                     )
                 );
             }
+
+            return positionFsmCreated;
+        }
+
+        /// <summary>
+        /// Phase 5: Rebuilds _followerBrackets and _orderIdToFsmKey from already-adopted
+        /// working orders. Called from HydrateWorkingOrdersFromBroker() before the
+        /// adoption-complete gate is set. Idempotent -- safe to call on every reconnect.
+        /// </summary>
+        private void HydrateFSMsFromWorkingOrders()
+        {
+            int fsmCreated = 0;
+            int ordersIndexed = 0;
+
+            foreach (var kvp in entryOrders.ToArray())
+            {
+                string entryKey = kvp.Key;
+                Order entryOrder = kvp.Value;
+                if (entryOrder == null)
+                    continue;
+
+                // Skip master account entries
+                PositionInfo pi;
+                if (!activePositions.TryGetValue(entryKey, out pi) || !pi.IsFollower)
+                    continue;
+                if (pi.ExecutingAccount == null)
+                    continue;
+
+                // Idempotent: skip if FSM already exists (safe on repeated reconnects)
+                if (_followerBrackets.ContainsKey(entryKey))
+                    continue;
+
+                // Map broker order state to FSM state
+                FollowerBracketState? hydrationState = MapOrderStateToFSMState(entryOrder.OrderState);
+                if (hydrationState == null)
+                    continue; // Terminal state - skip FSM creation
+
+                Position livePosition = null;
+                if (hydrationState.Value == FollowerBracketState.Active)
+                {
+                    livePosition = pi
+                        .ExecutingAccount.Positions.ToArray()
+                        .FirstOrDefault(p =>
+                            p != null
+                            && p.Instrument != null
+                            && p.Instrument.FullName == Instrument.FullName
+                            && p.MarketPosition != MarketPosition.Flat
+                        );
+                }
+
+                int hydratedRemainingContracts = ResolveRemainingContracts(
+                    hydrationState.Value,
+                    entryOrder.Quantity,
+                    livePosition?.Quantity
+                );
+
+                var fsm = BuildFSM(
+                    entryKey,
+                    pi.ExecutingAccount.Name,
+                    entryOrder,
+                    hydrationState.Value,
+                    hydratedRemainingContracts
+                );
+
+                // Link stop order
+                Order stopOrd;
+                if (stopOrders.TryGetValue(entryKey, out stopOrd) && stopOrd != null)
+                {
+                    fsm.StopOrder = stopOrd;
+                    if (!string.IsNullOrEmpty(stopOrd.OrderId))
+                    {
+                        _orderIdToFsmKey[stopOrd.OrderId] = entryKey;
+                        ordersIndexed++;
+                    }
+                }
+
+                // Link target orders (match exact property names on FollowerBracketFSM)
+                Order targetOrd;
+                if (target1Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[0] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
+                        ordersIndexed++;
+                    }
+                }
+                if (target2Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[1] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
+                        ordersIndexed++;
+                    }
+                }
+                if (target3Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[2] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
+                        ordersIndexed++;
+                    }
+                }
+                if (target4Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[3] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
+                        ordersIndexed++;
+                    }
+                }
+                if (target5Orders.TryGetValue(entryKey, out targetOrd) && targetOrd != null)
+                {
+                    fsm.Targets[4] = targetOrd;
+                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                    {
+                        _orderIdToFsmKey[targetOrd.OrderId] = entryKey;
+                        ordersIndexed++;
+                    }
+                }
+
+                RegisterFSM(entryKey, fsm, entryOrder, ref ordersIndexed, ref fsmCreated);
+            }
+
+            // Position Pass: handle accounts with open positions but terminal entry orders
+            int positionFsmCreated = HydrateFromOpenPositions(
+                stopOrders,
+                target1Orders,
+                target2Orders,
+                target3Orders,
+                target4Orders,
+                target5Orders,
+                ref ordersIndexed,
+                ref fsmCreated
+            );
 
             Print(
                 string.Format(
