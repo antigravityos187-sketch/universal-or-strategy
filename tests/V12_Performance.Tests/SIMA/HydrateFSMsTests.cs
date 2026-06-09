@@ -19,7 +19,7 @@ namespace V12_Performance.Tests.SIMA
         /// Test helper that mirrors MapOrderStateToFSMState logic.
         /// This allows us to test the pure function behavior in isolation.
         /// </summary>
-        private enum TestFollowerBracketState
+        public enum TestFollowerBracketState
         {
             None,
             PendingSubmit,
@@ -438,7 +438,194 @@ namespace V12_Performance.Tests.SIMA
             Assert.Equal(fsm1.State, fsm2.State);
             Assert.Equal(fsm1.RemainingContracts, fsm2.RemainingContracts);
         }
+
+        /// <summary>
+        /// Test helper that mirrors ResolveRemainingContracts logic.
+        /// Calculates remaining contracts based on FSM state and position quantity.
+        /// </summary>
+        private int ResolveRemainingContracts(TestFollowerBracketState state, int orderQuantity, int? positionQuantity)
+        {
+            int remainingContracts = Math.Max(0, orderQuantity);
+            if (state == TestFollowerBracketState.Active && positionQuantity.HasValue)
+            {
+                remainingContracts = Math.Abs(positionQuantity.Value);
+            }
+            return remainingContracts;
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_NonActiveState_ReturnsOrderQuantity()
+        {
+            // Arrange
+            TestFollowerBracketState state = TestFollowerBracketState.Submitted;
+            int orderQuantity = 5;
+            int? positionQuantity = 3;
+
+            // Act
+            int result = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(5, result);
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_ActiveStateWithPosition_ReturnsPositionQuantity()
+        {
+            // Arrange
+            TestFollowerBracketState state = TestFollowerBracketState.Active;
+            int orderQuantity = 5;
+            int? positionQuantity = 3;
+
+            // Act
+            int result = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(3, result);
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_ActiveStateNoPosition_ReturnsOrderQuantity()
+        {
+            // Arrange
+            TestFollowerBracketState state = TestFollowerBracketState.Active;
+            int orderQuantity = 5;
+            int? positionQuantity = null;
+
+            // Act
+            int result = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(5, result);
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_NegativeOrderQuantity_ClampsToZero()
+        {
+            // Arrange
+            TestFollowerBracketState state = TestFollowerBracketState.Submitted;
+            int orderQuantity = -3;
+            int? positionQuantity = null;
+
+            // Act
+            int result = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_ZeroOrderQuantity_ReturnsZero()
+        {
+            // Arrange
+            TestFollowerBracketState state = TestFollowerBracketState.Submitted;
+            int orderQuantity = 0;
+            int? positionQuantity = null;
+
+            // Act
+            int result = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_NegativePosition_ReturnsAbsoluteValue()
+        {
+            // Arrange (short position)
+            TestFollowerBracketState state = TestFollowerBracketState.Active;
+            int orderQuantity = 5;
+            int? positionQuantity = -3;
+
+            // Act
+            int result = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(3, result);
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_ZeroPosition_ReturnsZero()
+        {
+            // Arrange
+            TestFollowerBracketState state = TestFollowerBracketState.Active;
+            int orderQuantity = 5;
+            int? positionQuantity = 0;
+
+            // Act
+            int result = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_PartialFill_OrderLessThanPosition()
+        {
+            // Arrange (order partially filled, position shows actual fill)
+            TestFollowerBracketState state = TestFollowerBracketState.Active;
+            int orderQuantity = 5;
+            int? positionQuantity = 2;
+
+            // Act
+            int result = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(2, result); // Position is source of truth
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_Overfill_OrderGreaterThanPosition()
+        {
+            // Arrange (edge case: order shows more than position)
+            TestFollowerBracketState state = TestFollowerBracketState.Active;
+            int orderQuantity = 2;
+            int? positionQuantity = 5;
+
+            // Act
+            int result = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(5, result); // Position is source of truth
+        }
+
+        [Theory]
+        [InlineData(TestFollowerBracketState.Submitted, 5, 3, 5)]
+        [InlineData(TestFollowerBracketState.Accepted, 5, 3, 5)]
+        [InlineData(TestFollowerBracketState.Active, 5, 3, 3)]
+        [InlineData(TestFollowerBracketState.Replacing, 5, 3, 5)]
+        [InlineData(TestFollowerBracketState.Modifying, 5, 3, 5)]
+        public void ResolveRemainingContracts_VariousStates_CorrectBehavior(
+            TestFollowerBracketState state,
+            int orderQty,
+            int positionQty,
+            int expected
+        )
+        {
+            // Act
+            int result = ResolveRemainingContracts(state, orderQty, positionQty);
+
+            // Assert
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void ResolveRemainingContracts_IsPureFunction_SameInputProducesSameOutput()
+        {
+            // Arrange
+            TestFollowerBracketState state = TestFollowerBracketState.Active;
+            int orderQuantity = 5;
+            int? positionQuantity = 3;
+
+            // Act
+            int result1 = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+            int result2 = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+            int result3 = ResolveRemainingContracts(state, orderQuantity, positionQuantity);
+
+            // Assert
+            Assert.Equal(result1, result2);
+            Assert.Equal(result2, result3);
+        }
     }
 }
 
-// Made with Bob (EPIC-CCN-16 Ticket 1 & 2 TDD)
+// Made with Bob (EPIC-CCN-16 Ticket 1, 2 & 3 TDD)
