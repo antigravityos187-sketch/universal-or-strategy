@@ -74,38 +74,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 string flatExpKey = ExpKey(flatAcctName);
                 bool hasSyncPending = IsDispatchSyncPending(flatExpKey);
-                bool hasPendingEntry = false;
-                foreach (var kvp in entryOrders.ToArray())
-                {
-                    var ord = kvp.Value;
-                    if (
-                        ord != null
-                        && !IsOrderTerminal(ord.OrderState)
-                        && activePositions.TryGetValue(kvp.Key, out var pos)
-                        && pos.ExecutingAccount != null
-                        && pos.ExecutingAccount.Name == flatAcctName
-                    )
-                    {
-                        hasPendingEntry = true;
-                        break;
-                    }
-                }
+                bool hasPendingEntry = HasPendingEntryOrderForAccount(flatAcctName);
 
                 bool hasActivePositionForAcct = false;
                 if (!hasPendingEntry)
                 {
-                    foreach (var kvp in activePositions.ToArray())
-                    {
-                        if (
-                            kvp.Value.ExecutingAccount != null
-                            && kvp.Value.ExecutingAccount.Name == flatAcctName
-                            && !kvp.Value.EntryFilled
-                        )
-                        {
-                            hasActivePositionForAcct = true;
-                            break;
-                        }
-                    }
+                    hasActivePositionForAcct = HasUnfilledPositionForAccount(flatAcctName);
                 }
 
                 if (hasPendingEntry || hasActivePositionForAcct || hasSyncPending)
@@ -141,29 +115,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (pos.EntryFilled && pos.RemainingContracts > 0)
                 {
                     Print("EXTERNAL CLOSE DETECTED - Position went flat. Cancelling orphaned orders...");
-                    if (stopOrders.TryGetValue(kvp.Key, out var stopOrder))
-                    {
-                        if (
-                            stopOrder != null
-                            && (
-                                stopOrder.OrderState == OrderState.Working
-                                || stopOrder.OrderState == OrderState.Accepted
-                            )
-                        )
-                            CancelOrderSafe(stopOrder, pos);
-                    }
-                    for (int tNum = 1; tNum <= 5; tNum++)
-                    {
-                        var tDict = GetTargetOrdersDictionary(tNum);
-                        if (tDict != null && tDict.TryGetValue(kvp.Key, out var tOrder))
-                        {
-                            if (
-                                tOrder != null
-                                && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted)
-                            )
-                                CancelOrderSafe(tOrder, pos);
-                        }
-                    }
+                    CancelOrphanedOrdersForPosition(kvp.Key, pos);
                     positionsToCleanup.Add(kvp.Key);
                 }
             }
@@ -173,6 +125,74 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             if (positionsToCleanup.Count > 0)
                 Print("Cleanup complete - Strategy still running, ready for new entries.");
+        }
+
+        // EPIC-CCN-18 Ticket 1: Boolean helper methods (CYC 37->23, -14 points)
+        private bool HasPendingEntryOrderForAccount(string accountName)
+        {
+            foreach (var kvp in entryOrders.ToArray())
+            {
+                var ord = kvp.Value;
+                if (
+                    ord != null
+                    && !IsOrderTerminal(ord.OrderState)
+                    && activePositions.TryGetValue(kvp.Key, out var pos)
+                    && pos.ExecutingAccount != null
+                    && pos.ExecutingAccount.Name == accountName
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool HasUnfilledPositionForAccount(string accountName)
+        {
+            foreach (var kvp in activePositions.ToArray())
+            {
+                if (
+                    kvp.Value.ExecutingAccount != null
+                    && kvp.Value.ExecutingAccount.Name == accountName
+                    && !kvp.Value.EntryFilled
+                )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // EPIC-CCN-18 Ticket 2: Cancellation helper method (CYC 23->13, -10 points)
+        private void CancelOrphanedOrdersForPosition(string posKey, PositionInfo pos)
+        {
+            // Cancel stop order if active
+            if (stopOrders.TryGetValue(posKey, out var stopOrder))
+            {
+                if (
+                    stopOrder != null
+                    && (stopOrder.OrderState == OrderState.Working || stopOrder.OrderState == OrderState.Accepted)
+                )
+                {
+                    CancelOrderSafe(stopOrder, pos);
+                }
+            }
+
+            // Cancel all 5 target orders if active
+            for (int tNum = 1; tNum <= 5; tNum++)
+            {
+                var tDict = GetTargetOrdersDictionary(tNum);
+                if (tDict != null && tDict.TryGetValue(posKey, out var tOrder))
+                {
+                    if (
+                        tOrder != null
+                        && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted)
+                    )
+                    {
+                        CancelOrderSafe(tOrder, pos);
+                    }
+                }
+            }
         }
 
         // Build 935 [CB-B935-002]: Target count broadcast extracted from OnPositionUpdate.
@@ -225,6 +245,359 @@ namespace NinjaTrader.NinjaScript.Strategies
             Enqueue(ctx => ctx.ProcessOnExecutionUpdate(_on, _eid, _oid, _of, _ost, _pr, _qty, _ex));
         }
 
+        /// <summary>
+        /// V12.CCN-15 [T1]: Extracts entry name from order name by removing prefix and optional timestamp suffix.
+        /// </summary>
+        /// <param name="orderName">Full order name (e.g., "Stop_Entry1_123456789012345")</param>
+        /// <param name="prefix">Prefix to remove (e.g., "Stop_", "T1_", "Trim_")</param>
+        /// <returns>Entry name without prefix or timestamp (e.g., "Entry1"), or empty string if prefix doesn't match</returns>
+        private static string ExtractEntryNameFromOrder(string orderName, string prefix)
+        {
+            if (!orderName.StartsWith(prefix))
+                return "";
+
+            string entryPart = orderName.Substring(prefix.Length);
+
+            // Strip timestamp suffix if present (format: _123456789012345)
+            int lastUnderscore = entryPart.LastIndexOf('_');
+            if (lastUnderscore > 0 && entryPart.Length - lastUnderscore > 10)
+                entryPart = entryPart.Substring(0, lastUnderscore);
+
+            return entryPart;
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T2]: Deduplication guard using FNV-1a hash rings.
+        /// Prevents double-decrement if OnOrderUpdate + OnExecutionUpdate both fire.
+        /// V12.962 INLINE ACTOR: Lock-free, serial execution guaranteed by _drainToken.
+        /// </summary>
+        /// <param name="executionId">Execution ID from broker (may be null/empty)</param>
+        /// <param name="execution">Execution object for fallback dedup</param>
+        /// <param name="orderName">Order name for logging</param>
+        /// <param name="quantity">Execution quantity for fallback dedup</param>
+        /// <returns>True if duplicate (skip processing), false if new (proceed)</returns>
+        private bool CheckExecutionDeduplication(
+            string executionId,
+            Execution execution,
+            string orderName,
+            int quantity
+        )
+        {
+            if (!string.IsNullOrEmpty(executionId))
+            {
+                // V14.2 [ADR-011]: Zero-allocation dedup via FNV-1a hash ring
+                long execHash = FnvHash64(executionId);
+                if (_executionIdRing.ContainsOrAdd(execHash))
+                {
+                    Print(string.Format("[DEDUP] Skipping duplicate execution {0} for {1}", executionId, orderName));
+                    return true;
+                }
+            }
+            else
+            {
+                // V14.2 [ADR-011]: Fallback dedup when executionId is missing
+                // Uses execution.Order properties -- FIX-D5: correct variable mapping
+                string uniqueOrderId = !string.IsNullOrEmpty(execution.Order.OrderId)
+                    ? execution.Order.OrderId
+                    : execution.Order.Name;
+                int dedupFilledQty = execution.Order.Filled > 0 ? execution.Order.Filled : Math.Max(0, quantity);
+                string fallbackKey = string.Format("{0}|{1}", uniqueOrderId, dedupFilledQty);
+                long fallbackHash = FnvHash64(fallbackKey);
+
+                if (_executionIdFallbackRing.ContainsOrAdd(fallbackHash))
+                {
+                    Print(
+                        string.Format(
+                            "[DEDUP] Skipping duplicate execution (fallback) orderId={0}",
+                            execution.Order.OrderId
+                        )
+                    );
+                    return true;
+                }
+            }
+
+            return false; // Not a duplicate, proceed with processing
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T3-SUB]: Cancels all working target orders for an entry (manual OCO).
+        /// V12.1101E [F-07]: Keep target dictionary refs until terminal broker confirmation.
+        /// </summary>
+        /// <param name="entryName">Entry name</param>
+        /// <param name="pos">Position info</param>
+        /// <returns>Count of cancelled target orders</returns>
+        private int CancelTargetOrdersForEntry(string entryName, PositionInfo pos)
+        {
+            int cancelledTargets = 0;
+            for (int tNum = 1; tNum <= 5; tNum++)
+            {
+                var tDict = GetTargetOrdersDictionary(tNum);
+                if (tDict != null && tDict.TryGetValue(entryName, out var tOrder))
+                {
+                    if (
+                        tOrder != null
+                        && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted)
+                    )
+                    {
+                        CancelOrderSafe(tOrder, pos);
+                        cancelledTargets++;
+                    }
+                }
+            }
+            return cancelledTargets;
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T3]: Handles stop loss fill execution.
+        /// Reduces position, cancels remaining targets (manual OCO), and cleans up if fully closed.
+        /// </summary>
+        /// <param name="orderName">Stop order name (e.g., "Stop_Entry1")</param>
+        /// <param name="quantity">Fill quantity</param>
+        /// <param name="price">Fill price</param>
+        private void HandleStopLossFill(string orderName, int quantity, double price)
+        {
+            string entryName = ExtractEntryNameFromOrder(orderName, "Stop_");
+            if (string.IsNullOrEmpty(entryName) || !activePositions.TryGetValue(entryName, out PositionInfo pos))
+                return;
+
+            // Reduce position
+            pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
+            int remainingAfterStop = pos.RemainingContracts;
+
+            Print(string.Format("STOP FILLED: {0} @ {1:F2}. Cancelling targets.", quantity, price));
+
+            // Manual OCO: Cancel all remaining profit targets
+            int cancelledTargets = CancelTargetOrdersForEntry(entryName, pos);
+            if (cancelledTargets > 0)
+            {
+                Print(string.Format("OCO: Cancelled {0} target orders for {1}", cancelledTargets, entryName));
+            }
+
+            // Cleanup if position fully closed
+            // B957/D1: Only remove stopOrders and pendingStopReplacements when position is fully closed.
+            if (remainingAfterStop <= 0)
+            {
+                stopOrders.TryRemove(entryName, out _);
+                if (pendingStopReplacements.TryRemove(entryName, out _))
+                    Interlocked.Decrement(ref pendingReplacementCount);
+                activePositions.TryRemove(entryName, out _);
+                entryOrders.TryRemove(entryName, out _);
+                SymmetryGuardForgetEntry(entryName);
+                Print(string.Format("Position {0} fully closed by stop.", entryName));
+            }
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T4-SUB]: Cleans up target order reference after terminal fill.
+        /// V12.1101E [F-07]: Clear target ref only after broker confirms Filled.
+        /// </summary>
+        /// <param name="entryName">Entry name</param>
+        /// <param name="targetNum">Target number (1-5)</param>
+        /// <param name="terminalFill">True if order reached Filled state</param>
+        private void CleanupTerminalTargetFill(string entryName, int targetNum, bool terminalFill)
+        {
+            if (terminalFill)
+            {
+                var tDict = GetTargetOrdersDictionary(targetNum);
+                if (tDict != null)
+                    tDict.TryRemove(entryName, out _);
+            }
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T4]: Handles target (T1-T5) fill execution.
+        /// Reduces stop quantity, updates position, and cleans up if fully closed.
+        /// V12.1101E [SK-01/A-1]: First-Writer-Wins guard prevents double-decrement.
+        /// </summary>
+        /// <param name="orderName">Target order name (e.g., "T1_Entry1")</param>
+        /// <param name="quantity">Fill quantity</param>
+        /// <param name="price">Fill price</param>
+        /// <param name="execution">Execution object for terminal state check</param>
+        private void HandleTargetFill(string orderName, int quantity, double price, Execution execution)
+        {
+            // Extract target number from prefix (T1_, T2_, etc.)
+            int targetNum = orderName[1] - '0';
+            string targetPrefix = "T" + targetNum + "_";
+            string entryName = ExtractEntryNameFromOrder(orderName, targetPrefix);
+
+            if (string.IsNullOrEmpty(entryName) || !activePositions.TryGetValue(entryName, out PositionInfo pos))
+                return;
+
+            bool terminalFill = execution.Order.OrderState == OrderState.Filled;
+
+            // Apply fill with First-Writer-Wins guard
+            bool alreadyProcessed;
+            int appliedQty;
+            int remainingAfter;
+            ApplyTargetFill(
+                pos,
+                targetNum,
+                quantity,
+                terminalFill,
+                out alreadyProcessed,
+                out appliedQty,
+                out remainingAfter
+            );
+
+            if (alreadyProcessed)
+            {
+                Print(
+                    string.Format(
+                        "[1101E GUARD] T{0} already processed for {1} -- skipping duplicate OnExecutionUpdate fill",
+                        targetNum,
+                        entryName
+                    )
+                );
+                CleanupTerminalTargetFill(entryName, targetNum, terminalFill);
+                return;
+            }
+
+            Print(
+                string.Format(
+                    "TARGET FILLED: {0} @ {1:F2}. Reducing stop. Remaining: {2}",
+                    appliedQty,
+                    price,
+                    remainingAfter
+                )
+            );
+
+            // Update stop or cancel if fully closed
+            if (remainingAfter > 0)
+            {
+                UpdateStopQuantity(entryName, pos);
+            }
+            else
+            {
+                // Position fully closed, cancel stop
+                // A2-2: Defer activePositions.TryRemove to broker-confirmed stop terminal state (Build 960)
+                RequestStopCancelLifecycleSafe(entryName);
+                PositionInfo closedPos;
+                if (activePositions.TryGetValue(entryName, out closedPos) && closedPos != null)
+                    closedPos.PendingCleanup = true; // B957/A: stateLock guards PositionInfo field writes
+                else
+                    SymmetryGuardForgetEntry(entryName); // already gone -- clean up now
+            }
+
+            // V12.1101E [F-07]: Clear target ref only after broker confirms Filled
+            CleanupTerminalTargetFill(entryName, targetNum, terminalFill);
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T5]: Handles trim execution (partial position close).
+        /// CRITICAL: Reduces stop quantity to prevent reverse position on stop-out.
+        /// V10.3.1: Enhanced Stop Integrity - prevents unintended reverse position.
+        /// Example: Long 4 contracts, stop at 4. Trim 2 (now Long 2). If stop stays at 4,
+        /// getting stopped out would SELL 4 (close 2 + go SHORT 2) = DISASTER.
+        /// </summary>
+        /// <param name="orderName">Trim order name (e.g., "Trim_Entry1")</param>
+        /// <param name="quantity">Trim quantity</param>
+        /// <param name="price">Trim price</param>
+        private void HandleTrimExecution(string orderName, int quantity, double price)
+        {
+            string entryName = ExtractEntryNameFromOrder(orderName, "Trim_");
+            if (string.IsNullOrEmpty(entryName) || !activePositions.TryGetValue(entryName, out PositionInfo pos))
+                return;
+
+            // Reduce position
+            int previousQty = pos.RemainingContracts;
+            pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
+            int remainingAfterTrim = pos.RemainingContracts;
+
+            Print(
+                string.Format(
+                    "TRIM EXECUTION: {0} contracts closed for {1}. Position: {2} -> {3}",
+                    quantity,
+                    entryName,
+                    previousQty,
+                    remainingAfterTrim
+                )
+            );
+
+            // V10.3.1 FIX: MANDATORY stop quantity reduction to prevent reverse position
+            if (remainingAfterTrim > 0)
+            {
+                Print(
+                    string.Format(
+                        "STOP INTEGRITY: Reducing stop quantity from {0} to {1} for {2}",
+                        previousQty,
+                        remainingAfterTrim,
+                        entryName
+                    )
+                );
+                UpdateStopQuantity(entryName, pos);
+            }
+            else
+            {
+                // Position fully closed by trim
+                Print(string.Format("TRIM FLATTEN: Position {0} fully closed. Cancelling stop.", entryName));
+                // A2-2: Defer activePositions.TryRemove to broker-confirmed stop terminal state (Build 960)
+                RequestStopCancelLifecycleSafe(entryName);
+
+                // Also clean up any pending replacements
+                if (pendingStopReplacements.TryRemove(entryName, out _))
+                    Interlocked.Decrement(ref pendingReplacementCount);
+
+                PositionInfo trimPos;
+                if (activePositions.TryGetValue(entryName, out trimPos) && trimPos != null)
+                    trimPos.PendingCleanup = true; // B957/A: stateLock guards PositionInfo field writes
+                else
+                    SymmetryGuardForgetEntry(entryName); // already gone -- clean up now
+            }
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T5-SUB]: Checks if order name matches any target prefix (T1-T5).
+        /// </summary>
+        /// <param name="orderName">Order name to check</param>
+        /// <returns>True if order is a target order (T1-T5), false otherwise</returns>
+        private static bool IsTargetOrder(string orderName)
+        {
+            return orderName.StartsWith("T1_")
+                || orderName.StartsWith("T2_")
+                || orderName.StartsWith("T3_")
+                || orderName.StartsWith("T4_")
+                || orderName.StartsWith("T5_");
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T5-SUB2]: Handles compliance tracking for single-account mode.
+        /// V12.12: Compliance tracking for single-account mode.
+        /// [939-P0]: Marshal Account.Get() off broker thread via TriggerCustomEvent.
+        /// </summary>
+        /// <param name="execution">Execution object for tracking</param>
+        private void ProcessComplianceTracking(Execution execution)
+        {
+            if (EnableComplianceHub && !EnableSIMA)
+            {
+                TrackTradeEntry(Account, execution);
+                TriggerCustomEvent(o => UpdateAccountMetricsFromAccount(Account), null);
+                LogApexPerformance();
+            }
+        }
+
+        /// <summary>
+        /// V12.CCN-15 [T5-SUB3]: Routes execution to appropriate handler based on order name prefix.
+        /// </summary>
+        /// <param name="orderName">Order name</param>
+        /// <param name="quantity">Execution quantity</param>
+        /// <param name="price">Execution price</param>
+        /// <param name="execution">Execution object</param>
+        private void RouteExecutionToHandler(string orderName, int quantity, double price, Execution execution)
+        {
+            if (orderName.StartsWith("Stop_"))
+            {
+                HandleStopLossFill(orderName, quantity, price);
+            }
+            else if (IsTargetOrder(orderName))
+            {
+                HandleTargetFill(orderName, quantity, price, execution);
+            }
+            else if (orderName.StartsWith("Trim_"))
+            {
+                HandleTrimExecution(orderName, quantity, price);
+            }
+        }
+
         private void ProcessOnExecutionUpdate(
             string orderName,
             string executionId,
@@ -241,279 +614,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (string.IsNullOrEmpty(orderName))
                     return;
 
-                // V12.962 INLINE ACTOR: Dedup guard -- lock-free, serial execution guaranteed by _drainToken.
-                // V12.Phase7 [C-01]: Prevent double-decrement if OnOrderUpdate + OnExecutionUpdate both fire.
-                if (!string.IsNullOrEmpty(executionId))
-                {
-                    // V14.2 [ADR-011]: Zero-allocation dedup via FNV-1a hash ring
-                    long _execHash = FnvHash64(executionId);
-                    if (_executionIdRing.ContainsOrAdd(_execHash))
-                    {
-                        Print(
-                            string.Format("[DEDUP] Skipping duplicate execution {0} for {1}", executionId, orderName)
-                        );
-                        return;
-                    }
-                }
-                else
-                {
-                    // V14.2 [ADR-011]: Fallback dedup when executionId is missing
-                    // Uses execution.Order properties -- FIX-D5: correct variable mapping
-                    string uniqueOrderId = !string.IsNullOrEmpty(execution.Order.OrderId)
-                        ? execution.Order.OrderId
-                        : execution.Order.Name;
-                    int dedupFilledQty = execution.Order.Filled > 0 ? execution.Order.Filled : Math.Max(0, quantity);
-                    string _fallbackKey = string.Format("{0}|{1}", uniqueOrderId, dedupFilledQty);
-                    long _fallbackHash = FnvHash64(_fallbackKey);
-                    if (_executionIdFallbackRing.ContainsOrAdd(_fallbackHash))
-                    {
-                        Print(
-                            string.Format(
-                                "[DEDUP] Skipping duplicate execution (fallback) orderId={0}",
-                                execution.Order.OrderId
-                            )
-                        );
-                        return;
-                    }
-                }
+                // V12.CCN-15 [T2]: Deduplication guard
+                if (CheckExecutionDeduplication(executionId, execution, orderName, quantity))
+                    return;
 
-                // V12.12: Compliance tracking for single-account mode
-                // [939-P0]: Marshal Account.Get() off broker thread via TriggerCustomEvent.
-                if (EnableComplianceHub && !EnableSIMA)
-                {
-                    TrackTradeEntry(Account, execution);
-                    TriggerCustomEvent(o => UpdateAccountMetricsFromAccount(Account), null);
-                    LogApexPerformance();
-                }
+                // V12.CCN-15 [T5-SUB2]: Compliance tracking
+                ProcessComplianceTracking(execution);
 
-                // Helper: Extract entry name from order name (removes prefix and optional timestamp suffix)
-                Func<string, string, string> extractEntryName = (name, prefix) =>
-                {
-                    if (!name.StartsWith(prefix))
-                        return "";
-                    string entryPart = name.Substring(prefix.Length);
-                    // Strip timestamp suffix if present (format: _123456789012345)
-                    int lastUnderscore = entryPart.LastIndexOf('_');
-                    if (lastUnderscore > 0 && entryPart.Length - lastUnderscore > 10)
-                        entryPart = entryPart.Substring(0, lastUnderscore);
-                    return entryPart;
-                };
-
-                // ============================================================
-                // 1. STOP LOSS FILL - Manual OCO: Cancel all remaining targets
-                // ============================================================
-                if (orderName.StartsWith("Stop_"))
-                {
-                    string entryName = extractEntryName(orderName, "Stop_");
-                    if (
-                        !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
-                    )
-                    {
-                        int remainingAfterStop;
-                        pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
-                        remainingAfterStop = pos.RemainingContracts;
-
-                        Print(string.Format("STOP FILLED: {0} @ {1:F2}. Cancelling targets.", quantity, price));
-
-                        // Manual OCO: Cancel all remaining profit targets immediately
-                        // V12.1101E [F-07]: Keep target dictionary refs until terminal broker confirmation.
-                        int cancelledTargets = 0;
-                        for (int tNum = 1; tNum <= 5; tNum++)
-                        {
-                            var tDict = GetTargetOrdersDictionary(tNum);
-                            if (tDict != null && tDict.TryGetValue(entryName, out var tOrder))
-                            {
-                                if (
-                                    tOrder != null
-                                    && (
-                                        tOrder.OrderState == OrderState.Working
-                                        || tOrder.OrderState == OrderState.Accepted
-                                    )
-                                )
-                                {
-                                    CancelOrderSafe(tOrder, pos);
-                                    cancelledTargets++;
-                                }
-                            }
-                        }
-
-                        if (cancelledTargets > 0)
-                        {
-                            Print(
-                                string.Format("OCO: Cancelled {0} target orders for {1}", cancelledTargets, entryName)
-                            );
-                        }
-
-                        // B957/D1: Only remove stopOrders and pendingStopReplacements when position is fully closed.
-                        // Do NOT remove on partial fills -- the stop may still be tracking residual contracts.
-                        if (remainingAfterStop <= 0)
-                        {
-                            stopOrders.TryRemove(entryName, out _);
-                            if (pendingStopReplacements.TryRemove(entryName, out _))
-                                Interlocked.Decrement(ref pendingReplacementCount);
-                            activePositions.TryRemove(entryName, out _);
-                            entryOrders.TryRemove(entryName, out _);
-                        }
-                        if (remainingAfterStop <= 0)
-                        {
-                            SymmetryGuardForgetEntry(entryName);
-                            Print(string.Format("Position {0} fully closed by stop.", entryName));
-                        }
-                    }
-                }
-                // ============================================================
-                // 2. TARGET 1-5 FILL - Reduce stop quantity (unified loop)
-                // V12.1101E [SK-01/A-1]: First-Writer-Wins guard prevents double-decrement.
-                // ============================================================
-                else if (
-                    orderName.StartsWith("T1_")
-                    || orderName.StartsWith("T2_")
-                    || orderName.StartsWith("T3_")
-                    || orderName.StartsWith("T4_")
-                    || orderName.StartsWith("T5_")
-                )
-                {
-                    // Extract target number from prefix (T1_, T2_, etc.)
-                    int targetNum = orderName[1] - '0';
-                    string targetPrefix = "T" + targetNum + "_";
-                    string entryName = extractEntryName(orderName, targetPrefix);
-
-                    if (
-                        !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
-                    )
-                    {
-                        bool terminalFill = execution.Order.OrderState == OrderState.Filled;
-                        bool alreadyProcessed;
-                        int appliedQty;
-                        int remainingAfter;
-                        ApplyTargetFill(
-                            pos,
-                            targetNum,
-                            quantity,
-                            terminalFill,
-                            out alreadyProcessed,
-                            out appliedQty,
-                            out remainingAfter
-                        );
-                        if (alreadyProcessed)
-                        {
-                            Print(
-                                string.Format(
-                                    "[1101E GUARD] T{0} already processed for {1} -- skipping duplicate OnExecutionUpdate fill",
-                                    targetNum,
-                                    entryName
-                                )
-                            );
-                            if (terminalFill)
-                            {
-                                var tDict = GetTargetOrdersDictionary(targetNum);
-                                if (tDict != null)
-                                    tDict.TryRemove(entryName, out _);
-                            }
-                            return;
-                        }
-
-                        Print(
-                            string.Format(
-                                "TARGET FILLED: {0} @ {1:F2}. Reducing stop. Remaining: {2}",
-                                appliedQty,
-                                price,
-                                remainingAfter
-                            )
-                        );
-
-                        if (remainingAfter > 0)
-                        {
-                            UpdateStopQuantity(entryName, pos);
-                        }
-                        else
-                        {
-                            // Position fully closed, cancel stop
-                            // A2-2: Defer activePositions.TryRemove to broker-confirmed stop terminal state (Build 960)
-                            RequestStopCancelLifecycleSafe(entryName);
-                            PositionInfo closedPos;
-                            if (activePositions.TryGetValue(entryName, out closedPos) && closedPos != null)
-                                closedPos.PendingCleanup = true; // B957/A: stateLock guards PositionInfo field writes
-                            else
-                                SymmetryGuardForgetEntry(entryName); // already gone -- clean up now
-                        }
-
-                        // V12.1101E [F-07]: Clear target ref only after broker confirms Filled.
-                        if (terminalFill)
-                        {
-                            var tDict = GetTargetOrdersDictionary(targetNum);
-                            if (tDict != null)
-                                tDict.TryRemove(entryName, out _);
-                        }
-                    }
-                }
-                // ============================================================
-                // 5. TRIM EXECUTION - V10.3.1: Enhanced Stop Integrity
-                // ============================================================
-                // (!) CRITICAL: When a TRIM executes, we MUST reduce the stop order quantity
-                // to match the new position size. If we don't, hitting the stop after a trim
-                // would close more contracts than we hold, creating an unintended REVERSE position.
-                // Example: Long 4 contracts, stop at 4. Trim 2 (now Long 2). If stop stays at 4,
-                // getting stopped out would SELL 4 (close 2 + go SHORT 2) = DISASTER.
-                else if (orderName.StartsWith("Trim_"))
-                {
-                    string entryName = extractEntryName(orderName, "Trim_");
-                    if (
-                        !string.IsNullOrEmpty(entryName) && activePositions.TryGetValue(entryName, out PositionInfo pos)
-                    )
-                    {
-                        int previousQty;
-                        int remainingAfterTrim;
-                        previousQty = pos.RemainingContracts;
-                        pos.RemainingContracts = Math.Max(0, pos.RemainingContracts - Math.Max(0, quantity));
-                        remainingAfterTrim = pos.RemainingContracts;
-
-                        Print(
-                            string.Format(
-                                "TRIM EXECUTION: {0} contracts closed for {1}. Position: {2} -> {3}",
-                                quantity,
-                                entryName,
-                                previousQty,
-                                remainingAfterTrim
-                            )
-                        );
-
-                        // V10.3.1 FIX: MANDATORY stop quantity reduction to prevent reverse position
-                        if (remainingAfterTrim > 0)
-                        {
-                            Print(
-                                string.Format(
-                                    "STOP INTEGRITY: Reducing stop quantity from {0} to {1} for {2}",
-                                    previousQty,
-                                    remainingAfterTrim,
-                                    entryName
-                                )
-                            );
-                            UpdateStopQuantity(entryName, pos);
-                        }
-                        else
-                        {
-                            // Position fully closed by trim, cancel stop
-                            Print(
-                                string.Format("TRIM FLATTEN: Position {0} fully closed. Cancelling stop.", entryName)
-                            );
-                            // A2-2: Defer activePositions.TryRemove to broker-confirmed stop terminal state (Build 960)
-                            RequestStopCancelLifecycleSafe(entryName);
-
-                            // Also clean up any pending replacements
-                            if (pendingStopReplacements.TryRemove(entryName, out _))
-                            {
-                                Interlocked.Decrement(ref pendingReplacementCount);
-                            }
-
-                            PositionInfo trimPos;
-                            if (activePositions.TryGetValue(entryName, out trimPos) && trimPos != null)
-                                trimPos.PendingCleanup = true; // B957/A: stateLock guards PositionInfo field writes
-                            else
-                                SymmetryGuardForgetEntry(entryName); // already gone -- clean up now
-                        }
-                    }
-                }
+                // V12.CCN-15 [T5-SUB3]: Route to handler
+                RouteExecutionToHandler(orderName, quantity, price, execution);
 
                 // Build 1105: Shadow callback injection -- closes 100-500ms leader flatten gap.
                 // ManageTrailingStops covers steady-state trailing. This covers immediate

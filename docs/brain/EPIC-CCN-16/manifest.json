@@ -1,0 +1,306 @@
+{
+  "epic_id": "EPIC-CCN-16",
+  "description": "Extract HydrateFSMsFromWorkingOrders (CYC 45 \u2192 \u22648)",
+  "status": "in_progress",
+  "created_at": "2026-06-09T05:28:34.274241+00:00",
+  "updated_at": "2026-06-09T06:09:10.303012+00:00",
+  "phases": {
+    "0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "mode": "ask",
+      "started_at": "2026-06-09T05:30:01.678822+00:00",
+      "completed_at": "2026-06-09T05:32:16.136981+00:00",
+      "input_artifacts": [],
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-16/00-hotspots.md"
+      ],
+      "notes": "Hotspot analysis complete. Target: HydrateFSMsFromWorkingOrders (CYC 45 \u2192 \u22648)"
+    },
+    "1": {
+      "name": "Scope Definition",
+      "status": "pending",
+      "mode": "plan",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "1.5": {
+      "name": "Scope Boundary",
+      "status": "pending",
+      "mode": "plan",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "mode": "plan",
+      "started_at": "2026-06-09T05:48:52.000000+00:00",
+      "completed_at": "2026-06-09T05:56:47.000000+00:00",
+      "input_artifacts": [
+        "docs/brain/EPIC-CCN-16/00-scope.md",
+        "docs/brain/EPIC-CCN-16/01-pattern-analysis.md"
+      ],
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-16/02-analysis.md",
+        "docs/brain/EPIC-CCN-16/03-approach.md",
+        "docs/brain/EPIC-CCN-16/02-sentinel-report.md"
+      ],
+      "notes": "Phase 2 complete including Sentinel Audit (Phase 2.3). Verdict: PASSED. Approach is architecturally sound and DNA-compliant."
+    },
+    "3": {
+      "name": "DNA & PR Audit",
+      "status": "completed",
+      "mode": "advanced",
+      "started_at": "2026-06-09T05:59:37.692Z",
+      "completed_at": "2026-06-09T06:02:56.000Z",
+      "input_artifacts": [
+        "docs/brain/EPIC-CCN-16/02-analysis.md",
+        "docs/brain/EPIC-CCN-16/03-approach.md",
+        "docs/brain/EPIC-CCN-16/02-sentinel-report.md"
+      ],
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-16/02-analysis.md",
+        "docs/brain/EPIC-CCN-16/03-approach.md"
+      ],
+      "notes": "Phase 3 validation complete. Critical finding: LinkTargetOrderToFSM already exists - removed from extraction plan. Updated approach document in-place. All V12 DNA constraints verified. Extraction order dependency-correct. Test coverage adequate (27 test cases). Ready for Phase 4 (Ticket Generation)."
+    },
+    "4": {
+      "name": "Ticket Generation",
+      "status": "completed",
+      "mode": "plan",
+      "started_at": "2026-06-09T06:04:14.285Z",
+      "completed_at": "2026-06-09T06:09:10.303012+00:00",
+      "input_artifacts": [
+        "docs/brain/EPIC-CCN-16/02-analysis.md",
+        "docs/brain/EPIC-CCN-16/03-approach.md"
+      ],
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-16/EXECUTION_GUIDE.md",
+        "docs/brain/EPIC-CCN-16/ticket-01-map-state.md",
+        "docs/brain/EPIC-CCN-16/ticket-02-build-fsm.md",
+        "docs/brain/EPIC-CCN-16/ticket-03-resolve-contracts.md",
+        "docs/brain/EPIC-CCN-16/ticket-04-register-fsm.md",
+        "docs/brain/EPIC-CCN-16/ticket-05-position-pass.md",
+        "docs/brain/EPIC-CCN-16/ticket-06-refactor-parent.md"
+      ],
+      "notes": "Generated 6 tickets with execution guide. Ticket phases added to manifest."
+    },
+    "5.1": {
+      "name": "Map State",
+      "status": "pending",
+      "mode": "v12-engineer",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.1.V": {
+      "name": "Verify Map State",
+      "status": "pending",
+      "mode": "advanced",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.2": {
+      "name": "Build FSM",
+      "status": "pending",
+      "mode": "v12-engineer",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.2.V": {
+      "name": "Verify Build FSM",
+      "status": "pending",
+      "mode": "advanced",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.3": {
+      "name": "Resolve Contracts",
+      "status": "pending",
+      "mode": "v12-engineer",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.3.V": {
+      "name": "Verify Resolve Contracts",
+      "status": "pending",
+      "mode": "advanced",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.4": {
+      "name": "Register FSM",
+      "status": "pending",
+      "mode": "v12-engineer",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.4.V": {
+      "name": "Verify Register FSM",
+      "status": "pending",
+      "mode": "advanced",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.5": {
+      "name": "Position Pass",
+      "status": "pending",
+      "mode": "v12-engineer",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.5.V": {
+      "name": "Verify Position Pass",
+      "status": "pending",
+      "mode": "advanced",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.6": {
+      "name": "Refactor Parent",
+      "status": "pending",
+      "mode": "v12-engineer",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "5.6.V": {
+      "name": "Verify Refactor Parent",
+      "status": "pending",
+      "mode": "advanced",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    },
+    "6": {
+      "name": "Final Review",
+      "status": "pending",
+      "mode": "advanced",
+      "started_at": null,
+      "completed_at": null,
+      "input_artifacts": [],
+      "output_artifacts": []
+    }
+  },
+  "dependencies": {
+    "1": [
+      "0"
+    ],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "5.1": [
+      "4"
+    ],
+    "5.1.V": [
+      "5.1"
+    ],
+    "5.2": [
+      "4"
+    ],
+    "5.2.V": [
+      "5.2"
+    ],
+    "5.3": [
+      "4"
+    ],
+    "5.3.V": [
+      "5.3"
+    ],
+    "5.4": [
+      "4"
+    ],
+    "5.4.V": [
+      "5.4"
+    ],
+    "5.5": [
+      "4"
+    ],
+    "5.5.V": [
+      "5.5"
+    ],
+    "5.6": [
+      "4"
+    ],
+    "5.6.V": [
+      "5.6"
+    ],
+    "6": [
+      "5.1.V",
+      "5.2.V",
+      "5.3.V",
+      "5.4.V",
+      "5.5.V",
+      "5.6.V"
+    ]
+  },
+  "parallel_groups": [
+    {
+      "group_id": "ticket_execution",
+      "phases": [
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4",
+        "5.5",
+        "5.6"
+      ],
+      "description": "Independent tickets can run concurrently"
+    },
+    {
+      "group_id": "verification",
+      "phases": [
+        "5.1.V",
+        "5.2.V",
+        "5.3.V",
+        "5.4.V",
+        "5.5.V",
+        "5.6.V"
+      ],
+      "description": "Verifications can run concurrently"
+    }
+  ],
+  "metadata": {
+    "total_tickets": 6,
+    "completed_tickets": 0,
+    "failed_phases": [],
+    "retry_count": 0,
+    "estimated_duration_minutes": null,
+    "actual_duration_minutes": null
+  }
+}

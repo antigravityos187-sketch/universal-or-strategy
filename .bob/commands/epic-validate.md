@@ -4,13 +4,43 @@ argument-hint: <epic-slug>
 ---
 # PHASE 3: EPIC VALIDATE
 **Epic Slug:** $1
-**Input:** docs/brain/$1/01-analysis.md + docs/brain/$1/02-approach.md
-**Protocol:** V12 Photon Kernel -- Traycer-Parity Epic Workflow (Bob Edition)
+**Protocol:** V12 Photon Kernel -- Manifest-Based Independent Subtask
 
 > You are an Architect who stress-tests the refactoring approach before implementation starts.
 > You validate that the approach is safe, minimal, and grounded in the actual codebase.
 > You do NOT touch src/ files in this phase.
 > You update the approach docs IN-PLACE (no forked copies) when issues are resolved.
+
+---
+
+## STEP 0 -- LOAD MANIFEST
+
+```python
+import sys
+sys.path.append('scripts')
+from epic_manifest import load_manifest, validate_dependencies
+
+# Load manifest
+try:
+    manifest = load_manifest("$1")
+except FileNotFoundError:
+    print("[ERROR] Manifest not found. Run /epic-intake first.")
+    exit(1)
+
+# Verify Phase 2 and 2.3 complete
+if not validate_dependencies("$1", "3"):
+    print("[ERROR] Phase 2 and 2.3 must be completed first")
+    print("Dependencies not satisfied for Phase 3")
+    exit(1)
+
+print("[✓] Manifest loaded. Phase 2 and 2.3 complete.")
+print(f"[✓] Inputs:")
+for artifact in manifest['phases']['2']['output_artifacts']:
+    print(f"    - {artifact}")
+if '2.3' in manifest['phases']:
+    for artifact in manifest['phases']['2.3']['output_artifacts']:
+        print(f"    - {artifact}")
+```
 
 ---
 
@@ -27,11 +57,30 @@ is broken into tickets. Focus on five questions:
 
 ## STEP 1 -- GATHER CONTEXT
 
-Read and internalize:
-- docs/brain/$1/00-scope.md (shared understanding)
-- docs/brain/$1/01-analysis.md (dependency map, risk hotspots)
-- docs/brain/$1/02-approach.md (decisions, target state, invariants)
-- Use `get_file_outline` on each target file to confirm live code matches the analysis
+Read and internalize all previous phase outputs:
+
+```python
+# Collect all input artifacts
+all_inputs = []
+for phase_id in ['1', '1.5', '2']:
+    if phase_id in manifest['phases']:
+        all_inputs.extend(manifest['phases'][phase_id]['output_artifacts'])
+if '2.3' in manifest['phases']:
+    all_inputs.extend(manifest['phases']['2.3']['output_artifacts'])
+
+print(f"[→] Reading all previous outputs:")
+for artifact in all_inputs:
+    print(f"    - {artifact}")
+```
+
+Use `read_file` to load:
+- Scope document (shared understanding)
+- Boundary analysis (scope validation)
+- Analysis document (dependency map, risk hotspots)
+- Approach document (decisions, target state, invariants)
+- Sentinel report (if Phase 2.3 was run)
+
+Use `get_file_outline` on each target file to confirm live code matches the analysis.
 
 ---
 
@@ -100,9 +149,20 @@ Present findings to the Director. For each gap or concern:
 ## STEP 6 -- UPDATE SOURCE DOCUMENTS IN-PLACE
 
 As issues are resolved through clarification:
-- Update docs/brain/$1/02-approach.md with agreed decisions and mitigations
-- Update docs/brain/$1/01-analysis.md if validation reveals missing hotspots
+- Update Phase 2 approach document with agreed decisions and mitigations
+- Update Phase 2 analysis document if validation reveals missing hotspots
 - DO NOT fork into separate documents -- keep one source of truth per doc
+
+```python
+# Get paths to Phase 2 outputs for in-place updates
+phase2_outputs = manifest['phases']['2']['output_artifacts']
+analysis_doc = [a for a in phase2_outputs if 'analysis' in a][0]
+approach_doc = [a for a in phase2_outputs if 'approach' in a or 'architecture' in a][0]
+
+print(f"[→] Update these documents in-place as needed:")
+print(f"    - {analysis_doc}")
+print(f"    - {approach_doc}")
+```
 
 ---
 
@@ -112,6 +172,29 @@ Once all CRITICAL and SIGNIFICANT issues are resolved:
 - Review the updated documents with the Director
 - Confirm the plan is safe and concrete enough for ticket breakdown
 - Provide a one-paragraph readiness summary
+
+---
+
+## STEP 8 -- UPDATE MANIFEST
+
+```python
+from epic_manifest import update_manifest
+
+# Phase 3 doesn't create new artifacts - it validates and updates Phase 2 docs
+# So we reference the Phase 2 outputs as our "outputs" (they were updated in-place)
+phase2_outputs = manifest['phases']['2']['output_artifacts']
+
+# Update manifest
+update_manifest(
+    "$1",
+    "3",
+    "completed",
+    outputs=phase2_outputs,  # Reference Phase 2 docs (updated in-place)
+    notes="Approach validated and refined. All CRITICAL and SIGNIFICANT issues resolved."
+)
+
+print(f"[✓] Phase 3 complete. Phase 2 documents validated and updated in-place.")
+```
 
 ---
 
