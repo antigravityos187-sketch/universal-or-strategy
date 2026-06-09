@@ -45,126 +45,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (state == State.SetDefaults)
             {
-                _configureComplete = false;
-                _dataLoadedComplete = false;
-                Interlocked.Exchange(ref _startupReadinessLogEmitted, 0);
-                ResetTelemetry();
-                Description = "Universal OR Strategy V12.12 - Build " + BUILD_TAG;
-                Name = "V12_002";
-                Calculate = Calculate.OnPriceChange; // CRITICAL FIX: Updates on every price tick for real-time trailing
-                EntriesPerDirection = 10;
-                EntryHandling = EntryHandling.UniqueEntries;
-                IsExitOnSessionCloseStrategy = false;
-                IsFillLimitOnTouch = false;
-                MaximumBarsLookBack = MaximumBarsLookBack.TwoHundredFiftySix;
-                OrderFillResolution = OrderFillResolution.Standard;
-                StartBehavior = StartBehavior.ImmediatelySubmit;
-                TimeInForce = TimeInForce.Gtc;
-                StopTargetHandling = StopTargetHandling.PerEntryExecution;
-                IsUnmanaged = true;
-
-                // Session defaults (NY Open)
-                SessionStart = DateTime.Parse("09:30");
-                SessionEnd = DateTime.Parse("16:00");
-                ORTimeframe = ORTimeframeType.Minutes_5;
-                SelectedTimeZone = "Eastern";
-
-                // Risk defaults
-                RiskPerTrade = 200;
-                StopThresholdPoints = 5.0;
-                SlippageCushionPoints = 1.0; // SLIP-01: 1pt default cushion for follower slippage
-                MESMinimum = 1;
-                MESMaximum = 30;
-                MGCMinimum = 1;
-                MGCMaximum = 15;
-
-                // Stop defaults
-                StopMultiplier = 0.5;
-                MinimumStop = 4.0; // 1102Z-A F2: raised floor from 1.0 to 4.0 for current volatility
-                MaximumStop = 15.0; // V8.31: Increased from 8.0
-                IpcPort = 5001;
-                IpcExposeSensitiveFleetIdentity = false;
-
-                // V12.1101E: 5-target system with configurable runner selection
-                Target1Value = 1.0;
-                Target2Value = 0.5;
-                Target3Value = 1.0;
-                Target4Value = 1.5;
-                Target5Value = 2.0;
-                ConfiguredTargetCount = 5;
-                T1Type = TargetMode.Points;
-                T2Type = TargetMode.ATR;
-                T3Type = TargetMode.ATR;
-                T4Type = TargetMode.ATR;
-                T5Type = TargetMode.Runner;
-
-                // Trailing stop defaults
-                BreakEvenTriggerPoints = 2.0;
-                BreakEvenOffsetTicks = 2; // BE stop offset in ticks (0 = exact entry)
-                Trail1TriggerPoints = 3.0;
-                Trail1DistancePoints = 2.0;
-                Trail2TriggerPoints = 4.0;
-                Trail2DistancePoints = 1.5;
-                Trail3TriggerPoints = 5.0;
-                Trail3DistancePoints = 1.0;
-
-                // Display
-                ShowMidLine = true;
-                BoxOpacity = 20;
-
-                // RMA defaults
-                RMAEnabled = true;
-                RMAATRPeriod = 14;
-                RMAStopATRMultiplier = 1.1;
-
-                // V8.2: TREND defaults (V8.31: E1 now uses ATR from live EMA9)
-                TRENDEnabled = true;
-                TRENDEntry1ATRMultiplier = 1.1; // V8.31: 1.1x ATR stop from live 9 EMA (was fixed 2pt)
-                TRENDEntry2ATRMultiplier = 1.1; // 1.1x ATR trailing for 15 EMA entry
-
-                // V8.4: RETEST defaults
-                RetestEnabled = true;
-                RetestATRMultiplier = 1.1; // 1.1x ATR for both stop and trail
-
-                // V8.6: MOMO defaults
-                MOMOEnabled = true;
-                MOMOStopPoints = 0.5; // Fixed 0.5pt stop for MOMO trades
-
-                // V8.7: FFMA defaults
-                FFMAEnabled = true;
-                FFMAEMADistance = 10.0; // 10 points from 9 EMA
-                FFMARSIOverbought = 80;
-                FFMARSIOversold = 20;
-
-                // V12 SIMA defaults
-                AccountPrefix = "Apex";
-                EnableSIMA = false; // SAFETY: Default to OFF
-                ReaperAuditEnabled = true;
-                ReaperIntervalMs = 1000; // 1 second audit cycle
-                NakedPositionGraceSec = 5; // Build 1104: extend naked-position grace to 5s for stop replace round-trips
-                EnablePathB = false;
-                AutoFlattenDesync = false;
-                RepairTickFence = 8;
-                FleetParityMultiplier = 1; // V12.Phase8.7 [PARITY-01]: Set to 10 for ES/MES fleet parity
-                ShadowModeEnabled = false; // Build 1105: Shadow Mode opt-in, default OFF for safe rollout
-                PathBStopPoints = 10.0;
-                PathBTargetPoints = 15.0;
-                ChaseIfTouchPoints = "0";
-
-                // Apex Compliance defaults
-                EnableComplianceHub = true;
-                ConsistencyThreshold = 30;
-                EnableConsistencyLock = false;
-                MaxDailyProfitCap = 1500; // Default $1500 cap for consistency
-                PayoutMinTradingDays = 10;
-                PayoutMinProfit = 2600; // Common Apex 50K payout threshold (adjust per account)
-                TrailingDrawdownLimit = 2500; // Common Apex 50K trailing DD
-                // RMA Intelligence defaults (Phase 9.2)
-                RmaIntelligenceEnabled = false; // Default to isolated/OFF
-                RmaProximityTicks = 2;
-                RmaCancellationTicks = 4;
-                RmaMaxProbeCount = 3; // Phase 9.2: 3 probes before exhaustion
-                RmaExhaustionEnabled = false; // Phase 9.2: Off by default, opt-in
+                HandleSetDefaults();
             }
             else if (state == State.Configure)
             {
@@ -562,6 +443,130 @@ namespace NinjaTrader.NinjaScript.Strategies
                 accountTradingDays?.Clear();
                 accountLastSummaryDate?.Clear();
             }
+        }
+
+        private void HandleSetDefaults()
+        {
+            _configureComplete = false;
+            _dataLoadedComplete = false;
+            Interlocked.Exchange(ref _startupReadinessLogEmitted, 0);
+            ResetTelemetry();
+            Description = "Universal OR Strategy V12.12 - Build " + BUILD_TAG;
+            Name = "V12_002";
+            Calculate = Calculate.OnPriceChange; // CRITICAL FIX: Updates on every price tick for real-time trailing
+            EntriesPerDirection = 10;
+            EntryHandling = EntryHandling.UniqueEntries;
+            IsExitOnSessionCloseStrategy = false;
+            IsFillLimitOnTouch = false;
+            MaximumBarsLookBack = MaximumBarsLookBack.TwoHundredFiftySix;
+            OrderFillResolution = OrderFillResolution.Standard;
+            StartBehavior = StartBehavior.ImmediatelySubmit;
+            TimeInForce = TimeInForce.Gtc;
+            StopTargetHandling = StopTargetHandling.PerEntryExecution;
+            IsUnmanaged = true;
+
+            // Session defaults (NY Open)
+            SessionStart = DateTime.Parse("09:30");
+            SessionEnd = DateTime.Parse("16:00");
+            ORTimeframe = ORTimeframeType.Minutes_5;
+            SelectedTimeZone = "Eastern";
+
+            // Risk defaults
+            RiskPerTrade = 200;
+            StopThresholdPoints = 5.0;
+            SlippageCushionPoints = 1.0; // SLIP-01: 1pt default cushion for follower slippage
+            MESMinimum = 1;
+            MESMaximum = 30;
+            MGCMinimum = 1;
+            MGCMaximum = 15;
+
+            // Stop defaults
+            StopMultiplier = 0.5;
+            MinimumStop = 4.0; // 1102Z-A F2: raised floor from 1.0 to 4.0 for current volatility
+            MaximumStop = 15.0; // V8.31: Increased from 8.0
+            IpcPort = 5001;
+            IpcExposeSensitiveFleetIdentity = false;
+
+            // V12.1101E: 5-target system with configurable runner selection
+            Target1Value = 1.0;
+            Target2Value = 0.5;
+            Target3Value = 1.0;
+            Target4Value = 1.5;
+            Target5Value = 2.0;
+            ConfiguredTargetCount = 5;
+            T1Type = TargetMode.Points;
+            T2Type = TargetMode.ATR;
+            T3Type = TargetMode.ATR;
+            T4Type = TargetMode.ATR;
+            T5Type = TargetMode.Runner;
+
+            // Trailing stop defaults
+            BreakEvenTriggerPoints = 2.0;
+            BreakEvenOffsetTicks = 2; // BE stop offset in ticks (0 = exact entry)
+            Trail1TriggerPoints = 3.0;
+            Trail1DistancePoints = 2.0;
+            Trail2TriggerPoints = 4.0;
+            Trail2DistancePoints = 1.5;
+            Trail3TriggerPoints = 5.0;
+            Trail3DistancePoints = 1.0;
+
+            // Display
+            ShowMidLine = true;
+            BoxOpacity = 20;
+
+            // RMA defaults
+            RMAEnabled = true;
+            RMAATRPeriod = 14;
+            RMAStopATRMultiplier = 1.1;
+
+            // V8.2: TREND defaults (V8.31: E1 now uses ATR from live EMA9)
+            TRENDEnabled = true;
+            TRENDEntry1ATRMultiplier = 1.1; // V8.31: 1.1x ATR stop from live 9 EMA (was fixed 2pt)
+            TRENDEntry2ATRMultiplier = 1.1; // 1.1x ATR trailing for 15 EMA entry
+
+            // V8.4: RETEST defaults
+            RetestEnabled = true;
+            RetestATRMultiplier = 1.1; // 1.1x ATR for both stop and trail
+
+            // V8.6: MOMO defaults
+            MOMOEnabled = true;
+            MOMOStopPoints = 0.5; // Fixed 0.5pt stop for MOMO trades
+
+            // V8.7: FFMA defaults
+            FFMAEnabled = true;
+            FFMAEMADistance = 10.0; // 10 points from 9 EMA
+            FFMARSIOverbought = 80;
+            FFMARSIOversold = 20;
+
+            // V12 SIMA defaults
+            AccountPrefix = "Apex";
+            EnableSIMA = false; // SAFETY: Default to OFF
+            ReaperAuditEnabled = true;
+            ReaperIntervalMs = 1000; // 1 second audit cycle
+            NakedPositionGraceSec = 5; // Build 1104: extend naked-position grace to 5s for stop replace round-trips
+            EnablePathB = false;
+            AutoFlattenDesync = false;
+            RepairTickFence = 8;
+            FleetParityMultiplier = 1; // V12.Phase8.7 [PARITY-01]: Set to 10 for ES/MES fleet parity
+            ShadowModeEnabled = false; // Build 1105: Shadow Mode opt-in, default OFF for safe rollout
+            PathBStopPoints = 10.0;
+            PathBTargetPoints = 15.0;
+            ChaseIfTouchPoints = "0";
+
+            // Apex Compliance defaults
+            EnableComplianceHub = true;
+            ConsistencyThreshold = 30;
+            EnableConsistencyLock = false;
+            MaxDailyProfitCap = 1500; // Default $1500 cap for consistency
+            PayoutMinTradingDays = 10;
+            PayoutMinProfit = 2600; // Common Apex 50K payout threshold (adjust per account)
+            TrailingDrawdownLimit = 2500; // Common Apex 50K trailing DD
+            // RMA Intelligence defaults (Phase 9.2)
+            RmaIntelligenceEnabled = false; // Default to isolated/OFF
+            RmaProximityTicks = 2;
+            RmaCancellationTicks = 4;
+            RmaMaxProbeCount = 3; // Phase 9.2: 3 probes before exhaustion
+            RmaExhaustionEnabled = false; // Phase 9.2: Off by default, opt-in
         }
 
         private void DrainQueuesForShutdown()
