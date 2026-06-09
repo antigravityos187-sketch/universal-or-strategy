@@ -1,15 +1,87 @@
 ---
-description: Phase 1 - Scope intake and problem validation for a V12 refactoring epic.
+description: Phase 0 & 1 - Manifest generation, hotspot analysis, and scope intake for a V12 refactoring epic.
 argument-hint: <epic-slug> <target-description>
 ---
-# PHASE 1: EPIC INTAKE
+# PHASE 0 & 1: EPIC INTAKE
 **Epic Slug:** $1
 **Target:** $2
 **Protocol:** V12 Photon Kernel -- Traycer-Parity Epic Workflow (Bob Edition)
+**Manifest-Based:** This command generates and updates manifest.json for workflow orchestration
 
 > You are a Technical Architect whose job is to build SHARED UNDERSTANDING before any planning begins.
 > You do NOT touch src/ files in this phase. Planning artifacts go to docs/brain/$1/.
-> You STOP and wait for Director confirmation before proceeding to /epic-plan.
+> You STOP and wait for Director confirmation before proceeding to /epic-scope-boundary.
+
+---
+
+## PHASE 0: MANIFEST GENERATION & HOTSPOT ANALYSIS
+
+### Step 0.1 -- Generate Manifest
+Before any analysis, create the epic manifest:
+
+```python
+import sys
+sys.path.append('scripts')
+from epic_manifest import generate_manifest
+
+manifest = generate_manifest("$1", "$2")
+print(f"Manifest created: {manifest['_path']}")
+```
+
+This creates `docs/brain/$1/manifest.json` with initial phase definitions.
+
+### Step 0.2 -- Update Phase 0 Status
+Mark Phase 0 as in progress:
+
+```python
+from epic_manifest import update_manifest
+
+update_manifest("$1", "0", "in_progress")
+```
+
+### Step 0.3 -- Hotspot Analysis
+Using jCodemunch MCP tools, identify complexity hotspots in the target area:
+
+- `search_symbols` with complexity filter to find high-CYC methods
+- `get_hotspots` to identify churn + complexity intersections
+- `get_symbol_complexity` for detailed metrics on target methods
+
+Create `docs/brain/$1/00-hotspots.md` documenting:
+- Methods with CYC > 15
+- Churn rate (commits/week)
+- Hotspot score (complexity × log(churn))
+- Recommended extraction priorities
+
+### Step 0.4 -- Complete Phase 0
+Mark Phase 0 as completed:
+
+```python
+update_manifest(
+    "$1", 
+    "0", 
+    "completed",
+    outputs=["docs/brain/$1/00-hotspots.md"],
+    notes="Identified X high-complexity hotspots"
+)
+```
+
+---
+
+## PHASE 1: SCOPE DEFINITION
+
+### Step 1.1 -- Update Phase 1 Status
+Mark Phase 1 as in progress:
+
+```python
+update_manifest("$1", "1", "in_progress")
+```
+
+### Step 1.2 -- Understand the Request
+
+Answer these questions from the target description ($2) and Phase 0 hotspots:
+- What code area is being refactored? (specific files, methods, subgraph)
+- What is the motivation? (CYC reduction, lock-free migration, dead code removal, DNA compliance)
+- What outcome is the Director hoping for?
 
 ---
 
@@ -25,29 +97,20 @@ Value system:
 
 ---
 
-## STEP 1 -- UNDERSTAND THE REQUEST
-
-Answer these questions from the target description ($2):
-- What code area is being refactored? (specific files, methods, subgraph)
-- What is the motivation? (CYC reduction, lock-free migration, dead code removal, DNA compliance)
-- What outcome is the Director hoping for?
-
----
-
-## STEP 2 -- BUILD THE MENTAL MODEL (jCodemunch Analysis)
+### Step 1.3 -- Build the Mental Model (jCodemunch Analysis)
 
 Using jCodemunch MCP tools, build a structural map of the target area:
 
-### 2a. File Outline
+#### 1.3a. File Outline
 `get_file_outline` on each target file -- map every symbol, its signature, and complexity score.
 
-### 2b. Blast Radius
+#### 1.3b. Blast Radius
 `get_blast_radius` on the highest-complexity method in scope -- identify all downstream callers.
 
-### 2c. Find References
+#### 1.3c. Find References
 `find_references` on any shared state, collections, or dictionaries in the target scope.
 
-### 2d. Dependency Graph
+#### 1.3d. Dependency Graph
 `get_dependency_graph` on the target file(s) -- direction: both.
 
 What to understand:
@@ -58,7 +121,7 @@ What to understand:
 
 ---
 
-## STEP 3 -- VALIDATE THE STATED PROBLEM
+### Step 1.4 -- Validate the Stated Problem
 
 Verify that the stated problem ($2) matches reality. Check for mismatches:
 - If "high complexity" -- run complexity_audit.py context to confirm actual CYC scores.
@@ -70,7 +133,7 @@ If the framing matches what you observe, confirm briefly and move on.
 
 ---
 
-## STEP 4 -- ESTABLISH SCOPE BOUNDARIES
+### Step 1.5 -- Establish Scope Boundaries
 
 Establish clear IN/OUT scope boundaries. Scope creep is the enemy of safe refactoring.
 
@@ -82,7 +145,7 @@ What to establish:
 
 ---
 
-## STEP 5 -- PRODUCE SCOPE ALIGNMENT SUMMARY
+### Step 1.6 -- Produce Scope Alignment Summary
 
 Create `docs/brain/$1/00-scope.md` with this structure:
 
@@ -108,6 +171,32 @@ Create `docs/brain/$1/00-scope.md` with this structure:
 - Extraction floor: >= 15 LOC per sub-method
 ```
 
+### Step 1.7 -- Complete Phase 1
+Mark Phase 1 as completed and update manifest:
+
+```python
+update_manifest(
+    "$1",
+    "1",
+    "completed",
+    outputs=["docs/brain/$1/00-scope.md"],
+    notes="Scope: X methods, Y files. Risk level: [Isolated/Core/Cross-subgraph]"
+)
+```
+
+### Step 1.8 -- Verify Dependencies for Next Phase
+Check if Phase 1.5 (Scope Boundary) is ready:
+
+```python
+from epic_manifest import validate_dependencies, get_next_phases
+
+if validate_dependencies("$1", "1.5"):
+    print("Phase 1.5 ready to execute")
+
+next_phases = get_next_phases("$1")
+print(f"Next phases available: {next_phases}")
+```
+
 ---
 
 ## !! DIRECTOR ALIGNMENT GATE !!
@@ -116,6 +205,17 @@ Create `docs/brain/$1/00-scope.md` with this structure:
 - Are the boundaries correct?
 - Is there anything NOT visible in the code that I should know?
 
-**Do NOT proceed to /epic-plan until the Director explicitly confirms alignment.**
+**Manifest Status:**
+```python
+from epic_manifest import load_manifest
+import json
 
-Output: "[INTAKE-GATE] Scope alignment complete. Awaiting Director confirmation before planning."
+manifest = load_manifest("$1")
+print(f"Epic Status: {manifest['status']}")
+print(f"Completed Phases: {[p for p, d in manifest['phases'].items() if d['status'] == 'completed']}")
+print(f"Manifest Path: docs/brain/$1/manifest.json")
+```
+
+**Do NOT proceed to /epic-scope-boundary until the Director explicitly confirms alignment.**
+
+Output: "[INTAKE-GATE] Phase 0 & 1 complete. Manifest updated. Awaiting Director confirmation before Phase 1.5."
