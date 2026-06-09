@@ -457,6 +457,42 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Maps NinjaTrader OrderState to V12 FollowerBracketState.
+        /// Pure function - no side effects, deterministic mapping.
+        /// </summary>
+        /// <param name="entryState">NinjaTrader order state</param>
+        /// <returns>Corresponding FSM state, or null if terminal state (skip FSM creation)</returns>
+        /// <remarks>
+        /// Terminal states (Cancelled, Rejected, etc.) return null to signal caller to skip FSM creation.
+        /// This preserves the original behavior where terminal orders are ignored.
+        /// </remarks>
+        private FollowerBracketState? MapOrderStateToFSMState(OrderState entryState)
+        {
+            if (entryState == OrderState.Filled || entryState == OrderState.PartFilled)
+            {
+                return FollowerBracketState.Active;
+            }
+            else if (entryState == OrderState.Accepted)
+            {
+                return FollowerBracketState.Accepted;
+            }
+            else if (
+                entryState == OrderState.Working
+                || entryState == OrderState.Submitted
+                || entryState == OrderState.Initialized
+                || entryState == OrderState.ChangePending
+                || entryState == OrderState.ChangeSubmitted
+            )
+            {
+                return FollowerBracketState.Submitted;
+            }
+            else
+            {
+                return null; // Terminal state - skip FSM creation
+            }
+        }
+
+        /// <summary>
         /// Phase 5: Rebuilds _followerBrackets and _orderIdToFsmKey from already-adopted
         /// working orders. Called from HydrateWorkingOrdersFromBroker() before the
         /// adoption-complete gate is set. Idempotent -- safe to call on every reconnect.
@@ -485,25 +521,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                     continue;
 
                 // Map broker order state to FSM state
-                FollowerBracketState hydrationState;
-                OrderState entryState = entryOrder.OrderState;
-                if (entryState == OrderState.Filled || entryState == OrderState.PartFilled)
-                    hydrationState = FollowerBracketState.Active;
-                else if (entryState == OrderState.Accepted)
-                    hydrationState = FollowerBracketState.Accepted;
-                else if (
-                    entryState == OrderState.Working
-                    || entryState == OrderState.Submitted
-                    || entryState == OrderState.Initialized
-                    || entryState == OrderState.ChangePending
-                    || entryState == OrderState.ChangeSubmitted
-                )
-                    hydrationState = FollowerBracketState.Submitted;
-                else
-                    continue; // Terminal state -- FSM not needed
+                FollowerBracketState? hydrationState = MapOrderStateToFSMState(entryOrder.OrderState);
+                if (hydrationState == null)
+                    continue; // Terminal state - skip FSM creation
 
                 int hydratedRemainingContracts = Math.Max(0, entryOrder.Quantity);
-                if (hydrationState == FollowerBracketState.Active)
+                if (hydrationState.Value == FollowerBracketState.Active)
                 {
                     Position livePosition = pi
                         .ExecutingAccount.Positions.ToArray()
@@ -521,7 +544,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     AccountName = pi.ExecutingAccount.Name,
                     EntryName = entryKey,
-                    State = hydrationState,
+                    State = hydrationState.Value,
                     RemainingContracts = hydratedRemainingContracts,
                     LastUpdateUtc = DateTime.UtcNow,
                     EntryOrder = entryOrder,
