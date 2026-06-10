@@ -1,0 +1,497 @@
+using System;
+using Xunit;
+using NinjaTrader.Cbi;
+using NinjaTrader.NinjaScript.Strategies;
+
+namespace V12_Performance.Tests.Entries
+{
+    /// <summary>
+    /// TDD tests for EPIC-CCN-19: CheckFFMAConditions extraction
+    /// Tests written BEFORE implementation (red phase)
+    /// </summary>
+    public class FFMAConditionsTests
+    {
+        #region IsFFMAReadyToCheck Tests
+
+        [Fact]
+        public void IsFFMAReadyToCheck_WhenDisarmed_ReturnsFalse()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.isFFMAModeArmed = false;
+            strategy.FFMAEnabled = true;
+            strategy.InitializeIndicators();
+
+            // Act
+            bool result = strategy.IsFFMAReadyToCheck();
+
+            // Assert
+            Assert.False(result, "Should return false when FFMA mode is disarmed");
+        }
+
+        [Fact]
+        public void IsFFMAReadyToCheck_WhenIndicatorsNull_ReturnsFalse()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.isFFMAModeArmed = true;
+            strategy.FFMAEnabled = true;
+            // Don't initialize indicators (leave null)
+
+            // Act
+            bool result = strategy.IsFFMAReadyToCheck();
+
+            // Assert
+            Assert.False(result, "Should return false when indicators are null");
+        }
+
+        [Fact]
+        public void IsFFMAReadyToCheck_WhenInsufficientBars_ReturnsFalse()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.isFFMAModeArmed = true;
+            strategy.FFMAEnabled = true;
+            strategy.InitializeIndicators();
+            strategy.SetCurrentBar(10); // Less than 20
+
+            // Act
+            bool result = strategy.IsFFMAReadyToCheck();
+
+            // Assert
+            Assert.False(result, "Should return false when CurrentBar < 20");
+        }
+
+        [Fact]
+        public void IsFFMAReadyToCheck_WhenAllConditionsMet_ReturnsTrue()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.isFFMAModeArmed = true;
+            strategy.FFMAEnabled = true;
+            strategy.InitializeIndicators();
+            strategy.SetCurrentBar(25); // >= 20
+
+            // Act
+            bool result = strategy.IsFFMAReadyToCheck();
+
+            // Assert
+            Assert.True(result, "Should return true when all conditions are met");
+        }
+
+        #endregion
+
+        #region GetFFMAMarketData Tests
+
+        [Fact]
+        public void GetFFMAMarketData_ReturnsCorrectEMA9Value()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.SetEMA9Value(4500.0);
+
+            // Act
+            var data = strategy.GetFFMAMarketData();
+
+            // Assert
+            Assert.Equal(4500.0, data.ema9Value, 2);
+        }
+
+        [Fact]
+        public void GetFFMAMarketData_ReturnsCorrectRSIValue()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.SetRSIValue(85.0);
+
+            // Act
+            var data = strategy.GetFFMAMarketData();
+
+            // Assert
+            Assert.Equal(85.0, data.rsiValue, 2);
+        }
+
+        [Fact]
+        public void GetFFMAMarketData_CalculatesDistanceCorrectly()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.SetEMA9Value(4500.0);
+            strategy.SetCurrentPrice(4515.0); // 15 pts above EMA
+
+            // Act
+            var data = strategy.GetFFMAMarketData();
+
+            // Assert
+            Assert.Equal(15.0, data.distanceFromEMA, 2);
+        }
+
+        [Fact]
+        public void GetFFMAMarketData_DetectsGreenCandleCorrectly()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.SetCandleData(open: 4500.0, close: 4510.0); // Green candle
+
+            // Act
+            var data = strategy.GetFFMAMarketData();
+
+            // Assert
+            Assert.True(data.isGreenCandle, "Should detect green candle (Close > Open)");
+            Assert.False(data.isRedCandle, "Should not detect red candle");
+        }
+
+        [Fact]
+        public void GetFFMAMarketData_DetectsRedCandleCorrectly()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.SetCandleData(open: 4510.0, close: 4500.0); // Red candle
+
+            // Act
+            var data = strategy.GetFFMAMarketData();
+
+            // Assert
+            Assert.True(data.isRedCandle, "Should detect red candle (Close < Open)");
+            Assert.False(data.isGreenCandle, "Should not detect green candle");
+        }
+
+        #endregion
+
+        #region CheckFFMAShortSetup Tests
+
+        [Fact]
+        public void CheckFFMAShortSetup_WhenConditionsNotMet_ReturnsFalse()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+
+            // Act
+            bool result = strategy.CheckFFMAShortSetup(
+                rsiValue: 50.0,           // Not overbought
+                distanceFromEMA: 5.0,     // Not far enough
+                isRedCandle: true,
+                currentPrice: 4500.0
+            );
+
+            // Assert
+            Assert.False(result, "Should return false when conditions not met");
+        }
+
+        [Fact]
+        public void CheckFFMAShortSetup_WhenRSILow_ReturnsFalse()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.FFMARSIOverbought = 80.0;
+            strategy.FFMAEMADistance = 10.0;
+
+            // Act
+            bool result = strategy.CheckFFMAShortSetup(
+                rsiValue: 70.0,           // Below threshold
+                distanceFromEMA: 15.0,    // Above threshold
+                isRedCandle: true,
+                currentPrice: 4500.0
+            );
+
+            // Assert
+            Assert.False(result, "Should return false when RSI not overbought");
+        }
+
+        [Fact]
+        public void CheckFFMAShortSetup_WhenGreenCandle_ReturnsFalse()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.FFMARSIOverbought = 80.0;
+            strategy.FFMAEMADistance = 10.0;
+
+            // Act
+            bool result = strategy.CheckFFMAShortSetup(
+                rsiValue: 85.0,           // Above threshold
+                distanceFromEMA: 15.0,    // Above threshold
+                isRedCandle: false,       // Green candle (wrong)
+                currentPrice: 4500.0
+            );
+
+            // Assert
+            Assert.False(result, "Should return false when candle is green");
+        }
+
+        [Fact]
+        public void CheckFFMAShortSetup_WhenAllConditionsMet_ExecutesEntry()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.FFMARSIOverbought = 80.0;
+            strategy.FFMAEMADistance = 10.0;
+            strategy.SetHighLow(high: 4520.0, low: 4490.0);
+
+            // Act
+            bool result = strategy.CheckFFMAShortSetup(
+                rsiValue: 85.0,           // Above threshold
+                distanceFromEMA: 15.0,    // Above threshold
+                isRedCandle: true,        // Red candle (correct)
+                currentPrice: 4515.0
+            );
+
+            // Assert
+            Assert.True(result, "Should return true and execute SHORT entry");
+            Assert.True(strategy.EntryExecuted, "Should have executed entry");
+            Assert.Equal(MarketPosition.Short, strategy.LastEntryDirection);
+        }
+
+        [Fact]
+        public void CheckFFMAShortSetup_ValidatesMinimumStopDistance()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.FFMARSIOverbought = 80.0;
+            strategy.FFMAEMADistance = 10.0;
+            strategy.tickSize = 0.25;
+            strategy.SetHighLow(high: 4500.5, low: 4490.0); // Very tight stop
+
+            // Act
+            bool result = strategy.CheckFFMAShortSetup(
+                rsiValue: 85.0,
+                distanceFromEMA: 15.0,
+                isRedCandle: true,
+                currentPrice: 4500.0
+            );
+
+            // Assert
+            Assert.True(result, "Should execute even with tight stop");
+            Assert.True(strategy.LastStopDistance >= strategy.tickSize * 2, 
+                "Stop distance should be at least 2 ticks");
+        }
+
+        #endregion
+
+        #region CheckFFMALongSetup Tests
+
+        [Fact]
+        public void CheckFFMALongSetup_WhenConditionsNotMet_ReturnsFalse()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+
+            // Act
+            bool result = strategy.CheckFFMALongSetup(
+                rsiValue: 50.0,           // Not oversold
+                distanceFromEMA: -5.0,    // Not far enough
+                isGreenCandle: true,
+                currentPrice: 4500.0
+            );
+
+            // Assert
+            Assert.False(result, "Should return false when conditions not met");
+        }
+
+        [Fact]
+        public void CheckFFMALongSetup_WhenRSIHigh_ReturnsFalse()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.FFMARSIOversold = 20.0;
+            strategy.FFMAEMADistance = 10.0;
+
+            // Act
+            bool result = strategy.CheckFFMALongSetup(
+                rsiValue: 30.0,           // Above threshold
+                distanceFromEMA: -15.0,   // Below threshold
+                isGreenCandle: true,
+                currentPrice: 4500.0
+            );
+
+            // Assert
+            Assert.False(result, "Should return false when RSI not oversold");
+        }
+
+        [Fact]
+        public void CheckFFMALongSetup_WhenRedCandle_ReturnsFalse()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.FFMARSIOversold = 20.0;
+            strategy.FFMAEMADistance = 10.0;
+
+            // Act
+            bool result = strategy.CheckFFMALongSetup(
+                rsiValue: 15.0,           // Below threshold
+                distanceFromEMA: -15.0,   // Below threshold
+                isGreenCandle: false,     // Red candle (wrong)
+                currentPrice: 4500.0
+            );
+
+            // Assert
+            Assert.False(result, "Should return false when candle is red");
+        }
+
+        [Fact]
+        public void CheckFFMALongSetup_WhenAllConditionsMet_ExecutesEntry()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.FFMARSIOversold = 20.0;
+            strategy.FFMAEMADistance = 10.0;
+            strategy.SetHighLow(high: 4510.0, low: 4480.0);
+
+            // Act
+            bool result = strategy.CheckFFMALongSetup(
+                rsiValue: 15.0,           // Below threshold
+                distanceFromEMA: -15.0,   // Below threshold
+                isGreenCandle: true,      // Green candle (correct)
+                currentPrice: 4485.0
+            );
+
+            // Assert
+            Assert.True(result, "Should return true and execute LONG entry");
+            Assert.True(strategy.EntryExecuted, "Should have executed entry");
+            Assert.Equal(MarketPosition.Long, strategy.LastEntryDirection);
+        }
+
+        [Fact]
+        public void CheckFFMALongSetup_ValidatesMinimumStopDistance()
+        {
+            // Arrange
+            var strategy = CreateTestStrategy();
+            strategy.InitializeIndicators();
+            strategy.FFMARSIOversold = 20.0;
+            strategy.FFMAEMADistance = 10.0;
+            strategy.tickSize = 0.25;
+            strategy.SetHighLow(high: 4510.0, low: 4499.5); // Very tight stop
+
+            // Act
+            bool result = strategy.CheckFFMALongSetup(
+                rsiValue: 15.0,
+                distanceFromEMA: -15.0,
+                isGreenCandle: true,
+                currentPrice: 4500.0
+            );
+
+            // Assert
+            Assert.True(result, "Should execute even with tight stop");
+            Assert.True(strategy.LastStopDistance >= strategy.tickSize * 2, 
+                "Stop distance should be at least 2 ticks");
+        }
+
+        #endregion
+
+        #region Test Helpers
+
+        private TestableV12Strategy CreateTestStrategy()
+        {
+            return new TestableV12Strategy();
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// Testable wrapper for V12_002 strategy
+    /// Exposes internal methods and state for unit testing
+    /// </summary>
+    public class TestableV12Strategy
+    {
+        // Public fields for test setup
+        public bool isFFMAModeArmed { get; set; }
+        public bool FFMAEnabled { get; set; }
+        public double FFMARSIOverbought { get; set; } = 80.0;
+        public double FFMARSIOversold { get; set; } = 20.0;
+        public double FFMAEMADistance { get; set; } = 10.0;
+        public double tickSize { get; set; } = 0.25;
+        public double MaximumStop { get; set; } = 50.0;
+
+        // Test state tracking
+        public bool EntryExecuted { get; set; }
+        public MarketPosition LastEntryDirection { get; set; }
+        public double LastStopDistance { get; set; }
+
+        // Mock indicator values
+        private double _ema9Value;
+        private double _rsiValue;
+        private double _currentPrice;
+        private double _open;
+        private double _close;
+        private double _high;
+        private double _low;
+        private int _currentBar;
+        private bool _indicatorsInitialized;
+
+        public void InitializeIndicators()
+        {
+            _indicatorsInitialized = true;
+            _ema9Value = 4500.0;
+            _rsiValue = 50.0;
+            _currentPrice = 4500.0;
+            _open = 4500.0;
+            _close = 4500.0;
+            _high = 4510.0;
+            _low = 4490.0;
+        }
+
+        public void SetCurrentBar(int bar) => _currentBar = bar;
+        public void SetEMA9Value(double value) => _ema9Value = value;
+        public void SetRSIValue(double value) => _rsiValue = value;
+        public void SetCurrentPrice(double value) => _currentPrice = value;
+        public void SetCandleData(double open, double close)
+        {
+            _open = open;
+            _close = close;
+        }
+        public void SetHighLow(double high, double low)
+        {
+            _high = high;
+            _low = low;
+        }
+
+        // Methods under test (to be implemented in V12_002.Entries.FFMA.cs)
+        public bool IsFFMAReadyToCheck()
+        {
+            // TODO: Implement in V12_002.Entries.FFMA.cs
+            throw new NotImplementedException("IsFFMAReadyToCheck not yet implemented");
+        }
+
+        public (double ema9Value, double rsiValue, double currentPrice, double distanceFromEMA, 
+                bool isGreenCandle, bool isRedCandle) GetFFMAMarketData()
+        {
+            // TODO: Implement in V12_002.Entries.FFMA.cs
+            throw new NotImplementedException("GetFFMAMarketData not yet implemented");
+        }
+
+        public bool CheckFFMAShortSetup(double rsiValue, double distanceFromEMA, 
+                                         bool isRedCandle, double currentPrice)
+        {
+            // TODO: Implement in V12_002.Entries.FFMA.cs
+            throw new NotImplementedException("CheckFFMAShortSetup not yet implemented");
+        }
+
+        public bool CheckFFMALongSetup(double rsiValue, double distanceFromEMA, 
+                                        bool isGreenCandle, double currentPrice)
+        {
+            // TODO: Implement in V12_002.Entries.FFMA.cs
+            throw new NotImplementedException("CheckFFMALongSetup not yet implemented");
+        }
+
+        // Mock ExecuteFFMAEntry for testing
+        private void ExecuteFFMAEntry(MarketPosition direction, int contracts)
+        {
+            EntryExecuted = true;
+            LastEntryDirection = direction;
+        }
+    }
+}

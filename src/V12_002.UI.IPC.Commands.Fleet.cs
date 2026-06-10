@@ -185,50 +185,72 @@ namespace NinjaTrader.NinjaScript.Strategies
             // V12.13c: Only cancels pending entry orders (stops/targets on active positions are preserved)
             if (EnableSIMA)
             {
-                int masterCancelled = CancelAll_ProcessMasterAccount();
-                int fleetCancelled = CancelAll_ProcessFleetAccounts();
-                int totalCancelled = masterCancelled + fleetCancelled;
-                Print(
-                    $"[SIMA] CANCEL_ALL -> Cancelled {totalCancelled} orders (Entries + Orphaned Brackets) (local + fleet) [1001]"
-                );
+                CancelAll_SIMA();
             }
             else
             {
-                int cancelled = 0;
-                foreach (Order order in Account.Orders)
-                {
-                    if (
-                        order != null
-                        && order.Instrument.FullName == Instrument.FullName
-                        && (
-                            order.OrderState == OrderState.Working
-                            || order.OrderState == OrderState.Accepted
-                            || order.OrderState == OrderState.Submitted
-                            || order.OrderState == OrderState.ChangePending
-                            || order.OrderState == OrderState.ChangeSubmitted
-                        )
-                    )
-                    {
-                        string oName = order.Name;
-                        if (
-                            oName.StartsWith("Stop_")
-                            || oName.StartsWith("S_")
-                            || oName.StartsWith("T1_")
-                            || oName.StartsWith("T2_")
-                            || oName.StartsWith("T3_")
-                            || oName.StartsWith("T4_")
-                            || oName.StartsWith("T5_")
-                        )
-                            continue;
-
-                        CancelOrderOnAccount(order, order.Account);
-                        cancelled++;
-                    }
-                }
-                Print($"[V12] CANCEL_ALL -> Cancelled {cancelled} pending entry orders");
+                CancelAll_V12();
             }
 
             return true;
+        }
+
+        private void CancelAll_SIMA()
+        {
+            int masterCancelled = CancelAll_ProcessMasterAccount();
+            int fleetCancelled = CancelAll_ProcessFleetAccounts();
+            int totalCancelled = masterCancelled + fleetCancelled;
+            Print(
+                $"[SIMA] CANCEL_ALL -> Cancelled {totalCancelled} orders (Entries + Orphaned Brackets) (local + fleet) [1001]"
+            );
+        }
+
+        private void CancelAll_V12()
+        {
+            int cancelled = 0;
+            foreach (Order order in Account.Orders)
+            {
+                if (!ShouldCancelOrder_V12(order))
+                    continue;
+
+                CancelOrderOnAccount(order, order.Account);
+                cancelled++;
+            }
+            Print($"[V12] CANCEL_ALL -> Cancelled {cancelled} pending entry orders");
+        }
+
+        private bool ShouldCancelOrder_V12(Order order)
+        {
+            if (order == null)
+                return false;
+            if (order.Instrument.FullName != Instrument.FullName)
+                return false;
+            if (!IsOrderWorking(order))
+                return false;
+            if (IsProtectedBracketOrder(order.Name))
+                return false;
+
+            return true;
+        }
+
+        private bool IsOrderWorking(Order order)
+        {
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.ChangePending
+                || order.OrderState == OrderState.ChangeSubmitted;
+        }
+
+        private bool IsProtectedBracketOrder(string orderName)
+        {
+            return orderName.StartsWith("Stop_")
+                || orderName.StartsWith("S_")
+                || orderName.StartsWith("T1_")
+                || orderName.StartsWith("T2_")
+                || orderName.StartsWith("T3_")
+                || orderName.StartsWith("T4_")
+                || orderName.StartsWith("T5_");
         }
 
         private int CancelAll_ProcessMasterAccount()

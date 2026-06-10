@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using V12_Performance.Tests.Mocks;
 using Xunit;
 
@@ -385,6 +386,309 @@ namespace V12_Performance.Tests.Orders
             testHelper.CancelOrphanedOrdersForPosition(posKey, position);
             Assert.Equal(0, testHelper.CancelCallCount);
         }
+
+        // ============================================================================
+        // Helper 4 Tests: CollectPositionsForCleanup (6 tests)
+        // ============================================================================
+
+        [Fact]
+        public void CollectPositionsForCleanup_WithFlatPositions_ReturnsAll()
+        {
+            // Arrange
+            var testHelper = new CleanupCollectionTestHelper();
+            var account = new MockAccount("Apex01");
+
+            // Add 3 positions with EntryFilled = true and RemainingContracts > 0
+            for (int i = 1; i <= 3; i++)
+            {
+                var position = testHelper.CreateMockPositionInfo(account, entryFilled: true, remainingContracts: 1);
+                testHelper.AddActivePosition($"pos{i}", position);
+            }
+
+            // Act
+            var result = testHelper.CollectPositionsForCleanup();
+
+            // Assert
+            Assert.Equal(3, result.Count);
+            Assert.Contains("pos1", result);
+            Assert.Contains("pos2", result);
+            Assert.Contains("pos3", result);
+        }
+
+        [Fact]
+        public void CollectPositionsForCleanup_WithNoFlatPositions_ReturnsEmpty()
+        {
+            // Arrange
+            var testHelper = new CleanupCollectionTestHelper();
+            var account = new MockAccount("Apex01");
+
+            // Add positions with RemainingContracts = 0 (not flat)
+            for (int i = 1; i <= 3; i++)
+            {
+                var position = testHelper.CreateMockPositionInfo(account, entryFilled: true, remainingContracts: 0);
+                testHelper.AddActivePosition($"pos{i}", position);
+            }
+
+            // Act
+            var result = testHelper.CollectPositionsForCleanup();
+
+            // Assert
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public void CollectPositionsForCleanup_WithMixedPositions_ReturnsOnlyFlat()
+        {
+            // Arrange
+            var testHelper = new CleanupCollectionTestHelper();
+            var account = new MockAccount("Apex01");
+
+            // Add 2 flat positions (EntryFilled = true, RemainingContracts > 0)
+            var flatPos1 = testHelper.CreateMockPositionInfo(account, entryFilled: true, remainingContracts: 1);
+            testHelper.AddActivePosition("flat1", flatPos1);
+
+            var flatPos2 = testHelper.CreateMockPositionInfo(account, entryFilled: true, remainingContracts: 2);
+            testHelper.AddActivePosition("flat2", flatPos2);
+
+            // Add 2 active positions (RemainingContracts = 0)
+            var activePos1 = testHelper.CreateMockPositionInfo(account, entryFilled: true, remainingContracts: 0);
+            testHelper.AddActivePosition("active1", activePos1);
+
+            var activePos2 = testHelper.CreateMockPositionInfo(account, entryFilled: false, remainingContracts: 1);
+            testHelper.AddActivePosition("active2", activePos2);
+
+            // Act
+            var result = testHelper.CollectPositionsForCleanup();
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Contains("flat1", result);
+            Assert.Contains("flat2", result);
+            Assert.DoesNotContain("active1", result);
+            Assert.DoesNotContain("active2", result);
+        }
+
+        [Fact]
+        public void CollectPositionsForCleanup_WithMultipleAccounts_ReturnsAll()
+        {
+            // Arrange
+            var testHelper = new CleanupCollectionTestHelper();
+            var account1 = new MockAccount("Apex01");
+            var account2 = new MockAccount("Apex02");
+
+            // Add flat positions across multiple accounts
+            var pos1 = testHelper.CreateMockPositionInfo(account1, entryFilled: true, remainingContracts: 1);
+            testHelper.AddActivePosition("pos1", pos1);
+
+            var pos2 = testHelper.CreateMockPositionInfo(account2, entryFilled: true, remainingContracts: 1);
+            testHelper.AddActivePosition("pos2", pos2);
+
+            // Act
+            var result = testHelper.CollectPositionsForCleanup();
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Contains("pos1", result);
+            Assert.Contains("pos2", result);
+        }
+
+        [Fact]
+        public void CollectPositionsForCleanup_PreservesToArrayPattern_HandlesModification()
+        {
+            // Arrange
+            var testHelper = new CleanupCollectionTestHelper();
+            var account = new MockAccount("Apex01");
+
+            // Add 2 flat positions
+            var pos1 = testHelper.CreateMockPositionInfo(account, entryFilled: true, remainingContracts: 1);
+            testHelper.AddActivePosition("pos1", pos1);
+
+            var pos2 = testHelper.CreateMockPositionInfo(account, entryFilled: true, remainingContracts: 1);
+            testHelper.AddActivePosition("pos2", pos2);
+
+            // Simulate concurrent removal during iteration
+            testHelper.EnableConcurrentRemoval("pos1");
+
+            // Act & Assert (no exception thrown)
+            var result = testHelper.CollectPositionsForCleanup();
+
+            // Assert - pos1 was removed during iteration, so only pos2 should be collected
+            Assert.Single(result);
+            Assert.Contains("pos2", result);
+            Assert.DoesNotContain("pos1", result);
+        }
+
+        [Fact]
+        public void CollectPositionsForCleanup_WithEmptyCollection_ReturnsEmpty()
+        {
+            // Arrange
+            var testHelper = new CleanupCollectionTestHelper();
+
+            // Act
+            var result = testHelper.CollectPositionsForCleanup();
+
+            // Assert
+            Assert.Empty(result);
+        }
+
+        // ============================================================================
+        // Helper 5 Tests: IsOrderCancellable (4 tests)
+        // ============================================================================
+
+        [Fact]
+        public void IsOrderCancellable_WithWorkingOrder_ReturnsTrue()
+        {
+            // Arrange
+            var testHelper = new OrderCancellableTestHelper();
+            var account = new MockAccount("Apex01");
+            var order = new MockOrder("Stop_1", MockOrderState.Working, account);
+
+            // Act
+            bool result = testHelper.IsOrderCancellable(order);
+
+            // Assert
+            Assert.True(result, "Should return true for Working order");
+        }
+
+        [Fact]
+        public void IsOrderCancellable_WithAcceptedOrder_ReturnsTrue()
+        {
+            // Arrange
+            var testHelper = new OrderCancellableTestHelper();
+            var account = new MockAccount("Apex01");
+            var order = new MockOrder("Stop_1", MockOrderState.Accepted, account);
+
+            // Act
+            bool result = testHelper.IsOrderCancellable(order);
+
+            // Assert
+            Assert.True(result, "Should return true for Accepted order");
+        }
+
+        [Fact]
+        public void IsOrderCancellable_WithFilledOrder_ReturnsFalse()
+        {
+            // Arrange
+            var testHelper = new OrderCancellableTestHelper();
+            var account = new MockAccount("Apex01");
+            var order = new MockOrder("Stop_1", MockOrderState.Filled, account);
+
+            // Act
+            bool result = testHelper.IsOrderCancellable(order);
+
+            // Assert
+            Assert.False(result, "Should return false for Filled order (terminal state)");
+        }
+
+        [Fact]
+        public void IsOrderCancellable_WithNullOrder_ReturnsFalse()
+        {
+            // Arrange
+            var testHelper = new OrderCancellableTestHelper();
+
+            // Act
+            bool result = testHelper.IsOrderCancellable(null);
+
+            // Assert
+            Assert.False(result, "Should return false for null order");
+        }
+    }
+
+    /// <summary>
+    /// Test helper for IsOrderCancellable tests.
+    /// Simulates the order state check logic.
+    /// </summary>
+    internal class OrderCancellableTestHelper
+    {
+        /// <summary>
+        /// Mock implementation of IsOrderCancellable.
+        /// This simulates the logic that will be extracted from CancelOrphanedOrdersForPosition.
+        /// Will be replaced by actual method call after extraction.
+        /// </summary>
+        public bool IsOrderCancellable(MockOrder order)
+        {
+            return order != null
+                && (order.OrderState == MockOrderState.Working || order.OrderState == MockOrderState.Accepted);
+        }
+    }
+
+    /// <summary>
+    /// Test helper for CollectPositionsForCleanup tests.
+    /// Simulates activePositions dictionary and tracks cleanup collection behavior.
+    /// </summary>
+    internal class CleanupCollectionTestHelper
+    {
+        private readonly Dictionary<string, MockPositionInfo> _activePositions;
+        private readonly HashSet<string> _keysToRemoveDuringIteration;
+        public List<string> PrintMessages { get; }
+        public int CancelCallCount { get; private set; }
+
+        public CleanupCollectionTestHelper()
+        {
+            _activePositions = new Dictionary<string, MockPositionInfo>();
+            _keysToRemoveDuringIteration = new HashSet<string>();
+            PrintMessages = new List<string>();
+            CancelCallCount = 0;
+        }
+
+        public void AddActivePosition(string key, MockPositionInfo position)
+        {
+            _activePositions[key] = position;
+        }
+
+        public void EnableConcurrentRemoval(string key)
+        {
+            _keysToRemoveDuringIteration.Add(key);
+        }
+
+        public MockPositionInfo CreateMockPositionInfo(MockAccount account, bool entryFilled, int remainingContracts)
+        {
+            return new MockPositionInfo
+            {
+                ExecutingAccount = account,
+                EntryFilled = entryFilled,
+                RemainingContracts = remainingContracts,
+            };
+        }
+
+        /// <summary>
+        /// Mock implementation of CollectPositionsForCleanup.
+        /// This simulates the logic from V12_002.Orders.Callbacks.Execution.cs lines 109-121.
+        /// Will be replaced by actual method call after extraction.
+        /// </summary>
+        public List<string> CollectPositionsForCleanup()
+        {
+            List<string> positionsToCleanup = new List<string>();
+
+            foreach (var kvp in _activePositions.ToArray())
+            {
+                // Simulate concurrent removal
+                if (_keysToRemoveDuringIteration.Contains(kvp.Key))
+                {
+                    _activePositions.Remove(kvp.Key);
+                }
+
+                // Concurrent safety check
+                if (!_activePositions.ContainsKey(kvp.Key))
+                    continue;
+
+                MockPositionInfo pos = kvp.Value;
+
+                // Check if position was externally closed
+                if (pos.EntryFilled && pos.RemainingContracts > 0)
+                {
+                    PrintMessages.Add("EXTERNAL CLOSE DETECTED - Position went flat. Cancelling orphaned orders...");
+
+                    // Simulate cancellation call
+                    CancelCallCount++;
+
+                    // Mark for cleanup
+                    positionsToCleanup.Add(kvp.Key);
+                }
+            }
+
+            return positionsToCleanup;
+        }
     }
 
     /// <summary>
@@ -464,18 +768,13 @@ namespace V12_Performance.Tests.Orders
                 {
                     if (
                         tOrder != null
-                        && (
-                            tOrder.OrderState == MockOrderState.Working
-                            || tOrder.OrderState == MockOrderState.Accepted
-                        )
+                        && (tOrder.OrderState == MockOrderState.Working || tOrder.OrderState == MockOrderState.Accepted)
                     )
                     {
                         CancelledOrders.Add(tOrder);
                     }
                 }
             }
-        }
-    }
         }
     }
 
