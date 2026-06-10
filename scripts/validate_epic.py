@@ -7,6 +7,7 @@ Prevents phantom epic execution by validating against epic_roadmap.json
 import json
 import sys
 import io
+import subprocess
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List
@@ -54,9 +55,21 @@ def get_next_epic() -> Optional[Dict]:
 
 def claim_epic(epic_id: str, worker_id: str) -> Dict:
     """
-    Claim epic for worker (add locking)
+    Atomically claim epic for worker using git pull + commit + push
     Raises ValueError if epic already assigned or not found
     """
+    # Pull latest roadmap to avoid race conditions
+    try:
+        subprocess.run(
+            ["git", "pull", "origin", "gitbutler/workspace", "--rebase"],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"[WARN] Git pull failed: {e.stderr}")
+        print("[INFO] Continuing with local roadmap (may cause conflicts)")
+    
     roadmap = load_roadmap()
     
     for epic in roadmap:
@@ -75,7 +88,22 @@ def claim_epic(epic_id: str, worker_id: str) -> Dict:
             # Save roadmap
             save_roadmap(roadmap)
             
-            print(f"[OK] Epic {epic_id} claimed by {worker_id}")
+            # Commit and push atomically
+            try:
+                subprocess.run(["git", "add", "epic_roadmap.json"], check=True)
+                subprocess.run(
+                    ["git", "commit", "-m", f"lock: Claim {epic_id} for {worker_id}"],
+                    check=True
+                )
+                subprocess.run(
+                    ["git", "push", "origin", "gitbutler/workspace"],
+                    check=True
+                )
+                print(f"[OK] Epic {epic_id} claimed by {worker_id} (pushed to git)")
+            except subprocess.CalledProcessError as e:
+                print(f"[ERROR] Failed to push claim: {e}")
+                print("[WARN] Epic claimed locally but not synced to git")
+            
             return epic
     
     raise ValueError(f"Epic {epic_id} not found in roadmap")

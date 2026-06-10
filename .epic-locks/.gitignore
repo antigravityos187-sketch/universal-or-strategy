@@ -1,0 +1,4 @@
+# Epic lock files are temporary and should not be committed
+*.lock
+
+# Made with Bob
