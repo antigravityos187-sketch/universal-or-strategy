@@ -99,7 +99,7 @@ Output: docs/brain/{{epic_id}}/01-scope-boundary.md
 ```
 Design extraction strategy for {{epic_id}}:
 1. Read scope boundary document
-2. Query Jane Street KB for extraction patterns
+2. Query Jane Street KB for extraction patterns (if available)
 3. Design helper method signatures (CYC ≤8 each)
 4. Plan ticket breakdown (one ticket per extraction)
 5. Create Mermaid diagrams (before/after call graphs)
@@ -120,27 +120,53 @@ Output: docs/brain/{{epic_id}}/02-architecture-plan.md
 
 **Spawn Review Agent** (Mode: `advanced`)
 
-**Task**: Run DNA audit and PR hygiene checks
+**Task**: Run DNA audit and PR hygiene checks using internal Bob review
 
 **Input**:
 - `docs/brain/{{epic_id}}/02-architecture-plan.md`
 
 **Agent Instructions**:
 ```
-Audit {{epic_id}} plan:
-1. Run DNA audit: `droid /review` (focus on P0-P3 findings)
-2. Check PR hygiene: `powershell -File .\scripts\verify_pr_hygiene.ps1`
-3. Verify complexity targets (CYC ≤8 for all helpers)
-4. Check Jane Street alignment (correctness by construction)
-5. Write audit report
+Audit {{epic_id}} plan using internal Bob review:
+
+1. **V12 DNA Compliance Review**:
+   - Correctness by construction (illegal states unrepresentable)
+   - Lock-free patterns (no lock() blocks in extracted methods)
+   - ASCII-only compliance (no Unicode/emoji in string literals)
+   - Complexity targets (CYC ≤8 for all helper methods)
+   - Jane Street alignment (microsecond-latency patterns)
+   - Single responsibility (each helper does one thing)
+
+2. **PR Hygiene Check**:
+   Run: `powershell -File .\scripts\verify_pr_hygiene.ps1`
+   Verify: Diff <10k chars, branch rebased on main
+
+3. **Build Verification**:
+   Run: `powershell -File .\scripts\build_readiness.ps1`
+   Verify: Zero errors, zero warnings, ASCII gate passed
+
+4. **Architecture Review**:
+   - Helper method signatures are clear and testable
+   - No hidden dependencies or global state
+   - Extraction preserves behavioral equivalence
+   - TDD test cases are comprehensive
+
+5. **Write Audit Report**:
+   Document findings in structured format:
+   - Executive summary (GO/NO-GO decision)
+   - DNA compliance results (pass/fail per principle)
+   - PR hygiene results
+   - Build verification results
+   - Recommendations (if any issues found)
 
 Output: docs/brain/{{epic_id}}/03-audit-report.md
 ```
 
 **Success Criteria**:
-- ✅ DNA audit passed (zero P0-P3 violations)
-- ✅ PR hygiene passed
-- ✅ Complexity targets verified
+- ✅ V12 DNA principles verified (all 6 principles checked)
+- ✅ PR hygiene passed (diff <10k, rebased)
+- ✅ Build passed (0 errors, 0 warnings)
+- ✅ Complexity targets verified (CYC ≤8)
 - ✅ File created: 03-audit-report.md
 
 ---
@@ -347,5 +373,6 @@ Update `docs/brain/{{epic_id}}/manifest.json` after each phase:
 - **Error isolation**: Failed phase doesn't corrupt other work
 - **Audit trail**: Clear handoffs via file artifacts
 - **Human-in-loop**: F5 gates preserve human verification
+- **Internal review**: Phase 3 uses Bob's internal review (no external droid dependency)
 
 **Begin orchestration for {{epic_id}}. Start with Phase 0.**

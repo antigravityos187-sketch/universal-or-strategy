@@ -58,6 +58,19 @@ if (-not $allExist) {
 Write-Host "✅ All worker directories verified" -ForegroundColor Green
 Write-Host ""
 
+# Sync .bob/commands/ to all worktrees
+Write-Host "🔄 Syncing .bob/commands/ to all worktrees..." -ForegroundColor Cyan
+$mainRepo = "C:\WSGTA\universal-or-strategy"
+foreach ($worker in $workers) {
+    $targetPath = Join-Path $worker.Path ".bob\commands"
+    if (-not (Test-Path (Join-Path $worker.Path ".bob"))) {
+        New-Item -Path (Join-Path $worker.Path ".bob") -ItemType Directory -Force | Out-Null
+    }
+    Copy-Item -Path (Join-Path $mainRepo ".bob\commands") -Destination (Join-Path $worker.Path ".bob") -Recurse -Force
+    Write-Host "  ✅ Synced to $($worker.Name)" -ForegroundColor Green
+}
+Write-Host ""
+
 # Launch VS Code windows
 foreach ($worker in $workers) {
     Write-Host "🪟 Opening $($worker.Name): $($worker.Path)" -ForegroundColor Cyan
