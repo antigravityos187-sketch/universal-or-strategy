@@ -1,9 +1,14 @@
 {
   "mcpServers": {
-    "jcodemunch": {
+    "jcodemunch-mcp": {
       "type": "stdio",
       "command": "jcodemunch-mcp.exe",
       "args": []
+    },
+    "greptile": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@greptile/mcp-server"]
     }
   }
 }
