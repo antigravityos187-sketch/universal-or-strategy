@@ -442,9 +442,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // Phase 5: Rebuild FSMs from adopted orders before enabling REAPER
-            HydrateFSMsFromWorkingOrders();
-
-            _orderAdoptionComplete = true;
+            OrchestrateFSMHydration();
             if (adoptedCount > 0)
                 Print(
                     string.Format(
@@ -1283,6 +1281,40 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return "entry";
             else
                 return null; // Unrecognized prefix
+        }
+
+        /// <summary>
+        /// Orchestrates FSM hydration from adopted orders and sets completion flag.
+        /// Wraps FSM hydration in try/catch to prevent REAPER deadlock on failure.
+        /// BEHAVIOR CHANGE (APPROVED 2026-06-06): Sets flag even on FSM failure to enable REAPER repair.
+        /// Aligns with Jane Street "fail-safe defaults" principle - systems should degrade gracefully, not deadlock.
+        /// </summary>
+        private void OrchestrateFSMHydration()
+        {
+            try
+            {
+                // Delegate to existing FSM hydration method (CYC 72 - separate epic EPIC-CCN-52)
+                HydrateFSMsFromWorkingOrders();
+
+                // Success path: Set flag to enable REAPER auditing
+                _orderAdoptionComplete = true;
+
+                Print("[HYDRATE] FSM hydration complete, REAPER enabled");
+            }
+            catch (Exception ex)
+            {
+                // CRITICAL ERROR HANDLING (NEW BEHAVIOR - APPROVED 2026-06-06)
+                Print(string.Format("[HYDRATE-ERROR] FSM hydration failed: {0}", ex.Message));
+                Print(string.Format("[HYDRATE-ERROR] Stack trace: {0}", ex.StackTrace));
+
+                // BEHAVIOR CHANGE: Set flag anyway to prevent REAPER deadlock
+                // Rationale: REAPER will detect desync and repair (better than being disabled forever)
+                // This aligns with Jane Street "fail-safe defaults" principle
+                _orderAdoptionComplete = true;
+
+                Print("[HYDRATE-RECOVERY] REAPER enabled despite FSM failure (will repair desync)");
+                Print("[HYDRATE-RECOVERY] Adopted orders remain in dictionaries for REAPER audit");
+            }
         }
 
         /// <summary>

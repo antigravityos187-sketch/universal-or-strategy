@@ -2,7 +2,7 @@
 // Copyright (c) BMad. All rights reserved.
 // </copyright>
 // V12.12 FLEET SYMMETRY & SAFETY HARDENING - Single-Instance Multi-Account Copy Trading Engine
-// Based on UniversalORStrategyV10_3.cs (BUILD 1702)
+// Based on UniversalORStrategyV10_3.cs (BUILD 1111.047-epic-ccn-21-t1)
 // SIMA Architecture: One strategy instance on Master account broadcasts to all Apex accounts
 //
 // SAFETY: This file was auto-generated. Original V10_3 file unchanged.
@@ -49,7 +49,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.044-epic-ccn-18-t2"; // EPIC-CCN-18 Ticket 2: Extract cancellation helper (HandleFlatPositionUpdate CYC <=8, CancelOrphanedOrdersForPosition CYC 11)
+        public const string BUILD_TAG = "1111.048-epic-ccn-19-t1"; // EPIC-CCN-19 Ticket 1: Extract CheckFFMAConditions helpers (CYC 16->5)
 
         public class UILiveTargetSnapshot
         {

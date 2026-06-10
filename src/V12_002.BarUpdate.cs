@@ -202,6 +202,21 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Processes pending TREND entry if armed.
+        /// Calculates stop distance, position size, and executes entry.
+        /// Clears pendingTRENDEntry flag after execution.
+        /// </summary>
+        private void ProcessPendingTRENDEntry()
+        {
+            if (!pendingTRENDEntry)
+                return;
+
+            double trendDist = CalculateTRENDStopDistance();
+            int trendContracts = CalculatePositionSize(trendDist);
+            ExecuteTRENDEntry(trendContracts);
+        }
+
+        /// <summary>
         /// Updates OR box display with throttling during active session.
         /// Handles both regular and midnight-crossing sessions.
         /// </summary>
@@ -268,12 +283,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 MonitorRmaProximity();
 
                 // V8.2 FIX: Process pending TREND entry (deferred from button click)
-                if (pendingTRENDEntry)
-                {
-                    double trendDist = CalculateTRENDStopDistance();
-                    int trendContracts = CalculatePositionSize(trendDist);
-                    ExecuteTRENDEntry(trendContracts);
-                }
+                ProcessPendingTRENDEntry();
 
                 // Update ATR value from 5-min bars
                 if (BarsArray[1] != null && BarsArray[1].Count > RMAATRPeriod)
