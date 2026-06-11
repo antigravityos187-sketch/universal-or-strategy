@@ -1,0 +1,13 @@
+{
+  "customModels": [
+    {
+      "model": "fable-5",
+      "displayName": "Bob Fable-5",
+      "baseUrl": "https://api.bob.build/v1",
+      "apiKey": "bob_prod_bob-admin_2DNk7bgrboQmv5wERtB7RgdwpxLuMaJGz4NGDayQSb1NEiJGmhuRSyxxzRcEHtzitSqKwgq5HDFEc6gjkyXg7a5Y_GLEMZSVV35sx3T52WQbfkJdFN4HmhTp9VRFcNyxDdvGp",
+      "provider": "generic-chat-completion-api",
+      "maxOutputTokens": 16384
+    }
+  ]
+}
+

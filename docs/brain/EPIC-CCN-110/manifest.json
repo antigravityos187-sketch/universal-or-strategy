@@ -1,0 +1,41 @@
+{
+  "epic_id": "EPIC-CCN-110",
+  "method": "AdoptMasterOrders",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "complexity": 19,
+  "target_complexity": 8,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_1.5": {
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "status": "completed",
+      "output": "02-architecture-plan.md,02-diagrams.mmd",
+      "completed_at": "2026-06-11T06:17:47Z"
+    },
+    "phase_4": {
+      "status": "completed",
+      "output": "04-tickets.md",
+      "completed_at": "2026-06-11T06:39:15Z"
+    },
+    "phase_5": {
+      "status": "completed",
+      "output": "ticket-completion-report.md",
+      "completed_at": "2026-06-11T07:50:56Z",
+      "tickets_executed": 4,
+      "complexity_before": 19,
+      "complexity_after": 8,
+      "build_status": "PASS",
+      "deploy_sync_status": "PASS"
+    }
+  }
+}

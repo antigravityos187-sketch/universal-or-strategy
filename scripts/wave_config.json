@@ -1,0 +1,75 @@
+{
+  "execution_mode": "wave",
+  "wave_size": 10,
+  "start_phase": 0,
+  "end_phase": 6,
+  "phases": [
+    {
+      "id": 0,
+      "name": "Hotspot Analysis",
+      "mcp_server": "phase-0-hotspot",
+      "tool": "execute_phase_0",
+      "enabled": true
+    },
+    {
+      "id": 1,
+      "name": "Scope Definition",
+      "mcp_server": "phase-1-scope",
+      "tool": "execute_phase_1",
+      "enabled": true
+    },
+    {
+      "id": 1.5,
+      "name": "Scope Boundary",
+      "mcp_server": "phase-1-5-boundary",
+      "tool": "execute_phase_1_5",
+      "enabled": true
+    },
+    {
+      "id": 2,
+      "name": "Architecture Planning",
+      "mcp_server": "phase-2-architecture",
+      "tool": "execute_phase_2",
+      "enabled": true
+    },
+    {
+      "id": 3,
+      "name": "DNA & PR Audit",
+      "mcp_server": "phase-3-audit",
+      "tool": "execute_phase_3",
+      "enabled": true
+    },
+    {
+      "id": 4,
+      "name": "Ticket Generation",
+      "mcp_server": "phase-4-tickets",
+      "tool": "execute_phase_4",
+      "enabled": true
+    },
+    {
+      "id": 5,
+      "name": "Ticket Execution",
+      "mcp_server": "phase-5-execute",
+      "tool": "execute_phase_5",
+      "enabled": true
+    },
+    {
+      "id": 5.5,
+      "name": "Verification",
+      "mcp_server": "phase-5-verify",
+      "tool": "execute_phase_5_verify",
+      "enabled": true
+    },
+    {
+      "id": 6,
+      "name": "Final Review",
+      "mcp_server": "phase-6-review",
+      "tool": "execute_phase_6",
+      "enabled": true
+    }
+  ],
+  "batch_strategy": "sequential_phases",
+  "parallel_workers": 1,
+  "checkpoint_enabled": true,
+  "checkpoint_path": "docs/brain/wave_checkpoints.json"
+}

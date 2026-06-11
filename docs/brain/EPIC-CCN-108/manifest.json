@@ -1,0 +1,19 @@
+{
+  "epic_id": "EPIC-CCN-108",
+  "method": "SweepBrokerOrders",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "complexity": 24,
+  "target_complexity": 8,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "completed_at": "2026-06-11T05:07:00Z"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output": "00-scope.md",
+      "completed_at": "2026-06-11T05:08:34Z"
+    }
+  }
+}

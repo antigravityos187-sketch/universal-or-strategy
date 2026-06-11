@@ -1,0 +1,152 @@
+```mermaid
+graph TD
+    subgraph "Before Refactoring (CYC 19)"
+        A[TryHandleFleetCommand<br/>CYC 19] --> B1[TryHandleFleet_Trim]
+        A --> B2[TryHandleFleet_Lock50]
+        A --> B3[TryHandleFleet_FlattenOnly]
+        A --> B4[TryHandleFleet_Flatten]
+        A --> B5[TryHandleFleet_CancelAll]
+        A --> B6[TryHandleFleet_ResetMemory]
+        A --> B7[TryHandleFleet_LongShort]
+        A --> B8[TryHandleFleet_OrLong]
+        A --> B9[TryHandleFleet_OrShort]
+        A --> B10[TryHandleFleet_TrendManualLimit]
+        A --> B11[TryHandleFleet_RetestManualLimit]
+        A --> B12[TryHandleFleet_FfmaManualLimit]
+        A --> B13[TryHandleFleet_FfmaManualMarket]
+        A --> B14[TryHandleFleet_CloseTarget]
+        A --> B15[TryHandleFleet_MoveTarget]
+        A --> B16[TryHandleFleet_FleetState]
+        A --> B17[TryHandleFleet_ToggleAccount]
+        A --> B18[TryHandleFleet_SetShadow]
+    end
+```
+
+```mermaid
+graph TD
+    subgraph "After Refactoring (CYC 6)"
+        Main[TryHandleFleetCommand<br/>CYC 6] --> Helper[BuildCommandId<br/>CYC 2]
+        Main --> Cat1[TryHandleFleet_PositionCommands<br/>CYC 5]
+        Main --> Cat2[TryHandleFleet_OrderCommands<br/>CYC 3]
+        Main --> Cat3[TryHandleFleet_EntryCommands<br/>CYC 8]
+        Main --> Cat4[TryHandleFleet_TargetCommands<br/>CYC 3]
+        Main --> Cat5[TryHandleFleet_ConfigCommands<br/>CYC 4]
+        
+        Cat1 --> H1[TryHandleFleet_Trim]
+        Cat1 --> H2[TryHandleFleet_Lock50]
+        Cat1 --> H3[TryHandleFleet_FlattenOnly]
+        Cat1 --> H4[TryHandleFleet_Flatten]
+        
+        Cat2 --> H5[TryHandleFleet_CancelAll]
+        Cat2 --> H6[TryHandleFleet_ResetMemory]
+        
+        Cat3 --> H7[TryHandleFleet_LongShort]
+        Cat3 --> H8[TryHandleFleet_OrLong]
+        Cat3 --> H9[TryHandleFleet_OrShort]
+        Cat3 --> H10[TryHandleFleet_TrendManualLimit]
+        Cat3 --> H11[TryHandleFleet_RetestManualLimit]
+        Cat3 --> H12[TryHandleFleet_FfmaManualLimit]
+        Cat3 --> H13[TryHandleFleet_FfmaManualMarket]
+        
+        Cat4 --> H14[TryHandleFleet_CloseTarget]
+        Cat4 --> H15[TryHandleFleet_MoveTarget]
+        
+        Cat5 --> H16[TryHandleFleet_FleetState]
+        Cat5 --> H17[TryHandleFleet_ToggleAccount]
+        Cat5 --> H18[TryHandleFleet_SetShadow]
+    end
+```
+
+```mermaid
+graph LR
+    subgraph "Command Categories"
+        Position[Position Commands<br/>TRIM, LOCK, FLATTEN]
+        Order[Order Commands<br/>CANCEL, RESET]
+        Entry[Entry Commands<br/>LONG, SHORT, OR, MANUAL]
+        Target[Target Commands<br/>CLOSE, MOVE]
+        Config[Config Commands<br/>FLEET, TOGGLE, SHADOW]
+    end
+    
+    Position --> |4 handlers| PH[Position Handlers]
+    Order --> |2 handlers| OH[Order Handlers]
+    Entry --> |7 handlers| EH[Entry Handlers]
+    Target --> |2 handlers| TH[Target Handlers]
+    Config --> |3 handlers| CH[Config Handlers]
+```
+
+```mermaid
+graph TD
+    subgraph "Complexity Reduction Flow"
+        Before[Main Dispatcher<br/>CYC 19<br/>18 flat checks] --> Extract[Extract Categories]
+        Extract --> After1[Main Dispatcher<br/>CYC 6<br/>5 category checks]
+        Extract --> After2[Position Sub-Dispatcher<br/>CYC 5]
+        Extract --> After3[Order Sub-Dispatcher<br/>CYC 3]
+        Extract --> After4[Entry Sub-Dispatcher<br/>CYC 8]
+        Extract --> After5[Target Sub-Dispatcher<br/>CYC 3]
+        Extract --> After6[Config Sub-Dispatcher<br/>CYC 4]
+        
+        After1 -.->|68% reduction| Result[Target Met:<br/>CYC ≤ 8]
+        After2 -.-> Result
+        After3 -.-> Result
+        After4 -.-> Result
+        After5 -.-> Result
+        After6 -.-> Result
+    end
+```
+
+```mermaid
+sequenceDiagram
+    participant Caller as ProcessIpcCommands
+    participant Main as TryHandleFleetCommand
+    participant Helper as BuildCommandId
+    participant Cat as Category Sub-Dispatcher
+    participant Handler as Specific Handler
+    
+    Caller->>Main: action, parts, senderTicks
+    Main->>Helper: action, senderTicks
+    Helper-->>Main: cmdId
+    Main->>Cat: action, parts, cmdId
+    Cat->>Handler: action, parts, cmdId
+    Handler-->>Cat: bool (handled)
+    Cat-->>Main: bool (handled)
+    Main-->>Caller: bool (handled)
+```
+
+```mermaid
+pie title "Command Distribution by Category"
+    "Position (4)" : 22
+    "Order (2)" : 11
+    "Entry (7)" : 39
+    "Target (2)" : 11
+    "Config (3)" : 17
+```
+
+```mermaid
+graph TD
+    subgraph "V12 DNA Compliance"
+        DNA1[Lock-Free Actor Pattern<br/>✅ No locks in dispatcher]
+        DNA2[ASCII-Only Compliance<br/>✅ No Unicode in strings]
+        DNA3[Correctness by Construction<br/>✅ Chain-of-responsibility]
+        DNA4[Cyclomatic Complexity ≤ 8<br/>✅ All methods compliant]
+        
+        DNA1 --> Pass[✅ COMPLIANT]
+        DNA2 --> Pass
+        DNA3 --> Pass
+        DNA4 --> Pass
+    end
+```
+
+```mermaid
+graph LR
+    subgraph "Jane Street Alignment"
+        JS1[Cognitive Simplicity<br/>5 categories vs 18 flat]
+        JS2[Microsecond-Latency Reasoning<br/>Semantic grouping]
+        JS3[Exhaustive Testing<br/>Hierarchical test structure]
+        JS4[Make Illegal States Unrepresentable<br/>Bool return forces single match]
+        
+        JS1 --> Aligned[✅ ALIGNED]
+        JS2 --> Aligned
+        JS3 --> Aligned
+        JS4 --> Aligned
+    end
+```

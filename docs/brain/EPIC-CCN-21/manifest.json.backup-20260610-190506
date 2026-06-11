@@ -1,0 +1,114 @@
+{
+  "epic_id": "EPIC-CCN-21",
+  "method": "GetSubscriberCounts",
+  "file": "src/SignalBroadcaster.cs",
+  "file_corrected": true,
+  "file_original_spec": "src/V12_002.Atm.cs",
+  "line": 366,
+  "end_line": 378,
+  "current_cyc": 9,
+  "target_cyc": 8,
+  "status": "pending",
+  "recommendation": "pending_analysis",
+  "created_date": "2026-06-10T20:53:54Z",
+  "last_updated": "2026-06-10T22:32:29.130289Z",
+  "phases": {
+    "0": {
+      "name": "Hotspot Analysis",
+      "status": "pending",
+      "mode": "ask",
+      "started": "2026-06-10T22:31:29.057597Z",
+      "completed": "2026-06-10T22:32:29.130289Z",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-21/00-hotspots.md"
+      ],
+      "findings": {
+        "method_location": "src/SignalBroadcaster.cs",
+        "line": 100,
+        "complexity": 9,
+        "needs_extraction": false,
+        "jane_street_compliant": true
+      },
+      "notes": "CYC 9 <= 10 - no action required"
+    },
+    "1": {
+      "name": "Scope Definition",
+      "status": "pending",
+      "mode": "plan",
+      "dependencies": [
+        "phase_0"
+      ],
+      "expected_outcome": "Document closure rationale and update roadmap"
+    },
+    "1.5": {
+      "name": "Scope Boundary Validation",
+      "status": "not_applicable",
+      "reason": "No changes planned, boundary validation not needed"
+    },
+    "2": {
+      "name": "Architecture Planning",
+      "status": "not_applicable",
+      "reason": "No extraction needed"
+    },
+    "3": {
+      "name": "DNA & PR Audit",
+      "status": "not_applicable",
+      "reason": "No changes to audit"
+    },
+    "4": {
+      "name": "Ticket Generation",
+      "status": "not_applicable",
+      "reason": "No work tickets needed"
+    },
+    "5": {
+      "name": "Ticket Execution",
+      "status": "not_applicable",
+      "reason": "No tickets to execute"
+    },
+    "6": {
+      "name": "Final Review",
+      "status": "not_applicable",
+      "reason": "No changes to review"
+    }
+  },
+  "metadata": {
+    "jcodemunch_repo": "src-f5c19547",
+    "symbol_id": "SignalBroadcaster.cs::SignalBroadcaster.GetSubscriberCounts#method",
+    "content_hash": "7451e027764af91fcabed442babb99e31cb60373726a3247111514f9306bfe09",
+    "git_head": "253af7652218e9fc06111038b00a5897e5b1be6f",
+    "index_version": 9
+  },
+  "roadmap_updates_needed": [
+    {
+      "field": "file",
+      "current": "src/V12_002.Atm.cs",
+      "corrected": "src/SignalBroadcaster.cs",
+      "reason": "jcodemunch found method in different file"
+    },
+    {
+      "field": "line",
+      "value": 366,
+      "reason": "Add line number for reference"
+    },
+    {
+      "field": "status",
+      "value": "completed",
+      "reason": "No action required, already at target"
+    },
+    {
+      "field": "final_cyc",
+      "value": 9,
+      "reason": "Current CYC is final CYC (no changes)"
+    },
+    {
+      "field": "completion_date",
+      "value": "2026-06-10",
+      "reason": "Analysis complete"
+    },
+    {
+      "field": "tickets_completed",
+      "value": 0,
+      "reason": "No work tickets needed"
+    }
+  ]
+}

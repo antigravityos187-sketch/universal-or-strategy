@@ -1,0 +1,168 @@
+# EPIC-CCN-129 Architecture Diagrams
+
+## Call Graph (Before Extraction)
+
+```mermaid
+graph TD
+    A[OnBarUpdate] -->|calls| B[SymmetryGuardTryResolveFollowersForDispatch<br/>CYC 18]
+    B -->|calls| C[SymmetryGuardTryResolveFollower<br/>existing method]
+    
+    style B fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px
+    style C fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+```
+
+## Call Graph (After Extraction)
+
+```mermaid
+graph TD
+    A[OnBarUpdate] -->|calls| B[SymmetryGuardTryResolveFollowersForDispatch<br/>CYC 2]
+    B -->|calls| C[CollectFollowersFromDispatchContext<br/>CYC 8]
+    B -->|calls| D[CollectFollowersFromPendingFills<br/>CYC 5]
+    B -->|calls| E[ResolveCollectedFollowers<br/>CYC 6]
+    E -->|calls| F[SymmetryGuardTryResolveFollower<br/>existing method]
+    
+    style B fill:#51cf66,stroke:#2f9e44,stroke-width:3px
+    style C fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    style D fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    style E fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    style F fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+```
+
+## Data Flow Diagram
+
+```mermaid
+flowchart TD
+    Start([Input: dispatchId, nowUtc]) --> Guard{Empty<br/>dispatchId?}
+    Guard -->|Yes| Return([Return])
+    Guard -->|No| Init[Initialize:<br/>followersToResolve = new List]
+    
+    Init --> Phase1[Phase 1:<br/>CollectFollowersFromDispatchContext]
+    
+    Phase1 --> P1_Read1[(Read: symmetryDispatchById)]
+    P1_Read1 --> P1_Read2[(Read: symmetryFleetEntryToDispatch)]
+    P1_Read2 --> P1_Read3[(Read: symmetryPendingFollowerFills)]
+    P1_Read3 --> P1_Write[Write: followersToResolve.Add]
+    
+    P1_Write --> Phase2[Phase 2:<br/>CollectFollowersFromPendingFills]
+    
+    Phase2 --> P2_Read1[(Read: symmetryPendingFollowerFills.ToArray)]
+    P2_Read1 --> P2_Read2[(Read: symmetryFleetEntryToDispatch)]
+    P2_Read2 --> P2_Write[Write: followersToResolve.Add]
+    
+    P2_Write --> Phase3[Phase 3:<br/>ResolveCollectedFollowers]
+    
+    Phase3 --> P3_Read1[(Read: symmetryPendingFollowerFills)]
+    P3_Read1 --> P3_Read2[(Read: activePositions)]
+    P3_Read2 --> P3_Call[Call: SymmetryGuardTryResolveFollower]
+    P3_Call --> P3_Write[Write: symmetryPendingFollowerFills.TryRemove]
+    
+    P3_Write --> End([End: void])
+    
+    style Start fill:#4dabf7,stroke:#1971c2
+    style End fill:#4dabf7,stroke:#1971c2
+    style Phase1 fill:#51cf66,stroke:#2f9e44
+    style Phase2 fill:#51cf66,stroke:#2f9e44
+    style Phase3 fill:#51cf66,stroke:#2f9e44
+    style Guard fill:#ffd43b,stroke:#f59f00
+```
+
+## Complexity Reduction Visualization
+
+```mermaid
+graph LR
+    A[Original Method<br/>CYC 18<br/>52 lines<br/>4 nesting levels] -->|Extract| B[Parent Method<br/>CYC 2<br/>8 lines<br/>1 nesting level]
+    A -->|Extract| C[Helper 1<br/>CYC 8<br/>19 lines<br/>3 nesting levels]
+    A -->|Extract| D[Helper 2<br/>CYC 5<br/>13 lines<br/>2 nesting levels]
+    A -->|Extract| E[Helper 3<br/>CYC 6<br/>13 lines<br/>3 nesting levels]
+    
+    style A fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px
+    style B fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    style C fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    style D fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    style E fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+```
+
+## Ticket Execution Sequence
+
+```mermaid
+gantt
+    title EPIC-CCN-129 Ticket Execution Order
+    dateFormat YYYY-MM-DD
+    section Ticket 1
+    Extract CollectFollowersFromDispatchContext :t1, 2026-06-11, 1d
+    section Ticket 2
+    Extract CollectFollowersFromPendingFills :t2, after t1, 1d
+    section Ticket 3
+    Extract ResolveCollectedFollowers :t3, after t2, 1d
+    section Verification
+    Unit Tests + Integration Test :v1, after t3, 1d
+```
+
+## Concurrency Safety Model
+
+```mermaid
+graph TD
+    A[SymmetryGuardTryResolveFollowersForDispatch] -->|Lock-Free Read| B[(symmetryDispatchById<br/>ConcurrentDictionary)]
+    A -->|Lock-Free Read| C[(symmetryFleetEntryToDispatch<br/>ConcurrentDictionary)]
+    A -->|Lock-Free Read/Remove| D[(symmetryPendingFollowerFills<br/>ConcurrentDictionary)]
+    A -->|Lock-Free Read| E[(activePositions<br/>ConcurrentDictionary)]
+    
+    B -->|Immutable Snapshot| F[ctx.Followers<br/>string array<br/>ADR-019]
+    
+    style A fill:#4dabf7,stroke:#1971c2
+    style B fill:#51cf66,stroke:#2f9e44
+    style C fill:#51cf66,stroke:#2f9e44
+    style D fill:#ffd43b,stroke:#f59f00
+    style E fill:#51cf66,stroke:#2f9e44
+    style F fill:#a78bfa,stroke:#7c3aed
+```
+
+## ADR-019 Compliance Flow
+
+```mermaid
+sequenceDiagram
+    participant M as Main Method
+    participant E1 as CollectFromContext
+    participant E2 as CollectFromPending
+    participant E3 as ResolveCollected
+    participant Dict as ConcurrentDictionaries
+    
+    M->>M: Initialize followersToResolve
+    M->>E1: Call with dispatchId
+    E1->>Dict: TryGetValue(dispatchId)
+    Dict-->>E1: ctx with immutable Followers[]
+    E1->>E1: Iterate snapshot (lock-free)
+    E1->>M: Mutate followersToResolve
+    
+    M->>E2: Call with dispatchId
+    E2->>Dict: ToArray() snapshot
+    Dict-->>E2: Pending fills snapshot
+    E2->>E2: Iterate snapshot (lock-free)
+    E2->>M: Mutate followersToResolve
+    
+    M->>E3: Call with followersToResolve
+    E3->>Dict: TryGetValue + TryRemove
+    E3->>E3: Call SymmetryGuardTryResolveFollower
+    E3->>M: Return (void)
+    
+    Note over M,Dict: All operations lock-free<br/>ADR-019 immutable semantics preserved
+```
+
+## Legend
+
+### Complexity Colors
+- 🔴 Red: CYC > 15 (High complexity - needs refactoring)
+- 🟢 Green: CYC ≤ 8 (Jane Street compliant)
+- 🟡 Yellow: CYC 9-15 (Medium complexity - acceptable)
+
+### Node Types
+- Rectangle: Method/Function
+- Cylinder: Data Structure
+- Diamond: Decision Point
+- Circle: Start/End Point
+
+---
+
+**Generated**: 2026-06-11
+**Epic**: EPIC-CCN-129
+**Protocol**: V12.23 (No Scope Creep)

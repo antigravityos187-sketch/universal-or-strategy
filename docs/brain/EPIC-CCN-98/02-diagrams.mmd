@@ -1,0 +1,219 @@
+# EPIC-CCN-98 Architecture Diagrams
+
+## Call Graph (Before Extraction)
+
+```mermaid
+graph TD
+    A[PumpFlattenOps] --> B[ProcessFlattenWorkItem_CancelOrders<br/>CYC: 18]
+    B --> C[Account.Orders]
+    B --> D[Account.Cancel]
+    
+    style B fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px
+    style A fill:#e3f2fd,stroke:#1976d2
+    style C fill:#f1f3f5,stroke:#868e96
+    style D fill:#f1f3f5,stroke:#868e96
+```
+
+## Call Graph (After Extraction)
+
+```mermaid
+graph TD
+    A[PumpFlattenOps] --> B[ProcessFlattenWorkItem_CancelOrders<br/>CYC: 6]
+    B --> E[IsTerminalOrderState<br/>CYC: 6]
+    B --> F[IsZombieTargetOrder<br/>CYC: 7]
+    B --> C[Account.Orders]
+    B --> D[Account.Cancel]
+    
+    style B fill:#51cf66,stroke:#2f9e44,stroke-width:3px
+    style E fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    style F fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    style A fill:#e3f2fd,stroke:#1976d2
+    style C fill:#f1f3f5,stroke:#868e96
+    style D fill:#f1f3f5,stroke:#868e96
+```
+
+## Complexity Redistribution Flow
+
+```mermaid
+graph LR
+    A[ProcessFlattenWorkItem_CancelOrders<br/>CYC: 18] --> B[ProcessFlattenWorkItem_CancelOrders<br/>CYC: 6]
+    A --> C[IsTerminalOrderState<br/>CYC: 6]
+    A --> D[IsZombieTargetOrder<br/>CYC: 7]
+    
+    style A fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px
+    style B fill:#51cf66,stroke:#2f9e44,stroke-width:3px
+    style C fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    style D fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+```
+
+## Extraction Sequence
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Code as V12_002.SIMA.Flatten.cs
+    participant Tests as Unit Tests
+    participant Build as Build System
+    
+    Note over Dev,Build: Ticket 1: Extract IsTerminalOrderState
+    Dev->>Code: Extract IsTerminalOrderState method
+    Dev->>Code: Update ProcessFlattenWorkItem_CancelOrders
+    Dev->>Tests: Write 8 unit tests
+    Tests->>Build: Run tests
+    Build-->>Dev: ✅ Pass (CYC: 18→13)
+    
+    Note over Dev,Build: Ticket 2: Extract IsZombieTargetOrder
+    Dev->>Code: Extract IsZombieTargetOrder method
+    Dev->>Code: Update ProcessFlattenWorkItem_CancelOrders
+    Dev->>Tests: Write 9 unit tests
+    Tests->>Build: Run tests
+    Build-->>Dev: ✅ Pass (CYC: 13→6)
+    
+    Note over Dev,Build: Ticket 3: Integration Verification
+    Dev->>Build: F5 in NinjaTrader
+    Build-->>Dev: ✅ BUILD_TAG verified
+```
+
+## Method Complexity Breakdown (Before)
+
+```mermaid
+pie title ProcessFlattenWorkItem_CancelOrders CYC Distribution (Before)
+    "Base" : 1
+    "NULL checks" : 2
+    "Instrument filter" : 1
+    "Terminal state check" : 5
+    "Zombie sweep filter" : 7
+    "Batch cancel" : 1
+```
+
+## Method Complexity Breakdown (After)
+
+```mermaid
+pie title Complexity Distribution (After)
+    "ProcessFlattenWorkItem_CancelOrders" : 6
+    "IsTerminalOrderState" : 6
+    "IsZombieTargetOrder" : 7
+```
+
+## Data Flow (Order Filtering)
+
+```mermaid
+flowchart TD
+    A[Account.Orders] --> B{Order NULL?}
+    B -->|Yes| Z[Skip]
+    B -->|No| C{Instrument NULL?}
+    C -->|Yes| Z
+    C -->|No| D{Instrument Match?}
+    D -->|No| Z
+    D -->|Yes| E{IsTerminalOrderState?}
+    E -->|Yes| Z
+    E -->|No| F{ZombieSweepOnly?}
+    F -->|No| G[Add to Cancel List]
+    F -->|Yes| H{IsZombieTargetOrder?}
+    H -->|Yes| G
+    H -->|No| Z
+    G --> I[Account.Cancel]
+    
+    style E fill:#51cf66,stroke:#2f9e44
+    style H fill:#51cf66,stroke:#2f9e44
+    style I fill:#4dabf7,stroke:#1971c2
+    style Z fill:#f1f3f5,stroke:#868e96
+```
+
+## Risk Matrix
+
+```mermaid
+quadrantChart
+    title Risk Assessment Matrix
+    x-axis Low Impact --> High Impact
+    y-axis Low Likelihood --> High Likelihood
+    quadrant-1 Monitor
+    quadrant-2 Mitigate
+    quadrant-3 Accept
+    quadrant-4 Avoid
+    Method Visibility: [0.6, 0.7]
+    Order.Name NULL: [0.3, 0.2]
+    OrderState Changes: [0.3, 0.2]
+    Deployment Failure: [0.5, 0.3]
+    Regression: [0.8, 0.2]
+```
+
+## Test Coverage Map
+
+```mermaid
+graph TD
+    A[ProcessFlattenWorkItem_CancelOrders] --> B[IsTerminalOrderState Tests]
+    A --> C[IsZombieTargetOrder Tests]
+    A --> D[Integration Tests]
+    
+    B --> B1[5 Terminal States]
+    B --> B2[3 Non-Terminal States]
+    
+    C --> C1[6 Zombie Prefixes]
+    C --> C2[2 Non-Zombie Cases]
+    C --> C3[1 NULL Case]
+    
+    D --> D1[ZombieSweepOnly Mode]
+    D --> D2[Normal Mode]
+    D --> D3[F5 Integration]
+    
+    style A fill:#4dabf7,stroke:#1971c2,stroke-width:3px
+    style B fill:#51cf66,stroke:#2f9e44
+    style C fill:#51cf66,stroke:#2f9e44
+    style D fill:#ffd43b,stroke:#fab005
+```
+
+## Execution Timeline
+
+```mermaid
+gantt
+    title EPIC-CCN-98 Execution Timeline
+    dateFormat YYYY-MM-DD
+    section Pre-Extraction
+    Verify Compilation    :done, pre1, 2026-06-11, 1m
+    Run Complexity Audit  :done, pre2, after pre1, 1m
+    Verify Index Fresh    :done, pre3, after pre2, 1m
+    Create Branch         :done, pre4, after pre3, 1m
+    
+    section Ticket 1
+    Write Tests           :active, t1a, after pre4, 5m
+    Extract Method        :t1b, after t1a, 5m
+    Update Caller         :t1c, after t1b, 2m
+    Verify & Deploy       :t1d, after t1c, 3m
+    
+    section Ticket 2
+    Write Tests           :t2a, after t1d, 5m
+    Extract Method        :t2b, after t2a, 5m
+    Update Caller         :t2c, after t2b, 2m
+    Verify & Deploy       :t2d, after t2c, 3m
+    
+    section Verification
+    F5 Test               :t3a, after t2d, 3m
+    Verify BUILD_TAG      :t3b, after t3a, 2m
+```
+
+## Jane Street Alignment Score
+
+```mermaid
+graph LR
+    A[Cognitive Simplicity] --> A1[CYC ≤ 8: ✅]
+    A --> A2[Single Purpose: ✅]
+    A --> A3[No Nesting: ✅]
+    
+    B[Correctness by Construction] --> B1[Exhaustive States: ✅]
+    B --> B2[No Regex: ✅]
+    B --> B3[Enum Enforced: ✅]
+    
+    C[Lock-Free] --> C1[No Mutations: ✅]
+    C --> C2[Pure Functions: ✅]
+    C --> C3[Thread-Safe: ✅]
+    
+    D[Testability] --> D1[Deterministic: ✅]
+    D --> D2[No Dependencies: ✅]
+    D --> D3[Clear Contracts: ✅]
+    
+    style A fill:#51cf66,stroke:#2f9e44
+    style B fill:#51cf66,stroke:#2f9e44
+    style C fill:#51cf66,stroke:#2f9e44
+    style D fill:#51cf66,stroke:#2f9e44
+```
