@@ -1615,3 +1615,146 @@ Bob Shell will use the API key from the BOBSHELL_API_KEY environment variable fo
 
 Note:
 If you experience network issues during installation or authentication, you might need to configure your proxy settings. For more information, see Configuring proxy settings or the Troubleshooting section.
+# API keys
+
+Authenticate Bob for automation workflows without browser-based sign-in. Available for trial and paid plan users. Manage keys individually or as an admin across your instance.
+
+### Ownership and administration
+API keys are scoped to both the user and the subscription instance. Individual users can create, list, and revoke their own API keys. Subscription instance admins can list and revoke API keys for all users in their instance.
+
+### API key types
+You can create two kinds of API keys:
+
+| Type          | Scope and usage                                                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **General**   | Scoped to your subscription instance and usable across multiple services. For inference requests, you must also include the team ID header.       |
+| **Inference** | Scoped to a specific subscription instance and team, and limited to inference requests only. No additional instance or team headers are required. |
+
+### When to use API keys
+Use API keys when you need to:
+
+* Authenticate Bob Shell in non-interactive sessions
+* Run Bob in CI/CD pipelines or scheduled automation
+* Avoid browser-based sign-in for scripted workflows
+* Authenticate inference requests with either a general or inference API key
+
+### Create an API key
+
+Go to [bob.ibm.com](https://bob.ibm.com) and log in.
+
+Open your subscription instance and navigate to the API key management section.
+
+Create a new API key and choose the key type you want to create.
+
+Copy the API key value and store it securely.
+
+You will not be able to view the API key value again after creation.
+
+### Manage your API keys
+You can use the API key management section to:
+
+* List your API keys
+* Search and filter keys
+* View API key details
+* Revoke active keys
+* Show revoked keys alongside active and expired keys
+
+## Administrator capabilities
+Subscription instance admins can manage API keys across their instance. Admin capabilities include:
+
+* Listing API keys for all users in the instance
+* Revoking API keys for any user in the instance
+* Viewing active, revoked, and expired keys
+
+### Use an API key with Bob Shell
+To use an API key with Bob Shell, see [Install and set up Bob Shell](/docs/shell/getting-started/install-and-setup) and [Starting a non-interactive session](/docs/shell/getting-started/start-bobshell-non-interactive).
+
+# Starting a non-interactive session
+
+Non-interactive session provide a method to use Bob Shell directly from the command line without entering an interactive session. Use for automation, scripting, and batch processing tasks.
+
+### To start a non-interactive session:
+
+Open a new terminal window.
+
+Navigate to the main directory of your project.
+
+Run the `bob -p` command to start Bob Shell in your terminal.
+
+Before starting a non-interactive session for the first time, you must accept the license agreement. You can do this by either:
+
+* Running the following command in your terminal: `bob --accept-license -p "Explain this project"`
+* Starting Bob Shell with an interactive session first to review and accept the license.
+
+For non-interactive sessions, you need to use the API key authentication method instead of the IBMid authentication. For more information, see [Installing](/docs/shell/getting-started/install-and-setup#api-key-authentication).
+
+For example:
+
+```bash
+bob -p "Explain this project"
+```
+
+## Basic usage
+### Providing prompts to Bob Shell
+Use the `bob -p` command to get Bob to address your prompt:
+
+```bash
+bob -p "Explain this project"
+```
+
+### Pipe content as input
+You can pipe text content to Bob Shell:
+
+```bash
+cat buildError.txt | bob -p "Explain this build error"
+```
+
+### Save results to a file
+Redirect the output to save results:
+
+```bash
+bob -p "Review @bigFile.java" > review.md
+```
+
+### Reference project files
+Use the `@` symbol to reference files in your project:
+
+```bash
+bob -p "Summarize the functionality in @src/main.js"
+```
+
+## Advanced options
+### Enable file modifications
+By default, Bob Shell only uses non-destructive tools (like reading files) in non-interactive session. To enable writing and updating files, add the `--yolo` flag:
+
+```bash
+bob -p "Fix bugs in @app.js" --yolo
+```
+
+Even with the `--yolo` flag enabled, Bob Shell will not write or update files outside the directory where it was started.
+
+### Format output for processing
+The output contains both Bob Shell's answer and its thinking steps. For easier processing, add instructions to format the output:
+
+```bash
+bob -p "What Java version is this application using? Check @pom.xml. Enclose the answer in markdown tags" > analysis.md
+```
+
+### When to use non-interactive session
+Non-interactive session works best for:
+
+* Integrating Bob Shell into automation scripts
+* Processing multiple files with a single command
+* Getting quick insights without starting an interactive session
+* Generating documentation from code
+
+### Tips for effective use
+* For complex tasks that might require multiple tool uses, interactive session usually works better.
+* When processing large files or projects, be specific about which files to analyze.
+* Use structured output instructions (like "Format the output as JSON") for easier parsing in scripts.
+* Consider creating shell aliases or scripts for frequently used Bob Shell commands.
+* For multi-line prompts, save them to a file and pipe to Bob Shell:
+
+```bash
+cat prompt.txt | bob
+```

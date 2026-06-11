@@ -1,1 +1,246 @@
-{"mcpServers":{"greptile":{"url":"https://api.greptile.com/mcp","type":"streamable-http","headers":{"Authorization":"Bearer pS4L5AeiV35cwkTbNyKVunYcJWQhbD+CI1M8hk6Hf4aMiLKR"},"alwaysAllow":["query","search","search_codebase","query_codebase","semantic_search","search_custom_context"]}}}
+{
+  "mcpServers": {
+    "jcodemunch-mcp": {
+      "type": "stdio",
+      "command": "jcodemunch-mcp.exe",
+      "args": [],
+      "alwaysAllow": [
+        "resolve_repo",
+        "index_folder",
+        "suggest_queries",
+        "search_symbols",
+        "search_text",
+        "get_file_outline",
+        "get_symbol_source",
+        "get_context_bundle",
+        "get_file_content",
+        "get_repo_outline",
+        "get_file_tree",
+        "find_importers",
+        "find_references",
+        "check_references",
+        "get_dependency_graph",
+        "get_blast_radius",
+        "get_changed_symbols",
+        "find_dead_code",
+        "get_class_hierarchy",
+        "plan_turn",
+        "get_session_context",
+        "register_edit",
+        "announce_model",
+        "list_repos",
+        "get_symbol_complexity"
+      ]
+    },
+    "greptile": {
+      "url": "https://api.greptile.com/mcp",
+      "type": "streamable-http",
+      "headers": {
+        "Authorization": "Bearer pS4L5AeiV35cwkTbNyKVunYcJWQhbD+CI1M8hk6Hf4aMiLKR"
+      },
+      "alwaysAllow": [
+        "query",
+        "search",
+        "search_codebase",
+        "query_codebase",
+        "semantic_search",
+        "search_custom_context"
+      ]
+    },
+    "worker-1": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/worker_agent_mcp.py",
+        "worker-1",
+        "C:/WSGTA/universal-or-epic-cluster-1"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "claim_epic",
+        "execute_epic",
+        "release_epic",
+        "get_worker_status",
+        "get_next_pending_epic"
+      ]
+    },
+    "worker-2": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/worker_agent_mcp.py",
+        "worker-2",
+        "C:/WSGTA/universal-or-epic-cluster-2"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "claim_epic",
+        "execute_epic",
+        "release_epic",
+        "get_worker_status",
+        "get_next_pending_epic"
+      ]
+    },
+    "worker-3": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/worker_agent_mcp.py",
+        "worker-3",
+        "C:/WSGTA/universal-or-epic-cluster-3"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "claim_epic",
+        "execute_epic",
+        "release_epic",
+        "get_worker_status",
+        "get_next_pending_epic"
+      ]
+    },
+    "worker-4": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/worker_agent_mcp.py",
+        "worker-4",
+        "C:/WSGTA/universal-or-epic-cluster-4"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "claim_epic",
+        "execute_epic",
+        "release_epic",
+        "get_worker_status",
+        "get_next_pending_epic"
+      ]
+    },
+    "phase-0-hotspot": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_0_hotspot_mcp_fastmcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "execute_phase_0"
+      ]
+    },
+    "phase-1-scope": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_1_scope_mcp_fastmcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "execute_phase_1"
+      ]
+    },
+    "phase-1-5-boundary": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_1_5_boundary_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "execute_phase_1_5"
+      ]
+    },
+    "phase-2-architecture": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_2_architecture_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "execute_phase_2"
+      ]
+    },
+    "phase-3-audit": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_3_audit_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "execute_phase_3"
+      ]
+    },
+    "phase-4-tickets": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_4_tickets_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "execute_phase_4"
+      ]
+    },
+    "phase-5-execute": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_5_execute_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "execute_phase_5"
+      ]
+    },
+    "phase-5-verify": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_5_verify_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "execute_phase_5_verify"
+      ]
+    },
+    "phase-6-review": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_6_review_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      },
+      "alwaysAllow": [
+        "execute_phase_6"
+      ]
+    }
+  }
+}
+
+

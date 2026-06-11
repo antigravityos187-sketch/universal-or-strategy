@@ -1,0 +1,177 @@
+```mermaid
+graph TD
+    subgraph "Before Extraction (CYC 19)"
+        A1[AdoptMasterOrders] --> B1[Account.Orders.ToArray]
+        A1 --> C1[Instrument Filter +1]
+        A1 --> D1[7-Way State Validation +7]
+        A1 --> E1[ClassifyOrderByPrefix +1]
+        A1 --> F1[Classification Filter +2]
+        A1 --> G1[Key Extraction Ternary +1]
+        A1 --> H1[6-Way Switch Routing +6]
+        H1 --> I1[stopOrders Write]
+        H1 --> J1[target1Orders Write]
+        H1 --> K1[target2Orders Write]
+        H1 --> L1[target3Orders Write]
+        H1 --> M1[target4Orders Write]
+        H1 --> N1[target5Orders Write]
+    end
+    
+    style A1 fill:#ff6b6b
+    style D1 fill:#ffd93d
+    style G1 fill:#ffd93d
+    style H1 fill:#ffd93d
+```
+
+```mermaid
+graph TD
+    subgraph "After Extraction (CYC 4)"
+        A2[AdoptMasterOrders CYC 4] --> B2[Account.Orders.ToArray]
+        A2 --> C2[Instrument Filter +1]
+        A2 --> D2[IsValidMasterOrderState +1]
+        D2 --> D2A[Helper: 7-Way Validation CYC 7]
+        A2 --> E2[ClassifyOrderByPrefix +1]
+        A2 --> F2[Classification Filter +2]
+        A2 --> G2[ExtractMasterOrderKey +1]
+        G2 --> G2A[Helper: Ternary Logic CYC 2]
+        A2 --> H2[RouteOrderToMasterDict +1]
+        H2 --> H2A[Helper: 6-Way Switch CYC 7]
+        H2A --> I2[stopOrders Write]
+        H2A --> J2[target1Orders Write]
+        H2A --> K2[target2Orders Write]
+        H2A --> L2[target3Orders Write]
+        H2A --> M2[target4Orders Write]
+        H2A --> N2[target5Orders Write]
+    end
+    
+    style A2 fill:#6bcf7f
+    style D2A fill:#95e1d3
+    style G2A fill:#95e1d3
+    style H2A fill:#95e1d3
+```
+
+```mermaid
+sequenceDiagram
+    participant HWO as HydrateWorkingOrdersFromBroker
+    participant AMO as AdoptMasterOrders
+    participant ISV as IsValidMasterOrderState
+    participant EMK as ExtractMasterOrderKey
+    participant RTD as RouteOrderToMasterDict
+    participant DICT as Tracking Dictionaries
+    
+    HWO->>AMO: Call (master account adoption)
+    loop For each order in Account.Orders
+        AMO->>AMO: Filter by instrument
+        AMO->>ISV: Validate order state
+        ISV-->>AMO: true/false
+        alt State valid
+            AMO->>AMO: ClassifyOrderByPrefix
+            alt Classification valid
+                AMO->>EMK: Extract dictionary key
+                EMK-->>AMO: key (e.g., "MOMO_001")
+                AMO->>RTD: Route to dictionary
+                RTD->>DICT: Write order to dict
+                RTD-->>AMO: Increment adoptedCount
+            end
+        end
+    end
+    AMO-->>HWO: Return adoptedCount
+```
+
+```mermaid
+graph LR
+    subgraph "Helper 1: State Validation"
+        SV1[IsValidMasterOrderState] --> SV2{OrderState?}
+        SV2 -->|Working| SV3[Return true]
+        SV2 -->|Accepted| SV3
+        SV2 -->|Submitted| SV3
+        SV2 -->|ChangePending| SV3
+        SV2 -->|ChangeSubmitted| SV3
+        SV2 -->|Unknown| SV3
+        SV2 -->|Other| SV4[Return false]
+    end
+    
+    style SV1 fill:#95e1d3
+    style SV3 fill:#6bcf7f
+    style SV4 fill:#ff6b6b
+```
+
+```mermaid
+graph LR
+    subgraph "Helper 2: Key Extraction"
+        KE1[ExtractMasterOrderKey] --> KE2{Prefix?}
+        KE2 -->|Stop_| KE3[Substring 5]
+        KE2 -->|Other| KE4[Substring 2]
+        KE3 --> KE5[Return key]
+        KE4 --> KE5
+    end
+    
+    style KE1 fill:#95e1d3
+    style KE5 fill:#6bcf7f
+```
+
+```mermaid
+graph TD
+    subgraph "Helper 3: Dictionary Routing"
+        DR1[RouteOrderToMasterDict] --> DR2{Classification?}
+        DR2 -->|stop| DR3[stopOrders]
+        DR2 -->|target1| DR4[target1Orders]
+        DR2 -->|target2| DR5[target2Orders]
+        DR2 -->|target3| DR6[target3Orders]
+        DR2 -->|target4| DR7[target4Orders]
+        DR2 -->|target5| DR8[target5Orders]
+        DR3 --> DR9[Increment adoptedCount]
+        DR4 --> DR9
+        DR5 --> DR9
+        DR6 --> DR9
+        DR7 --> DR9
+        DR8 --> DR9
+    end
+    
+    style DR1 fill:#95e1d3
+    style DR9 fill:#6bcf7f
+```
+
+```mermaid
+graph TD
+    subgraph "Thread Safety Model"
+        TS1[Strategy Thread ACTOR-SERIALIZED] --> TS2[EnumerateApexAccounts]
+        TS2 --> TS3[HydrateWorkingOrdersFromBroker]
+        TS3 --> TS4[AdoptMasterOrders]
+        TS4 --> TS5[IsValidMasterOrderState PURE]
+        TS4 --> TS6[ExtractMasterOrderKey PURE]
+        TS4 --> TS7[RouteOrderToMasterDict SINGLE-WRITE]
+        TS7 --> TS8[ConcurrentDictionary Write]
+        
+        TS9[No Locks] -.->|V12 DNA| TS4
+        TS10[No Shared State] -.->|V12 DNA| TS5
+        TS10 -.->|V12 DNA| TS6
+        TS11[Single-Threaded Writes] -.->|V12 DNA| TS7
+    end
+    
+    style TS1 fill:#95e1d3
+    style TS5 fill:#6bcf7f
+    style TS6 fill:#6bcf7f
+    style TS7 fill:#ffd93d
+    style TS9 fill:#6bcf7f
+    style TS10 fill:#6bcf7f
+    style TS11 fill:#6bcf7f
+```
+
+```mermaid
+graph TD
+    subgraph "Complexity Reduction Flow"
+        CR1[CYC 19 Original] --> CR2[Extract IsValidMasterOrderState]
+        CR2 --> CR3[CYC 13 -6 points]
+        CR3 --> CR4[Extract ExtractMasterOrderKey]
+        CR4 --> CR5[CYC 11 -2 points]
+        CR5 --> CR6[Extract RouteOrderToMasterDict]
+        CR6 --> CR7[CYC 4 -7 points]
+        CR7 --> CR8[Target Achieved ≤8]
+    end
+    
+    style CR1 fill:#ff6b6b
+    style CR3 fill:#ffd93d
+    style CR5 fill:#ffd93d
+    style CR7 fill:#6bcf7f
+    style CR8 fill:#6bcf7f
+```

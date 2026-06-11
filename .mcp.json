@@ -9,6 +9,54 @@
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@greptile/mcp-server"]
+    },
+    "worker-1": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/worker_agent_mcp_fastmcp.py",
+        "worker-1",
+        "C:/WSGTA/universal-or-epic-cluster-1"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "worker-2": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/worker_agent_mcp_fastmcp.py",
+        "worker-2",
+        "C:/WSGTA/universal-or-epic-cluster-2"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "worker-3": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/worker_agent_mcp_fastmcp.py",
+        "worker-3",
+        "C:/WSGTA/universal-or-epic-cluster-3"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "worker-4": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/worker_agent_mcp_fastmcp.py",
+        "worker-4",
+        "C:/WSGTA/universal-or-epic-cluster-4"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
     }
   }
 }

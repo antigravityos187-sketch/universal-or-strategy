@@ -1,0 +1,39 @@
+{
+  "epic_id": "EPIC-CCN-109",
+  "method": "HydrateWorkingOrdersFromBroker",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "complexity": 19,
+  "target_complexity": 8,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "timestamp": "2026-06-11T06:07:26Z"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output": "00-scope.md",
+      "timestamp": "2026-06-11T06:07:26Z"
+    },
+    "phase_1.5": {
+      "status": "completed",
+      "output": "01-scope-boundary.md",
+      "timestamp": "2026-06-11T06:12:40Z"
+    },
+    "phase_2": {
+      "status": "completed",
+      "output": "02-architecture-plan.md, 02-diagrams.mmd",
+      "timestamp": "2026-06-11T07:16:34Z"
+    },
+    "phase_3": {
+      "status": "pending",
+      "output": null,
+      "timestamp": null
+    },
+    "phase_4": {
+      "status": "completed",
+      "output": "04-tickets.md",
+      "timestamp": "2026-06-11T07:35:55Z"
+    }
+  }
+}

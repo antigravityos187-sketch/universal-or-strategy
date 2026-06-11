@@ -249,7 +249,9 @@
     "hotspot_score": 0.0,
     "codescene_score": null,
     "composite_score": 0.0,
-    "codescene_issues": []
+    "codescene_issues": [],
+    "status": "complete",
+    "completion_date": "2026-06-10"
   },
   {
     "epic_number": "EPIC-CCN-34",
@@ -465,7 +467,9 @@
     "hotspot_score": 0.0,
     "codescene_score": null,
     "composite_score": 0.0,
-    "codescene_issues": []
+    "codescene_issues": [],
+    "status": "complete",
+    "completion_date": "2026-06-10"
   },
   {
     "epic_number": "EPIC-CCN-52",

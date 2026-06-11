@@ -1,0 +1,237 @@
+# EPIC-CCN-128 Architecture Diagrams
+
+## Complexity Reduction Flow
+
+```mermaid
+graph TD
+    A[Original Method<br/>CYC 18] --> B[Extract Guards<br/>CYC 3]
+    A --> C[Extract Validation<br/>CYC 2]
+    A --> D[Extract Cleanup<br/>CYC 3]
+    A --> E[Extract FSM Builder<br/>CYC 4]
+    A --> F[Refactored Main<br/>CYC 5]
+    
+    style A fill:#ff6b6b
+    style B fill:#51cf66
+    style C fill:#51cf66
+    style D fill:#51cf66
+    style E fill:#51cf66
+    style F fill:#51cf66
+```
+
+## Call Graph Before Extraction
+
+```mermaid
+graph TD
+    Caller[SymmetryGuardRetargetExistingFollowerBracket] --> Main[SymmetryGuardReplaceExistingFollowerTarget<br/>CYC 18]
+    
+    Main --> H1[IsRunnerTarget]
+    Main --> H2[IsTargetFilled]
+    Main --> H3[GetTargetContracts]
+    Main --> H4[pos.ExecutingAccount.Cancel]
+    Main --> H5[GetTargetPrice]
+    Main --> H6[SymmetryTrim]
+    Main --> H7[StampReaperMoveGrace]
+    
+    style Main fill:#ff6b6b
+```
+
+## Call Graph After Extraction
+
+```mermaid
+graph TD
+    Caller[SymmetryGuardRetargetExistingFollowerBracket] --> Main[SymmetryGuardReplaceExistingFollowerTarget<br/>CYC 5]
+    
+    Main --> Skip[ShouldSkipTargetReplacement<br/>CYC 3]
+    Main --> Cancel[IsOrderCancellable<br/>CYC 2]
+    Main --> Create[CreateFollowerTargetReplaceSpec<br/>CYC 4]
+    
+    Skip --> H1[IsRunnerTarget]
+    Skip --> H2[IsTargetFilled]
+    Skip --> H3[GetTargetContracts]
+    Skip --> Cleanup[CleanupStaleFollowerTarget<br/>CYC 3]
+    
+    Cleanup --> Cancel2[IsOrderCancellable<br/>CYC 2]
+    Cleanup --> H4[pos.ExecutingAccount.Cancel]
+    
+    Create --> H5[GetTargetPrice]
+    Create --> H3b[GetTargetContracts]
+    Create --> H6[SymmetryTrim]
+    Create --> H7[StampReaperMoveGrace]
+    Create --> H4b[pos.ExecutingAccount.Cancel]
+    
+    style Main fill:#51cf66
+    style Skip fill:#51cf66
+    style Cancel fill:#51cf66
+    style Cleanup fill:#51cf66
+    style Create fill:#51cf66
+```
+
+## Method Extraction Sequence
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Main as Main Method
+    participant H1 as Helper 1: ShouldSkip
+    participant H2 as Helper 2: IsOrderCancellable
+    participant H3 as Helper 3: CleanupStale
+    participant H4 as Helper 4: CreateSpec
+    
+    Dev->>H2: 1. Extract IsOrderCancellable (CYC 2)
+    Note over H2: Reusable validation logic
+    
+    Dev->>H3: 2. Extract CleanupStaleFollowerTarget (CYC 3)
+    H3->>H2: Uses IsOrderCancellable
+    
+    Dev->>H1: 3. Extract ShouldSkipTargetReplacement (CYC 3)
+    H1->>H3: Uses CleanupStaleFollowerTarget
+    
+    Dev->>H4: 4. Extract CreateFollowerTargetReplaceSpec (CYC 4)
+    Note over H4: FSM spec builder
+    
+    Dev->>Main: 5. Refactor Main Method (CYC 5)
+    Main->>H1: Calls ShouldSkip
+    Main->>H2: Calls IsOrderCancellable
+    Main->>H4: Calls CreateSpec
+```
+
+## Complexity Distribution
+
+```mermaid
+pie title Complexity Distribution After Extraction
+    "Main Method (CYC 5)" : 5
+    "ShouldSkip (CYC 3)" : 3
+    "IsOrderCancellable (CYC 2)" : 2
+    "CleanupStale (CYC 3)" : 3
+    "CreateSpec (CYC 4)" : 4
+```
+
+## Decision Tree Before Extraction
+
+```mermaid
+graph TD
+    Start[Start] --> G1{ExecutingAccount<br/>null?}
+    G1 -->|Yes| End1[Return]
+    G1 -->|No| G2{isFilled OR<br/>isRunner OR<br/>qty <= 0?}
+    
+    G2 -->|Yes| G3{Stale target<br/>exists?}
+    G3 -->|Yes| G4{Order<br/>cancellable?}
+    G4 -->|Yes| Cancel1[Cancel Order]
+    G4 -->|No| Remove1[Remove from dict]
+    Cancel1 --> Remove1
+    G3 -->|No| End2[Return]
+    Remove1 --> End2
+    
+    G2 -->|No| G5{Old target<br/>exists?}
+    G5 -->|No| End3[Return]
+    G5 -->|Yes| G6{Order<br/>cancellable?}
+    G6 -->|No| End4[Return]
+    G6 -->|Yes| G7{newPrice > 0?}
+    G7 -->|No| End5[Return]
+    G7 -->|Yes| Build[Build FSM Spec]
+    Build --> Stamp[Stamp Grace]
+    Stamp --> Cancel2[Cancel Order]
+    Cancel2 --> End6[Return]
+    
+    style G1 fill:#ffd43b
+    style G2 fill:#ffd43b
+    style G3 fill:#ffd43b
+    style G4 fill:#ffd43b
+    style G5 fill:#ffd43b
+    style G6 fill:#ffd43b
+    style G7 fill:#ffd43b
+```
+
+## Decision Tree After Extraction
+
+```mermaid
+graph TD
+    Start[Start] --> G1{ExecutingAccount<br/>null?}
+    G1 -->|Yes| End1[Return]
+    G1 -->|No| Skip[ShouldSkipTargetReplacement]
+    
+    Skip --> G2{Should skip?}
+    G2 -->|Yes| End2[Return]
+    G2 -->|No| G3{Old target<br/>exists?}
+    
+    G3 -->|No| End3[Return]
+    G3 -->|Yes| Cancellable[IsOrderCancellable]
+    
+    Cancellable --> G4{Cancellable?}
+    G4 -->|No| End4[Return]
+    G4 -->|Yes| CreateSpec[CreateFollowerTargetReplaceSpec]
+    CreateSpec --> End5[Return]
+    
+    style G1 fill:#51cf66
+    style G2 fill:#51cf66
+    style G3 fill:#51cf66
+    style G4 fill:#51cf66
+    style Skip fill:#339af0
+    style Cancellable fill:#339af0
+    style CreateSpec fill:#339af0
+```
+
+## Test Coverage Map
+
+```mermaid
+graph TD
+    Tests[Unit Tests] --> T1[ShouldSkipTargetReplacement Tests]
+    Tests --> T2[IsOrderCancellable Tests]
+    Tests --> T3[CleanupStaleFollowerTarget Tests]
+    Tests --> T4[CreateFollowerTargetReplaceSpec Tests]
+    Tests --> T5[Integration Tests]
+    
+    T1 --> T1A[Theory: Various Conditions]
+    T1 --> T1B[Fact: Stale Target Cleanup]
+    
+    T2 --> T2A[Theory: Various States]
+    T2 --> T2B[Fact: Null Order]
+    
+    T3 --> T3A[Fact: Cancellable Order]
+    T3 --> T3B[Fact: Non-Cancellable Order]
+    T3 --> T3C[Fact: No Stale Target]
+    
+    T4 --> T4A[Fact: Valid Inputs]
+    T4 --> T4B[Fact: Invalid Price]
+    T4 --> T4C[Fact: Long Position]
+    T4 --> T4D[Fact: Short Position]
+    
+    T5 --> T5A[Fact: Filled Target]
+    T5 --> T5B[Fact: Valid Target]
+    T5 --> T5C[Fact: Null Account]
+    
+    style Tests fill:#845ef7
+    style T1 fill:#51cf66
+    style T2 fill:#51cf66
+    style T3 fill:#51cf66
+    style T4 fill:#51cf66
+    style T5 fill:#51cf66
+```
+
+## Deployment Flow
+
+```mermaid
+graph LR
+    A[Pre-Extraction] --> B[Extract Helpers]
+    B --> C[Refactor Main]
+    C --> D[Add XML Docs]
+    D --> E[Build Verification]
+    E --> F[Complexity Audit]
+    F --> G[Deploy Sync]
+    G --> H[F5 Test]
+    H --> I[Pre-Push Validation]
+    I --> J[Git Commit]
+    J --> K[Git Push]
+    
+    style A fill:#ffd43b
+    style B fill:#339af0
+    style C fill:#339af0
+    style D fill:#339af0
+    style E fill:#51cf66
+    style F fill:#51cf66
+    style G fill:#51cf66
+    style H fill:#51cf66
+    style I fill:#51cf66
+    style J fill:#51cf66
+    style K fill:#51cf66
+```

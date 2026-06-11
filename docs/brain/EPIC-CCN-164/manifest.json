@@ -1,0 +1,34 @@
+{
+  "epic_id": "EPIC-CCN-164",
+  "method": "IsCommandForThisInstrument",
+  "file": "src/V12_002.UI.IPC.cs",
+  "complexity": 36,
+  "target_complexity": 8,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "completed_at": "2026-06-11T05:00:00.000Z"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output": "00-scope.md",
+      "completed_at": "2026-06-11T05:02:32.000Z",
+      "extraction_strategy": {
+        "sub_methods": [
+          {
+            "name": "IsGlobalIpcCommand",
+            "purpose": "Isolate global command detection logic",
+            "target_cyc": 3
+          },
+          {
+            "name": "IsSymbolMatch",
+            "purpose": "Isolate symbol matching logic",
+            "target_cyc": 4
+          }
+        ],
+        "main_method_target_cyc": 4
+      }
+    }
+  }
+}
