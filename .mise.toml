@@ -1,0 +1,85 @@
+# Mise Configuration for Universal OR Strategy V12
+# This file defines all tools, versions, and tasks for the project
+# Install mise: curl https://mise.jit.su/install.sh | sh
+# Then run: mise install
+
+[tools]
+# Runtime versions
+node = "20.11.0"  # Required for Bob Shell (npm)
+python = "3.11"   # Required for scripts and MCP servers
+
+# Global tools installed via npm
+"npm:@ibm/bob-shell" = "latest"  # Bob Shell CLI
+
+[env]
+# Environment variables
+_.python.venv = { path = ".venv", create = true }
+PYTHONPATH = "{{cwd}}/scripts"
+
+[tasks.setup]
+description = "Complete project setup (install all tools and dependencies)"
+run = [
+    "mise install",
+    "pip install -r requirements.txt",
+    "echo 'Setup complete! Run: mise run verify'"
+]
+
+[tasks.verify]
+description = "Verify all tools are installed correctly"
+run = [
+    "node --version",
+    "python --version",
+    "bob --version",
+    "echo 'All tools verified!'"
+]
+
+[tasks.install-bob]
+description = "Install Bob Shell via npm"
+run = "npm install -g @ibm/bob-shell"
+
+[tasks.build]
+description = "Build the project"
+run = "powershell -File ./scripts/build_readiness.ps1"
+
+[tasks.lint]
+description = "Run linting"
+run = "powershell -File ./scripts/lint.ps1"
+
+[tasks.test]
+description = "Run tests"
+run = "powershell -File ./scripts/test_stress.ps1"
+
+[tasks.pre-push]
+description = "Run pre-push validation"
+run = "powershell -File ./scripts/pre_push_validation.ps1"
+
+[tasks.wave2]
+description = "Execute Wave 2 (10 epics)"
+run = "python scripts/wave2_simple_orchestrator.py --config wave2_config.json"
+
+[tasks.epic-intake]
+description = "Start new epic (Phase 0)"
+run = "bob --mode v12-epic-planner /epic-intake"
+
+[tasks.epic-scope]
+description = "Define epic scope (Phase 1)"
+run = "bob --mode v12-epic-planner /epic-scope-boundary"
+
+[tasks.epic-plan]
+description = "Plan epic architecture (Phase 2)"
+run = "bob --mode v12-epic-planner /epic-plan"
+
+[tasks.epic-validate]
+description = "Execute epic ticket (Phase 5)"
+run = "bob --mode v12-engineer /epic-validate"
+
+[tasks.dev]
+description = "Start development environment"
+run = [
+    "echo 'Starting development environment...'",
+    "echo 'Bob Shell: bob --mode advanced'",
+    "echo 'Wave 2: mise run wave2'",
+    "echo 'Build: mise run build'"
+]
+
+# Made with Bob
