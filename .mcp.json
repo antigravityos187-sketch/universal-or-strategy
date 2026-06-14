@@ -57,6 +57,106 @@
       "env": {
         "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
       }
+    },
+    "phase-0-hotspot": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_0_hotspot_mcp_fastmcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "phase-1-scope": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_1_scope_mcp_fastmcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "phase-1-5-boundary": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_1_5_boundary_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "phase-2-architecture": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_2_architecture_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "phase-3-audit": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_3_audit_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "phase-4-tickets": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_4_tickets_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "phase-4-5-review": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_4_5_ticket_review_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "phase-5-execute": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_5_execute_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "phase-5-verify": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_5_verify_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
+    },
+    "phase-6-review": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "C:/WSGTA/universal-or-strategy/scripts/phase_6_review_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
+      }
     }
   }
 }

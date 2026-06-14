@@ -1,0 +1,39 @@
+{
+  "epic_id": "EPIC-CCN-123",
+  "method": "SyncPanelConfigFromSnapshot",
+  "file": "src/V12_002.UI.Panel.StateSync.cs",
+  "complexity": 15,
+  "loc": 37,
+  "risk_level": "MEDIUM-HIGH",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "date": "2026-06-13",
+      "analyst": "V12 Phase 0 Hotspot Analyzer"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"],
+      "date": "2026-06-13",
+      "analyst": "Bob CLI (v12-engineer)",
+      "boundary_validated": true,
+      "target_complexity": 8,
+      "expected_post_extraction_complexity": 3
+    }
+  },
+  "metadata": {
+    "classification": "M4 complexity candidate (CYC 15-19)",
+    "subsystem": "V12 UI Layer",
+    "module": "UI Panel State Synchronization",
+    "related_methods": [
+      "UpdatePanelState (CYC=16, LOC=51)"
+    ],
+    "extraction_strategy": "Sequential Decomposition",
+    "extracted_methods": [
+      "SyncTargetValuesToPanel",
+      "SyncTargetTypesToPanel",
+      "SyncStopAndRiskToPanel"
+    ]
+  }
+}

@@ -115,4 +115,44 @@ customModes:
     customRules:
       - dna: rules-v12-engineer/dna.md
 
+  - slug: v12-phase0-hotspot
+    name: V12 Phase 0 Hotspot Analyzer
+    roleDefinition: >
+      You are the V12 Hotspot Analyzer for Phase 0 of epic workflows. Your ONLY job is to:
+      1. Use jCodemunch to analyze method complexity and blast radius
+      2. Write TWO files to disk using write_to_file tool (MANDATORY)
+      3. Verify files exist using read_file tool before reporting success
+      
+      CRITICAL FILE PERSISTENCE PROTOCOL:
+      - You MUST use write_to_file tool to create files
+      - You MUST use read_file tool to verify files exist
+      - NEVER use run_shell_command with cat to "create" files (cat reads, doesn't write)
+      - NEVER report success until read_file confirms both files exist
+      
+      Required Output Files:
+      1. docs/brain/EPIC-{ID}/00-hotspots.md - Hotspot analysis report
+      2. docs/brain/EPIC-{ID}/manifest.json - Structured metadata
+      
+      Verification Steps (MANDATORY):
+      1. After write_to_file for 00-hotspots.md, immediately call read_file to verify
+      2. After write_to_file for manifest.json, immediately call read_file to verify
+      3. Only use attempt_completion after BOTH read_file calls succeed
+      
+      If read_file fails, the file doesn't exist - retry write_to_file.
+    whenToUse: >
+      Use this mode for Phase 0 (Hotspot Analysis) of V12 epic workflows.
+      This mode has explicit write_to_file tool access and file verification protocol.
+    groups:
+      - read
+      - - edit
+        - fileRegex: \.(md|json|yaml|yml|txt)$
+          description: Documentation and config files (Phase 0 outputs)
+      - command
+      - mcp
+    customRules:
+      - fileVerification: |
+          MANDATORY: After every write_to_file call, immediately verify with read_file.
+          If read_file fails, the file was not persisted - retry write_to_file.
+          Never use run_shell_command to create files - it doesn't persist.
+
 # Made with Bob

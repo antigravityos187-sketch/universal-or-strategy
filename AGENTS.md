@@ -737,3 +737,111 @@ If scope creep detected:
 4. Restart epic cleanly
 
 **Reference**: `docs/brain/EPIC-13/09-pr12-failure-analysis.md`
+
+## 12. Building-Blocks Method (MANDATORY for Autonomous Execution)
+
+**Version**: 1.0
+**Effective**: 2026-06-14
+**Status**: MANDATORY for all wave-based autonomous refactoring
+
+### Core Principle
+
+**ALL script generation MUST use the building-blocks method**: Copy working scripts from previous phases, modify only phase-specific parameters, never generate from scratch.
+
+### Primary References
+
+**MANDATORY READING before any wave execution**:
+
+1. **Script Generation SOP**: [`docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md`](docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md)
+   - Golden Rule: Always copy SAME phase from PREVIOUS wave
+   - Phase-specific requirements (modes, commands, outputs)
+   - Verification checklist
+   - Recovery procedures
+
+2. **Architecture Overview**: [`building-blocks/autonomous-refactoring/ARCHITECTURE.md`](building-blocks/autonomous-refactoring/ARCHITECTURE.md)
+   - Nested loop architecture
+   - Manifest-based state management
+   - Parallel execution model
+   - Quality gates
+
+3. **Getting Started**: [`building-blocks/autonomous-refactoring/GETTING_STARTED.md`](building-blocks/autonomous-refactoring/GETTING_STARTED.md)
+   - Quick start guide
+   - Prerequisites
+   - First wave walkthrough
+
+4. **Cost-Optimized Polling**: [`docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL.md`](docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL.md)
+   - 4-minute polling intervals (88% cost reduction)
+   - Cache optimization strategy
+   - Master launch script pattern
+
+### Autonomous Execution Goals
+
+**Primary Goal**: Achieve CodeScene complexity score ≤8 (Jane Street strict standard)
+
+**Why ≤8?**
+- CodeScene uses stricter thresholds than Codacy (15)
+- Jane Street HFT systems require cognitive simplicity
+- Functions >8 are harder to reason about under microsecond latency
+- V12 DNA: "Make illegal states unrepresentable" requires simple logic
+
+**Current Status**:
+- Target: All methods ≤8
+- Baseline: 180 methods >8 (80 epics)
+- Progress: Track in `epic_roadmap.json`
+
+### Jane Street KB Integration
+
+**MANDATORY**: Query Jane Street KB before every architectural decision
+
+**When to Query**:
+- Phase 2 (Architecture Planning): Query for extraction patterns
+- Phase 5 (Ticket Execution): Query for implementation patterns
+- Phase 5.V (Verification): Query for testing patterns
+
+**How to Query**:
+```bash
+python scripts/query_kb.py "complexity reduction"
+python scripts/query_kb.py "FSM extraction"
+python scripts/query_kb.py "lock-free patterns"
+```
+
+**KB Coverage**: 100+ rules with P0/P1/P2 severity, HFT patterns, FSM/Actor patterns, testing strategies
+
+### Wave Execution Checklist
+
+**Before Starting Wave**:
+- [ ] Read Script Generation SOP V3
+- [ ] Fresh complexity audit run
+- [ ] Epic roadmap updated
+- [ ] VM accessible and build passes
+- [ ] jCodemunch index current
+- [ ] Git status clean (no uncommitted `src/` changes)
+- [ ] Branch strategy: GitButler virtual branches active
+
+**During Wave**:
+- [ ] Poll every 4 minutes (cache optimization)
+- [ ] Monitor bobcoin usage (track per API)
+- [ ] Check for errors in logs
+- [ ] Verify file persistence
+
+**After Wave**:
+- [ ] Sync to local
+- [ ] Run pre-push validation
+- [ ] Update roadmap
+- [ ] Document lessons learned
+
+### Enforcement
+
+**Violation Protocol**:
+- Any script generated from scratch (not copied) = protocol violation
+- Any wave launched without SOP compliance = protocol violation
+- Any epic executed without Jane Street KB query = protocol violation
+- Any polling interval ≠4 minutes = protocol violation
+
+**Post-Wave Audit** (MANDATORY):
+1. ✅ Review all generated scripts for pattern compliance
+2. ✅ Document any deviations and root causes
+3. ✅ Update building-blocks templates if new patterns discovered
+4. ✅ State "building-blocks(wave-X): no gaps identified" if no gaps found
+
+**Last Audit**: 2026-06-14 - Protocol created, awaiting first wave execution
