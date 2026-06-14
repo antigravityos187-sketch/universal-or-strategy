@@ -12,7 +12,6 @@
 //   - IPC command distribution to multiple accounts
 //   - Reaper Audit thread for position verification
 //   - [SIMA] logging prefix for all multi-account operations
-
 using System;
 using System.Collections.Concurrent; // V8.30: Thread-safe collections
 using System.Collections.Generic;
@@ -22,8 +21,6 @@ using System.Globalization;
 using System.Linq; // V8.30: For .Values.Contains() on ConcurrentDictionary
 using System.Net;
 using System.Net.Sockets;
-// EPIC-CCN-12: Enable unit testing of internal helper methods
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading; // V8.30: For Interlocked operations
 using System.Threading.Tasks; // V12.2: For Task.Run in async operations
@@ -43,13 +40,11 @@ using NinjaTrader.NinjaScript.DrawingTools;
 using NinjaTrader.NinjaScript.Indicators;
 using NinjaTrader.NinjaScript.Strategies;
 
-[assembly: InternalsVisibleTo("V12_Performance.Tests")]
-
 namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
-        public const string BUILD_TAG = "1111.044-epic-ccn-18-t2"; // EPIC-CCN-18 Ticket 2: Extract cancellation helper (HandleFlatPositionUpdate CYC <=8, CancelOrphanedOrdersForPosition CYC 11)
+        public const string BUILD_TAG = "1111.011-ccn108-t1"; // EPIC-CCN-108 TICKET-1: Extract IsOrderCancellable
 
         public class UILiveTargetSnapshot
         {
@@ -395,35 +390,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         private int _startupReadinessLogEmitted = 0;
         private volatile bool _diagFleet; // T-Q1: Fleet dispatch + account queue catch logging
         private volatile bool _diagIpc; // T-Q1: MMIO mirror publish catch logging
-
-        // [PR #7 REAPER Infrastructure] Missing field declarations restored
-        // These fields support REAPER naked position detection and orphan repair
-        private const int DISPATCH_LOG_INITIAL_CAPACITY = 512;
-        private const int IPC_DRAIN_LIMIT = 100;
-
-        private readonly ConcurrentQueue<(
-            string AccountName,
-            MarketPosition Direction,
-            int Qty
-        )> _reaperNakedStopQueue = new ConcurrentQueue<(string, MarketPosition, int)>();
-
-        private readonly ConcurrentDictionary<string, DateTime> _nakedPositionFirstSeen =
-            new ConcurrentDictionary<string, DateTime>();
-
-        private readonly ConcurrentDictionary<string, byte> _reaperNakedStopInFlight =
-            new ConcurrentDictionary<string, byte>();
-
-        private readonly ConcurrentDictionary<string, int> _reaperOrphanRepairCount =
-            new ConcurrentDictionary<string, int>();
-
-        private int GetPhotonDispatchRingDepth()
-        {
-            return _photonDispatchRing?.Count ?? 0;
-        }
-
-        // V12.Phase7 [GAP-4]: SIMA toggle semaphore (legacy, replaced by lock-free _simaToggleState)
-        // Retained for disposal in Lifecycle cleanup
-        private SemaphoreSlim _simaToggleSem;
 
         protected void Enqueue(Action<V12_002> action)
         {

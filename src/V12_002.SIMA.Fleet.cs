@@ -239,13 +239,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print("[PUMP] Abort: SIMA inactive or flatten running. Ring+Queue drained with delta rollback.");
                 return;
             }
-            TrackSimaDispatch();
 
             // v28.0 [ADR-012 + ADR-016]: Photon ring, XorShadow integrity, sideband refs
             FleetDispatchSlot _ringSlot;
             if (_photonDispatchRing != null && _photonDispatchRing.TryDequeue(out _ringSlot))
             {
-                TrackPhotonDequeue();
                 int _sbIdx = _ringSlot.PoolSlotIndex;
 
                 // Sideband read (BEFORE shadow verify -- sideband is required for rollback logs)
@@ -290,7 +288,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             FleetDispatchSlot abortSlot;
             while (_photonDispatchRing != null && _photonDispatchRing.TryDequeue(out abortSlot))
             {
-                TrackPhotonDequeue();
                 int _sbIdx = abortSlot.PoolSlotIndex;
                 string _expectedKey =
                     (_sbIdx >= 0 && _sbIdx < _photonSideband.Length) ? _photonSideband[_sbIdx].ExpectedKey : null;
@@ -335,7 +332,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             _ringSlot.Shadow = _stored; // restore for downstream logging
             if (_recomputed != _stored)
             {
-                TrackPhotonCrcFailure();
+                Interlocked.Increment(ref _photonCrcFailures);
                 Print(
                     string.Format(
                         "[PHOTON_SHADOW] INTEGRITY FAILURE: expected=0x{0:X16} got=0x{1:X16} entry={2} -- SKIPPING",
@@ -480,132 +477,88 @@ namespace NinjaTrader.NinjaScript.Strategies
             try
             {
                 // [939-P0]: Snapshot Positions to prevent broker-thread mutation during iteration.
-                // T-W1-Perf: Extracted helpers reduce CYC from 31 to <=15
+                // T-W1-Perf: for-loop replaces FirstOrDefault lambda -- eliminates delegate allocation.
                 // [PR6-P0]: Null safety hardening - check acct and Positions before snapshot
                 if (acct == null || acct.Positions == null)
                 {
                     return; // Skip health check if account or positions are null
                 }
+                Position[] posSnapshot = acct.Positions.ToArray();
+                Position brokerPos = null;
+                for (int pi = 0; pi < posSnapshot.Length; pi++)
+                {
+                    if (
+                        posSnapshot[pi] != null
+                        && posSnapshot[pi].Instrument != null
+                        && posSnapshot[pi].Instrument.FullName == Instrument.FullName
+                    )
+                    {
+                        brokerPos = posSnapshot[pi];
+                        break;
+                    }
+                }
+                bool brokerFlat = (brokerPos == null || brokerPos.MarketPosition == MarketPosition.Flat);
 
-                bool brokerFlat = IsBrokerPositionFlat(acct);
-                bool hasActiveFsmForAcct = HasActiveFsmForAccount(acct.Name);
-                bool hasActivePositionForAcct = HasActivePositionForAccount(acct.Name);
+                // H-13: Check for active FSM entries for this account
+                // ConcurrentDictionary is thread-safe for enumeration - no snapshot needed
+                bool hasActiveFsmForAcct = false;
+                foreach (var fkvp in _followerBrackets)
+                {
+                    var f = fkvp.Value;
+                    if (
+                        f != null
+                        && f.AccountName == acct.Name
+                        && (
+                            f.State == FollowerBracketState.Active
+                            || f.State == FollowerBracketState.Accepted
+                            || f.State == FollowerBracketState.Submitted
+                            || f.State == FollowerBracketState.Replacing
+                        )
+                    )
+                    {
+                        hasActiveFsmForAcct = true;
+                        break;
+                    }
+                }
+                bool hasActivePositionForAcct = false;
+                foreach (var pkvp in activePositions)
+                {
+                    var p = pkvp.Value;
+                    if (p != null && p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == acct.Name)
+                    {
+                        hasActivePositionForAcct = true;
+                        break;
+                    }
+                }
                 bool hasDispatchPending = _dispatchSyncPendingExpKeys.ContainsKey(ExpKey(acct.Name));
 
-                LogHealthCheckResult(
-                    acct.Name,
-                    brokerFlat,
-                    hasActiveFsmForAcct,
-                    hasActivePositionForAcct,
-                    hasDispatchPending,
-                    dispatchLog
-                );
+                if (brokerFlat && !hasActiveFsmForAcct && !hasActivePositionForAcct && !hasDispatchPending)
+                {
+                    // Truly stale: broker flat, no FSM, no position, no dispatch in flight. No-op (nothing to reset).
+                    dispatchLog.AppendLine(
+                        string.Format(
+                            "[DISPATCH] H-13: {0} broker flat, no FSM/position/dispatch -- no action",
+                            acct.Name
+                        )
+                    );
+                }
+                else if (brokerFlat && (hasActiveFsmForAcct || hasActivePositionForAcct || hasDispatchPending))
+                {
+                    dispatchLog.AppendLine(
+                        string.Format(
+                            "[DISPATCH] H-13 SKIP: {0} Flat but {1} -- not resetting",
+                            acct.Name,
+                            hasActiveFsmForAcct
+                                ? "FSM active"
+                                : (hasDispatchPending ? "dispatch pending" : "activePos present")
+                        )
+                    );
+                }
             }
             catch (Exception ex)
             {
                 if (_diagFleet)
-                {
-                    Print("[FLEET_CATCH] ShouldSkipFleet_RunHealthCheck failed: " + ex.Message);
-                }
-            }
-        }
-
-        /// <summary>
-        /// T-W1-Perf Helper: Check if broker position is flat for the current instrument.
-        /// </summary>
-        private bool IsBrokerPositionFlat(Account acct)
-        {
-            Position[] posSnapshot = acct.Positions.ToArray();
-            Position brokerPos = null;
-            for (int pi = 0; pi < posSnapshot.Length; pi++)
-            {
-                if (
-                    posSnapshot[pi] != null
-                    && posSnapshot[pi].Instrument != null
-                    && posSnapshot[pi].Instrument.FullName == Instrument.FullName
-                )
-                {
-                    brokerPos = posSnapshot[pi];
-                    break;
-                }
-            }
-            return (brokerPos == null || brokerPos.MarketPosition == MarketPosition.Flat);
-        }
-
-        /// <summary>
-        /// T-W1-Perf Helper: Check if account has active FSM entries.
-        /// Zero-allocation: direct ConcurrentDictionary enumeration (lock-free).
-        /// </summary>
-        private bool HasActiveFsmForAccount(string accountName)
-        {
-            foreach (var kvp in _followerBrackets)
-            {
-                var f = kvp.Value;
-                if (
-                    f != null
-                    && f.AccountName == accountName
-                    && (
-                        f.State == FollowerBracketState.Active
-                        || f.State == FollowerBracketState.Accepted
-                        || f.State == FollowerBracketState.Submitted
-                        || f.State == FollowerBracketState.Replacing
-                    )
-                )
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// T-W1-Perf Helper: Check if account has active positions.
-        /// Zero-allocation: direct ConcurrentDictionary enumeration (lock-free).
-        /// </summary>
-        private bool HasActivePositionForAccount(string accountName)
-        {
-            foreach (var kvp in activePositions)
-            {
-                var p = kvp.Value;
-                if (p != null && p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// T-W1-Perf Helper: Log health check result based on account state.
-        /// </summary>
-        private void LogHealthCheckResult(
-            string accountName,
-            bool brokerFlat,
-            bool hasActiveFsm,
-            bool hasActivePosition,
-            bool hasDispatchPending,
-            StringBuilder dispatchLog
-        )
-        {
-            if (brokerFlat && !hasActiveFsm && !hasActivePosition && !hasDispatchPending)
-            {
-                // Truly stale: broker flat, no FSM, no position, no dispatch in flight. No-op (nothing to reset).
-                dispatchLog.AppendLine(
-                    string.Format(
-                        "[DISPATCH] H-13: {0} broker flat, no FSM/position/dispatch -- no action",
-                        accountName
-                    )
-                );
-            }
-            else if (brokerFlat && (hasActiveFsm || hasActivePosition || hasDispatchPending))
-            {
-                dispatchLog.AppendLine(
-                    string.Format(
-                        "[DISPATCH] H-13 SKIP: {0} Flat but {1} -- not resetting",
-                        accountName,
-                        hasActiveFsm ? "FSM active" : (hasDispatchPending ? "dispatch pending" : "activePos present")
-                    )
-                );
+                    Print("[FLEET_CATCH] ProcessFleetSlot account iteration failed: " + ex.Message);
             }
         }
 

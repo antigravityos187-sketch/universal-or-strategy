@@ -67,10 +67,22 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void ManageCIT()
         {
-            if (!ValidateCitConfiguration(out double citOffset))
+            if (activePositions.Count == 0 && entryOrders.Count == 0)
+                return;
+            if (string.IsNullOrEmpty(ChaseIfTouchPoints) || ChaseIfTouchPoints == "0")
+                return;
+
+            // [BUILD 924 -- Fix C] Suppress CIT during price-move propagation to prevent
+            // race-fire on freshly resubmitted follower limit orders before sync cycle completes.
+            if (_propagationActive)
             {
+                Print("[CIT] Suppressed during price-move propagation (Build 924 Fix C)");
                 return;
             }
+
+            double citOffset = 0;
+            if (!double.TryParse(ChaseIfTouchPoints, out citOffset))
+                return;
 
             int _citBrokerBudget = MaxBrokerCallsPerCycle; // 5 calls max per cycle (constant at V12_002.cs:303)
             // Iterate ALL entry orders in the unified dictionary (local + every fleet account)
@@ -78,11 +90,28 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 string key = kvp.Key;
                 Order order = kvp.Value;
-
-                if (!ShouldChaseOrder(order, key))
-                {
+                if (order == null || order.OrderState != OrderState.Working)
                     continue;
-                }
+                if (order.OrderType != OrderType.Limit)
+                    continue; // only chase limit entries
+                if (_citNudgedKeys.ContainsKey(key))
+                    continue; // [BUILD 949] one-shot: already nudged
+
+                // [BUILD 984 CIT FIX] Correct directional bar-price logic:
+                // - LONG entry (Buy): price must DROP DOWN to the limit -> compare Low[0] <= limitPrice
+                // - SHORT entry (Sell): price must RISE UP to the limit -> compare High[0] >= limitPrice
+                // Previous bug: Short used Low[0] <= limitPrice which is ALWAYS true when clicking
+                // far above the current market, causing instant market conversion on every click.
+                double currentPrice = (order.OrderAction == OrderAction.Buy) ? Low[0] : High[0];
+                double limitPrice = order.LimitPrice;
+
+                bool triggerChase =
+                    (order.OrderAction == OrderAction.Buy)
+                        ? (currentPrice <= limitPrice) // Long: bar low touched or pierced the limit
+                        : (currentPrice >= limitPrice); // Short: bar high touched or pierced the limit
+
+                if (!triggerChase)
+                    continue;
 
                 // Determine local vs follower
                 PositionInfo pos = null;
@@ -91,174 +120,72 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 try
                 {
-                    double newLimitPrice = CalculateNudgedPrice(order.OrderAction, order.LimitPrice, citOffset);
+                    double tickSize = Instrument.MasterInstrument.TickSize;
+                    double nudgeDistance = citOffset * tickSize;
+                    double newLimitPrice =
+                        (order.OrderAction == OrderAction.Buy)
+                            ? Instrument.MasterInstrument.RoundToTickSize(limitPrice + nudgeDistance)
+                            : Instrument.MasterInstrument.RoundToTickSize(limitPrice - nudgeDistance);
 
                     if (isFollower)
                     {
-                        if (
-                            !ExecuteFollowerNudge(
-                                key,
-                                order,
-                                newLimitPrice,
-                                citOffset,
-                                pos.ExecutingAccount,
-                                ref _citBrokerBudget
-                            )
-                        )
+                        // Fleet follower: cancel limit, resubmit as nudged limit via account API
+                        Account followerAcct = pos.ExecutingAccount;
+                        Print(
+                            $"[CIT] FLEET nudge: {key} on {followerAcct.Name} | {limitPrice:F2} -> {newLimitPrice:F2} ({citOffset} ticks toward mkt)"
+                        );
+
+                        // Build 1109 [FREEZE-PROOF]: Budget broker calls to prevent strategy thread stall
+                        if (_citBrokerBudget <= 0)
                         {
-                            return; // Budget exhausted - stop iteration (original behavior)
+                            Print("[CIT] Broker budget exhausted -- deferring remaining nudges");
+                            Enqueue(ctx => ctx.ManageCIT());
+                            return;
                         }
+                        _citBrokerBudget -= 2; // Cancel + Submit = 2 broker calls
+
+                        followerAcct.Cancel(new[] { order });
+
+                        Order nudgedOrder = followerAcct.CreateOrder(
+                            Instrument,
+                            order.OrderAction,
+                            OrderType.Limit,
+                            TimeInForce.Gtc,
+                            order.Quantity,
+                            newLimitPrice,
+                            0,
+                            "",
+                            "CIT_" + key,
+                            null
+                        );
+                        if (nudgedOrder == null)
+                        {
+                            Print(
+                                $"[CIT] ERROR: CreateOrder returned null for {key} on {followerAcct.Name} -- nudge aborted"
+                            );
+                            continue;
+                        }
+                        followerAcct.Submit(new[] { nudgedOrder });
+
+                        // B966: No Enqueue needed -- ManageCIT is always called via Enqueue(ctx => ctx.ManageCIT())
+                        // from OnBarUpdate (Phase C), so this write is already inside the actor drain.
+                        entryOrders[key] = nudgedOrder;
                     }
                     else
                     {
-                        ExecuteLocalNudge(key, order, newLimitPrice, citOffset);
+                        // Local account: ChangeOrder moves limit N ticks toward market
+                        Print(
+                            $"[CIT] LOCAL nudge: {key} | {limitPrice:F2} -> {newLimitPrice:F2} ({citOffset} ticks toward mkt)"
+                        );
+                        ChangeOrder(order, order.Quantity, newLimitPrice, 0);
                     }
                     _citNudgedKeys.TryAdd(key, true); // [BUILD 949] one-shot: mark as nudged
                 }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("ChangeOrder"))
-                {
-                    Print($"[CIT] WARNING chasing {key} (known quirk): {ex.Message}");
-                }
                 catch (Exception ex)
                 {
-                    Print($"[CIT] CRITICAL chasing {key}: {ex.ToString()}");
-                    // Do NOT rethrow - remaining fleet accounts still need flattening
+                    Print($"[CIT] ERROR chasing {key}: {ex.Message}");
                 }
             }
-        }
-
-        /// <summary>
-        /// Executes a local account nudge by calling ChangeOrder.
-        /// </summary>
-        private void ExecuteLocalNudge(string key, Order order, double newLimitPrice, double citOffset)
-        {
-            Print(
-                $"[CIT] LOCAL nudge: {key} | {order.LimitPrice:F2} -> {newLimitPrice:F2} ({citOffset} ticks toward mkt)"
-            );
-            ChangeOrder(order, order.Quantity, newLimitPrice, 0);
-        }
-
-        /// <summary>
-        /// Executes a follower account nudge by canceling and resubmitting the order.
-        /// Handles budget exhaustion by self-enqueuing for deferred execution.
-        /// Returns false if budget exhausted (signals caller to stop iteration), true if nudge succeeded.
-        /// </summary>
-        private bool ExecuteFollowerNudge(
-            string key,
-            Order order,
-            double newLimitPrice,
-            double citOffset,
-            Account followerAcct,
-            ref int citBrokerBudget
-        )
-        {
-            Print(
-                $"[CIT] FLEET nudge: {key} on {followerAcct.Name} | {order.LimitPrice:F2} -> {newLimitPrice:F2} ({citOffset} ticks toward mkt)"
-            );
-
-            // Build 1109 [FREEZE-PROOF]: Ensure 2 slots available BEFORE consuming (Cancel + Submit)
-            if (citBrokerBudget < 2)
-            {
-                Print("[CIT] Broker budget exhausted -- deferring remaining nudges");
-                Enqueue(ctx => ctx.ManageCIT());
-                return false; // Signal caller to stop iteration
-            }
-            citBrokerBudget -= 2; // Cancel + Submit = 2 broker calls
-
-            followerAcct.Cancel(new[] { order });
-
-            Order nudgedOrder = followerAcct.CreateOrder(
-                Instrument,
-                order.OrderAction,
-                OrderType.Limit,
-                TimeInForce.Gtc,
-                order.Quantity,
-                newLimitPrice,
-                0,
-                "",
-                "CIT_" + key,
-                null
-            );
-            if (nudgedOrder == null)
-            {
-                Print($"[CIT] ERROR: CreateOrder returned null for {key} on {followerAcct.Name} -- nudge aborted");
-                return false; // Signal failure without marking as nudged
-            }
-            followerAcct.Submit(new[] { nudgedOrder });
-
-            // B966: No Enqueue needed -- ManageCIT is always called via Enqueue(ctx => ctx.ManageCIT())
-            // from OnBarUpdate (Phase C), so this write is already inside the actor drain.
-            entryOrders[key] = nudgedOrder;
-            return true; // Nudge succeeded
-        }
-
-        /// <summary>
-        /// Determines if an order should be chased based on validation and price touch logic.
-        /// Returns false if order is invalid, not a working limit, already nudged, or price hasn't touched.
-        /// </summary>
-        private bool ShouldChaseOrder(Order order, string key)
-        {
-            if (order == null || order.OrderState != OrderState.Working)
-                return false;
-            if (order.OrderType != OrderType.Limit)
-                return false; // only chase limit entries
-            if (_citNudgedKeys.ContainsKey(key))
-                return false; // [BUILD 949] one-shot: already nudged
-
-            // [BUILD 984 CIT FIX] Correct directional bar-price logic:
-            // - LONG entry (Buy): price must DROP DOWN to the limit -> compare Low[0] <= limitPrice
-            // - SHORT entry (Sell): price must RISE UP to the limit -> compare High[0] >= limitPrice
-            // Previous bug: Short used Low[0] <= limitPrice which is ALWAYS true when clicking
-            // far above the current market, causing instant market conversion on every click.
-            double currentPrice = (order.OrderAction == OrderAction.Buy) ? Low[0] : High[0];
-            double limitPrice = order.LimitPrice;
-
-            bool triggerChase =
-                (order.OrderAction == OrderAction.Buy)
-                    ? (currentPrice <= limitPrice) // Long: bar low touched or pierced the limit
-                    : (currentPrice >= limitPrice); // Short: bar high touched or pierced the limit
-
-            return triggerChase;
-        }
-
-        /// <summary>
-        /// Calculates the nudged limit price by moving N ticks toward market.
-        /// Long orders: nudge UP (add ticks). Short orders: nudge DOWN (subtract ticks).
-        /// </summary>
-        private double CalculateNudgedPrice(OrderAction action, double limitPrice, double citOffset)
-        {
-            double tickSize = Instrument.MasterInstrument.TickSize;
-            double nudgeDistance = citOffset * tickSize;
-            return (action == OrderAction.Buy)
-                ? Instrument.MasterInstrument.RoundToTickSize(limitPrice + nudgeDistance)
-                : Instrument.MasterInstrument.RoundToTickSize(limitPrice - nudgeDistance);
-        }
-
-        /// <summary>
-        /// Validates CIT configuration and returns parsed offset.
-        /// Returns false if CIT should be skipped (no positions, invalid config, or propagation active).
-        /// </summary>
-        private bool ValidateCitConfiguration(out double citOffset)
-        {
-            citOffset = 0;
-
-            if (activePositions.Count == 0 && entryOrders.Count == 0)
-                return false;
-            if (string.IsNullOrEmpty(ChaseIfTouchPoints) || ChaseIfTouchPoints == "0")
-                return false;
-
-            // [BUILD 924 -- Fix C] Suppress CIT during price-move propagation to prevent
-            // race-fire on freshly resubmitted follower limit orders before sync cycle completes.
-            if (_propagationActive)
-            {
-                Print("[CIT] Suppressed during price-move propagation (Build 924 Fix C)");
-                return false;
-            }
-
-            if (!double.TryParse(ChaseIfTouchPoints, out citOffset))
-                return false;
-
-            return true;
         }
 
         private void FlattenAll()
@@ -278,67 +205,16 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 Print("FLATTEN: Closing all positions...");
-
-                // Phase 1: Cancel master entry orders (with known quirk handling)
-                try
-                {
-                    CancelMasterEntryOrders();
-                }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("CancelOrder"))
-                {
-                    Print("WARNING: Known quirk in CancelMasterEntryOrders: " + ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    Print("CRITICAL: Unexpected exception in CancelMasterEntryOrders: " + ex.ToString());
-                }
-
-                // Phase 2: Dispatch fleet flatten (with known quirk handling)
+                CancelMasterEntryOrders();
                 if (EnableSIMA)
-                {
-                    try
-                    {
-                        DispatchFleetFlatten();
-                    }
-                    catch (InvalidOperationException ex) when (ex.Message.Contains("TriggerCustomEvent"))
-                    {
-                        Print("WARNING: Known NT8 quirk in TriggerCustomEvent: " + ex.Message);
-                    }
-                    catch (Exception ex)
-                    {
-                        Print("CRITICAL: Unexpected exception in DispatchFleetFlatten: " + ex.ToString());
-                    }
-                }
-
-                // Phase 3: Reset sync state (always execute)
-                try
-                {
-                    ResetSyncStateAndPurgeFollowers();
-                }
-                catch (Exception ex)
-                {
-                    Print("CRITICAL: Unexpected exception in ResetSyncStateAndPurgeFollowers: " + ex.ToString());
-                }
-
-                // Phase 4: Flatten filled positions (always execute)
-                try
-                {
-                    FlattenFilledMasterPositions();
-                }
-                catch (Exception ex)
-                {
-                    Print("CRITICAL: Unexpected exception in FlattenFilledMasterPositions: " + ex.ToString());
-                }
-
-                // Phase 5: Cancel unfilled entries (always execute)
-                try
-                {
-                    CancelUnfilledMasterEntries();
-                }
-                catch (Exception ex)
-                {
-                    Print("CRITICAL: Unexpected exception in CancelUnfilledMasterEntries: " + ex.ToString());
-                }
+                    DispatchFleetFlatten();
+                ResetSyncStateAndPurgeFollowers();
+                FlattenFilledMasterPositions();
+                CancelUnfilledMasterEntries();
+            }
+            catch (Exception ex)
+            {
+                Print("ERROR FlattenAll: " + ex.Message);
             }
             finally
             {

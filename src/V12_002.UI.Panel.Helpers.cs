@@ -530,10 +530,34 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             try
             {
-                // Phase 1+2: Find ChartTab (visual then logical)
-                DependencyObject chartTab = TryFindChartTabViaVisualTree(ChartControl);
+                DependencyObject current = ChartControl;
+                object chartTab = null;
+
+                while (current != null)
+                {
+                    string typeName = current.GetType().Name;
+                    if (typeName == "ChartTab" || typeName.Contains("ChartTab"))
+                    {
+                        chartTab = current;
+                        break;
+                    }
+                    current = VisualTreeHelper.GetParent(current);
+                }
+
                 if (chartTab == null)
-                    chartTab = TryFindChartTabViaLogicalTree(ChartControl);
+                {
+                    current = ChartControl;
+                    while (current != null)
+                    {
+                        string typeName = current.GetType().Name;
+                        if (typeName == "ChartTab" || typeName.Contains("ChartTab"))
+                        {
+                            chartTab = current;
+                            break;
+                        }
+                        current = LogicalTreeHelper.GetParent(current);
+                    }
+                }
 
                 if (chartTab == null)
                 {
@@ -541,20 +565,49 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return null;
                 }
 
-                // Phase 3-5: Try all reflection strategies
-                FrameworkElement result =
-                    TryGetChartTraderViaProperty(chartTab)
-                    ?? TryGetChartTraderViaFields(chartTab)
-                    ?? TryGetChartTraderViaDescendants(chartTab);
+                Type tabType = chartTab.GetType();
 
-                if (result == null)
-                    Print(
-                        "V12 PANEL: Strategy 1 -- ChartTab found ("
-                            + chartTab.GetType().Name
-                            + ") but no ChartTrader property/field/child"
-                    );
+                PropertyInfo ctProp = tabType.GetProperty(
+                    "ChartTrader",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+                );
+                if (ctProp != null)
+                {
+                    object ct = ctProp.GetValue(chartTab);
+                    if (ct is FrameworkElement fe && fe.Visibility == Visibility.Visible)
+                        return fe;
+                }
 
-                return result;
+                string[] fieldNames = new string[]
+                {
+                    "chartTrader",
+                    "ChartTrader",
+                    "chartTraderControl",
+                    "_chartTrader",
+                };
+                for (int f = 0; f < fieldNames.Length; f++)
+                {
+                    FieldInfo fi = tabType.GetField(fieldNames[f], BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (fi != null)
+                    {
+                        object ct = fi.GetValue(chartTab);
+                        if (ct is FrameworkElement fe && fe.Visibility == Visibility.Visible)
+                            return fe;
+                    }
+                }
+
+                if (chartTab is DependencyObject depObj)
+                {
+                    var found = FindChildElementByTypeName(depObj, "ChartTrader");
+                    if (found != null && found.Visibility == Visibility.Visible)
+                        return found;
+                }
+
+                Print(
+                    "V12 PANEL: Strategy 1 -- ChartTab found ("
+                        + chartTab.GetType().Name
+                        + ") but no ChartTrader property/field/child"
+                );
             }
             catch (Exception ex)
             {
@@ -720,77 +773,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 list.AddRange(FindAllButtonsByText(child, text));
             }
             return list;
-        }
-
-        // EPIC-CCN-17: Extracted helpers for FindChartTraderViaChartTab (CYC 20 -> 4)
-        private DependencyObject TryFindChartTabViaVisualTree(DependencyObject start)
-        {
-            DependencyObject current = start;
-            while (current != null)
-            {
-                string typeName = current.GetType().Name;
-                if (typeName == "ChartTab" || typeName.Contains("ChartTab"))
-                    return current;
-                current = VisualTreeHelper.GetParent(current);
-            }
-            return null;
-        }
-
-        private DependencyObject TryFindChartTabViaLogicalTree(DependencyObject start)
-        {
-            DependencyObject current = start;
-            while (current != null)
-            {
-                string typeName = current.GetType().Name;
-                if (typeName == "ChartTab" || typeName.Contains("ChartTab"))
-                    return current;
-                current = LogicalTreeHelper.GetParent(current);
-            }
-            return null;
-        }
-
-        private FrameworkElement TryGetChartTraderViaProperty(object chartTab)
-        {
-            Type tabType = chartTab.GetType();
-            PropertyInfo ctProp = tabType.GetProperty(
-                "ChartTrader",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            if (ctProp != null)
-            {
-                object ct = ctProp.GetValue(chartTab);
-                if (ct is FrameworkElement fe && fe.Visibility == Visibility.Visible)
-                    return fe;
-            }
-            return null;
-        }
-
-        private FrameworkElement TryGetChartTraderViaFields(object chartTab)
-        {
-            Type tabType = chartTab.GetType();
-            string[] fieldNames = new string[] { "chartTrader", "ChartTrader", "chartTraderControl", "_chartTrader" };
-            for (int f = 0; f < fieldNames.Length; f++)
-            {
-                FieldInfo fi = tabType.GetField(fieldNames[f], BindingFlags.NonPublic | BindingFlags.Instance);
-                if (fi != null)
-                {
-                    object ct = fi.GetValue(chartTab);
-                    if (ct is FrameworkElement fe && fe.Visibility == Visibility.Visible)
-                        return fe;
-                }
-            }
-            return null;
-        }
-
-        private FrameworkElement TryGetChartTraderViaDescendants(object chartTab)
-        {
-            if (chartTab is DependencyObject depObj)
-            {
-                var found = FindChildElementByTypeName(depObj, "ChartTrader");
-                if (found != null && found.Visibility == Visibility.Visible)
-                    return found;
-            }
-            return null;
         }
 
         #endregion
