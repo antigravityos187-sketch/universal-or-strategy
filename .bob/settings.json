@@ -1,4 +1,4 @@
-{
+{ 
   "general": {
     "checkpointing": {
       "enabled": true

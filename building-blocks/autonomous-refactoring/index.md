@@ -74,15 +74,30 @@ bob
 
 ```
 building-blocks/autonomous-refactoring/
-├── index.md              # This file (overview)
-├── README.md             # Detailed description
-├── ARCHITECTURE.md       # Technical design
-├── GETTING_STARTED.md    # Installation guide
-└── assets/               # Diagrams and examples
+├── index.md                        # This file (overview)
+├── README.md                       # Detailed description
+├── ARCHITECTURE.md                 # Technical design
+├── GETTING_STARTED.md              # Installation guide
+├── LOOP_COMPOSITION_PATTERNS.md    # Loop composition patterns
+├── WAVE2_COMPLETE_REPORT.md        # Wave 2 completion report
+├── WAVE2_LESSONS_LEARNED.md        # Wave 2 lessons learned
+├── WAVE3_PHASE3_LESSONS_LEARNED.md # Wave 3 Phase 3 lessons
+├── PHASE4_SCRIPT_GENERATION.md     # Phase 4 script generation pattern
+└── assets/                         # Diagrams and examples
     ├── nested-loops.png
     ├── parallel-execution.png
     └── workflow-diagram.png
 ```
+
+## Phase Script Generation Patterns
+
+Reusable patterns for generating wave execution scripts:
+
+- **[PHASE4_SCRIPT_GENERATION.md](PHASE4_SCRIPT_GENERATION.md)** - Ticket generation script pattern
+  - Copy-from-previous-wave methodology
+  - Epic number update checklist (3 locations)
+  - API key management for 10 epics
+  - Validation and deployment procedures
 
 ## Related Building Blocks
 

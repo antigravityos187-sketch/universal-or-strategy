@@ -1,0 +1,16 @@
+{
+  "epic_id": "EPIC-CCN-120",
+  "method": "AuditMaster_HandleNakedPosition",
+  "file": "src/V12_002.REAPER.Audit.cs",
+  "complexity": 15,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"]
+    }
+  }
+}

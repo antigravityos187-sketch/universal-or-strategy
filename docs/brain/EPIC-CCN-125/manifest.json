@@ -1,0 +1,56 @@
+{
+  "epic_id": "EPIC-CCN-125",
+  "method": "EnterORPosition",
+  "file": "src/V12_002.Entries.OR.cs",
+  "complexity": 11,
+  "target_complexity": 8,
+  "status": "planning_complete",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "date": "2026-06-13"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["01-scope.md"],
+      "date": "2026-06-13"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture.md"],
+      "date": "2026-06-13"
+    },
+    "3": {
+      "status": "completed",
+      "outputs": ["03-implementation.md"],
+      "date": "2026-06-13"
+    },
+    "4": {
+      "status": "template_ready",
+      "outputs": ["04-acceptance.md"],
+      "date": "2026-06-13"
+    }
+  },
+  "extraction_strategy": {
+    "methods_to_extract": 4,
+    "estimated_cyc_reduction": 4,
+    "target_methods": [
+      "ValidateOREntryPreconditions",
+      "ValidateOREntryPrice",
+      "CreateORPositionInfo",
+      "SubmitOREntryOrder"
+    ]
+  },
+  "metrics": {
+    "baseline": {
+      "cyc": 11,
+      "loc": 166,
+      "lines": "125-347"
+    },
+    "target": {
+      "cyc": 8,
+      "loc": 80
+    }
+  }
+}
