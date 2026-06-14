@@ -94,19 +94,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     TriggerCustomEvent(o => PumpFlattenOps(), null);
                 }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("TriggerCustomEvent"))
-                {
-                    // P0-4: FSM bypass acceptable - async pump failed, positions at risk (Jane Street Decision #2)
-                    Print("[FLATTEN] WARNING: TriggerCustomEvent failed: " + ex.Message);
-                    PerformFallbackFlatten("FlattenAllApexAccounts-KnownQuirk");
-                    isFlattenRunning = false; // P0-2: Release guard AFTER work completes
-                }
                 catch (Exception ex)
                 {
-                    // P0-4: FSM bypass acceptable - async pump failed, positions at risk (Jane Street Decision #2)
-                    Print("[FLATTEN] CRITICAL: Unexpected error in FlattenAllApexAccounts: " + ex);
-                    PerformFallbackFlatten("FlattenAllApexAccounts-UnexpectedError");
-                    isFlattenRunning = false; // P0-2: Release guard AFTER work completes
+                    isFlattenRunning = false;
+                    LogException("SIMA.Flatten", "FlattenAllApexAccounts.TriggerCustomEvent", ex);
                 }
             }
             else
@@ -149,34 +140,16 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 SetExpectedPositionLocked(ExpKey(acct.Name), 0);
             }
-            catch (InvalidOperationException ex)
-                when (ex.Message.Contains("Cancel")
-                    || ex.Message.Contains("Submit")
-                    || ex.Message.Contains("CreateOrder")
-                )
+            catch (Exception ex)
             {
-                // Known NT8 order operation quirk - log and continue to next account
                 Print(
                     string.Format(
-                        "[FLATTEN_PUMP] WARNING: Order operation failed on {0}: {1} [{2}]",
+                        "[FLATTEN_PUMP] ERROR on {0}: {1} [{2}]",
                         item.Account != null ? item.Account.Name : "NULL",
                         ex.Message,
                         item.Source
                     )
                 );
-            }
-            catch (Exception ex)
-            {
-                // Unexpected error - log full details
-                Print(
-                    string.Format(
-                        "[FLATTEN_PUMP] CRITICAL: Unexpected error on {0}: {1} [{2}]",
-                        item.Account != null ? item.Account.Name : "NULL",
-                        ex.ToString(),
-                        item.Source
-                    )
-                );
-                // Do NOT rethrow - remaining fleet accounts still need flattening
             }
             finally
             {
@@ -289,22 +262,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                         sigName,
                         null
                     );
-                    if (closeOrder != null)
-                    {
-                        acct.Submit(new[] { closeOrder });
-                        closedCount++;
-                    }
-                    else
-                    {
-                        Print(
-                            string.Format(
-                                "[FLATTEN_PUMP] Follower close FAILED (null): {0} {1} on {2}",
-                                position.MarketPosition,
-                                qty,
-                                acct.Name
-                            )
-                        );
-                    }
+                    acct.Submit(new[] { closeOrder });
+                    closedCount++;
                 }
             }
 
@@ -320,56 +279,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
-        /// Performs fallback flatten by draining the pending flatten queue and processing each item synchronously.
-        /// Extracted from 6 duplicated catch blocks to eliminate code duplication (gitar-bot P2 quality issue).
-        /// Jane Street validated: Zero new allocations, lock-free, fail-fast semantics preserved.
-        /// </summary>
-        /// <param name="callerContext">Context string for logging (e.g., "FlattenAllApexAccounts-KnownQuirk")</param>
-        private void PerformFallbackFlatten(string callerContext)
-        {
-            var drainedOps = new List<FlattenWorkItem>();
-            FlattenWorkItem item;
-            while (_pendingFlattenOps.TryDequeue(out item))
-            {
-                drainedOps.Add(item);
-            }
-
-            if (drainedOps.Count == 0)
-                return;
-
-            Print(
-                "[FLATTEN] Attempting fallback flatten for " + drainedOps.Count + " accounts (" + callerContext + ")..."
-            );
-
-            foreach (var workItem in drainedOps)
-            {
-                try
-                {
-                    Account acct = workItem.Account;
-                    if (acct == null)
-                    {
-                        Print("[FLATTEN] WARNING: NULL account in fallback flatten queue");
-                        continue;
-                    }
-                    ProcessFlattenWorkItem_CancelOrders(workItem, acct);
-                    if (!workItem.CancelOnly)
-                        ProcessFlattenWorkItem_ClosePositions(workItem, acct);
-                    SetExpectedPositionLocked(ExpKey(acct.Name), 0);
-                    Print("[FLATTEN] Fallback flatten succeeded for " + acct.Name);
-                }
-                catch (Exception flatEx)
-                {
-                    Print(
-                        "[FLATTEN] CRITICAL: Fallback flatten failed for "
-                            + (workItem.Account != null ? workItem.Account.Name : "NULL")
-                            + ": "
-                            + flatEx
-                    );
-                }
-            }
-        }
-
-        /// <summary>
         /// Chain to next flatten operation or release isFlattenRunning guard.
         /// Handles TriggerCustomEvent recursion and exception recovery.
         /// </summary>
@@ -381,19 +290,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     TriggerCustomEvent(o => PumpFlattenOps(), null);
                 }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("TriggerCustomEvent"))
-                {
-                    // P0-4: FSM bypass acceptable - async pump failed, positions at risk (Jane Street Decision #2)
-                    Print("[FLATTEN] WARNING: ChainNextFlattenOp TriggerCustomEvent failed: " + ex.Message);
-                    PerformFallbackFlatten("ChainNextFlattenOp-KnownQuirk");
-                    isFlattenRunning = false; // P0-2: Release guard AFTER work completes
-                }
                 catch (Exception ex)
                 {
-                    // P0-4: FSM bypass acceptable - async pump failed, positions at risk (Jane Street Decision #2)
-                    Print("[FLATTEN] CRITICAL: Unexpected error in ChainNextFlattenOp: " + ex.ToString());
-                    PerformFallbackFlatten("ChainNextFlattenOp-UnexpectedError");
-                    isFlattenRunning = false; // P0-2: Release guard AFTER work completes
+                    isFlattenRunning = false;
+                    LogException("SIMA.Flatten", "PumpFlattenOps.TriggerCustomEvent", ex);
                 }
             }
             else
@@ -496,20 +396,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Phase 5.5: Direct call -- strategy thread (TriggerCustomEvent).
                 SetExpectedPositionLocked(ExpKey(acct.Name), 0);
             }
-            catch (InvalidOperationException ex)
-                when (ex.Message.Contains("Cancel")
-                    || ex.Message.Contains("Submit")
-                    || ex.Message.Contains("CreateOrder")
-                )
-            {
-                // Known NT8 order operation quirk - log and continue
-                Print(string.Format("[DEAD-01] EmergencyFlatten WARNING on {0}: {1}", acct.Name, ex.Message));
-            }
             catch (Exception ex)
             {
-                // Unexpected error - log full details
-                Print(string.Format("[DEAD-01] EmergencyFlatten CRITICAL ERROR on {0}: {1}", acct.Name, ex.ToString()));
-                // Do NOT rethrow - remaining fleet accounts still need flattening
+                Print(string.Format("[DEAD-01] EmergencyFlatten ERROR on {0}: {1}", acct.Name, ex.Message));
             }
         }
 
@@ -566,19 +455,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     TriggerCustomEvent(o => PumpFlattenOps(), null);
                 }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("TriggerCustomEvent"))
-                {
-                    // P0-4: FSM bypass acceptable - async pump failed, positions at risk (Jane Street Decision #2)
-                    Print("[FLATTEN] WARNING: ClosePositionsOnly TriggerCustomEvent failed: " + ex.Message);
-                    PerformFallbackFlatten("ClosePositionsOnlyApexAccounts-KnownQuirk");
-                    isFlattenRunning = false; // P0-2: Release guard AFTER work completes
-                }
                 catch (Exception ex)
                 {
-                    // P0-4: FSM bypass acceptable - async pump failed, positions at risk (Jane Street Decision #2)
-                    Print("[FLATTEN] CRITICAL: Unexpected error in ClosePositionsOnlyApexAccounts: " + ex.ToString());
-                    PerformFallbackFlatten("ClosePositionsOnlyApexAccounts-UnexpectedError");
-                    isFlattenRunning = false; // P0-2: Release guard AFTER work completes
+                    isFlattenRunning = false;
+                    LogException("SIMA.Flatten", "ClosePositionsOnlyApexAccounts.TriggerCustomEvent", ex);
                 }
             }
             else

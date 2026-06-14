@@ -95,85 +95,54 @@ namespace NinjaTrader.NinjaScript.Strategies
             isTargetMove = false;
             masterTargetNum = 0;
 
-            // Scan entry orders
-            if (ScanOrderDictionaryForMaster(entryOrders, masterOrder, out masterEntryName))
-            {
-                isEntryMove = true;
-                return true;
-            }
-
-            // Scan stop orders
-            if (ScanOrderDictionaryForMaster(stopOrders, masterOrder, out masterEntryName))
-            {
-                isStopMove = true;
-                return true;
-            }
-
-            // Scan target orders (1-5)
-            if (ScanTargetDictionariesForMaster(masterOrder, out masterEntryName, out masterTargetNum))
-            {
-                isTargetMove = true;
-                return true;
-            }
-
-            return false; // Not a tracked master order
-        }
-
-        /// <summary>
-        /// Scan an order dictionary for a master order by object identity.
-        /// Validates that the matched entry belongs to a master position (not a follower).
-        /// </summary>
-        /// <param name="orderDict">Dictionary to scan (entryOrders, stopOrders, or target dictionary)</param>
-        /// <param name="masterOrder">Order to match by reference equality</param>
-        /// <param name="foundEntryName">Output: entry name if master order found</param>
-        /// <returns>True if master order found and validated; false otherwise</returns>
-        private bool ScanOrderDictionaryForMaster(
-            ConcurrentDictionary<string, Order> orderDict,
-            Order masterOrder,
-            out string foundEntryName
-        )
-        {
-            foundEntryName = null;
-
-            foreach (var kvp in orderDict)
+            foreach (var kvp in entryOrders)
             {
                 if (kvp.Value == masterOrder && activePositions.TryGetValue(kvp.Key, out var mp) && !mp.IsFollower)
                 {
-                    foundEntryName = kvp.Key;
-                    return true;
+                    masterEntryName = kvp.Key;
+                    isEntryMove = true;
+                    break;
                 }
             }
 
-            return false;
-        }
-
-        /// <summary>
-        /// Scan all target dictionaries (T1-T5) for a master order.
-        /// Uses ScanOrderDictionaryForMaster for each target dictionary.
-        /// </summary>
-        /// <param name="masterOrder">Order to match by reference equality</param>
-        /// <param name="foundEntryName">Output: entry name if master order found</param>
-        /// <param name="targetNum">Output: target number (1-5) where order was found</param>
-        /// <returns>True if master order found in any target dictionary; false otherwise</returns>
-        private bool ScanTargetDictionariesForMaster(Order masterOrder, out string foundEntryName, out int targetNum)
-        {
-            foundEntryName = null;
-            targetNum = 0;
-
-            for (int t = 1; t <= 5; t++)
+            if (masterEntryName == null)
             {
-                var tDict = GetTargetOrdersDictionary(t);
-                if (tDict == null)
-                    continue;
-
-                if (ScanOrderDictionaryForMaster(tDict, masterOrder, out foundEntryName))
+                foreach (var kvp in stopOrders)
                 {
-                    targetNum = t;
-                    return true;
+                    if (kvp.Value == masterOrder && activePositions.TryGetValue(kvp.Key, out var mp) && !mp.IsFollower)
+                    {
+                        masterEntryName = kvp.Key;
+                        isStopMove = true;
+                        break;
+                    }
                 }
             }
 
-            return false;
+            if (masterEntryName == null)
+            {
+                for (int t = 1; t <= 5 && masterEntryName == null; t++)
+                {
+                    var tDict = GetTargetOrdersDictionary(t);
+                    if (tDict == null)
+                        continue;
+                    foreach (var kvp in tDict)
+                    {
+                        if (
+                            kvp.Value == masterOrder
+                            && activePositions.TryGetValue(kvp.Key, out var mp)
+                            && !mp.IsFollower
+                        )
+                        {
+                            masterEntryName = kvp.Key;
+                            isTargetMove = true;
+                            masterTargetNum = t;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return masterEntryName != null; // Not a tracked master order
         }
 
         private IEnumerable<string> PropagateMaster_ResolveFollowers(string masterEntryName)

@@ -379,180 +379,111 @@ namespace NinjaTrader.NinjaScript.Strategies
         #region RMA Intelligence (Phase 9.2)
 
 
-        // [EPIC-CCN-13] Orchestrator pattern (CYC <= 8)
         private void MonitorRmaProximity()
         {
+            // [EPIC-5-PERF] Latency instrumentation
             var probe = LatencyProbe.Start();
+
             try
             {
                 if (!RmaIntelligenceEnabled)
                     return;
 
-                // P1-3: Cache Close[0] outside loop (JS-036: Zero-Allocation)
-                double currentClose = Close[0];
-
                 foreach (var kvp in entryOrders)
                 {
-                    // P0-5: Compute drawing tag once (JS-036: Zero-Allocation)
-                    string proximityTag = string.Format("Prox_{0}", kvp.Key);
-
-                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))
-                    {
+                    Order order = kvp.Value;
+                    if (order == null || order.OrderState != OrderState.Working)
                         continue;
-                    }
 
-                    double distTicks = UpdateProximityAndCalculateDistance(pos, currentClose);
+                    PositionInfo pos;
+                    if (!activePositions.TryGetValue(kvp.Key, out pos) || !pos.IsRMATrade)
+                        continue;
 
-                    // P0-2 + P1-7: Restore hysteresis dead zone (JS-004: Exhaustive Matching)
+                    double currentPrice = Close[0];
+                    double level = pos.EntryPrice;
+                    double distTicks = Math.Abs(currentPrice - level) / tickSize;
+
+                    // Phase 9.2: Initialize ClosestApproachTicks on first observation.
+                    if (pos.ClosestApproachTicks <= 0)
+                        pos.ClosestApproachTicks = double.MaxValue;
+
+                    // Phase 9.2: Track closest approach as a monotonic minimum.
+                    if (distTicks < pos.ClosestApproachTicks)
+                        pos.ClosestApproachTicks = distTicks;
+
                     if (distTicks <= RmaProximityTicks)
                     {
-                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice, proximityTag);
+                        if (!pos.WasInProximity)
+                        {
+                            pos.WasInProximity = true;
+                            pos.ProximityProbeCount++;
+                            Print(
+                                LogBuffer.Format(
+                                    "[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}",
+                                    pos.ProximityProbeCount,
+                                    kvp.Key,
+                                    distTicks,
+                                    level
+                                )
+                            );
+                        }
+
+                        // Visual feedback only. Draw state is not logic state.
+                        Draw.Dot(this, "Prox_" + kvp.Key, false, 0, level, Brushes.Cyan);
                     }
                     else if (distTicks < RmaCancellationTicks)
                     {
-                        // Dead zone: between proximity and cancellation thresholds
-                        // Prevents oscillation at boundary
+                        // Dead zone hysteresis. No state transition.
                     }
                     else
                     {
-                        HandleProximityExit(kvp.Key, kvp.Value, pos, proximityTag);
+                        if (pos.WasInProximity)
+                        {
+                            pos.WasInProximity = false;
+
+                            if (RmaExhaustionEnabled && pos.ProximityProbeCount >= RmaMaxProbeCount)
+                            {
+                                Print(
+                                    LogBuffer.Format(
+                                        "[SENTINEL] EXHAUSTION: {0} probed {1}x (max={2}), closest={3:F1}t. Cancelling.",
+                                        kvp.Key,
+                                        pos.ProximityProbeCount,
+                                        RmaMaxProbeCount,
+                                        pos.ClosestApproachTicks
+                                    )
+                                );
+                                CancelOrderSafe(order, pos);
+                                RemoveDrawObject("Prox_" + kvp.Key);
+                                SendResponseToRemote("SOUND|SENTINEL_EXHAUSTION_CANCEL");
+                            }
+                            else
+                            {
+                                Print(
+                                    LogBuffer.Format(
+                                        "[SENTINEL] Retreat for {0} (probe #{1}, closest={2:F1}t). Monitoring.",
+                                        kvp.Key,
+                                        pos.ProximityProbeCount,
+                                        pos.ClosestApproachTicks
+                                    )
+                                );
+                                RemoveDrawObject("Prox_" + kvp.Key);
+                                SendResponseToRemote("SOUND|SENTINEL_PROXIMITY_RETREAT");
+                            }
+                        }
+                        else
+                        {
+                            if (GetDrawObject("Prox_" + kvp.Key) != null)
+                                RemoveDrawObject("Prox_" + kvp.Key);
+                        }
                     }
                 }
             }
             finally
             {
+                // [EPIC-5-PERF] Record latency
                 probe = probe.Stop();
                 _histMonitorRmaProximity.Record(probe);
             }
-        }
-
-        // [EPIC-CCN-13] Helper: Validate order eligibility (CYC <= 5)
-        private bool ShouldMonitorOrder(Order order, string entryName, out PositionInfo pos)
-        {
-            pos = null;
-            // P1-5: Include Accepted orders (JS-004: Exhaustive Matching)
-            if (order == null || (order.OrderState != OrderState.Working && order.OrderState != OrderState.Accepted))
-            {
-                return false;
-            }
-
-            if (!activePositions.TryGetValue(entryName, out pos) || !pos.IsRMATrade)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        // [EPIC-CCN-13] Helper: Calculate distance + track closest approach (CYC <= 6)
-        // P1-1: Renamed to signal mutation (JS-019: Clear Intent)
-        // P0-1: Lock-free atomic updates (JS-021: No Lock, JS-022: Actor Pattern)
-        private double UpdateProximityAndCalculateDistance(PositionInfo pos, double currentPrice)
-        {
-            double level = pos.EntryPrice;
-
-            // P0-3: Guard against division by zero (JS-015: Parse at Boundaries)
-            if (tickSize <= 0)
-            {
-                return double.MaxValue;
-            }
-
-            double distTicks = Math.Abs(currentPrice - level) / tickSize;
-
-            // P0-1: Atomic CAS loop for lock-free updates
-            double currentClosest = pos.ClosestApproachTicks;
-            if (currentClosest <= 0)
-            {
-                currentClosest = double.MaxValue;
-                Interlocked.CompareExchange(ref pos.ClosestApproachTicks, currentClosest, 0);
-            }
-
-            // Update closest approach atomically if new distance is smaller
-            while (distTicks < currentClosest)
-            {
-                double original = Interlocked.CompareExchange(ref pos.ClosestApproachTicks, distTicks, currentClosest);
-
-                if (original == currentClosest)
-                {
-                    break; // Successfully updated
-                }
-
-                currentClosest = original; // Retry with new value
-            }
-
-            return distTicks;
-        }
-
-        // [EPIC-CCN-13] Helper: Handle proximity zone entry (CYC <= 5)
-        private void HandleProximityEntry(
-            string entryName,
-            PositionInfo pos,
-            double distTicks,
-            double level,
-            string proximityTag
-        )
-        {
-            if (!pos.WasInProximity)
-            {
-                // P0-1: Atomic state transitions (JS-021: No Lock)
-                pos.WasInProximity = true;
-                Interlocked.Increment(ref pos.ProximityProbeCount);
-                Print(
-                    LogBuffer.Format(
-                        "[SENTINEL] Probe #{0} for {1} at {2:F1} ticks from {3:F2}",
-                        pos.ProximityProbeCount,
-                        entryName,
-                        distTicks,
-                        level
-                    )
-                );
-            }
-
-            // P0-5: Use pre-computed tag (JS-036: Zero-Allocation)
-            Draw.Dot(this, proximityTag, false, 0, level, Brushes.Cyan);
-        }
-
-        // [EPIC-CCN-13] Helper: Handle proximity zone exit + exhaustion (CYC <= 5)
-        private void HandleProximityExit(string entryName, Order order, PositionInfo pos, string proximityTag)
-        {
-            if (pos.WasInProximity)
-            {
-                // P0-1: Atomic state transition (JS-021: No Lock)
-                pos.WasInProximity = false;
-
-                if (RmaExhaustionEnabled && pos.ProximityProbeCount >= RmaMaxProbeCount)
-                {
-                    Print(
-                        LogBuffer.Format(
-                            "[SENTINEL] EXHAUSTION: {0} probed {1}x (max={2}), closest={3:F1}t. Cancelling.",
-                            entryName,
-                            pos.ProximityProbeCount,
-                            RmaMaxProbeCount,
-                            pos.ClosestApproachTicks
-                        )
-                    );
-                    CancelOrderSafe(order, pos);
-                    // P0-5: Use pre-computed tag (JS-036: Zero-Allocation)
-                    RemoveDrawObject(proximityTag);
-                    SendResponseToRemote("SOUND|SENTINEL_EXHAUSTION_CANCEL");
-                }
-                else
-                {
-                    Print(
-                        LogBuffer.Format(
-                            "[SENTINEL] Retreat for {0} (probe #{1}, closest={2:F1}t). Monitoring.",
-                            entryName,
-                            pos.ProximityProbeCount,
-                            pos.ClosestApproachTicks
-                        )
-                    );
-                    // P0-5: Use pre-computed tag (JS-036: Zero-Allocation)
-                    RemoveDrawObject(proximityTag);
-                    SendResponseToRemote("SOUND|SENTINEL_PROXIMITY_RETREAT");
-                }
-            }
-            // P0-4: Removed redundant else block (JS-036: Zero-Allocation, JS-041: Cache-Friendly)
-            // WasInProximity state tracking makes defensive cleanup unnecessary
         }
 
         #endregion
