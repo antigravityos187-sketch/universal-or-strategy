@@ -84,7 +84,7 @@ Each iteration consists of 5 steps:
 
 4. **Poll for Feedback** (Step 4 - NEW)
    - Invoke `check-pr` skill
-   - Sleep 5 minutes initially
+   - Sleep 4 minutes initially
    - Poll every 3 minutes until checks complete
    - Extract new feedback from ALL sources
 

@@ -52,10 +52,49 @@ Before coding, commit to a BOLD aesthetic direction:
 - **Zero AI Slop**: No overused font families or cliched "purple on white" gradients.
 - **Meticulous Detail**: Every border, shadow, and transition must be intentional.
 
-## Post-Use Audit (MANDATORY)
+## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
 
-After EVERY use of this skill, perform the V12 audit:
+**All agents MUST perform this audit after EVERY use of this skill:**
 
-1. Did I use `Inter` or `Roboto`? (If yes, FAILURE).
-2. Is the background just a solid hex color? (If yes, add texture/depth).
-3. Do the cards have generic border-radius? (If yes, try tactical/industrial corners).
+### Audit Checklist
+
+1. **Ambiguity Check**: Were any instructions unclear or produce unexpected results?
+   - Did I use banned fonts (`Inter`, `Roboto`, `Arial`)? (If yes, FAILURE)
+   - Is the background just a solid hex color? (If yes, add texture/depth)
+   - Do the cards have generic border-radius? (If yes, try tactical/industrial corners)
+   - Did I commit to a BOLD aesthetic direction? (Verify tone is extreme, not generic)
+   - Are typography choices characterful? (Verify fonts are distinctive)
+   - Does the design avoid "AI slop" aesthetics? (No purple-on-white gradients, no timid palettes)
+   - Are micro-interactions implemented? (Staggered reveals, high-impact animations)
+   - Is composition grid-breaking? (Asymmetric layouts, atmospheric depth)
+
+2. **Gap Detection**: If ANY instruction was ambiguous or produced unexpected results:
+   - Document the gap in this SKILL.md immediately
+   - Add the quirk to the relevant section (Aesthetics Guidelines, Implementation Standard, etc.)
+   - Update version history with the fix
+
+3. **Audit Statement**: If no gaps found, state:
+   ```
+   skill(frontend-design): no gaps identified
+   ```
+
+4. **Protocol Violation**: Skipping this audit is a V12 protocol violation.
+
+### Known Quirks (Updated During Audits)
+
+- **Font Selection (2026-06-08)**: `Syncopate` appears twice in recommended list - intentional for emphasis
+- **Color Palette (2026-06-08)**: "Commit to cohesive palette" means pick 1 dominant + 1-2 sharp accents, not 5+ colors
+- **Motion Guidelines (2026-06-08)**: "CSS-only solutions" preferred but JavaScript OK for complex interactions
+
+## V12 DNA Alignment
+
+- **Correctness by Construction**: Banned fonts list prevents generic aesthetics
+- **ASCII-Only**: All CSS/HTML output must be ASCII-safe
+- **Jane Street Alignment**: Bold, intentional design = cognitive clarity
+- **Karpathy Protocol**: Explicit success criteria (no Inter/Roboto, texture required, etc.)
+
+---
+
+**Last Updated**: 2026-06-08
+**Maintainer**: Gemini CLI (Advanced Mode)
+**Status**: ✅ Active - Converted to self-improving format

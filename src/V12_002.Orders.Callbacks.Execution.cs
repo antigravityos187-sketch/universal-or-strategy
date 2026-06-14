@@ -106,7 +106,19 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
             }
 
-            List<string> positionsToCleanup = CollectPositionsForCleanup();
+            List<string> positionsToCleanup = new List<string>();
+            foreach (var kvp in activePositions.ToArray())
+            {
+                if (!activePositions.ContainsKey(kvp.Key))
+                    continue;
+                PositionInfo pos = kvp.Value;
+                if (pos.EntryFilled && pos.RemainingContracts > 0)
+                {
+                    Print("EXTERNAL CLOSE DETECTED - Position went flat. Cancelling orphaned orders...");
+                    CancelOrphanedOrdersForPosition(kvp.Key, pos);
+                    positionsToCleanup.Add(kvp.Key);
+                }
+            }
 
             foreach (string key in positionsToCleanup)
                 CleanupPosition(key);
@@ -152,13 +164,15 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // EPIC-CCN-18 Ticket 2: Cancellation helper method (CYC 23->13, -10 points)
-        // EPIC-CCN-18 Ticket 4: Reduced CYC 11->7 via IsOrderCancellable helper (-4 points)
         private void CancelOrphanedOrdersForPosition(string posKey, PositionInfo pos)
         {
             // Cancel stop order if active
             if (stopOrders.TryGetValue(posKey, out var stopOrder))
             {
-                if (IsOrderCancellable(stopOrder))
+                if (
+                    stopOrder != null
+                    && (stopOrder.OrderState == OrderState.Working || stopOrder.OrderState == OrderState.Accepted)
+                )
                 {
                     CancelOrderSafe(stopOrder, pos);
                 }
@@ -170,47 +184,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                 var tDict = GetTargetOrdersDictionary(tNum);
                 if (tDict != null && tDict.TryGetValue(posKey, out var tOrder))
                 {
-                    if (IsOrderCancellable(tOrder))
+                    if (
+                        tOrder != null
+                        && (tOrder.OrderState == OrderState.Working || tOrder.OrderState == OrderState.Accepted)
+                    )
                     {
                         CancelOrderSafe(tOrder, pos);
                     }
                 }
             }
-        }
-
-        // EPIC-CCN-18 Ticket 4: Order state check helper (CYC 11->7, -4 points)
-        private bool IsOrderCancellable(Order order)
-        {
-            return order != null && (order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted);
-        }
-
-        // EPIC-CCN-18 Ticket 3: Cleanup collection helper method (CYC 13->7, -6 points)
-        private List<string> CollectPositionsForCleanup()
-        {
-            List<string> positionsToCleanup = new List<string>();
-
-            foreach (var kvp in activePositions.ToArray())
-            {
-                // Concurrent safety check
-                if (!activePositions.ContainsKey(kvp.Key))
-                    continue;
-
-                PositionInfo pos = kvp.Value;
-
-                // Check if position was externally closed
-                if (pos.EntryFilled && pos.RemainingContracts > 0)
-                {
-                    Print("EXTERNAL CLOSE DETECTED - Position went flat. Cancelling orphaned orders...");
-
-                    // Cancel orphaned orders for this position
-                    CancelOrphanedOrdersForPosition(kvp.Key, pos);
-
-                    // Mark for cleanup
-                    positionsToCleanup.Add(kvp.Key);
-                }
-            }
-
-            return positionsToCleanup;
         }
 
         // Build 935 [CB-B935-002]: Target count broadcast extracted from OnPositionUpdate.
