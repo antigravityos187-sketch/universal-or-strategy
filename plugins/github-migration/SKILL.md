@@ -15,6 +15,51 @@ Automate GitHub repository migration between accounts, including token setup, re
 
 ## Execution Steps
 
+### Phase 0: Token Cleanup (MANDATORY - Run First)
+
+**⚠️ CRITICAL**: Remove old `GITHUB_TOKEN` from previous account BEFORE starting migration.
+
+**Why This Step is Mandatory**:
+- Old tokens from previous accounts persist in PowerShell profile and environment variables
+- They override `gh` CLI authentication silently
+- Cause permission errors that are hard to diagnose (e.g., "Resource not accessible by personal access token")
+- **Root cause of PR closure failures during malhitticrypto-debug → antigravityos187-sketch migration**
+
+**Automated Cleanup**:
+```powershell
+# Run cleanup script
+powershell -File .\scripts\cleanup_github_token.ps1
+```
+
+**What It Does**:
+1. Removes `GITHUB_TOKEN` from Process environment
+2. Removes `GITHUB_TOKEN` from User environment variables
+3. Removes `GITHUB_TOKEN` from System environment variables (if admin)
+4. Comments out `GITHUB_TOKEN` in `.env` file
+5. **Detects `GITHUB_TOKEN` in PowerShell profile** (manual removal required)
+
+**Manual Step Required**:
+If script reports "FOUND in PowerShell profile":
+```powershell
+# Open profile in editor
+notepad $PROFILE
+
+# Remove or comment out lines like:
+# $env:GITHUB_TOKEN = "github_pat_..."
+
+# Save and close
+```
+
+**Verification**:
+```powershell
+Get-ChildItem Env: | Where-Object { $_.Name -like "*GITHUB*" }
+# Should show NO GITHUB_TOKEN
+```
+
+**IMPORTANT**: Restart terminal/IDE after cleanup for changes to take effect.
+
+---
+
 ### Phase 1: Pre-Migration Checklist
 1. **Backup current state**
    - Export repository settings
@@ -229,8 +274,50 @@ Automate GitHub repository migration between accounts, including token setup, re
 - GitHub CLI Documentation: https://cli.github.com/manual/
 - Repository Transfer: https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository
 
+## Post-Use Audit (MANDATORY - Anthropic Skill-Creator Protocol)
+
+**All agents MUST perform this audit after EVERY use of this skill:**
+
+### Audit Checklist
+
+1. **Ambiguity Check**: Were any instructions unclear or produce unexpected results?
+   - Did Phase 0 (Token Cleanup) execute successfully? (Verify old tokens removed)
+   - Was the PAT token generated with ALL required scopes? (repo, workflow, admin:org)
+   - Did `gh auth status --show-token` confirm authentication? (Verify token active)
+   - Was the token set persistently at User level? (Check environment variables)
+   - Did repository transfer complete? (Verify new owner in `gh repo view`)
+   - Were all CI/CD secrets reconfigured? (Codacy, CodeScene, SonarCloud)
+   - Did local git remote update? (Verify `git remote -v` shows new URL)
+   - Were all documentation URLs updated? (README, CONTRIBUTING, docs/)
+
+2. **Gap Detection**: If ANY instruction was ambiguous or produced unexpected results:
+   - Document the gap in this SKILL.md immediately
+   - Add the quirk to the relevant section (Common Issues, Phase instructions, etc.)
+   - Update version history with the fix
+
+3. **Audit Statement**: If no gaps found, state:
+   ```
+   skill(github-migration): no gaps identified
+   ```
+
+4. **Protocol Violation**: Skipping this audit is a V12 protocol violation.
+
+### Known Quirks (Updated During Audits)
+
+- **Token Cleanup (2026-06-08)**: Old `GITHUB_TOKEN` from previous accounts persists in PowerShell profile - MUST be manually removed
+- **Token Scopes (2026-06-08)**: Missing `workflow` scope causes "Resource not accessible" errors - regenerate with all scopes
+- **OAuth Issues (2026-06-08)**: Some MCP servers (Cubic) don't support OAuth in Bob IDE - use CLI fallback
+- **PowerShell Profile (2026-06-08)**: `cleanup_github_token.ps1` detects but cannot auto-remove tokens from `$PROFILE` - manual edit required
+
+## V12 DNA Alignment
+
+- **Correctness by Construction**: Phase 0 cleanup prevents silent authentication failures
+- **ASCII-Only**: All commit messages and documentation must be ASCII-safe
+- **Jane Street Alignment**: Explicit token scope checklist prevents permission errors
+- **Karpathy Protocol**: Explicit success criteria at each phase (token verified, transfer complete, etc.)
+
 ---
 
-**Last Updated**: 2026-06-04
+**Last Updated**: 2026-06-08
 **Maintainer**: Gemini CLI (Advanced Mode)
-**Status**: ✅ Active
+**Status**: ✅ Active - Converted to self-improving format with Phase 0 token cleanup
