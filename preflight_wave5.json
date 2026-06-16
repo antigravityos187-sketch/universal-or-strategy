@@ -1,0 +1,1982 @@
+{
+  "total_epics": 173,
+  "normal": [
+    {
+      "epic_id": "EPIC-CCN-14",
+      "method_name": "ProcessIpcCommands",
+      "file_path": "src/V12_002.UI.IPC.cs",
+      "cyclomatic": 76,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 152,
+          "framework": "xUnit",
+          "coverage_target": 90,
+          "reason": "High complexity (CYC 76)"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-16",
+      "method_name": "HydrateFSMsFromWorkingOrders",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 45,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 90,
+          "framework": "xUnit",
+          "coverage_target": 90,
+          "reason": "High complexity (CYC 45)"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-17",
+      "method_name": "AdoptFleetOrders",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 37,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 74,
+          "framework": "xUnit",
+          "coverage_target": 90,
+          "reason": "High complexity (CYC 37)"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-18",
+      "method_name": "HandleFlatPositionUpdate",
+      "file_path": "src/V12_002.Orders.Callbacks.Execution.cs",
+      "cyclomatic": 37,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 74,
+          "framework": "xUnit",
+          "coverage_target": 90,
+          "reason": "High complexity (CYC 37)"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-19",
+      "method_name": "CheckFFMAConditions",
+      "file_path": "src/V12_002.Entries.FFMA.cs",
+      "cyclomatic": 16,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-20",
+      "method_name": "TryHandleFleet_CancelAll",
+      "file_path": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+      "cyclomatic": 19,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-21",
+      "method_name": "GetSubscriberCounts",
+      "file_path": "src/SignalBroadcaster.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-22",
+      "method_name": "ProcessSessionReset",
+      "file_path": "src/V12_002.BarUpdate.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-23",
+      "method_name": "OnBarUpdate",
+      "file_path": "src/V12_002.BarUpdate.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-24",
+      "method_name": "DrawORBox",
+      "file_path": "src/V12_002.DrawingHelpers.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-25",
+      "method_name": "ExecuteFFMAManualMarketEntry",
+      "file_path": "src/V12_002.Entries.FFMA.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-26",
+      "method_name": "ExecuteFFMALimitEntry",
+      "file_path": "src/V12_002.Entries.FFMA.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-27",
+      "method_name": "ExecuteMOMOEntry",
+      "file_path": "src/V12_002.Entries.MOMO.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-28",
+      "method_name": "EnterORPosition",
+      "file_path": "src/V12_002.Entries.OR.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-29",
+      "method_name": "ExecuteRetestEntry",
+      "file_path": "src/V12_002.Entries.Retest.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-30",
+      "method_name": "ExecuteTREND_Preflight",
+      "file_path": "src/V12_002.Entries.Trend.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-31",
+      "method_name": "IsAllowlistBypassAttempt",
+      "file_path": "src/V12_002.IPC.Hardening.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-32",
+      "method_name": "HandleTerminated",
+      "file_path": "src/V12_002.Lifecycle.cs",
+      "cyclomatic": 23,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-33",
+      "method_name": "ProcessOnStateChange",
+      "file_path": "src/V12_002.Lifecycle.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-34",
+      "method_name": "ProcessQueuedAccountOrder",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 15,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-35",
+      "method_name": "OnAccountOrderUpdate",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-36",
+      "method_name": "HandleMatchedFollowerOrder",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-37",
+      "method_name": "HandleMatchedFollower_StopReplacement",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-38",
+      "method_name": "ProcessAccountOrderQueue",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-39",
+      "method_name": "IsMasterReplaceCascadeCancellation",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-40",
+      "method_name": "ProcessFollowerCancellationSafe",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-41",
+      "method_name": "ProcessAccountOrder_UpdateMasterExpected",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-42",
+      "method_name": "ProcessAccountOrder_UpdateFleetExpected",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-43",
+      "method_name": "HandleMatchedFollower_PendingCancelReplace",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-44",
+      "method_name": "ExecuteFollowerCascadeCleanup",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-45",
+      "method_name": "ProcessFollowerCancellationUnconditional",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-46",
+      "method_name": "HandleMatchedFollower_PendingCleanupPurge",
+      "file_path": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-47",
+      "method_name": "RequestStopCancelLifecycleSafe",
+      "file_path": "src/V12_002.Orders.Callbacks.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-48",
+      "method_name": "ProcessOnOrderUpdate",
+      "file_path": "src/V12_002.Orders.Callbacks.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-49",
+      "method_name": "HandleOrderRejected",
+      "file_path": "src/V12_002.Orders.Callbacks.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-50",
+      "method_name": "HandleOrderPriceOrQuantityChanged",
+      "file_path": "src/V12_002.Orders.Callbacks.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-51",
+      "method_name": "HandleOrderCancelled_ProcessStopReplacement",
+      "file_path": "src/V12_002.Orders.Callbacks.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-52",
+      "method_name": "HandleOrderCancelled_RollbackUnfilledEntry",
+      "file_path": "src/V12_002.Orders.Callbacks.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-53",
+      "method_name": "BroadcastSyncTargetState",
+      "file_path": "src/V12_002.Orders.Callbacks.Execution.cs",
+      "cyclomatic": 9,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 13,
+          "framework": "xUnit",
+          "coverage_target": 85,
+          "reason": "Critical execution path"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-61",
+      "method_name": "CleanupPosition",
+      "file_path": "src/V12_002.Orders.Management.Cleanup.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-62",
+      "method_name": "PurgePositionIfEligible",
+      "file_path": "src/V12_002.Orders.Management.Cleanup.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-63",
+      "method_name": "ClassifyOrphanReason",
+      "file_path": "src/V12_002.Orders.Management.Cleanup.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-64",
+      "method_name": "PurgeGhostOrderReferences",
+      "file_path": "src/V12_002.Orders.Management.Cleanup.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-65",
+      "method_name": "EvaluateZombiePurgeEligibility",
+      "file_path": "src/V12_002.Orders.Management.Cleanup.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-66",
+      "method_name": "SubmitTargetOrdersLoop",
+      "file_path": "src/V12_002.Orders.Management.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-67",
+      "method_name": "FlattenSinglePosition",
+      "file_path": "src/V12_002.Orders.Management.Flatten.cs",
+      "cyclomatic": 16,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-68",
+      "method_name": "FlattenAll",
+      "file_path": "src/V12_002.Orders.Management.Flatten.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-69",
+      "method_name": "HasActiveOrPendingOrderForEntry",
+      "file_path": "src/V12_002.Orders.Management.Flatten.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-70",
+      "method_name": "CancelAllBracketOrdersForPosition",
+      "file_path": "src/V12_002.Orders.Management.Flatten.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-71",
+      "method_name": "ManageCIT",
+      "file_path": "src/V12_002.Orders.Management.Flatten.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-72",
+      "method_name": "SyncLimitTarget",
+      "file_path": "src/V12_002.Orders.Management.StopSync.cs",
+      "cyclomatic": 17,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-73",
+      "method_name": "RestoreCascadedTargets",
+      "file_path": "src/V12_002.Orders.Management.StopSync.cs",
+      "cyclomatic": 16,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-74",
+      "method_name": "RefreshActivePositionOrders",
+      "file_path": "src/V12_002.Orders.Management.StopSync.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-75",
+      "method_name": "UpdateStopQuantity",
+      "file_path": "src/V12_002.Orders.Management.StopSync.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-76",
+      "method_name": "CreateNewStopOrder",
+      "file_path": "src/V12_002.Orders.Management.StopSync.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-78",
+      "method_name": "FormatInternal",
+      "file_path": "src/V12_002.Perf.LogBuffer.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-79",
+      "method_name": "MarkTargetFilled",
+      "file_path": "src/V12_002.PositionInfo.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-80",
+      "method_name": "SetTargetFilledQuantity",
+      "file_path": "src/V12_002.PositionInfo.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-81",
+      "method_name": "AuditMaster_HandleNakedPosition",
+      "file_path": "src/V12_002.REAPER.Audit.cs",
+      "cyclomatic": 15,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-82",
+      "method_name": "AuditSingleFleetAccount",
+      "file_path": "src/V12_002.REAPER.Audit.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-83",
+      "method_name": "AuditMaster_CheckExpectedActual",
+      "file_path": "src/V12_002.REAPER.Audit.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-84",
+      "method_name": "AuditFleet_CalculateExpectedActual",
+      "file_path": "src/V12_002.REAPER.Audit.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-85",
+      "method_name": "AuditMaster_HandleDesyncFlatten",
+      "file_path": "src/V12_002.REAPER.Audit.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-86",
+      "method_name": "ProcessReaperFlatten_CancelWorkingOrders",
+      "file_path": "src/V12_002.REAPER.Audit.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-87",
+      "method_name": "AuditFleet_CheckWorkingStop",
+      "file_path": "src/V12_002.REAPER.Audit.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-88",
+      "method_name": "SubmitRepairOrderWithAuthorization",
+      "file_path": "src/V12_002.REAPER.Repair.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-89",
+      "method_name": "CancelWatchdogWorkingOrders",
+      "file_path": "src/V12_002.Safety.Watchdog.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-90",
+      "method_name": "OnWatchdogTimer",
+      "file_path": "src/V12_002.Safety.Watchdog.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-91",
+      "method_name": "CancelDirectFallbackOrders",
+      "file_path": "src/V12_002.Safety.Watchdog.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-92",
+      "method_name": "SetRmaAnchorFromIpc",
+      "file_path": "src/V12_002.SIMA.cs",
+      "cyclomatic": 13,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 19,
+          "framework": "xUnit",
+          "coverage_target": 85,
+          "reason": "Critical execution path"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-93",
+      "method_name": "Dispatch_ProcessFleetLoop",
+      "file_path": "src/V12_002.SIMA.Dispatch.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-94",
+      "method_name": "ExecuteMultiAccountMarket",
+      "file_path": "src/V12_002.SIMA.Execution.cs",
+      "cyclomatic": 13,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 19,
+          "framework": "xUnit",
+          "coverage_target": 85,
+          "reason": "Critical execution path"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-95",
+      "method_name": "ProcessSingleFleetRMAAccount",
+      "file_path": "src/V12_002.SIMA.Execution.cs",
+      "cyclomatic": 12,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 18,
+          "framework": "xUnit",
+          "coverage_target": 85,
+          "reason": "Critical execution path"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-96",
+      "method_name": "ExecuteMultiAccountBracket",
+      "file_path": "src/V12_002.SIMA.Execution.cs",
+      "cyclomatic": 9,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 13,
+          "framework": "xUnit",
+          "coverage_target": 85,
+          "reason": "Critical execution path"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-97",
+      "method_name": "ExecuteRMAEntryV2",
+      "file_path": "src/V12_002.SIMA.Execution.cs",
+      "cyclomatic": 9,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 13,
+          "framework": "xUnit",
+          "coverage_target": 85,
+          "reason": "Critical execution path"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-98",
+      "method_name": "ProcessFlattenWorkItem_CancelOrders",
+      "file_path": "src/V12_002.SIMA.Flatten.cs",
+      "cyclomatic": 18,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-99",
+      "method_name": "EmergencyFlattenSingleFleetAccount",
+      "file_path": "src/V12_002.SIMA.Flatten.cs",
+      "cyclomatic": 16,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-100",
+      "method_name": "ClosePositionsOnlyApexAccounts",
+      "file_path": "src/V12_002.SIMA.Flatten.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-101",
+      "method_name": "VerifyPhotonSlotIntegrity",
+      "file_path": "src/V12_002.SIMA.Fleet.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-102",
+      "method_name": "InitializeFollowerBracketFSM",
+      "file_path": "src/V12_002.SIMA.Fleet.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-103",
+      "method_name": "ProcessFleetSlot",
+      "file_path": "src/V12_002.SIMA.Fleet.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-104",
+      "method_name": "SubmitAndRegisterFleetOrders",
+      "file_path": "src/V12_002.SIMA.Fleet.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-105",
+      "method_name": "DrainAllDispatchQueuesOnAbort",
+      "file_path": "src/V12_002.SIMA.Fleet.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-106",
+      "method_name": "LogHealthCheckResult",
+      "file_path": "src/V12_002.SIMA.Fleet.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-107",
+      "method_name": "HydrateFromOpenPositions",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 31,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 62,
+          "framework": "xUnit",
+          "coverage_target": 90,
+          "reason": "High complexity (CYC 31)"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-108",
+      "method_name": "SweepBrokerOrders",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 24,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-109",
+      "method_name": "HydrateWorkingOrdersFromBroker",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 19,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-110",
+      "method_name": "AdoptMasterOrders",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 19,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-111",
+      "method_name": "HydrateExpectedPositionsFromBroker",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 17,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-112",
+      "method_name": "ClassifyOrderByPrefix",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 17,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-113",
+      "method_name": "HydrateFSMsFromWorkingOrders",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-114",
+      "method_name": "ProcessShutdownSIMA",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-115",
+      "method_name": "SweepTrackedOrders",
+      "file_path": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-116",
+      "method_name": "ShadowProcessFollowerStopUpdate",
+      "file_path": "src/V12_002.SIMA.Shadow.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-117",
+      "method_name": "ValidateCachedEntry",
+      "file_path": "src/V12_002.SIMA.Shadow.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-119",
+      "method_name": "GetFsmExpectedPosition",
+      "file_path": "src/V12_002.Symmetry.BracketFSM.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-120",
+      "method_name": "HandleFsmFilled",
+      "file_path": "src/V12_002.Symmetry.BracketFSM.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-122",
+      "method_name": "RemoveFsmOrderIdMappings",
+      "file_path": "src/V12_002.Symmetry.BracketFSM.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-123",
+      "method_name": "SymmetryGuardOnMasterFill",
+      "file_path": "src/V12_002.Symmetry.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-125",
+      "method_name": "SymmetryGuardTryResolveFollower",
+      "file_path": "src/V12_002.Symmetry.Follower.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-126",
+      "method_name": "SymmetryGuardSubmitFollowerBracket",
+      "file_path": "src/V12_002.Symmetry.Follower.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-127",
+      "method_name": "SymmetryGuardOnFollowerFill",
+      "file_path": "src/V12_002.Symmetry.Follower.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-128",
+      "method_name": "SymmetryGuardReplaceExistingFollowerTarget",
+      "file_path": "src/V12_002.Symmetry.Replace.cs",
+      "cyclomatic": 18,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-129",
+      "method_name": "SymmetryGuardTryResolveFollowersForDispatch",
+      "file_path": "src/V12_002.Symmetry.Replace.cs",
+      "cyclomatic": 18,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-130",
+      "method_name": "SymmetryGuardCascadeFollowerCleanup",
+      "file_path": "src/V12_002.Symmetry.Replace.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-131",
+      "method_name": "SymmetryGuardPruneDispatches",
+      "file_path": "src/V12_002.Symmetry.Replace.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-132",
+      "method_name": "SymmetryNormalizeTradeType",
+      "file_path": "src/V12_002.Symmetry.Replace.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-133",
+      "method_name": "MoveStop_SinglePosition",
+      "file_path": "src/V12_002.Trailing.Breakeven.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-134",
+      "method_name": "MoveSpecificTarget",
+      "file_path": "src/V12_002.Trailing.Breakeven.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-136",
+      "method_name": "ManageTrailingStops",
+      "file_path": "src/V12_002.Trailing.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-137",
+      "method_name": "FleetSync_SyncFollowersToLevel",
+      "file_path": "src/V12_002.Trailing.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-138",
+      "method_name": "ManageTrail_RunPerTradeBranches",
+      "file_path": "src/V12_002.Trailing.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-139",
+      "method_name": "UpdateStopOrder",
+      "file_path": "src/V12_002.Trailing.StopUpdate.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-140",
+      "method_name": "InitiateStopReplacement",
+      "file_path": "src/V12_002.Trailing.StopUpdate.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-141",
+      "method_name": "CleanupStalePendingReplacements",
+      "file_path": "src/V12_002.Trailing.StopUpdate.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-142",
+      "method_name": "HandleChartClick_ConvertPrice",
+      "file_path": "src/V12_002.UI.Callbacks.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-143",
+      "method_name": "OnKeyDown",
+      "file_path": "src/V12_002.UI.Callbacks.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-144",
+      "method_name": "IsOrderAllowed",
+      "file_path": "src/V12_002.UI.Compliance.cs",
+      "cyclomatic": 16,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-145",
+      "method_name": "HandleFleetTargetFill",
+      "file_path": "src/V12_002.UI.Compliance.cs",
+      "cyclomatic": 16,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-146",
+      "method_name": "CancelOrphanedTargets",
+      "file_path": "src/V12_002.UI.Compliance.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-147",
+      "method_name": "ProcessQueuedExecution_HandleFleetOCO",
+      "file_path": "src/V12_002.UI.Compliance.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-148",
+      "method_name": "ProcessQueuedExecution_SyncFlatPosition",
+      "file_path": "src/V12_002.UI.Compliance.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-149",
+      "method_name": "LogApexPerformance",
+      "file_path": "src/V12_002.UI.Compliance.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-150",
+      "method_name": "ProcessQueuedExecution_HandleFleetBrackets",
+      "file_path": "src/V12_002.UI.Compliance.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-151",
+      "method_name": "TrackTradeEntry",
+      "file_path": "src/V12_002.UI.Compliance.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-152",
+      "method_name": "TryApplyConfigTarget_Value",
+      "file_path": "src/V12_002.UI.IPC.Commands.Config.cs",
+      "cyclomatic": 17,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-153",
+      "method_name": "HandleTrimCommand",
+      "file_path": "src/V12_002.UI.IPC.Commands.Config.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-154",
+      "method_name": "TryApplyConfigTarget_Type",
+      "file_path": "src/V12_002.UI.IPC.Commands.Config.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-155",
+      "method_name": "TryHandleFleetCommand",
+      "file_path": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+      "cyclomatic": 19,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-156",
+      "method_name": "CancelAll_ProcessSingleFleetAccount",
+      "file_path": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+      "cyclomatic": 18,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-157",
+      "method_name": "TryHandleFleet_MoveTarget",
+      "file_path": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+      "cyclomatic": 15,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-158",
+      "method_name": "CancelAll_ProcessMasterAccount",
+      "file_path": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-159",
+      "method_name": "TryHandleFleet_LongShort",
+      "file_path": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-160",
+      "method_name": "SendResponseToRemote",
+      "file_path": "src/V12_002.UI.IPC.Commands.Misc.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-161",
+      "method_name": "FlattenSpecificTarget",
+      "file_path": "src/V12_002.UI.IPC.Commands.Misc.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-162",
+      "method_name": "TryHandleMode_SetMode",
+      "file_path": "src/V12_002.UI.IPC.Commands.Mode.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-163",
+      "method_name": "TryHandleRisk_Breakeven",
+      "file_path": "src/V12_002.UI.IPC.Commands.Mode.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-164",
+      "method_name": "IsCommandForThisInstrument",
+      "file_path": "src/V12_002.UI.IPC.cs",
+      "cyclomatic": 36,
+      "special_cases": [
+        "test-heavy"
+      ],
+      "routing": "normal",
+      "labels": [
+        "test-heavy"
+      ],
+      "details": {
+        "test_requirements": {
+          "requires_extended_time": true,
+          "estimated_test_cases": 72,
+          "framework": "xUnit",
+          "coverage_target": 90,
+          "reason": "High complexity (CYC 36)"
+        }
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-165",
+      "method_name": "ProcessIpcCommands",
+      "file_path": "src/V12_002.UI.IPC.cs",
+      "cyclomatic": 15,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-166",
+      "method_name": "TryParseTargetMode",
+      "file_path": "src/V12_002.UI.IPC.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-167",
+      "method_name": "IsAllowedIpcAction",
+      "file_path": "src/V12_002.UI.IPC.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-168",
+      "method_name": "StopIpcServer",
+      "file_path": "src/V12_002.UI.IPC.Server.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-169",
+      "method_name": "ProcessClientStream",
+      "file_path": "src/V12_002.UI.IPC.Server.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-170",
+      "method_name": "DestroyPanel",
+      "file_path": "src/V12_002.UI.Panel.Construction.cs",
+      "cyclomatic": 17,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-171",
+      "method_name": "PlacePanel",
+      "file_path": "src/V12_002.UI.Panel.Construction.cs",
+      "cyclomatic": 13,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-173",
+      "method_name": "AttachExecutionPanelHandlers",
+      "file_path": "src/V12_002.UI.Panel.Handlers.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-174",
+      "method_name": "OnSubmitClick",
+      "file_path": "src/V12_002.UI.Panel.Handlers.cs",
+      "cyclomatic": 12,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-175",
+      "method_name": "CollapseAllExecutionControls",
+      "file_path": "src/V12_002.UI.Panel.Handlers.cs",
+      "cyclomatic": 11,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-176",
+      "method_name": "UpdateConfigControlsEnabled",
+      "file_path": "src/V12_002.UI.Panel.Handlers.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-177",
+      "method_name": "DumpVisualTree",
+      "file_path": "src/V12_002.UI.Panel.Helpers.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-180",
+      "method_name": "UpdatePanelState",
+      "file_path": "src/V12_002.UI.Panel.StateSync.cs",
+      "cyclomatic": 16,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-181",
+      "method_name": "SyncPanelConfigFromSnapshot",
+      "file_path": "src/V12_002.UI.Panel.StateSync.cs",
+      "cyclomatic": 15,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-182",
+      "method_name": "SyncLiveTargetRows",
+      "file_path": "src/V12_002.UI.Panel.StateSync.cs",
+      "cyclomatic": 10,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-183",
+      "method_name": "SyncModeChipVisuals",
+      "file_path": "src/V12_002.UI.Panel.StateSync.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-184",
+      "method_name": "ShouldSyncPendingOrder",
+      "file_path": "src/V12_002.UI.Sizing.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-185",
+      "method_name": "FindMasterPosition",
+      "file_path": "src/V12_002.UI.Snapshot.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-186",
+      "method_name": "PopulateTargetSnapshots",
+      "file_path": "src/V12_002.UI.Snapshot.cs",
+      "cyclomatic": 9,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    },
+    {
+      "epic_id": "EPIC-CCN-187",
+      "method_name": "UpdateLivePositionSnapshot",
+      "file_path": "src/V12_002.UI.SnapshotPool.cs",
+      "cyclomatic": 14,
+      "special_cases": [],
+      "routing": "normal",
+      "labels": [],
+      "details": {}
+    }
+  ],
+  "local": [
+    {
+      "epic_id": "EPIC-CCN-54",
+      "method_name": "PropagateMasterEntryMove",
+      "file_path": "src/V12_002.Orders.Callbacks.Propagation.cs",
+      "cyclomatic": 14,
+      "special_cases": [
+        "encoding-sensitive"
+      ],
+      "routing": "local",
+      "labels": [
+        "encoding-sensitive"
+      ],
+      "details": {
+        "encoding_issue": "Non-UTF-8 encoding detected"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-55",
+      "method_name": "IsValidTradeTypeToken",
+      "file_path": "src/V12_002.Orders.Callbacks.Propagation.cs",
+      "cyclomatic": 13,
+      "special_cases": [
+        "encoding-sensitive"
+      ],
+      "routing": "local",
+      "labels": [
+        "encoding-sensitive"
+      ],
+      "details": {
+        "encoding_issue": "Non-UTF-8 encoding detected"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-56",
+      "method_name": "ResolveFollowersViaScan_ProcessEntry",
+      "file_path": "src/V12_002.Orders.Callbacks.Propagation.cs",
+      "cyclomatic": 12,
+      "special_cases": [
+        "encoding-sensitive"
+      ],
+      "routing": "local",
+      "labels": [
+        "encoding-sensitive"
+      ],
+      "details": {
+        "encoding_issue": "Non-UTF-8 encoding detected"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-57",
+      "method_name": "ResolveMasterTradeType",
+      "file_path": "src/V12_002.Orders.Callbacks.Propagation.cs",
+      "cyclomatic": 11,
+      "special_cases": [
+        "encoding-sensitive"
+      ],
+      "routing": "local",
+      "labels": [
+        "encoding-sensitive"
+      ],
+      "details": {
+        "encoding_issue": "Non-UTF-8 encoding detected"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-58",
+      "method_name": "PropagateMaster_ApplyFollowerMove",
+      "file_path": "src/V12_002.Orders.Callbacks.Propagation.cs",
+      "cyclomatic": 11,
+      "special_cases": [
+        "encoding-sensitive"
+      ],
+      "routing": "local",
+      "labels": [
+        "encoding-sensitive"
+      ],
+      "details": {
+        "encoding_issue": "Non-UTF-8 encoding detected"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-59",
+      "method_name": "PropagateMasterTargetMove",
+      "file_path": "src/V12_002.Orders.Callbacks.Propagation.cs",
+      "cyclomatic": 9,
+      "special_cases": [
+        "encoding-sensitive"
+      ],
+      "routing": "local",
+      "labels": [
+        "encoding-sensitive"
+      ],
+      "details": {
+        "encoding_issue": "Non-UTF-8 encoding detected"
+      }
+    }
+  ],
+  "skip": [
+    {
+      "epic_id": "EPIC-CCN-60",
+      "method_name": "BuildLiveBrokerOrderIndex",
+      "file_path": "src/V12_002.Orders.Management.Cleanup.cs",
+      "cyclomatic": 14,
+      "special_cases": [
+        "invalid-target"
+      ],
+      "routing": "skip",
+      "labels": [
+        "invalid-target"
+      ],
+      "details": {
+        "invalid_reason": "Method BuildLiveBrokerOrderIndex not found in src/V12_002.Orders.Management.Cleanup.cs"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-77",
+      "method_name": "ValidateStopPrice",
+      "file_path": "src/V12_002.Orders.Management.StopSync.cs",
+      "cyclomatic": 9,
+      "special_cases": [
+        "invalid-target"
+      ],
+      "routing": "skip",
+      "labels": [
+        "invalid-target"
+      ],
+      "details": {
+        "invalid_reason": "Method ValidateStopPrice not found in src/V12_002.Orders.Management.StopSync.cs"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-118",
+      "method_name": "DeserializeSnapshot",
+      "file_path": "src/V12_002.StickyState.cs",
+      "cyclomatic": 9,
+      "special_cases": [
+        "invalid-target"
+      ],
+      "routing": "skip",
+      "labels": [
+        "invalid-target"
+      ],
+      "details": {
+        "invalid_reason": "Method DeserializeSnapshot not found in src/V12_002.StickyState.cs"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-121",
+      "method_name": "ResolveFsm_ByScan",
+      "file_path": "src/V12_002.Symmetry.BracketFSM.cs",
+      "cyclomatic": 12,
+      "special_cases": [
+        "invalid-target"
+      ],
+      "routing": "skip",
+      "labels": [
+        "invalid-target"
+      ],
+      "details": {
+        "invalid_reason": "Method ResolveFsm_ByScan not found in src/V12_002.Symmetry.BracketFSM.cs"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-124",
+      "method_name": "SymmetryFindDispatchForMasterFill",
+      "file_path": "src/V12_002.Symmetry.cs",
+      "cyclomatic": 9,
+      "special_cases": [
+        "invalid-target"
+      ],
+      "routing": "skip",
+      "labels": [
+        "invalid-target"
+      ],
+      "details": {
+        "invalid_reason": "Method SymmetryFindDispatchForMasterFill not found in src/V12_002.Symmetry.cs"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-135",
+      "method_name": "FindTargetOrderForPosition",
+      "file_path": "src/V12_002.Trailing.Breakeven.cs",
+      "cyclomatic": 9,
+      "special_cases": [
+        "invalid-target"
+      ],
+      "routing": "skip",
+      "labels": [
+        "invalid-target"
+      ],
+      "details": {
+        "invalid_reason": "Method FindTargetOrderForPosition not found in src/V12_002.Trailing.Breakeven.cs"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-172",
+      "method_name": "CreateSection0_Identity",
+      "file_path": "src/V12_002.UI.Panel.Construction.cs",
+      "cyclomatic": 13,
+      "special_cases": [
+        "invalid-target"
+      ],
+      "routing": "skip",
+      "labels": [
+        "invalid-target"
+      ],
+      "details": {
+        "invalid_reason": "Method CreateSection0_Identity not found in src/V12_002.UI.Panel.Construction.cs"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-178",
+      "method_name": "FindChartTabGrid",
+      "file_path": "src/V12_002.UI.Panel.Helpers.cs",
+      "cyclomatic": 10,
+      "special_cases": [
+        "invalid-target"
+      ],
+      "routing": "skip",
+      "labels": [
+        "invalid-target"
+      ],
+      "details": {
+        "invalid_reason": "Method FindChartTabGrid not found in src/V12_002.UI.Panel.Helpers.cs"
+      }
+    },
+    {
+      "epic_id": "EPIC-CCN-179",
+      "method_name": "FindChartTraderBySiblingSearch",
+      "file_path": "src/V12_002.UI.Panel.Helpers.cs",
+      "cyclomatic": 9,
+      "special_cases": [
+        "invalid-target"
+      ],
+      "routing": "skip",
+      "labels": [
+        "invalid-target"
+      ],
+      "details": {
+        "invalid_reason": "Method FindChartTraderBySiblingSearch not found in src/V12_002.UI.Panel.Helpers.cs"
+      }
+    }
+  ],
+  "summary": {
+    "normal_execution": 158,
+    "local_execution": 6,
+    "skipped": 9,
+    "encoding_sensitive": 6,
+    "invalid_target": 9,
+    "already_complete": 0,
+    "test_heavy": 12
+  }
+}
