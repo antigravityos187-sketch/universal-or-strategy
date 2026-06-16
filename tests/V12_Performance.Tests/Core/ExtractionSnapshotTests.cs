@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using VerifyTests;
 using VerifyXunit;
 using Xunit;
 
@@ -8,8 +9,7 @@ namespace V12_Performance.Tests.Core
     /// Example snapshot tests using Verify framework (Jane Street expect test pattern).
     /// Demonstrates before/after state capture for epic extractions.
     /// </summary>
-    [UsesVerify]
-    public class ExtractionSnapshotTests
+    public class ExtractionSnapshotTests : VerifyBase
     {
         /// <summary>
         /// Example: Capture extraction state before refactoring.
