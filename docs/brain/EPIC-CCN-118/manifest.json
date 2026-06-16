@@ -3,6 +3,7 @@
   "method": "ProcessSingleFleetRMAAccount",
   "file": "src/V12_002.SIMA.Execution.cs",
   "complexity": 16,
+  "target_complexity": 8,
   "phases": {
     "0": {
       "status": "completed",
@@ -14,6 +15,25 @@
       "status": "completed",
       "outputs": [
         "00-scope.md"
+      ]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "01-implementation-plan.md",
+        "PHASE2_SUMMARY.md"
+      ]
+    },
+    "3": {
+      "status": "completed",
+      "outputs": [
+        "03-audit-report.md"
+      ]
+    },
+    "4": {
+      "status": "completed",
+      "outputs": [
+        "04-tickets.md"
       ]
     }
   }

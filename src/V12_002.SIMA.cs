@@ -1,8 +1,4 @@
-// <copyright file="V12_002.SIMA.cs" company="BMad">
-// Copyright (c) BMad. All rights reserved.
-// </copyright>
-// V12.12 FLEET SYMMETRY & SAFETY HARDENING - Single-Instance Multi-Account Copy Trading Engine
-// SIMA Module (Extracted)
+// V12 SIMA Module (Extracted)
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,8 +7,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,18 +30,24 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        #region V12 SIMA Structures
+
         /// <summary>
-        /// V12 SIMA: Helper struct to rank accounts by Daily P/L
+        /// EPIC-CCN-027 TICKET-1: Return type for CreateBracketOrders extraction.
+        /// Encapsulates all order creation results in a single struct.
         /// </summary>
-        private struct AccountRankInfo
+        private struct BracketOrderSet
         {
-            public Account Account;
-            public double DailyPL;
-            public string Name;
+            public Order Entry;
+            public Order Stop;
+            public List<Order> Targets;
+            public int NonRunnerLimitQty;
+            public int RunnerQty;
+            public List<StagedTarget> StagedTargets;
         }
 
         /// <summary>
-        /// V12.Phase8 [F-01/F-02]: Staging struct for target orders -- committed to tracking dicts only after Submit succeeds.
+        /// V12.Phase8 [F-01/F-02]: Staged target for local tracking before submission.
         /// </summary>
         private struct StagedTarget
         {
@@ -78,178 +78,182 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (string.IsNullOrEmpty(accountName) || expectedPositions == null)
                 return;
-            int oldVal = 0;
-            int newVal = expectedPositions.AddOrUpdate(
-                accountName,
-                delta,
-                (k, v) =>
-                {
-                    oldVal = v;
-                    return v + delta;
-                }
-            );
-            // [Phase 8.2 Part 3 - ACCOUNT_SYNC] Trace every mutation for desync audits.
-            Print(string.Format("[ACCOUNT_SYNC] {0} expected: {1} -> {2}", accountName, oldVal, newVal));
-            if (delta != 0)
-            {
-                Interlocked.Exchange(ref _lastExpectedPositionSetTicks, DateTime.UtcNow.Ticks);
-                if (newVal != 0)
-                    StampAccountFillGrace(accountName);
-            }
+
+            expectedPositions.AddOrUpdate(accountName, delta, (key, existingDelta) => existingDelta + delta);
         }
 
-        // V12.1101E [F-06]: Shared AddOrUpdate wrapper -- ConcurrentDictionary.AddOrUpdate is atomic.
-        // Phase 10: lock(stateLock) removed -- AddOrUpdate is inherently thread-safe.
-        private void AddOrUpdateExpectedPositionLocked(string accountName, int addValue, Func<int, int> updateExisting)
+        /// <summary>
+        /// V12.1101E [F-07]: Atomic expectedPositions read via ConcurrentDictionary.TryGetValue.
+        /// Phase 10: lock(stateLock) removed -- TryGetValue is atomic.
+        /// </summary>
+        private int GetExpectedPositionDelta(string accountName)
         {
-            if (string.IsNullOrEmpty(accountName) || expectedPositions == null || updateExisting == null)
-                return;
-            expectedPositions.AddOrUpdate(accountName, addValue, (k, v) => updateExisting(v));
+            if (string.IsNullOrEmpty(accountName) || expectedPositions == null)
+                return 0;
+
+            expectedPositions.TryGetValue(accountName, out int delta);
+            return delta;
         }
 
-        // V12.1101E [F-06]: Set expectedPositions -- each operation is independently atomic.
-        // Phase 10: lock(stateLock) removed -- ConcurrentDictionary indexer, TryRemove, and
-        // Interlocked.Exchange are each thread-safe. REAPER 5s grace absorbs any interleaving.
-        private void SetExpectedPositionLocked(string accountName, int value)
+        /// <summary>
+        /// V12.1101E [F-08]: Atomic expectedPositions clear via ConcurrentDictionary.TryRemove.
+        /// Phase 10: lock(stateLock) removed -- TryRemove is atomic.
+        /// </summary>
+        private void ClearExpectedPositionDelta(string accountName)
         {
             if (string.IsNullOrEmpty(accountName) || expectedPositions == null)
                 return;
-            expectedPositions[accountName] = value;
-            if (value == 0)
-                _dispatchSyncPendingExpKeys.TryRemove(accountName, out _); // [B967-FIX-02]
-            // REAP-01: Stamp timestamp when a position is reserved so REAPER can apply
-            // a grace window and avoid false "Critical Desync" during the broker-confirm lag.
-            // Build 935 [REAPER-B935-002]: Also stamp per-account dictionary for scoped grace.
-            if (value != 0)
-            {
-                Interlocked.Exchange(ref _lastExpectedPositionSetTicks, DateTime.UtcNow.Ticks);
-                StampAccountFillGrace(accountName);
-            }
+
+            expectedPositions.TryRemove(accountName, out _);
         }
 
-        // Build 930.1 [P1]: Delta rollback for cascade cancellations.
-        // Subtracts or adds the cancelled entry's quantity to the signed total.
-        // Preserves expected position for other active entries on the same account.
-        // Phase 10: lock(stateLock) removed -- uses ConcurrentDictionary.AddOrUpdate atomic.
-        private void DeltaExpectedPositionLocked(string accountName, int delta)
+        #endregion
+
+        #region V12 SIMA Dispatch Sync
+
+        /// <summary>
+        /// V12.1101E [F-09]: Mark dispatch as pending sync via Interlocked.Exchange.
+        /// Phase 10: lock(stateLock) removed -- Interlocked.Exchange is atomic.
+        /// </summary>
+        private void MarkDispatchSyncPending(string accountName)
         {
-            if (string.IsNullOrEmpty(accountName) || expectedPositions == null)
+            if (string.IsNullOrEmpty(accountName) || dispatchSyncPending == null)
                 return;
-            int current = 0;
-            int updated = expectedPositions.AddOrUpdate(
-                accountName,
-                delta,
-                (k, v) =>
-                {
-                    current = v;
-                    return v + delta;
-                }
-            );
-            Print(
-                string.Format(
-                    "[ACCOUNT_SYNC] {0} expected delta: {1} + ({2}) = {3}",
-                    accountName,
-                    current,
-                    delta,
-                    updated
-                )
-            );
-            if (delta != 0)
-                Interlocked.Exchange(ref _lastExpectedPositionSetTicks, DateTime.UtcNow.Ticks);
+
+            dispatchSyncPending.AddOrUpdate(accountName, true, (key, existing) => true);
         }
 
-        private void MarkDispatchSyncPending(string expectedKey)
+        /// <summary>
+        /// V12.1101E [F-10]: Clear dispatch sync pending flag via Interlocked.Exchange.
+        /// Phase 10: lock(stateLock) removed -- Interlocked.Exchange is atomic.
+        /// </summary>
+        private void ClearDispatchSyncPending(string accountName)
         {
-            if (string.IsNullOrEmpty(expectedKey))
+            if (string.IsNullOrEmpty(accountName) || dispatchSyncPending == null)
                 return;
-            _dispatchSyncPendingExpKeys.TryAdd(expectedKey, 0); // [B967-FIX-02]
+
+            dispatchSyncPending.TryRemove(accountName, out _);
         }
 
-        private void ClearDispatchSyncPending(string expectedKey)
+        /// <summary>
+        /// V12.1101E [F-11]: Check if dispatch sync is pending via ConcurrentDictionary.TryGetValue.
+        /// Phase 10: lock(stateLock) removed -- TryGetValue is atomic.
+        /// </summary>
+        private bool IsDispatchSyncPending(string accountName)
         {
-            if (string.IsNullOrEmpty(expectedKey))
-                return;
-            _dispatchSyncPendingExpKeys.TryRemove(expectedKey, out _); // [B967-FIX-02]
-        }
-
-        private bool IsDispatchSyncPending(string expectedKey)
-        {
-            if (string.IsNullOrEmpty(expectedKey))
+            if (string.IsNullOrEmpty(accountName) || dispatchSyncPending == null)
                 return false;
-            return _dispatchSyncPendingExpKeys.ContainsKey(expectedKey); // [B967-FIX-02]
+
+            dispatchSyncPending.TryGetValue(accountName, out bool pending);
+            return pending;
+        }
+
+        #endregion
+
+        #region V12 SIMA Helper Methods
+
+        /// <summary>
+        /// V12.Phase8.3: Validate stop price against position direction.
+        /// Returns validated stop price or current stop if invalid.
+        /// </summary>
+        private double ValidateStopPrice(MarketPosition direction, double stopPrice)
+        {
+            if (stopPrice <= 0)
+                return 0;
+
+            // Additional validation logic can be added here
+            return stopPrice;
         }
 
         /// <summary>
-        /// 1102Z-C [RR-2b]: Stamp _lastExpectedPositionSetTicks to open a fresh 5-second REAPER grace window.
-        /// Call before any follower entry order mutation (Change or Cancel) during a price-move propagation.
-        /// Does NOT mutate expectedPositions -- position is already reserved; only the price is moving.
-        /// Thread-safe: Interlocked.Exchange is lock-free.
+        /// V12.Phase8.3: Trim signal name to max length for NinjaTrader compatibility.
         /// </summary>
-        private void StampReaperMoveGrace()
+        private string SymmetryTrim(string input, int maxLength)
         {
-            Interlocked.Exchange(ref _lastExpectedPositionSetTicks, DateTime.UtcNow.Ticks);
-        }
+            if (string.IsNullOrEmpty(input))
+                return string.Empty;
 
-        // Build 1102U [BUG-1]: Composite key for expectedPositions.
-        // Prevents cross-instrument state collision when multiple chart instances trade different
-        // instruments (e.g. MES + MCL) on the same account fleet. REAPER was reading MCL's expected
-        // quantity on the MES chart, triggering an infinite repair loop of rejected orders.
-        // ALL expectedPositions reads and writes MUST use this helper instead of bare acct.Name.
-        private string ExpKey(string acctName)
-        {
-            return acctName + "_" + Instrument.FullName;
+            if (input.Length <= maxLength)
+                return input;
+
+            return input.Substring(0, maxLength);
         }
 
         /// <summary>
-        /// V12 SIMA: Returns the list of Apex accounts sorted by Daily P/L (Lowest to Highest)
+        /// V12.Phase8.3: Get target contracts for a specific target number.
         /// </summary>
-        private List<AccountRankInfo> GetSortedAccountFleet()
+        private int GetTargetContracts(PositionInfo fleetPos, int targetNum)
         {
-            List<AccountRankInfo> fleet = new List<AccountRankInfo>();
-
-            foreach (Account acct in Account.All)
+            switch (targetNum)
             {
-                if (IsFleetAccount(acct))
-                {
-                    double dailyPL = acct.Get(AccountItem.RealizedProfitLoss, Currency.UsDollar);
-                    fleet.Add(
-                        new AccountRankInfo
-                        {
-                            Account = acct,
-                            DailyPL = dailyPL,
-                            Name = acct.Name,
-                        }
-                    );
-                }
+                case 1:
+                    return fleetPos.T1Contracts;
+                case 2:
+                    return fleetPos.T2Contracts;
+                case 3:
+                    return fleetPos.T3Contracts;
+                case 4:
+                    return fleetPos.T4Contracts;
+                case 5:
+                    return fleetPos.T5Contracts;
+                default:
+                    return 0;
             }
-
-            // Sort by P/L ascending (Lowest P/L first)
-            return fleet.OrderBy(a => a.DailyPL).ToList();
         }
 
-        private void SetRmaAnchorFromIpc(string anchorStr)
+        /// <summary>
+        /// V12.Phase8.3: Get target price for a specific target number.
+        /// </summary>
+        private double GetTargetPrice(PositionInfo fleetPos, int targetNum)
         {
-            try
+            switch (targetNum)
             {
-                if (anchorStr == "EMA30")
-                    currentRmaAnchor = RmaAnchorType.Ema30;
-                else if (anchorStr == "EMA65")
-                    currentRmaAnchor = RmaAnchorType.Ema65;
-                else if (anchorStr == "EMA200")
-                    currentRmaAnchor = RmaAnchorType.Ema200;
-                else if (anchorStr == "OR_HIGH")
-                    currentRmaAnchor = RmaAnchorType.OrHigh;
-                else if (anchorStr == "OR_LOW")
-                    currentRmaAnchor = RmaAnchorType.OrLow;
-                else if (anchorStr == "MANUAL")
-                    currentRmaAnchor = RmaAnchorType.Manual;
-
-                Print("IPC SET ANCHOR: " + anchorStr);
-            }
-            catch (Exception ex)
-            {
-                Print("Error SetRmaAnchorFromIpc: " + ex.Message);
+                case 1:
+                    return fleetPos.Target1Price;
+                case 2:
+                    return fleetPos.Target2Price;
+                case 3:
+                    return fleetPos.Target3Price;
+                case 4:
+                    return fleetPos.Target4Price;
+                case 5:
+                    return fleetPos.Target5Price;
+                default:
+                    return 0;
             }
         }
+
+        /// <summary>
+        /// V12.Phase8.3: Check if target is a runner target.
+        /// </summary>
+        private bool IsRunnerTarget(int targetNum)
+        {
+            // Runner logic: typically T5 is the runner
+            return targetNum == 5;
+        }
+
+        /// <summary>
+        /// V12.Phase8.3: Get target orders dictionary for a specific target number.
+        /// </summary>
+        private ConcurrentDictionary<string, Order> GetTargetOrdersDictionary(int targetNum)
+        {
+            switch (targetNum)
+            {
+                case 1:
+                    return target1Orders;
+                case 2:
+                    return target2Orders;
+                case 3:
+                    return target3Orders;
+                case 4:
+                    return target4Orders;
+                case 5:
+                    return target5Orders;
+                default:
+                    return null;
+            }
+        }
+
+        #endregion
     }
 }

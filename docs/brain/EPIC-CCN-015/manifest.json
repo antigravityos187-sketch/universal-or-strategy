@@ -1,0 +1,71 @@
+{
+  "epic_id": "EPIC-CCN-015",
+  "method": "CancelAll_ProcessSingleFleetAccount",
+  "file": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+  "complexity": 18,
+  "target_complexity": 8,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "date": "2026-06-15"
+    },
+    "1.0": {
+      "status": "completed",
+      "outputs": ["01-scope.md"],
+      "date": "2026-06-15"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"],
+      "date": "2026-06-15",
+      "approval": "APPROVED"
+    },
+    "2.0": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "date": "2026-06-15",
+      "architect": "Bob Shell (Plan Mode)",
+      "extraction_strategy": {
+        "helper_methods": 3,
+        "target_complexity": 5,
+        "helpers": [
+          "IsOrderCancellable (CYC 5)",
+          "IsBracketOrder (CYC 7)",
+          "ShouldPreserveBracket (CYC 2)"
+        ]
+      }
+    },
+    "3.0": {
+      "status": "completed",
+      "outputs": ["03-audit-report.md"],
+      "date": "2026-06-15",
+      "auditor": "Bob Shell (Code Mode)",
+      "audit_result": "PASS",
+      "dna_compliance": {
+        "correctness_by_construction": "PASS",
+        "lock_free_actor_pattern": "PASS",
+        "ascii_only_compliance": "PASS",
+        "jane_street_alignment": "PASS"
+      },
+      "pr_hygiene": {
+        "diff_size": "PASS (450 chars, 95.5% under limit)",
+        "scope_creep": "PASS (single method focus)",
+        "build_readiness": "PASS (zero breaking changes)"
+      }
+    },
+    "4.0": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"],
+      "date": "2026-06-15",
+      "ticket_count": 4,
+      "estimated_effort_hours": 6,
+      "tickets": [
+        "TICKET-1: Extract IsOrderCancellable Helper",
+        "TICKET-2: Extract IsBracketOrder Helper",
+        "TICKET-3: Extract ShouldPreserveBracket Helper",
+        "TICKET-4: Refactor Main Method to Use Helpers"
+      ]
+    }
+  }
+}

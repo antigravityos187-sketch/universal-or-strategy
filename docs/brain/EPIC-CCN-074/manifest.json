@@ -1,0 +1,55 @@
+{
+  "epic_id": "EPIC-CCN-074",
+  "method": "AttachExecutionPanelHandlers",
+  "file": "src/V12_002.UI.Panel.Handlers.cs",
+  "complexity_before": 12,
+  "complexity_after": 1,
+  "jane_street_violations": 0,
+  "epic_status": "COMPLETED",
+  "completion_date": "2026-06-15T21:28:29Z",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["01-scope.md", "01-scope-boundary.md"]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"]
+    },
+    "3": {
+      "status": "completed",
+      "outputs": ["03-audit-report.md"]
+    },
+    "4": {
+      "status": "completed",
+      "outputs": ["04-tickets.md", "04-tickets-vm.md"]
+    },
+    "5": {
+      "status": "completed",
+      "outputs": ["ticket-1-completion.md", "ticket-2-completion.md", "ticket-3-completion.md"]
+    },
+    "6": {
+      "status": "completed",
+      "outputs": ["06-completion-report.md"]
+    }
+  },
+  "tickets": {
+    "total": 3,
+    "completed": 3,
+    "failed": 0
+  },
+  "quality_metrics": {
+    "main_method_cyc": 1,
+    "helper_methods": [
+      {"name": "AttachOrExecutionHandlers", "cyc": 3},
+      {"name": "AttachModeSelectionHandlers", "cyc": 5},
+      {"name": "AttachStrategyToggleHandlers", "cyc": 6}
+    ],
+    "max_method_cyc": 6,
+    "jane_street_compliant": true
+  }
+}

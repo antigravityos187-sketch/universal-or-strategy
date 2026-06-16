@@ -1,0 +1,15 @@
+Wave 4 Phase 5 Bobcoin Usage Summary
+==================================================
+
+Total Epics: 80
+Successful Epics: 78
+Failed Epics: 2
+
+Total Bobcoins Used: 391.12
+Average per Epic: 5.01
+
+Per-API Breakdown:
+  unknown: 391.12 bobcoins
+
+Budget: 800-1,600 bobcoins
+Status: WITHIN BUDGET
