@@ -194,41 +194,57 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else
             {
-                int cancelled = 0;
-                foreach (Order order in Account.Orders)
-                {
-                    if (
-                        order != null
-                        && order.Instrument.FullName == Instrument.FullName
-                        && (
-                            order.OrderState == OrderState.Working
-                            || order.OrderState == OrderState.Accepted
-                            || order.OrderState == OrderState.Submitted
-                            || order.OrderState == OrderState.ChangePending
-                            || order.OrderState == OrderState.ChangeSubmitted
-                        )
-                    )
-                    {
-                        string oName = order.Name;
-                        if (
-                            oName.StartsWith("Stop_")
-                            || oName.StartsWith("S_")
-                            || oName.StartsWith("T1_")
-                            || oName.StartsWith("T2_")
-                            || oName.StartsWith("T3_")
-                            || oName.StartsWith("T4_")
-                            || oName.StartsWith("T5_")
-                        )
-                            continue;
-
-                        CancelOrderOnAccount(order, order.Account);
-                        cancelled++;
-                    }
-                }
+                int cancelled = CancelAll_ProcessNonSIMAAccount();
                 Print($"[V12] CANCEL_ALL -> Cancelled {cancelled} pending entry orders");
             }
 
             return true;
+        }
+
+        private bool IsOrderCancellable(Order order)
+        {
+            if (order == null)
+                return false;
+            if (order.Instrument.FullName != Instrument.FullName)
+                return false;
+
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.ChangePending
+                || order.OrderState == OrderState.ChangeSubmitted;
+        }
+
+        private bool IsProtectedOrderName(string orderName)
+        {
+            if (string.IsNullOrEmpty(orderName))
+                return false;
+
+            return orderName.StartsWith("Stop_")
+                || orderName.StartsWith("S_")
+                || orderName.StartsWith("T1_")
+                || orderName.StartsWith("T2_")
+                || orderName.StartsWith("T3_")
+                || orderName.StartsWith("T4_")
+                || orderName.StartsWith("T5_");
+        }
+
+        private int CancelAll_ProcessNonSIMAAccount()
+        {
+            int cancelled = 0;
+
+            foreach (Order order in Account.Orders)
+            {
+                if (!IsOrderCancellable(order))
+                    continue;
+                if (IsProtectedOrderName(order.Name))
+                    continue;
+
+                CancelOrderOnAccount(order, order.Account);
+                cancelled++;
+            }
+
+            return cancelled;
         }
 
         private int CancelAll_ProcessMasterAccount()
