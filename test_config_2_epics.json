@@ -1,0 +1,18 @@
+{
+  "epics": [
+    {
+      "epic_id": "EPIC-CCN-164",
+      "method": "IsCommandForThisInstrument",
+      "file": "src/V12_002.UI.IPC.cs",
+      "cyc": 36,
+      "api_key": "bob_prod_bob-admin_4UXUt9vwr3DKi2jrP1dEiXvaFmhdsqerpRo1bkVFZYLtod9BWoa82vRKNW2JvLNFiMCXiKWhAyhdHYjgsxCNoMDF_HzsjucwNDH4LGfvXN21q8jECWiaErhvvr9z9h474jEp5"
+    },
+    {
+      "epic_id": "EPIC-CCN-107",
+      "method": "HydrateFromOpenPositions",
+      "file": "src/V12_002.SIMA.Lifecycle.cs",
+      "cyc": 31,
+      "api_key": "bob_prod_bob-admin_V8sa2xf9tLezoczf9f7WZADcMhiUphzZPhDfRiMwx82Wxo1VtH3KMprtBvQFAmRYgECy254WHMSeWFxAuzBGzLj_2SQz2BrZKRs3WsotGTN56eL2Gthg4voAhcMZeefDi7wp"
+    }
+  ]
+}

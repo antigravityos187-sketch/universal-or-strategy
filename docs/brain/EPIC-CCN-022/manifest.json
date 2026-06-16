@@ -1,0 +1,44 @@
+{
+  "epic_id": "EPIC-CCN-022",
+  "method": "PropagateMaster_IdentifyMove",
+  "file": "src/V12_002.Orders.Callbacks.Propagation.cs",
+  "complexity_before": 18,
+  "complexity_after": 4,
+  "epic_status": "COMPLETED",
+  "completion_date": "2026-06-15T20:42:01.511Z",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["01-scope.md"]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"]
+    },
+    "3": {
+      "status": "completed",
+      "output": "03-audit-report.md",
+      "audit_result": "PASS"
+    },
+    "4": {
+      "status": "completed",
+      "output": "04-tickets.md",
+      "ticket_count": 4
+    },
+    "5": {
+      "status": "completed",
+      "output": "05-completion.md",
+      "tickets_executed": 4,
+      "complexity_reduction": "77.8%"
+    },
+    "6": {
+      "status": "completed",
+      "output": "06-completion-report.md",
+      "completion_date": "2026-06-15T20:42:01.511Z"
+    }
+  }
+}

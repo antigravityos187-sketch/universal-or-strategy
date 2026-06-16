@@ -464,18 +464,13 @@ namespace V12_Performance.Tests.Orders
                 {
                     if (
                         tOrder != null
-                        && (
-                            tOrder.OrderState == MockOrderState.Working
-                            || tOrder.OrderState == MockOrderState.Accepted
-                        )
+                        && (tOrder.OrderState == MockOrderState.Working || tOrder.OrderState == MockOrderState.Accepted)
                     )
                     {
                         CancelledOrders.Add(tOrder);
                     }
                 }
             }
-        }
-    }
         }
     }
 
@@ -586,6 +581,6 @@ namespace V12_Performance.Tests.Orders
         public bool EntryFilled { get; set; }
         public int RemainingContracts { get; set; }
     }
-}
 
-// Made with Bob (EPIC-CCN-18 Ticket 1 TDD Infrastructure)
+    // Made with Bob (EPIC-CCN-18 Ticket 1 TDD Infrastructure)
+}

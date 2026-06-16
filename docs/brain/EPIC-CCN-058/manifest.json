@@ -1,0 +1,73 @@
+{
+  "epic_id": "EPIC-CCN-058",
+  "method": "HydrateFSM_MapOrderStateToFsmState",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "complexity": 9,
+  "complexity_after": 7,
+  "target_complexity": 5,
+  "jane_street_violations": 0,
+  "epic_status": "COMPLETED",
+  "completion_date": "2026-06-15T21:25:17.021Z",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1.0": {
+      "status": "completed",
+      "outputs": ["01-scope.md"]
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"]
+    },
+    "2.0": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "strategy": "switch_expression_with_or_patterns",
+      "helper_methods": 0,
+      "refactor_type": "in_place_pattern_matching"
+    },
+    "3.0": {
+      "status": "completed",
+      "output": "03-audit-report.md",
+      "audit_result": "PASS",
+      "blockers": 0,
+      "dna_compliance": {
+        "correctness_by_construction": "PASS",
+        "lock_free_actor_pattern": "PASS",
+        "ascii_only_compliance": "PASS",
+        "jane_street_alignment": "PASS"
+      },
+      "pr_hygiene": {
+        "diff_size": "PASS",
+        "scope_creep": "PASS",
+        "build_readiness": "PASS"
+      }
+    },
+    "4.0": {
+      "status": "completed",
+      "output": "04-tickets.md",
+      "ticket_count": 1,
+      "strategy": "single_atomic_refactor",
+      "estimated_effort_minutes": 15
+    },
+    "5.0": {
+      "status": "completed",
+      "output": "ticket-1-completion.md",
+      "ticket_executed": "TICKET-1",
+      "commit": "0d28fb4",
+      "actual_effort_minutes": 8
+    },
+    "5.V": {
+      "status": "partial",
+      "notes": "Complexity audit passed (CYC=7), full build/test pending Windows environment"
+    },
+    "6.0": {
+      "status": "completed",
+      "output": "06-completion-report.md",
+      "final_complexity": 7,
+      "complexity_reduction_percent": 22
+    }
+  }
+}

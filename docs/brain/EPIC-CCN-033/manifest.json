@@ -1,0 +1,73 @@
+{
+  "epic_id": "EPIC-CCN-033",
+  "method": "FlattenSinglePosition",
+  "file": "src/V12_002.Orders.Management.Flatten.cs",
+  "complexity": 16,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "extraction_strategy": {
+        "helper_methods": 3,
+        "target_ccn": 7,
+        "methods": [
+          "CancelStopAndTargetOrders",
+          "ValidateAndCalculateFlattenQuantity",
+          "SubmitFlattenMarketOrder"
+        ]
+      }
+    },
+    "3": {
+      "status": "completed",
+      "output": "03-audit-report.md",
+      "audit_result": "PASS",
+      "auditor": "Bob CLI (v12-engineer mode)",
+      "date": "2026-06-15",
+      "dna_compliance": {
+        "correctness_by_construction": "PASS",
+        "lock_free_actor_pattern": "PASS",
+        "ascii_only": "PASS",
+        "jane_street_alignment": "PASS"
+      },
+      "pr_hygiene": {
+        "diff_size": "PASS",
+        "scope_creep": "PASS",
+        "build_readiness": "PASS"
+      }
+    },
+    "4": {
+      "status": "completed",
+      "output": "04-tickets.md",
+      "ticket_count": 3,
+      "date": "2026-06-15",
+      "tickets": [
+        {
+          "id": "TICKET-1",
+          "name": "Extract CancelStopAndTargetOrders",
+          "target_ccn": 13,
+          "estimated_ccn": 3
+        },
+        {
+          "id": "TICKET-2",
+          "name": "Extract ValidateAndCalculateFlattenQuantity",
+          "target_ccn": 9,
+          "estimated_ccn": 4
+        },
+        {
+          "id": "TICKET-3",
+          "name": "Extract SubmitFlattenMarketOrder",
+          "target_ccn": 7,
+          "estimated_ccn": 2
+        }
+      ]
+    }
+  }
+}

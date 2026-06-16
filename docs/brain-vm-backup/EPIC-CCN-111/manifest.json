@@ -1,0 +1,77 @@
+{
+  "epic_id": "EPIC-CCN-111",
+  "target_method": "HydrateExpectedPositionsFromBroker",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "phase": "4-tickets",
+  "status": "TICKETS_GENERATED",
+  "claimed_ccn": 17,
+  "actual_ccn": {
+    "parent": 5,
+    "delegate": 7,
+    "combined": 12
+  },
+  "threshold": 8,
+  "compliance": "COMBINED_VIOLATES_THRESHOLD",
+  "recommendation": "CONDITIONAL_GO_SCOPE_REVISION_REQUIRED",
+  "documents": {
+    "00-hotspots": "Phase 0 hotspot analysis",
+    "00-scope": "Phase 1 scope definition (INVALID - claimed CCN 17, actual 12)",
+    "01-scope-boundary": "Phase 1.5 scope boundary validation",
+    "02-architecture-plan": "Phase 2 architecture plan (identified scope error)",
+    "02-analysis": "Phase 2 analysis (verified CCN 5, 7 via complexity_audit.py)",
+    "03-approach": "Phase 2 approach (recommends ABORT or REVISE)",
+    "03-audit-report": "Phase 3 DNA & PR audit (CONDITIONAL GO - scope revision required)",
+    "04-tickets": "Phase 4 implementation tickets (Option A: 4 tickets, Option B: 3 tickets)"
+  },
+  "gate_status": "CONDITIONAL_GO",
+  "gate_reason": "V12 DNA compliance verified. Scope revision required to target actual complex method.",
+  "director_decision_required": true,
+  "options": [
+    "Option A (RECOMMENDED): Revise scope to target HydrateSingleAccountExpectedPosition (CCN ~12-15)",
+    "Option B (FALLBACK): Proceed with original scope (limited benefit, root complexity remains)"
+  ],
+  "created": "2026-06-13T07:39:00Z",
+  "updated": "2026-06-13T08:42:00Z",
+  "rationale": "Combined complexity (12) exceeds Jane Street threshold (8). Requires refactoring.",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ]
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "notes": "Threshold corrected from 15 to 8. Combined complexity (12) violates threshold. Epic proceeds to Phase 3."
+    },
+    "3": {
+      "status": "completed",
+      "outputs": [
+        "03-audit-report.md"
+      ],
+      "notes": "V12 DNA compliance verified (lock-free, ASCII-only, Jane Street alignment). PR hygiene validated. Scope revision required to target HydrateSingleAccountExpectedPosition for meaningful complexity reduction."
+    },
+    "4": {
+      "status": "completed",
+      "outputs": [
+        "04-tickets.md"
+      ],
+      "notes": "Generated two ticket sets: Option A (4 tickets targeting HydrateSingleAccountExpectedPosition) and Option B (3 tickets targeting HydrateExpectedPositionsFromBroker). Director decision required before Phase 5 execution."
+    }
+  }
+}

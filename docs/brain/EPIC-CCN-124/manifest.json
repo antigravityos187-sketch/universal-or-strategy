@@ -1,0 +1,45 @@
+{
+  "epic_id": "EPIC-CCN-124",
+  "method": "DrawORBox",
+  "file": "src/V12_002.DrawingHelpers.cs",
+  "complexity": 12,
+  "loc": 77,
+  "risk_level": "MEDIUM",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ],
+      "completed_date": "2026-06-13"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "completed_date": "2026-06-13"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "01-implementation-plan.md"
+      ],
+      "completed_date": "2026-06-13"
+    },
+    "3": {
+      "status": "completed",
+      "outputs": [
+        "03-audit-report.md"
+      ],
+      "completed_date": "2026-06-14"
+    },
+    "4": {
+      "status": "completed",
+      "outputs": [
+        "04-tickets.md"
+      ],
+      "completed_date": "2026-06-14"
+    }
+  }
+}

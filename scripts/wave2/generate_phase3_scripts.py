@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+"""
+Generate Phase 3 (DNA & PR Audit) scripts for Wave 2
+Copies Phase 2 pattern, only changes phase-specific details
+"""
+
+# Epic to API key mapping (same as Phase 2)
+API_ALLOCATION = {
+    "107": "b (2).json",
+    "108": "b.json",
+    "109": "bob (1).json",
+    "110": "bob (2).json",  # Will skip - closed as compliant
+    "111": "bob (3).json",
+    "112": "bob (4).json",
+    "113": "bob (5).json",
+    "114": "bob (6).json",
+    "115": "bob.json",
+}
+
+# API key contents (from docs/API/*.json)
+API_KEYS = {
+    "b (2).json": "bob_prod_bob-admin_V7HJU1JXC5q7bLKAr7o8nYQMwWb3uLVj6U8b3FYjkbDzzYaccrZX5E7U9pxZxTBoiz2xTv7FGBtSW5QaTZppUzr_FFZsSht5Ab1MM5H97Z4jcfTweD36Ym7i11JATwHMbAvu",
+    "b.json": "bob_prod_bob-admin_V8sa2xf9tLezoczf9f7WZADcMhiUphzZPhDfRiMwx82Wxo1VtH3KMprtBvQFAmRYgECy254WHMSeWFxAuzBGzLj_2SQz2BrZKRs3WsotGTN56eL2Gthg4voAhcMZeefDi7wp",
+    "bob (1).json": "bob_prod_bob-admin_t9tV9fuaYCkKYJNm5xCaHWAAR5yJT59mUXoLRHLyb3G4uVHazEQaFacXSz2Nd9Pij2WYNHkvn7THr5amYPqQeDa_ASoyvBNoW8FE2m47D2fhv67cbYGy7TXVeWYswv5N1MNF",
+    "bob (2).json": "bob_prod_bob-admin_2am9d3VjQYnC4mSub1z5SzdSZJeyptWhfMrxGeEBSorZRPj8WmQvBPtTf8qTpjWHWdRuf7toP2WTDtPEfS6aoTYF_7ufADbTYhnLEY42csrSet3f3ssJuNddPhXD65YewpCWX",
+    "bob (3).json": "bob_prod_bob-admin_5eZYFvHuinQHMnDWNZDZ7ciMX4oiUBsfkVyscGyoEahtNto1a7KNWHo5BFmoN4uPy8rbBYJrUsBtnshvB12nrYQJ_7tiXqEriChoWjAwta66uaZ76JKhxrqiQb6mR5C7AZQyo",
+    "bob (4).json": "bob_prod_bob-admin_3abxQUhB6oz3484pgXxkjkeZEXxTEJfFGwg4D5cY6GWrCXFjT6uUQhvtLz5n8dB5g9Pue31DVuLwR9wa34zrBNmT_DdGCwiky7h1JVUEzJZVTrDxZNUigAnSRPPdUEJNzeLZT",
+    "bob (5).json": "bob_prod_bob-admin_3vzs4jptuwZ7Z63gqpyn3aNy89ozwWyanh2aNB7TQDa22rfmiRJXWCUivJphxYNLAoT8nJMEYmUxaTgWA5Z8URUd_F6U16mpCReKejNsSHgrd7VxPEHuX8sedjJm4hrV7srcQ",
+    "bob (6).json": "bob_prod_bob-admin_65hPWuoJAPhLQKgnKSePPDiqS5YRKW1XDF1LM8kRporvu9XTpgAaY4WYvJgAe72VzRDARKEQzqzMei9UqCj28buk_2Astcnxpem897Pn91xpJXnKY6N7dMhDXAriwNtncfzsB",
+    "bob.json": "bob_prod_bob-admin_5A6hXsy7FL4vf9T2jqr11gdYTmAZcFgxVm1dGD9qGPmpD5fV6emRy6XYzZPsqw56mjCtoiEbJmLU8B2VL4ZtgXeS_ALp1DF9sj3R3cU3dzddRRAVu44Y52VHhkt1BNkSdC2Nq",
+}
+
+# Epics to skip (closed as compliant)
+SKIP_EPICS = ["110"]
+
+def generate_phase3_script(epic_num):
+    """Generate Phase 3 script for given epic number"""
+    if epic_num in SKIP_EPICS:
+        print(f"[SKIP] EPIC-CCN-{epic_num} (closed as compliant)")
+        return None
+    
+    api_file = API_ALLOCATION[epic_num]
+    api_key = API_KEYS[api_file]
+    
+    script = f"""#!/bin/bash
+set -e
+cd /home/malhitticrypto/universal-or-strategy
+export BOBSHELL_API_KEY='{api_key}'
+mkdir -p docs/brain/EPIC-CCN-{epic_num}
+mkdir -p logs/phase3
+
+cat > /tmp/phase3_msg_{epic_num}.txt << 'EOFMSG'
+You are executing Phase 3 (DNA & PR Audit) for EPIC-CCN-{epic_num}.
+
+**Input Artifact**: Read `docs/brain/EPIC-CCN-{epic_num}/02-architecture-plan.md` for architecture plan.
+
+**Your Task**: Perform V12 DNA compliance checks and PR hygiene validation.
+
+**Output Requirements**:
+1. Create `docs/brain/EPIC-CCN-{epic_num}/03-audit-report.md` with:
+   - V12 DNA compliance checks (lock-free, ASCII-only, Jane Street alignment)
+   - PR hygiene validation (diff size, whitespace, scope creep)
+   - Pre-flight safety checks
+   - Risk assessment
+   - Go/No-Go recommendation
+
+2. Update `docs/brain/EPIC-CCN-{epic_num}/manifest.json`:
+   - Set phase "3" status to "completed"
+   - Add "03-audit-report.md" to outputs
+
+**MANDATORY REPORTING**:
+After completing all tasks, you MUST report:
+1. Bobcoins used this session: [X.XX]
+2. Remaining balance in API key: [Y.YY]
+Format: "Cost: X.XX | Balance: Y.YY"
+
+**Critical Rules**:
+- Use execute_command with printf for file creation (SSH-safe)
+- Verify files exist with ls -lh before completion
+- Target complexity <= 8 (Jane Street alignment)
+- Check for lock-free compliance (no lock() statements)
+- Verify ASCII-only (no Unicode/emoji)
+- Validate PR diff < 10k characters
+
+**Phase**: 3 (DNA & PR Audit)
+EOFMSG
+
+bob --yolo --chat-mode advanced "$(cat /tmp/phase3_msg_{epic_num}.txt)" 2>&1 | tee logs/phase3/EPIC-CCN-{epic_num}.log
+echo "DONE_EXIT=$?"
+
+# Made with Bob
+"""
+    
+    filename = f"_p3_{epic_num}.sh"
+    with open(filename, 'w', newline='\n') as f:
+        f.write(script)
+    
+    print(f"[OK] Created {filename} (API: {api_file})")
+    return filename
+
+def generate_launcher():
+    """Generate launcher script for all Phase 3 scripts"""
+    active_epics = [e for e in ["107", "108", "109", "111", "112", "113", "114", "115"] if e not in SKIP_EPICS]
+    
+    launcher = f"""#!/bin/bash
+# Launch all Phase 3 (DNA & PR Audit) scripts in screen sessions
+# Generated from Phase 2 success pattern
+# Skipping EPIC-110 (closed as compliant)
+
+cd /home/malhitticrypto/universal-or-strategy
+
+echo "Starting Phase 3 (DNA & PR Audit) for {len(active_epics)} epics..."
+echo "Skipping: {', '.join(['EPIC-CCN-' + e for e in SKIP_EPICS])}"
+
+# Make scripts executable
+chmod +x _p3_*.sh
+
+# Launch each epic in its own screen session
+for epic in {' '.join(active_epics)}; do
+    screen_name="phase3_epic_${{epic}}"
+    echo "Launching EPIC-CCN-${{epic}} in screen: ${{screen_name}}"
+    screen -dmS "${{screen_name}}" bash -l -c "cd /home/malhitticrypto/universal-or-strategy && ./_p3_${{epic}}.sh"
+    sleep 2
+done
+
+echo ""
+echo "All Phase 3 scripts launched!"
+echo ""
+echo "Monitor with:"
+echo "  screen -ls                    # List all sessions"
+echo "  screen -r phase3_epic_107     # Attach to specific epic"
+echo "  screen -S phase3_epic_107 -X stuff '^C'  # Kill specific session"
+echo ""
+echo "Check logs:"
+echo "  tail -f logs/phase3/EPIC-CCN-*.log"
+echo ""
+"""
+    
+    with open("launch_phase3_all_screen.sh", 'w', newline='\n') as f:
+        f.write(launcher)
+    
+    print("[OK] Created launch_phase3_all_screen.sh")
+
+def main():
+    print("=" * 60)
+    print("Phase 3 Script Generator (DNA & PR Audit)")
+    print("=" * 60)
+    print()
+    
+    # Validate API allocation (no duplicates)
+    api_values = list(API_ALLOCATION.values())
+    if len(api_values) != len(set(api_values)):
+        duplicates = [x for x in api_values if api_values.count(x) > 1]
+        raise ValueError(f"DUPLICATE API KEYS DETECTED: {duplicates}")
+    print(f"[OK] Validated {len(api_values)} unique API keys")
+    print()
+    
+    # Generate individual scripts
+    print("Generating Phase 3 scripts...")
+    active_count = 0
+    for epic_num in ["107", "108", "109", "110", "111", "112", "113", "114", "115"]:
+        result = generate_phase3_script(epic_num)
+        if result:
+            active_count += 1
+    print()
+    
+    # Generate launcher
+    print("Generating launcher...")
+    generate_launcher()
+    print()
+    
+    print("=" * 60)
+    print(f"Phase 3 Generation Complete!")
+    print(f"  Active epics: {active_count}")
+    print(f"  Skipped epics: {len(SKIP_EPICS)}")
+    print("=" * 60)
+    print()
+    print("Next steps:")
+    print("1. Deploy to VM:")
+    print("   gcloud compute scp _p3_*.sh v12-test-golden-v2:~/universal-or-strategy/ --zone=us-central1-a")
+    print("   gcloud compute scp launch_phase3_all_screen.sh v12-test-golden-v2:~/universal-or-strategy/ --zone=us-central1-a")
+    print()
+    print("2. Launch Phase 3:")
+    print("   gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command=\"cd universal-or-strategy && bash launch_phase3_all_screen.sh\"")
+    print()
+
+if __name__ == "__main__":
+    main()

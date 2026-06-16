@@ -11,6 +11,36 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 
 - **ORCHESTRATOR (P1)**: Central Switchboard (Antigravity / Gemini CLI). Controls context and cross-agent routing.
 
+## ⚠️ CRITICAL: 100% Completion Mandate (V12.28)
+
+**EFFECTIVE IMMEDIATELY**: ALL epics in scope MUST reach 100% completion.
+
+**The Rule**:
+- NEVER dismiss any epic as "not our concern" or "out of scope" without explicit Director approval
+- If an epic exists in the roadmap OR has a brain directory, it IS in scope and MUST be completed
+- Naming mismatches (EPIC-CCN-27 vs EPIC-CCN-027) do NOT exempt an epic from completion
+- Missing prerequisite files do NOT exempt an epic - execute missing phases first, then continue
+- The goal is ALWAYS N/N (100%), never N-1/N or "close enough"
+- Every incomplete epic is a blocker to wave completion
+
+**Rationale**:
+- Wave 4 incident: EPIC-CCN-027 and 045 incorrectly dismissed as "not our concern"
+- Both epics had brain directories with Phases 0-4 complete
+- Naming mismatch (roadmap used EPIC-CCN-27, directory used EPIC-CCN-027) led to false assumption
+- Result: 78/80 completion reported as "done" when 2 epics were actually incomplete
+
+**Enforcement**:
+1. Before reporting wave completion, verify ALL epics in roadmap have completion files
+2. Check both naming patterns (with/without leading zeros)
+3. If any epic is incomplete, apply Recovery Loop Protocol until 100%
+4. Document any dismissed epics with explicit Director approval in session notes
+
+**Reference**:
+- `WAVE4_EPIC_027_045_STATUS.md` - Root cause analysis
+- `.bob/custom_modes.yaml` - Protocol 0 (autonomous-refactor mode)
+- `.bob/skills/gcp-vm-wave-execution/skill.md` - V2.5 update
+- `docs/protocol/RECOVERY_LOOP_PROTOCOL.md` - V1.1 update
+
 ## ⚠️ CRITICAL: Code Mode Deprecation (V12.18)
 
 **EFFECTIVE IMMEDIATELY**: Code mode is **BANNED** for all code modification tasks.
@@ -49,6 +79,7 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 - **Lock-Free Actor Pattern**: Legacy `lock(stateLock)` blocks are **STRICTLY BANNED**. All state mutations must use the FSM/Actor `Enqueue` model or atomic primitives.
 - **ASCII-Only Compliance**: NEVER use Unicode, emoji, or curly quotes in C# string literals.
 - **Jane Street Alignment (V12.17)**: ALL agents (Bob, Codex, Qwen, Antigravity, Jules, Rovo Dev, Cursor, etc.) MUST load and apply the ingested Jane Street Intel from `docs/intel/jane-street/` for every architectural decision.
+- **Test Framework Mandate (V12.32)**: ALL agents MUST generate xUnit tests ONLY. NEVER use NUnit or MSTest. See `docs/protocol/TEST_FRAMEWORK_PROTOCOL.md` for complete requirements.
 - **Hard-Link Integrity**: Every `src/` modification MUST be followed by `powershell -File .\deploy-sync.ps1` to re-synchronize NinjaTrader hard links.
 - **Branch Strategy Mandate (V12.24)**:
   * PRIMARY: GitButler virtual branches ONLY (`but branch new <name>`). All work on `gitbutler/workspace` physical branch.
@@ -737,3 +768,111 @@ If scope creep detected:
 4. Restart epic cleanly
 
 **Reference**: `docs/brain/EPIC-13/09-pr12-failure-analysis.md`
+
+## 12. Building-Blocks Method (MANDATORY for Autonomous Execution)
+
+**Version**: 1.0
+**Effective**: 2026-06-14
+**Status**: MANDATORY for all wave-based autonomous refactoring
+
+### Core Principle
+
+**ALL script generation MUST use the building-blocks method**: Copy working scripts from previous phases, modify only phase-specific parameters, never generate from scratch.
+
+### Primary References
+
+**MANDATORY READING before any wave execution**:
+
+1. **Script Generation SOP**: [`docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md`](docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md)
+   - Golden Rule: Always copy SAME phase from PREVIOUS wave
+   - Phase-specific requirements (modes, commands, outputs)
+   - Verification checklist
+   - Recovery procedures
+
+2. **Architecture Overview**: [`building-blocks/autonomous-refactoring/ARCHITECTURE.md`](building-blocks/autonomous-refactoring/ARCHITECTURE.md)
+   - Nested loop architecture
+   - Manifest-based state management
+   - Parallel execution model
+   - Quality gates
+
+3. **Getting Started**: [`building-blocks/autonomous-refactoring/GETTING_STARTED.md`](building-blocks/autonomous-refactoring/GETTING_STARTED.md)
+   - Quick start guide
+   - Prerequisites
+   - First wave walkthrough
+
+4. **Cost-Optimized Polling**: [`docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL.md`](docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL.md)
+   - 4-minute polling intervals (88% cost reduction)
+   - Cache optimization strategy
+   - Master launch script pattern
+
+### Autonomous Execution Goals
+
+**Primary Goal**: Achieve CodeScene complexity score ≤8 (Jane Street strict standard)
+
+**Why ≤8?**
+- CodeScene uses stricter thresholds than Codacy (15)
+- Jane Street HFT systems require cognitive simplicity
+- Functions >8 are harder to reason about under microsecond latency
+- V12 DNA: "Make illegal states unrepresentable" requires simple logic
+
+**Current Status**:
+- Target: All methods ≤8
+- Baseline: 180 methods >8 (80 epics)
+- Progress: Track in `epic_roadmap.json`
+
+### Jane Street KB Integration
+
+**MANDATORY**: Query Jane Street KB before every architectural decision
+
+**When to Query**:
+- Phase 2 (Architecture Planning): Query for extraction patterns
+- Phase 5 (Ticket Execution): Query for implementation patterns
+- Phase 5.V (Verification): Query for testing patterns
+
+**How to Query**:
+```bash
+python scripts/query_kb.py "complexity reduction"
+python scripts/query_kb.py "FSM extraction"
+python scripts/query_kb.py "lock-free patterns"
+```
+
+**KB Coverage**: 100+ rules with P0/P1/P2 severity, HFT patterns, FSM/Actor patterns, testing strategies
+
+### Wave Execution Checklist
+
+**Before Starting Wave**:
+- [ ] Read Script Generation SOP V3
+- [ ] Fresh complexity audit run
+- [ ] Epic roadmap updated
+- [ ] VM accessible and build passes
+- [ ] jCodemunch index current
+- [ ] Git status clean (no uncommitted `src/` changes)
+- [ ] Branch strategy: GitButler virtual branches active
+
+**During Wave**:
+- [ ] Poll every 4 minutes (cache optimization)
+- [ ] Monitor bobcoin usage (track per API)
+- [ ] Check for errors in logs
+- [ ] Verify file persistence
+
+**After Wave**:
+- [ ] Sync to local
+- [ ] Run pre-push validation
+- [ ] Update roadmap
+- [ ] Document lessons learned
+
+### Enforcement
+
+**Violation Protocol**:
+- Any script generated from scratch (not copied) = protocol violation
+- Any wave launched without SOP compliance = protocol violation
+- Any epic executed without Jane Street KB query = protocol violation
+- Any polling interval ≠4 minutes = protocol violation
+
+**Post-Wave Audit** (MANDATORY):
+1. ✅ Review all generated scripts for pattern compliance
+2. ✅ Document any deviations and root causes
+3. ✅ Update building-blocks templates if new patterns discovered
+4. ✅ State "building-blocks(wave-X): no gaps identified" if no gaps found
+
+**Last Audit**: 2026-06-14 - Protocol created, awaiting first wave execution

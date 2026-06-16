@@ -1,0 +1,89 @@
+{
+  "epic_id": "EPIC-CCN-019",
+  "method": "TryHandleFleet_MoveTarget",
+  "file": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+  "complexity": 15,
+  "target_complexity": 8,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "date": "2026-06-15"
+    },
+    "1.0": {
+      "status": "completed",
+      "outputs": ["01-scope.md"],
+      "date": "2026-06-15"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"],
+      "approval": "APPROVED",
+      "date": "2026-06-15"
+    },
+    "2.0": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "date": "2026-06-15",
+      "extraction_strategy": {
+        "helper_count": 2,
+        "target_complexity_per_method": 5,
+        "helpers": [
+          "ValidateFleetMoveCommand",
+          "ProcessFleetMoveTarget"
+        ]
+      }
+    },
+    "3.0": {
+      "status": "completed",
+      "outputs": ["03-audit-report.md"],
+      "audit_result": "PASS",
+      "approval": "APPROVED",
+      "date": "2026-06-15",
+      "blockers": 0,
+      "risk_level": "LOW",
+      "confidence": "HIGH (95%)"
+    },
+    "4.0": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"],
+      "date": "2026-06-15",
+      "ticket_count": 3,
+      "tickets": [
+        "TICKET-1: Extract ValidateFleetMoveCommand",
+        "TICKET-2: Extract ProcessFleetMoveTarget",
+        "TICKET-3: Refactor TryHandleFleet_MoveTarget Orchestrator"
+      ],
+      "estimated_effort": "4-6 hours",
+      "execution_order": "Sequential (TICKET-1 → TICKET-2 → TICKET-3)"
+    },
+    "5.0": {
+      "status": "completed",
+      "outputs": ["05-phase5-completion.md", "ticket-1-completion.md", "ticket-2-completion.md", "ticket-3-completion.md"],
+      "date": "2026-06-15",
+      "tickets_completed": 3,
+      "complexity_achieved": {
+        "ValidateFleetMoveCommand": 10,
+        "ProcessFleetMoveTarget": 7,
+        "TryHandleFleet_MoveTarget": 5
+      }
+    },
+    "6.0": {
+      "status": "completed",
+      "outputs": ["06-completion-report.md"],
+      "date": "2026-06-15"
+    }
+  },
+  "epic_status": "COMPLETED",
+  "completion_date": "2026-06-15T21:17:59Z",
+  "final_complexity": {
+    "before": 15,
+    "after": {
+      "ValidateFleetMoveCommand": 10,
+      "ProcessFleetMoveTarget": 7,
+      "TryHandleFleet_MoveTarget": 5,
+      "total_distributed": 22
+    }
+  },
+  "protocol_version": "V12.23"
+}

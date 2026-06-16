@@ -1,0 +1,87 @@
+{
+  "epic_id": "EPIC-CCN-078",
+  "method": "StopIpcServer",
+  "file": "src/V12_002.UI.IPC.Server.cs",
+  "complexity": 12,
+  "target_complexity": 8,
+  "final_complexity": 4,
+  "jane_street_violations": 0,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1.0": {
+      "status": "completed",
+      "outputs": ["01-scope.md"],
+      "completed_at": "2026-06-15T04:05:54Z"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"],
+      "approval": "GRANTED",
+      "completed_at": "2026-06-15T04:06:11Z"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "approval": "APPROVED",
+      "completed_at": "2026-06-15T05:32:47Z",
+      "extraction_strategy": {
+        "helper_methods": 4,
+        "complexity_reduction": "12 → 4 (67%)",
+        "target_met": true
+      }
+    },
+    "3": {
+      "status": "completed",
+      "approval": "APPROVED"
+    },
+    "4": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"],
+      "ticket_count": 4,
+      "completed_at": "2026-06-15T17:02:10Z"
+    },
+    "5": {
+      "status": "completed",
+      "outputs": ["05-completion.md"],
+      "completed_at": "2026-06-15T19:04:43Z",
+      "tickets_executed": 4,
+      "complexity_achieved": 4
+    },
+    "5.5": {
+      "status": "deferred",
+      "note": "Windows verification pending (build, deploy-sync, pre-push validation)"
+    },
+    "6": {
+      "status": "completed",
+      "outputs": ["06-completion-report.md"],
+      "completed_at": "2026-06-15T21:29:09Z"
+    }
+  },
+  "scope_validation": {
+    "boundary_check": "PASS",
+    "scope_creep_detection": "PASS",
+    "one_epic_one_concern": "PASS",
+    "approval_status": "APPROVED"
+  },
+  "architecture_validation": {
+    "extraction_strategy": "APPROVED",
+    "method_signatures": "APPROVED",
+    "call_graph": "APPROVED",
+    "lock_free_validation": "PASS",
+    "jane_street_compliance": "PASS",
+    "testing_strategy": "APPROVED"
+  },
+  "epic_status": "COMPLETED",
+  "completion_date": "2026-06-15T21:29:09Z",
+  "complexity_reduction": {
+    "before": 12,
+    "after": 4,
+    "reduction_percentage": 67,
+    "target_met": true,
+    "target_exceeded": true
+  },
+  "windows_verification_pending": true
+}

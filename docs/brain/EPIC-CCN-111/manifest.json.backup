@@ -1,0 +1,34 @@
+{
+  "epic_id": "EPIC-CCN-111",
+  "target_method": "HydrateExpectedPositionsFromBroker",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "phase": "2-plan",
+  "status": "SCOPE_VALIDATION_FAILURE",
+  "claimed_ccn": 17,
+  "actual_ccn": {
+    "parent": 5,
+    "delegate": 7,
+    "combined": 12
+  },
+  "threshold": 15,
+  "compliance": "BOTH_METHODS_COMPLIANT",
+  "recommendation": "ABORT_EPIC",
+  "documents": {
+    "00-hotspots": "Phase 0 hotspot analysis",
+    "00-scope": "Phase 1 scope definition (INVALID - claimed CCN 17, actual 12)",
+    "01-scope-boundary": "Phase 1.5 scope boundary validation",
+    "02-architecture-plan": "Phase 2 architecture plan (identified scope error)",
+    "02-analysis": "Phase 2 analysis (verified CCN 5, 7 via complexity_audit.py)",
+    "03-approach": "Phase 2 approach (recommends ABORT or REVISE)"
+  },
+  "gate_status": "BLOCKED",
+  "gate_reason": "Target methods already compliant with Jane Street threshold",
+  "director_decision_required": true,
+  "options": [
+    "ABORT: Close epic as invalid scope",
+    "REVISE: Create new epics for actual violations (CCN 45, 38, 32, 28, 24)",
+    "PROCEED: Continue with preventive refactoring (not recommended)"
+  ],
+  "created": "2026-06-13T07:39:00Z",
+  "updated": "2026-06-13T07:42:23Z"
+}
