@@ -1,15 +1,17 @@
-# VM-Local Git Sync Protocol (V12.36)
+# VM-Local Git Sync Protocol (V12.37)
 
-**Version**: 1.0  
-**Effective**: 2026-06-16  
-**Status**: 🔴 MANDATORY - BLOCKING GATE  
+**Version**: 1.2
+**Effective**: 2026-06-16
+**Status**: 🔴 MANDATORY - BLOCKING GATE
 **Severity**: P0 (Wave execution blocker)
 
 ## Problem Statement
 
-**Wave 5 Pilot Test Incident**: VM was on commit `0d28fb4` (Wave 4 work) while local was on `dad30745` (post-rollback). This caused Bob to see already-extracted code (CYC=10) instead of the baseline code that needed extraction, leading to confusion and wasted execution time.
+**Wave 5 Pilot Test Incident #1** (2026-06-15): VM was on commit `0d28fb4` (Wave 4 work) while local was on `dad30745` (post-rollback). This caused Bob to see already-extracted code (CYC=10) instead of the baseline code that needed extraction.
 
-**Root Cause**: No protocol to verify VM and local git states are synchronized before wave execution.
+**Wave 5 Pilot Test Incident #2** (2026-06-16): Commits matched (`810cfb2f`) but working tree had stale Wave 4 files (`05-completion.md` from 2026-06-15). Bob found EPIC-CCN-001 already complete (CYC=10) instead of baseline needing extraction.
+
+**Root Cause**: V12.36 protocol verified commits match but didn't verify working tree clean or baseline files. `git reset --hard` updates HEAD but doesn't remove untracked files.
 
 ## The Rule
 
@@ -17,9 +19,11 @@
 
 **AFTER EVERY WAVE EXECUTION**: Sync VM changes back to local for PR creation.
 
-## Pre-Wave Git Sync Checklist (Local → VM)
+## Pre-Wave Git Sync Checklist (Local → VM) - 7 Steps
 
 **Purpose**: Ensure VM starts with correct baseline code before wave execution.
+
+**Version**: V12.37 (7-step sync with working tree and baseline verification)
 
 ### Step 1: Verify Local Git State
 
@@ -110,7 +114,50 @@ fi
 
 **BLOCKER**: If commits don't match, STOP and investigate. Do NOT proceed with wave execution.
 
-### Step 6: Verify Source Files Match (Optional but Recommended)
+### Step 6: Verify Working Tree Clean (V12.37 - NEW)
+
+```bash
+# Check for uncommitted changes or untracked files
+VM_STATUS=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="cd ~/universal-or-strategy && git status --porcelain")
+
+if [ -z "$VM_STATUS" ]; then
+  echo "✅ WORKING TREE CLEAN: No uncommitted changes"
+else
+  echo "❌ WORKING TREE DIRTY: Uncommitted changes detected"
+  echo "$VM_STATUS"
+  exit 1
+fi
+```
+
+**Why This Matters**: `git reset --hard` updates HEAD but doesn't remove untracked files. Explicit verification prevents stale data from previous waves.
+
+**Example Failure**: Wave 5 Pilot Test #2 - commits matched but `05-completion.md` existed as untracked file from Wave 4.
+
+**BLOCKER**: If working tree is not clean, investigate and clean before proceeding.
+
+### Step 7: Verify Baseline Files (V12.37 - NEW)
+
+```bash
+# For pilot tests: verify Phase 5 files DON'T exist for pilot epic
+VM_P5_FILES=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="ls ~/universal-or-strategy/docs/brain/EPIC-CCN-001/05-*.md 2>/dev/null | wc -l")
+
+if [ "$VM_P5_FILES" = "0" ]; then
+  echo "✅ BASELINE VERIFIED: No Phase 5 files in EPIC-CCN-001"
+else
+  echo "❌ BASELINE CORRUPTED: Found $VM_P5_FILES Phase 5 files (expected 0)"
+  exit 1
+fi
+```
+
+**Why This Matters**: Prevents Bob from seeing already-extracted code (CYC=10) instead of baseline code needing extraction.
+
+**Use Case**: Before pilot tests, verify brain files match expected baseline (no Phase 5/6 completion files).
+
+**BLOCKER**: If baseline is corrupted, run nuclear clean (see below) before proceeding.
+
+### Step 8: Verify Source Files Match (Optional but Recommended)
 
 ```bash
 # Check specific file hash on VM vs local
@@ -130,6 +177,40 @@ fi
 ```
 
 **Use Case**: Verify critical files (e.g., target file for EPIC-CCN-001) match exactly.
+
+## Nuclear Clean Option (V12.37)
+
+**Purpose**: Complete VM state reset when working tree or baseline is corrupted.
+
+**When to Use**:
+- Before pilot tests (ensure clean baseline)
+- After failed waves (remove partial artifacts)
+- When Step 6 or Step 7 fails (working tree dirty or baseline corrupted)
+
+**Commands**:
+
+```bash
+# Step 1: Remove ALL Wave 4+ brain files
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="cd ~/universal-or-strategy && rm -rf docs/brain/EPIC-CCN-*/05-*.md docs/brain/EPIC-CCN-*/ticket-*.md docs/brain/EPIC-CCN-*/06-*.md"
+
+# Step 2: Hard reset + clean untracked files
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="cd ~/universal-or-strategy && git fetch origin && git reset --hard origin/gitbutler/workspace && git clean -fdx"
+
+# Step 3: Verify baseline (example for EPIC-CCN-001)
+VM_P5_COUNT=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="ls ~/universal-or-strategy/docs/brain/EPIC-CCN-001/05-*.md 2>/dev/null | wc -l")
+
+if [ "$VM_P5_COUNT" = "0" ]; then
+  echo "✅ Nuclear clean successful"
+else
+  echo "❌ Nuclear clean failed: $VM_P5_COUNT files remain"
+  exit 1
+fi
+```
+
+**CRITICAL**: `git clean -fdx` removes ALL untracked files including `.env`, logs, and local configs. Use with caution.
 
 ## Post-Wave Git Sync Checklist (VM → Local)
 
@@ -330,6 +411,24 @@ echo "VM:    $VM_COMMIT"
 ```
 ```
 
+## Common Issues
+
+### Issue: Commits Match But Working Tree Has Stale Data (V12.37)
+
+**Symptom**: Step 5 passes (commits match) but Bob finds already-completed work or stale files.
+
+**Root Cause**: `git reset --hard` doesn't remove untracked files. Working tree can have artifacts from previous waves even when commits match.
+
+**Solution**: Add Step 6 (working tree verification) and Step 7 (baseline file verification) to catch this.
+
+**Example**: Wave 5 Pilot Test #2 (2026-06-16)
+- Commits matched: `810cfb2f`
+- Working tree had Wave 4 files: `05-completion.md` from 2026-06-15
+- Bob found EPIC-CCN-001 already complete (CYC=10)
+- Fixed with nuclear clean + 7-step sync
+
+**Prevention**: Always run 7-step sync (V12.37) before pilot tests.
+
 ## Failure Scenarios
 
 ### Scenario 1: VM Behind Local
@@ -481,8 +580,9 @@ chmod +x scripts/sync_vm_git.sh
 
 ## Version History
 
+- **V1.2 (V12.37)** (2026-06-16): Added Step 6 (working tree verification), Step 7 (baseline verification), nuclear clean option, and Wave 5 Pilot Test #2 learnings
 - **V1.1** (2026-06-16): Added bidirectional sync (VM → Local post-wave) and 5-check verification
-- **V1.0** (2026-06-16): Initial protocol created after Wave 5 pilot test incident
+- **V1.0 (V12.36)** (2026-06-16): Initial 5-step protocol created after Wave 5 Pilot Test #1 incident
 
 ---
 
