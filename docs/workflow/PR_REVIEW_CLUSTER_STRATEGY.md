@@ -1,7 +1,7 @@
 # PR Review Cluster Strategy - Wave 4 Complexity Reduction
 
-**Version**: 1.0  
-**Date**: 2026-06-16  
+**Version**: 1.1
+**Date**: 2026-06-16
 **Status**: 🟢 READY FOR IMPLEMENTATION
 
 ## Overview
@@ -10,7 +10,9 @@ Wave 4 completed 79/80 epics (98.75%) with surgical complexity reduction across 
 
 ## Architecture-Based Clustering
 
-Based on [`docs/architecture.md`](../architecture.md), the V12 Photon Kernel is organized into 8 subsystems (S1-S8). We'll create **one PR per subsystem** to maintain architectural coherence and enable domain-expert reviews.
+Based on [`docs/architecture.md`](../architecture.md), the V12 Photon Kernel is organized into 8 subsystems (S1-S8). Wave 4 epics targeted 7 subsystems (S1-S7). We'll create **one PR per modified subsystem** to maintain architectural coherence and enable domain-expert reviews.
+
+**Note**: S8 (Photon Substrate IO) had no Wave 4 epics because all files were already optimized (<15 CYC). It is excluded from this PR strategy.
 
 ### Cluster Mapping
 
@@ -23,9 +25,10 @@ Based on [`docs/architecture.md`](../architecture.md), the V12 Photon Kernel is 
 | **PR-5** | S5: Kernel State | 8 files | ~72 CYC | ~7 epics | Sticky state, telemetry, lifecycle |
 | **PR-6** | S6: Signals & Entries | 9 files | ~131 CYC | ~10 epics | Trend, OR, RMA, FFMA entry logic |
 | **PR-7** | S7: Kernel Infrastructure | 12 files | ~45 CYC | ~4 epics | Main kernel, drawing helpers, ATM |
-| **PR-8** | S8: Photon Substrate IO | 4 files | ~22 CYC | ~0 epics | Ring buffer, memory pool, MMIO mirror |
 
-**Total**: 8 PRs covering 83 files, ~1,121 CYC reduced, 79 epics
+**Total**: 7 PRs covering 79 files, ~1,099 CYC reduced, 79 epics
+
+**Excluded**: S8 (Photon Substrate IO) - No Wave 4 changes (already optimized)
 
 ## Cluster Definitions
 
@@ -246,26 +249,6 @@ Based on [`docs/architecture.md`](../architecture.md), the V12 Photon Kernel is 
 
 ---
 
-### PR-8: S8 Photon Substrate IO (~0 Epics)
-
-**Files**:
-- `V12_002.Photon.Ring.cs`
-- `V12_002.Photon.Pool.cs`
-- `V12_002.Photon.MmioMirror.cs`
-- `V12_002.MetadataGuard.cs`
-
-**Review Focus**:
-- ✅ Ring buffer implementation (lock-free SPSC)
-- ✅ Memory pool management (object reuse)
-- ✅ MMIO mirror (cross-process state)
-- ✅ Metadata guard (integrity checks)
-
-**Complexity Targets**:
-- All files already <15 CYC (no epics needed)
-
-**Epic Examples**: None (infrastructure already optimized)
-
----
 
 ## PR Creation Workflow
 
@@ -349,24 +332,22 @@ This PR refactors the **SIMA Core** subsystem, which handles:
 | PR-5 (S5) | Telemetry expert | DevOps |
 | PR-6 (S6) | Signal logic expert | Quant analyst |
 | PR-7 (S7) | Kernel expert | Architect |
-| PR-8 (S8) | Low-level systems expert | Performance engineer |
 
 ### Step 4: Review Sequence
 
-**Parallel Review** (all 8 PRs can be reviewed simultaneously):
+**Parallel Review** (all 7 PRs can be reviewed simultaneously):
 - Each PR is architecturally isolated
 - No cross-cluster dependencies
 - Reviewers can focus on domain expertise
 
 **Merge Order** (after all reviews complete):
-1. PR-8 (S8) - Infrastructure foundation
-2. PR-7 (S7) - Kernel core
-3. PR-5 (S5) - State management
-4. PR-1 (S1) - SIMA dispatch
-5. PR-6 (S6) - Signal generation
-6. PR-2 (S2) - Order execution
-7. PR-4 (S4) - Safety layer
-8. PR-3 (S3) - UI/IPC (depends on all others)
+1. PR-7 (S7) - Kernel core (foundation)
+2. PR-5 (S5) - State management
+3. PR-1 (S1) - SIMA dispatch
+4. PR-6 (S6) - Signal generation
+5. PR-2 (S2) - Order execution
+6. PR-4 (S4) - Safety layer
+7. PR-3 (S3) - UI/IPC (depends on all others)
 
 ---
 
@@ -387,12 +368,17 @@ This PR refactors the **SIMA Core** subsystem, which handles:
 - Higher quality feedback
 - Reduced review fatigue
 
-### 4. **Rollback Granularity**
+### 4. **Focused Scope**
+- 7 PRs instead of 1 monolithic or 79 individual PRs
+- Optimal balance between granularity and manageability
+- Each PR represents a cohesive architectural unit
+
+### 5. **Rollback Granularity**
 - If a cluster has issues, rollback only that PR
 - Other clusters remain unaffected
 - Surgical incident response
 
-### 5. **Documentation Alignment**
+### 6. **Documentation Alignment**
 - Each PR maps directly to architecture diagram
 - Clear traceability: epic → cluster → subsystem
 - Easier onboarding for new developers
@@ -402,7 +388,7 @@ This PR refactors the **SIMA Core** subsystem, which handles:
 ## Alternative Strategies (Not Recommended)
 
 ### ❌ Single Monolithic PR
-- **Problem**: 79 epics, 83 files, 1,121 CYC changes in one PR
+- **Problem**: 79 epics, 79 files, 1,099 CYC changes in one PR
 - **Issue**: Impossible to review thoroughly
 - **Risk**: High chance of missing critical issues
 
@@ -428,7 +414,7 @@ This PR refactors the **SIMA Core** subsystem, which handles:
 - ✅ Complexity targets met (all methods ≤15 CYC)
 
 ### Wave-Level Metrics
-- ✅ All 8 PRs merged within 2 weeks
+- ✅ All 7 PRs merged within 2 weeks
 - ✅ Zero production incidents
 - ✅ Zero rollbacks
 - ✅ 100% test coverage maintained
@@ -441,8 +427,8 @@ This PR refactors the **SIMA Core** subsystem, which handles:
 1. **Generate PR branches** (one per cluster)
 2. **Create GitHub PRs** (use template above)
 3. **Assign reviewers** (domain experts)
-4. **Parallel review** (all 8 PRs simultaneously)
-5. **Sequential merge** (S8 → S7 → S5 → S1 → S6 → S2 → S4 → S3)
+4. **Parallel review** (all 7 PRs simultaneously)
+5. **Sequential merge** (S7 → S5 → S1 → S6 → S2 → S4 → S3)
 6. **Celebrate** 🎉 (Wave 4 complete!)
 
 ---
