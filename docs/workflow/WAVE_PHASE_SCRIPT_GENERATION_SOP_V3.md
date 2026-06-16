@@ -1,6 +1,6 @@
 # Wave Phase Script Generation SOP V3
 
-**Version**: 3.4
+**Version**: 3.6
 **Date**: 2026-06-16
 **Status**: MANDATORY
 **Supersedes**: V3.3
@@ -113,6 +113,76 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
 
 ## Standard Operating Procedure
 
+### Step -2: Pre-Wave Validation (V12.38 - NEW)
+
+**CRITICAL**: Before generating ANY scripts, validate wave readiness.
+
+**Purpose**: Prevent cascade failures by catching protocol gaps before execution.
+
+#### Validation Checklist
+
+Execute these checks in order. If ANY check fails, STOP immediately.
+
+**1. Encoding Pre-Check**:
+```powershell
+.\scripts\check_encoding.ps1
+# Expected: Exit code 0, "All files use UTF-8 encoding"
+```
+
+**2. 7-Step Git Sync Verified**:
+```bash
+# Follow V12.37 protocol (see Step 0.5 below)
+# Expected: VM and local on same commit AND working tree clean
+```
+
+**3. VM Build Passes**:
+```bash
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="cd ~/universal-or-strategy && dotnet build src/V12_002.csproj"
+# Expected: Build succeeded, 0 errors
+```
+
+**4. Local Build Passes**:
+```powershell
+dotnet build src/V12_002.csproj
+# Expected: Build succeeded, 0 errors
+```
+
+**5. Pre-Flight Validation Tested**:
+```bash
+# Test skip/local/normal epic classification
+python scripts/epic_preflight_validation.py --wave N
+# Expected: Correct counts for skip/local/normal epics
+```
+
+**6. Pilot Test Plan Created**:
+```markdown
+# Create docs/brain/WAVE-N/pilot-test-plan.md
+- Epic: EPIC-CCN-001 (or first epic in wave)
+- Expected output: Phase X files
+- Success criteria: Files created, build passes, 0 P0/P1 issues
+```
+
+**7. All Protocol Files Exist**:
+```bash
+# Verify required protocols exist
+ls docs/protocol/WAVE_ROLLBACK_PROTOCOL.md
+ls docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md
+ls docs/protocol/FILE_ENCODING_PROTOCOL.md
+# Expected: All files exist
+```
+
+#### BLOCKING GATE
+
+**If ANY check fails**:
+1. STOP immediately
+2. Document failure in wave monitoring file
+3. Fix issue before proceeding
+4. Re-run validation checklist
+5. Only proceed after ALL checks pass
+
+**DO NOT PROCEED** with script generation until validation passes.
+
 ### Step 0: MANDATORY Encoding Pre-Check (V12.33)
 
 **CRITICAL**: Before generating ANY phase scripts, verify UTF-8 encoding compliance.
@@ -150,16 +220,17 @@ Scanning: src
 
 **Reference**: `docs/protocol/FILE_ENCODING_PROTOCOL.md` (V12.33)
 
-### Step 0.5: MANDATORY VM-Local Git Sync (V12.36)
+### Step 0.5: MANDATORY VM-Local Git Sync (V12.37)
 
-**CRITICAL**: Before generating ANY wave scripts, verify VM and local are on the SAME git commit.
+**CRITICAL**: Before generating ANY wave scripts, verify VM and local are on the SAME git commit AND working tree is clean.
 
 **Why This Matters**:
-- Wave 5 Pilot Test Incident: VM on commit `0d28fb4` (Wave 4 work) instead of `dad30745` (post-rollback)
+- Wave 5 Pilot Test #2 Incident: Commits matched (`810cfb2f`) but working tree had Wave 4 files
 - Impact: Bob saw already-extracted code (CYC=10) instead of baseline code needing extraction
 - Result: Wasted execution time, confusion about work status
+- Fix: V12.37 added working tree verification (7-step sync)
 
-**Sync Checklist**:
+**7-Step Sync Checklist**:
 
 1. **Check Local Git State**:
    ```bash
@@ -177,16 +248,16 @@ Scanning: src
 3. **Check VM Git State (Before Sync)**:
    ```bash
    gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
-     --command="cd ~/universal-or-strategy && git log -1 --oneline"
+     --command="cd ~/universal-or-strategy && git log -1 --oneline && git status"
    ```
 
-4. **Sync VM to Match Local**:
+4. **Sync VM to Match Local (Hard Reset + Clean)**:
    ```bash
    gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
      --command="cd ~/universal-or-strategy && git fetch origin && git reset --hard origin/gitbutler/workspace && git clean -fd"
    ```
 
-5. **Verify Sync Succeeded (MANDATORY)**:
+5. **Verify Commits Match (MANDATORY)**:
    ```bash
    LOCAL_COMMIT=$(git log -1 --format="%H")
    VM_COMMIT=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
@@ -196,14 +267,43 @@ Scanning: src
    echo "VM:    $VM_COMMIT"
    
    if [ "$LOCAL_COMMIT" = "$VM_COMMIT" ]; then
-     echo "✅ SYNC VERIFIED: VM and local on same commit"
+     echo "✅ COMMITS MATCH"
    else
-     echo "❌ SYNC FAILED: Commits do not match"
+     echo "❌ COMMITS MISMATCH"
      exit 1
    fi
    ```
 
-**BLOCKER**: If commits don't match, STOP and investigate. Do NOT proceed with wave execution.
+6. **Verify Working Tree Clean (V12.37 - NEW)**:
+   ```bash
+   VM_STATUS=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+     --command="cd ~/universal-or-strategy && git status --porcelain")
+   
+   if [ -z "$VM_STATUS" ]; then
+     echo "✅ WORKING TREE CLEAN"
+   else
+     echo "❌ WORKING TREE DIRTY"
+     echo "$VM_STATUS"
+     exit 1
+   fi
+   ```
+
+7. **Verify Baseline Files (V12.37 - NEW)**:
+   ```bash
+   # For pilot epic, verify no Phase 5 files exist
+   PILOT_EPIC="EPIC-CCN-001"  # Adjust for your wave
+   PHASE5_FILES=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+     --command="ls ~/universal-or-strategy/docs/brain/$PILOT_EPIC/ticket-*-completion.md 2>/dev/null | wc -l")
+   
+   if [ "$PHASE5_FILES" = "0" ]; then
+     echo "✅ BASELINE VERIFIED (no Phase 5 files)"
+   else
+     echo "❌ BASELINE CONTAMINATED ($PHASE5_FILES Phase 5 files found)"
+     exit 1
+   fi
+   ```
+
+**BLOCKER**: If ANY step fails, STOP immediately. Do NOT proceed with wave execution.
 
 **Document in Wave Monitoring File**:
 ```markdown
@@ -457,8 +557,9 @@ gcloud compute scp _p3_116.sh _p3_117.sh v12-test-golden-v2:~/universal-or-strat
 
 Before deploying any phase scripts, verify:
 
+- [ ] **PRE-WAVE VALIDATION PASSED** (Step -2 - V12.38 MANDATORY)
 - [ ] **ENCODING PRE-CHECK PASSED** (Step 0 - V12.33 MANDATORY)
-- [ ] **VM-LOCAL GIT SYNC VERIFIED** (Step 0.5 - V12.36 MANDATORY)
+- [ ] **VM-LOCAL GIT SYNC VERIFIED** (Step 0.5 - V12.37 MANDATORY)
 - [ ] Copied from previous wave's SAME phase (not adjacent phase)
 - [ ] Updated epic numbers only (107-115 → 116-125)
 - [ ] Mode matches SOP (ask/plan/advanced/v12-engineer)
@@ -503,7 +604,122 @@ If wrong output format detected:
 
 ---
 
+## Step 11: Post-Wave Rollback (V12.38 - NEW)
+
+**Purpose**: Standardize rollback procedures for failed waves.
+
+**When to Execute**: After wave completion if quality gates fail.
+
+### Rollback Decision
+
+**Automatic Triggers** (no approval needed):
+- P0 compilation blocker in ANY PR
+- >20% epic failure rate
+- >5 P0 issues in Greptile audit
+- Scope creep in >10% of epics
+
+**Manual Triggers** (Director approval required):
+- 10-20% failure rate with 0 P0 issues
+- Cost-benefit analysis favors rollback
+- Systemic protocol gap detected
+
+### Rollback Decision Matrix
+
+Use this matrix to determine keep/skip/local/retry scope:
+
+| Scenario | Keep | Skip | Local | Retry | Rationale |
+|----------|------|------|-------|-------|-----------|
+| All PRs clean | All | 0 | 0 | 0 | No rollback needed |
+| 1-2 PRs buggy | Clean | Invalid | Encoding | Buggy | Surgical fix |
+| >50% PRs buggy | 0 | Invalid | Encoding | All | Full rollback |
+| P0 in ANY PR | 0 | Invalid | Encoding | All | Safety first |
+
+### Rollback Execution
+
+**Follow 4-step procedure**:
+
+1. **Close All PRs**: Use `gh pr close` with rollback reason
+2. **Revert Merged PRs**: If any PRs merged before rollback
+3. **Delete Phase 5-6 Files**: For retry epics only
+4. **Update Roadmap**: Mark invalid/local/retry status
+
+**Complete Protocol**: See `docs/protocol/WAVE_ROLLBACK_PROTOCOL.md`
+
+**Quick Reference**: See `docs/workflow/WAVE_ROLLBACK_CHECKLIST.md`
+
+### Post-Rollback Actions
+
+**Immediate** (Day 0):
+1. Execute 4-step rollback
+2. Document root cause
+3. Identify protocol gaps
+4. Create hardening plan
+
+**Short-Term** (Day 1-3):
+1. Update protocols (fix gaps)
+2. Update SOPs (add missing steps)
+3. Update skills (add missing checks)
+4. Update custom modes (add missing mandates)
+
+**Validation** (Day 4-7):
+1. Run pilot test with hardened protocols
+2. Verify 0 P0/P1 issues in pilot
+3. Document pilot results
+4. Obtain Director approval for retry
+
+**Retry** (Day 8+):
+1. Launch retry wave with hardened protocols
+2. Monitor closely (first 10 epics)
+3. Apply recovery loop if any failures
+4. Document improvements
+
+### Rollback Cost Calculation
+
+**Formula**:
+```
+Lost Cost = (Retry Epics × Phase 5-6 Cost per Epic)
+Retry Cost = (Retry Epics × Phase 5-6 Cost per Epic)
+Total Impact = Lost Cost + Retry Cost
+```
+
+**Example (Wave 4)**:
+- Retry Epics: 78
+- Phase 5-6 Cost: $0.05/epic
+- Lost Cost: $3.90
+- Retry Cost: $3.90
+- Total Impact: $7.80
+
+### Success Criteria for Retry
+
+**Before Retry Wave**:
+- [ ] All protocol gaps fixed
+- [ ] Pilot test passed (0 P0/P1 issues)
+- [ ] Director approval obtained
+- [ ] Cost estimate updated
+
+**During Retry Wave**:
+- [ ] First 10 epics monitored closely
+- [ ] Recovery loop applied if failures
+- [ ] Quality gates enforced
+
+**After Retry Wave**:
+- [ ] All epics completed successfully
+- [ ] 0 P0 issues in Greptile audit
+- [ ] Lessons learned documented
+
+---
+
 ## Version History
+
+### V3.6 (2026-06-16)
+- **Added**: Pre-Wave Validation section (Step -2) with 7-check gate
+- **Added**: Post-Wave Rollback section (Step 11) with 4-step procedure
+- **Updated**: VM-Local Git Sync to V12.37 (7-step sync with working tree verification)
+- **Updated**: Verification checklist with pre-wave validation requirement
+- **Reason**: Wave 4 rollback experience + Wave 5 Pilot Test #2 working tree gap
+- **Reference**: docs/protocol/WAVE_ROLLBACK_PROTOCOL.md (V12.38)
+
+### V3.5 (2026-06-16)
 
 ### V3.5 (2026-06-16)
 - **Added**: MANDATORY VM-Local Git Sync (Step 0.5) before script generation

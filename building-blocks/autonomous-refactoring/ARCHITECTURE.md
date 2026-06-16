@@ -408,6 +408,149 @@ cat docs/brain/EPIC-CCN-X/manifest.json
 - Not code-related
 - Ignore (don't fix)
 
+### Wave Rollback Strategy (V12.38)
+
+Autonomous refactoring uses a **fail-fast, rollback-first** strategy to prevent cascade failures.
+
+#### Rollback Decision Matrix
+
+| Failure Rate | P0 Count | Decision | Rationale |
+|--------------|----------|----------|-----------|
+| <10% | 0 | Continue | Isolated failures, apply recovery loop |
+| 10-20% | 0 | Pause & Analyze | Systematic issue possible |
+| >20% | Any | Rollback | Systematic failure confirmed |
+| Any | >0 | Rollback | Compilation blockers = safety risk |
+| Any | >5 | Rollback | Quality threshold exceeded |
+
+#### Rollback Triggers
+
+**Automatic** (no approval needed):
+- P0 compilation blocker in ANY PR
+- >20% epic failure rate
+- >5 P0 issues in Greptile audit
+- Scope creep in >10% of epics
+
+**Manual** (Director approval required):
+- 10-20% failure rate with 0 P0 issues
+- Cost-benefit analysis favors rollback
+- Systemic protocol gap detected
+
+#### 4-Step Rollback Procedure
+
+**Step 1: Close All PRs**
+- Use `gh pr close` with rollback reason
+- Document issue count (P0/P1/P2)
+- Verify 0 open PRs remain
+
+**Step 2: Revert Merged PRs** (if any)
+- Identify merged PRs via git log
+- Revert merge commits
+- Push reverts to main
+- Verify reverts successful
+
+**Step 3: Delete Phase 5-6 Files**
+- Create deletion script for retry epics
+- Execute on local (not VM)
+- Verify file counts before/after
+- Commit deletion to gitbutler/workspace
+
+**Step 4: Update Roadmap**
+- Mark invalid epics as INVALID
+- Mark encoding-sensitive epics for local execution
+- Update retry epic status to pending
+- Commit roadmap changes
+
+#### Post-Rollback Actions
+
+**Immediate** (Day 0):
+1. Execute 4-step rollback
+2. Document root cause
+3. Identify protocol gaps
+4. Create hardening plan
+
+**Short-Term** (Day 1-3):
+1. Update protocols (fix gaps)
+2. Update SOPs (add missing steps)
+3. Update skills (add missing checks)
+4. Update custom modes (add missing mandates)
+
+**Validation** (Day 4-7):
+1. Run pilot test with hardened protocols
+2. Verify 0 P0/P1 issues in pilot
+3. Document pilot results
+4. Obtain Director approval for retry
+
+**Retry** (Day 8+):
+1. Launch retry wave with hardened protocols
+2. Monitor closely (first 10 epics)
+3. Apply recovery loop if any failures
+4. Document improvements
+
+#### Rollback Cost Calculation
+
+**Formula**:
+```
+Lost Cost = (Retry Epics × Phase 5-6 Cost per Epic)
+Retry Cost = (Retry Epics × Phase 5-6 Cost per Epic)
+Total Impact = Lost Cost + Retry Cost
+```
+
+**Example (Wave 4)**:
+- Retry Epics: 78
+- Phase 5-6 Cost: $0.05/epic
+- Lost Cost: $3.90
+- Retry Cost: $3.90
+- Total Impact: $7.80
+
+**Cost-Benefit Decision Tree**:
+```
+Is Total Impact < Fix Cost?
+├─ YES → Rollback (cheaper)
+└─ NO → Is protocol gap systemic?
+   ├─ YES → Rollback (prevent cascade)
+   └─ NO → Fix in place (isolated issue)
+```
+
+#### Case Study: Wave 4 Rollback
+
+**Scenario**: 79/80 epics completed, 7 PRs created, Greptile found 28 issues
+
+**Analysis**:
+- P0 issues: 9 (compilation blockers)
+- P1 issues: 12 (logic errors)
+- P2 issues: 6 (style violations)
+- Failure rate: 87.5% (7/8 PRs had issues)
+
+**Decision**: Full rollback (0 keep, 78 retry)
+
+**Root Cause**: Bob CLI over-optimization
+- No SURGICAL ONLY mandate
+- No explicit verification protocol
+- No scope boundary enforcement
+
+**Hardening**:
+- Added SURGICAL ONLY mandate (V12.34)
+- Added 5-check verification protocol (V12.34)
+- Added scope boundary validation (V12.23)
+- Added VM-Local git sync (V12.36 → V12.37)
+
+**Outcome**: Wave 5 pilot test caught additional protocol gap before 77-epic cascade
+
+**ROI**: $11.80 rollback cost vs $57.75 fix-in-place cost (5x savings)
+
+**Lesson**: Rollback investment paid off by catching cascade before full wave execution
+
+#### Complete Protocol
+
+See `docs/protocol/WAVE_ROLLBACK_PROTOCOL.md` for:
+- Detailed rollback decision matrix
+- Pre-rollback checklist
+- Post-rollback checklist
+- Retry preparation steps
+- Complete Wave 4 analysis
+
+See `docs/workflow/WAVE_ROLLBACK_CHECKLIST.md` for quick reference.
+
 ### Escalation Protocol
 
 **Local Loop Failure** (>3 iterations):
@@ -429,6 +572,12 @@ cat docs/brain/EPIC-CCN-X/manifest.json
 - No cascade (isolation via worktrees)
 - Fix failed epic
 - Resume from next epic
+
+**Wave Rollback** (>20% failure rate OR P0 in ANY PR):
+- Execute 4-step rollback procedure
+- Document root cause and protocol gaps
+- Harden protocols before retry
+- Run pilot test to validate fixes
 
 ## Performance Characteristics
 
