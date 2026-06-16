@@ -4,6 +4,31 @@ description: Launch autonomous epic execution waves on GCP VMs using pre-configu
 ---
 
 # GCP VM Wave Execution
+---
+
+## ⚠️ READ THIS FIRST (MANDATORY)
+
+**CRITICAL**: This skill document contains essential information about VM setup and wave execution. You MUST read this entire document before ANY VM operation.
+
+**Why This Matters**:
+- Agents who skip reading this skill make incorrect assumptions about VM capabilities
+- Common mistakes: trying to run `dotnet build` on VM (VM has no .NET SDK)
+- Common mistakes: looking for Bob CLI in wrong location (it's at ~/bob, not /usr/local/bin)
+- Common mistakes: expecting compilation on VM (compilation happens locally only)
+
+**Verification Checklist** (check ALL before proceeding):
+- [ ] I have read "What you need" section (lines 22-44)
+- [ ] I have read "Pre-Wave Checklist" section (lines 47-120)
+- [ ] I have read "Wave Rollback Procedure" section (lines 769-930)
+- [ ] I understand VM does NOT have .NET SDK installed
+- [ ] I understand VM ONLY executes Bob CLI (no compilation)
+- [ ] I understand Bob CLI location is `~/bob` (aliased)
+
+**BLOCKING GATE**: If you have NOT checked ALL boxes above, STOP. Read this skill document in full before proceeding.
+
+**Complete VM Setup Protocol**: `docs/protocol/VM_SETUP_PROTOCOL.md` (V12.39)
+
+---
 
 Launch autonomous epic execution waves on GCP VMs using pre-configured golden images for parallel refactoring with automatic recovery and file persistence verification.
 
@@ -966,6 +991,7 @@ See `docs/workflow/WAVE_ROLLBACK_CHECKLIST.md` for quick reference.
 **Example** (Phase 1 for EPIC-CCN-016):
 ```powershell
 # 1. Extract API key from scripts/wave4/_p1_016.sh line 10
+- **V2.10** (2026-06-16): **SKILL READING MANDATE**: Added "READ THIS FIRST" blocking gate at top of skill. Forces agents to explicitly acknowledge reading skill before ANY VM operation. Addresses 3 recurring issues: (1) agents not reading skill documentation (ROOT CAUSE), (2) agents trying to run dotnet build on VM (VM has no .NET SDK), (3) agents looking for Bob CLI in wrong location (~/bob, not /usr/local/bin). Added verification checklist, VM setup facts, and reference to VM_SETUP_PROTOCOL.md (V12.39).
 $env:BOBSHELL_API_KEY='bob_prod_bob-admin_t9tV9...'
 
 # 2. Execute with Bob CLI
@@ -1023,7 +1049,7 @@ After every use of this skill:
 4. ✅ Add recovery procedures for new issues
 5. ✅ State "skill(gcp-vm-wave-execution): no gaps identified" if no gaps found
 
-**Last Audit**: 2026-06-16 23:20 UTC - **WAVE ROLLBACK PROCEDURE ADDED (V2.9)**: After Wave 4 rollback experience (28 issues, $7.80 cost), added comprehensive Wave Rollback Procedure section. Documents 4-step rollback (close PRs, revert, delete files, update roadmap), decision matrix (keep/skip/local/retry), automatic/manual triggers, cost calculation formula, and post-rollback actions. Includes Wave 4 case study (78 retry epics, Bob over-optimization root cause). References WAVE_ROLLBACK_PROTOCOL.md (V12.38) and WAVE_ROLLBACK_CHECKLIST.md for complete procedures. Standardizes rollback execution for all future waves.
+**Last Audit**: 2026-06-16 23:47 UTC - **SKILL READING MANDATE ADDED (V2.10)**: Added "READ THIS FIRST" blocking gate at top of skill to address 3 recurring issues: (1) agents not reading skill documentation (ROOT CAUSE), (2) agents trying to run dotnet build on VM (VM has no .NET SDK), (3) agents looking for Bob CLI in wrong location (~/bob, not /usr/local/bin). Added verification checklist, VM setup facts, and reference to VM_SETUP_PROTOCOL.md (V12.39). Forces explicit acknowledgment before ANY VM operation.
 
 **Previous Audit**: 2026-06-16 23:09 UTC - **7-STEP SYNC PROTOCOL ADDED (V2.8)**: After Wave 5 Pilot Test #2 (commits matched but working tree had stale files), enhanced VM-Local Git Sync Protocol to V12.37. Added Step 6 (working tree verification) and Step 7 (baseline file verification) to catch untracked files that `git reset --hard` doesn't remove. Added nuclear clean option for complete VM state reset. Updated Pre-Wave Checklist with 7-step sync and nuclear clean commands. Prevents Bob from seeing already-extracted code (CYC=10) instead of baseline. Reference: docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md (V1.2), Wave 5 Pilot Test #2 incident (2026-06-16)
 
