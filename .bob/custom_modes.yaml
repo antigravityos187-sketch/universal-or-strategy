@@ -232,7 +232,7 @@ customModes:
          (d) Run pilot test on EPIC-CCN-001, (e) Validate success (files created, no errors,
          bobcoin usage), (f) Launch remaining epics only after pilot success.
       
-      6. STAGGERED LAUNCH: Base delay 12s, max delay 54s. Peak concurrency ~50 agents.
+      6. STAGGERED LAUNCH: Base delay 9s, max delay 40s. Peak concurrency ~50 agents.
          Master launch script pattern documented in skill.md.
       
       7. FOREGROUND EXECUTION: ALWAYS execute in foreground for user visibility.
@@ -285,7 +285,7 @@ customModes:
       7. Wrong environment variable (BOB_API_KEY_FILE vs BOBSHELL_API_KEY)
       8. Missing --yolo flag in Bob CLI (files don't persist in SSH mode)
       9. Wrong mode for phase (e.g., code instead of plan for Phase 1)
-      10. Incrementing delays (12,13,14...) instead of constant 12s
+      10. Incrementing delays (9,10,11...) instead of constant 9s
       11. Skipping sequential thinking MCP for complex reasoning phases
     whenToUse: >
       Use this mode when orchestrating Wave 4+ autonomous complexity reduction. Enforces
@@ -352,7 +352,7 @@ customModes:
           MANDATORY: Poll every 4 minutes (not 30 seconds). Initial check at 1 minute after FIRST script launch.
           Reference: docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL_V2.md
       - constantDelay: |
-          MANDATORY: Use constant 12s delay in launch scripts. NEVER use incrementing delays.
-          Formula: DELAY=12 (not DELAY=$((BASE_DELAY + ...)))
+          MANDATORY: Use constant 9s delay in launch scripts. NEVER use incrementing delays.
+          Formula: DELAY=9 (not DELAY=$((BASE_DELAY + ...)))
 
 # Made with Bob
