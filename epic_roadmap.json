@@ -177,7 +177,9 @@
     "hotspot_score": 0.0,
     "codescene_score": null,
     "composite_score": 0.0,
-    "codescene_issues": []
+    "codescene_issues": [],
+    "status": "INVALID",
+    "notes": "Target method Dispatch_PublishMarketBracketToPhoton not found in codebase. Stale jCodemunch index. Brain directory exists as EPIC-CCN-027 (with leading zero)."
   },
   {
     "epic_number": "EPIC-CCN-28",
