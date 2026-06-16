@@ -20,17 +20,20 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- EPIC-CCN-12: Reference V12_002 to test internal helpers via InternalsVisibleTo -->
-    <ProjectReference Include="..\..\src\V12_002.csproj" />
-  </ItemGroup>
-
   <!--
-    NOTE: UNIT TEST project for testing extracted helper methods.
-    EPIC-CCN-12: References V12_002.csproj to test internal helpers via InternalsVisibleTo.
-    Jane Street Alignment: Tests are part of same codebase (not separate enforcement gate).
+    NOTE: V12_002 is a NinjaTrader 8 strategy that can ONLY be compiled within the NT8 environment.
+    It depends on NT8 proprietary assemblies (NinjaTrader.Cbi, NinjaTrader.Gui, etc.) which are
+    not available in standalone .NET builds.
     
-    For full integration tests requiring NT8 runtime, see integration test project (future).
+    ARCHITECTURAL CONSTRAINT: NinjaTrader strategies compile at runtime within NT8, not as standalone projects.
+    
+    TESTING STRATEGY:
+    - Unit tests in this project test extracted helper methods that DON'T depend on NT8 assemblies
+    - Integration tests requiring V12_002 strategy code must run via NT8 Strategy Analyzer
+    - Complexity audits use CodeScene/Codacy (not local dotnet tools)
+    
+    EPIC-CCN-12: Originally attempted to reference V12_002.csproj, but this is architecturally impossible.
+    Jane Street Alignment: Tests are part of same codebase (not separate enforcement gate).
   -->
 </Project>
 
