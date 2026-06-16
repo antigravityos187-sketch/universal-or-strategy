@@ -1,5 +1,0 @@
-{"id":"9beb2e1f-e3cf-4add-828e-5e9374698a8e","ts":"2026-06-16T04:29:56.698Z","path":"C:/WSGTA/universal-or-strategy/src/V12_002.SIMA.Dispatch.cs","version":"1.0.0","taskID":"3f7912a8-156f-4986-bac3-c506424b1095"}
-{"id":"7e339115-fb0e-4d06-be08-3e5c46a8c8f1","ts":"2026-06-16T06:13:12.793Z","path":"C:/WSGTA/universal-or-strategy/src/V12_002.UI.IPC.Commands.Fleet.cs","version":"1.0.0","taskID":"bbb2bdd9-2822-4464-951a-415947f2ab09"}
-{"id":"a82f9872-1a36-4caa-b0c1-a678d6b4dd2b","ts":"2026-06-16T06:57:36.685Z","path":"C:/WSGTA/universal-or-strategy/src/V12_002.UI.IPC.Commands.Fleet.cs","version":"1.0.0","taskID":"8ac0e6d5-154f-4161-8e0c-4f3700eed30f"}
-{"id":"56e36061-544d-4de3-a229-025893090b8e","ts":"2026-06-16T06:57:44.440Z","path":"C:/WSGTA/universal-or-strategy/src/V12_002.UI.IPC.Commands.Fleet.cs","version":"1.0.0","taskID":"8ac0e6d5-154f-4161-8e0c-4f3700eed30f"}
-{"id":"80c8e4b2-a99d-442b-af5a-3e0a4b0f6686","ts":"2026-06-16T06:57:51.275Z","path":"C:/WSGTA/universal-or-strategy/src/V12_002.UI.IPC.Commands.Fleet.cs","version":"1.0.0","taskID":"8ac0e6d5-154f-4161-8e0c-4f3700eed30f"}
