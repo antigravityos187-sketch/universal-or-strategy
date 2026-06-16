@@ -1,0 +1,15 @@
+# Wave 2 Epic List v2 - PURE COMPLEXITY RANKING (CYC ≥ 20)
+# Format: EPIC-ID|MethodName|CurrentComplexity
+# Source: jCodemunch winnow_symbols (2026-06-12)
+# Target: Reduce all to CYC ≤ 8
+# REMOVED: EPIC-CCN-164 (already complete in Build-983)
+
+EPIC-CCN-107|ProcessIpcCommands|76
+EPIC-CCN-108|ProcessOnExecutionUpdate|67
+EPIC-CCN-109|HydrateFSMsFromWorkingOrders|45
+EPIC-CCN-110|HandleFlatPositionUpdate|37
+EPIC-CCN-111|AdoptFleetOrders|37
+EPIC-CCN-112|ExtractTargetConfiguration|31
+EPIC-CCN-113|SweepBrokerOrders|28
+EPIC-CCN-114|FlattenSinglePosition|27
+EPIC-CCN-115|ExecuteRetestEntry|26

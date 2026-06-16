@@ -1,0 +1,121 @@
+{
+  "epic_id": "EPIC-CCN-125",
+  "method": "EnterORPosition",
+  "file": "src/V12_002.Entries.OR.cs",
+  "complexity": 11,
+  "target_complexity": 8,
+  "status": "tickets_generated",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "date": "2026-06-13"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["01-scope.md"],
+      "date": "2026-06-13"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture.md"],
+      "date": "2026-06-13"
+    },
+    "3": {
+      "status": "completed",
+      "outputs": ["03-audit-report.md"],
+      "date": "2026-06-14",
+      "decision": "GO",
+      "compliance_score": "14/14",
+      "risk_level": "LOW"
+    },
+    "4": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"],
+      "date": "2026-06-14",
+      "total_tickets": 5,
+      "estimated_duration": "65 minutes"
+    },
+    "5": {
+      "status": "ready",
+      "outputs": ["04-acceptance.md"],
+      "date": "2026-06-13"
+    }
+  },
+  "extraction_strategy": {
+    "methods_to_extract": 4,
+    "estimated_cyc_reduction": 4,
+    "target_methods": [
+      "ValidateOREntryPreconditions",
+      "ValidateOREntryPrice",
+      "CreateORPositionInfo",
+      "SubmitOREntryOrder"
+    ]
+  },
+  "tickets": {
+    "TICKET-125-1": {
+      "priority": "P1",
+      "method": "ValidateOREntryPreconditions",
+      "cyc_reduction": 3,
+      "status": "ready"
+    },
+    "TICKET-125-2": {
+      "priority": "P2",
+      "method": "ValidateOREntryPrice",
+      "cyc_reduction": 2,
+      "status": "ready"
+    },
+    "TICKET-125-3": {
+      "priority": "P3",
+      "method": "CreateORPositionInfo",
+      "cyc_reduction": 1,
+      "status": "ready"
+    },
+    "TICKET-125-4": {
+      "priority": "P4",
+      "method": "SubmitOREntryOrder",
+      "cyc_reduction": 1,
+      "status": "ready"
+    },
+    "TICKET-125-5": {
+      "priority": "P5",
+      "method": "EnterORPosition (refactor)",
+      "final_cyc": 7,
+      "status": "ready"
+    }
+  },
+  "metrics": {
+    "baseline": {
+      "cyc": 11,
+      "loc": 166,
+      "lines": "125-347"
+    },
+    "target": {
+      "cyc": 7,
+      "loc": 80
+    }
+  },
+  "audit": {
+    "date": "2026-06-14",
+    "auditor": "Bob Shell (v12-engineer)",
+    "decision": "GO FOR IMPLEMENTATION",
+    "compliance_checks": {
+      "lock_free": "PASS",
+      "ascii_only": "PASS",
+      "jane_street_alignment": "PASS",
+      "correctness_by_construction": "PASS",
+      "hard_link_integrity": "PASS",
+      "diff_size": "PASS",
+      "whitespace_mutation": "PASS",
+      "scope_creep": "PASS",
+      "branch_strategy": "PASS",
+      "build_readiness": "PASS",
+      "complexity_audit": "PASS",
+      "rollback_strategy": "PASS",
+      "testing_strategy": "PASS",
+      "risk_assessment": "PASS"
+    },
+    "risk_level": "LOW",
+    "estimated_diff_size": "800 characters (8% of 10k limit)"
+  }
+}

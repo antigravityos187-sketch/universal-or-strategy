@@ -1,0 +1,144 @@
+{
+  "last_updated": "2026-06-12T19:53:13.624816",
+  "apis": {
+    "b (2).json": {
+      "name": "b",
+      "balance": 156.77,
+      "used": 3.23,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:53:13.623816",
+          "epic_id": "EPIC-CCN-115",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        }
+      ]
+    },
+    "b.json": {
+      "name": "b",
+      "balance": 156.77,
+      "used": 3.23,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:53:13.480286",
+          "epic_id": "EPIC-CCN-114",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        }
+      ]
+    },
+    "bob (1).json": {
+      "name": "bob",
+      "balance": 156.77,
+      "used": 3.23,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:53:12.564759",
+          "epic_id": "EPIC-CCN-108",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        }
+      ]
+    },
+    "bob (2).json": {
+      "name": "bob",
+      "balance": 156.77,
+      "used": 3.23,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:53:12.728990",
+          "epic_id": "EPIC-CCN-109",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        }
+      ]
+    },
+    "bob (3).json": {
+      "name": "bob",
+      "balance": 156.77,
+      "used": 3.23,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:53:12.890193",
+          "epic_id": "EPIC-CCN-110",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        }
+      ]
+    },
+    "bob (4).json": {
+      "name": "bob",
+      "balance": 156.77,
+      "used": 3.23,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:53:13.045936",
+          "epic_id": "EPIC-CCN-111",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        }
+      ]
+    },
+    "bob (5).json": {
+      "name": "bob",
+      "balance": 156.77,
+      "used": 3.23,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:53:13.214458",
+          "epic_id": "EPIC-CCN-112",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        }
+      ]
+    },
+    "bob (6).json": {
+      "name": "bob",
+      "balance": 156.77,
+      "used": 3.23,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:53:13.357821",
+          "epic_id": "EPIC-CCN-113",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        }
+      ]
+    },
+    "bob.json": {
+      "name": "Bob",
+      "balance": 153.54000000000002,
+      "used": 6.46,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:52:49.163867",
+          "epic_id": "EPIC-CCN-107",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        },
+        {
+          "timestamp": "2026-06-12T19:53:12.296435",
+          "epic_id": "EPIC-CCN-107",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 153.54000000000002
+        }
+      ]
+    },
+    "sean.carter.jr@atomicmail.io.json": {
+      "name": "sean.carter.jr@atomicmail.io",
+      "balance": 160,
+      "used": 0,
+      "history": []
+    }
+  }
+}

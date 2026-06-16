@@ -1,0 +1,37 @@
+{
+  "epic_id": "EPIC-CCN-108",
+  "target_method": "SweepBrokerOrders",
+  "target_file": "src/V12_002.SIMA.Lifecycle.cs",
+  "current_complexity": 18,
+  "target_complexity": 12,
+  "phases": {
+    "0": { "name": "Hotspot Analysis", "status": "completed", "date": "2026-06-13" },
+    "1": { "name": "Epic Intake", "status": "completed", "date": "2026-06-13" },
+    "1.5": { "name": "Scope Boundary", "status": "completed", "date": "2026-06-13" },
+    "2": { "name": "Architecture Planning", "status": "completed", "date": "2026-06-13" },
+    "3": { "name": "DNA & PR Audit", "status": "completed", "date": "2026-06-13" },
+    "4": { "name": "Ticket Generation", "status": "completed", "date": "2026-06-13" },
+    "5": { "name": "Recursive Execution", "status": "pending", "date": null },
+    "6": { "name": "Verification/Review", "status": "pending", "date": null },
+    "7": { "name": "Sign-off", "status": "pending", "date": null }
+  },
+  "outputs": {
+    "00-hotspot-analysis.md": "Phase 0 hotspot identification",
+    "01-scope-boundary.md": "Phase 1.5 scope definition",
+    "02-architecture-plan.md": "Phase 2 detailed architecture and extraction plan",
+    "03-audit-report.md": "Phase 3 DNA compliance and PR hygiene audit",
+    "04-tickets.md": "Phase 4 implementation tickets with surgical extraction steps"
+  },
+  "tickets": {
+    "total": 5,
+    "breakdown": [
+      { "id": "TICKET-108-0", "priority": "P0", "name": "Create Test Suite", "status": "pending", "estimated_time": "1.5 hours", "risk": "LOW" },
+      { "id": "TICKET-108-1", "priority": "P1", "name": "Extract IsOrderCancellable", "status": "pending", "estimated_time": "0.5 hours", "risk": "LOW" },
+      { "id": "TICKET-108-2", "priority": "P2", "name": "Extract TryCancelBrokerOrder", "status": "pending", "estimated_time": "0.5 hours", "risk": "LOW" },
+      { "id": "TICKET-108-3", "priority": "P3", "name": "Extract ProcessAccountOrders", "status": "pending", "estimated_time": "0.75 hours", "risk": "MEDIUM" },
+      { "id": "TICKET-108-4", "priority": "P4", "name": "Final Verification & Documentation", "status": "pending", "estimated_time": "0.5 hours", "risk": "LOW" }
+    ],
+    "total_estimated_time": "4.5 hours"
+  },
+  "metadata": { "created": "2026-06-13", "last_updated": "2026-06-13", "version": "1.3", "phase_4_completed": "2026-06-13" }
+}

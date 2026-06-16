@@ -1,0 +1,36 @@
+{
+  "epic_id": "EPIC-CCN-107",
+  "method": "HydrateExpectedPositionsFromBroker",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "complexity": 31,
+  "status": "TICKETS_GENERATED",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"]
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "notes": "Phase 2 completed. Architecture plan created with 4 extraction targets. Method name corrected from HydrateFromOpenPositions to HydrateExpectedPositionsFromBroker (actual method in source). Target complexity: CYC <= 15 (estimated post-refactoring: 5-6)."
+    },
+    "3": {
+      "status": "completed",
+      "outputs": ["03-audit-report.md"],
+      "notes": "Phase 3 completed. DNA & PR Audit passed all checks. GO recommendation issued. Lock-free Actor pattern preserved, ASCII-only compliance verified, Jane Street alignment achieved (target CYC 5-6). PR hygiene validated (diff ~3,500 chars, well under 10k limit). Overall risk: LOW. Ready for Phase 4 (Implementation)."
+    },
+    "4": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"],
+      "notes": "Phase 4 completed. Generated 6 implementation tickets with detailed extraction steps, test requirements, and verification criteria. Total estimated time: 2h 20min. Target complexity reduction: 31 -> 5-6 CYC. All tickets include rollback procedures and success metrics. Ready for Phase 5 (Implementation)."
+    }
+  }
+}

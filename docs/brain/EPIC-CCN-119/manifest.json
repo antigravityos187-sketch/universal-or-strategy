@@ -1,0 +1,28 @@
+{
+  "epic_id": "EPIC-CCN-119",
+  "method": "EmergencyFlattenSingleFleetAccount",
+  "file": "src/V12_002.SIMA.Flatten.cs",
+  "complexity": 16,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["01-implementation-plan.md"]
+    },
+    "3": {
+      "status": "completed",
+      "outputs": ["03-audit-report.md"]
+    },
+    "4": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"]
+    }
+  }
+}

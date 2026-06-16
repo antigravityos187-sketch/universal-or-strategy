@@ -1,0 +1,67 @@
+{
+  "epic_id": "EPIC-CCN-076",
+  "method": "CollapseAllExecutionControls",
+  "file": "src/V12_002.UI.Panel.Handlers.cs",
+  "complexity": 11,
+  "target_complexity": 8,
+  "complexity_after": 2,
+  "jane_street_violations": 0,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "completed_at": "2026-06-15T04:03:00Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["01-scope.md", "01-scope-boundary.md"],
+      "completed_at": "2026-06-15T04:04:57Z",
+      "approval": "GRANTED",
+      "validator": "Bob CLI (v12-engineer mode)",
+      "protocol_version": "V12.23"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "completed_at": "2026-06-15T05:31:46Z",
+      "planner": "Bob CLI (v12-engineer mode)",
+      "protocol_version": "V12.23",
+      "extraction_strategy": {
+        "helpers_count": 2,
+        "main_method_complexity": 3,
+        "helper1_complexity": 2,
+        "helper2_complexity": 7,
+        "all_methods_compliant": true
+      }
+    },
+    "4": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"],
+      "completed_at": "2026-06-15T17:01:44Z",
+      "ticket_count": 3,
+      "estimated_effort_hours": 2,
+      "execution_order": "sequential",
+      "protocol_version": "V12.23"
+    },
+    "5": {
+      "status": "completed",
+      "outputs": ["05-ticket-completion.md"],
+      "completed_at": "2026-06-15T19:05:19Z",
+      "executor": "Bob Shell (code mode)",
+      "tickets_executed": 3,
+      "protocol_version": "V12.23"
+    },
+    "6": {
+      "status": "completed",
+      "outputs": ["06-completion-report.md"],
+      "completed_at": "2026-06-15T21:28:22Z",
+      "reviewer": "Bob Shell (code mode)",
+      "protocol_version": "V12.23"
+    }
+  },
+  "epic_status": "COMPLETED",
+  "completion_date": "2026-06-15T21:28:22Z",
+  "next_phase": null,
+  "risk_level": "LOW",
+  "blast_radius": "MINIMAL"
+}

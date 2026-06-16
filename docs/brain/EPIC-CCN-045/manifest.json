@@ -1,0 +1,31 @@
+{
+  "epic_id": "EPIC-CCN-045",
+  "method": "OnKeyDown",
+  "file": "src/V12_002.UI.Callbacks.cs",
+  "complexity": 9,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["01-scope.md", "01-scope-boundary.md"]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"]
+    },
+    "3": {
+      "status": "completed",
+      "output": "03-audit-report.md",
+      "audit_result": "PASS"
+    },
+    "4": {
+      "status": "completed",
+      "output": "04-tickets.md",
+      "ticket_count": 1,
+      "completed_at": "2026-06-15T16:55:35Z"
+    }
+  }
+}

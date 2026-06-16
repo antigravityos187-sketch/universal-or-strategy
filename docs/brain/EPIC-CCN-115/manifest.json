@@ -1,0 +1,32 @@
+{
+  "epic_id": "EPIC-CCN-115",
+  "method": "SweepTrackedOrders",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "complexity": 10,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"]
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"]
+    },
+    "3": {
+      "status": "completed",
+      "outputs": ["03-audit-report.md"]
+    },
+    "4": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"]
+    }
+  }
+}

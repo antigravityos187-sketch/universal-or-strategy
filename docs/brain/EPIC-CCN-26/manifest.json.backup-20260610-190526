@@ -1,0 +1,32 @@
+{
+  "epic_id": "EPIC-CCN-26",
+  "method": "ExecuteFFMALimitEntry",
+  "file": "src/V12_002.Entries.FFMA.cs",
+  "line": 100,
+  "current_cyc": 16,
+  "target_cyc": 8,
+  "status": "pending",
+  "created_date": "2026-06-10T22:40:14.698523Z",
+  "phases": {
+    "0": {
+      "name": "Hotspot Analysis",
+      "status": "pending",
+      "mode": "ask",
+      "started": "2026-06-10T23:18:23.905564Z",
+      "completed": "2026-06-10T23:23:23.987184Z",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-26/00-hotspots.md"
+      ],
+      "findings": {
+        "method_location": "src/V12_002.Entries.FFMA.cs",
+        "line": 100,
+        "complexity": 16,
+        "needs_extraction": true,
+        "jane_street_compliant": false
+      },
+      "notes": "CYC 16 > 10 - extraction needed"
+    }
+  },
+  "last_updated": "2026-06-10T23:23:23.987184Z",
+  "recommendation": "pending_analysis"
+}

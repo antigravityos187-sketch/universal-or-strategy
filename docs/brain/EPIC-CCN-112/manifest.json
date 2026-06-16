@@ -1,0 +1,78 @@
+{
+  "epic_id": "EPIC-CCN-112",
+  "method": "ClassifyOrderByPrefix",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "complexity": 17,
+  "threshold": 15,
+  "overage": 2,
+  "risk_level": "MEDIUM",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ],
+      "completed_date": "2026-06-13"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "completed_date": "2026-06-13"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "completed_date": "2026-06-13"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "completed_date": "2026-06-13"
+    },
+    "3": {
+      "status": "completed",
+      "outputs": [
+        "03-audit-report.md"
+      ],
+      "completed_date": "2026-06-13"
+    },
+    "4": {
+      "status": "completed",
+      "outputs": [
+        "04-tickets.md"
+      ],
+      "completed_date": "2026-06-13"
+    }
+  },
+  "refactoring_strategy": {
+    "approach": "Extract prefix mapping to lookup table",
+    "target_complexity": 10,
+    "pattern": "Dictionary lookup (O(1) vs O(n))"
+  },
+  "scope_summary": {
+    "in_scope": [
+      "Single method: ClassifyOrderByPrefix",
+      "Prefix mapping extraction to Dictionary",
+      "Unit tests for all prefix mappings",
+      "Complexity reduction to CYC <= 15"
+    ],
+    "out_of_scope": [
+      "Adjacent methods",
+      "Caller refactoring",
+      "State machine redesign",
+      "Performance optimization",
+      "API changes"
+    ],
+    "blast_radius": {
+      "files": 1,
+      "methods": 1,
+      "lines": "20-30 (estimated)"
+    }
+  }
+}

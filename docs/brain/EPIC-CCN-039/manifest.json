@@ -1,0 +1,45 @@
+{
+  "epic_id": "EPIC-CCN-039",
+  "method": "ManageTrailingStops",
+  "file": "src/V12_002.Trailing.cs",
+  "complexity_before": 13,
+  "complexity_after": 7,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["01-scope.md", "01-scope-boundary.md"]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"]
+    },
+    "3": {
+      "status": "completed",
+      "output": "03-audit-report.md",
+      "audit_result": "PASS"
+    },
+    "4": {
+      "status": "completed",
+      "output": "04-tickets.md",
+      "ticket_count": 3
+    },
+    "5": {
+      "status": "completed",
+      "output": "05-ticket-completion.md",
+      "tickets_executed": 3,
+      "verification_status": "pending_windows"
+    },
+    "6": {
+      "status": "completed",
+      "output": "06-completion-report.md"
+    }
+  },
+  "epic_status": "COMPLETED",
+  "completion_date": "2026-06-15T21:20:47Z",
+  "verification_required": true,
+  "verification_environment": "windows"
+}
