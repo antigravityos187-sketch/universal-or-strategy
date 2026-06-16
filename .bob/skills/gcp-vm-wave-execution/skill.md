@@ -44,18 +44,18 @@ This file contains:
 
 ## How to use it
 
-### Pre-Wave Checklist (MANDATORY - V12.36)
+### Pre-Wave Checklist (MANDATORY - V12.37)
 
-**CRITICAL**: Before EVERY wave execution, verify VM and local are on the SAME git commit.
+**CRITICAL**: Before EVERY wave execution, verify VM and local are on the SAME git commit AND working tree is clean.
 
-#### 0. VM-Local Git Sync (BLOCKING GATE)
+#### 0. VM-Local Git Sync (BLOCKING GATE - 7 Steps)
 
 **Why This Matters**:
-- Wave 5 Pilot Test Incident: VM on commit `0d28fb4` (Wave 4 work) instead of `dad30745` (post-rollback)
-- Impact: Bob saw already-extracted code (CYC=10) instead of baseline code needing extraction
-- Result: Wasted execution time, confusion about work status
+- **Wave 5 Pilot Test #1** (2026-06-15): VM on commit `0d28fb4` (Wave 4 work) instead of `dad30745` (post-rollback) → Bob saw already-extracted code
+- **Wave 5 Pilot Test #2** (2026-06-16): Commits matched (`810cfb2f`) but working tree had stale Wave 4 files → Bob found EPIC-CCN-001 already complete (CYC=10)
+- **Root Cause**: V12.36 verified commits but not working tree. `git reset --hard` doesn't remove untracked files.
 
-**Sync Checklist**:
+**7-Step Sync Checklist**:
 
 1. **Check Local Git State**:
    ```bash
@@ -82,7 +82,7 @@ This file contains:
      --command="cd ~/universal-or-strategy && git fetch origin && git reset --hard origin/gitbutler/workspace && git clean -fd"
    ```
 
-5. **Verify Sync Succeeded (MANDATORY)**:
+5. **Verify Commits Match (MANDATORY)**:
    ```bash
    LOCAL_COMMIT=$(git log -1 --format="%H")
    VM_COMMIT=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
@@ -99,9 +99,47 @@ This file contains:
    fi
    ```
 
-**BLOCKER**: If commits don't match, STOP and investigate. Do NOT proceed with wave execution.
+6. **Verify Working Tree Clean (V12.37 - NEW)**:
+   ```bash
+   VM_STATUS=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+     --command="cd ~/universal-or-strategy && git status --porcelain")
+   
+   if [ -z "$VM_STATUS" ]; then
+     echo "✅ WORKING TREE CLEAN"
+   else
+     echo "❌ WORKING TREE DIRTY: Uncommitted changes detected"
+     exit 1
+   fi
+   ```
 
-**Complete Protocol**: `docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md` (V12.36)
+7. **Verify Baseline Files (V12.37 - NEW)**:
+   ```bash
+   # For pilot tests: verify no Phase 5 files exist
+   VM_P5_FILES=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+     --command="ls ~/universal-or-strategy/docs/brain/EPIC-CCN-001/05-*.md 2>/dev/null | wc -l")
+   
+   if [ "$VM_P5_FILES" = "0" ]; then
+     echo "✅ BASELINE VERIFIED"
+   else
+     echo "❌ BASELINE CORRUPTED: Found $VM_P5_FILES Phase 5 files"
+     exit 1
+   fi
+   ```
+
+**BLOCKER**: If ANY step fails, STOP and investigate. Do NOT proceed with wave execution.
+
+**Nuclear Clean Option** (when Step 6 or 7 fails):
+```bash
+# Remove ALL Wave 4+ brain files
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="cd ~/universal-or-strategy && rm -rf docs/brain/EPIC-CCN-*/05-*.md docs/brain/EPIC-CCN-*/ticket-*.md docs/brain/EPIC-CCN-*/06-*.md"
+
+# Hard reset + clean untracked files
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="cd ~/universal-or-strategy && git fetch origin && git reset --hard origin/gitbutler/workspace && git clean -fdx"
+```
+
+**Complete Protocol**: `docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md` (V12.37)
 
 ### 100% Completion Mandate (V12.28 - ABSOLUTE PRIORITY)
 
@@ -738,7 +776,8 @@ Login to IBM Bob Shell dashboard and verify all APIs remain positive.
 - **V2.4** (2026-06-15): **CRITICAL FIX**: Added MANDATORY upload verification step (prevents silent upload failures)
 - **V2.5** (2026-06-15): **CRITICAL MANDATE**: Added 100% Completion Mandate (V12.28) - NEVER dismiss epics as "not our concern"
 - **V2.6** (2026-06-16): **LOCAL EXECUTION**: Added local execution alternative with PowerShell adaptations for VM failure recovery
-- **V2.7** (2026-06-16): **VM-LOCAL GIT SYNC**: Added MANDATORY Pre-Wave Checklist (V12.36) - VM and local MUST be on same commit before wave execution
+- **V2.7** (2026-06-16): **VM-LOCAL GIT SYNC**: Added MANDATORY Pre-Wave Checklist (V12.36) - 5-step sync protocol
+- **V2.8** (2026-06-16): **7-STEP SYNC**: Enhanced to V12.37 - Added Step 6 (working tree verification), Step 7 (baseline verification), and nuclear clean option
 
 ## Local Execution Alternative (V2.6)
 
@@ -821,7 +860,9 @@ After every use of this skill:
 4. ✅ Add recovery procedures for new issues
 5. ✅ State "skill(gcp-vm-wave-execution): no gaps identified" if no gaps found
 
-**Last Audit**: 2026-06-16 06:18 UTC - **LOCAL EXECUTION PATTERN ADDED (V2.6)**: After EPIC-CCN-016 local completion (Wave 4 final epic), added comprehensive local execution alternative section. Documents sequential phase execution pattern using Bob CLI, PowerShell adaptations for Windows, file I/O protocol for SSH mode, and command equivalents. Enables recovery from VM failures by executing phases locally. Reference: building-blocks/autonomous-refactoring/LOCAL_EXECUTION_PATTERN.md (450+ lines), EPIC-CCN-016 completion
+**Last Audit**: 2026-06-16 23:09 UTC - **7-STEP SYNC PROTOCOL ADDED (V2.8)**: After Wave 5 Pilot Test #2 (commits matched but working tree had stale files), enhanced VM-Local Git Sync Protocol to V12.37. Added Step 6 (working tree verification) and Step 7 (baseline file verification) to catch untracked files that `git reset --hard` doesn't remove. Added nuclear clean option for complete VM state reset. Updated Pre-Wave Checklist with 7-step sync and nuclear clean commands. Prevents Bob from seeing already-extracted code (CYC=10) instead of baseline. Reference: docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md (V1.2), Wave 5 Pilot Test #2 incident (2026-06-16)
+
+**Previous Audit**: 2026-06-16 06:18 UTC - **LOCAL EXECUTION PATTERN ADDED (V2.6)**: After EPIC-CCN-016 local completion (Wave 4 final epic), added comprehensive local execution alternative section. Documents sequential phase execution pattern using Bob CLI, PowerShell adaptations for Windows, file I/O protocol for SSH mode, and command equivalents. Enables recovery from VM failures by executing phases locally. Reference: building-blocks/autonomous-refactoring/LOCAL_EXECUTION_PATTERN.md (450+ lines), EPIC-CCN-016 completion
 
 **Previous Audit**: 2026-06-16 04:47 UTC - **FILE ENCODING PROTOCOL ADDED (V12.33)**: After EPIC-CCN-027 TICKET-2 UTF-16 encoding failure (Bob CLI apply_diff achieved 0% similarity), added MANDATORY encoding pre-check to all wave execution workflows. Created comprehensive FILE_ENCODING_PROTOCOL.md (329 lines) and automated check_encoding.ps1 (118 lines). UTF-8 without BOM is now MANDATORY for all source files. Pre-check must run before EVERY phase execution. Encoding violations are P0 blockers. Reference: docs/protocol/FILE_ENCODING_PROTOCOL.md, EPIC-CCN-027 TICKET-2 incident
 
