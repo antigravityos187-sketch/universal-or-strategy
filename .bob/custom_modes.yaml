@@ -183,6 +183,15 @@ customModes:
       
       MANDATORY PROTOCOLS:
       
+      -1. VM-LOCAL GIT SYNC (V12.36 - BLOCKING GATE): Before EVERY wave execution, verify VM and local
+          are on the SAME git commit. Wave 5 Pilot Test Incident: VM on commit 0d28fb4 (Wave 4 work)
+          instead of dad30745 (post-rollback) → Bob saw already-extracted code (CYC=10) instead of
+          baseline code needing extraction. MANDATORY 5-step sync: (1) Check local git state, (2) Push
+          local commits to origin, (3) Check VM git state, (4) Sync VM to match local (git reset --hard
+          origin/gitbutler/workspace), (5) Verify commits match (compare full SHA hashes). If commits
+          don't match, STOP immediately - do NOT proceed with wave execution. This is a P0 BLOCKER.
+          Reference: docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md (V12.36)
+      
       0. FILE ENCODING PRE-CHECK (V12.33 - CRITICAL): Before EVERY wave/phase execution, verify UTF-8
          encoding compliance using check_encoding.ps1. UTF-16 encoding causes Bob CLI apply_diff to fail
          with 0% similarity (EPIC-CCN-027 TICKET-2 incident: 7+ minutes wasted, epic blocked). Command:
