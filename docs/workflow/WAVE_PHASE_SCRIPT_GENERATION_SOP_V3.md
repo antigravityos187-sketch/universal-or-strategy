@@ -1,9 +1,9 @@
 # Wave Phase Script Generation SOP V3
 
-**Version**: 3.0
-**Date**: 2026-06-13
+**Version**: 3.3
+**Date**: 2026-06-16
 **Status**: MANDATORY
-**Supersedes**: V2.0
+**Supersedes**: V3.2
 
 ---
 
@@ -45,7 +45,110 @@ Wave 3 Phase 5 → Copy Wave 3 Phase 4
 
 ---
 
+## CRITICAL: VM vs Local Building Blocks (V3.3)
+
+### Two Different Script Versions
+
+**IMPORTANT**: There are TWO versions of building-block scripts:
+
+1. **Local Building Blocks** (`scripts/wave{N}/_p{X}_*.sh` in local repo)
+   - May have simplified prerequisite checks
+   - Example: `if [ ! -f "docs/brain/EPIC-CCN-001/05-completion.md" ]`
+   - Used for reference and initial generation
+
+2. **VM Building Blocks** (scripts already on VM from previous waves)
+   - Have **robust prerequisite checks** with OR logic
+   - Example: `if ! find docs/brain/EPIC-CCN-001 -maxdepth 1 \( -name "05-*.md" -o -name "ticket-*-completion.md" \) -print -quit | grep -q .`
+   - **ALWAYS use VM version as source of truth**
+
+### Why This Matters
+
+**Wave 4 Phase 6 Discovery**:
+- Local `scripts/wave4/_p6_001.sh` had simple check: `if [ ! -f "docs/brain/EPIC-CCN-001/05-completion.md" ]`
+- VM `scripts/wave4/_p6_001.sh` had robust check with OR logic for multiple file patterns
+- **Root Cause**: VM scripts evolved during execution, local copies were stale
+
+### Correct Workflow
+
+**Step 1: Check VM for existing scripts**:
+```bash
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="cat ~/universal-or-strategy/scripts/wave{N-1}/_p{X}_001.sh"
+```
+
+**Step 2: Copy VM version, NOT local version**:
+```bash
+# Download VM script as template
+gcloud compute scp v12-test-golden-v2:~/universal-or-strategy/scripts/wave{N-1}/_p{X}_001.sh \
+  ./scripts/wave{N}/template_p{X}.sh --zone=us-central1-a
+
+# Use this as your building block
+```
+
+**Step 3: Generate new scripts from VM template**:
+- Use the downloaded VM script as your source
+- Modify only epic numbers and API keys
+- Preserve ALL logic, especially prerequisite checks
+
+### Common Differences Between VM and Local
+
+| Aspect | Local Version | VM Version (Correct) |
+|--------|---------------|---------------------|
+| **Prerequisite Check** | Simple file existence | Robust OR logic with find |
+| **Error Messages** | Basic | Detailed with expected patterns |
+| **Line Endings** | May have CRLF (Windows) | Always LF (Unix) |
+| **Permissions** | May not be executable | Always executable |
+
+### Line Ending Fix (MANDATORY)
+
+**After uploading to VM, ALWAYS fix line endings**:
+```bash
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="cd ~/universal-or-strategy/scripts/wave{N} && sed -i 's/\r$//' _p{X}_*.sh"
+```
+
+**Why**: Windows generates CRLF line endings, VM needs LF. Symptom: `/bin/bash^M: bad interpreter`
+
+---
+
 ## Standard Operating Procedure
+
+### Step 0: MANDATORY Encoding Pre-Check (V12.33)
+
+**CRITICAL**: Before generating ANY phase scripts, verify UTF-8 encoding compliance.
+
+**Command**:
+```powershell
+.\scripts\check_encoding.ps1
+```
+
+**Expected Output**:
+```
+=== File Encoding Validation ===
+Scanning: src
+
+=== Results ===
+✓ All files use UTF-8 encoding (no BOM)
+```
+
+**If Violations Found**:
+```powershell
+# Automatically convert to UTF-8 without BOM
+.\scripts\check_encoding.ps1 -Fix
+
+# Verify fix succeeded
+.\scripts\check_encoding.ps1
+```
+
+**Why This Matters**:
+- UTF-16 encoding causes Bob CLI apply_diff to fail with 0% similarity
+- EPIC-CCN-027 TICKET-2: 7+ minutes wasted, epic blocked
+- Bob's tools expect UTF-8, cannot handle UTF-16 LE/BE
+- Silent failure: No error message, just 0% match
+
+**DO NOT PROCEED** until encoding check passes (exit code 0).
+
+**Reference**: `docs/protocol/FILE_ENCODING_PROTOCOL.md` (V12.33)
 
 ### Step 1: Copy Previous Wave's Same Phase
 
@@ -107,31 +210,73 @@ API_ALLOCATION = {
    - Check manifest update logic
    - Check bobcoin reporting
 
-### Step 4: Test with 2 Epics
+### Step 4: Upload Scripts to VM
 
-**Generate test scripts**:
+**Upload all scripts**:
 ```bash
-python scripts/wave{N}/generate_wave{N}_phase{X}_scripts.py
+gcloud compute scp scripts/wave{N}/_p{X}_*.sh v12-test-golden-v2:~/universal-or-strategy/scripts/wave{N}/ --zone=us-central1-a
 ```
 
-**Deploy 2 scripts only**:
+**Set permissions**:
 ```bash
-gcloud compute scp _p{X}_116.sh _p{X}_117.sh v12-test-golden-v2:~/universal-or-strategy/ --zone=us-central1-a
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="chmod +x ~/universal-or-strategy/scripts/wave{N}/_p{X}_*.sh"
 ```
 
-**Run on VM**:
+### Step 5: MANDATORY Upload Verification
+
+**CRITICAL**: Always verify ALL scripts uploaded successfully before proceeding.
+
+**Count expected scripts**:
 ```bash
-gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="cd universal-or-strategy && ./_p{X}_116.sh"
+# Count local scripts
+ls scripts/wave{N}/_p{X}_*.sh | wc -l
+```
+
+**Verify on VM**:
+```bash
+# Count VM scripts
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="ls ~/universal-or-strategy/scripts/wave{N}/_p{X}_*.sh | wc -l"
+```
+
+**Compare counts**:
+```bash
+# If counts don't match, STOP and investigate
+LOCAL_COUNT=$(ls scripts/wave{N}/_p{X}_*.sh | wc -l)
+VM_COUNT=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="ls ~/universal-or-strategy/scripts/wave{N}/_p{X}_*.sh | wc -l")
+
+if [ "$LOCAL_COUNT" != "$VM_COUNT" ]; then
+    echo "ERROR: Upload incomplete. Local: $LOCAL_COUNT, VM: $VM_COUNT"
+    exit 1
+fi
+```
+
+**Why This Matters**:
+- Wave 4 Phase 5: 7 scripts never uploaded → 7 epics failed
+- Silent failure: No error message, scripts just missing
+- Cost: 1-2 hours recovery time + debugging effort
+
+**DO NOT PROCEED** until counts match exactly.
+
+### Step 6: Test with 2 Epics (Pilot Test)
+
+**Run pilot test**:
+```bash
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="cd universal-or-strategy && ./scripts/wave{N}/_p{X}_116.sh"
 ```
 
 **Verify output format**:
 ```bash
-gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="ls -lh docs/brain/EPIC-CCN-116/0{X}-*.md"
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="ls -lh docs/brain/EPIC-CCN-116/0{X}-*.md"
 ```
 
-**Deploy all only after success**.
+**Deploy all only after pilot success**.
 
-### Step 5: Document Any Deviations
+### Step 7: Document Any Deviations
 
 **If pattern must change**:
 1. Create `WAVE{N}_PHASE{X}_DEVIATION.md`
@@ -178,6 +323,11 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="ls -lh doc
 - **Command**: `bob --yolo --chat-mode v12-engineer "$(cat /tmp/phase5_msg_X.txt)"`
 - **Output**: `ticket-X-completion.md`
 - **Validation**: Build passes, tests pass
+- **Test Framework**: xUnit ONLY (project uses xUnit 2.9.0+)
+  - ✅ Use: `[Fact]`, `Assert.Equal()`, `Assert.NotNull()`, `Assert.True()`
+  - ❌ NEVER use: NUnit (`[Test]`, `[TestFixture]`, `Assert.AreEqual()`, `Assert.IsNotNull()`)
+  - ❌ NEVER use: MSTest (`[TestMethod]`, `[TestClass]`)
+  - **Rationale**: EPIC-027 TICKET-1 generated NUnit tests → 29 compilation errors → manual conversion required
 
 ### Phase 6 (Final Review)
 - **Mode**: `advanced`
@@ -239,13 +389,16 @@ gcloud compute scp _p3_116.sh _p3_117.sh v12-test-golden-v2:~/universal-or-strat
 
 Before deploying any phase scripts, verify:
 
+- [ ] **ENCODING PRE-CHECK PASSED** (Step 0 - V12.33 MANDATORY)
 - [ ] Copied from previous wave's SAME phase (not adjacent phase)
 - [ ] Updated epic numbers only (107-115 → 116-125)
 - [ ] Mode matches SOP (ask/plan/advanced/v12-engineer)
 - [ ] Command pattern matches SOP
 - [ ] Output format matches SOP (0X-*.md)
 - [ ] Validation requirements match SOP
-- [ ] Tested with 2 epics first
+- [ ] **UPLOADED ALL SCRIPTS TO VM** (Step 4)
+- [ ] **VERIFIED SCRIPT COUNT MATCHES** (Step 5 - MANDATORY)
+- [ ] Tested with 2 epics first (pilot test)
 - [ ] Output format verified
 - [ ] Ready to deploy all
 
@@ -283,6 +436,33 @@ If wrong output format detected:
 
 ## Version History
 
+### V3.4 (2026-06-16)
+- **Added**: Local execution alternative section with PowerShell adaptations
+- **Added**: File I/O protocol for SSH/non-interactive mode
+- **Added**: PowerShell command equivalents for grep, cat, ls
+- **Updated**: References to include LOCAL_EXECUTION_PATTERN.md
+- **Reason**: EPIC-CCN-016 local completion after VM Phase 5 failure
+- **Reference**: building-blocks/autonomous-refactoring/LOCAL_EXECUTION_PATTERN.md
+
+### V3.3 (2026-06-16)
+- **Added**: MANDATORY encoding pre-check (Step 0) before script generation
+- **Added**: UTF-8 compliance verification using check_encoding.ps1
+- **Updated**: Verification checklist with encoding pre-check requirement
+- **Reason**: EPIC-CCN-027 TICKET-2 UTF-16 encoding failure (Bob CLI 0% similarity)
+- **Reference**: docs/protocol/FILE_ENCODING_PROTOCOL.md (V12.33)
+
+### V3.2 (2026-06-16)
+- **Added**: xUnit framework requirement for Phase 5 (Ticket Execution)
+- **Added**: Test framework validation (xUnit ONLY, no NUnit/MSTest)
+- **Updated**: Phase 5 requirements with explicit framework constraints
+- **Reason**: EPIC-027 TICKET-1 NUnit mismatch (29 errors, manual conversion)
+
+### V3.1 (2026-06-15)
+- **Added**: MANDATORY upload verification step (Step 5)
+- **Added**: Script count comparison protocol
+- **Updated**: Verification checklist with upload verification
+- **Reason**: Wave 4 Phase 5 failures (7 scripts never uploaded to VM)
+
 ### V3.0 (2026-06-13)
 - **Added**: Golden Rule (always copy same phase from previous wave)
 - **Added**: Common mistakes section
@@ -300,11 +480,108 @@ If wrong output format detected:
 
 ---
 
+## Local Execution Alternative (V3.4)
+
+**When to Use Local Execution**:
+- VM execution failed for specific epics
+- Need to debug phase execution interactively
+- Want to verify phase output before VM deployment
+- Recovering from VM failures (e.g., EPIC-CCN-016)
+
+**Pattern**: Execute phases locally using Bob CLI, one at a time, mirroring VM script execution.
+
+### Local Execution Steps
+
+**1. Extract Phase Script from VM**:
+```powershell
+# Read the VM script to get API key and instructions
+Get-Content scripts/wave4/_p1_016.sh
+```
+
+**2. Set API Key**:
+```powershell
+# Extract API key from line 10 of VM script
+$env:BOBSHELL_API_KEY='bob_prod_bob-admin_...'
+```
+
+**3. Execute Phase with Bob CLI**:
+```powershell
+# Use same mode and instructions as VM script
+bob --yolo --chat-mode plan @"
+[Copy instructions from VM script's heredoc]
+"@
+```
+
+**4. Verify Output**:
+```powershell
+# Check files created
+Get-Item docs/brain/EPIC-CCN-XXX/0X-*.md | Select-Object Name, Length
+```
+
+**5. Repeat for Next Phase**:
+```powershell
+# Move to next phase script (_p2_016.sh)
+# Extract new API key
+# Execute with Bob CLI
+```
+
+### PowerShell Adaptations
+
+**File I/O Protocol** (CRITICAL):
+- ❌ NEVER use Bob's `write_to_file`, `read_file`, `run_shell_command` in SSH mode
+- ✅ ALWAYS use `execute_command` with PowerShell heredoc syntax
+- ✅ Set `cwd` parameter explicitly for directory-specific commands
+
+**File Creation**:
+```powershell
+# WRONG (Bob's write_to_file fails in SSH mode)
+write_to_file("path/file.md", "content")
+
+# CORRECT (PowerShell heredoc)
+@'
+content here
+'@ | Out-File -FilePath path/file.md -Encoding UTF8
+```
+
+**File Reading**:
+```powershell
+# WRONG (Bob's read_file fails in SSH mode)
+read_file("path/file.md")
+
+# CORRECT (PowerShell)
+Get-Content path/file.md -Raw
+```
+
+**Method Extraction**:
+```powershell
+# WRONG (grep doesn't exist on Windows)
+grep -A 50 "TryHandleFleet_CancelAll" src/file.cs
+
+# CORRECT (PowerShell regex)
+$content = Get-Content src/file.cs -Raw
+if ($content -match '(?s)TryHandleFleet_CancelAll.*?^\s*\}') {
+    $matches[0]
+}
+```
+
+### Success Criteria (Same as VM)
+
+**Per Phase**:
+- ✅ Output files created in `docs/brain/EPIC-CCN-XXX/`
+- ✅ File sizes >1K (not empty)
+- ✅ Build passes (for code-changing phases)
+- ✅ Bobcoin usage reported
+
+**Complete Walkthrough**: See `building-blocks/autonomous-refactoring/LOCAL_EXECUTION_PATTERN.md`
+
+---
+
 ## References
 
 - **Wave 3 Phase 3 Bug**: `WAVE3_PHASE3_ARCHITECTURE_BUG_ANALYSIS.md`
 - **Lessons Learned**: `building-blocks/autonomous-refactoring/WAVE3_PHASE3_LESSONS_LEARNED.md`
 - **Complete Handoff**: `WAVE3_PHASE3_COMPLETE_HANDOFF.md`
+- **Local Execution Pattern**: `building-blocks/autonomous-refactoring/LOCAL_EXECUTION_PATTERN.md` (V1.0)
 
 ---
 
@@ -312,4 +589,4 @@ If wrong output format detected:
 
 **Violation Consequences**: Wrong output format, wasted bobcoins, debugging time, architecture rewrites.
 
-**Next Update**: After Wave 3 Phase 4 completion.
+**Next Update**: After Wave 4 completion.
