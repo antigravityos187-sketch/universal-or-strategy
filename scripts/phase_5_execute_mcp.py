@@ -37,12 +37,27 @@ def execute_phase_5(epic_id: str, ticket_id: str = "") -> dict:
         "instructions": f"""
 # Phase 5: Ticket Execution for {epic_id}
 
+## ⚠️ CRITICAL: SURGICAL ONLY Mandate (V12.34)
+
+**MANDATORY READING**: `docs/protocol/PHASE5_EXECUTION_PROTOCOL.md`
+
+**THE GOLDEN RULE**: Touch ONLY the target method. Nothing else.
+
+### Absolute Prohibitions
+- ❌ NO pre-existing error fixes
+- ❌ NO adjacent method improvements
+- ❌ NO "while we're here" changes
+- ❌ NO scope expansion beyond target method
+
+**If compilation errors exist BEFORE your changes**: STOP and report. Do NOT fix them.
+
 ## Input Files
 1. Read `docs/brain/{epic_id}/04-tickets.md` for ticket details
 2. Read `docs/brain/{epic_id}/manifest.json` for epic metadata
+3. **MANDATORY**: Read `docs/protocol/PHASE5_EXECUTION_PROTOCOL.md` for execution rules
 
 ## Your Task
-Execute ticket(s) using Bob CLI (v12-engineer mode).
+Execute ticket(s) using Bob CLI (v12-engineer mode) with SURGICAL ONLY discipline.
 
 ### Execution Strategy
 {"**Single Ticket Mode**: Execute " + ticket_id if ticket_id else "**Sequential Mode**: Execute all tickets in order"}
@@ -55,13 +70,17 @@ For each ticket:
 4. Verify build passes
 5. Document completion
 
-### Ticket Execution Checklist
+### Ticket Execution Checklist (SURGICAL ONLY)
 - [ ] Read ticket scope and acceptance criteria
-- [ ] Invoke Bob CLI with ticket context
-- [ ] Monitor Bob's extraction work
+- [ ] **VERIFY**: No pre-existing compilation errors (if errors exist, STOP)
+- [ ] Invoke Bob CLI with SURGICAL ONLY mandate in prompt
+- [ ] Monitor Bob's extraction work (target method ONLY)
+- [ ] **VERIFY**: Only target method + extracted helpers modified
+- [ ] **VERIFY**: No adjacent methods touched
 - [ ] Verify all acceptance criteria met
 - [ ] Run `deploy-sync.ps1` to sync NinjaTrader
 - [ ] Confirm build passes
+- [ ] **VERIFY**: UTF-8 encoding (run `check_encoding.ps1`)
 - [ ] Document any issues or deviations
 
 ### Output File
@@ -80,11 +99,14 @@ Create `docs/brain/{epic_id}/ticket-{ticket_id or "X"}-completion.md` with:
 - [File 1]: [Description]
 - [File 2]: [Description]
 
-## Acceptance Criteria
-- [x] Method complexity reduced to ≤ 15
+## Acceptance Criteria (SURGICAL ONLY)
+- [x] Method complexity reduced to ≤8 (Jane Street strict)
+- [x] ONLY target method modified (no adjacent changes)
+- [x] No pre-existing errors fixed
 - [x] All tests pass
 - [x] No behavioral changes
 - [x] Build succeeds
+- [x] UTF-8 encoding verified
 
 ## Verification
 - **Build Status**: PASS/FAIL
@@ -112,12 +134,20 @@ Update `docs/brain/{epic_id}/manifest.json`:
 }}
 ```
 
-## Success Criteria
-- ✅ Ticket(s) executed via Bob CLI
+## Success Criteria (SURGICAL ONLY)
+- ✅ Ticket(s) executed via Bob CLI with SURGICAL ONLY mandate
+- ✅ ONLY target method modified (verified via `git diff --stat`)
+- ✅ No scope creep (no adjacent changes)
 - ✅ All acceptance criteria met
 - ✅ Build passes
+- ✅ UTF-8 encoding verified
 - ✅ Completion documented
 - ✅ Manifest updated
+
+## Protocol References
+- **Execution Rules**: `docs/protocol/PHASE5_EXECUTION_PROTOCOL.md` (V12.34)
+- **Verification Rules**: `docs/protocol/PHASE5V_VERIFICATION_PROTOCOL.md` (V12.34)
+- **Encoding Rules**: `docs/protocol/FILE_ENCODING_PROTOCOL.md` (V12.33)
 """,
         "output_files": [
             f"docs/brain/{epic_id}/ticket-{ticket_id or 'X'}-completion.md"
