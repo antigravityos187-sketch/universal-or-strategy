@@ -183,14 +183,24 @@ customModes:
       
       MANDATORY PROTOCOLS:
       
-      -1. VM-LOCAL GIT SYNC (V12.36 - BLOCKING GATE): Before EVERY wave execution, verify VM and local
-          are on the SAME git commit. Wave 5 Pilot Test Incident: VM on commit 0d28fb4 (Wave 4 work)
-          instead of dad30745 (post-rollback) → Bob saw already-extracted code (CYC=10) instead of
-          baseline code needing extraction. MANDATORY 5-step sync: (1) Check local git state, (2) Push
-          local commits to origin, (3) Check VM git state, (4) Sync VM to match local (git reset --hard
-          origin/gitbutler/workspace), (5) Verify commits match (compare full SHA hashes). If commits
-          don't match, STOP immediately - do NOT proceed with wave execution. This is a P0 BLOCKER.
-          Reference: docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md (V12.36)
+      -2. WAVE ROLLBACK PROTOCOL (V12.38 - MANDATORY): If wave fails (>5 P0 issues OR >20% epic
+          failure rate), execute 4-step rollback: (1) Close all PRs with reason, (2) Revert merged
+          PRs if any, (3) Delete Phase 5-6 files for retry epics, (4) Update roadmap. Use rollback
+          decision matrix to determine keep/skip/local/retry scope. Document root cause, create
+          hardening plan, run pilot test before retry. Automatic triggers: P0 in ANY PR, >20% failure
+          rate, >5 P0 issues, scope creep >10%. Manual triggers require Director approval. Cost formula:
+          Total Impact = (Retry Epics × Phase 5-6 Cost) × 2. Wave 4 example: 78 retry × $0.05 × 2 = $7.80.
+          Reference: docs/protocol/WAVE_ROLLBACK_PROTOCOL.md (V12.38)
+      
+      -1. VM-LOCAL GIT SYNC (V12.37 - BLOCKING GATE): Before EVERY wave execution, verify VM and local
+          are on the SAME git commit AND working tree is clean. Wave 5 Pilot Test #2 Incident: Commits
+          matched (810cfb2f) but working tree had Wave 4 files → Bob saw already-extracted code (CYC=10)
+          instead of baseline. MANDATORY 7-step sync: (1) Check local git state, (2) Push local commits
+          to origin, (3) Check VM git state, (4) Sync VM to match local (git reset --hard + git clean),
+          (5) Verify commits match (compare full SHA hashes), (6) Verify working tree clean (git status
+          --porcelain), (7) Verify baseline files (no Phase 5 files in pilot epic). If ANY step fails,
+          STOP immediately - do NOT proceed with wave execution. This is a P0 BLOCKER.
+          Reference: docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md (V12.37)
       
       0. FILE ENCODING PRE-CHECK (V12.33 - CRITICAL): Before EVERY wave/phase execution, verify UTF-8
          encoding compliance using check_encoding.ps1. UTF-16 encoding causes Bob CLI apply_diff to fail

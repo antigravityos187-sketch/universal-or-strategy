@@ -766,6 +766,168 @@ Login to IBM Bob Shell dashboard and verify all APIs remain positive.
 - `jcodemunch-complexity-analysis` (prerequisite)
 - `v12-epic-workflow` (phase definitions)
 
+## Wave Rollback Procedure (V12.38)
+
+**Purpose**: Standardize rollback procedures for failed waves.
+
+**When to Execute**: After wave completion if quality gates fail.
+
+### Rollback Triggers
+
+**Automatic** (no approval needed):
+- P0 compilation blocker in ANY PR
+- >20% epic failure rate
+- >5 P0 issues in Greptile audit
+- Scope creep in >10% of epics
+
+**Manual** (Director approval required):
+- 10-20% failure rate with 0 P0 issues
+- Cost-benefit analysis favors rollback
+- Systemic protocol gap detected
+
+### Rollback Decision Matrix
+
+Use this matrix to determine keep/skip/local/retry scope:
+
+| Scenario | Keep | Skip | Local | Retry | Rationale |
+|----------|------|------|-------|-------|-----------|
+| All PRs clean | All | 0 | 0 | 0 | No rollback needed |
+| 1-2 PRs buggy | Clean | Invalid | Encoding | Buggy | Surgical fix |
+| >50% PRs buggy | 0 | Invalid | Encoding | All | Full rollback |
+| P0 in ANY PR | 0 | Invalid | Encoding | All | Safety first |
+
+### 4-Step Rollback Procedure
+
+**Step 1: Close All PRs**
+```bash
+# List all open PRs
+gh pr list --state open
+
+# Close each PR with rollback reason
+gh pr close <PR_NUMBER> --comment "Closing: Wave N rollback due to <reason>. Issues: P0=X, P1=Y, P2=Z. Retry in Wave N+1."
+
+# Verify all closed
+gh pr list --state open
+# Expected: 0 open PRs
+```
+
+**Step 2: Revert Merged PRs** (if any)
+```bash
+# Switch to main
+git checkout main
+git pull origin main
+
+# Find merged PR commits
+git log --oneline --grep="EPIC-CCN" -10
+
+# Revert merge commit (if any merged)
+git revert <commit-hash> --no-edit
+
+# Push revert
+git push origin main
+```
+
+**Step 3: Delete Phase 5-6 Files**
+```powershell
+# Create deletion script for retry epics
+$retryEpics = 1..26 + 28..80 | ForEach-Object { "EPIC-CCN-{0:D3}" -f $_ }
+
+foreach ($epic in $retryEpics) {
+    $brainDir = "docs/brain/$epic"
+    if (Test-Path $brainDir) {
+        Remove-Item "$brainDir/ticket-*-completion.md" -ErrorAction SilentlyContinue
+        Remove-Item "$brainDir/06-verification-report.md" -ErrorAction SilentlyContinue
+        Write-Host "Deleted Phase 5-6 files for $epic"
+    }
+}
+
+# Verify deletion
+$retryEpics | ForEach-Object {
+    $brainDir = "docs/brain/$_"
+    if (Test-Path $brainDir) {
+        $phase5Files = Get-ChildItem "$brainDir/ticket-*-completion.md" -ErrorAction SilentlyContinue
+        $phase6Files = Get-ChildItem "$brainDir/06-verification-report.md" -ErrorAction SilentlyContinue
+        if ($phase5Files -or $phase6Files) {
+            Write-Host "WARNING: $_ still has Phase 5-6 files"
+        }
+    }
+}
+```
+
+**Step 4: Update Roadmap**
+```bash
+# Edit epic_roadmap.json
+# Mark invalid epics: "status": "INVALID"
+# Mark encoding-sensitive: "execution": "local"
+# Mark retry epics: "status": "pending"
+
+# Commit changes
+git add epic_roadmap.json docs/brain/
+git commit -m "rollback: Wave N Phase 5-6 (X epics)
+
+- Closed PRs #X-Y (Z issues found)
+- Deleted Phase 5-6 files for X retry epics
+- Marked Y epics as INVALID
+- Marked Z epics for local execution
+
+Root cause: <description>
+Solution: <hardening plan>
+Cost: $X lost, $Y retry = $Z total impact"
+```
+
+### Post-Rollback Actions
+
+**Immediate** (Day 0):
+1. Execute 4-step rollback
+2. Document root cause
+3. Identify protocol gaps
+4. Create hardening plan
+
+**Short-Term** (Day 1-3):
+1. Update protocols (fix gaps)
+2. Update SOPs (add missing steps)
+3. Update skills (add missing checks)
+4. Update custom modes (add missing mandates)
+
+**Validation** (Day 4-7):
+1. Run pilot test with hardened protocols
+2. Verify 0 P0/P1 issues in pilot
+3. Document pilot results
+4. Obtain Director approval for retry
+
+**Retry** (Day 8+):
+1. Launch retry wave with hardened protocols
+2. Monitor closely (first 10 epics)
+3. Apply recovery loop if any failures
+4. Document improvements
+
+### Rollback Cost Calculation
+
+**Formula**:
+```
+Lost Cost = (Retry Epics × Phase 5-6 Cost per Epic)
+Retry Cost = (Retry Epics × Phase 5-6 Cost per Epic)
+Total Impact = Lost Cost + Retry Cost
+```
+
+**Example (Wave 4)**:
+- Retry Epics: 78
+- Phase 5-6 Cost: $0.05/epic
+- Lost Cost: $3.90
+- Retry Cost: $3.90
+- Total Impact: $7.80
+
+### Complete Protocol
+
+See `docs/protocol/WAVE_ROLLBACK_PROTOCOL.md` for:
+- Detailed rollback decision matrix
+- Pre-rollback checklist
+- Post-rollback checklist
+- Retry preparation steps
+- Wave 4 case study
+
+See `docs/workflow/WAVE_ROLLBACK_CHECKLIST.md` for quick reference.
+
 ## Version History
 
 - **V1.0** (2026-06-11): Initial monolithic workflow
@@ -778,6 +940,7 @@ Login to IBM Bob Shell dashboard and verify all APIs remain positive.
 - **V2.6** (2026-06-16): **LOCAL EXECUTION**: Added local execution alternative with PowerShell adaptations for VM failure recovery
 - **V2.7** (2026-06-16): **VM-LOCAL GIT SYNC**: Added MANDATORY Pre-Wave Checklist (V12.36) - 5-step sync protocol
 - **V2.8** (2026-06-16): **7-STEP SYNC**: Enhanced to V12.37 - Added Step 6 (working tree verification), Step 7 (baseline verification), and nuclear clean option
+- **V2.9** (2026-06-16): **WAVE ROLLBACK**: Added Wave Rollback Procedure (V12.38) - 4-step rollback, decision matrix, cost calculation, Wave 4 case study
 
 ## Local Execution Alternative (V2.6)
 
@@ -860,7 +1023,9 @@ After every use of this skill:
 4. ✅ Add recovery procedures for new issues
 5. ✅ State "skill(gcp-vm-wave-execution): no gaps identified" if no gaps found
 
-**Last Audit**: 2026-06-16 23:09 UTC - **7-STEP SYNC PROTOCOL ADDED (V2.8)**: After Wave 5 Pilot Test #2 (commits matched but working tree had stale files), enhanced VM-Local Git Sync Protocol to V12.37. Added Step 6 (working tree verification) and Step 7 (baseline file verification) to catch untracked files that `git reset --hard` doesn't remove. Added nuclear clean option for complete VM state reset. Updated Pre-Wave Checklist with 7-step sync and nuclear clean commands. Prevents Bob from seeing already-extracted code (CYC=10) instead of baseline. Reference: docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md (V1.2), Wave 5 Pilot Test #2 incident (2026-06-16)
+**Last Audit**: 2026-06-16 23:20 UTC - **WAVE ROLLBACK PROCEDURE ADDED (V2.9)**: After Wave 4 rollback experience (28 issues, $7.80 cost), added comprehensive Wave Rollback Procedure section. Documents 4-step rollback (close PRs, revert, delete files, update roadmap), decision matrix (keep/skip/local/retry), automatic/manual triggers, cost calculation formula, and post-rollback actions. Includes Wave 4 case study (78 retry epics, Bob over-optimization root cause). References WAVE_ROLLBACK_PROTOCOL.md (V12.38) and WAVE_ROLLBACK_CHECKLIST.md for complete procedures. Standardizes rollback execution for all future waves.
+
+**Previous Audit**: 2026-06-16 23:09 UTC - **7-STEP SYNC PROTOCOL ADDED (V2.8)**: After Wave 5 Pilot Test #2 (commits matched but working tree had stale files), enhanced VM-Local Git Sync Protocol to V12.37. Added Step 6 (working tree verification) and Step 7 (baseline file verification) to catch untracked files that `git reset --hard` doesn't remove. Added nuclear clean option for complete VM state reset. Updated Pre-Wave Checklist with 7-step sync and nuclear clean commands. Prevents Bob from seeing already-extracted code (CYC=10) instead of baseline. Reference: docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md (V1.2), Wave 5 Pilot Test #2 incident (2026-06-16)
 
 **Previous Audit**: 2026-06-16 06:18 UTC - **LOCAL EXECUTION PATTERN ADDED (V2.6)**: After EPIC-CCN-016 local completion (Wave 4 final epic), added comprehensive local execution alternative section. Documents sequential phase execution pattern using Bob CLI, PowerShell adaptations for Windows, file I/O protocol for SSH mode, and command equivalents. Enables recovery from VM failures by executing phases locally. Reference: building-blocks/autonomous-refactoring/LOCAL_EXECUTION_PATTERN.md (450+ lines), EPIC-CCN-016 completion
 
@@ -905,6 +1070,16 @@ After every use of this skill:
 3. Apply `--yolo` flag to all future phase scripts
 
 **Reference**: `WAVE2_PHASE0_COMPLETION_REPORT.md` for detailed analysis
+
+## Common Issues
+
+**Wave 4 Rollback (2026-06-15)**:
+- **Trigger**: 28 issues across 7 PRs (9 P0, 12 P1, 6 P2)
+- **Root Cause**: Bob CLI over-optimization (no SURGICAL ONLY mandate)
+- **Scope**: 0 keep, 1 skip, 1 local, 78 retry
+- **Cost**: $7.80 lost, $4.00 retry = $11.80 total
+- **Fix**: Added SURGICAL ONLY mandate (V12.34), 5-check verification (V12.34)
+- **Outcome**: Wave 5 pilot test caught additional protocol gap (V12.37) before 77-epic cascade
 
 ## Wave 2 Phase 1 Progress (2026-06-13)
 
