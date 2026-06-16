@@ -1,9 +1,9 @@
 # Wave Phase Script Generation SOP V3
 
-**Version**: 3.6
+**Version**: 3.7
 **Date**: 2026-06-16
 **Status**: MANDATORY
-**Supersedes**: V3.3
+**Supersedes**: V3.6
 
 ---
 
@@ -112,8 +112,67 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
 ---
 
 ## Standard Operating Procedure
+### Step -3: Skill Reading Verification (V12.39 - NEW - BLOCKING GATE)
 
-### Step -2: Pre-Wave Validation (V12.38 - NEW)
+**MANDATORY**: Before ANY wave execution, verify you have read the skill documentation.
+
+**Purpose**: Prevent incorrect assumptions about VM capabilities that lead to failed wave executions.
+
+#### Skill Reading Checklist
+
+Execute these checks in order. If ANY box unchecked, STOP immediately.
+
+**1. Read Primary Skill**:
+```markdown
+File: .bob/skills/gcp-vm-wave-execution/skill.md (V2.10+)
+- [ ] Read "READ THIS FIRST" section (top of file)
+- [ ] Read "What you need" section (lines 22-44)
+- [ ] Read "VM Setup" section (after "What you need")
+- [ ] Read "Pre-Wave Checklist" section (lines 47-120)
+```
+
+**2. Read VM Setup Protocol**:
+```markdown
+File: docs/protocol/VM_SETUP_PROTOCOL.md (V12.39)
+- [ ] Read "READ THIS FIRST" section (top of file)
+- [ ] Read "Critical VM Facts" section
+- [ ] Read "Pre-Flight Validation" section
+```
+
+**3. Verify Understanding**:
+```markdown
+Critical Facts (check ALL):
+- [ ] VM does NOT have .NET SDK installed
+- [ ] VM does NOT compile code (dotnet build will fail)
+- [ ] VM ONLY executes Bob CLI for code generation
+- [ ] Bob CLI location: ~/bob (aliased in ~/.bashrc)
+- [ ] Compilation happens locally (Windows machine with .NET 8.0 SDK)
+```
+
+#### BLOCKING GATE
+
+**If ANY box unchecked**:
+1. STOP immediately
+2. Read the skill documentation in full
+3. Check ALL boxes in verification checklist
+4. ONLY THEN proceed to Step -2
+
+**Why This Matters**:
+- Agents who skip reading the skill make incorrect assumptions about VM capabilities
+- Common mistake: trying to run `dotnet build` on VM (VM has no .NET SDK)
+- Common mistake: looking for Bob CLI in wrong location (it's at ~/bob, not /usr/local/bin)
+- Common mistake: expecting compilation on VM (compilation happens locally only)
+
+**DO NOT PROCEED** until ALL boxes checked.
+
+**Reference**: 
+- `.bob/skills/gcp-vm-wave-execution/skill.md` (V2.10+)
+- `docs/protocol/VM_SETUP_PROTOCOL.md` (V12.39)
+
+
+### Step -2: Pre-Wave Validation (V12.39 - UPDATED)
+
+**Prerequisites**: Step -3 (Skill Reading Verification) MUST be complete.
 
 **CRITICAL**: Before generating ANY scripts, validate wave readiness.
 
@@ -123,39 +182,56 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
 
 Execute these checks in order. If ANY check fails, STOP immediately.
 
-**1. Encoding Pre-Check**:
+**0. Skill Reading Complete** (Step -3 - BLOCKING GATE):
+```markdown
+- [ ] Step -3 verification checklist complete
+- [ ] If not complete, STOP and complete Step -3 first
+```
+
+**1. VM Setup Verified** (V12.39):
+```markdown
+- [ ] Read docs/protocol/VM_SETUP_PROTOCOL.md
+- [ ] Verify VM accessible, Bob CLI available, repository exists
+- [ ] REMEMBER: VM does NOT have .NET SDK (compilation is local only)
+```
+
+**2. Encoding Pre-Check**:
 ```powershell
 .\scripts\check_encoding.ps1
 # Expected: Exit code 0, "All files use UTF-8 encoding"
 ```
 
-**2. 7-Step Git Sync Verified**:
+**3. 7-Step Git Sync Verified**:
 ```bash
 # Follow V12.37 protocol (see Step 0.5 below)
 # Expected: VM and local on same commit AND working tree clean
 ```
 
-**3. VM Build Passes**:
+**4. ~~VM Build Passes~~ (SKIP - V12.39)**:
+```bash
+# SKIP THIS CHECK - VM does NOT have .NET SDK installed
+# Compilation happens locally only, NOT on VM
+```
 ```bash
 gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
   --command="cd ~/universal-or-strategy && dotnet build src/V12_002.csproj"
 # Expected: Build succeeded, 0 errors
 ```
 
-**4. Local Build Passes**:
+**5. Local Build Passes**:
 ```powershell
 dotnet build src/V12_002.csproj
 # Expected: Build succeeded, 0 errors
 ```
 
-**5. Pre-Flight Validation Tested**:
+**6. Pre-Flight Validation Tested**:
 ```bash
 # Test skip/local/normal epic classification
 python scripts/epic_preflight_validation.py --wave N
 # Expected: Correct counts for skip/local/normal epics
 ```
 
-**6. Pilot Test Plan Created**:
+**7. Pilot Test Plan Created**:
 ```markdown
 # Create docs/brain/WAVE-N/pilot-test-plan.md
 - Epic: EPIC-CCN-001 (or first epic in wave)
@@ -163,7 +239,7 @@ python scripts/epic_preflight_validation.py --wave N
 - Success criteria: Files created, build passes, 0 P0/P1 issues
 ```
 
-**7. All Protocol Files Exist**:
+**8. All Protocol Files Exist**:
 ```bash
 # Verify required protocols exist
 ls docs/protocol/WAVE_ROLLBACK_PROTOCOL.md
@@ -557,7 +633,8 @@ gcloud compute scp _p3_116.sh _p3_117.sh v12-test-golden-v2:~/universal-or-strat
 
 Before deploying any phase scripts, verify:
 
-- [ ] **PRE-WAVE VALIDATION PASSED** (Step -2 - V12.38 MANDATORY)
+- [ ] **SKILL READING COMPLETE** (Step -3 - V12.39 BLOCKING GATE)
+- [ ] **PRE-WAVE VALIDATION PASSED** (Step -2 - V12.39 MANDATORY)
 - [ ] **ENCODING PRE-CHECK PASSED** (Step 0 - V12.33 MANDATORY)
 - [ ] **VM-LOCAL GIT SYNC VERIFIED** (Step 0.5 - V12.37 MANDATORY)
 - [ ] Copied from previous wave's SAME phase (not adjacent phase)
@@ -710,6 +787,14 @@ Total Impact = Lost Cost + Retry Cost
 ---
 
 ## Version History
+
+### V3.7 (2026-06-16)
+- **Added**: Skill Reading Verification section (Step -3) with BLOCKING GATE
+- **Updated**: Pre-Wave Validation (Step -2) to reference Step -3 and VM setup verification
+- **Updated**: Verification checklist with skill reading requirement
+- **Updated**: VM Build check marked as SKIP (VM does NOT have .NET SDK)
+- **Reason**: 3 recurring issues - agents not reading skill documentation (ROOT CAUSE), trying to run dotnet build on VM, looking for Bob CLI in wrong location
+- **Reference**: docs/protocol/VM_SETUP_PROTOCOL.md (V12.39), .bob/skills/gcp-vm-wave-execution/skill.md (V2.10)
 
 ### V3.6 (2026-06-16)
 - **Added**: Pre-Wave Validation section (Step -2) with 7-check gate

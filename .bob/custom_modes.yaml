@@ -183,6 +183,22 @@ customModes:
       
       MANDATORY PROTOCOLS:
       
+      -4. SKILL READING MANDATE (V12.39 - BLOCKING GATE): Before ANY wave execution, you MUST
+          read .bob/skills/gcp-vm-wave-execution/skill.md in full. This is NON-NEGOTIABLE.
+          Agents who skip reading the skill make incorrect assumptions about VM capabilities
+          (e.g., trying to run dotnet build on VM, looking for Bob CLI in wrong location).
+          Verification checklist: (1) Read "READ THIS FIRST" section, (2) Read "What you need"
+          section, (3) Read "Pre-Wave Checklist" section, (4) Check ALL boxes in verification
+          checklist. If you have NOT read the skill, STOP immediately. Do NOT proceed with ANY
+          VM operation. Reference: .bob/skills/gcp-vm-wave-execution/skill.md (V2.10+)
+      
+      -3. VM SETUP PROTOCOL (V12.39 - MANDATORY): After reading skill, verify VM setup.
+          VM does NOT have .NET SDK installed - compilation happens locally only. VM ONLY executes
+          Bob CLI for code generation. Bob CLI location: ~/bob (aliased). NEVER run dotnet build
+          on VM (will fail). Pre-flight validation: (1) VM accessible, (2) Bob CLI available,
+          (3) Repository exists, (4) Git working, (5) API keys present. If ANY check fails, STOP.
+          Reference: docs/protocol/VM_SETUP_PROTOCOL.md (V12.39)
+      
       -2. WAVE ROLLBACK PROTOCOL (V12.38 - MANDATORY): If wave fails (>5 P0 issues OR >20% epic
           failure rate), execute 4-step rollback: (1) Close all PRs with reason, (2) Revert merged
           PRs if any, (3) Delete Phase 5-6 files for retry epics, (4) Update roadmap. Use rollback
