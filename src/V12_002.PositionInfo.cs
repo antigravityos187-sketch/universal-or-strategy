@@ -161,7 +161,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // Universal Ladder: single pricing oracle -- reads T(n)Type + Target(n)Value, no role branching.
-        // CYC = 8 (was 9: inlined offset calculation, removed one ternary)
         private double CalculateTargetPrice(MarketPosition direction, double entryPrice, int targetNumber)
         {
             TargetMode mode = GetTargetMode(targetNumber);
@@ -176,12 +175,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
                 value = MinimumStop;
             }
-
-            double offset = value; // Default: Points mode
-            if (mode == TargetMode.ATR)
-                offset = currentATR > 0 ? currentATR * value : value;
-            else if (mode == TargetMode.Ticks)
-                offset = value * tickSize;
+            double offset;
+            switch (mode)
+            {
+                case TargetMode.ATR:
+                    offset = currentATR > 0 ? currentATR * value : value;
+                    break;
+                case TargetMode.Ticks:
+                    offset = value * tickSize;
+                    break;
+                case TargetMode.Points:
+                default:
+                    offset = value;
+                    break;
+            }
 
             double rawPrice = direction == MarketPosition.Long ? entryPrice + offset : entryPrice - offset;
             return Instrument.MasterInstrument.RoundToTickSize(rawPrice);
@@ -194,7 +201,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// the fixed Scalp (T1), causing price inversion and incorrect order slotting.
         /// Call this after computing target prices and again after fill-price re-anchoring.
         /// Slots that are zero (unused/runner) are skipped.
-        /// CYC = 8 (was 11: combined continue checks, inlined inversion logic)
         /// </summary>
         private void ApplyTargetLadderGuard(PositionInfo pos)
         {
@@ -214,16 +220,16 @@ namespace NinjaTrader.NinjaScript.Strategies
             bool anyFixed = false;
             for (int i = 1; i < prices.Length; i++)
             {
-                // Skip if current or previous slot is unused/runner
-                if (prices[i] <= 0 || prices[i - 1] <= 0)
-                    continue;
+                if (prices[i] <= 0)
+                    continue; // Skip unused/runner slots
+                if (prices[i - 1] <= 0)
+                    continue; // Previous slot unused -- nothing to compare against
 
                 double minValid = isLong ? prices[i - 1] + tickSize : prices[i - 1] - tickSize;
-                bool inverted = isLong ? (prices[i] < minValid) : (prices[i] > minValid);
 
+                bool inverted = isLong ? (prices[i] < minValid) : (prices[i] > minValid);
                 if (inverted)
                 {
-                    double fixedPrice = Instrument.MasterInstrument.RoundToTickSize(minValid);
                     Print(
                         string.Format(
                             "[LADDER_GUARD] T{0}={1:F4} is inside T{2}={3:F4} for {4}. Pushing T{0} to {5:F4}.",
@@ -232,10 +238,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                             i,
                             prices[i - 1],
                             pos.SignalName,
-                            fixedPrice
+                            minValid
                         )
                     );
-                    prices[i] = fixedPrice;
+                    prices[i] = Instrument.MasterInstrument.RoundToTickSize(minValid);
                     anyFixed = true;
                 }
             }
@@ -271,117 +277,144 @@ namespace NinjaTrader.NinjaScript.Strategies
             return CalculateTargetPrice(direction, entryPrice, targetNumber);
         }
 
-        // Switch-based accessors (V12 DNA: Zero-allocation hot paths)
-        // CYC = 11 each (acceptable per Jane Street threshold <=15)
-        // Reverted from array-based to eliminate heap allocation per AMAL harness requirement
-        private int GetTargetContracts(PositionInfo pos, int targetNumber) =>
-            targetNumber == 1 ? pos.T1Contracts
-            : targetNumber == 2 ? pos.T2Contracts
-            : targetNumber == 3 ? pos.T3Contracts
-            : targetNumber == 4 ? pos.T4Contracts
-            : targetNumber == 5 ? pos.T5Contracts
-            : 0;
+        private int GetTargetContracts(PositionInfo pos, int targetNumber)
+        {
+            switch (targetNumber)
+            {
+                case 1:
+                    return pos.T1Contracts;
+                case 2:
+                    return pos.T2Contracts;
+                case 3:
+                    return pos.T3Contracts;
+                case 4:
+                    return pos.T4Contracts;
+                case 5:
+                    return pos.T5Contracts;
+                default:
+                    return 0;
+            }
+        }
 
-        private double GetTargetPrice(PositionInfo pos, int targetNumber) =>
-            targetNumber == 1 ? pos.Target1Price
-            : targetNumber == 2 ? pos.Target2Price
-            : targetNumber == 3 ? pos.Target3Price
-            : targetNumber == 4 ? pos.Target4Price
-            : targetNumber == 5 ? pos.Target5Price
-            : 0.0;
+        private double GetTargetPrice(PositionInfo pos, int targetNumber)
+        {
+            switch (targetNumber)
+            {
+                case 1:
+                    return pos.Target1Price;
+                case 2:
+                    return pos.Target2Price;
+                case 3:
+                    return pos.Target3Price;
+                case 4:
+                    return pos.Target4Price;
+                case 5:
+                    return pos.Target5Price;
+                default:
+                    return 0.0;
+            }
+        }
 
-        private bool IsTargetFilled(PositionInfo pos, int targetNumber) =>
-            targetNumber == 1 ? pos.T1Filled
-            : targetNumber == 2 ? pos.T2Filled
-            : targetNumber == 3 ? pos.T3Filled
-            : targetNumber == 4 ? pos.T4Filled
-            : targetNumber == 5 ? pos.T5Filled
-            : false;
+        private bool IsTargetFilled(PositionInfo pos, int targetNumber)
+        {
+            switch (targetNumber)
+            {
+                case 1:
+                    return pos.T1Filled;
+                case 2:
+                    return pos.T2Filled;
+                case 3:
+                    return pos.T3Filled;
+                case 4:
+                    return pos.T4Filled;
+                case 5:
+                    return pos.T5Filled;
+                default:
+                    return false;
+            }
+        }
 
         private void MarkTargetFilled(PositionInfo pos, int targetNumber)
         {
-            if (targetNumber < 1 || targetNumber > 5)
-                return;
-            if (targetNumber == 1)
+            switch (targetNumber)
             {
-                pos.T1Filled = true;
-            }
-            else if (targetNumber == 2)
-            {
-                pos.T2Filled = true;
-            }
-            else if (targetNumber == 3)
-            {
-                pos.T3Filled = true;
-            }
-            else if (targetNumber == 4)
-            {
-                pos.T4Filled = true;
-            }
-            else if (targetNumber == 5)
-            {
-                pos.T5Filled = true;
+                case 1:
+                    pos.T1Filled = true;
+                    break;
+                case 2:
+                    pos.T2Filled = true;
+                    break;
+                case 3:
+                    pos.T3Filled = true;
+                    break;
+                case 4:
+                    pos.T4Filled = true;
+                    break;
+                case 5:
+                    pos.T5Filled = true;
+                    break;
+                default:
+                    // Invalid target number - should never reach here
+                    break;
             }
         }
 
-        private int GetTargetFilledQuantity(PositionInfo pos, int targetNumber) =>
-            targetNumber == 1 ? pos.T1FilledQuantity
-            : targetNumber == 2 ? pos.T2FilledQuantity
-            : targetNumber == 3 ? pos.T3FilledQuantity
-            : targetNumber == 4 ? pos.T4FilledQuantity
-            : targetNumber == 5 ? pos.T5FilledQuantity
-            : 0;
+        private int GetTargetFilledQuantity(PositionInfo pos, int targetNumber)
+        {
+            switch (targetNumber)
+            {
+                case 1:
+                    return pos.T1FilledQuantity;
+                case 2:
+                    return pos.T2FilledQuantity;
+                case 3:
+                    return pos.T3FilledQuantity;
+                case 4:
+                    return pos.T4FilledQuantity;
+                case 5:
+                    return pos.T5FilledQuantity;
+                default:
+                    return 0;
+            }
+        }
 
         private void SetTargetFilledQuantity(PositionInfo pos, int targetNumber, int filledQuantity)
         {
-            if (targetNumber < 1 || targetNumber > 5)
-                return;
             int safeQty = Math.Max(0, filledQuantity);
-            if (targetNumber == 1)
+            switch (targetNumber)
             {
-                pos.T1FilledQuantity = safeQty;
-            }
-            else if (targetNumber == 2)
-            {
-                pos.T2FilledQuantity = safeQty;
-            }
-            else if (targetNumber == 3)
-            {
-                pos.T3FilledQuantity = safeQty;
-            }
-            else if (targetNumber == 4)
-            {
-                pos.T4FilledQuantity = safeQty;
-            }
-            else if (targetNumber == 5)
-            {
-                pos.T5FilledQuantity = safeQty;
+                case 1:
+                    pos.T1FilledQuantity = safeQty;
+                    break;
+                case 2:
+                    pos.T2FilledQuantity = safeQty;
+                    break;
+                case 3:
+                    pos.T3FilledQuantity = safeQty;
+                    break;
+                case 4:
+                    pos.T4FilledQuantity = safeQty;
+                    break;
+                case 5:
+                    pos.T5FilledQuantity = safeQty;
+                    break;
             }
         }
 
-        // V8.11: Struct to track pending stop replacements (V12 Round 11: converted from class for zero-allocation)
+        // V8.11: Class to track pending stop replacements
         // V8.30: Added CreatedTime for timeout support
-        // V12 Round 11: Converted to struct to eliminate heap allocation in hot path (Jane Street principle)
-        // WARNING: Mutable struct - copy-by-value semantics apply. Do NOT mutate properties after
-        // retrieving from ConcurrentDictionary. Always re-insert a new instance to update state.
-        private struct PendingStopReplacement
+        private class PendingStopReplacement
         {
-            public string EntryName { get; set; }
-
-            public int Quantity { get; set; }
-
-            public double StopPrice { get; set; }
-
-            public MarketPosition Direction { get; set; }
-
-            public Order OldOrder { get; set; } // Track the old order being cancelled
-
-            public DateTime CreatedTime { get; set; } // V8.30: Timeout support - clean up stale replacements
+            public string EntryName;
+            public int Quantity;
+            public double StopPrice;
+            public MarketPosition Direction;
+            public Order OldOrder; // Track the old order being cancelled
+            public DateTime CreatedTime; // V8.30: Timeout support - clean up stale replacements
 
             // Build 950: Bracket restoration -- populated before stop cancel is sent.
-            public TargetSnapshot[] CapturedTargets { get; set; } // null if no Working targets at cancel time
-
-            public bool BracketRestorationNeeded { get; set; } // true when CapturedTargets is non-null
+            public TargetSnapshot[] CapturedTargets; // null if no Working targets at cancel time
+            public bool BracketRestorationNeeded; // true when CapturedTargets is non-null
         }
 
         // V8.22: Thread-Safe UI Snapshot Struct
