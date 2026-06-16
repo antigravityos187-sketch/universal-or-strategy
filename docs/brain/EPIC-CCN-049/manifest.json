@@ -1,0 +1,82 @@
+{
+  "epic_id": "EPIC-CCN-049",
+  "method": "ManageTrail_RunPerTradeBranches",
+  "file": "src/V12_002.Trailing.cs",
+  "complexity": 9,
+  "target_complexity": 8,
+  "actual_complexity": 4,
+  "complexity_reduction": "56%",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "completed_date": "2026-06-15"
+    },
+    "1.0": {
+      "status": "completed",
+      "outputs": ["01-scope.md"],
+      "completed_date": "2026-06-15"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"],
+      "completed_date": "2026-06-15",
+      "approval": "APPROVED"
+    },
+    "2.0": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "completed_date": "2026-06-15",
+      "extraction_strategy": "Predicate Extraction Pattern",
+      "helper_methods": 3,
+      "complexity_reduction": "9 to 4",
+      "approval": "APPROVED"
+    },
+    "3.0": {
+      "status": "completed",
+      "outputs": ["03-audit-report.md"],
+      "completed_date": "2026-06-15",
+      "audit_result": "PASS",
+      "dna_compliance": "100%",
+      "pr_hygiene": "100%",
+      "blockers": 0,
+      "approval": "APPROVED"
+    },
+    "4.0": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"],
+      "completed_date": "2026-06-15",
+      "ticket_count": 1,
+      "total_estimated_time": "15 minutes",
+      "extraction_pattern": "Predicate Extraction",
+      "complexity_improvement": "9 to 4 (56% reduction)"
+    },
+    "5.0": {
+      "status": "completed",
+      "outputs": ["ticket-1-completion.md"],
+      "completed_date": "2026-06-15",
+      "execution_time": "5 minutes",
+      "complexity_verified": 4,
+      "tests": "PASS"
+    },
+    "5.5": {
+      "status": "deferred",
+      "reason": "Windows environment required",
+      "deferred_items": [
+        "build_readiness.ps1",
+        "deploy-sync.ps1",
+        "F5 NinjaTrader validation"
+      ]
+    },
+    "6.0": {
+      "status": "completed",
+      "outputs": ["06-completion-report.md"],
+      "completed_date": "2026-06-15T21:23:25Z"
+    }
+  },
+  "epic_status": "COMPLETED",
+  "completion_date": "2026-06-15T21:23:25Z",
+  "validation_status": "DEFERRED_WINDOWS",
+  "next_phase": null,
+  "next_phase_name": null
+}

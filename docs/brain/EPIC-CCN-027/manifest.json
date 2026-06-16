@@ -1,0 +1,54 @@
+{
+  "epic_id": "EPIC-CCN-027",
+  "method": "Dispatch_PublishMarketBracketToPhoton",
+  "file": "src/V12_002.SIMA.Dispatch.cs",
+  "complexity": 21,
+  "target_complexity": 8,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1.0": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "completed_date": "2026-06-15"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "completed_date": "2026-06-15",
+      "approval": "APPROVED"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "completed_date": "2026-06-15",
+      "approval": "APPROVED"
+    },
+    "3": {
+      "status": "completed",
+      "outputs": [
+        "03-audit-report.md"
+      ],
+      "completed_date": "2026-06-15",
+      "audit_result": "PASS"
+    },
+    "4": {
+      "status": "completed",
+      "outputs": [
+        "04-tickets.md"
+      ],
+      "completed_date": "2026-06-15",
+      "ticket_count": 3
+    }
+  }
+}

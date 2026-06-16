@@ -1,0 +1,66 @@
+{
+  "epic_id": "EPIC-CCN-064",
+  "method": "ResolveFsm_ByScan",
+  "file": "src/V12_002.Symmetry.BracketFSM.cs",
+  "complexity": 12,
+  "complexity_after": 7,
+  "jane_street_violations": 0,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1.0": {
+      "status": "completed",
+      "outputs": ["01-scope.md"]
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"]
+    },
+    "2.0": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "complexity_targets": {
+        "main_method": 5,
+        "helper_1": 2,
+        "helper_2": 3,
+        "helper_3": 2
+      },
+      "extraction_strategy": "Three helper methods (TryMatchStopOrder, TryMatchTargetOrder, TryMatchEntryOrder)",
+      "jane_street_compliance": "PASS",
+      "lock_free_validation": "PASS"
+    },
+    "4": {
+      "status": "completed",
+      "output": "04-tickets.md",
+      "ticket_count": 4,
+      "execution_order": "sequential",
+      "estimated_effort_hours": "3-4"
+    },
+    "5": {
+      "status": "completed",
+      "output": "ticket-all-completion.md",
+      "tickets_executed": 4,
+      "complexity_achieved": {
+        "ResolveFsm_ByScan": 7,
+        "TryMatchStopOrder": 3,
+        "TryMatchTargetOrder": 4,
+        "TryMatchEntryOrder": 3
+      }
+    },
+    "6": {
+      "status": "completed",
+      "output": "06-completion-report.md",
+      "completion_date": "2026-06-15T21:26:29Z"
+    }
+  },
+  "epic_status": "PENDING_VERIFICATION",
+  "completion_date": "2026-06-15T21:26:29Z",
+  "verification_required": [
+    "Windows build verification (dotnet build)",
+    "CSharpier formatting check",
+    "Pre-push validation script",
+    "Manual NinjaTrader F5 test"
+  ]
+}

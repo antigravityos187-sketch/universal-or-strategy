@@ -69,6 +69,13 @@ orchestrator:
   apply: true                   # Can delegate to other modes
   system_prompt_prefix: "You are the Orchestrator. Coordinate multi-agent workflows. Break down complex tasks."
 
+# Autonomous Refactor Mode - Wave execution orchestration
+autonomous-refactor:
+  model: claude-fable-5         # Fable 5 for wave orchestration
+  apply: true                   # Can write scripts and docs
+  mode: advanced                # Inherits advanced mode capabilities (MCP + browser)
+  system_prompt_prefix: "You are the Wave Execution Lead. Follow building-blocks method, pilot testing, and Jane Street validation strictly."
+
 # ============================================================================
 # NOTES
 # ============================================================================

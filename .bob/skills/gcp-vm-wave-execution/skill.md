@@ -23,8 +23,9 @@ Orchestrates parallel execution of V12 epic workflows on a GCP VM, using Bob She
 
 - GCP project with 12+ vCPU quota
 - Golden image `v12-bob-shell-golden-v2` (or later)
-- 10 Bob Shell API keys (160 bobcoins each = 1,600 total)
+- 15 Bob Shell API keys (160 bobcoins each = 2,400 total)
 - jCodemunch-MCP with indexed repository
+- Sequential Thinking MCP configured (`.bob/mcp.json`)
 - gcloud CLI installed and authenticated
 - Obsidian Kanban board at: `C:\Users\Mohammed Khalid\Documents\V12-Agent-Vault`
 
@@ -43,6 +44,26 @@ This file contains:
 
 ## How to use it
 
+### 100% Completion Mandate (V12.28 - ABSOLUTE PRIORITY)
+
+**CRITICAL**: ALL epics in scope MUST reach 100% completion before proceeding to next phase.
+
+**Rules**:
+- NEVER dismiss any epic as "not our concern" or "out of scope" without explicit Director approval
+- If an epic exists in the roadmap or has a brain directory, it IS in scope and MUST be completed
+- Naming mismatches (EPIC-CCN-27 vs EPIC-CCN-027) do NOT exempt an epic from completion
+- Missing Phase 5 files do NOT exempt an epic from Phase 6 - execute Phase 5 first, then Phase 6
+- The goal is ALWAYS N/N (100%), never N-1/N or "close enough"
+- Every incomplete epic is a blocker to wave completion
+
+**Example Violation** (Wave 4):
+- EPIC-CCN-027 and 045 dismissed as "not our concern" because they had naming mismatches
+- Result: Wave reported 79/79 complete when actually 77/80 (96.25%)
+- Root cause: Assumed naming mismatch meant "out of scope"
+- Correct action: Investigate ALL epics, execute missing phases, achieve true 80/80
+
+**Reference**: `WAVE4_EPIC_027_045_STATUS.md`
+
 ### Phase-by-Phase Workflow (V12.25)
 
 **Architecture**: Manifest-based independent subtasks (not monolithic)
@@ -53,18 +74,112 @@ Each phase runs as a separate session with clear inputs/outputs tracked in `mani
 
 **Purpose**: Identify high-complexity methods using jCodemunch
 
+**Sequential Thinking**: ❌ NOT REQUIRED (mechanical analysis)
+
+**Test Framework**: N/A (no test generation in Phase 0)
+
 **Launch**:
 ```bash
 # 1. Generate Phase 0 scripts
 python scripts/wave2/launch_phase0_fixed.py
 
 # 2. Upload to VM
-gcloud compute scp scripts/wave2/_p0_*.sh v12-test-golden-v2:/home/malhitticrypto/universal-or-strategy/ --zone=us-central1-a
-gcloud compute scp scripts/wave2/launch_phase0_all.sh v12-test-golden-v2:/home/malhitticrypto/universal-or-strategy/ --zone=us-central1-a
+gcloud compute scp scripts/wave2/_p0_*.sh v12-test-golden-v2:/home/malhitticrypto/universal-or-strategy/scripts/wave2/ --zone=us-central1-a
+gcloud compute scp scripts/wave2/launch_phase0_all.sh v12-test-golden-v2:/home/malhitticrypto/universal-or-strategy/scripts/wave2/ --zone=us-central1-a
 
-# 3. Execute
-gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="chmod +x /home/malhitticrypto/universal-or-strategy/launch_phase0_all.sh && /home/malhitticrypto/universal-or-strategy/launch_phase0_all.sh"
+# 3. MANDATORY: Verify Upload (CRITICAL - prevents silent failures)
+LOCAL_COUNT=$(ls scripts/wave2/_p0_*.sh | wc -l)
+VM_COUNT=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="ls ~/universal-or-strategy/scripts/wave2/_p0_*.sh | wc -l")
+
+if [ "$LOCAL_COUNT" != "$VM_COUNT" ]; then
+    echo "ERROR: Upload incomplete. Local: $LOCAL_COUNT, VM: $VM_COUNT"
+    exit 1
+fi
+echo "✅ Upload verified: $LOCAL_COUNT scripts"
+
+# 4. Set permissions
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="chmod +x ~/universal-or-strategy/scripts/wave2/_p0_*.sh ~/universal-or-strategy/scripts/wave2/launch_phase0_all.sh"
+
+# 5. Run pilot test (2 epics)
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="cd universal-or-strategy && ./scripts/wave2/launch_phase0_test.sh"
 ```
+
+**Monitor**:
+```bash
+# Check progress every 4 minutes
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="cd universal-or-strategy && ls docs/brain/EPIC-CCN-*/00-hotspots.md | wc -l"
+```
+
+**Success Criteria**:
+- ✅ File exists: `docs/brain/EPIC-CCN-{ID}/00-hotspots.md`
+- ✅ File size >1K
+- ✅ Contains jCodemunch hotspot data
+- ✅ Bobcoin usage <5 per epic
+
+### Phase 5: Ticket Execution (5-10 bobcoins/epic)
+
+**Purpose**: Execute surgical refactoring tickets using Bob CLI
+
+**Sequential Thinking**: ✅ REQUIRED (complex refactoring decisions)
+
+**Test Framework**: xUnit 2.9.0+ ONLY (V12.32 Protocol)
+
+**CRITICAL**: Bob CLI MUST generate xUnit tests, NEVER NUnit or MSTest
+
+**Test Framework Validation**:
+```bash
+# Before Phase 5, verify project test framework
+grep "xunit" tests/V12_Performance.Tests/V12_Performance.Tests.csproj
+# Expected: <PackageReference Include="xunit" Version="2.9.0" />
+```
+
+**xUnit Patterns** (MANDATORY):
+- ✅ Attributes: `[Fact]`, `[Theory]`, `[InlineData]`
+- ✅ Assertions: `Assert.Equal()`, `Assert.NotNull()`, `Assert.True()`, `Assert.False()`
+- ✅ Namespace: `using Xunit;`
+
+**NUnit Patterns** (BANNED):
+- ❌ Attributes: `[Test]`, `[TestFixture]`, `[TestCase]`
+- ❌ Assertions: `Assert.AreEqual()`, `Assert.IsNotNull()`, `Assert.IsTrue()`
+- ❌ Namespace: `using NUnit.Framework;`
+
+**MSTest Patterns** (BANNED):
+- ❌ Attributes: `[TestMethod]`, `[TestClass]`
+- ❌ Assertions: `Assert.AreEqual()`, `Assert.IsNotNull()`
+- ❌ Namespace: `using Microsoft.VisualStudio.TestTools.UnitTesting;`
+
+**Rationale**: EPIC-027 TICKET-1 generated NUnit tests → 29 compilation errors → manual conversion required
+
+**Launch**:
+```bash
+# 1. Generate Phase 5 scripts (copy from previous wave Phase 5)
+python scripts/wave2/generate_wave2_phase5_scripts.py
+
+# 2. Upload to VM
+gcloud compute scp scripts/wave2/_p5_*.sh v12-test-golden-v2:/home/malhitticrypto/universal-or-strategy/scripts/wave2/ --zone=us-central1-a
+
+# 3. MANDATORY: Verify Upload
+LOCAL_COUNT=$(ls scripts/wave2/_p5_*.sh | wc -l)
+VM_COUNT=$(gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="ls ~/universal-or-strategy/scripts/wave2/_p5_*.sh | wc -l")
+
+if [ "$LOCAL_COUNT" != "$VM_COUNT" ]; then
+    echo "ERROR: Upload incomplete. Local: $LOCAL_COUNT, VM: $VM_COUNT"
+    exit 1
+fi
+echo "✅ Upload verified: $LOCAL_COUNT scripts"
+
+# 4. Set permissions
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="chmod +x ~/universal-or-strategy/scripts/wave2/_p5_*.sh"
+
+# 5. Execute
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="cd ~/universal-or-strategy && ./scripts/wave2/launch_phase0_all.sh"
+```
+
+**Why Upload Verification Matters**:
+- Wave 4 Phase 5: 7 scripts never uploaded → 7 epics failed silently
+- No error message, scripts just missing on VM
+- Cost: 1-2 hours recovery time + debugging effort
+- **ALWAYS verify counts match before proceeding**
 
 **Monitor**:
 ```bash
@@ -84,10 +199,13 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="grep -A 2 
 - ✅ Files exist: `docs/brain/EPIC-CCN-{ID}/manifest.json`
 - ✅ Bobcoin usage reported in logs
 - ✅ All APIs remain positive (>10 bobcoins)
+- ✅ **CPU usage metrics collected** (see Monitoring section below)
 
 ### Phase 1: Scope Definition (5-10 bobcoins/epic)
 
 **Purpose**: Define extraction scope based on hotspot analysis
+
+**Sequential Thinking**: ✅ MANDATORY (complex reasoning for scope boundaries)
 
 **Launch**: Same pattern as Phase 0, use `launch_phase1_fixed.py`
 
@@ -95,11 +213,17 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="grep -A 2 
 
 **Purpose**: MANDATORY validation gate to prevent scope creep (V12.23 Protocol)
 
+**Sequential Thinking**: ✅ MANDATORY (validation requires step-by-step verification)
+
 **Launch**: Same pattern, use `launch_phase1_5_fixed.py`
 
 ### Phase 2: Architecture Planning (10-15 bobcoins/epic)
 
 **Purpose**: Create detailed extraction plan with method signatures
+
+**Sequential Thinking**: ✅ MANDATORY (architectural decisions require explicit reasoning)
+
+**Jane Street KB**: ✅ MANDATORY (query for extraction patterns)
 
 **Launch**: Same pattern, use `launch_phase2_fixed.py`
 
@@ -107,23 +231,134 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="grep -A 2 
 
 **Purpose**: V12 DNA compliance checks and PR hygiene validation
 
+**Sequential Thinking**: ✅ MANDATORY (compliance verification requires systematic checks)
+
+**Jane Street KB**: ⚠️ RECOMMENDED (query for V12 DNA rules)
+
 **Launch**: Same pattern, use `launch_phase3_fixed.py`
 
 ### Phase 4: Ticket Generation (5-10 bobcoins/epic)
 
 **Purpose**: Generate surgical extraction tickets
 
+**Sequential Thinking**: ✅ MANDATORY (ticket breakdown requires logical decomposition)
+
 **Launch**: Same pattern, use `launch_phase4_fixed.py`
+
+### Phase 4.5: Ticket Review (5-10 bobcoins/epic)
+
+**Purpose**: MANDATORY validation of generated tickets
+
+**Sequential Thinking**: ✅ MANDATORY (ticket validation requires systematic review)
+
+**Jane Street KB**: ✅ MANDATORY (query for ticket validation criteria)
+
+**Launch**: Same pattern, use `launch_phase4_5_fixed.py`
 
 ### Phase 5: Ticket Execution (TBD - separate wave)
 
 **Purpose**: Bob CLI executes surgical extractions
 
+**Sequential Thinking**: ✅ MANDATORY (execution decisions require step-by-step reasoning)
+
+**Jane Street KB**: ✅ MANDATORY (query for implementation patterns)
+
 **Note**: This phase requires separate wave due to higher complexity
+
+### Phase 5.V: Verification (5-10 bobcoins/epic)
+
+**Purpose**: Verify ticket execution succeeded
+
+**Sequential Thinking**: ✅ MANDATORY (verification requires systematic checks)
+
+**Jane Street KB**: ⚠️ RECOMMENDED (query for testing patterns)
+
+**Launch**: Same pattern, use `launch_phase5_v_fixed.py`
 
 ### Phase 6: Final Review (TBD - separate wave)
 
 **Purpose**: Completion report and roadmap update
+
+**Sequential Thinking**: ❌ NOT REQUIRED (mechanical reporting)
+
+## Sequential Thinking MCP Integration (V12.25)
+
+### Configuration Required
+
+**Local Configuration** (already complete):
+- ✅ `.bob/mcp.json` - Sequential thinking MCP configured
+- ✅ `.bob/custom_modes.yaml` - autonomous-refactor mode updated
+- ✅ `.mcp.json` - Claude configuration (if needed)
+
+**VM Configuration** (must deploy before wave):
+```bash
+# 1. Upload Bob IDE MCP config (CRITICAL - used by Bob Shell + workers)
+gcloud compute scp .bob/mcp.json v12-test-golden-v2:/home/malhitticrypto/universal-or-strategy/.bob/ --zone=us-central1-a
+
+# 2. Upload custom modes
+gcloud compute scp .bob/custom_modes.yaml v12-test-golden-v2:/home/malhitticrypto/universal-or-strategy/.bob/ --zone=us-central1-a
+
+# 3. Verify uploads
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="ls -lh /home/malhitticrypto/universal-or-strategy/.bob/mcp.json"
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="ls -lh /home/malhitticrypto/universal-or-strategy/.bob/custom_modes.yaml"
+
+# 4. Test sequential thinking MCP on VM
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="npx -y @modelcontextprotocol/server-sequential-thinking --version"
+```
+
+### Phase-Specific Usage
+
+**Phases Requiring Sequential Thinking** (9 out of 10):
+- ❌ Phase -1 (Pre-flight): Not required
+- ❌ Phase 0 (Hotspot): Not required (mechanical analysis)
+- ✅ Phase 1 (Scope + Boundary): MANDATORY
+- ✅ Phase 2 (Architecture): MANDATORY + Jane Street KB
+- ✅ Phase 3 (Audit): MANDATORY
+- ✅ Phase 4 (Tickets): MANDATORY
+- ✅ Phase 4.5 (Ticket Review): MANDATORY + Jane Street KB
+- ✅ Phase 5 (Execution): MANDATORY + Jane Street KB
+- ✅ Phase 5.V (Verification): MANDATORY
+- ❌ Phase 6 (Final Review): Not required (mechanical reporting)
+
+**How Bob Shell Uses Sequential Thinking**:
+```bash
+# Bob Shell automatically has access when .bob/mcp.json is present
+bob --yolo --chat-mode plan "$(cat /tmp/phase2_msg_001.txt)"
+
+# Bob Shell will:
+# 1. Load .bob/mcp.json
+# 2. See sequential-thinking MCP server
+# 3. Use sequentialthinking tool for complex reasoning
+# 4. Break down architectural decisions into explicit steps
+```
+
+### Verification Commands
+
+**Check Sequential Thinking Available**:
+```bash
+# On VM, verify MCP server can run
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="npx -y @modelcontextprotocol/server-sequential-thinking --version"
+```
+
+**Monitor Sequential Thinking Usage**:
+```bash
+# Check logs for sequential thinking tool usage
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="grep -i 'sequentialthinking\|thought' /home/malhitticrypto/universal-or-strategy/logs/phase*/EPIC-CCN-*.log | head -20"
+```
+
+### Troubleshooting
+
+**Issue**: "sequentialthinking tool not found"
+- **Cause**: `.bob/mcp.json` not deployed to VM
+- **Fix**: Upload `.bob/mcp.json` to VM (see commands above)
+
+**Issue**: "npx command not found"
+- **Cause**: Node.js not installed on VM
+- **Fix**: Install Node.js on VM: `sudo apt-get install -y nodejs npm`
+
+**Issue**: "MCP server failed to start"
+- **Cause**: Network issue or package not available
+- **Fix**: Test with `npx -y @modelcontextprotocol/server-sequential-thinking --version`
 
 ## Self-Healing Features
 
@@ -441,6 +676,81 @@ Login to IBM Bob Shell dashboard and verify all APIs remain positive.
 - **V2.1** (2026-06-12): Added self-healing and bobcoin tracking
 - **V2.2** (2026-06-12): Added API key environment variable fix (BOBSHELL_API_KEY)
 - **V2.3** (2026-06-13): **CRITICAL FIX**: Added `--yolo` flag requirement for file persistence
+- **V2.4** (2026-06-15): **CRITICAL FIX**: Added MANDATORY upload verification step (prevents silent upload failures)
+- **V2.5** (2026-06-15): **CRITICAL MANDATE**: Added 100% Completion Mandate (V12.28) - NEVER dismiss epics as "not our concern"
+- **V2.6** (2026-06-16): **LOCAL EXECUTION**: Added local execution alternative with PowerShell adaptations for VM failure recovery
+
+## Local Execution Alternative (V2.6)
+
+**When VM Execution Fails**: Use local execution pattern to complete individual epics.
+
+### Use Cases
+- VM Phase 5 failures (e.g., method signature mismatch)
+- Need to debug phase execution interactively
+- Want to verify phase output before VM deployment
+- Recovering from VM failures (EPIC-CCN-016 example)
+
+### Pattern: Sequential Phase Execution
+
+**Core Principle**: Execute ONE phase at a time using Bob CLI, mirroring VM script execution exactly.
+
+**Steps**:
+1. Read VM script to extract API key and instructions
+2. Set `$env:BOBSHELL_API_KEY` with phase-specific key
+3. Execute `bob --yolo --chat-mode [mode]` with instructions
+4. Verify output files created
+5. Move to next phase
+
+**Example** (Phase 1 for EPIC-CCN-016):
+```powershell
+# 1. Extract API key from scripts/wave4/_p1_016.sh line 10
+$env:BOBSHELL_API_KEY='bob_prod_bob-admin_t9tV9...'
+
+# 2. Execute with Bob CLI
+bob --yolo --chat-mode plan @"
+Execute Phase 1 (Scope Definition) for EPIC-CCN-016.
+[Copy full instructions from VM script heredoc]
+"@
+
+# 3. Verify output
+Get-Item docs/brain/EPIC-CCN-016/01-scope.md | Select-Object Name, Length
+```
+
+### PowerShell Adaptations (CRITICAL)
+
+**File I/O Protocol**:
+- ❌ NEVER use Bob's `write_to_file`, `read_file`, `run_shell_command` (SSH mode bugs)
+- ✅ ALWAYS use `execute_command` with PowerShell heredoc
+- ✅ Set `cwd` parameter explicitly
+
+**Command Equivalents**:
+```powershell
+# File creation
+@' content '@ | Out-File -FilePath path/file.md -Encoding UTF8
+
+# File reading
+Get-Content path/file.md -Raw
+
+# File verification
+Get-Item path/file.md | Select-Object Name, Length
+
+# Method extraction (instead of grep)
+$content = Get-Content src/file.cs -Raw
+if ($content -match '(?s)MethodName.*?^\s*\}') { $matches[0] }
+```
+
+### Success Criteria (Same as VM)
+- ✅ Output files created in `docs/brain/EPIC-CCN-XXX/`
+- ✅ File sizes >1K (not empty)
+- ✅ Build passes (for code-changing phases)
+- ✅ Bobcoin usage reported
+
+### Complete Guide
+See `building-blocks/autonomous-refactoring/LOCAL_EXECUTION_PATTERN.md` for:
+- Phase-by-phase command templates
+- PowerShell adaptation examples
+- Common pitfalls and solutions
+- EPIC-CCN-016 walkthrough (450+ lines)
 
 ## Post-Use Audit (MANDATORY)
 
@@ -451,7 +761,17 @@ After every use of this skill:
 4. ✅ Add recovery procedures for new issues
 5. ✅ State "skill(gcp-vm-wave-execution): no gaps identified" if no gaps found
 
-**Last Audit**: 2026-06-13 05:59 UTC - **CRITICAL SOP ADDED**: After Phase 1 debugging (3 failed launches), created mandatory SOP `docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP.md`. Key rule: ALWAYS copy previous working phase scripts, NEVER generate from scratch. Phase 1 failures were caused by: (1) jq extraction vs hardcoded keys, (2) wrong JSON field `.key` vs `.apikey`, (3) wrong launcher pattern `bash -c` vs `bash -l`. All issues resolved by copying Phase 0 pattern exactly. Updated skill to reference SOP for all future phase script generation.
+**Last Audit**: 2026-06-16 06:18 UTC - **LOCAL EXECUTION PATTERN ADDED (V2.6)**: After EPIC-CCN-016 local completion (Wave 4 final epic), added comprehensive local execution alternative section. Documents sequential phase execution pattern using Bob CLI, PowerShell adaptations for Windows, file I/O protocol for SSH mode, and command equivalents. Enables recovery from VM failures by executing phases locally. Reference: building-blocks/autonomous-refactoring/LOCAL_EXECUTION_PATTERN.md (450+ lines), EPIC-CCN-016 completion
+
+**Previous Audit**: 2026-06-16 04:47 UTC - **FILE ENCODING PROTOCOL ADDED (V12.33)**: After EPIC-CCN-027 TICKET-2 UTF-16 encoding failure (Bob CLI apply_diff achieved 0% similarity), added MANDATORY encoding pre-check to all wave execution workflows. Created comprehensive FILE_ENCODING_PROTOCOL.md (329 lines) and automated check_encoding.ps1 (118 lines). UTF-8 without BOM is now MANDATORY for all source files. Pre-check must run before EVERY phase execution. Encoding violations are P0 blockers. Reference: docs/protocol/FILE_ENCODING_PROTOCOL.md, EPIC-CCN-027 TICKET-2 incident
+
+**Previous Audit**: 2026-06-15 23:31 UTC - **100% COMPLETION MANDATE ADDED (V12.28)**: After Wave 4 EPIC-027/045 incident (dismissed as "not our concern" due to naming mismatch), added ABSOLUTE mandate that ALL epics in scope MUST reach 100% completion. NEVER dismiss any epic without Director approval. If epic exists in roadmap or has brain directory, it IS in scope. Naming mismatches do NOT exempt from completion. Missing Phase 5 does NOT exempt from Phase 6 - execute Phase 5 first. Goal is ALWAYS N/N (100%), never N-1/N. Reference: WAVE4_EPIC_027_045_STATUS.md
+
+**Previous Audit**: 2026-06-15 22:31 UTC - **UPLOAD VERIFICATION ADDED**: After Wave 4 Phase 5 root cause analysis (7 scripts never uploaded to VM), added MANDATORY upload verification step to all phase launch procedures. Verification compares local script count vs VM script count before proceeding. Prevents silent upload failures that cause epic failures. Updated Phase 0 launch example with verification commands. Reference: WAVE4_ROOT_CAUSE_ANALYSIS.md, docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md (V3.1)
+
+**Previous Audit**: 2026-06-14 22:35 UTC - **POLLING PROTOCOL UPDATED**: Changed from 3-minute to 4-minute intervals per user request. Updated V2.0 protocol document (`docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL_V2.md`) with 91% cost reduction vs 30s polling. Formula: 1 min after first launch, then every 4 min. Updated custom mode (`.bob/custom_modes.yaml`) and monitoring commands to reflect new interval. Reference: docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL_V2.md
+
+**Previous Audit**: 2026-06-13 05:59 UTC - **CRITICAL SOP ADDED**: After Phase 1 debugging (3 failed launches), created mandatory SOP `docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP.md`. Key rule: ALWAYS copy previous working phase scripts, NEVER generate from scratch. Phase 1 failures were caused by: (1) jq extraction vs hardcoded keys, (2) wrong JSON field `.key` vs `.apikey`, (3) wrong launcher pattern `bash -c` vs `bash -l`. All issues resolved by copying Phase 0 pattern exactly. Updated skill to reference SOP for all future phase script generation.
 
 ## Wave 2 Phase 0 Progress (2026-06-13)
 

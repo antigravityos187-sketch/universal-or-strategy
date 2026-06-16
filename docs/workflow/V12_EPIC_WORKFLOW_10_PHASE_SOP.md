@@ -634,6 +634,7 @@ epic-validate EPIC-CCN-X --ticket 2  # Resume Phase 5.2
 - ✅ Output artifacts written to standard locations
 - ✅ Manifest updated with status and outputs
 - ✅ Build passes (for code-changing phases)
+- ✅ **CPU usage metrics collected** (see Monitoring Requirements below)
 
 ### Epic Completion
 
@@ -642,6 +643,72 @@ epic-validate EPIC-CCN-X --ticket 2  # Resume Phase 5.2
 - ✅ Final review passed
 - ✅ `deploy-sync.ps1` executed successfully
 - ✅ F5 in NinjaTrader successful
+
+---
+
+## Monitoring Requirements (MANDATORY)
+
+### CPU Usage Tracking
+
+**Purpose**: Track VM resource utilization to validate capacity planning and detect performance issues.
+
+**When to Collect**: At the END of each phase execution (after all agents complete).
+
+**Collection Command**:
+```bash
+gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
+  --command="echo '=== VM Resource Usage ===' && \
+    echo 'CPU Info:' && nproc && echo '' && \
+    echo 'Load Average (1/5/15 min):' && uptime | grep -oE 'load average: [0-9., ]+' && echo '' && \
+    echo 'Memory Usage:' && free -h | grep Mem && echo '' && \
+    echo 'Disk Usage:' && df -h /home/malhitticrypto/universal-or-strategy | tail -1"
+```
+
+**Metrics to Record**:
+
+| Metric | Description | Example |
+|--------|-------------|---------|
+| **CPU Cores** | Total vCPUs available | 8 |
+| **Load Average** | 1/5/15 minute load | 0.00, 0.06, 0.10 |
+| **CPU Utilization** | Load avg ÷ cores × 100% | 1.25% |
+| **Memory Total** | Total RAM available | 31 GB |
+| **Memory Used** | RAM in use | 337 MB |
+| **Memory %** | Used ÷ Total × 100% | 1.1% |
+| **Disk Total** | Total disk space | 97 GB |
+| **Disk Used** | Disk space in use | 4.3 GB |
+| **Disk %** | Used ÷ Total × 100% | 4.4% |
+| **Concurrent Agents** | Peak agents running | ~50 |
+
+**Documentation Template**:
+
+Add to each phase completion report:
+
+```markdown
+### VM Resource Usage (Phase X)
+
+| Resource | Capacity | Peak Usage | Utilization | Status |
+|----------|----------|------------|-------------|--------|
+| **CPU Cores** | X vCPU | Y.YY load avg | Z.Z% | ✅/⚠️/❌ |
+| **Memory** | XX GB | YYY MB | Z.Z% | ✅/⚠️/❌ |
+| **Disk** | XX GB | Y.Y GB | Z.Z% | ✅/⚠️/❌ |
+| **Concurrent Agents** | XX max | ~YY peak | ZZ% | ✅/⚠️/❌ |
+
+**Analysis**: [Brief interpretation of resource usage]
+
+**Recommendation**: [Scaling decisions or optimizations]
+```
+
+**Status Thresholds**:
+- ✅ **Optimal**: CPU <50%, Memory <50%, Disk <50%
+- ⚠️ **Warning**: CPU 50-80%, Memory 50-80%, Disk 50-80%
+- ❌ **Critical**: CPU >80%, Memory >80%, Disk >80%
+
+**Enforcement**:
+- ALL phase completion reports MUST include CPU metrics
+- Reports without CPU metrics are INCOMPLETE
+- Use metrics to validate VM capacity for next phase
+
+**Reference**: See `WAVE4_PHASE0_COMPLETION_REPORT.md` for example implementation.
 
 ---
 

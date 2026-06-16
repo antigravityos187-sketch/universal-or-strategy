@@ -1,0 +1,70 @@
+{
+  "epic_id": "EPIC-CCN-030",
+  "method": "ValidateOrphanedMasterOrders",
+  "file": "src/V12_002.Orders.Management.Cleanup.cs",
+  "complexity": 19,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1.0": {
+      "status": "completed",
+      "outputs": ["01-scope.md"],
+      "date": "2026-06-15"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"],
+      "approval": "APPROVED",
+      "date": "2026-06-15"
+    },
+    "2.0": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "date": "2026-06-15",
+      "complexity_reduction": "79%",
+      "target_complexity": 4,
+      "helper_methods": 2
+    },
+    "3.0": {
+      "status": "completed",
+      "outputs": ["03-audit-report.md"],
+      "date": "2026-06-15",
+      "audit_result": "PASS",
+      "auditor": "V12 Phase 3 Adjudicator",
+      "dna_compliance": "5/5 PASS",
+      "pr_hygiene": "4/4 PASS",
+      "go_decision": "GO FOR IMPLEMENTATION"
+    },
+    "4.0": {
+      "status": "completed",
+      "outputs": ["04-tickets.md"],
+      "date": "2026-06-15",
+      "ticket_count": 3,
+      "total_effort": "2-3 hours",
+      "tickets": [
+        {
+          "id": "TICKET-1",
+          "name": "Extract Order Filtering Logic",
+          "helper_method": "IsValidOrderForValidation",
+          "complexity": 4,
+          "tests": 4
+        },
+        {
+          "id": "TICKET-2",
+          "name": "Extract Name Parsing Logic",
+          "helper_method": "ExtractEntryNameFromOrder",
+          "complexity": 5,
+          "tests": 4
+        },
+        {
+          "id": "TICKET-3",
+          "name": "Refactor Main Method",
+          "target_complexity": 4,
+          "complexity_reduction": "79%"
+        }
+      ]
+    }
+  }
+}

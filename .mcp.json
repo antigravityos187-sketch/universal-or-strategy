@@ -157,6 +157,14 @@
       "env": {
         "PYTHONPATH": "C:/WSGTA/universal-or-strategy"
       }
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
     }
   }
 }
