@@ -92,5 +92,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of GetFsmExpectedPosition in src/V12_002.Symmetry.BracketFSM.cs (CYC: 14)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:25:00.096631+00:00"
 }

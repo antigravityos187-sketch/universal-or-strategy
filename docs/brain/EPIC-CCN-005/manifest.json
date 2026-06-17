@@ -131,5 +131,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of ClassifyAndRouteFleetOrder in src/V12_002.SIMA.Lifecycle.cs (CYC: 16)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:24:59.981405+00:00"
 }

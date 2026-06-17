@@ -88,5 +88,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of UpdateTargetVisibility in src/V12_002.UI.Panel.Handlers.cs (CYC: 19)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:24:59.985918+00:00"
 }

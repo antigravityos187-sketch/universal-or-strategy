@@ -311,5 +311,7 @@
     "deploy_sync_passed": true,
     "f5_verification_passed": true,
     "all_gates_passed": true
-  }
+  },
+  "description": "Reduce complexity of Unknown in Unknown (CYC: Unknown)",
+  "dependencies": {}
 }

@@ -125,5 +125,8 @@
     "6": [
       "5.V"
     ]
-  }
+  },
+  "description": "Reduce complexity of FleetSync_SyncFollowersToLevel in src/V12_002.Trailing.cs (CYC: 9)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:25:00.060399+00:00"
 }

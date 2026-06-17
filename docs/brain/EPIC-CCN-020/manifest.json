@@ -69,5 +69,8 @@
     "6": [
       "4"
     ]
-  }
+  },
+  "description": "Reduce complexity of HandleSecondaryOrderFilled in src/V12_002.Orders.Callbacks.cs (CYC: 22)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:25:00.002457+00:00"
 }

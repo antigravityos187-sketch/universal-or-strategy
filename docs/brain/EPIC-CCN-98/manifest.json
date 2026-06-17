@@ -116,10 +116,16 @@
       },
       "total_tickets": 2,
       "total_effort": "30 minutes",
-      "execution_order": ["EPIC-CCN-98-T1", "EPIC-CCN-98-T2"]
+      "execution_order": [
+        "EPIC-CCN-98-T1",
+        "EPIC-CCN-98-T2"
+      ]
     }
   },
   "next_phase": "phase_5",
   "dependencies_satisfied": true,
-  "status": "phase_4_completed"
+  "status": "phase_4_completed",
+  "description": "Reduce complexity of ProcessFlattenWorkItem_CancelOrders in src/V12_002.SIMA.Flatten.cs (CYC: 18)",
+  "created_at": "2026-06-17T20:25:00.173525+00:00",
+  "dependencies": {}
 }

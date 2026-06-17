@@ -118,5 +118,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of ShowModeSpecificControls in src/V12_002.UI.Panel.Handlers.cs (CYC: 20)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:24:59.987919+00:00"
 }

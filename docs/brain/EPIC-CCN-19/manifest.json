@@ -1,63 +1,87 @@
 {
   "epic_id": "EPIC-CCN-19",
-  "title": "Extract CheckFFMAConditions complexity (CYC 16 → ≤8)",
+  "title": "Extract CheckFFMAConditions complexity (CYC 16 \u2192 \u22648)",
   "status": "in_progress",
   "created_at": "2026-06-09T20:04:24Z",
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "completed_at": "2026-06-09T20:04:24Z"
     },
     "phase_1": {
       "name": "Scope Definition",
       "status": "completed",
-      "outputs": ["00-scope.md"],
+      "outputs": [
+        "00-scope.md"
+      ],
       "completed_at": "2026-06-09T20:04:24Z"
     },
     "phase_1_5": {
       "name": "Scope Boundary",
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "completed_at": "2026-06-09T20:04:24Z"
     },
     "phase_2": {
       "name": "Architecture Planning",
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "completed_at": "2026-06-09T20:04:24Z"
     },
     "phase_3": {
       "name": "DNA & PR Audit",
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "completed_at": "2026-06-09T20:04:24Z"
     },
     "phase_4": {
       "name": "Ticket Generation",
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "completed_at": "2026-06-09T20:04:24Z"
     },
     "phase_5_1": {
       "name": "Ticket 1 Execution",
       "status": "completed",
-      "dependencies": ["phase_4"],
-      "outputs": ["ticket-1-completion.md"],
+      "dependencies": [
+        "phase_4"
+      ],
+      "outputs": [
+        "ticket-1-completion.md"
+      ],
       "completed_at": "2026-06-09T20:23:46Z"
     },
     "phase_5_1_v": {
       "name": "Ticket 1 Verification",
       "status": "pending",
-      "dependencies": ["phase_5_1"],
-      "outputs": ["ticket-1-verification.md"]
+      "dependencies": [
+        "phase_5_1"
+      ],
+      "outputs": [
+        "ticket-1-verification.md"
+      ]
     },
     "phase_6": {
       "name": "Final Review",
       "status": "pending",
-      "dependencies": ["phase_5_1_v"],
-      "outputs": ["05-completion-report.md"]
+      "dependencies": [
+        "phase_5_1_v"
+      ],
+      "outputs": [
+        "05-completion-report.md"
+      ]
     }
   },
   "metadata": {
@@ -68,5 +92,7 @@
     "cyc_target": 8,
     "cluster": "SIMA",
     "parallel_safe": true
-  }
+  },
+  "description": "Reduce complexity of Unknown in Unknown (CYC: Unknown)",
+  "dependencies": {}
 }

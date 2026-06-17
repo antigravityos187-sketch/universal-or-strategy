@@ -94,5 +94,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of ShadowPropagateStopMoves in src/V12_002.SIMA.Shadow.cs (CYC: 20)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:24:59.983926+00:00"
 }

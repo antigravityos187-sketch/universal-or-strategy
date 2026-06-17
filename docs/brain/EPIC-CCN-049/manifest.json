@@ -109,5 +109,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of ManageTrail_RunPerTradeBranches in src/V12_002.Trailing.cs (CYC: 9)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:25:00.058413+00:00"
 }

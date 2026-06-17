@@ -99,5 +99,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of IsOrderAllowed in src/V12_002.UI.Compliance.cs (CYC: 16)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:24:59.978890+00:00"
 }

@@ -139,5 +139,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of DestroyPanel in src/V12_002.UI.Panel.Construction.cs (CYC: 17)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:24:59.988917+00:00"
 }
