@@ -12,6 +12,7 @@ customModes:
       MANDATORY MCP TOOLS:
       - jCodemunch: search_symbols, get_hotspots, get_symbol_complexity, get_blast_radius
       - Sequential Thinking: sequentialthinking (break down analysis into explicit steps)
+      - Graphify: For codebase structure visualization and relationship mapping
       
       Required Output Files:
       1. docs/brain/EPIC-{ID}/00-hotspots.md - Hotspot analysis report
@@ -31,7 +32,7 @@ customModes:
       - mcp
     customRules:
       - mcpMandatory: |
-          BLOCKER: jCodemunch + Sequential Thinking MCP are MANDATORY.
+          BLOCKER: jCodemunch + Sequential Thinking + Graphify MCP are MANDATORY.
           If MCP tools unavailable, STOP and report error.
       - agentTracking: |
           MANDATORY: Include Agent Tracking section in 00-hotspots.md with:
@@ -51,6 +52,7 @@ customModes:
       MANDATORY MCP TOOLS:
       - jCodemunch: get_file_outline, find_references, get_dependency_graph
       - Sequential Thinking: sequentialthinking (validate scope boundaries)
+      - Graphify: For codebase structure visualization and relationship mapping
       
       Required Output: docs/brain/EPIC-{ID}/00-scope.md
       
@@ -64,7 +66,7 @@ customModes:
       - mcp
     customRules:
       - mcpMandatory: |
-          BLOCKER: jCodemunch + Sequential Thinking MCP are MANDATORY.
+          BLOCKER: jCodemunch + Sequential Thinking + Graphify MCP are MANDATORY.
       - agentTracking: |
           MANDATORY: Include Agent Tracking section in 00-scope.md.
 
@@ -83,6 +85,7 @@ customModes:
       MANDATORY MCP TOOLS:
       - jCodemunch: get_symbol_source, get_blast_radius, find_references
       - Sequential Thinking: sequentialthinking (validate no scope creep)
+      - Graphify: For codebase structure visualization and relationship mapping
       
       Required Output: docs/brain/EPIC-{ID}/01-scope-boundary.md
       
@@ -96,7 +99,7 @@ customModes:
       - mcp
     customRules:
       - mcpMandatory: |
-          BLOCKER: jCodemunch + Sequential Thinking MCP are MANDATORY.
+          BLOCKER: jCodemunch + Sequential Thinking + Graphify MCP are MANDATORY.
       - scopeCreepGate: |
           BLOCKER: If scope exceeds single method, REJECT and report to Director.
       - agentTracking: |
@@ -153,7 +156,7 @@ customModes:
       MANDATORY MCP TOOLS:
       - jCodemunch: search_ast, get_layer_violations, get_dependency_cycles
       - Sequential Thinking: sequentialthinking (validate compliance)
-      - Greptile: For PR hygiene checks
+      - Graphify: For codebase structure visualization and relationship mapping
       
       Required Output: docs/brain/EPIC-{ID}/03-audit-report.md
       
@@ -168,7 +171,7 @@ customModes:
       - browser
     customRules:
       - mcpMandatory: |
-          BLOCKER: jCodemunch + Sequential Thinking + Greptile MCP are MANDATORY.
+          BLOCKER: jCodemunch + Sequential Thinking + Graphify MCP are MANDATORY.
       - agentTracking: |
           MANDATORY: Include Agent Tracking section in 03-audit-report.md.
 
@@ -186,6 +189,7 @@ customModes:
       MANDATORY MCP TOOLS:
       - jCodemunch: get_symbol_complexity, get_extraction_candidates
       - Sequential Thinking: sequentialthinking (validate ticket breakdown)
+      - Graphify: For codebase structure visualization and relationship mapping
       
       Required Output: docs/brain/EPIC-{ID}/04-tickets.md
       
@@ -199,7 +203,7 @@ customModes:
       - mcp
     customRules:
       - mcpMandatory: |
-          BLOCKER: jCodemunch + Sequential Thinking MCP are MANDATORY.
+          BLOCKER: jCodemunch + Sequential Thinking + Graphify MCP are MANDATORY.
       - agentTracking: |
           MANDATORY: Include Agent Tracking section in 04-tickets.md.
 
@@ -252,6 +256,7 @@ customModes:
       MANDATORY MCP TOOLS:
       - jCodemunch: get_symbol_source, get_context_bundle, plan_refactoring
       - Sequential Thinking: sequentialthinking (validate implementation)
+      - Graphify: For codebase structure visualization and relationship mapping
       
       TEST FRAMEWORK MANDATE (V12.32):
       - ALWAYS generate xUnit tests: [Fact], Assert.Equal()
@@ -269,7 +274,7 @@ customModes:
       - browser
     customRules:
       - mcpMandatory: |
-          BLOCKER: jCodemunch + Sequential Thinking MCP are MANDATORY.
+          BLOCKER: jCodemunch + Sequential Thinking + Graphify MCP are MANDATORY.
       - agentTracking: |
           MANDATORY: Include Agent Tracking section in ticket-X-completion.md.
       - dna: rules-v12-engineer/dna.md
@@ -292,7 +297,7 @@ customModes:
       MANDATORY MCP TOOLS:
       - jCodemunch: get_symbol_complexity, get_changed_symbols
       - Sequential Thinking: sequentialthinking (validate verification)
-      - Greptile: For code quality checks
+      - Graphify: For codebase structure visualization and relationship mapping
       
       Required Output: docs/brain/EPIC-{ID}/ticket-X-verification.md
       
@@ -307,7 +312,7 @@ customModes:
       - browser
     customRules:
       - mcpMandatory: |
-          BLOCKER: jCodemunch + Sequential Thinking + Greptile MCP are MANDATORY.
+          BLOCKER: jCodemunch + Sequential Thinking + Graphify MCP are MANDATORY.
       - agentTracking: |
           MANDATORY: Include Agent Tracking section in ticket-X-verification.md.
 
@@ -328,7 +333,7 @@ customModes:
       MANDATORY MCP TOOLS:
       - jCodemunch: get_repo_health, get_hotspots
       - Sequential Thinking: sequentialthinking (validate completion)
-      - Greptile: For final PR audit
+      - Graphify: For codebase structure visualization and relationship mapping
       
       Required Output: docs/brain/EPIC-{ID}/05-completion-report.md
       
@@ -343,7 +348,7 @@ customModes:
       - browser
     customRules:
       - mcpMandatory: |
-          BLOCKER: jCodemunch + Sequential Thinking + Greptile MCP are MANDATORY.
+          BLOCKER: jCodemunch + Sequential Thinking + Graphify MCP are MANDATORY.
       - agentTracking: |
           MANDATORY: Include Agent Tracking section in 05-completion-report.md.
 
@@ -351,7 +356,7 @@ customModes:
   - slug: v12-epic-planner
     name: V12 Epic Planner
     roleDefinition: >
-      Interactive epic planning mode (not used in wave execution).
+      Interactive epic planning mode (not used in phase execution).
     whenToUse: Interactive epic planning sessions
     groups:
       - read
@@ -366,7 +371,7 @@ customModes:
   - slug: v12-phase7-lead
     name: Phase 7 Concurrency Lead
     roleDefinition: >
-      Concurrency engineering mode (not used in wave execution).
+      Concurrency engineering mode (not used in phase execution).
     whenToUse: Concurrency engineering tasks
     groups:
       - read
