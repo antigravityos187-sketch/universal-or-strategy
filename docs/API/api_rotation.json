@@ -1,0 +1,13 @@
+{
+  "apis": [
+    {
+      "name": "davidgreen77",
+      "bobcoins": 160,
+      "apikey": "bob_prod_bob-admin_5Bz5pSNqYrcS8x9tBBMmEPfRhoiGcuNcr1hAHwhRq4iGC9XuWxtDqiW8onyc8rbALacHstrp8SXpgeRpQRWSmqpj_8N1GQNJojMmhEtSXeCPGVpvXbx4zCJHXovJe66br4uJo",
+      "status": "active",
+      "added": "2026-06-17"
+    }
+  ],
+  "rotation_strategy": "round_robin",
+  "last_updated": "2026-06-17T21:54:00Z"
+}
