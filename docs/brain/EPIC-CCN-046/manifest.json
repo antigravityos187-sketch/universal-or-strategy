@@ -8,25 +8,25 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "completed_date": "2026-06-15"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
-      "completed_date": "2026-06-15",
-      "description": "Scope Definition - Single method extraction plan"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "completed_date": "2026-06-15",
       "description": "Boundary Validation - V12.23 mandatory gate",
       "approval": "GRANTED"
     },
     "2": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "completed_date": "2026-06-15",
       "description": "Architecture Planning - Orchestrator pattern with 3 helper methods",
       "extraction_strategy": "3 helpers (ValidateChartClickInput, ConvertPriceCoordinates, UpdateChartState)",
@@ -35,7 +35,9 @@
     },
     "3": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "completed_date": "2026-06-15",
       "description": "DNA & PR Audit - Adjudicator review",
       "audit_result": "PASS",
@@ -55,7 +57,9 @@
     },
     "4": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "completed_date": "2026-06-15",
       "description": "Ticket Generation - 4 sequential implementation tickets",
       "ticket_count": 4,
@@ -84,9 +88,19 @@
     },
     "6": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completed_date": "2026-06-15",
       "description": "Final Review - Epic completion verified"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "completed_date": "2026-06-15",
+      "description": "Scope Definition - Single method extraction plan"
     }
   },
   "epic_status": "COMPLETED",
@@ -97,5 +111,26 @@
     "complexity_reduction_percent": 67,
     "target_met": true,
     "target_exceeded": true
+  },
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "6": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
   }
 }

@@ -9,23 +9,24 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
-      "completed_date": "2026-06-15"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "completed_date": "2026-06-15"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "completed_date": "2026-06-15",
       "approval": "APPROVED"
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "completed_date": "2026-06-15",
       "extraction_strategy": "Predicate Extraction Pattern",
       "helper_methods": 3,
@@ -34,7 +35,9 @@
     },
     "3.0": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "completed_date": "2026-06-15",
       "audit_result": "PASS",
       "dna_compliance": "100%",
@@ -44,7 +47,9 @@
     },
     "4.0": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "completed_date": "2026-06-15",
       "ticket_count": 1,
       "total_estimated_time": "15 minutes",
@@ -53,7 +58,9 @@
     },
     "5.0": {
       "status": "completed",
-      "outputs": ["ticket-1-completion.md"],
+      "outputs": [
+        "ticket-1-completion.md"
+      ],
       "completed_date": "2026-06-15",
       "execution_time": "5 minutes",
       "complexity_verified": 4,
@@ -70,13 +77,37 @@
     },
     "6.0": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completed_date": "2026-06-15T21:23:25Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "completed_date": "2026-06-15"
     }
   },
   "epic_status": "COMPLETED",
   "completion_date": "2026-06-15T21:23:25Z",
   "validation_status": "DEFERRED_WINDOWS",
   "next_phase": null,
-  "next_phase_name": null
+  "next_phase_name": null,
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "5.0": [
+      "4"
+    ],
+    "5.5": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

@@ -10,19 +10,21 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"]
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"]
+      "outputs": [
+        "01-scope-boundary.md"
+      ]
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"]
+      "outputs": [
+        "02-architecture-plan.md"
+      ]
     },
     "3.0": {
       "status": "completed",
@@ -72,6 +74,27 @@
       "status": "completed",
       "output": "06-completion-report.md",
       "completion_date": "2026-06-15T21:25:09Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ]
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "5.0": [
+      "4"
+    ],
+    "5.V": [
+      "5"
+    ],
+    "1": [
+      "0"
+    ]
   }
 }

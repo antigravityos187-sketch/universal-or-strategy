@@ -11,19 +11,21 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"]
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"]
+      "outputs": [
+        "01-scope-boundary.md"
+      ]
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "strategy": "switch_expression_with_or_patterns",
       "helper_methods": 0,
       "refactor_type": "in_place_pattern_matching"
@@ -68,6 +70,27 @@
       "output": "06-completion-report.md",
       "final_complexity": 7,
       "complexity_reduction_percent": 22
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ]
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "5.0": [
+      "4"
+    ],
+    "5.V": [
+      "5"
+    ],
+    "1": [
+      "0"
+    ]
   }
 }

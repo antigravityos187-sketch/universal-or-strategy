@@ -7,15 +7,15 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"]
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"]
+      "outputs": [
+        "01-scope-boundary.md"
+      ]
     },
     "4": {
       "status": "completed",
@@ -31,10 +31,31 @@
       "status": "completed",
       "output": "06-completion-report.md",
       "completion_date": "2026-06-15T20:43:41Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ]
     }
   },
   "epic_status": "COMPLETED",
   "completion_date": "2026-06-15T20:43:41Z",
   "total_cost_bobcoins": 4.69,
-  "total_duration_minutes": 40
+  "total_duration_minutes": 40,
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "4": [
+      "3"
+    ],
+    "6": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

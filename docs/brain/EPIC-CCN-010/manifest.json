@@ -9,17 +9,16 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "completed_at": "2026-06-15T00:52:26Z"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
-      "completed_at": "2026-06-15T03:28:30Z"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "completed_at": "2026-06-15T03:28:55Z",
       "approval": "APPROVED",
       "scope_creep_risk": "ZERO",
@@ -27,7 +26,9 @@
     },
     "2": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "completed_at": "2026-06-15T05:19:18Z",
       "extraction_strategy": "3 helper methods (CYC<=8 each)",
       "target_complexity": "CYC<=5 (orchestrator)",
@@ -36,7 +37,9 @@
     },
     "3": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "completed_at": "2026-06-15T15:44:24Z",
       "audit_result": "PASS",
       "dna_compliance": "PASS",
@@ -46,16 +49,20 @@
     },
     "4": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "completed_at": "2026-06-15T16:48:44Z",
       "ticket_count": 4,
-      "extraction_strategy": "Sequential extraction (TICKET-1 → TICKET-2 → TICKET-3 → TICKET-4)",
+      "extraction_strategy": "Sequential extraction (TICKET-1 \u2192 TICKET-2 \u2192 TICKET-3 \u2192 TICKET-4)",
       "estimated_effort": "2-3 hours",
       "bobcoin_budget": "0.75-1.00"
     },
     "5": {
       "status": "completed",
-      "outputs": ["05-phase5-completion.md"],
+      "outputs": [
+        "05-phase5-completion.md"
+      ],
       "completed_at": "2026-06-15T18:53:00Z",
       "tickets_executed": 4,
       "complexity_achieved": 2,
@@ -74,9 +81,42 @@
     },
     "6": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completed_at": "2026-06-15T21:22:00Z",
       "total_cost": "4.97 Bobcoins"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "completed_at": "2026-06-15T03:28:30Z"
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "5.5": [
+      "4"
+    ],
+    "6": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
   }
 }

@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
-Epic Manifest Management
+Epic Manifest Management with V12.52 Lamport Causal Verification
 
 Provides functions for creating, reading, updating, and validating
-epic workflow manifests.
+epic workflow manifests with deterministic execution guarantees.
+
+V12.52 Features:
+- Lamport logical clocks for causal ordering
+- Deterministic phase execution (same inputs → same outputs)
+- State hash verification (manifest + filesystem)
+- Blocking gates (prevent execution with stale state)
+- Event log for rollback/replay
 
 Usage:
     from epic_manifest import load_manifest, update_manifest, validate_dependencies
@@ -11,16 +18,21 @@ Usage:
     # Load manifest
     manifest = load_manifest("EPIC-CCN-15")
     
-    # Update phase status
-    update_manifest("EPIC-CCN-15", "1", "completed", 
+    # Update phase status (with causal verification)
+    update_manifest("EPIC-CCN-15", "1", "completed",
                    outputs=["docs/brain/EPIC-CCN-15/00-scope.md"],
                    notes="Scope defined")
     
-    # Check dependencies
+    # Check dependencies (with determinism check)
     if validate_dependencies("EPIC-CCN-15", "1.5"):
         print("Phase 1.5 ready to execute")
     
-    # Get next phases
+    # Verify can execute (V12.52 blocking gate)
+    can_execute, reason = verify_can_execute("EPIC-CCN-15", "1.5")
+    if not can_execute:
+        print(f"BLOCKED: {reason}")
+    
+    # Get next phases (deterministic order)
     next_phases = get_next_phases("EPIC-CCN-15")
     print(f"Ready to execute: {next_phases}")
     
@@ -33,8 +45,17 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any, Set, Tuple
 import time
+
+# Import V12.52 deterministic workflow engine
+from scripts.lamport_clock import (
+    get_workflow,
+    record_phase_start,
+    record_phase_complete,
+    record_phase_fail,
+    verify_can_execute as lamport_verify_can_execute
+)
 
 # Platform-specific imports for file locking
 try:
@@ -315,11 +336,20 @@ def update_manifest(
     # Use file locking for atomic updates
     with open(manifest_path, 'r+', encoding='utf-8') as f:
         # Acquire exclusive lock (platform-specific)
-        if HAS_FCNTL:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        else:
-            # Windows: lock first byte of file
-            msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+        # Skip locking in test mode (Windows has issues with msvcrt.locking)
+        use_locking = os.getenv('EPIC_MANIFEST_NO_LOCK') != '1'
+        
+        if use_locking:
+            if HAS_FCNTL:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            else:
+                # Windows: lock first byte of file
+                try:
+                    msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+                except OSError as e:
+                    # If lock fails, continue without lock (test mode)
+                    if os.getenv('EPIC_MANIFEST_NO_LOCK') != '1':
+                        raise
         
         try:
             manifest = json.load(f)
@@ -395,11 +425,15 @@ def update_manifest(
             
         finally:
             # Release lock (platform-specific)
-            if HAS_FCNTL:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-            else:
-                # Windows: unlock first byte of file
-                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+            if use_locking:
+                if HAS_FCNTL:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                else:
+                    # Windows: unlock first byte of file
+                    try:
+                        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                    except OSError:
+                        pass  # Ignore unlock errors
 
 
 def validate_dependencies(epic_id: str, phase: str) -> bool:
@@ -771,6 +805,312 @@ def add_ticket_phases(
             
         finally:
             fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+# ============================================================================
+# V12.52 Lamport Causal Verification Functions
+# ============================================================================
+
+def verify_can_execute(epic_id: str, phase: str, agent_id: str = "unknown") -> Tuple[bool, str]:
+    """
+    V12.52 Blocking Gate: Verify phase can execute with deterministic guarantees.
+    
+    Checks:
+    1. Dependencies satisfied (manifest)
+    2. Workflow determinism (Lamport clocks)
+    3. State consistency (manifest + filesystem)
+    
+    Args:
+        epic_id: Epic identifier
+        phase: Phase ID to check
+        agent_id: Agent identifier for event logging
+        
+    Returns:
+        (can_execute, reason) tuple
+        
+    Example:
+        >>> can_execute, reason = verify_can_execute("EPIC-CCN-15", "1.5", "wave6-phase1-015")
+        >>> if not can_execute:
+        ...     print(f"BLOCKED: {reason}")
+        ...     exit(1)
+    """
+    _validate_phase_id(phase)
+    
+    # 1. Check manifest dependencies
+    try:
+        if not validate_dependencies(epic_id, phase):
+            return False, "Dependencies not satisfied (manifest)"
+    except (ValidationError, DependencyError) as e:
+        return False, f"Dependency validation failed: {e}"
+    
+    # 2. Check Lamport causal verification
+    try:
+        lamport_ok, lamport_reason = lamport_verify_can_execute(epic_id, phase)
+        if not lamport_ok:
+            return False, f"Causal verification failed: {lamport_reason}"
+    except Exception as e:
+        return False, f"Lamport verification error: {e}"
+    
+    # 3. Verify filesystem state matches manifest
+    try:
+        state_ok, state_reason = verify_filesystem_state(epic_id, phase)
+        if not state_ok:
+            return False, f"State mismatch: {state_reason}"
+    except Exception as e:
+        return False, f"State verification error: {e}"
+    
+    return True, "Ready to execute (all gates passed)"
+
+
+def verify_filesystem_state(epic_id: str, phase: str) -> Tuple[bool, str]:
+    """
+    Verify filesystem state matches manifest expectations.
+    
+    Dual verification (manifest + filesystem):
+    - Check expected input artifacts exist
+    - Check no unexpected output artifacts present (stale state)
+    - Verify file sizes are non-zero
+    
+    Args:
+        epic_id: Epic identifier
+        phase: Phase ID to check
+        
+    Returns:
+        (state_ok, reason) tuple
+    """
+    try:
+        manifest = load_manifest(epic_id)
+    except FileNotFoundError:
+        return False, "Manifest not found"
+    
+    if phase not in manifest['phases']:
+        return False, f"Phase {phase} not in manifest"
+    
+    phase_data = manifest['phases'][phase]
+    brain_dir = BRAIN_DIR / epic_id
+    
+    # Check input artifacts exist
+    for artifact in phase_data.get('input_artifacts', []):
+        artifact_path = Path(artifact)
+        if not artifact_path.exists():
+            return False, f"Input artifact missing: {artifact}"
+        if artifact_path.stat().st_size == 0:
+            return False, f"Input artifact empty: {artifact}"
+    
+    # Check for stale output artifacts (shouldn't exist yet)
+    expected_outputs = phase_data.get('output_artifacts', [])
+    if phase_data['status'] == 'pending' and expected_outputs:
+        for artifact in expected_outputs:
+            artifact_path = Path(artifact)
+            if artifact_path.exists():
+                return False, f"Stale output artifact detected: {artifact} (phase is pending but file exists)"
+    
+    # Check for unexpected files in brain directory
+    if brain_dir.exists():
+        # Get all markdown files
+        existing_files = set(f.name for f in brain_dir.glob("*.md"))
+        
+        # Get expected files from all completed phases
+        # If current phase is completed or in_progress, also include its outputs
+        expected_files = set()
+        for p_id, p_data in manifest['phases'].items():
+            # Include files from completed phases
+            if p_data['status'] == 'completed':
+                for artifact in p_data.get('output_artifacts', []):
+                    expected_files.add(Path(artifact).name)
+            # Also include files from current phase if it's in_progress or completed
+            elif p_id == phase and p_data['status'] in ('in_progress', 'completed'):
+                for artifact in p_data.get('output_artifacts', []):
+                    expected_files.add(Path(artifact).name)
+        
+        # Check for unexpected files
+        unexpected = existing_files - expected_files
+        if unexpected:
+            # Filter out known files (manifest.json, etc.)
+            unexpected = {f for f in unexpected if not f.startswith('manifest')}
+            if unexpected:
+                return False, f"Unexpected files in brain directory: {unexpected}"
+    
+    return True, "Filesystem state matches manifest"
+
+
+def start_phase_execution(epic_id: str, phase: str, agent_id: str) -> Tuple[bool, str]:
+    """
+    Start phase execution with V12.52 verification and event logging.
+    
+    Workflow:
+    1. Verify can execute (blocking gate)
+    2. Record phase_start event (Lamport clock)
+    3. Update manifest status to in_progress
+    
+    Args:
+        epic_id: Epic identifier
+        phase: Phase ID to start
+        agent_id: Agent identifier
+        
+    Returns:
+        (started, reason) tuple
+        
+    Example:
+        >>> started, reason = start_phase_execution("EPIC-CCN-15", "1.5", "wave6-phase1-015")
+        >>> if not started:
+        ...     print(f"Failed to start: {reason}")
+        ...     exit(1)
+    """
+    # 1. Verify can execute
+    can_execute, reason = verify_can_execute(epic_id, phase, agent_id)
+    if not can_execute:
+        return False, f"Blocked: {reason}"
+    
+    # 2. Record phase_start event
+    try:
+        event = record_phase_start(epic_id, phase, agent_id)
+    except Exception as e:
+        return False, f"Failed to record phase_start event: {e}"
+    
+    # 3. Update manifest
+    try:
+        update_manifest(epic_id, phase, 'in_progress')
+    except Exception as e:
+        return False, f"Failed to update manifest: {e}"
+    
+    return True, f"Phase started (clock={event['clock']})"
+
+
+def complete_phase_execution(
+    epic_id: str,
+    phase: str,
+    agent_id: str,
+    outputs: List[str],
+    notes: Optional[str] = None
+) -> Tuple[bool, str]:
+    """
+    Complete phase execution with V12.52 verification and event logging.
+    
+    Workflow:
+    1. Verify outputs exist and are non-empty
+    2. Record phase_complete event (Lamport clock)
+    3. Update manifest status to completed
+    
+    Args:
+        epic_id: Epic identifier
+        phase: Phase ID to complete
+        agent_id: Agent identifier
+        outputs: List of output artifact paths
+        notes: Optional completion notes
+        
+    Returns:
+        (completed, reason) tuple
+        
+    Example:
+        >>> completed, reason = complete_phase_execution(
+        ...     "EPIC-CCN-15",
+        ...     "1.5",
+        ...     "wave6-phase1-015",
+        ...     ["docs/brain/EPIC-CCN-15/01-scope-boundary.md"],
+        ...     "Scope validated - single method only"
+        ... )
+    """
+    # 1. Verify outputs exist
+    for artifact in outputs:
+        artifact_path = Path(artifact)
+        if not artifact_path.exists():
+            return False, f"Output artifact not found: {artifact}"
+        if artifact_path.stat().st_size == 0:
+            return False, f"Output artifact is empty: {artifact}"
+    
+    # 2. Record phase_complete event
+    try:
+        event = record_phase_complete(epic_id, phase, agent_id, {
+            'outputs': outputs,
+            'notes': notes
+        })
+    except Exception as e:
+        return False, f"Failed to record phase_complete event: {e}"
+    
+    # 3. Update manifest
+    try:
+        update_manifest(epic_id, phase, 'completed', outputs=outputs, notes=notes)
+    except Exception as e:
+        return False, f"Failed to update manifest: {e}"
+    
+    return True, f"Phase completed (clock={event['clock']})"
+
+
+def fail_phase_execution(
+    epic_id: str,
+    phase: str,
+    agent_id: str,
+    error: str
+) -> Tuple[bool, str]:
+    """
+    Fail phase execution with V12.52 event logging.
+    
+    Workflow:
+    1. Record phase_fail event (Lamport clock)
+    2. Update manifest status to failed
+    
+    Args:
+        epic_id: Epic identifier
+        phase: Phase ID that failed
+        agent_id: Agent identifier
+        error: Error message
+        
+    Returns:
+        (recorded, reason) tuple
+    """
+    # 1. Record phase_fail event
+    try:
+        event = record_phase_fail(epic_id, phase, agent_id, error)
+    except Exception as e:
+        return False, f"Failed to record phase_fail event: {e}"
+    
+    # 2. Update manifest
+    try:
+        update_manifest(epic_id, phase, 'failed', notes=f"Error: {error}")
+    except Exception as e:
+        return False, f"Failed to update manifest: {e}"
+    
+    return True, f"Phase failure recorded (clock={event['clock']})"
+
+
+def get_event_log(epic_id: str, phase: Optional[str] = None) -> List[Dict]:
+    """
+    Get Lamport event log for an epic.
+    
+    Args:
+        epic_id: Epic identifier
+        phase: Optional phase filter
+        
+    Returns:
+        List of events in causal order (sorted by clock)
+        
+    Example:
+        >>> events = get_event_log("EPIC-CCN-15")
+        >>> for event in events:
+        ...     print(f"Clock {event['clock']}: {event['event_type']} - {event['phase']}")
+    """
+    workflow = get_workflow()
+    return workflow.get_event_log(epic_id, phase)
+
+
+def replay_workflow(epic_id: str) -> List[Dict]:
+    """
+    Replay workflow from event log (for debugging/recovery).
+    
+    Args:
+        epic_id: Epic identifier
+        
+    Returns:
+        List of events in causal order
+        
+    Example:
+        >>> events = replay_workflow("EPIC-CCN-15")
+        >>> print(f"Total events: {len(events)}")
+        >>> print(f"Last event: {events[-1]['event_type']} at clock {events[-1]['clock']}")
+    """
+    workflow = get_workflow()
+    return workflow.replay_workflow(epic_id)
+
 
 
 if __name__ == '__main__':

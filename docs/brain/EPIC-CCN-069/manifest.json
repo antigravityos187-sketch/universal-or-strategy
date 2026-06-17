@@ -9,40 +9,45 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
-      "completed_date": "2026-06-15"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "completed_date": "2026-06-15"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "completed_date": "2026-06-15",
       "approval": "APPROVED"
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "completed_date": "2026-06-15",
       "approval": "APPROVED",
-      "complexity_reduction": "14 → 4 (71%)",
+      "complexity_reduction": "14 \u2192 4 (71%)",
       "helper_methods": 3,
       "jane_street_aligned": true,
       "lock_free_verified": true
     },
     "3.0": {
       "status": "completed",
-      "outputs": ["03-dna-pr-audit.md"],
+      "outputs": [
+        "03-dna-pr-audit.md"
+      ],
       "completed_date": "2026-06-15",
       "approval": "PASS",
       "audit_verdict": "APPROVED FOR PHASE 4 IMPLEMENTATION"
     },
     "4.0": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "completed_date": "2026-06-15",
       "ticket_count": 4,
       "execution_order": "sequential",
@@ -50,19 +55,42 @@
     },
     "5.0": {
       "status": "completed",
-      "outputs": ["05-phase5-completion.md"],
+      "outputs": [
+        "05-phase5-completion.md"
+      ],
       "completed_date": "2026-06-15",
       "tickets_executed": 4,
       "complexity_achieved": 4
     },
     "6.0": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completed_date": "2026-06-15T21:27:19Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "completed_date": "2026-06-15"
     }
   },
   "epic_status": "COMPLETED",
   "completion_date": "2026-06-15T21:27:19Z",
   "next_phase": "N/A",
-  "next_phase_name": "Epic Complete"
+  "next_phase_name": "Epic Complete",
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "5.0": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

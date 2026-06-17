@@ -115,5 +115,6 @@
     "lock_free_check": "passed",
     "integration_test": "pending_windows"
   },
-  "next_action": "Windows verification and PR creation"
+  "next_action": "Windows verification and PR creation",
+  "dependencies": {}
 }

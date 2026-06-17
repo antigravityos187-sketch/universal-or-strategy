@@ -13,26 +13,51 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
+      "outputs": [
+        "00-hotspots.md"
+      ],
+      "created_at": "2026-06-17T19:36:48.167239Z",
+      "mode": "ask",
+      "dependencies": []
     },
     "1": {
       "status": "completed",
-      "outputs": ["01-scope.md"]
+      "outputs": [
+        "01-scope.md"
+      ],
+      "created_at": "2026-06-17T19:36:48.167239Z",
+      "mode": "plan",
+      "dependencies": [
+        "0"
+      ]
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"]
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "created_at": "2026-06-17T19:36:48.167239Z",
+      "mode": "plan",
+      "dependencies": [
+        "1"
+      ]
     },
     "2": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "extraction_strategy": "3-phase decomposition (validation, execution, verification)",
       "target_complexity": 8,
-      "helper_methods": 3
+      "helper_methods": 3,
+      "created_at": "2026-06-17T19:36:48.167239Z",
+      "mode": "plan",
+      "dependencies": [
+        "1.5"
+      ]
     },
     "3": {
       "status": "completed",
-      "output": "03-audit-report.md",
       "audit_result": "PASS",
       "dna_compliance": {
         "correctness_by_construction": "PASS",
@@ -46,55 +71,121 @@
         "build_readiness": "PASS"
       },
       "blockers": [],
-      "ready_for_phase_4": true
+      "ready_for_phase_4": true,
+      "created_at": "2026-06-17T19:36:48.167239Z",
+      "mode": "advanced",
+      "dependencies": [
+        "2"
+      ],
+      "outputs": [
+        "03-audit-report.md"
+      ]
     },
     "4": {
       "status": "completed",
-      "output": "04-tickets.md",
       "ticket_count": 3,
       "tickets": [
         {
           "id": "TICKET-1",
           "name": "Extract ShouldCancelTarget Helper",
-          "complexity_reduction": "18 → 16",
+          "complexity_reduction": "18 \u00e2\u2020\u2019 16",
           "estimated_hours": 1.25,
           "status": "completed"
         },
         {
           "id": "TICKET-2",
           "name": "Extract IsOrderCancellable Helper",
-          "complexity_reduction": "16 → 10",
+          "complexity_reduction": "16 \u00e2\u2020\u2019 10",
           "estimated_hours": 1.75,
           "status": "completed"
         },
         {
           "id": "TICKET-3",
           "name": "Extract CreateFollowerTargetReplaceSpec Helper",
-          "complexity_reduction": "10 → 10",
+          "complexity_reduction": "10 \u00e2\u2020\u2019 10",
           "estimated_hours": 2.25,
           "status": "completed"
         }
       ],
       "total_estimated_hours": 5.25,
       "execution_order": "sequential",
-      "ready_for_phase_5": true
+      "ready_for_phase_5": true,
+      "created_at": "2026-06-17T19:36:48.167239Z",
+      "mode": "plan",
+      "dependencies": [
+        "3"
+      ],
+      "outputs": [
+        "04-tickets.md"
+      ]
     },
     "5": {
       "status": "completed",
-      "output": "05-completion.md",
       "tickets_executed": 3,
       "final_complexity": 10,
-      "execution_date": "2026-06-15"
+      "execution_date": "2026-06-15",
+      "created_at": "2026-06-17T19:36:48.167239Z",
+      "mode": "v12-engineer",
+      "dependencies": [
+        "4"
+      ],
+      "outputs": [
+        "05-completion.md"
+      ]
     },
     "5.V": {
-      "status": "deferred",
+      "status": "skipped",
       "reason": "Windows environment required for build/test verification",
-      "action_required": "Run pre_push_validation.ps1 on Windows development machine"
+      "action_required": "Run pre_push_validation.ps1 on Windows development machine",
+      "created_at": "2026-06-17T19:36:48.167239Z",
+      "mode": "advanced",
+      "dependencies": [
+        "5"
+      ],
+      "outputs": []
     },
     "6": {
       "status": "completed",
-      "output": "06-completion-report.md",
-      "completion_date": "2026-06-15T20:33:27.442Z"
+      "completion_date": "2026-06-15T20:33:27.442Z",
+      "created_at": "2026-06-17T19:36:48.167239Z",
+      "mode": "advanced",
+      "dependencies": [
+        "5.V"
+      ],
+      "outputs": [
+        "06-completion-report.md"
+      ]
     }
+  },
+  "description": "Reduce complexity of SymmetryGuardReplaceExistingFollowerTarget from CYC 18 to \u22648",
+  "schema_version": "2.0",
+  "created_at": "2026-06-17T19:36:48.167239Z",
+  "status": "completed",
+  "dependencies": {
+    "0": [],
+    "1": [
+      "0"
+    ],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "5": [
+      "4"
+    ],
+    "5.V": [
+      "5"
+    ],
+    "6": [
+      "5.V"
+    ]
   }
 }

@@ -12,12 +12,6 @@
         "00-hotspots.md"
       ]
     },
-    "1.0": {
-      "status": "completed",
-      "outputs": [
-        "01-scope.md"
-      ]
-    },
     "1.5": {
       "status": "completed",
       "outputs": [
@@ -73,6 +67,12 @@
       "status": "completed",
       "output": "06-completion-report.md",
       "completion_date": "2026-06-15T21:24:06Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ]
     }
   },
   "epic_status": "COMPLETED_WITH_VERIFICATION_PENDING",
@@ -84,5 +84,29 @@
     "Run integration tests",
     "Execute deploy-sync.ps1",
     "Run pre-push validation"
-  ]
+  ],
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "5.V": [
+      "5"
+    ],
+    "6": [
+      "5.V"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

@@ -8,65 +8,98 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "date": "2026-06-15"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
-      "date": "2026-06-15",
-      "description": "Scope Definition"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "date": "2026-06-15",
       "description": "Boundary Validation (V12.23 Protocol)",
       "approval": "APPROVED"
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "date": "2026-06-15",
       "description": "Architecture Planning"
     },
     "3.0": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "date": "2026-06-15",
       "description": "DNA & PR Audit",
       "audit_result": "PASS"
     },
     "4.0": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "date": "2026-06-15",
       "description": "Ticket Generation",
       "ticket_count": 4
     },
     "5.0": {
       "status": "completed",
-      "outputs": ["ticket-all-completion.md"],
+      "outputs": [
+        "ticket-all-completion.md"
+      ],
       "date": "2026-06-15",
       "description": "Ticket Execution",
       "tickets_completed": 4
     },
     "5.5": {
       "status": "completed",
-      "outputs": ["ticket-all-completion.md"],
+      "outputs": [
+        "ticket-all-completion.md"
+      ],
       "date": "2026-06-15",
       "description": "Verification (implicit in ticket completion)"
     },
     "6.0": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "date": "2026-06-15",
       "description": "Final Review"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "date": "2026-06-15",
+      "description": "Scope Definition"
     }
   },
   "epic_status": "COMPLETED",
   "completion_date": "2026-06-15T21:22:28Z",
   "complexity_reduction_percent": 33,
   "jane_street_compliance": "PASS",
-  "v12_dna_compliance": "PASS"
+  "v12_dna_compliance": "PASS",
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "5.0": [
+      "4"
+    ],
+    "5.5": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

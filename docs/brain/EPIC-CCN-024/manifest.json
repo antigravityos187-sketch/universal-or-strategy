@@ -9,19 +9,26 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "completed_date": "2026-06-15"
     },
     "1": {
       "status": "completed",
-      "outputs": ["01-scope.md", "01-scope-boundary.md"],
+      "outputs": [
+        "01-scope.md",
+        "01-scope-boundary.md"
+      ],
       "completed_date": "2026-06-15",
       "approval": "APPROVED",
       "notes": "Single-method extraction scope validated. No scope creep detected. Ready for Phase 2 (Architectural Planning)."
     },
     "2": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "completed_date": "2026-06-15",
       "approval": "APPROVED",
       "extraction_strategy": "3 private helper methods (ShouldMonitorOrder, CalculateProximityMetrics, HandleProximityStateTransition)",
@@ -39,7 +46,9 @@
     },
     "3": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "completed_date": "2026-06-15",
       "audit_result": "PASS",
       "approval": "APPROVED",
@@ -59,26 +68,28 @@
     },
     "4": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "completed_date": "2026-06-15",
       "ticket_count": 4,
       "tickets": [
         {
           "id": "TICKET-1",
           "name": "Extract ShouldMonitorOrder (Validation Logic)",
-          "complexity_reduction": "17 → 14",
+          "complexity_reduction": "17 \u2192 14",
           "unit_tests": 5
         },
         {
           "id": "TICKET-2",
           "name": "Extract CalculateProximityMetrics (Pure Calculation)",
-          "complexity_reduction": "14 → 12",
+          "complexity_reduction": "14 \u2192 12",
           "unit_tests": 4
         },
         {
           "id": "TICKET-3",
           "name": "Extract HandleProximityStateTransition (State Machine)",
-          "complexity_reduction": "12 → 8",
+          "complexity_reduction": "12 \u2192 8",
           "unit_tests": 6
         },
         {
@@ -95,16 +106,41 @@
     },
     "5": {
       "status": "completed",
-      "outputs": ["ticket-1-completion.md", "ticket-2-completion.md", "ticket-3-completion.md", "ticket-4-completion.md"],
+      "outputs": [
+        "ticket-1-completion.md",
+        "ticket-2-completion.md",
+        "ticket-3-completion.md",
+        "ticket-4-completion.md"
+      ],
       "completed_date": "2026-06-15",
       "tickets_executed": 4,
       "notes": "All 4 tickets executed successfully. Complexity reduced from 17 to 8. Build verification deferred to Windows environment."
     },
     "6": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completed_date": "2026-06-15T21:24:34.973Z",
-      "notes": "Final review complete. Epic marked as COMPLETED. Complexity target achieved (17 → 8). Build verification pending Windows environment."
+      "notes": "Final review complete. Epic marked as COMPLETED. Complexity target achieved (17 \u2192 8). Build verification pending Windows environment."
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1": [
+      "0"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "6": [
+      "4"
+    ]
   }
 }

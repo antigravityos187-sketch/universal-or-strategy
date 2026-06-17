@@ -7,22 +7,23 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
-      "timestamp": "2026-06-15T03:53:30Z"
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "timestamp": "2026-06-15T03:53:52Z",
       "approval": "APPROVED"
     },
     "2": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "timestamp": "2026-06-15T05:27:16Z",
       "architect": "Bob Shell (v12-engineer mode)",
       "complexity_target": "CYC<=8",
@@ -51,7 +52,32 @@
       "extraction_tickets": 2,
       "refactoring_tickets": 1,
       "estimated_effort_minutes": 15,
-      "complexity_improvement": "91% reduction (CYC 11 → 1)"
+      "complexity_improvement": "91% reduction (CYC 11 \u2192 1)"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "timestamp": "2026-06-15T03:53:30Z"
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "1": [
+      "0"
+    ]
   }
 }

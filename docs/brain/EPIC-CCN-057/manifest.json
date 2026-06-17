@@ -8,24 +8,25 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "completed_at": "2026-06-15T03:52:00Z"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
-      "completed_at": "2026-06-15T03:54:08Z"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "completed_at": "2026-06-15T03:54:27Z",
       "approval": "APPROVED",
       "v12_23_protocol": "compliant"
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "completed_at": "2026-06-15T05:27:20Z",
       "extraction_strategy": "Extract IsBracketOrderName helper method",
       "complexity_reduction": "10 -> 8 (max of CYC 3 and CYC 8)",
@@ -34,7 +35,9 @@
     },
     "3.0": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "completed_at": "2026-06-15T16:22:27Z",
       "audit_result": "PASS",
       "dna_compliance": {
@@ -54,7 +57,9 @@
     },
     "4.0": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "completed_at": "2026-06-15T16:57:57Z",
       "ticket_count": 1,
       "execution_model": "single_atomic_ticket",
@@ -63,7 +68,9 @@
     },
     "5.0": {
       "status": "completed",
-      "outputs": ["ticket-1-completion.md"],
+      "outputs": [
+        "ticket-1-completion.md"
+      ],
       "completed_at": "2026-06-15T19:01:52Z",
       "code_changes_complete": true,
       "windows_verification_pending": true
@@ -83,15 +90,39 @@
     },
     "6.0": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completed_at": "2026-06-15T21:25:00Z",
       "final_status": "PENDING_VERIFICATION",
       "blocker": "Phase 5.V verification required on Windows environment"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "completed_at": "2026-06-15T03:54:08Z"
     }
   },
   "epic_status": "PENDING_VERIFICATION",
   "code_complete": true,
   "verification_complete": false,
   "next_phase": "5.V",
-  "next_phase_description": "Verification (Windows environment required)"
+  "next_phase_description": "Verification (Windows environment required)",
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "5.0": [
+      "4"
+    ],
+    "5.V": [
+      "5"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

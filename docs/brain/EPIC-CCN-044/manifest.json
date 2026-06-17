@@ -8,40 +8,48 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
-      "completed_date": "2026-06-15"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "completed_date": "2026-06-15"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "approval": "APPROVED",
       "completed_date": "2026-06-15"
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "completed_date": "2026-06-15"
     },
     "3.0": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "audit_result": "PASS",
       "completed_date": "2026-06-15"
     },
     "4.0": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "ticket_count": 2,
       "completed_date": "2026-06-15"
     },
     "5.0": {
       "status": "completed",
-      "outputs": ["ticket-1-completion.md", "ticket-2-completion.md"],
+      "outputs": [
+        "ticket-1-completion.md",
+        "ticket-2-completion.md"
+      ],
       "tickets_executed": 2,
       "completed_date": "2026-06-15"
     },
@@ -52,8 +60,17 @@
     },
     "6.0": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completed_date": "2026-06-15T21:22:44Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "completed_date": "2026-06-15"
     }
   },
   "epic_status": "COMPLETED",
@@ -61,5 +78,20 @@
   "complexity_reduction": "40%",
   "windows_validation_pending": true,
   "next_phase": null,
-  "next_phase_name": "Epic Complete"
+  "next_phase_name": "Epic Complete",
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "5.0": [
+      "4"
+    ],
+    "5.V": [
+      "5"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

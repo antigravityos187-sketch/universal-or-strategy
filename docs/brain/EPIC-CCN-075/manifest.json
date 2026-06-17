@@ -56,5 +56,20 @@
       "timestamp": "2026-06-15T17:01:42Z",
       "notes": "Ticket generation complete. 2 sequential tickets created: TICKET-1 (Extract ValidateAndExtractInputs, CYC~3) and TICKET-2 (Extract BuildCommandString, CYC~7). Total estimated effort: 2 hours. Ready for Phase 5 (Ticket Execution)."
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1": [
+      "0"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ]
   }
 }
