@@ -1,6 +1,6 @@
 {
   "epic_id": "EPIC-CCN-023",
-  "title": "Extract HandleFlatPosition_CleanupActivePositions (CYC 17→8)",
+  "title": "Extract HandleFlatPosition_CleanupActivePositions (CYC 17\u21928)",
   "priority": "P3",
   "tier": 1,
   "target_method": "HandleFlatPosition_CleanupActivePositions",
@@ -146,5 +146,6 @@
     "target": 8,
     "target_exceeded": true
   },
-  "next_action": "Phase 5.V (Verification) - Build verification and TDD tests required"
+  "next_action": "Phase 5.V (Verification) - Build verification and TDD tests required",
+  "dependencies": {}
 }

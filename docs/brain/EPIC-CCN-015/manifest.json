@@ -7,23 +7,24 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
-      "date": "2026-06-15"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "date": "2026-06-15"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "date": "2026-06-15",
       "approval": "APPROVED"
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "date": "2026-06-15",
       "architect": "Bob Shell (Plan Mode)",
       "extraction_strategy": {
@@ -38,7 +39,9 @@
     },
     "3.0": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "date": "2026-06-15",
       "auditor": "Bob Shell (Code Mode)",
       "audit_result": "PASS",
@@ -56,7 +59,9 @@
     },
     "4.0": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "date": "2026-06-15",
       "ticket_count": 4,
       "estimated_effort_hours": 6,
@@ -66,6 +71,22 @@
         "TICKET-3: Extract ShouldPreserveBracket Helper",
         "TICKET-4: Refactor Main Method to Use Helpers"
       ]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "date": "2026-06-15"
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "1": [
+      "0"
+    ]
   }
 }

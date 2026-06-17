@@ -11,11 +11,16 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
     "1": {
       "status": "completed",
-      "outputs": ["01-scope.md", "01-scope-boundary.md"]
+      "outputs": [
+        "01-scope.md",
+        "01-scope-boundary.md"
+      ]
     },
     "3": {
       "status": "completed",
@@ -36,5 +41,20 @@
       "status": "completed",
       "output": "06-completion-report.md"
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1": [
+      "0"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "6": [
+      "4"
+    ]
   }
 }

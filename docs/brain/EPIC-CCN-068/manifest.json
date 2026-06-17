@@ -10,18 +10,25 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
     "1": {
       "status": "completed",
-      "outputs": ["01-scope.md", "01-scope-boundary.md"],
+      "outputs": [
+        "01-scope.md",
+        "01-scope-boundary.md"
+      ],
       "approval": "APPROVED",
       "approval_date": "2026-06-15",
       "next_phase": "Phase 2: Architecture Planning"
     },
     "2": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "approval": "APPROVED",
       "approval_date": "2026-06-15",
       "next_phase": "Phase 3: Implementation",
@@ -39,7 +46,9 @@
     },
     "4": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "ticket_count": 3,
       "completion_date": "2026-06-15",
       "next_phase": "Phase 5: Ticket Execution",
@@ -58,7 +67,9 @@
           "target_cyc": 4,
           "actual_cyc": 4,
           "status": "completed",
-          "dependencies": ["TICKET-1"]
+          "dependencies": [
+            "TICKET-1"
+          ]
         },
         {
           "id": "TICKET-3",
@@ -66,13 +77,18 @@
           "target_cyc": 2,
           "actual_cyc": 1,
           "status": "completed",
-          "dependencies": ["TICKET-1", "TICKET-2"]
+          "dependencies": [
+            "TICKET-1",
+            "TICKET-2"
+          ]
         }
       ]
     },
     "5": {
       "status": "completed",
-      "outputs": ["05-ticket-completion.md"],
+      "outputs": [
+        "05-ticket-completion.md"
+      ],
       "completion_date": "2026-06-15T19:04:16Z",
       "all_tickets_executed": true,
       "lock_free_validated": true,
@@ -80,9 +96,26 @@
     },
     "6": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completion_date": "2026-06-15T21:27:05Z",
       "final_review_passed": true
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1": [
+      "0"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "4": [
+      "3"
+    ],
+    "6": [
+      "4"
+    ]
   }
 }

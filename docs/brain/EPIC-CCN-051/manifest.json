@@ -9,23 +9,24 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
-      "date": "2026-06-15"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "date": "2026-06-15"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "date": "2026-06-15",
       "approval": "APPROVED"
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "date": "2026-06-15",
       "approval": "APPROVED",
       "extraction_strategy": "3 helper methods",
@@ -38,7 +39,9 @@
     },
     "3.0": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "date": "2026-06-15",
       "audit_result": "PASS",
       "dna_compliance": {
@@ -57,7 +60,9 @@
     },
     "4.0": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "date": "2026-06-15",
       "ticket_count": 3,
       "execution_order": "sequential",
@@ -65,7 +70,11 @@
     },
     "5.0": {
       "status": "completed",
-      "outputs": ["ticket-1-completion.md", "ticket-2-completion.md", "ticket-3-completion.md"],
+      "outputs": [
+        "ticket-1-completion.md",
+        "ticket-2-completion.md",
+        "ticket-3-completion.md"
+      ],
       "date": "2026-06-15",
       "tickets_executed": 3,
       "tickets_passed": 3,
@@ -80,7 +89,16 @@
     },
     "6.0": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
+      "date": "2026-06-15"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
       "date": "2026-06-15"
     }
   },
@@ -94,5 +112,20 @@
   "ticket_generation": "COMPLETED",
   "ticket_execution": "COMPLETED",
   "verification": "PASSED",
-  "final_review": "COMPLETED"
+  "final_review": "COMPLETED",
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "5.0": [
+      "4"
+    ],
+    "5.5": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

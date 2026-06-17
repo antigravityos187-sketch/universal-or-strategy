@@ -29,7 +29,7 @@
       ],
       "approval": "APPROVED",
       "extraction_strategy": "2 helper methods (HandleFleetDispatchError, CleanupFleetDispatch)",
-      "complexity_reduction": "11 → 6 (target: ≤8)",
+      "complexity_reduction": "11 \u2192 6 (target: \u22648)",
       "lock_free_validation": "PASSED",
       "jane_street_compliance": "PASSED"
     },
@@ -41,15 +41,17 @@
         {
           "id": "TICKET-1",
           "name": "Extract HandleFleetDispatchError",
-          "complexity_reduction": "11 → 8",
+          "complexity_reduction": "11 \u2192 8",
           "dependencies": [],
           "status": "completed"
         },
         {
           "id": "TICKET-2",
           "name": "Extract CleanupFleetDispatch + TryPrimePumpIfNeeded",
-          "complexity_reduction": "8 → 3",
-          "dependencies": ["TICKET-1"],
+          "complexity_reduction": "8 \u2192 3",
+          "dependencies": [
+            "TICKET-1"
+          ],
           "status": "completed"
         }
       ]
@@ -83,5 +85,20 @@
     "Run deploy-sync.ps1 on Windows",
     "Run pre_push_validation.ps1 (full 13 checks)",
     "Verify build and tests on Windows"
-  ]
+  ],
+  "dependencies": {
+    "0": [],
+    "1": [
+      "0"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "4": [
+      "3"
+    ],
+    "6": [
+      "4"
+    ]
+  }
 }

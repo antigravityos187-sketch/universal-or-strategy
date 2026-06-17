@@ -10,22 +10,30 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "date": "2026-06-15"
     },
     "1": {
       "status": "completed",
-      "outputs": ["01-scope.md"],
+      "outputs": [
+        "01-scope.md"
+      ],
       "date": "2026-06-15"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "date": "2026-06-15"
     },
     "2": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "date": "2026-06-15",
       "architect": "Bob Shell (v12-engineer mode)",
       "extraction_strategy": {
@@ -67,7 +75,7 @@
         {
           "id": "TICKET-1",
           "name": "Extract ValidateOrderContext",
-          "complexity_reduction": "15 → 13",
+          "complexity_reduction": "15 \u2192 13",
           "estimated_effort": "45 minutes",
           "status": "completed",
           "completion_output": "ticket-1-completion.md"
@@ -75,7 +83,7 @@
         {
           "id": "TICKET-2",
           "name": "Extract LogOrderUpdate",
-          "complexity_reduction": "13 → 12",
+          "complexity_reduction": "13 \u2192 12",
           "estimated_effort": "30 minutes",
           "status": "completed",
           "completion_output": "ticket-2-completion.md"
@@ -83,7 +91,7 @@
         {
           "id": "TICKET-3",
           "name": "Extract FindMatchedPosition",
-          "complexity_reduction": "12 → 5-6",
+          "complexity_reduction": "12 \u2192 5-6",
           "estimated_effort": "1 hour",
           "status": "completed",
           "completion_output": "ticket-3-completion.md"
@@ -140,5 +148,29 @@
         "Verify all tests pass"
       ]
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1": [
+      "0"
+    ],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "5.V": [
+      "5"
+    ],
+    "6": [
+      "5.V"
+    ]
   }
 }

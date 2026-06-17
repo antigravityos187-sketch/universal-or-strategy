@@ -7,19 +7,21 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"]
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"]
+      "outputs": [
+        "01-scope-boundary.md"
+      ]
     },
     "2": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"]
+      "outputs": [
+        "02-architecture-plan.md"
+      ]
     },
     "3": {
       "status": "completed",
@@ -35,7 +37,9 @@
       "status": "partial",
       "tickets_completed": 1,
       "tickets_total": 4,
-      "outputs": ["ticket-1-completion.md"],
+      "outputs": [
+        "ticket-1-completion.md"
+      ],
       "note": "Only TICKET-1 executed. TICKET-2/3/4 appear misaligned with actual method scope."
     },
     "5.5": {
@@ -46,6 +50,12 @@
       "status": "completed",
       "output": "06-completion-report.md",
       "completion_date": "2026-06-15T21:22:51Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ]
     }
   },
   "epic_status": "INCOMPLETE",
@@ -54,5 +64,29 @@
     "Phase 5.V verification not executed",
     "Build/test validation not performed"
   ],
-  "recommendation": "Execute Phase 5.V verification, then decide: (A) Mark complete if verification passes, or (B) Re-scope remaining tickets"
+  "recommendation": "Execute Phase 5.V verification, then decide: (A) Mark complete if verification passes, or (B) Re-scope remaining tickets",
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "5.5": [
+      "4"
+    ],
+    "6": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

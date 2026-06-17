@@ -9,27 +9,28 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
-      "completed_at": "2026-06-15T04:05:54Z"
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "approval": "GRANTED",
       "completed_at": "2026-06-15T04:06:11Z"
     },
     "2": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "approval": "APPROVED",
       "completed_at": "2026-06-15T05:32:47Z",
       "extraction_strategy": {
         "helper_methods": 4,
-        "complexity_reduction": "12 → 4 (67%)",
+        "complexity_reduction": "12 \u2192 4 (67%)",
         "target_met": true
       }
     },
@@ -39,13 +40,17 @@
     },
     "4": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "ticket_count": 4,
       "completed_at": "2026-06-15T17:02:10Z"
     },
     "5": {
       "status": "completed",
-      "outputs": ["05-completion.md"],
+      "outputs": [
+        "05-completion.md"
+      ],
       "completed_at": "2026-06-15T19:04:43Z",
       "tickets_executed": 4,
       "complexity_achieved": 4
@@ -56,8 +61,17 @@
     },
     "6": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completed_at": "2026-06-15T21:29:09Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "completed_at": "2026-06-15T04:05:54Z"
     }
   },
   "scope_validation": {
@@ -83,5 +97,29 @@
     "target_met": true,
     "target_exceeded": true
   },
-  "windows_verification_pending": true
+  "windows_verification_pending": true,
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "5.5": [
+      "4"
+    ],
+    "6": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

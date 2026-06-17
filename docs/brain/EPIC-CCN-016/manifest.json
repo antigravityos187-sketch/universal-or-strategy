@@ -10,13 +10,6 @@
         "00-hotspots.md"
       ]
     },
-    "1.0": {
-      "status": "completed",
-      "outputs": [
-        "01-scope.md"
-      ],
-      "date": "2026-06-15"
-    },
     "1.5": {
       "status": "completed",
       "outputs": [
@@ -50,6 +43,31 @@
       "date": "2026-06-15",
       "ticket_count": 4,
       "approval": "READY_FOR_PHASE_5"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
+      "date": "2026-06-15"
     }
+  },
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "2": [
+      "1.5"
+    ],
+    "3": [
+      "2"
+    ],
+    "4": [
+      "3"
+    ],
+    "1": [
+      "0"
+    ]
   }
 }

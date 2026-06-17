@@ -8,41 +8,55 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"],
-      "date": "2026-06-15"
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "date": "2026-06-15"
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"],
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
       "approval": "APPROVED",
       "date": "2026-06-15"
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "date": "2026-06-15"
     },
     "3.0": {
       "status": "completed",
-      "outputs": ["03-audit-report.md"],
+      "outputs": [
+        "03-audit-report.md"
+      ],
       "audit_result": "PASS",
       "date": "2026-06-15"
     },
     "4.0": {
       "status": "completed",
-      "outputs": ["04-tickets.md"],
+      "outputs": [
+        "04-tickets.md"
+      ],
       "ticket_count": 6,
       "date": "2026-06-15"
     },
     "5.0": {
       "status": "completed",
-      "outputs": ["05-ticket-completion.md"],
-      "tickets_completed": ["TICKET-1", "TICKET-2", "TICKET-3", "TICKET-4", "TICKET-5", "TICKET-6"],
+      "outputs": [
+        "05-ticket-completion.md"
+      ],
+      "tickets_completed": [
+        "TICKET-1",
+        "TICKET-2",
+        "TICKET-3",
+        "TICKET-4",
+        "TICKET-5",
+        "TICKET-6"
+      ],
       "tickets_remaining": [],
       "completion_date": "2026-06-15T18:52:34Z",
       "verification_pending": true,
@@ -51,13 +65,34 @@
     },
     "6.0": {
       "status": "completed",
-      "outputs": ["06-completion-report.md"],
+      "outputs": [
+        "06-completion-report.md"
+      ],
       "completion_date": "2026-06-15T21:21:42Z",
+      "date": "2026-06-15"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ],
       "date": "2026-06-15"
     }
   },
   "epic_status": "COMPLETED",
   "completion_date": "2026-06-15T21:21:42Z",
   "protocol_version": "V12.23",
-  "verification_notes": "Pending Windows environment verification: build, tests, deploy-sync, F5 manual test"
+  "verification_notes": "Pending Windows environment verification: build, tests, deploy-sync, F5 manual test",
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "5.0": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }

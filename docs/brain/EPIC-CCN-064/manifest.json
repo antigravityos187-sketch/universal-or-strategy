@@ -8,19 +8,21 @@
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1.0": {
-      "status": "completed",
-      "outputs": ["01-scope.md"]
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
     "1.5": {
       "status": "completed",
-      "outputs": ["01-scope-boundary.md"]
+      "outputs": [
+        "01-scope-boundary.md"
+      ]
     },
     "2.0": {
       "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
       "complexity_targets": {
         "main_method": 5,
         "helper_1": 2,
@@ -53,6 +55,12 @@
       "status": "completed",
       "output": "06-completion-report.md",
       "completion_date": "2026-06-15T21:26:29Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "01-scope.md"
+      ]
     }
   },
   "epic_status": "PENDING_VERIFICATION",
@@ -62,5 +70,20 @@
     "CSharpier formatting check",
     "Pre-push validation script",
     "Manual NinjaTrader F5 test"
-  ]
+  ],
+  "dependencies": {
+    "0": [],
+    "1.5": [
+      "1"
+    ],
+    "4": [
+      "3"
+    ],
+    "6": [
+      "4"
+    ],
+    "1": [
+      "0"
+    ]
+  }
 }
