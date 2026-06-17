@@ -10,6 +10,11 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1": {
@@ -19,14 +24,25 @@
         "01-scope-boundary.md"
       ],
       "approval": "APPROVED",
-      "notes": "Single-method extraction scope validated. No scope creep detected. V12.23 Protocol compliance verified."
+      "notes": "Single-method extraction scope validated. No scope creep detected. V12.23 Protocol compliance verified.",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
       "outputs": [
         "02-architecture-plan.md"
       ],
-      "notes": "Architecture planning complete. Extraction strategy defined: 2 helper methods (ValidateAndExtractInputs CYC~3, BuildCommandString CYC~7) to reduce OnSubmitClick from CYC 12 to CYC 2. Lock-free validation passed. Jane Street cognitive simplicity alignment verified."
+      "notes": "Architecture planning complete. Extraction strategy defined: 2 helper methods (ValidateAndExtractInputs CYC~3, BuildCommandString CYC~7) to reduce OnSubmitClick from CYC 12 to CYC 2. Lock-free validation passed. Jane Street cognitive simplicity alignment verified.",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -47,14 +63,25 @@
       },
       "blockers": [],
       "confidence": "HIGH",
-      "notes": "All DNA compliance and PR hygiene checks passed. Zero blockers identified. Ready for Phase 4 (Ticket Generation)."
+      "notes": "All DNA compliance and PR hygiene checks passed. Zero blockers identified. Ready for Phase 4 (Ticket Generation).",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
       "output": "04-tickets.md",
       "ticket_count": 2,
       "timestamp": "2026-06-15T17:01:42Z",
-      "notes": "Ticket generation complete. 2 sequential tickets created: TICKET-1 (Extract ValidateAndExtractInputs, CYC~3) and TICKET-2 (Extract BuildCommandString, CYC~7). Total estimated effort: 2 hours. Ready for Phase 5 (Ticket Execution)."
+      "notes": "Ticket generation complete. 2 sequential tickets created: TICKET-1 (Extract ValidateAndExtractInputs, CYC~3) and TICKET-2 (Extract BuildCommandString, CYC~7). Total estimated effort: 2 hours. Ready for Phase 5 (Ticket Execution).",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "dependencies": {

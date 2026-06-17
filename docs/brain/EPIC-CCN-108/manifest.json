@@ -8,47 +8,91 @@
     "0": {
       "name": "Hotspot Analysis",
       "status": "completed",
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "name": "Epic Intake",
       "status": "completed",
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "name": "Scope Boundary",
       "status": "completed",
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "name": "Architecture Planning",
       "status": "completed",
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "name": "DNA & PR Audit",
       "status": "completed",
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "name": "Ticket Generation",
       "status": "completed",
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "name": "Recursive Execution",
       "status": "pending",
-      "date": null
+      "date": null,
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "name": "Verification/Review",
       "status": "pending",
-      "date": null
+      "date": null,
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "7": {
       "name": "Sign-off",
       "status": "pending",
-      "date": null
+      "date": null,
+      "mode": "plan"
     }
   },
   "outputs": {

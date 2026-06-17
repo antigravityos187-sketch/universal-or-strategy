@@ -8,6 +8,11 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1.5": {
@@ -16,7 +21,12 @@
         "01-scope-boundary.md"
       ],
       "date": "2026-06-15",
-      "approval": "APPROVED"
+      "approval": "APPROVED",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -24,7 +34,13 @@
         "02-architecture-plan.md"
       ],
       "date": "2026-06-15",
-      "approval": "READY_FOR_P4_VETTING"
+      "approval": "READY_FOR_P4_VETTING",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -33,7 +49,13 @@
       ],
       "date": "2026-06-16",
       "audit_result": "PASS",
-      "approval": "READY_FOR_PHASE_4"
+      "approval": "READY_FOR_PHASE_4",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -42,14 +64,24 @@
       ],
       "date": "2026-06-15",
       "ticket_count": 4,
-      "approval": "READY_FOR_PHASE_5"
+      "approval": "READY_FOR_PHASE_5",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "dependencies": {

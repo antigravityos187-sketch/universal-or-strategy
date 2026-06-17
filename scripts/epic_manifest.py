@@ -76,7 +76,30 @@ EPIC_STATUSES = {"pending", "in_progress", "completed", "failed", "blocked"}
 PHASE_STATUSES = {"pending", "in_progress", "completed", "failed", "blocked", "skipped"}
 
 # Valid modes
-VALID_MODES = {"ask", "plan", "advanced", "v12-engineer"}
+# Valid modes for manifest validation
+# Base modes (built into Bob CLI, no custom_modes.yaml needed):
+VALID_MODES = {"ask", "plan", "advanced"}
+
+# Custom modes (defined in .bob/custom_modes.yaml):
+# V12.53: ALL 10 phases now have custom modes with MCP tool enforcement
+CUSTOM_MODES = {
+    "v12-phase0-hotspot",      # Phase 0: Hotspot Analysis
+    "v12-phase1-scope",        # Phase 1: Scope Definition
+    "v12-phase1-5-boundary",   # Phase 1.5: Scope Boundary Validation
+    "v12-phase2-architecture", # Phase 2: Architecture Planning
+    "v12-phase3-audit",        # Phase 3: DNA & PR Audit
+    "v12-phase4-tickets",      # Phase 4: Ticket Generation
+    "v12-phase4-5-review",     # Phase 4.5: Ticket Review (Jane Street)
+    "v12-engineer",            # Phase 5: Ticket Execution
+    "v12-phase5-v-verify",     # Phase 5.V: Verification
+    "v12-phase6-review",       # Phase 6: Final Review
+    "v12-epic-planner",        # Interactive epic planning (not wave execution)
+    "v12-phase7-lead",         # Concurrency engineering (not wave execution)
+    "autonomous-refactor"      # Wave orchestration (not phase execution)
+}
+
+# All valid modes (base + custom):
+ALL_VALID_MODES = VALID_MODES | CUSTOM_MODES
 
 # Valid status transitions
 VALID_TRANSITIONS = {
@@ -266,9 +289,9 @@ def load_manifest(epic_id: str) -> Dict[str, Any]:
                 f"Invalid phase status for {phase_id}: {phase['status']}"
             )
         
-        if phase['mode'] not in VALID_MODES:
+        if phase['mode'] not in ALL_VALID_MODES:
             raise ValidationError(
-                f"Invalid mode for {phase_id}: {phase['mode']}"
+                f"Invalid mode for {phase_id}: {phase['mode']}. Must be one of: {', '.join(sorted(ALL_VALID_MODES))}"
             )
         
         _validate_timestamps(phase, manifest['created_at'])

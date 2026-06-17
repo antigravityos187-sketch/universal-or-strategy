@@ -13,18 +13,22 @@
       "name": "Hotspot Analysis",
       "status": "completed",
       "command": "epic-intake",
-      "mode": "ask",
+      "mode": "v12-phase0-hotspot",
       "inputs": [],
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_at": "2026-06-09T17:01:00Z"
+      "completed_at": "2026-06-09T17:01:00Z",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "name": "Scope Definition",
       "status": "completed",
       "command": "epic-scope-boundary --phase 1",
-      "mode": "plan",
+      "mode": "v12-phase1-scope",
       "inputs": [
         "00-hotspots.md"
       ],
@@ -34,13 +38,17 @@
       "dependencies": [
         "0"
       ],
-      "completed_at": "2026-06-09T17:05:00Z"
+      "completed_at": "2026-06-09T17:05:00Z",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "name": "Scope Boundary Validation",
       "status": "completed",
       "command": "epic-scope-boundary --phase 1.5",
-      "mode": "plan",
+      "mode": "v12-phase1-5-boundary",
       "inputs": [
         "00-scope.md"
       ],
@@ -50,13 +58,17 @@
       "dependencies": [
         "1"
       ],
-      "completed_at": "2026-06-09T17:10:00Z"
+      "completed_at": "2026-06-09T17:10:00Z",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "name": "Architecture Planning",
       "status": "completed",
       "command": "epic-plan",
-      "mode": "plan",
+      "mode": "v12-phase2-architecture",
       "inputs": [
         "01-scope-boundary.md"
       ],
@@ -66,13 +78,18 @@
       "dependencies": [
         "1.5"
       ],
-      "completed_at": "2026-06-09T17:15:00Z"
+      "completed_at": "2026-06-09T17:15:00Z",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "name": "DNA & PR Audit",
       "status": "completed",
       "command": "epic-scan",
-      "mode": "advanced",
+      "mode": "v12-phase3-audit",
       "inputs": [
         "02-architecture-plan.md",
         "02-diagrams.md",
@@ -93,13 +110,18 @@
         "high": 0,
         "medium": 2,
         "low": 0
-      }
+      },
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "name": "Ticket Generation",
       "status": "completed",
       "command": "epic-tickets",
-      "mode": "plan",
+      "mode": "v12-phase4-tickets",
       "inputs": [
         "03-audit-report.md"
       ],
@@ -109,7 +131,11 @@
       "dependencies": [
         "3"
       ],
-      "completed_at": "2026-06-09T17:30:00Z"
+      "completed_at": "2026-06-09T17:30:00Z",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.1": {
       "name": "Ticket 1: Extract Boolean Helpers",
@@ -128,7 +154,11 @@
       ],
       "completed_at": "2026-06-09T17:45:00Z",
       "build_tag": "1111.043-epic-ccn-18-t1",
-      "f5_verified": true
+      "f5_verified": true,
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.2": {
       "name": "Ticket 2: Extract Cancellation Helper",
@@ -147,7 +177,11 @@
       ],
       "completed_at": "2026-06-09T18:00:00Z",
       "build_tag": "1111.044-epic-ccn-18-t2",
-      "f5_verified": true
+      "f5_verified": true,
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.3": {
       "name": "Ticket 3: Extract Cleanup Helper",
@@ -166,7 +200,11 @@
       ],
       "completed_at": "2026-06-09T18:32:00Z",
       "build_tag": "1111.045-epic-ccn-18-t3",
-      "f5_verified": true
+      "f5_verified": true,
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.4": {
       "name": "Ticket 4: Final Refactoring",
@@ -185,13 +223,17 @@
       ],
       "completed_at": "2026-06-09T18:38:00Z",
       "build_tag": "1111.046-epic-ccn-18-t4",
-      "f5_verified": true
+      "f5_verified": true,
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "name": "Final Review",
       "status": "completed",
       "command": "epic-review-final",
-      "mode": "advanced",
+      "mode": "v12-phase6-review",
       "inputs": [
         "ticket-01-completion.md",
         "ticket-02-completion.md",
@@ -207,7 +249,12 @@
         "5.3",
         "5.4"
       ],
-      "completed_at": "2026-06-09T18:42:00Z"
+      "completed_at": "2026-06-09T18:42:00Z",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     }
   },
   "metrics": {

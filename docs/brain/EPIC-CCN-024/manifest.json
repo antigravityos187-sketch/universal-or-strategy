@@ -12,7 +12,12 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "status": "completed",
@@ -22,7 +27,12 @@
       ],
       "completed_date": "2026-06-15",
       "approval": "APPROVED",
-      "notes": "Single-method extraction scope validated. No scope creep detected. Ready for Phase 2 (Architectural Planning)."
+      "notes": "Single-method extraction scope validated. No scope creep detected. Ready for Phase 2 (Architectural Planning).",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -42,7 +52,13 @@
           "total": 18
         }
       },
-      "notes": "Architecture plan complete. 3 helper methods designed with clear responsibilities. Lock-free validation passed. Jane Street compliance verified. Ready for Phase 3 (DNA & PR Audit)."
+      "notes": "Architecture plan complete. 3 helper methods designed with clear responsibilities. Lock-free validation passed. Jane Street compliance verified. Ready for Phase 3 (DNA & PR Audit).",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -64,7 +80,13 @@
         "build_readiness": "PASS"
       },
       "blockers": [],
-      "notes": "DNA & PR audit complete. All compliance checks passed. No blockers identified. Architecture is sound and implementable. Ready for Phase 4 (Ticket Generation)."
+      "notes": "DNA & PR audit complete. All compliance checks passed. No blockers identified. Architecture is sound and implementable. Ready for Phase 4 (Ticket Generation).",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -102,7 +124,12 @@
       "total_unit_tests": 15,
       "estimated_effort": "2-3 hours",
       "risk_level": "LOW",
-      "notes": "Ticket generation complete. 4 sequential tickets created with clear acceptance criteria. Total 15 unit tests planned. Ready for Phase 5 (Ticket Execution)."
+      "notes": "Ticket generation complete. 4 sequential tickets created with clear acceptance criteria. Total 15 unit tests planned. Ready for Phase 5 (Ticket Execution).",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
@@ -114,7 +141,12 @@
       ],
       "completed_date": "2026-06-15",
       "tickets_executed": 4,
-      "notes": "All 4 tickets executed successfully. Complexity reduced from 17 to 8. Build verification deferred to Windows environment."
+      "notes": "All 4 tickets executed successfully. Complexity reduced from 17 to 8. Build verification deferred to Windows environment.",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "status": "completed",
@@ -122,7 +154,13 @@
         "06-completion-report.md"
       ],
       "completed_date": "2026-06-15T21:24:34.973Z",
-      "notes": "Final review complete. Epic marked as COMPLETED. Complexity target achieved (17 \u2192 8). Build verification pending Windows environment."
+      "notes": "Final review complete. Epic marked as COMPLETED. Complexity target achieved (17 \u2192 8). Build verification pending Windows environment.",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     }
   },
   "dependencies": {

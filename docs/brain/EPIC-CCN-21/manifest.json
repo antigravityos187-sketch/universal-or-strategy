@@ -16,7 +16,7 @@
     "0": {
       "name": "Hotspot Analysis",
       "status": "pending",
-      "mode": "ask",
+      "mode": "v12-phase0-hotspot",
       "started": "2026-06-10T22:31:29.057597Z",
       "completed": "2026-06-10T22:32:29.130289Z",
       "output_artifacts": [
@@ -29,46 +29,87 @@
         "needs_extraction": false,
         "jane_street_compliant": true
       },
-      "notes": "CYC 9 <= 10 - no action required"
+      "notes": "CYC 9 <= 10 - no action required",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "name": "Scope Definition",
       "status": "pending",
-      "mode": "plan",
+      "mode": "v12-phase1-scope",
       "dependencies": [
         "phase_0"
       ],
-      "expected_outcome": "Document closure rationale and update roadmap"
+      "expected_outcome": "Document closure rationale and update roadmap",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "name": "Scope Boundary Validation",
       "status": "not_applicable",
-      "reason": "No changes planned, boundary validation not needed"
+      "reason": "No changes planned, boundary validation not needed",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "name": "Architecture Planning",
       "status": "not_applicable",
-      "reason": "No extraction needed"
+      "reason": "No extraction needed",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "name": "DNA & PR Audit",
       "status": "not_applicable",
-      "reason": "No changes to audit"
+      "reason": "No changes to audit",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "name": "Ticket Generation",
       "status": "not_applicable",
-      "reason": "No work tickets needed"
+      "reason": "No work tickets needed",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "name": "Ticket Execution",
       "status": "not_applicable",
-      "reason": "No tickets to execute"
+      "reason": "No tickets to execute",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "name": "Final Review",
       "status": "not_applicable",
-      "reason": "No changes to review"
+      "reason": "No changes to review",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     }
   },
   "metadata": {

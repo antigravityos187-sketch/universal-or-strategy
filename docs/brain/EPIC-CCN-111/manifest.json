@@ -38,18 +38,33 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "00-scope.md"
+      ],
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1.5": {
       "status": "completed",
       "outputs": [
         "01-scope-boundary.md"
+      ],
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "2": {
@@ -57,21 +72,38 @@
       "outputs": [
         "02-architecture-plan.md"
       ],
-      "notes": "Threshold corrected from 15 to 8. Combined complexity (12) violates threshold. Epic proceeds to Phase 3."
+      "notes": "Threshold corrected from 15 to 8. Combined complexity (12) violates threshold. Epic proceeds to Phase 3.",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
       "outputs": [
         "03-audit-report.md"
       ],
-      "notes": "V12 DNA compliance verified (lock-free, ASCII-only, Jane Street alignment). PR hygiene validated. Scope revision required to target HydrateSingleAccountExpectedPosition for meaningful complexity reduction."
+      "notes": "V12 DNA compliance verified (lock-free, ASCII-only, Jane Street alignment). PR hygiene validated. Scope revision required to target HydrateSingleAccountExpectedPosition for meaningful complexity reduction.",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
       "outputs": [
         "04-tickets.md"
       ],
-      "notes": "Generated two ticket sets: Option A (4 tickets targeting HydrateSingleAccountExpectedPosition) and Option B (3 tickets targeting HydrateExpectedPositionsFromBroker). Director decision required before Phase 5 execution."
+      "notes": "Generated two ticket sets: Option A (4 tickets targeting HydrateSingleAccountExpectedPosition) and Option B (3 tickets targeting HydrateExpectedPositionsFromBroker). Director decision required before Phase 5 execution.",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "description": "Reduce complexity of Unknown in src/V12_002.SIMA.Lifecycle.cs (CYC: Unknown)",

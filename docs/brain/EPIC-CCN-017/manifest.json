@@ -11,6 +11,11 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1.5": {
@@ -20,7 +25,12 @@
       ],
       "approval": "GRANTED",
       "scope_creep_risk": "ZERO",
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -31,7 +41,13 @@
       "complexity_target": "CYC_8",
       "extraction_strategy": "pattern_extraction",
       "helper_methods": 1,
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -52,7 +68,13 @@
       },
       "blockers": 0,
       "ready_for_phase_4": true,
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -85,7 +107,12 @@
       ],
       "total_effort": "2-3 hours",
       "complexity_target": "CYC_8",
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
@@ -94,7 +121,12 @@
         "ticket-3-completion.md"
       ],
       "all_tickets_executed": true,
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.V": {
       "status": "pending_windows_verification",
@@ -107,21 +139,38 @@
         "NinjaTrader F5 test",
         "CodeScene hotspot analysis"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase5-v-verify",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "6": {
       "status": "completed",
       "outputs": [
         "06-completion-report.md"
       ],
-      "date": "2026-06-15T21:23:38.246Z"
+      "date": "2026-06-15T21:23:38.246Z",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "dependencies": {

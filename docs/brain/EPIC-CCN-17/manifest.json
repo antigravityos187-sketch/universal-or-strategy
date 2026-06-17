@@ -12,18 +12,22 @@
       "name": "Hotspot Analysis",
       "status": "completed",
       "command": "epic-intake",
-      "mode": "ask",
+      "mode": "v12-phase0-hotspot",
       "inputs": [],
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_at": "2026-06-09T07:32:00Z"
+      "completed_at": "2026-06-09T07:32:00Z",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "name": "Scope Definition",
       "status": "completed",
       "command": "epic-scope-boundary --phase 1",
-      "mode": "plan",
+      "mode": "v12-phase1-scope",
       "inputs": [
         "00-hotspots.md"
       ],
@@ -31,13 +35,17 @@
         "00-scope.md"
       ],
       "started_at": "2026-06-09T07:32:00Z",
-      "completed_at": "2026-06-09T07:35:00Z"
+      "completed_at": "2026-06-09T07:35:00Z",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "name": "Scope Boundary Validation",
       "status": "completed",
       "command": "epic-scope-boundary --phase 1.5",
-      "mode": "plan",
+      "mode": "v12-phase1-5-boundary",
       "inputs": [
         "00-scope.md"
       ],
@@ -52,13 +60,17 @@
       "validation_result": "PASS",
       "scope_creep_detected": false,
       "pre_existing_issues": 0,
-      "boundary_enforcement": "clear"
+      "boundary_enforcement": "clear",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "name": "Architecture Planning",
       "status": "completed",
       "command": "epic-plan",
-      "mode": "plan",
+      "mode": "v12-phase2-architecture",
       "inputs": [
         "01-scope-boundary.md"
       ],
@@ -74,13 +86,18 @@
       "sequence_diagrams_created": 3,
       "thread_safety_verified": true,
       "tdd_tests_planned": 30,
-      "complexity_targets_defined": true
+      "complexity_targets_defined": true,
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "2.3": {
       "name": "Sentinel Audit (DNA & PR Audit)",
       "status": "completed",
       "command": "epic-scan (Phase 2.3 variant)",
-      "mode": "advanced",
+      "mode": "v12-phase2-architecture",
       "inputs": [
         "02-architecture-plan.md"
       ],
@@ -139,13 +156,18 @@
         "post_extraction_cyc": 8,
         "post_extraction_nesting": 3,
         "post_extraction_loc": 51
-      }
+      },
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "name": "Architecture Validation",
       "status": "completed",
       "command": "epic-validate (Phase 3 variant)",
-      "mode": "plan",
+      "mode": "v12-phase3-audit",
       "inputs": [
         "02-architecture-plan.md",
         "02-sentinel-report.md"
@@ -203,13 +225,18 @@
         "pr_hygiene_risk": "low",
         "diff_size_estimate": 3500,
         "whitespace_mutation_risk": "low"
-      }
+      },
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "name": "Ticket Generation",
       "status": "completed",
       "command": "epic-tickets",
-      "mode": "plan",
+      "mode": "v12-phase4-tickets",
       "inputs": [
         "03-approach.md"
       ],
@@ -257,7 +284,11 @@
             "ticket_2"
           ]
         }
-      }
+      },
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.1": {
       "name": "Execute Ticket 1",
@@ -278,7 +309,11 @@
         "effort_hours": 2,
         "complexity_target": 8,
         "test_count": 9
-      }
+      },
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.2": {
       "name": "Execute Ticket 2",
@@ -299,7 +334,11 @@
         "effort_hours": 3,
         "complexity_target": 10,
         "test_count": 6
-      }
+      },
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.3": {
       "name": "Execute Ticket 3",
@@ -321,13 +360,17 @@
         "effort_hours": 2,
         "complexity_target": 8,
         "test_count": 0
-      }
+      },
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "name": "Final Review",
       "status": "pending",
       "command": "epic-review-final",
-      "mode": "advanced",
+      "mode": "v12-phase6-review",
       "inputs": [
         "ticket-01-completion.md",
         "ticket-02-completion.md",
@@ -338,6 +381,11 @@
       ],
       "dependencies": [
         "5"
+      ],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
       ]
     }
   },

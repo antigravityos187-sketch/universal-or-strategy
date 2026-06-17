@@ -11,48 +11,56 @@
     "phase_0": {
       "status": "complete",
       "file": "00-hotspots.md",
-      "completed_at": "2026-06-15T04:05:00Z"
+      "completed_at": "2026-06-15T04:05:00Z",
+      "mode": "plan"
     },
     "phase_1_0": {
       "status": "complete",
       "file": "01-scope.md",
-      "completed_at": "2026-06-15T04:07:00Z"
+      "completed_at": "2026-06-15T04:07:00Z",
+      "mode": "plan"
     },
     "phase_1_5": {
       "status": "complete",
       "file": "01-scope-boundary.md",
       "completed_at": "2026-06-15T04:07:00Z",
-      "approval_status": "approved"
+      "approval_status": "approved",
+      "mode": "plan"
     },
     "phase_2": {
       "status": "complete",
       "file": "02-architecture-plan.md",
       "completed_at": "2026-06-15T05:32:31Z",
-      "approval_status": "approved"
+      "approval_status": "approved",
+      "mode": "plan"
     },
     "phase_3": {
       "status": "complete",
       "file": "03-dna-pr-audit.md",
       "completed_at": "2026-06-15T17:01:00Z",
-      "gate_decision": "PASS"
+      "gate_decision": "PASS",
+      "mode": "plan"
     },
     "phase_4": {
       "status": "complete",
       "file": "04-tickets.md",
       "completed_at": "2026-06-15T17:02:45Z",
-      "ticket_count": 3
+      "ticket_count": 3,
+      "mode": "plan"
     },
     "phase_5": {
       "status": "complete",
       "file": "05-execution-complete.md",
       "completed_at": "2026-06-15T21:28:00Z",
       "tickets_executed": 3,
-      "tickets_passed": 3
+      "tickets_passed": 3,
+      "mode": "plan"
     },
     "phase_6": {
       "status": "complete",
       "file": "06-completion-report.md",
-      "completed_at": "2026-06-15T21:29:36Z"
+      "completed_at": "2026-06-15T21:29:36Z",
+      "mode": "plan"
     }
   },
   "scope_validation": {

@@ -13,7 +13,12 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_at": "2026-06-13T04:06:31Z"
+      "completed_at": "2026-06-13T04:06:31Z",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "name": "Scope Definition",
@@ -21,7 +26,12 @@
       "outputs": [
         "00-scope.md"
       ],
-      "completed_at": "2026-06-13T05:56:48Z"
+      "completed_at": "2026-06-13T05:56:48Z",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "name": "Scope Boundary Validation",
@@ -29,7 +39,12 @@
       "outputs": [
         "01-scope-boundary.md"
       ],
-      "completed_at": "2026-06-13T06:18:43Z"
+      "completed_at": "2026-06-13T06:18:43Z",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "name": "Architecture Planning",
@@ -37,7 +52,13 @@
       "outputs": [
         "02-architecture-plan.md"
       ],
-      "completed_at": "2026-06-13T06:57:17Z"
+      "completed_at": "2026-06-13T06:57:17Z",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "name": "DNA & PR Audit",
@@ -45,7 +66,13 @@
       "outputs": [
         "03-audit-report.md"
       ],
-      "completed_at": "2026-06-13T08:14:47Z"
+      "completed_at": "2026-06-13T08:14:47Z",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "name": "Ticket Generation",
@@ -53,7 +80,12 @@
       "outputs": [
         "04-tickets.md"
       ],
-      "completed_at": "2026-06-13T08:41:04Z"
+      "completed_at": "2026-06-13T08:41:04Z",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.4": {
       "name": "Ticket Execution (TICKET-4)",
@@ -63,7 +95,12 @@
       ],
       "completed_at": "2026-06-13T12:03:47Z",
       "reason": "Epic in CONDITIONAL HOLD - complexity 14 < threshold 15",
-      "trigger_condition": "complexity > 15"
+      "trigger_condition": "complexity > 15",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "v12_dna_compliance": {

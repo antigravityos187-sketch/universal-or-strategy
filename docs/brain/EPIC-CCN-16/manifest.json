@@ -8,37 +8,49 @@
     "0": {
       "name": "Hotspot Analysis",
       "status": "completed",
-      "mode": "ask",
+      "mode": "v12-phase0-hotspot",
       "started_at": "2026-06-09T05:30:01.678822+00:00",
       "completed_at": "2026-06-09T05:32:16.136981+00:00",
       "input_artifacts": [],
       "output_artifacts": [
         "docs/brain/EPIC-CCN-16/00-hotspots.md"
       ],
-      "notes": "Hotspot analysis complete. Target: HydrateFSMsFromWorkingOrders (CYC 45 \u2192 \u22648)"
+      "notes": "Hotspot analysis complete. Target: HydrateFSMsFromWorkingOrders (CYC 45 \u2192 \u22648)",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "name": "Scope Definition",
       "status": "pending",
-      "mode": "plan",
+      "mode": "v12-phase1-scope",
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "name": "Scope Boundary",
       "status": "pending",
-      "mode": "plan",
+      "mode": "v12-phase1-5-boundary",
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "name": "Architecture Planning",
       "status": "completed",
-      "mode": "plan",
+      "mode": "v12-phase2-architecture",
       "started_at": "2026-06-09T05:48:52.000000+00:00",
       "completed_at": "2026-06-09T05:56:47.000000+00:00",
       "input_artifacts": [
@@ -50,12 +62,17 @@
         "docs/brain/EPIC-CCN-16/03-approach.md",
         "docs/brain/EPIC-CCN-16/02-sentinel-report.md"
       ],
-      "notes": "Phase 2 complete including Sentinel Audit (Phase 2.3). Verdict: PASSED. Approach is architecturally sound and DNA-compliant."
+      "notes": "Phase 2 complete including Sentinel Audit (Phase 2.3). Verdict: PASSED. Approach is architecturally sound and DNA-compliant.",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "name": "DNA & PR Audit",
       "status": "completed",
-      "mode": "advanced",
+      "mode": "v12-phase3-audit",
       "started_at": "2026-06-09T05:59:37.692Z",
       "completed_at": "2026-06-09T06:02:56.000Z",
       "input_artifacts": [
@@ -67,12 +84,17 @@
         "docs/brain/EPIC-CCN-16/02-analysis.md",
         "docs/brain/EPIC-CCN-16/03-approach.md"
       ],
-      "notes": "Phase 3 validation complete. Critical finding: LinkTargetOrderToFSM already exists - removed from extraction plan. Updated approach document in-place. All V12 DNA constraints verified. Extraction order dependency-correct. Test coverage adequate (27 test cases). Ready for Phase 4 (Ticket Generation)."
+      "notes": "Phase 3 validation complete. Critical finding: LinkTargetOrderToFSM already exists - removed from extraction plan. Updated approach document in-place. All V12 DNA constraints verified. Extraction order dependency-correct. Test coverage adequate (27 test cases). Ready for Phase 4 (Ticket Generation).",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "name": "Ticket Generation",
       "status": "completed",
-      "mode": "plan",
+      "mode": "v12-phase4-tickets",
       "started_at": "2026-06-09T06:04:14.285Z",
       "completed_at": "2026-06-09T06:09:10.303012+00:00",
       "input_artifacts": [
@@ -88,7 +110,11 @@
         "docs/brain/EPIC-CCN-16/ticket-05-position-pass.md",
         "docs/brain/EPIC-CCN-16/ticket-06-refactor-parent.md"
       ],
-      "notes": "Generated 6 tickets with execution guide. Ticket phases added to manifest."
+      "notes": "Generated 6 tickets with execution guide. Ticket phases added to manifest.",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.1": {
       "name": "Map State",
@@ -97,16 +123,25 @@
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.1.V": {
       "name": "Verify Map State",
       "status": "pending",
-      "mode": "advanced",
+      "mode": "v12-phase5-v-verify",
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "5.2": {
       "name": "Build FSM",
@@ -115,16 +150,25 @@
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.2.V": {
       "name": "Verify Build FSM",
       "status": "pending",
-      "mode": "advanced",
+      "mode": "v12-phase5-v-verify",
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "5.3": {
       "name": "Resolve Contracts",
@@ -133,16 +177,25 @@
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.3.V": {
       "name": "Verify Resolve Contracts",
       "status": "pending",
-      "mode": "advanced",
+      "mode": "v12-phase5-v-verify",
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "5.4": {
       "name": "Register FSM",
@@ -151,16 +204,25 @@
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.4.V": {
       "name": "Verify Register FSM",
       "status": "pending",
-      "mode": "advanced",
+      "mode": "v12-phase5-v-verify",
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "5.5": {
       "name": "Position Pass",
@@ -169,16 +231,25 @@
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.5.V": {
       "name": "Verify Position Pass",
       "status": "pending",
-      "mode": "advanced",
+      "mode": "v12-phase5-v-verify",
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "5.6": {
       "name": "Refactor Parent",
@@ -187,25 +258,39 @@
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.6.V": {
       "name": "Verify Refactor Parent",
       "status": "pending",
-      "mode": "advanced",
+      "mode": "v12-phase5-v-verify",
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "6": {
       "name": "Final Review",
       "status": "pending",
-      "mode": "advanced",
+      "mode": "v12-phase6-review",
       "started_at": null,
       "completed_at": null,
       "input_artifacts": [],
-      "output_artifacts": []
+      "output_artifacts": [],
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     }
   },
   "dependencies": {

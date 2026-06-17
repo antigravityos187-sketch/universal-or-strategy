@@ -13,21 +13,36 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "status": "completed",
       "outputs": [
         "01-scope-boundary.md"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -44,7 +59,13 @@
           "LogOrderUpdate",
           "FindMatchedPosition"
         ]
-      }
+      },
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -64,7 +85,13 @@
         "build_readiness": "PASS"
       },
       "blockers": 0,
-      "recommendations": 3
+      "recommendations": 3,
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -105,7 +132,12 @@
           "completion_output": "ticket-4-completion.md"
         }
       ],
-      "total_estimated_effort": "3-4 hours"
+      "total_estimated_effort": "3-4 hours",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
@@ -118,7 +150,12 @@
       "date": "2026-06-15",
       "tickets_executed": 4,
       "tickets_successful": 4,
-      "final_complexity": 7
+      "final_complexity": 7,
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.V": {
       "status": "completed_with_caveats",
@@ -135,6 +172,12 @@
         "Build verification requires Windows environment",
         "Test suite verification requires Windows environment",
         "Hard-link sync requires Windows PowerShell execution"
+      ],
+      "mode": "v12-phase5-v-verify",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
       ]
     },
     "6": {
@@ -146,6 +189,12 @@
         "Run build_readiness.ps1 on Windows",
         "Execute deploy-sync.ps1 on Windows",
         "Verify all tests pass"
+      ],
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
       ]
     }
   },

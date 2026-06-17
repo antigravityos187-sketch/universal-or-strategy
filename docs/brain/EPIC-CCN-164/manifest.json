@@ -8,7 +8,8 @@
     "phase_0": {
       "status": "completed",
       "output": "00-hotspots.md",
-      "completed_at": "2026-06-11T05:00:00.000Z"
+      "completed_at": "2026-06-11T05:00:00.000Z",
+      "mode": "plan"
     },
     "phase_1": {
       "status": "completed",
@@ -28,7 +29,8 @@
           }
         ],
         "main_method_target_cyc": 4
-      }
+      },
+      "mode": "plan"
     }
   },
   "description": "Reduce complexity of IsCommandForThisInstrument in src/V12_002.UI.IPC.cs (CYC: 36)",

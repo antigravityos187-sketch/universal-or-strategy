@@ -9,12 +9,22 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1.5": {
       "status": "completed",
       "outputs": [
         "01-scope-boundary.md"
+      ],
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "2": {
@@ -28,6 +38,12 @@
         3,
         4,
         4
+      ],
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
       ]
     },
     "3": {
@@ -46,7 +62,13 @@
         "build_readiness": "PASS"
       },
       "blockers": [],
-      "recommendations": 4
+      "recommendations": 4,
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -73,12 +95,22 @@
           "complexity_target": 5,
           "estimated_hours": 1.0
         }
+      ],
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
+      ],
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     }
   },

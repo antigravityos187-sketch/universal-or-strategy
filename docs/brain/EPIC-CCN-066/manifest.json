@@ -14,7 +14,12 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "status": "completed",
@@ -22,7 +27,12 @@
         "01-scope-boundary.md"
       ],
       "approval": "APPROVED",
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -31,7 +41,13 @@
       ],
       "date": "2026-06-15",
       "architect": "Bob Shell (v12-engineer mode)",
-      "approval": "APPROVED"
+      "approval": "APPROVED",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -40,7 +56,13 @@
       ],
       "date": "2026-06-15",
       "auditor": "Bob Shell (v12-engineer mode)",
-      "approval": "APPROVED"
+      "approval": "APPROVED",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -49,7 +71,12 @@
       ],
       "date": "2026-06-15",
       "ticket_count": 4,
-      "estimated_effort": "1.5 hours"
+      "estimated_effort": "1.5 hours",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
@@ -58,12 +85,22 @@
       ],
       "date": "2026-06-15",
       "tickets_executed": 4,
-      "actual_effort": "15 minutes"
+      "actual_effort": "15 minutes",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.5": {
       "status": "deferred",
       "reason": "Linux environment - Windows CI required for build/test verification",
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "status": "completed",
@@ -72,14 +109,25 @@
       ],
       "date": "2026-06-15",
       "reviewer": "Bob Shell (v12-engineer mode)",
-      "approval": "APPROVED"
+      "approval": "APPROVED",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "dependencies": {

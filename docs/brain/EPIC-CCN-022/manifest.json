@@ -11,40 +11,78 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
+      ],
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "2": {
       "status": "completed",
       "outputs": [
         "02-architecture-plan.md"
+      ],
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
       ]
     },
     "3": {
       "status": "completed",
       "output": "03-audit-report.md",
-      "audit_result": "PASS"
+      "audit_result": "PASS",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
       "output": "04-tickets.md",
-      "ticket_count": 4
+      "ticket_count": 4,
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
       "output": "05-completion.md",
       "tickets_executed": 4,
-      "complexity_reduction": "77.8%"
+      "complexity_reduction": "77.8%",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "status": "completed",
       "output": "06-completion-report.md",
-      "completion_date": "2026-06-15T20:42:01.511Z"
+      "completion_date": "2026-06-15T20:42:01.511Z",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     }
   },
   "dependencies": {
