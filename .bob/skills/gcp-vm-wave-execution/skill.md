@@ -13,7 +13,7 @@ description: Launch autonomous epic execution waves on GCP VMs using pre-configu
 **Why This Matters**:
 - Agents who skip reading this skill make incorrect assumptions about VM capabilities
 - Common mistakes: trying to run `dotnet build` on VM (VM has no .NET SDK)
-- Common mistakes: looking for Bob CLI in wrong location (it's at ~/bob, not /usr/local/bin)
+- Common mistakes: looking for Bob CLI in wrong location (it's at /home/malhitticrypto/.npm-global/bin/bob, requires login shell)
 - Common mistakes: expecting compilation on VM (compilation happens locally only)
 
 **Verification Checklist** (check ALL before proceeding):
@@ -22,7 +22,7 @@ description: Launch autonomous epic execution waves on GCP VMs using pre-configu
 - [ ] I have read "Wave Rollback Procedure" section (lines 769-930)
 - [ ] I understand VM does NOT have .NET SDK installed
 - [ ] I understand VM ONLY executes Bob CLI (no compilation)
-- [ ] I understand Bob CLI location is `~/bob` (aliased)
+- [ ] I understand Bob CLI location is `/home/malhitticrypto/.npm-global/bin/bob` (npm global, requires login shell)
 
 **BLOCKING GATE**: If you have NOT checked ALL boxes above, STOP. Read this skill document in full before proceeding.
 
