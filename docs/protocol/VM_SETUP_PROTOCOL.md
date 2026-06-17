@@ -1,7 +1,7 @@
-# VM Setup Protocol (V12.39)
+# VM Setup Protocol (V12.40)
 
-**Version**: V12.39  
-**Effective**: 2026-06-16  
+**Version**: V12.40
+**Effective**: 2026-06-17
 **Status**: MANDATORY - Read before ANY VM operation
 
 ---
@@ -90,18 +90,65 @@ msbuild               # ❌ FAILS - MSBuild not installed
 
 **Python**:
 - **Version**: 3.10+
-- **Purpose**: Helper scripts (query_kb.py, etc.)
+- **Purpose**: Helper scripts (query_kb.py, etc.), MCP servers
 - **Location**: `/usr/bin/python3`
+- **Symlink**: `/usr/bin/python` → `/usr/bin/python3` (REQUIRED for MCP servers)
 
 **Node.js**:
 - **Version**: 18+
-- **Purpose**: MCP servers (if needed)
+- **Purpose**: MCP servers (sequential-thinking)
 - **Location**: `/usr/bin/node`
+- **npm**: `/usr/bin/npm`
+- **npx**: `/usr/bin/npx` (REQUIRED for MCP servers)
 
 **Screen**:
 - **Version**: 4.9+
 - **Purpose**: Background process management
 - **Usage**: `screen -dmS <name> bash -l -c '<command>'`
+
+### MCP Server Setup (V12.40)
+
+**Prerequisites** (MANDATORY for Bob CLI MCP tools):
+
+1. **Python Symlink** (REQUIRED):
+   ```bash
+   sudo ln -sf /usr/bin/python3 /usr/bin/python
+   ```
+   - **Why**: MCP servers expect `python` command, VM has `python3`
+   - **Verify**: `python --version` should show Python 3.10+
+
+2. **Node.js & npm** (REQUIRED):
+   - Already installed on golden image v2
+   - **Verify**: `node --version && npm --version && npx --version`
+
+**MCP Servers: Local vs VM**:
+
+**Local-Only MCP Servers** (run on Windows machine):
+- `jcodemunch-mcp` (Windows binary, .exe - cannot run on Linux)
+- `greptile` (requires local auth)
+
+**VM-Compatible MCP Servers** (can run on VM):
+- `sequential-thinking` (requires Node.js/npx)
+- `phase-*` servers (require Python 3)
+- `worker-*` servers (require Python 3)
+
+**Bob CLI Behavior**: When MCP server unavailable, Bob Shell continues with degraded functionality (no MCP tools).
+
+**Verification**:
+```bash
+# Check Python symlink
+python --version && python3 --version
+# Both should show Python 3.10+
+
+# Check Node.js tools
+node --version && npm --version && npx --version
+# All should show version numbers
+
+# Test Bob CLI MCP discovery (should show 0 errors for VM-compatible servers)
+bob --mode v12-engineer --api-key-file docs/API/b.json --help 2>&1 | grep -i "error.*discovery"
+# Should NOT show errors for phase-* or worker-* servers
+# MAY show errors for jcodemunch-mcp.exe (expected - Windows-only)
+```
 
 ### NOT Installed (Intentionally)
 
@@ -112,6 +159,7 @@ msbuild               # ❌ FAILS - MSBuild not installed
 - ❌ NinjaTrader
 - ❌ Roslyn analyzers
 - ❌ CSharpier
+- ❌ jcodemunch-mcp.exe (Windows binary - use local machine)
 
 ## Pre-Flight Validation (MANDATORY)
 
@@ -246,6 +294,14 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="cd ~/unive
 **Solution**: Read `.bob/skills/gcp-vm-wave-execution/skill.md` FIRST
 
 ## Version History
+
+- **V1.1 (V12.40)** - 2026-06-17: MCP server setup
+  - Added Python symlink requirement (`python` → `python3`)
+  - Documented Node.js/npm/npx verification
+  - Added MCP servers: Local vs VM section
+  - Clarified jcodemunch-mcp as Windows-only (local machine)
+  - Added MCP server verification commands
+  - Updated Python/Node.js descriptions with MCP context
 
 - **V1.0 (V12.39)** - 2026-06-16: Initial VM setup protocol
   - Explicit statement: VM does NOT have .NET SDK

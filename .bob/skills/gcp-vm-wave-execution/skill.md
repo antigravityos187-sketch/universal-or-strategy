@@ -53,6 +53,10 @@ Orchestrates parallel execution of V12 epic workflows on a GCP VM, using Bob She
 - Sequential Thinking MCP configured (`.bob/mcp.json`)
 - gcloud CLI installed and authenticated
 - Obsidian Kanban board at: `C:\Users\Mohammed Khalid\Documents\V12-Agent-Vault`
+- **MCP Server Dependencies (V12.40)**:
+  - Python 3 with `python` symlink: `sudo ln -s /usr/bin/python3 /usr/bin/python`
+  - Node.js LTS (already on golden image v2): Verify with `node --version && npx --version`
+  - Verify: `python --version && python3 --version && node --version && npx --version`
 
 ## Critical Configuration (NEVER REPEAT)
 
@@ -966,6 +970,8 @@ See `docs/workflow/WAVE_ROLLBACK_CHECKLIST.md` for quick reference.
 - **V2.7** (2026-06-16): **VM-LOCAL GIT SYNC**: Added MANDATORY Pre-Wave Checklist (V12.36) - 5-step sync protocol
 - **V2.8** (2026-06-16): **7-STEP SYNC**: Enhanced to V12.37 - Added Step 6 (working tree verification), Step 7 (baseline verification), and nuclear clean option
 - **V2.9** (2026-06-16): **WAVE ROLLBACK**: Added Wave Rollback Procedure (V12.38) - 4-step rollback, decision matrix, cost calculation, Wave 4 case study
+- **V2.10** (2026-06-16): **VM SETUP PROTOCOL**: Added VM_SETUP_PROTOCOL.md reference (V12.39) - Explicit .NET SDK absence, Bob CLI location, pre-flight validation
+- **V2.11** (2026-06-17): **MCP SERVER SETUP**: Added MCP server dependencies (V12.40) - Python symlink requirement, Node.js verification, jcodemunch-mcp as local-only
 
 ## Local Execution Alternative (V2.6)
 
