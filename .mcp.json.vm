@@ -1,0 +1,167 @@
+{
+  "mcpServers": {
+    "greptile": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@greptile/mcp-server"],
+      "comment": "Requires local auth - may not work on VM"
+    },
+    "worker-1": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/worker_agent_mcp_fastmcp.py",
+        "worker-1",
+        "/home/malhitticrypto/universal-or-epic-cluster-1"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "worker-2": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/worker_agent_mcp_fastmcp.py",
+        "worker-2",
+        "/home/malhitticrypto/universal-or-epic-cluster-2"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "worker-3": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/worker_agent_mcp_fastmcp.py",
+        "worker-3",
+        "/home/malhitticrypto/universal-or-epic-cluster-3"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "worker-4": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/worker_agent_mcp_fastmcp.py",
+        "worker-4",
+        "/home/malhitticrypto/universal-or-epic-cluster-4"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-0-hotspot": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_0_hotspot_mcp_fastmcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-1-scope": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_1_scope_mcp_fastmcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-1-5-boundary": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_1_5_boundary_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-2-architecture": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_2_architecture_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-3-audit": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_3_audit_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-4-tickets": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_4_tickets_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-4-5-review": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_4_5_ticket_review_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-5-execute": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_5_execute_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-5-verify": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_5_verify_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "phase-6-review": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/malhitticrypto/universal-or-strategy/scripts/phase_6_review_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/malhitticrypto/universal-or-strategy"
+      }
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    }
+  },
+  "_comment": "VM-specific MCP configuration (V12.40). Excludes Windows-only servers (jcodemunch-mcp.exe). Uses python3 and npx (Linux). Deploy to VM: scp .mcp.json.vm v12-test-golden-v2:~/universal-or-strategy/.mcp.json"
+}
