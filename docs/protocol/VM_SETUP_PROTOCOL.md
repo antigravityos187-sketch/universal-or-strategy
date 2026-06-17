@@ -24,7 +24,7 @@
 - [ ] I have read `docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md` Step -2
 - [ ] I understand VM does NOT have .NET SDK installed
 - [ ] I understand VM ONLY executes Bob CLI (no compilation)
-- [ ] I understand Bob CLI location is `~/bob` (aliased in ~/.bashrc)
+- [ ] I understand Bob CLI location is `/home/malhitticrypto/.npm-global/bin/bob` (npm global, requires login shell)
 - [ ] I understand compilation happens locally (Windows machine with .NET 8.0 SDK)
 
 **BLOCKING GATE**: If you have NOT checked ALL boxes above, STOP. Do NOT proceed with ANY VM operation.
@@ -78,8 +78,9 @@ msbuild               # ❌ FAILS - MSBuild not installed
 ### Installed Software
 
 **Bob CLI**:
-- **Location**: `~/bob` (user home directory, NOT /usr/local/bin)
-- **Alias**: `bob` (configured in ~/.bashrc)
+- **Location**: `/home/malhitticrypto/.npm-global/bin/bob` (npm global installation)
+- **Access**: Requires login shell (`bash -l`) - not visible in non-interactive shells
+- **Version**: 1.0.4
 - **Version Check**: `bob --version`
 - **API Keys**: Stored in `docs/API/*.json` (15 keys × 160 bobcoins)
 
@@ -305,7 +306,7 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --command="cd ~/unive
 
 - **V1.0 (V12.39)** - 2026-06-16: Initial VM setup protocol
   - Explicit statement: VM does NOT have .NET SDK
-  - Documented Bob CLI location (~/bob, aliased)
+  - Documented Bob CLI location (/home/malhitticrypto/.npm-global/bin/bob, npm global)
   - Added pre-flight validation steps
   - Added common mistakes section
   - Added VM vs Local workflow
