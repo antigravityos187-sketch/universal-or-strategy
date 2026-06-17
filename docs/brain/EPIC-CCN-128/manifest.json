@@ -7,11 +7,13 @@
   "phases": {
     "phase_0": {
       "status": "completed",
-      "output": "00-hotspots.md"
+      "output": "00-hotspots.md",
+      "mode": "plan"
     },
     "phase_1": {
       "status": "completed",
-      "output": "00-scope.md"
+      "output": "00-scope.md",
+      "mode": "plan"
     },
     "phase_1_5": {
       "status": "completed",
@@ -20,7 +22,8 @@
       "timestamp": "2026-06-11T06:14:21Z",
       "decision": "APPROVED - Proceed to Phase 2",
       "risk_level": "LOW",
-      "scope_compliance": "PASS - Single method, zero dependencies, no scope creep"
+      "scope_compliance": "PASS - Single method, zero dependencies, no scope creep",
+      "mode": "plan"
     },
     "phase_2": {
       "status": "completed",
@@ -32,7 +35,8 @@
       "complexity_reduction": "83% (CYC 18 \u2192 3)",
       "helpers_count": 4,
       "risk_level": "LOW",
-      "jane_street_alignment": "PASS - Cognitive simplicity, testability, correctness by construction"
+      "jane_street_alignment": "PASS - Cognitive simplicity, testability, correctness by construction",
+      "mode": "plan"
     },
     "phase_3": {
       "status": "completed",
@@ -50,7 +54,8 @@
       "risk_level": "LOW",
       "blocking_issues": 0,
       "warnings": 0,
-      "next_phase": "Phase 4 (Ticket Generation)"
+      "next_phase": "Phase 4 (Ticket Generation)",
+      "mode": "plan"
     },
     "phase_4": {
       "status": "completed",
@@ -87,7 +92,8 @@
         ],
         "high_risk_tickets": []
       },
-      "next_phase": "Phase 5 (Ticket Execution)"
+      "next_phase": "Phase 5 (Ticket Execution)",
+      "mode": "plan"
     }
   },
   "description": "Reduce complexity of SymmetryGuardReplaceExistingFollowerTarget in src/V12_002.Symmetry.Replace.cs (CYC: 18)",

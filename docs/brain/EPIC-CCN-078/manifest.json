@@ -11,6 +11,11 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1.5": {
@@ -19,7 +24,12 @@
         "01-scope-boundary.md"
       ],
       "approval": "GRANTED",
-      "completed_at": "2026-06-15T04:06:11Z"
+      "completed_at": "2026-06-15T04:06:11Z",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -32,11 +42,23 @@
         "helper_methods": 4,
         "complexity_reduction": "12 \u2192 4 (67%)",
         "target_met": true
-      }
+      },
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
-      "approval": "APPROVED"
+      "approval": "APPROVED",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -44,7 +66,12 @@
         "04-tickets.md"
       ],
       "ticket_count": 4,
-      "completed_at": "2026-06-15T17:02:10Z"
+      "completed_at": "2026-06-15T17:02:10Z",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
@@ -53,25 +80,46 @@
       ],
       "completed_at": "2026-06-15T19:04:43Z",
       "tickets_executed": 4,
-      "complexity_achieved": 4
+      "complexity_achieved": 4,
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.5": {
       "status": "deferred",
-      "note": "Windows verification pending (build, deploy-sync, pre-push validation)"
+      "note": "Windows verification pending (build, deploy-sync, pre-push validation)",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "status": "completed",
       "outputs": [
         "06-completion-report.md"
       ],
-      "completed_at": "2026-06-15T21:29:09Z"
+      "completed_at": "2026-06-15T21:29:09Z",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "completed_at": "2026-06-15T04:05:54Z"
+      "completed_at": "2026-06-15T04:05:54Z",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "scope_validation": {

@@ -11,35 +11,62 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_date": "2026-06-13"
+      "completed_date": "2026-06-13",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "00-scope.md"
       ],
-      "completed_date": "2026-06-13"
+      "completed_date": "2026-06-13",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
       "outputs": [
         "01-implementation-plan.md"
       ],
-      "completed_date": "2026-06-13"
+      "completed_date": "2026-06-13",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
       "outputs": [
         "03-audit-report.md"
       ],
-      "completed_date": "2026-06-14"
+      "completed_date": "2026-06-14",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
       "outputs": [
         "04-tickets.md"
       ],
-      "completed_date": "2026-06-14"
+      "completed_date": "2026-06-14",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "description": "Reduce complexity of DrawORBox in src/V12_002.DrawingHelpers.cs (CYC: 12)",

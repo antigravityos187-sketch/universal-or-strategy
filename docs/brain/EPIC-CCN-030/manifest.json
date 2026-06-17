@@ -8,6 +8,11 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1.5": {
@@ -16,7 +21,12 @@
         "01-scope-boundary.md"
       ],
       "approval": "APPROVED",
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2.0": {
       "status": "completed",
@@ -26,7 +36,13 @@
       "date": "2026-06-15",
       "complexity_reduction": "79%",
       "target_complexity": 4,
-      "helper_methods": 2
+      "helper_methods": 2,
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3.0": {
       "status": "completed",
@@ -38,7 +54,13 @@
       "auditor": "V12 Phase 3 Adjudicator",
       "dna_compliance": "5/5 PASS",
       "pr_hygiene": "4/4 PASS",
-      "go_decision": "GO FOR IMPLEMENTATION"
+      "go_decision": "GO FOR IMPLEMENTATION",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4.0": {
       "status": "completed",
@@ -69,6 +91,11 @@
           "target_complexity": 4,
           "complexity_reduction": "79%"
         }
+      ],
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1": {
@@ -76,7 +103,12 @@
       "outputs": [
         "01-scope.md"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "dependencies": {

@@ -13,19 +13,22 @@
       "name": "Hotspot Analysis",
       "status": "COMPLETE",
       "file": "00-hotspots.md",
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "plan"
     },
     "phase_1": {
       "name": "Scope Definition",
       "status": "COMPLETE",
       "file": "01-scope.md",
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "plan"
     },
     "phase_1_5": {
       "name": "Scope Boundary",
       "status": "COMPLETE",
       "file": "01-scope-boundary.md",
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "plan"
     },
     "phase_2": {
       "name": "Architecture Planning",
@@ -48,7 +51,8 @@
           "complexity": 2,
           "responsibility": "Position cleanup finalization"
         }
-      ]
+      ],
+      "mode": "plan"
     },
     "phase_3": {
       "name": "DNA & PR Audit",
@@ -67,7 +71,8 @@
         "scope_creep": "PASS",
         "build_readiness": "PASS"
       },
-      "blockers": []
+      "blockers": [],
+      "mode": "plan"
     },
     "phase_4": {
       "name": "Ticket Generation",
@@ -98,13 +103,15 @@
           "status": "COMPLETE"
         }
       ],
-      "total_estimated_effort": "4 hours"
+      "total_estimated_effort": "4 hours",
+      "mode": "plan"
     },
     "phase_5": {
       "name": "Recursive Execution",
       "status": "COMPLETE",
       "file": "05-phase5-completion.md",
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "plan"
     },
     "phase_5_v": {
       "name": "Verification",
@@ -114,13 +121,15 @@
         "Unit tests (TDD required)",
         "Integration tests (TDD required)",
         "Hard-link sync (deploy-sync.ps1)"
-      ]
+      ],
+      "mode": "plan"
     },
     "phase_6": {
       "name": "Final Review",
       "status": "COMPLETE",
       "file": "06-completion-report.md",
-      "completed_date": "2026-06-15T21:24:19Z"
+      "completed_date": "2026-06-15T21:24:19Z",
+      "mode": "plan"
     },
     "phase_7": {
       "name": "Sign-off",
@@ -129,7 +138,8 @@
         "Phase 5.V verification required",
         "Build verification required",
         "F5 runtime verification in NinjaTrader"
-      ]
+      ],
+      "mode": "plan"
     }
   },
   "jane_street_compliance": {

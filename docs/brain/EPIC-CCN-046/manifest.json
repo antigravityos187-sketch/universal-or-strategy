@@ -11,7 +11,12 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "status": "completed",
@@ -20,7 +25,12 @@
       ],
       "completed_date": "2026-06-15",
       "description": "Boundary Validation - V12.23 mandatory gate",
-      "approval": "GRANTED"
+      "approval": "GRANTED",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -31,7 +41,13 @@
       "description": "Architecture Planning - Orchestrator pattern with 3 helper methods",
       "extraction_strategy": "3 helpers (ValidateChartClickInput, ConvertPriceCoordinates, UpdateChartState)",
       "jane_street_aligned": true,
-      "lock_free_validated": true
+      "lock_free_validated": true,
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -53,7 +69,13 @@
         "scope_creep": "PASS",
         "build_readiness": "PASS"
       },
-      "blockers": []
+      "blockers": [],
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -70,7 +92,12 @@
         "TICKET-4: Verify Complexity Reduction"
       ],
       "execution_order": "sequential",
-      "estimated_effort_hours": "4-6"
+      "estimated_effort_hours": "4-6",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
@@ -84,7 +111,12 @@
       "description": "Ticket Execution - 3 tickets completed, 1 skipped (N/A)",
       "tickets_completed": 3,
       "tickets_skipped": 1,
-      "complexity_achieved": 3
+      "complexity_achieved": 3,
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "status": "completed",
@@ -92,7 +124,13 @@
         "06-completion-report.md"
       ],
       "completed_date": "2026-06-15",
-      "description": "Final Review - Epic completion verified"
+      "description": "Final Review - Epic completion verified",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "1": {
       "status": "completed",
@@ -100,7 +138,12 @@
         "01-scope.md"
       ],
       "completed_date": "2026-06-15",
-      "description": "Scope Definition - Single method extraction plan"
+      "description": "Scope Definition - Single method extraction plan",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "epic_status": "COMPLETED",

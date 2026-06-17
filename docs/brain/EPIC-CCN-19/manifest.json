@@ -10,7 +10,8 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_at": "2026-06-09T20:04:24Z"
+      "completed_at": "2026-06-09T20:04:24Z",
+      "mode": "plan"
     },
     "phase_1": {
       "name": "Scope Definition",
@@ -18,7 +19,8 @@
       "outputs": [
         "00-scope.md"
       ],
-      "completed_at": "2026-06-09T20:04:24Z"
+      "completed_at": "2026-06-09T20:04:24Z",
+      "mode": "plan"
     },
     "phase_1_5": {
       "name": "Scope Boundary",
@@ -26,7 +28,8 @@
       "outputs": [
         "01-scope-boundary.md"
       ],
-      "completed_at": "2026-06-09T20:04:24Z"
+      "completed_at": "2026-06-09T20:04:24Z",
+      "mode": "plan"
     },
     "phase_2": {
       "name": "Architecture Planning",
@@ -34,7 +37,8 @@
       "outputs": [
         "02-architecture-plan.md"
       ],
-      "completed_at": "2026-06-09T20:04:24Z"
+      "completed_at": "2026-06-09T20:04:24Z",
+      "mode": "plan"
     },
     "phase_3": {
       "name": "DNA & PR Audit",
@@ -42,7 +46,8 @@
       "outputs": [
         "03-audit-report.md"
       ],
-      "completed_at": "2026-06-09T20:04:24Z"
+      "completed_at": "2026-06-09T20:04:24Z",
+      "mode": "plan"
     },
     "phase_4": {
       "name": "Ticket Generation",
@@ -50,7 +55,8 @@
       "outputs": [
         "04-tickets.md"
       ],
-      "completed_at": "2026-06-09T20:04:24Z"
+      "completed_at": "2026-06-09T20:04:24Z",
+      "mode": "plan"
     },
     "phase_5_1": {
       "name": "Ticket 1 Execution",
@@ -61,7 +67,8 @@
       "outputs": [
         "ticket-1-completion.md"
       ],
-      "completed_at": "2026-06-09T20:23:46Z"
+      "completed_at": "2026-06-09T20:23:46Z",
+      "mode": "plan"
     },
     "phase_5_1_v": {
       "name": "Ticket 1 Verification",
@@ -71,7 +78,8 @@
       ],
       "outputs": [
         "ticket-1-verification.md"
-      ]
+      ],
+      "mode": "plan"
     },
     "phase_6": {
       "name": "Final Review",
@@ -81,7 +89,8 @@
       ],
       "outputs": [
         "05-completion-report.md"
-      ]
+      ],
+      "mode": "plan"
     }
   },
   "metadata": {

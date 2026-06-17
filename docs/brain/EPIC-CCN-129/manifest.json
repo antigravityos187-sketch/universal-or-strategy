@@ -8,19 +8,22 @@
     "phase_0": {
       "status": "completed",
       "output": "00-hotspots.md",
-      "completed_at": "2026-06-11T06:09:30Z"
+      "completed_at": "2026-06-11T06:09:30Z",
+      "mode": "plan"
     },
     "phase_1": {
       "status": "completed",
       "output": "00-scope.md",
-      "completed_at": "2026-06-11T06:09:30Z"
+      "completed_at": "2026-06-11T06:09:30Z",
+      "mode": "plan"
     },
     "phase_1.5": {
       "status": "completed",
       "output": "01-scope-boundary.md",
       "completed_at": "2026-06-11T06:14:18Z",
       "validation_result": "PASS",
-      "gate_status": "APPROVED"
+      "gate_status": "APPROVED",
+      "mode": "plan"
     },
     "phase_2": {
       "status": "completed",
@@ -85,7 +88,8 @@
         "concurrency_regression_risk": "ZERO",
         "logic_drift_risk": "ZERO",
         "blast_radius": "MINIMAL (1 file, 1 method)"
-      }
+      },
+      "mode": "plan"
     },
     "phase_3": {
       "status": "completed",
@@ -106,7 +110,8 @@
         "build_verification": "DEFERRED",
         "jane_street_alignment": "PASS",
         "v12_dna_compliance": "PASS"
-      }
+      },
+      "mode": "plan"
     },
     "phase_4": {
       "status": "completed",
@@ -159,7 +164,8 @@
         "Complexity baseline verified (CYC 18)",
         "ASCII compliance verified",
         "Lock-free audit passed"
-      ]
+      ],
+      "mode": "plan"
     },
     "phase_5": {
       "status": "blocked",
@@ -167,7 +173,8 @@
         "phase_4"
       ],
       "blocking_reason": "Branch not rebased onto origin/main (per Phase 3 audit)",
-      "required_action": "git fetch origin main && git rebase origin/main"
+      "required_action": "git fetch origin main && git rebase origin/main",
+      "mode": "plan"
     }
   },
   "next_phase": "phase_5",

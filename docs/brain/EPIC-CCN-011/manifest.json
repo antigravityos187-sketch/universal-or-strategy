@@ -8,6 +8,11 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1.5": {
@@ -16,7 +21,12 @@
         "01-scope-boundary.md"
       ],
       "date": "2026-06-15",
-      "approval": "APPROVED"
+      "approval": "APPROVED",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -30,7 +40,13 @@
         "target_ccn": 3,
         "max_helper_ccn": 6,
         "test_path_reduction": "131072 -> 76 (1724x)"
-      }
+      },
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -47,7 +63,13 @@
         "diff_size": "PASS",
         "scope_creep": "PASS",
         "build_readiness": "PASS"
-      }
+      },
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -75,14 +97,24 @@
         }
       ],
       "estimated_effort": "4-6 hours",
-      "execution_order": "sequential"
+      "execution_order": "sequential",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
       "output": "ticket-all-completion.md",
       "date": "2026-06-15",
       "tickets_executed": 3,
-      "duration_minutes": 15
+      "duration_minutes": 15,
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.5": {
       "status": "deferred",
@@ -94,19 +126,35 @@
         "pre-push validation",
         "hard-link sync",
         "F5 manual test"
+      ],
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "6": {
       "status": "completed",
       "output": "06-completion-report.md",
-      "date": "2026-06-15T21:22:34Z"
+      "date": "2026-06-15T21:22:34Z",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "date": "2026-06-15"
+      "date": "2026-06-15",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "epic_status": "COMPLETED",

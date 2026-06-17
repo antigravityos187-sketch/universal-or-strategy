@@ -11,7 +11,12 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "status": "completed",
@@ -19,14 +24,25 @@
         "01-scope-boundary.md"
       ],
       "approval": "APPROVED",
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2.0": {
       "status": "completed",
       "outputs": [
         "02-architecture-plan.md"
       ],
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3.0": {
       "status": "completed",
@@ -34,7 +50,13 @@
         "03-audit-report.md"
       ],
       "audit_result": "PASS",
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4.0": {
       "status": "completed",
@@ -42,7 +64,12 @@
         "04-tickets.md"
       ],
       "ticket_count": 2,
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.0": {
       "status": "completed",
@@ -51,26 +78,48 @@
         "ticket-2-completion.md"
       ],
       "tickets_executed": 2,
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.V": {
       "status": "deferred",
       "note": "Windows validation required (build, tests, formatting)",
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase5-v-verify",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "6.0": {
       "status": "completed",
       "outputs": [
         "06-completion-report.md"
       ],
-      "completed_date": "2026-06-15T21:22:44Z"
+      "completed_date": "2026-06-15T21:22:44Z",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "epic_status": "COMPLETED",

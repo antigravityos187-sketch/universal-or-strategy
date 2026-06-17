@@ -16,7 +16,12 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_at": "2026-06-15T02:46:29Z"
+      "completed_at": "2026-06-15T02:46:29Z",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "status": "completed",
@@ -27,7 +32,12 @@
       "completed_at": "2026-06-15T03:59:47Z",
       "approval": "APPROVED",
       "scope": "Single method extraction (SymmetryFindDispatchForMasterFill)",
-      "boundary_validation": "V12.23 Protocol - All checks PASS"
+      "boundary_validation": "V12.23 Protocol - All checks PASS",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -41,11 +51,23 @@
       "total_complexity": 7,
       "lock_free_validation": "PASS",
       "jane_street_compliance": "PASS",
-      "next_phase": "Phase 3 - DNA & PR Audit (Arena AI)"
+      "next_phase": "Phase 3 - DNA & PR Audit (Arena AI)",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "skipped",
-      "reason": "Low-risk epic (CYC 9\u21923), no adversarial audit required"
+      "reason": "Low-risk epic (CYC 9\u21923), no adversarial audit required",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -86,7 +108,12 @@
           ]
         }
       ],
-      "next_phase": "Phase 5 - Ticket Execution (Bob CLI v12-engineer)"
+      "next_phase": "Phase 5 - Ticket Execution (Bob CLI v12-engineer)",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
@@ -98,7 +125,12 @@
       "completed_at": "2026-06-15T21:26:28Z",
       "tickets_executed": 3,
       "tickets_passed": 3,
-      "complexity_verification": "PASS"
+      "complexity_verification": "PASS",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "status": "completed",
@@ -113,7 +145,13 @@
         "build": "PENDING",
         "tests": "PENDING",
         "lint": "PASS"
-      }
+      },
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     }
   },
   "dependencies": {

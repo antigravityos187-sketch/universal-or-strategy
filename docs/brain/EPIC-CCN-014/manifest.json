@@ -10,6 +10,11 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1": {
@@ -17,12 +22,23 @@
       "outputs": [
         "01-scope.md",
         "01-scope-boundary.md"
+      ],
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "2": {
       "status": "completed",
       "outputs": [
         "02-architecture-plan.md"
+      ],
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
       ]
     },
     "3": {
@@ -31,32 +47,59 @@
       "audit_result": "PASS",
       "audit_date": "2026-06-15T16:15:32Z",
       "blockers": [],
-      "next_phase": "Phase 4: Ticket Generation"
+      "next_phase": "Phase 4: Ticket Generation",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
       "output": "04-tickets.md",
       "ticket_count": 1,
       "completion_date": "2026-06-15T16:49:40Z",
-      "next_phase": "Phase 5: Ticket Execution"
+      "next_phase": "Phase 5: Ticket Execution",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
       "output": "ticket-1-completion.md",
       "tickets_executed": 1,
       "completion_date": "2026-06-15T21:22:23Z",
-      "next_phase": "Phase 5.V: Verification"
+      "next_phase": "Phase 5.V: Verification",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.5": {
       "status": "deferred",
       "reason": "Windows environment required for build/test verification",
       "verification_status": "deferred_windows_required",
-      "next_phase": "Phase 6: Final Review"
+      "next_phase": "Phase 6: Final Review",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6": {
       "status": "completed",
       "output": "06-completion-report.md",
-      "completion_date": "2026-06-15T21:23:33Z"
+      "completion_date": "2026-06-15T21:23:33Z",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     }
   },
   "epic_status": "COMPLETED",

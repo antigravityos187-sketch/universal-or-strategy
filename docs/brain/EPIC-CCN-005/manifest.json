@@ -10,6 +10,11 @@
       "status": "completed",
       "outputs": [
         "00-hotspots.md"
+      ],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "1.5": {
@@ -19,7 +24,12 @@
       ],
       "approval": "APPROVED",
       "scope_creep_risk": "LOW",
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2.0": {
       "status": "completed",
@@ -31,7 +41,13 @@
       "target_helper_complexity": 4,
       "lock_free_validated": true,
       "jane_street_compliant": true,
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3.0": {
       "status": "completed",
@@ -51,7 +67,13 @@
         "build_readiness": "PASS"
       },
       "blockers": [],
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4.0": {
       "status": "completed",
@@ -86,7 +108,12 @@
         }
       ],
       "total_estimated_hours": 5.5,
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.0": {
       "status": "completed",
@@ -98,21 +125,37 @@
         "TICKET-2",
         "TICKET-3"
       ],
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "6.0": {
       "status": "completed",
       "outputs": [
         "06-completion-report.md"
       ],
-      "completed_date": "2026-06-15T21:21:38.524Z"
+      "completed_date": "2026-06-15T21:21:38.524Z",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "completed_date": "2026-06-15"
+      "completed_date": "2026-06-15",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "epic_status": "COMPLETED",

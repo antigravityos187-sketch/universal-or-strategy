@@ -11,21 +11,37 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
       "outputs": [
         "02-architecture.md"
       ],
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -35,7 +51,13 @@
       "date": "2026-06-14",
       "decision": "GO",
       "compliance_score": "14/14",
-      "risk_level": "LOW"
+      "risk_level": "LOW",
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -44,14 +66,24 @@
       ],
       "date": "2026-06-14",
       "total_tickets": 5,
-      "estimated_duration": "65 minutes"
+      "estimated_duration": "65 minutes",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "ready",
       "outputs": [
         "04-acceptance.md"
       ],
-      "date": "2026-06-13"
+      "date": "2026-06-13",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "extraction_strategy": {

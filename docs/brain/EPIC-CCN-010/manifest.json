@@ -12,7 +12,12 @@
       "outputs": [
         "00-hotspots.md"
       ],
-      "completed_at": "2026-06-15T00:52:26Z"
+      "completed_at": "2026-06-15T00:52:26Z",
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "1.5": {
       "status": "completed",
@@ -22,7 +27,12 @@
       "completed_at": "2026-06-15T03:28:55Z",
       "approval": "APPROVED",
       "scope_creep_risk": "ZERO",
-      "blast_radius": "MINIMAL"
+      "blast_radius": "MINIMAL",
+      "mode": "v12-phase1-5-boundary",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "2": {
       "status": "completed",
@@ -33,7 +43,13 @@
       "extraction_strategy": "3 helper methods (CYC<=8 each)",
       "target_complexity": "CYC<=5 (orchestrator)",
       "jane_street_compliance": "VERIFIED",
-      "lock_free_validation": "PASSED"
+      "lock_free_validation": "PASSED",
+      "mode": "v12-phase2-architecture",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "graphify"
+      ]
     },
     "3": {
       "status": "completed",
@@ -45,7 +61,13 @@
       "dna_compliance": "PASS",
       "pr_hygiene": "PASS",
       "blockers": "NONE",
-      "ready_for_phase_4": true
+      "ready_for_phase_4": true,
+      "mode": "v12-phase3-audit",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "4": {
       "status": "completed",
@@ -56,7 +78,12 @@
       "ticket_count": 4,
       "extraction_strategy": "Sequential extraction (TICKET-1 \u2192 TICKET-2 \u2192 TICKET-3 \u2192 TICKET-4)",
       "estimated_effort": "2-3 hours",
-      "bobcoin_budget": "0.75-1.00"
+      "bobcoin_budget": "0.75-1.00",
+      "mode": "v12-phase4-tickets",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5": {
       "status": "completed",
@@ -66,7 +93,12 @@
       "completed_at": "2026-06-15T18:53:00Z",
       "tickets_executed": 4,
       "complexity_achieved": 2,
-      "actual_cost": "3.43 Bobcoins"
+      "actual_cost": "3.43 Bobcoins",
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     },
     "5.5": {
       "status": "completed",
@@ -77,6 +109,11 @@
         "CSharpier formatting",
         "deploy-sync.ps1",
         "Manual NinjaTrader testing"
+      ],
+      "mode": "v12-engineer",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
       ]
     },
     "6": {
@@ -85,14 +122,25 @@
         "06-completion-report.md"
       ],
       "completed_at": "2026-06-15T21:22:00Z",
-      "total_cost": "4.97 Bobcoins"
+      "total_cost": "4.97 Bobcoins",
+      "mode": "v12-phase6-review",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking",
+        "greptile"
+      ]
     },
     "1": {
       "status": "completed",
       "outputs": [
         "01-scope.md"
       ],
-      "completed_at": "2026-06-15T03:28:30Z"
+      "completed_at": "2026-06-15T03:28:30Z",
+      "mode": "v12-phase1-scope",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
   "dependencies": {

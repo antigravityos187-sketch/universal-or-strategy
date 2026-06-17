@@ -8,17 +8,20 @@
     "phase_0": {
       "status": "completed",
       "output": "00-hotspots.md",
-      "timestamp": "2026-06-11T06:10:00Z"
+      "timestamp": "2026-06-11T06:10:00Z",
+      "mode": "plan"
     },
     "phase_1": {
       "status": "completed",
       "output": "00-scope.md",
-      "timestamp": "2026-06-11T06:10:30Z"
+      "timestamp": "2026-06-11T06:10:30Z",
+      "mode": "plan"
     },
     "phase_1.5": {
       "status": "completed",
       "output": "01-scope-boundary.md",
-      "timestamp": "2026-06-11T07:09:34Z"
+      "timestamp": "2026-06-11T07:09:34Z",
+      "mode": "plan"
     },
     "phase_2": {
       "status": "completed",
@@ -26,12 +29,14 @@
         "02-architecture-plan.md",
         "02-diagrams.mmd"
       ],
-      "timestamp": "2026-06-11T06:18:00Z"
+      "timestamp": "2026-06-11T06:18:00Z",
+      "mode": "plan"
     },
     "phase_4": {
       "status": "completed",
       "output": "04-tickets.md",
-      "timestamp": "2026-06-11T06:39:38Z"
+      "timestamp": "2026-06-11T06:39:38Z",
+      "mode": "plan"
     },
     "phase_5": {
       "status": "completed",
@@ -39,7 +44,8 @@
       "timestamp": "2026-06-11T07:46:00Z",
       "complexity_before": 19,
       "complexity_after": 9,
-      "build_tag": "1111.049-epic-ccn-155-t1"
+      "build_tag": "1111.049-epic-ccn-155-t1",
+      "mode": "plan"
     }
   },
   "description": "Reduce complexity of TryHandleFleetCommand in src/V12_002.UI.IPC.Commands.Fleet.cs (CYC: 19)",

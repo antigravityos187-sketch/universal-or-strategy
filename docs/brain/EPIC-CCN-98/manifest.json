@@ -8,12 +8,14 @@
     "phase_0": {
       "status": "completed",
       "output": "00-hotspots.md",
-      "completed_at": "2026-06-11T06:14:00Z"
+      "completed_at": "2026-06-11T06:14:00Z",
+      "mode": "plan"
     },
     "phase_1": {
       "status": "completed",
       "output": "00-scope.md",
-      "completed_at": "2026-06-11T06:14:00Z"
+      "completed_at": "2026-06-11T06:14:00Z",
+      "mode": "plan"
     },
     "phase_1.5": {
       "status": "completed",
@@ -27,7 +29,8 @@
         "jane_street_aligned": true,
         "v12_dna_compliant": true,
         "approved_for_phase_2": true
-      }
+      },
+      "mode": "plan"
     },
     "phase_2": {
       "status": "completed",
@@ -60,7 +63,8 @@
         "unit_tests": 17,
         "integration_tests": 1,
         "estimated_effort": "30 minutes"
-      }
+      },
+      "mode": "plan"
     },
     "phase_3": {
       "status": "completed",
@@ -85,7 +89,8 @@
         "auditor": "V12 Photon Engineer (Bob Shell)",
         "audit_date": "2026-06-11T06:29:00Z",
         "protocol_version": "V12.23"
-      }
+      },
+      "mode": "plan"
     },
     "phase_4": {
       "status": "completed",
@@ -119,7 +124,8 @@
       "execution_order": [
         "EPIC-CCN-98-T1",
         "EPIC-CCN-98-T2"
-      ]
+      ],
+      "mode": "plan"
     }
   },
   "next_phase": "phase_5",
