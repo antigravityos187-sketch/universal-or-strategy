@@ -28,5 +28,8 @@
     }
   },
   "last_updated": "2026-06-10T23:23:23.987184Z",
-  "recommendation": "pending_analysis"
+  "recommendation": "pending_analysis",
+  "description": "Reduce complexity of ExecuteFFMALimitEntry in src/V12_002.Entries.FFMA.cs (CYC: Unknown)",
+  "created_at": "2026-06-17T20:25:00.172525+00:00",
+  "dependencies": {}
 }

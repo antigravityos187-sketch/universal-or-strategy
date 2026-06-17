@@ -53,7 +53,7 @@
         "reduction_points": 16,
         "reduction_percent": 89,
         "total_distributed": 21,
-        "note": "Total complexity increases slightly (18→21) due to method call overhead, but per-method max is 8 (Jane Street compliant)"
+        "note": "Total complexity increases slightly (18\u219221) due to method call overhead, but per-method max is 8 (Jane Street compliant)"
       },
       "jane_street_alignment": {
         "cognitive_simplicity": "PASS",
@@ -133,7 +133,9 @@
           "helper_cyc": 5,
           "estimated_minutes": 30,
           "order": 2,
-          "dependencies": ["TICKET-1"]
+          "dependencies": [
+            "TICKET-1"
+          ]
         },
         {
           "id": "TICKET-3",
@@ -144,7 +146,9 @@
           "helper_cyc": 6,
           "estimated_minutes": 30,
           "order": 3,
-          "dependencies": ["TICKET-2"]
+          "dependencies": [
+            "TICKET-2"
+          ]
         }
       ],
       "execution_strategy": "SEQUENTIAL",
@@ -159,7 +163,9 @@
     },
     "phase_5": {
       "status": "blocked",
-      "dependencies": ["phase_4"],
+      "dependencies": [
+        "phase_4"
+      ],
       "blocking_reason": "Branch not rebased onto origin/main (per Phase 3 audit)",
       "required_action": "git fetch origin main && git rebase origin/main"
     }
@@ -185,5 +191,9 @@
     "ticket_1": 30,
     "ticket_2": 30,
     "ticket_3": 30
-  }
+  },
+  "description": "Reduce complexity of SymmetryGuardTryResolveFollowersForDispatch in src/V12_002.Symmetry.Replace.cs (CYC: 18)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:25:00.157376+00:00",
+  "dependencies": {}
 }

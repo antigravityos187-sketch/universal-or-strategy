@@ -79,5 +79,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of FindTargetOrderForPosition in src/V12_002.Trailing.Breakeven.cs (CYC: 9)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:25:00.042366+00:00"
 }

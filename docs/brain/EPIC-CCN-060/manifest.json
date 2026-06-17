@@ -100,5 +100,8 @@
     "4": [
       "3"
     ]
-  }
+  },
+  "description": "Reduce complexity of SweepTrackedOrders in src/V12_002.SIMA.Lifecycle.cs (CYC: 12)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:25:00.080390+00:00"
 }

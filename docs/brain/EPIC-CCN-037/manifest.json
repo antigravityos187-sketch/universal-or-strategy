@@ -112,5 +112,8 @@
     "6": [
       "4"
     ]
-  }
+  },
+  "description": "Reduce complexity of SymmetryNormalizeTradeType in src/V12_002.Symmetry.Replace.cs (CYC: 10)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:25:00.036354+00:00"
 }

@@ -85,5 +85,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of SyncPanelConfigFromSnapshot in src/V12_002.UI.Panel.StateSync.cs (CYC: 15)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:24:59.990920+00:00"
 }

@@ -56,5 +56,8 @@
     "6": [
       "4"
     ]
-  }
+  },
+  "description": "Reduce complexity of AdoptMasterWorkingOrders in src/V12_002.SIMA.Lifecycle.cs (CYC: 9)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:25:00.079380+00:00"
 }

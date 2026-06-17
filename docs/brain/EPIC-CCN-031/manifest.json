@@ -45,5 +45,8 @@
     "3": [
       "2"
     ]
-  }
+  },
+  "description": "Reduce complexity of AuditMaster_HandleNakedPosition in src/V12_002.REAPER.Audit.cs (CYC: 15)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:25:00.023299+00:00"
 }

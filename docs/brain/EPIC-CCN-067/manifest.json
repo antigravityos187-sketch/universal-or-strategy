@@ -133,5 +133,8 @@
     "6": [
       "4"
     ]
-  }
+  },
+  "description": "Reduce complexity of SymmetryFindDispatchForMasterFill in src/V12_002.Symmetry.cs (CYC: 9)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:25:00.093628+00:00"
 }

@@ -105,5 +105,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of RemoveFsmOrderIdMappings in src/V12_002.Symmetry.BracketFSM.cs (CYC: 11)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:25:00.091627+00:00"
 }

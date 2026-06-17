@@ -30,5 +30,9 @@
         "main_method_target_cyc": 4
       }
     }
-  }
+  },
+  "description": "Reduce complexity of IsCommandForThisInstrument in src/V12_002.UI.IPC.cs (CYC: 36)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:25:00.162377+00:00",
+  "dependencies": {}
 }

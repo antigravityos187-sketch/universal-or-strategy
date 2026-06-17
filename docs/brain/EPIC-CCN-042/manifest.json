@@ -111,5 +111,8 @@
     "4": [
       "3"
     ]
-  }
+  },
+  "description": "Reduce complexity of SymmetryGuardOnFollowerFill in src/V12_002.Symmetry.Follower.cs (CYC: 11)",
+  "status": "completed",
+  "created_at": "2026-06-17T20:25:00.046872+00:00"
 }

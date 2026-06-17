@@ -73,5 +73,8 @@
       ],
       "notes": "Generated two ticket sets: Option A (4 tickets targeting HydrateSingleAccountExpectedPosition) and Option B (3 tickets targeting HydrateExpectedPositionsFromBroker). Director decision required before Phase 5 execution."
     }
-  }
+  },
+  "description": "Reduce complexity of Unknown in src/V12_002.SIMA.Lifecycle.cs (CYC: Unknown)",
+  "created_at": "2026-06-17T20:25:00.122809+00:00",
+  "dependencies": {}
 }

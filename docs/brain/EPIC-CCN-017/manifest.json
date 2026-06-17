@@ -147,5 +147,8 @@
     "1": [
       "0"
     ]
-  }
+  },
+  "description": "Reduce complexity of TryApplyConfigTarget_Value in src/V12_002.UI.IPC.Commands.Config.cs (CYC: 17)",
+  "status": "pending",
+  "created_at": "2026-06-17T20:25:00.000456+00:00"
 }
