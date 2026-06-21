@@ -79,15 +79,41 @@ if [ ! -f "$ARCH_FILE" ]; then
     exit 1
 fi
 
-# Run DNA & PR audit using Bob CLI (advanced mode - requires MCP tools)
+# Run DNA & PR audit using Bob CLI (v12-phase3-audit custom mode)
 echo "Running DNA & PR audit for $EPIC_ID..."
 OUTPUT_FILE="docs/brain/$EPIC_ID/03-audit-report.md"
 
-# Bob CLI command for DNA & PR audit with jCodemunch and Graphify
-bob --mode advanced --task "Run V12 DNA compliance checks and PR hygiene validation for $EPIC_ID based on architecture plan in $ARCH_FILE. Use jCodemunch for blast radius analysis. Query Jane Street KB for compliance rules. Output: $OUTPUT_FILE" \
-    --context "$ARCH_FILE" \
-    --output "$OUTPUT_FILE" \
-    2>&1 | tee "logs/wave6/phase3/$EPIC_ID.log"
+# Create message file (MANDATORY: temp file + command substitution pattern)
+cat > /tmp/phase3_msg_$EPIC_ID.txt << 'EOFMSG'
+Run V12 DNA compliance checks and PR hygiene validation.
+
+Context:
+- Epic: $EPIC_ID
+- Architecture Plan: docs/brain/$EPIC_ID/02-architecture-plan.md
+
+Tasks:
+1. Read architecture plan from 02-architecture-plan.md
+2. Use jCodemunch MCP tools for code compliance verification
+3. Use Sequential Thinking MCP for audit decisions
+4. Run V12 DNA compliance checks
+5. Verify no scope creep
+6. Write audit report to docs/brain/$EPIC_ID/03-audit-report.md
+
+Required MCP Tools:
+- jCodemunch: search_ast, get_layer_violations, get_dependency_cycles
+- Sequential Thinking: sequentialthinking (validate compliance)
+
+Agent Tracking (MANDATORY):
+- Include Agent Tracking section in 03-audit-report.md
+- Agent Name: v12-phase3-audit
+- Bobcoins Used: [extract from logs]
+- API Key: [which API was used]
+- Execution Time: [duration]
+EOFMSG
+
+# Invoke Bob with command substitution (MANDATORY pattern)
+~/.npm-global/bin/bob --yolo --chat-mode v12-phase3-audit "$(cat /tmp/phase3_msg_$EPIC_ID.txt)" \
+    2>&1 | tee "logs/wave7/phase3/$EPIC_ID.log"
 
 BOB_EXIT_CODE=${PIPESTATUS[0]}
 
