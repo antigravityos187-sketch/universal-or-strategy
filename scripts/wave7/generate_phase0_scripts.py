@@ -36,13 +36,13 @@ def load_pending_epics():
     
     return epics_list
 
-# Load 15 API keys from docs/API/*.json files
+# Load 15 API keys from docs/API/*.json files (verified on VM)
 API_FILES = [
-    "bob.json", "bob (1).json", "bob (2).json", "bob (3).json", 
+    "bob.json", "bob (1).json", "bob (2).json", "bob (3).json",
     "bob (4).json", "bob (5).json", "bob (6).json",
-    "b.json", "b (2).json",
-    "jessica.json", "mikethelife.json", "sammy96.json", 
-    "sean.carter.jr@atomicmail.io.json", "tory.json", "b (3).json"
+    "b.json", "b (3).json",
+    "jessica.json", "mikethelife.json", "sammy96.json",
+    "sean.carter.jr@atomicmail.io.json", "tory.json", "iyanajackson.json"
 ]
 
 def load_api_keys():
