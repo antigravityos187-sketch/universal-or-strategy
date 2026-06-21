@@ -241,13 +241,13 @@ if (-not $Fast) {
         $pythonInstalled = Get-Command "python" -ErrorAction SilentlyContinue
         if ($pythonInstalled) {
             # Run with threshold enforcement
-            $complexityOutput = python "$PSScriptRoot\complexity_audit.py" --threshold 15 --fail-on-violation 2>&1
+            $complexityOutput = python "$PSScriptRoot\complexity_audit.py" --threshold 8 --fail-on-violation 2>&1
             $complexitySuccess = $LASTEXITCODE -eq 0
             
             if ($complexitySuccess) {
                 Write-CheckResult "Complexity (≤15)" $true "All methods within threshold"
             } else {
-                Write-CheckResult "Complexity (≤15)" $false "Methods exceed CYC 15 threshold"
+                Write-CheckResult "Complexity (≤15)" $false "Methods exceed CYC 8 threshold"
                 Write-Host $complexityOutput -ForegroundColor Red
             }
         } else {

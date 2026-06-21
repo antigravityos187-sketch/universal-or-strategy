@@ -1,0 +1,6 @@
+{"id":"14da4c05-17bf-4c9b-b712-24792af37a5c","ts":"2026-06-20T21:30:15.672Z","path":"C:\\WSGTA\\universal-or-strategy\\bob.config.yaml","version":"1.0.0","taskID":"20ceda2e-1352-4c90-a5af-4ea364a4c602"}
+{"id":"9b8fc609-07a9-4f42-b724-69065902988a","ts":"2026-06-20T22:49:03.558Z","path":"C:\\WSGTA\\universal-or-strategy\\docs\\API\\api_rotation.json","version":"1.0.0","taskID":"6ca86d75-72fe-44d4-a3ef-5a15220ec92e"}
+{"id":"ec8b0f72-5578-43d0-8201-1aa7ab253e53","ts":"2026-06-20T22:49:09.172Z","path":"C:\\WSGTA\\universal-or-strategy\\scripts\\wave6\\relaunch_phase1_24_epics.sh","version":"1.0.0","taskID":"6ca86d75-72fe-44d4-a3ef-5a15220ec92e"}
+{"id":"06f044cd-e216-46f2-a51b-fe3ecdc0d6c9","ts":"2026-06-20T22:50:06.614Z","path":"C:\\WSGTA\\universal-or-strategy\\docs\\workflow\\api_balance_state.json","version":"1.0.0","taskID":"6ca86d75-72fe-44d4-a3ef-5a15220ec92e"}
+{"id":"43700c15-262f-4d19-a5c8-814ccc0a7088","ts":"2026-06-20T22:51:15.422Z","path":"C:\\WSGTA\\universal-or-strategy\\scripts\\wave6\\relaunch_phase1_24_epics.ps1","version":"1.0.0","taskID":"6ca86d75-72fe-44d4-a3ef-5a15220ec92e"}
+{"id":"03e25c3f-492b-4a92-998a-49ad629a0e25","ts":"2026-06-21T01:58:06.412Z","path":"C:\\WSGTA\\universal-or-strategy\\.bob\\commands\\autonomous-refactor.md","version":"1.0.0","taskID":"6ca86d75-72fe-44d4-a3ef-5a15220ec92e"}

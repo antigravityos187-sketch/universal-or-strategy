@@ -106,8 +106,8 @@ content = f'''# Phase 0: Hotspot Analysis - {epic_id}
 
 ## Complexity Metrics
 - **Cyclomatic Complexity**: {cyc}
-- **Threshold**: 15 (Jane Street aligned)
-- **Status**: {'EXCEEDS THRESHOLD by ' + str(cyc - 15) + ' points' if cyc > 15 else 'WITHIN THRESHOLD'}
+- **Threshold**: 8 (Jane Street strict)
+- **Status**: {'EXCEEDS THRESHOLD by ' + str(cyc - 8) + ' points' if cyc > 8 else 'WITHIN THRESHOLD'}
 
 ## Blast Radius
 - Analysis pending (requires jCodemunch MCP tools in Phase 1)
@@ -124,7 +124,7 @@ content = f'''# Phase 0: Hotspot Analysis - {epic_id}
   - Recursion depth and patterns
 
 ## Risk Assessment
-- **Complexity Risk**: {'HIGH' if cyc > 20 else 'MEDIUM' if cyc > 15 else 'LOW'} (CYC={cyc})
+- **Complexity Risk**: {'HIGH' if cyc > 20 else 'MEDIUM' if cyc > 8 else 'LOW'} (CYC={cyc})
 - **Jane Street Risk**: UNKNOWN (requires Phase 3 audit)
 - **Blast Radius Risk**: UNKNOWN (requires Phase 1 analysis)
 - **Overall Risk**: {'HIGH' if cyc > 20 else 'MEDIUM'}

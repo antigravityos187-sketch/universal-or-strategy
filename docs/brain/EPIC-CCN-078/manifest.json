@@ -3,174 +3,62 @@
   "method": "StopIpcServer",
   "file": "src/V12_002.UI.IPC.Server.cs",
   "complexity": 12,
-  "target_complexity": 8,
-  "final_complexity": 4,
-  "jane_street_violations": 0,
+  "threshold": 8,
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
+      "dependencies": [],
       "mode": "v12-phase0-hotspot",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking"
-      ]
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
       ],
-      "approval": "GRANTED",
-      "completed_at": "2026-06-15T04:06:11Z",
-      "mode": "v12-phase1-5-boundary",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
+      "started_at": "2026-06-17T23:51:57.444754+00:00",
+      "completed_at": "2026-06-17T23:51:57.495313+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-078/00-hotspots.md"
       ],
-      "approval": "APPROVED",
-      "completed_at": "2026-06-15T05:32:47Z",
-      "extraction_strategy": {
-        "helper_methods": 4,
-        "complexity_reduction": "12 \u2192 4 (67%)",
-        "target_met": true
-      },
-      "mode": "v12-phase2-architecture",
+      "notes": "Hotspot analysis complete"
+    },
+    "1": {
+      "status": "in_progress",
+      "dependencies": [
+        "0"
+      ],
+      "mode": "v12-phase1-scope",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking",
         "graphify"
-      ]
-    },
-    "3": {
-      "status": "completed",
-      "approval": "APPROVED",
-      "mode": "v12-phase3-audit",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "4": {
-      "status": "completed",
-      "outputs": [
-        "04-tickets.md"
       ],
-      "ticket_count": 4,
-      "completed_at": "2026-06-15T17:02:10Z",
-      "mode": "v12-phase4-tickets",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "5": {
-      "status": "completed",
-      "outputs": [
-        "05-completion.md"
-      ],
-      "completed_at": "2026-06-15T19:04:43Z",
-      "tickets_executed": 4,
-      "complexity_achieved": 4,
-      "mode": "v12-engineer",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "5.5": {
-      "status": "deferred",
-      "note": "Windows verification pending (build, deploy-sync, pre-push validation)",
-      "mode": "v12-engineer",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "6": {
-      "status": "completed",
-      "outputs": [
-        "06-completion-report.md"
-      ],
-      "completed_at": "2026-06-15T21:29:09Z",
-      "mode": "v12-phase6-review",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "01-scope.md"
-      ],
-      "completed_at": "2026-06-15T04:05:54Z",
-      "mode": "v12-phase1-scope",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
+      "started_at": "2026-06-18T02:04:46.856624+00:00"
     }
   },
-  "scope_validation": {
-    "boundary_check": "PASS",
-    "scope_creep_detection": "PASS",
-    "one_epic_one_concern": "PASS",
-    "approval_status": "APPROVED"
-  },
-  "architecture_validation": {
-    "extraction_strategy": "APPROVED",
-    "method_signatures": "APPROVED",
-    "call_graph": "APPROVED",
-    "lock_free_validation": "PASS",
-    "jane_street_compliance": "PASS",
-    "testing_strategy": "APPROVED"
-  },
-  "epic_status": "COMPLETED",
-  "completion_date": "2026-06-15T21:29:09Z",
-  "complexity_reduction": {
-    "before": 12,
-    "after": 4,
-    "reduction_percentage": 67,
-    "target_met": true,
-    "target_exceeded": true
-  },
-  "windows_verification_pending": true,
   "dependencies": {
     "0": [],
-    "1.5": [
-      "1"
-    ],
-    "2": [
-      "1.5"
-    ],
-    "3": [
-      "2"
-    ],
-    "4": [
-      "3"
-    ],
-    "5.5": [
-      "4"
-    ],
-    "6": [
-      "4"
-    ],
     "1": [
       "0"
     ]
   },
   "description": "Reduce complexity of StopIpcServer in src/V12_002.UI.IPC.Server.cs (CYC: 12)",
-  "status": "pending",
-  "created_at": "2026-06-17T20:25:00.109143+00:00"
+  "status": "in_progress",
+  "created_at": "2026-06-17T20:25:00.109143+00:00",
+  "updated_at": "2026-06-18T02:04:46.856624+00:00",
+  "lamport_events": [
+    {
+      "event_type": "phase_start",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:51:57.444754+00:00",
+      "clock": 1
+    },
+    {
+      "event_type": "phase_complete",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:51:57.495313+00:00",
+      "clock": 2
+    }
+  ],
+  "lamport_clock": 2
 }

@@ -49,13 +49,24 @@ from typing import Dict, List, Optional, Any, Set, Tuple
 import time
 
 # Import V12.52 deterministic workflow engine
-from scripts.lamport_clock import (
-    get_workflow,
-    record_phase_start,
-    record_phase_complete,
-    record_phase_fail,
-    verify_can_execute as lamport_verify_can_execute
-)
+try:
+    # Try relative import first (when called from repo root)
+    from scripts.lamport_clock import (
+        get_workflow,
+        record_phase_start,
+        record_phase_complete,
+        record_phase_fail,
+        verify_can_execute as lamport_verify_can_execute
+    )
+except ModuleNotFoundError:
+    # Fallback to direct import (when called from scripts/ directory)
+    from lamport_clock import (
+        get_workflow,
+        record_phase_start,
+        record_phase_complete,
+        record_phase_fail,
+        verify_can_execute as lamport_verify_can_execute
+    )
 
 # Platform-specific imports for file locking
 try:

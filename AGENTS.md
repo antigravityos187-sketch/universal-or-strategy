@@ -119,7 +119,7 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 | 6 | Security | Gitleaks + Snyk | Zero secrets | ⚠️ WARNING |
 | 7 | Markdown Links | verify_links.ps1 | Zero broken | ⚠️ WARNING |
 | 8 | PR Hygiene | verify_pr_hygiene.ps1 | Diff <10k | ✅ YES |
-| 9 | Complexity | complexity_audit.py | CYC ≤ 15 | ✅ YES |
+| 9 | Complexity | complexity_audit.py | CYC ≤ 8 | ✅ YES |
 | 10 | Dead Code | dead_code_scan.py | Zero dead methods | ⚠️ WARNING |
 | 11 | Codacy Preview | query_codacy_issues.ps1 | Zero errors | ⚠️ WARNING |
 | 12 | Semgrep | semgrep CLI | Zero findings | ⚠️ WARNING |
@@ -179,9 +179,9 @@ powershell -File .\scripts\pre_push_validation.ps1 -SkipBuild -SkipTests
 
 ### Complexity Threshold Rationale
 
-**V12 uses CYC ≤ 15** (Jane Street aligned):
+**V12 uses CYC ≤ 8** (Jane Street strict standard):
 - Jane Street's HFT systems prioritize **cognitive simplicity** over clever abstractions
-- Functions with CYC >15 are harder to:
+- Functions with CYC >8 are harder to:
   - Reason about under microsecond latency constraints
   - Test exhaustively (exponential path growth)
   - Audit for race conditions in lock-free code
@@ -558,23 +558,23 @@ epic-review-final EPIC-CCN-X
 The repository uses `.codacy.yml` to enforce V12 architectural standards:
 
 **Key Settings**:
-- **Complexity Threshold**: 15 (Jane Street alignment - keep functions simple)
+- **Complexity Threshold**: 8 (Jane Street strict standard - keep functions simple)
 - **Roslyn Analyzer**: Enabled for C# code quality checks
 - **Duplication Detection**: Enabled (excludes tests/benchmarks)
 - **Excluded Paths**: docs/, scripts/, .github/, conductor/, Traycerrefactor/, and tool directories
 
 ### Complexity Threshold Rationale
 
-**Why 15?** (Jane Street Alignment)
+**Why 8?** (Jane Street Strict Standard)
 - Jane Street's HFT systems prioritize **cognitive simplicity** over clever abstractions
-- Functions with cyclomatic complexity >15 are harder to:
+- Functions with cyclomatic complexity >8 are harder to:
   - Reason about under microsecond latency constraints
   - Test exhaustively (exponential path growth)
   - Audit for race conditions in lock-free code
 - V12 DNA mandates: "Make illegal states unrepresentable" - this requires simple, verifiable logic
 
 **Enforcement**:
-- Codacy flags functions exceeding threshold 15
+- Codacy flags functions exceeding threshold 8
 - Refactor into smaller, single-purpose functions
 - Use the Actor/FSM pattern to decompose complex state machines
 
@@ -696,7 +696,7 @@ dotnet tool install -g csharpier
 |------|---------------|----------|
 | **CSharpier** | Formatting | Enforce braces, line endings |
 | **CodeScene** | Behavioral | Identify hotspots (complexity + churn) |
-| **Codacy** | Static | Catch violations in PR |
+| **Codacy** | Static | Catch violations in PR (threshold 8) |
 | **complexity_audit.py** | Local | Pre-commit complexity check |
 
 **Workflow**:

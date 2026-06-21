@@ -3,142 +3,67 @@
   "method": "ShadowPropagateStopMoves",
   "file": "src/V12_002.SIMA.Shadow.cs",
   "complexity": 20,
-  "target_complexity": 8,
-  "complexity_after": 7,
+  "threshold": 8,
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
-      "date": "2026-06-15",
+      "dependencies": [],
       "mode": "v12-phase0-hotspot",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking"
-      ]
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
       ],
-      "approval": "APPROVED",
-      "date": "2026-06-15",
-      "mode": "v12-phase1-5-boundary",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "2.0": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
+      "started_at": "2026-06-17T23:48:16.497153+00:00",
+      "completed_at": "2026-06-17T23:48:16.547850+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-007/00-hotspots.md"
       ],
-      "date": "2026-06-15",
-      "mode": "v12-phase2-architecture",
+      "notes": "Hotspot analysis complete"
+    },
+    "1": {
+      "status": "completed",
+      "dependencies": [
+        "0"
+      ],
+      "mode": "v12-phase1-scope",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking",
         "graphify"
-      ]
-    },
-    "3.0": {
-      "status": "completed",
-      "outputs": [
-        "03-audit-report.md"
       ],
-      "audit_result": "PASS",
-      "date": "2026-06-15",
-      "mode": "v12-phase3-audit",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "4.0": {
-      "status": "completed",
-      "outputs": [
-        "04-tickets.md"
+      "started_at": "2026-06-18T02:04:09.418274+00:00",
+      "completed_at": "2026-06-18T02:07:40.023171+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-007/00-scope.md"
       ],
-      "ticket_count": 6,
-      "date": "2026-06-15",
-      "mode": "v12-phase4-tickets",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "5.0": {
-      "status": "completed",
-      "outputs": [
-        "05-ticket-completion.md"
-      ],
-      "tickets_completed": [
-        "TICKET-1",
-        "TICKET-2",
-        "TICKET-3",
-        "TICKET-4",
-        "TICKET-5",
-        "TICKET-6"
-      ],
-      "tickets_remaining": [],
-      "completion_date": "2026-06-15T18:52:34Z",
-      "verification_pending": true,
-      "windows_environment_required": true,
-      "date": "2026-06-15",
-      "mode": "v12-engineer",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "6.0": {
-      "status": "completed",
-      "outputs": [
-        "06-completion-report.md"
-      ],
-      "completion_date": "2026-06-15T21:21:42Z",
-      "date": "2026-06-15",
-      "mode": "v12-phase6-review",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "01-scope.md"
-      ],
-      "date": "2026-06-15",
-      "mode": "v12-phase1-scope",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
+      "notes": "Scope definition complete"
     }
   },
-  "epic_status": "COMPLETED",
-  "completion_date": "2026-06-15T21:21:42Z",
-  "protocol_version": "V12.23",
-  "verification_notes": "Pending Windows environment verification: build, tests, deploy-sync, F5 manual test",
   "dependencies": {
     "0": [],
-    "1.5": [
-      "1"
-    ],
-    "5.0": [
-      "4"
-    ],
     "1": [
       "0"
     ]
   },
   "description": "Reduce complexity of ShadowPropagateStopMoves in src/V12_002.SIMA.Shadow.cs (CYC: 20)",
   "status": "completed",
-  "created_at": "2026-06-17T20:24:59.983926+00:00"
+  "created_at": "2026-06-17T20:24:59.983926+00:00",
+  "updated_at": "2026-06-18T02:07:40.023171+00:00",
+  "lamport_events": [
+    {
+      "event_type": "phase_start",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:16.497153+00:00",
+      "clock": 1
+    },
+    {
+      "event_type": "phase_complete",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:16.547850+00:00",
+      "clock": 2
+    }
+  ],
+  "lamport_clock": 2
 }

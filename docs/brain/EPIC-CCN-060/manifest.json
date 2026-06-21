@@ -3,132 +3,62 @@
   "method": "SweepTrackedOrders",
   "file": "src/V12_002.SIMA.Lifecycle.cs",
   "complexity": 12,
-  "jane_street_violations": 0,
+  "threshold": 8,
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
+      "dependencies": [],
       "mode": "v12-phase0-hotspot",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking"
-      ]
+      ],
+      "started_at": "2026-06-17T23:48:34.604162+00:00",
+      "completed_at": "2026-06-17T23:48:34.655212+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-060/00-hotspots.md"
+      ],
+      "notes": "Hotspot analysis complete"
     },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
+    "1": {
+      "status": "in_progress",
+      "dependencies": [
+        "0"
       ],
-      "mode": "v12-phase1-5-boundary",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
-      ],
-      "extraction_strategy": "two_helper_methods",
-      "target_complexity": 4,
-      "helpers": [
-        {
-          "name": "GetOrderDictionariesToSweep",
-          "complexity": 2,
-          "purpose": "Dictionary selection logic"
-        },
-        {
-          "name": "IsOrderCancellable",
-          "complexity": 3,
-          "purpose": "OrderState validation"
-        }
-      ],
-      "mode": "v12-phase2-architecture",
+      "mode": "v12-phase1-scope",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking",
         "graphify"
-      ]
-    },
-    "3": {
-      "status": "completed",
-      "output": "03-audit-report.md",
-      "audit_result": "PASS",
-      "dna_compliance": {
-        "correctness_by_construction": "PASS",
-        "lock_free_actor_pattern": "PASS",
-        "ascii_only_compliance": "PASS",
-        "jane_street_alignment": "PASS"
-      },
-      "pr_hygiene": {
-        "diff_size": "PASS",
-        "scope_creep": "PASS",
-        "build_readiness": "PASS"
-      },
-      "blockers": 0,
-      "warnings": 1,
-      "recommendations": [
-        "Add unit tests for extracted helpers",
-        "Add performance benchmark",
-        "Verify inline optimization"
       ],
-      "mode": "v12-phase3-audit",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "4": {
-      "status": "completed",
-      "output": "04-tickets.md",
-      "ticket_count": 2,
-      "tickets": [
-        {
-          "id": "TICKET-1",
-          "name": "Extract Dictionary Selection Logic",
-          "helper": "GetOrderDictionariesToSweep",
-          "complexity_reduction": "12 \u2192 8",
-          "estimated_effort": "1-1.5 hours"
-        },
-        {
-          "id": "TICKET-2",
-          "name": "Extract OrderState Validation Logic",
-          "helper": "IsOrderCancellable",
-          "complexity_reduction": "8 \u2192 4",
-          "estimated_effort": "1-1.5 hours",
-          "dependencies": [
-            "TICKET-1"
-          ]
-        }
-      ],
-      "total_estimated_effort": "2-3 hours",
-      "mode": "v12-phase4-tickets",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
+      "started_at": "2026-06-18T02:04:36.550668+00:00"
     }
   },
   "dependencies": {
     "0": [],
-    "1.5": [
-      "1"
-    ],
-    "2": [
-      "1.5"
-    ],
-    "3": [
-      "2"
-    ],
-    "4": [
-      "3"
+    "1": [
+      "0"
     ]
   },
   "description": "Reduce complexity of SweepTrackedOrders in src/V12_002.SIMA.Lifecycle.cs (CYC: 12)",
-  "status": "completed",
-  "created_at": "2026-06-17T20:25:00.080390+00:00"
+  "status": "in_progress",
+  "created_at": "2026-06-17T20:25:00.080390+00:00",
+  "updated_at": "2026-06-18T02:04:36.550668+00:00",
+  "lamport_events": [
+    {
+      "event_type": "phase_start",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:34.604162+00:00",
+      "clock": 1
+    },
+    {
+      "event_type": "phase_complete",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:34.655212+00:00",
+      "clock": 2
+    }
+  ],
+  "lamport_clock": 2
 }

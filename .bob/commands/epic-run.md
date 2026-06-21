@@ -217,7 +217,7 @@ Hand off this exact task:
 EPIC: $1
 TASK: Run /epic-scan
 INPUT: @docs/brain/$1/01-analysis.md @docs/brain/$1/02-approach.md
-OUTPUT: Write docs/brain/$1/02-greptile-report.md
+OUTPUT: Write docs/brain/$1/02-jcodemunch-report.md
 STOP at [SENTINEL-GATE] and do not proceed.
 ```
 

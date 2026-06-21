@@ -1,22 +1,66 @@
 {
-  "last_updated": "2026-06-12T19:53:13.624816",
+  "last_updated": "2026-06-19T05:28:00.000000",
+  "wave": "Wave 7",
+  "total_apis": 19,
+  "total_balance": 3040,
+  "total_used": 29.38,
+  "total_remaining": 3010.62,
   "apis": {
-    "b (2).json": {
-      "name": "b",
-      "balance": 156.77,
-      "used": 3.23,
-      "history": [
-        {
-          "timestamp": "2026-06-12T19:53:13.623816",
-          "epic_id": "EPIC-CCN-115",
-          "phase": "0-3",
-          "bobcoins": 3.23,
-          "balance_after": 156.77
-        }
-      ]
+      "jimmydore.json": {
+        "name": "jimmydore",      "balance": 160,
+      "used": 0,
+      "history": []
+    },
+    "alprofit.json": {
+      "name": "alprofit",
+      "balance": 160,
+      "used": 0,
+      "history": []
+    },
+    "iyanajackson.json": {
+      "name": "iyanajackson",
+      "balance": 160,
+      "used": 0,
+      "history": []
+    },
+    "rakaarababa.json": {
+      "name": "rakaarababa",
+      "balance": 160,
+      "used": 0,
+      "history": []
+    },
+    "ranirabah (1).json": {
+      "name": "ranirabah",
+      "balance": 160,
+      "used": 0,
+      "history": []
+    },
+    "jessica.json": {
+      "name": "jessica",
+      "balance": 160,
+      "used": 0,
+      "history": []
+    },
+    "mikethelife.json": {
+      "name": "mikethelife",
+      "balance": 160,
+      "used": 0,
+      "history": []
+    },
+    "tory.json": {
+      "name": "tory",
+      "balance": 160,
+      "used": 0,
+      "history": []
+    },
+    "sammy96.json": {
+      "name": "sammy96",
+      "balance": 160,
+      "used": 0,
+      "history": []
     },
     "b.json": {
-      "name": "b",
+      "name": "b-1",
       "balance": 156.77,
       "used": 3.23,
       "history": [
@@ -29,8 +73,22 @@
         }
       ]
     },
+    "b (3).json": {
+      "name": "b-3",
+      "balance": 156.77,
+      "used": 3.23,
+      "history": [
+        {
+          "timestamp": "2026-06-12T19:53:13.623816",
+          "epic_id": "EPIC-CCN-115",
+          "phase": "0-3",
+          "bobcoins": 3.23,
+          "balance_after": 156.77
+        }
+      ]
+    },
     "bob (1).json": {
-      "name": "bob",
+      "name": "bob-1",
       "balance": 156.77,
       "used": 3.23,
       "history": [
@@ -44,7 +102,7 @@
       ]
     },
     "bob (2).json": {
-      "name": "bob",
+      "name": "bob-2",
       "balance": 156.77,
       "used": 3.23,
       "history": [
@@ -58,7 +116,7 @@
       ]
     },
     "bob (3).json": {
-      "name": "bob",
+      "name": "bob-3",
       "balance": 156.77,
       "used": 3.23,
       "history": [
@@ -72,7 +130,7 @@
       ]
     },
     "bob (4).json": {
-      "name": "bob",
+      "name": "bob-4",
       "balance": 156.77,
       "used": 3.23,
       "history": [
@@ -86,7 +144,7 @@
       ]
     },
     "bob (5).json": {
-      "name": "bob",
+      "name": "bob-5",
       "balance": 156.77,
       "used": 3.23,
       "history": [
@@ -100,7 +158,7 @@
       ]
     },
     "bob (6).json": {
-      "name": "bob",
+      "name": "bob-6",
       "balance": 156.77,
       "used": 3.23,
       "history": [
@@ -114,8 +172,8 @@
       ]
     },
     "bob.json": {
-      "name": "Bob",
-      "balance": 153.54000000000002,
+      "name": "bob-main",
+      "balance": 153.54,
       "used": 6.46,
       "history": [
         {
@@ -130,15 +188,16 @@
           "epic_id": "EPIC-CCN-107",
           "phase": "0-3",
           "bobcoins": 3.23,
-          "balance_after": 153.54000000000002
+          "balance_after": 153.54
         }
       ]
     },
     "sean.carter.jr@atomicmail.io.json": {
-      "name": "sean.carter.jr@atomicmail.io",
+      "name": "sean.carter.jr",
       "balance": 160,
       "used": 0,
       "history": []
     }
-  }
+  },
+  "notes": "Wave 7 ready. 19 APIs loaded with 3,010.62 bobcoins available. Previous Wave 2 usage: 29.38 bobcoins (9 epics, EPIC-CCN-107-115). Director will add more keys and remove empty ones after Wave 7 execution."
 }

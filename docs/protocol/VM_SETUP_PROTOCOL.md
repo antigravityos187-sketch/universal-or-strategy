@@ -124,14 +124,20 @@ msbuild               # ❌ FAILS - MSBuild not installed
 
 **MCP Servers: Local vs VM**:
 
-**Local-Only MCP Servers** (run on Windows machine):
-- `jcodemunch-mcp` (Windows binary, .exe - cannot run on Linux)
-- `greptile` (requires local auth)
+**OUTDATED - See docs/protocol/VM_MCP_REQUIREMENTS_MATRIX.md for current requirements**
 
-**VM-Compatible MCP Servers** (can run on VM):
-- `sequential-thinking` (requires Node.js/npx)
-- `phase-*` servers (require Python 3)
-- `worker-*` servers (require Python 3)
+**Local-Only MCP Servers** (run on Windows machine):
+- None - all required MCPs can run on Linux VM
+
+**VM-Compatible MCP Servers** (MUST be installed on VM for Wave 7):
+- `jcodemunch-mcp` (Linux binary available - see docs/protocol/JCODEMUNCH_VM_INSTALLATION.md)
+- `sequential-thinking` (requires Node.js/npx) ✅ INSTALLED
+- `graphify` (requires Node.js/npx) ❌ NOT INSTALLED
+- `greptile` (requires Node.js/npx + API key) ❌ NOT INSTALLED
+
+**Obsolete Servers** (removed in V12.42):
+- `phase-*` servers (replaced by custom modes in .bob/custom_modes.yaml)
+- `worker-*` servers (not needed for wave execution)
 
 **Bob CLI Behavior**: When MCP server unavailable, Bob Shell continues with degraded functionality (no MCP tools).
 

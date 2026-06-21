@@ -3,122 +3,67 @@
   "method": "FlattenSinglePosition",
   "file": "src/V12_002.Orders.Management.Flatten.cs",
   "complexity": 16,
+  "threshold": 8,
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
+      "dependencies": [],
       "mode": "v12-phase0-hotspot",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking"
-      ]
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
       ],
-      "mode": "v12-phase1-5-boundary",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
+      "started_at": "2026-06-17T23:48:24.043636+00:00",
+      "completed_at": "2026-06-17T23:48:24.093121+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-033/00-hotspots.md"
       ],
-      "extraction_strategy": {
-        "helper_methods": 3,
-        "target_ccn": 7,
-        "methods": [
-          "CancelStopAndTargetOrders",
-          "ValidateAndCalculateFlattenQuantity",
-          "SubmitFlattenMarketOrder"
-        ]
-      },
-      "mode": "v12-phase2-architecture",
+      "notes": "Hotspot analysis complete"
+    },
+    "1": {
+      "status": "completed",
+      "dependencies": [
+        "0"
+      ],
+      "mode": "v12-phase1-scope",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking",
         "graphify"
-      ]
-    },
-    "3": {
-      "status": "completed",
-      "output": "03-audit-report.md",
-      "audit_result": "PASS",
-      "auditor": "Bob CLI (v12-engineer mode)",
-      "date": "2026-06-15",
-      "dna_compliance": {
-        "correctness_by_construction": "PASS",
-        "lock_free_actor_pattern": "PASS",
-        "ascii_only": "PASS",
-        "jane_street_alignment": "PASS"
-      },
-      "pr_hygiene": {
-        "diff_size": "PASS",
-        "scope_creep": "PASS",
-        "build_readiness": "PASS"
-      },
-      "mode": "v12-phase3-audit",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "4": {
-      "status": "completed",
-      "output": "04-tickets.md",
-      "ticket_count": 3,
-      "date": "2026-06-15",
-      "tickets": [
-        {
-          "id": "TICKET-1",
-          "name": "Extract CancelStopAndTargetOrders",
-          "target_ccn": 13,
-          "estimated_ccn": 3
-        },
-        {
-          "id": "TICKET-2",
-          "name": "Extract ValidateAndCalculateFlattenQuantity",
-          "target_ccn": 9,
-          "estimated_ccn": 4
-        },
-        {
-          "id": "TICKET-3",
-          "name": "Extract SubmitFlattenMarketOrder",
-          "target_ccn": 7,
-          "estimated_ccn": 2
-        }
       ],
-      "mode": "v12-phase4-tickets",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
+      "started_at": "2026-06-18T02:04:22.143684+00:00",
+      "completed_at": "2026-06-18T02:09:13.974282+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-033/00-scope.md"
+      ],
+      "notes": "Scope definition complete"
     }
   },
   "dependencies": {
     "0": [],
-    "1.5": [
-      "1"
-    ],
-    "2": [
-      "1.5"
-    ],
-    "3": [
-      "2"
-    ],
-    "4": [
-      "3"
+    "1": [
+      "0"
     ]
   },
   "description": "Reduce complexity of FlattenSinglePosition in src/V12_002.Orders.Management.Flatten.cs (CYC: 16)",
   "status": "completed",
-  "created_at": "2026-06-17T20:25:00.029855+00:00"
+  "created_at": "2026-06-17T20:25:00.029855+00:00",
+  "updated_at": "2026-06-18T02:09:13.974282+00:00",
+  "lamport_events": [
+    {
+      "event_type": "phase_start",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:24.043636+00:00",
+      "clock": 1
+    },
+    {
+      "event_type": "phase_complete",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:24.093121+00:00",
+      "clock": 2
+    }
+  ],
+  "lamport_clock": 2
 }

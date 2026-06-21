@@ -2,172 +2,68 @@
   "epic_id": "EPIC-CCN-010",
   "method": "ShowModeSpecificControls",
   "file": "src/V12_002.UI.Panel.Handlers.cs",
-  "complexity_before": 20,
-  "complexity_after": 2,
-  "epic_status": "COMPLETED",
-  "completion_date": "2026-06-15T21:22:00Z",
+  "complexity": 0,
+  "threshold": 8,
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
-      "completed_at": "2026-06-15T00:52:26Z",
+      "outputs": [],
+      "completed_at": "2026-06-17T23:11:24.197551+00:00",
       "mode": "v12-phase0-hotspot",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking"
-      ]
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
       ],
-      "completed_at": "2026-06-15T03:28:55Z",
-      "approval": "APPROVED",
-      "scope_creep_risk": "ZERO",
-      "blast_radius": "MINIMAL",
-      "mode": "v12-phase1-5-boundary",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
+      "started_at": "2026-06-17T23:11:24.142211+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-010/00-hotspots.md"
       ],
-      "completed_at": "2026-06-15T05:19:18Z",
-      "extraction_strategy": "3 helper methods (CYC<=8 each)",
-      "target_complexity": "CYC<=5 (orchestrator)",
-      "jane_street_compliance": "VERIFIED",
-      "lock_free_validation": "PASSED",
-      "mode": "v12-phase2-architecture",
+      "notes": "Hotspot analysis complete"
+    },
+    "1": {
+      "status": "completed",
+      "dependencies": [
+        "0"
+      ],
+      "mode": "v12-phase1-scope",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking",
         "graphify"
-      ]
-    },
-    "3": {
-      "status": "completed",
-      "outputs": [
-        "03-audit-report.md"
       ],
-      "completed_at": "2026-06-15T15:44:24Z",
-      "audit_result": "PASS",
-      "dna_compliance": "PASS",
-      "pr_hygiene": "PASS",
-      "blockers": "NONE",
-      "ready_for_phase_4": true,
-      "mode": "v12-phase3-audit",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "4": {
-      "status": "completed",
-      "outputs": [
-        "04-tickets.md"
+      "started_at": "2026-06-18T02:04:10.973172+00:00",
+      "completed_at": "2026-06-18T02:07:39.271004+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-010/00-scope.md"
       ],
-      "completed_at": "2026-06-15T16:48:44Z",
-      "ticket_count": 4,
-      "extraction_strategy": "Sequential extraction (TICKET-1 \u2192 TICKET-2 \u2192 TICKET-3 \u2192 TICKET-4)",
-      "estimated_effort": "2-3 hours",
-      "bobcoin_budget": "0.75-1.00",
-      "mode": "v12-phase4-tickets",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "5": {
-      "status": "completed",
-      "outputs": [
-        "05-phase5-completion.md"
-      ],
-      "completed_at": "2026-06-15T18:53:00Z",
-      "tickets_executed": 4,
-      "complexity_achieved": 2,
-      "actual_cost": "3.43 Bobcoins",
-      "mode": "v12-engineer",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "5.5": {
-      "status": "completed",
-      "verification": "PASSED",
-      "pending_user_validation": [
-        "dotnet build",
-        "dotnet test",
-        "CSharpier formatting",
-        "deploy-sync.ps1",
-        "Manual NinjaTrader testing"
-      ],
-      "mode": "v12-engineer",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "6": {
-      "status": "completed",
-      "outputs": [
-        "06-completion-report.md"
-      ],
-      "completed_at": "2026-06-15T21:22:00Z",
-      "total_cost": "4.97 Bobcoins",
-      "mode": "v12-phase6-review",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "01-scope.md"
-      ],
-      "completed_at": "2026-06-15T03:28:30Z",
-      "mode": "v12-phase1-scope",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
+      "notes": "Scope definition complete"
     }
   },
   "dependencies": {
     "0": [],
-    "1.5": [
-      "1"
-    ],
-    "2": [
-      "1.5"
-    ],
-    "3": [
-      "2"
-    ],
-    "4": [
-      "3"
-    ],
-    "5.5": [
-      "4"
-    ],
-    "6": [
-      "4"
-    ],
     "1": [
       "0"
     ]
   },
   "description": "Reduce complexity of ShowModeSpecificControls in src/V12_002.UI.Panel.Handlers.cs (CYC: 20)",
   "status": "completed",
-  "created_at": "2026-06-17T20:24:59.987919+00:00"
+  "created_at": "2026-06-17T20:24:59.987919+00:00",
+  "updated_at": "2026-06-18T02:07:39.271004+00:00",
+  "lamport_events": [
+    {
+      "event_type": "phase_start",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:11:24.142211+00:00",
+      "clock": 1
+    },
+    {
+      "event_type": "phase_complete",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:11:24.197551+00:00",
+      "clock": 2
+    }
+  ],
+  "lamport_clock": 2
 }

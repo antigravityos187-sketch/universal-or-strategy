@@ -3,38 +3,22 @@
   "method": "IsCommandForThisInstrument",
   "file": "src/V12_002.UI.IPC.cs",
   "complexity": 36,
-  "target_complexity": 8,
+  "threshold": 8,
   "phases": {
-    "phase_0": {
-      "status": "completed",
-      "output": "00-hotspots.md",
-      "completed_at": "2026-06-11T05:00:00.000Z",
-      "mode": "plan"
-    },
-    "phase_1": {
-      "status": "completed",
-      "output": "00-scope.md",
-      "completed_at": "2026-06-11T05:02:32.000Z",
-      "extraction_strategy": {
-        "sub_methods": [
-          {
-            "name": "IsGlobalIpcCommand",
-            "purpose": "Isolate global command detection logic",
-            "target_cyc": 3
-          },
-          {
-            "name": "IsSymbolMatch",
-            "purpose": "Isolate symbol matching logic",
-            "target_cyc": 4
-          }
-        ],
-        "main_method_target_cyc": 4
-      },
-      "mode": "plan"
+    "0": {
+      "status": "pending",
+      "dependencies": [],
+      "mode": "v12-phase0-hotspot",
+      "mcp_tools": [
+        "jcodemunch-mcp",
+        "sequential-thinking"
+      ]
     }
   },
+  "dependencies": {
+    "0": []
+  },
   "description": "Reduce complexity of IsCommandForThisInstrument in src/V12_002.UI.IPC.cs (CYC: 36)",
-  "status": "completed",
-  "created_at": "2026-06-17T20:25:00.162377+00:00",
-  "dependencies": {}
+  "status": "pending",
+  "created_at": "2026-06-17T20:25:00.162377+00:00"
 }

@@ -40,7 +40,7 @@ instructions: |
   ### Phase 2: Architecture Planning
   Call execute_phase_2 for each epic (requires Phase 1.5 complete)
   
-  ### Phase 3: DNA & PR Audit
+  ### Phase 3: DNA Audit
   Call execute_phase_3 for each epic (requires Phase 2 complete)
   
   ### Phase 4: Ticket Generation
@@ -85,7 +85,7 @@ tools:
     description: Execute Phase 2 (Architecture Planning) for an epic
     mcp_server: phase-2-architecture
   - name: execute_phase_3
-    description: Execute Phase 3 (DNA & PR Audit) for an epic
+    description: Execute Phase 3 (DNA Audit) for an epic
     mcp_server: phase-3-audit
   - name: execute_phase_4
     description: Execute Phase 4 (Ticket Generation) for an epic

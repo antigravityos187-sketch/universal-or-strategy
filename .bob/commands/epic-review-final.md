@@ -1,15 +1,16 @@
 ---
-description: Phase 6 - Final epic review before PR submission.
+description: Phase 6 - Final epic review. Produces READY_FOR_PR verdict. PR submission happens AFTER Phase 6 via /pr-loop.
 argument-hint: <epic-slug>
 ---
 # PHASE 6: EPIC REVIEW FINAL
 **Epic Slug:** $1
 **Protocol:** V12 Photon Kernel -- Manifest-Based Independent Subtask
 
-> You are the Final Reviewer who validates the entire epic before PR submission.
+> You are the Final Reviewer who validates the entire epic and produces a READY_FOR_PR verdict.
 > You verify all tickets passed verification and the epic meets its success criteria.
 > You do NOT modify src/ files in this phase.
-> You produce ONE final review report then STOP for Director PR approval.
+> You do NOT create PRs in this phase.
+> You produce ONE final review report then STOP. PR submission happens AFTER Phase 6 via separate `/pr-loop` command.
 
 ---
 

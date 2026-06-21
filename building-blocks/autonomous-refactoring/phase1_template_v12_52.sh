@@ -83,10 +83,14 @@ fi
 echo "Defining scope for $EPIC_ID..."
 OUTPUT_FILE="docs/brain/$EPIC_ID/00-scope.md"
 
-# Bob CLI command for scope definition
-bob --mode plan --task "Define extraction scope for $EPIC_ID based on hotspot analysis in $HOTSPOT_FILE. Output: $OUTPUT_FILE" \
-    --context "$HOTSPOT_FILE" \
-    --output "$OUTPUT_FILE" \
+# Bob CLI command for scope definition (v1.0.4 syntax)
+# CRITICAL: Use full path ~/.npm-global/bin/bob (not in PATH)
+# Export API key from bashrc
+export BOBSHELL_API_KEY=$(grep 'export BOBSHELL_API_KEY' ~/.bashrc | cut -d'=' -f2)
+~/.npm-global/bin/bob \
+    --chat-mode v12-phase1-scope \
+    --yolo \
+    "Define extraction scope for $EPIC_ID based on hotspot analysis in $HOTSPOT_FILE. Output: $OUTPUT_FILE" \
     2>&1 | tee "logs/wave6/phase1/$EPIC_ID.log"
 
 BOB_EXIT_CODE=${PIPESTATUS[0]}

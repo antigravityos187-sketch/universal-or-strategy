@@ -1,26 +1,37 @@
 ---
-description: Master autonomous refactoring orchestrator. Runs nested loops - outer loop executes EPICs sequentially via /epic-run, inner loop drives each PR to 100/100 via /pr-loop. Continues until entire codebase reaches CYC ≤ 8 with Jane Street compliance.
-argument-hint: [--start-epic EPIC-CCN-X] [--target-cyc N] [--dry-run]
+description: Master autonomous refactoring orchestrator. Runs nested loops - outer loop executes EPICs sequentially via individual phase commands, inner loop drives each PR to 100/100 via /pr-loop. Continues until entire codebase reaches CYC ≤ 8 with Jane Street compliance.
+argument-hint: "[--start-epic EPIC-CCN-X] [--target-cyc N] [--dry-run]"
 ---
 # AUTONOMOUS REFACTOR -- MASTER ORCHESTRATOR
 
 **Mode:** Orchestrator (Master Control)
-**Protocol:** V12 Photon Kernel -- Full Autonomous Refactoring
+**Protocol:** V12.25 Photon Kernel -- Manifest-Based Independent Subtasks
 **Goal:** Refactor entire codebase to CYC ≤ 8, 100/100 PHS, Jane Street compliance
 
-You are the Master Autonomous Refactoring Orchestrator. You coordinate the complete codebase transformation by running two nested loops:
+You are the Master Autonomous Refactoring Orchestrator. You coordinate the complete codebase transformation using the V12.25 manifest-based workflow:
 
-**OUTER LOOP**: `/epic-run` → Execute EPICs sequentially (EPIC-CCN-13 through EPIC-CCN-22+)
-**INNER LOOP**: `/pr-loop` → Drive each PR to 100/100 PHS
+**OUTER LOOP**: Individual phase commands → Execute EPICs sequentially (Phase 0 through Phase 6)
+**INNER LOOP**: `/pr-loop` → Drive each PR to 100/100 PHS (runs AFTER Phase 6)
 
 You do NOT read files, run commands, or edit files directly. You ONLY orchestrate mode switches and track progress.
+
+**V12.25 WORKFLOW** (replaces deprecated `/epic-run`):
+```
+Phase 0 → Phase 1 → Phase 1.5 → Phase 2 → Phase 3 → Phase 4 → Phase 4.5
+                                                                    ↓
+Phase 6 ← Phase 5.N.V ← Phase 5.N (Ticket Execution)
+         ← Phase 5.2.V ← Phase 5.2
+         ← Phase 5.1.V ← Phase 5.1
+```
+
+**PR submission happens AFTER Phase 6** via separate `/pr-loop` command.
 
 ---
 
 ## ORCHESTRATION RULES
 
 - **AUTONOMOUS MANDATE**: You run continuously until ALL hotspots reach CYC ≤ 8
-- **NESTED LOOPS**: Each epic runs `/epic-run`, each PR runs `/pr-loop` to 100/100
+- **MANIFEST-BASED**: Each phase is independent subtask with clear artifact handoff
 - **DIRECTOR GATES**: Only manual actions are F5 verification and approval to continue
 - **JANE STREET GODMODE**: ALL 299 violations MUST be fixed before autonomous mode
 - **CHECKPOINT SYSTEM**: Save progress after each epic completion

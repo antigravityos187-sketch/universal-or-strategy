@@ -1,14 +1,11 @@
 # Bob Configuration - V12 Photon Strategy
-# Updated: 2026-06-09 - Claude Fable 5 Integration
+# Updated: 2026-06-20 - Auto-Select Model Configuration
 # This file configures Bob CLI defaults and mode-specific overrides for V12 missions.
 
 # ============================================================================
 # GLOBAL DEFAULTS
 # ============================================================================
 default_mode: advanced          # Primary mode for V12 missions
-default_model: claude-fable-5   # Claude Fable 5 (released 2026-06-09)
-                                # Pricing: $10/M input, $50/M output
-                                # Falls back to Opus 4.8 for cyber/bio/distillation
 auto_apply: true                # Always save changes to disk (--yes equivalent)
 checkpointing: true             # Enable automated safety backups before edits
 
@@ -18,25 +15,21 @@ checkpointing: true             # Enable automated safety backups before edits
 
 # Advanced Mode - Primary engineering mode with MCP tools
 advanced:
-  model: claude-fable-5         # Use Fable 5 for maximum capability
   apply: true                   # Auto-apply changes
   system_prompt_prefix: "You are in Advanced Mode with full MCP tool access. Follow V12 DNA strictly."
 
 # Plan Mode - Strategic planning and architecture
 plan:
-  model: claude-fable-5         # Fable 5 for complex architectural reasoning
   apply: false                  # Plan mode is read-only by default
   system_prompt_prefix: "You are in Plan Mode. Focus on strategy and design. No code modifications."
 
 # Ask Mode - Documentation and Q&A
 ask:
-  model: claude-fable-5         # Fable 5 for comprehensive answers
   apply: false                  # Ask mode is read-only
   system_prompt_prefix: "You are in Ask Mode. Provide clear, technical explanations."
 
 # Code Mode - DEPRECATED (V12.18) - Use Advanced mode instead
 code:
-  model: claude-fable-5         # Maintained for backward compatibility
   apply: true
   system_prompt_prefix: "WARNING: Code mode is DEPRECATED. Switch to Advanced mode for code tasks."
 
@@ -46,32 +39,27 @@ code:
 
 # V12 Epic Planner - Epic workflow orchestration
 v12-epic-planner:
-  model: claude-fable-5         # Fable 5 for complex epic planning
   apply: true                   # Can write planning documents
   system_prompt_prefix: "You are the V12 Epic Architect. Run five-phase epic workflow. PLAN-ONLY for src/ files."
 
 # V12 Engineer - Surgical refactoring specialist
 v12-engineer:
   mode: advanced                # Inherits advanced mode capabilities
-  model: claude-fable-5         # Fable 5 for surgical precision
   apply: true                   # Auto-apply surgical edits
   system_prompt_prefix: "You are in YOLO Engineering Mode. Follow V12 DNA strictly. Surgical edits only."
 
 # V12 Phase 7 Lead - Concurrency specialist
 v12-phase7-lead:
-  model: claude-fable-5         # Fable 5 for lock-free pattern design
   apply: true                   # Can modify src/ files
   system_prompt_prefix: "You are the Lead Concurrency Engineer. Lock-free patterns only. PLAN-THEN-EXECUTE protocol mandatory."
 
 # Orchestrator Mode - Multi-agent coordination
 orchestrator:
-  model: claude-fable-5         # Fable 5 for complex coordination
   apply: true                   # Can delegate to other modes
   system_prompt_prefix: "You are the Orchestrator. Coordinate multi-agent workflows. Break down complex tasks."
 
 # Autonomous Refactor Mode - Wave execution orchestration
 autonomous-refactor:
-  model: claude-fable-5         # Fable 5 for wave orchestration
   apply: true                   # Can write scripts and docs
   mode: advanced                # Inherits advanced mode capabilities (MCP + browser)
   system_prompt_prefix: "You are the Wave Execution Lead. Follow building-blocks method, pilot testing, and Jane Street validation strictly."
@@ -79,8 +67,7 @@ autonomous-refactor:
 # ============================================================================
 # NOTES
 # ============================================================================
-# - All modes default to claude-fable-5 unless overridden
-# - Fable 5 automatically falls back to Opus 4.8 for restricted queries
+# - Bob will auto-select the best available model based on your API keys
 # - Custom modes defined in .bob/custom_modes.yaml
 # - Mode-specific rules in .bob/rules-{mode-slug}/
 # - Checkpointing enabled globally via .bob/settings.json
