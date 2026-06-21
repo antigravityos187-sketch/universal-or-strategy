@@ -193,7 +193,7 @@ The script checks for:
 - **Semgrep**: V12 DNA pattern violations (NEW)
 - **Bob CLI findings**: Via Roslyn analyzers in build step
 - **CodeRabbit**: Markdown formatting, link validation
-- **Greptile**: Dead code scan, complexity audit
+- **jcodemunch**: Dead code scan, complexity audit
 - **Snyk**: Dependency vulnerabilities
 - **Gitleaks**: Secret detection
 

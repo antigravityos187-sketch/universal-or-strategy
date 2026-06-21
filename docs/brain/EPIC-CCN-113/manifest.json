@@ -3,137 +3,22 @@
   "method": "HydrateFSMsFromWorkingOrders",
   "file": "src/V12_002.SIMA.Lifecycle.cs",
   "complexity": 14,
-  "threshold": 15,
-  "status": "pass",
-  "risk_level": "low",
+  "threshold": 8,
   "phases": {
     "0": {
-      "name": "Hotspot Analysis",
-      "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
-      "completed_at": "2026-06-13T04:06:31Z",
+      "status": "pending",
+      "dependencies": [],
       "mode": "v12-phase0-hotspot",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "1": {
-      "name": "Scope Definition",
-      "status": "completed",
-      "outputs": [
-        "00-scope.md"
-      ],
-      "completed_at": "2026-06-13T05:56:48Z",
-      "mode": "v12-phase1-scope",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "1.5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
-      ],
-      "completed_at": "2026-06-13T06:18:43Z",
-      "mode": "v12-phase1-5-boundary",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "2": {
-      "name": "Architecture Planning",
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
-      ],
-      "completed_at": "2026-06-13T06:57:17Z",
-      "mode": "v12-phase2-architecture",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "graphify"
-      ]
-    },
-    "3": {
-      "name": "DNA & PR Audit",
-      "status": "completed",
-      "outputs": [
-        "03-audit-report.md"
-      ],
-      "completed_at": "2026-06-13T08:14:47Z",
-      "mode": "v12-phase3-audit",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "4": {
-      "name": "Ticket Generation",
-      "status": "completed",
-      "outputs": [
-        "04-tickets.md"
-      ],
-      "completed_at": "2026-06-13T08:41:04Z",
-      "mode": "v12-phase4-tickets",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "5.4": {
-      "name": "Ticket Execution (TICKET-4)",
-      "status": "not_executed_conditional_hold",
-      "outputs": [
-        "ticket-4-completion.md"
-      ],
-      "completed_at": "2026-06-13T12:03:47Z",
-      "reason": "Epic in CONDITIONAL HOLD - complexity 14 < threshold 15",
-      "trigger_condition": "complexity > 15",
-      "mode": "v12-engineer",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking"
       ]
     }
   },
-  "v12_dna_compliance": {
-    "lock_free": true,
-    "ascii_only": true,
-    "correctness_by_construction": "review_required"
+  "dependencies": {
+    "0": []
   },
-  "audit_results": {
-    "verdict": "CONDITIONAL_GO_HOLD_VALIDATED",
-    "v12_dna_compliance": "PASS",
-    "jane_street_alignment": "PASS",
-    "pr_hygiene": "PASS",
-    "scope_boundary": "PASS",
-    "test_coverage": "WARNING",
-    "performance_baseline": "WARNING",
-    "blocking_issues": [
-      "test_coverage_gap",
-      "performance_baseline_gap"
-    ],
-    "recommendation": "HOLD - No extraction needed at this time"
-  },
-  "tickets": {
-    "total": 5,
-    "prerequisite": 1,
-    "extraction": 4,
-    "status": "CONDITIONAL",
-    "execution_trigger": "complexity > 15",
-    "ticket_4_status": "not_executed_conditional_hold"
-  },
-  "refactoring_priority": "low",
-  "recommendation": "NO IMMEDIATE EXTRACTION REQUIRED - Monitor complexity in future changes",
-  "next_phase": "HOLD (execute tickets only if complexity exceeds 15)",
   "description": "Reduce complexity of HydrateFSMsFromWorkingOrders in src/V12_002.SIMA.Lifecycle.cs (CYC: 14)",
-  "created_at": "2026-06-17T20:25:00.129810+00:00",
-  "dependencies": {}
+  "status": "pending",
+  "created_at": "2026-06-17T20:25:00.129810+00:00"
 }

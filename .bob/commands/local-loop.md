@@ -268,7 +268,7 @@ Ask Bob: "Run /local-loop on current changes"
 ## Next Steps
 
 1. ✅ Document `/local-loop` protocol
-2. ⏳ Create `/mcp-loop` command (Greptile + Cubic)
+2. ⏳ Create `/mcp-loop` command (jcodemunch + Cubic)
 3. ⏳ Test on EPIC-51 (first validation)
 4. ⏳ Integrate into `/epic-run` Phase 5
 5. ⏳ Update `BATCH_COMMIT_STRATEGY.md` with loop details

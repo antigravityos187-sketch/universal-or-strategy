@@ -1,0 +1,61 @@
+# Bob IDE Context Exclusions
+.agent/
+.agents/
+mcp-servers/
+node_modules/
+bin/
+obj/
+.vscode/
+.history/
+.git/
+docs/brain/WAVE1*/
+docs/brain/WAVE2*/
+docs/brain/WAVE3*/
+docs/brain/WAVE4*/
+docs/brain/WAVE5*/
+docs/brain/WAVE6*/
+docs/brain/EPIC-CCN-*/
+docs/brain/EPIC-*/
+building-blocks/*
+!building-blocks/wave7/
+docs/andrewngtrascript.md
+docs/bobshell_docs.md
+docs/goose cli api.md
+docs/Hermes Architecture.md
+docs/droid api docs.md
+docs/greptiledocs.md
+docs/Gitbutlerdocs.md
+docs/brain-vm-backup/
+temp_epic_*/
+EPIC-CCN-*/
+_p0_*.sh
+_p1_*.sh
+_p2_*.sh
+_p3_*.sh
+_p4_*.sh
+_p5_*.sh
+_p5v_*.sh
+_p6_*.sh
+_phase*.sh
+complete_epic_*.sh
+conductor/
+routa-tools/
+sandbox/
+scaffolds/
+Traycerrefactor/
+benchmarks/
+tests/
+src-vm-backup/
+temp_*/
+*.bak*
+*.tmp
+*.log
+
+# Exclude entire docs/brain/ directory (386 files, 3.55 MB)
+# Only essential Wave 7 execution files are needed
+docs/brain/*
+
+# Whitelist: Essential Wave 7 files only
+!docs/brain/WAVE7_SETUP_COMPLETE.md
+!docs/brain/WAVE7_CONTEXT_VERIFICATION.md
+!docs/brain/task.md

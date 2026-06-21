@@ -1,9 +1,10 @@
 # Wave Phase Script Generation SOP V3
 
-**Version**: 3.7
-**Date**: 2026-06-16
+**Version**: 3.9
+**Date**: 2026-06-18
 **Status**: MANDATORY
-**Supersedes**: V3.6
+**Supersedes**: V3.8
+**Critical Update**: Bob CLI invocation pattern (V3.9) - fixes Phase 1.5 freeze issue
 
 ---
 
@@ -42,6 +43,61 @@ Wave 3 Phase 5 → Copy Wave 3 Phase 4
 - Different validation requirements
 
 **Adjacent phases are NOT interchangeable**.
+
+---
+
+## CRITICAL: Lamport Clock Event Sources (V3.8)
+
+### Event Log vs Manifest Events
+
+**CRITICAL**: The Lamport clock verification system checks TWO sources for phase completion events:
+
+1. **Global Event Log** (`.lamport/event_log.jsonl`)
+   - Immutable append-only log
+   - Contains ALL events across ALL epics
+   - Primary source for verification
+
+2. **Manifest Events** (`docs/brain/EPIC-X/manifest.json` → `lamport_events` array)
+   - Per-epic event history
+   - Fallback source for migrated epics
+   - May exist when global log is missing events
+
+### Why This Matters
+
+**Wave 6 Phase 1 Incident**:
+- 4 epics blocked with "Phase 0 not complete" errors
+- Manifests showed Phase 0 complete (status, events, output files all present)
+- Global event log missing Phase 0 completion events for these 4 epics
+- **Root Cause**: Manifest migration script updated manifests but didn't sync to global log
+
+### Permanent Fix (V3.8)
+
+**Updated `scripts/lamport_clock.py`**:
+```python
+def check_dependencies(self, epic_id: str, phase: str) -> Tuple[bool, str]:
+    # Check global event log first
+    events = self.get_event_log(epic_id)
+    
+    # Also load manifest events as fallback (for migrated epics)
+    manifest_events = self._load_manifest_events(epic_id)
+    
+    for req_phase in required_phases:
+        # Check global event log first
+        completions = [e for e in events if ...]
+        
+        # Fallback: check manifest events
+        if not completions and manifest_events:
+            completions = [e for e in manifest_events if ...]
+```
+
+### Verification Protocol
+
+**Before ANY wave execution**:
+1. Verify global event log exists: `.lamport/event_log.jsonl`
+2. Verify manifest events exist: `manifest.json` → `lamport_events` array
+3. If discrepancy detected, `check_dependencies()` will use manifest as fallback
+
+**DO NOT** manually inject events into global log - the fallback mechanism handles this automatically.
 
 ---
 
@@ -530,41 +586,138 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
 
 ---
 
+## CRITICAL: Bob CLI Invocation Pattern (V3.9 - MANDATORY)
+
+**Effective**: 2026-06-18 (Post-Wave 6 Phase 1.5 Freeze Incident)
+
+### The Two-Step Pattern (MANDATORY for ALL Phases)
+
+**ALL phase scripts MUST use this exact pattern**:
+
+```bash
+# Step 1: Create message file
+cat > /tmp/phaseX_msg_$EPIC_ID.txt << 'EOFMSG'
+[Full message content here]
+EOFMSG
+
+# Step 2: Invoke Bob with command substitution
+bob --yolo --chat-mode MODE "$(cat /tmp/phaseX_msg_$EPIC_ID.txt)" 2>&1 | tee "logs/waveN/phaseX/$EPIC_ID.log"
+```
+
+### Why This Pattern is Required
+
+**Root Cause (Wave 6 Phase 1.5 Freeze)**:
+- ❌ Inline message strings cause Bob CLI to freeze waiting for stdin
+- ❌ Shell variable expansion interferes with message parsing
+- ❌ Piped output (`| tee`) blocks stdin when message is incomplete
+
+**Solution (Wave 4 Proven Pattern)**:
+- ✅ Temp file ensures message is complete before Bob reads it
+- ✅ Command substitution (`$(cat ...)`) delivers full content in one chunk
+- ✅ No stdin ambiguity - Bob receives complete message immediately
+
+### VM vs Local Invocation (SAME PATTERN)
+
+**Both VM and local execution use identical pattern**:
+
+#### VM Execution (Automated Waves)
+```bash
+# On VM: /home/malhitticrypto/universal-or-strategy
+cat > /tmp/phase1_msg_001.txt << 'EOFMSG'
+[message]
+EOFMSG
+
+bob --yolo --chat-mode plan "$(cat /tmp/phase1_msg_001.txt)"
+```
+
+#### Local Execution (Manual Testing)
+```bash
+# On Windows: c:\WSGTA\universal-or-strategy
+cat > /tmp/phase1_msg_001.txt << 'EOFMSG'
+[message]
+EOFMSG
+
+bob --yolo --chat-mode plan "$(cat /tmp/phase1_msg_001.txt)"
+```
+
+**Key Point**: The pattern is IDENTICAL. The only difference is the working directory.
+
+### What NOT to Do
+
+❌ **NEVER use inline message strings**:
+```bash
+# THIS CAUSES FREEZE - DO NOT USE
+bob --yolo --chat-mode plan "Define scope for $EPIC_ID..."
+```
+
+❌ **NEVER use --message flag without temp file**:
+```bash
+# THIS ALSO CAUSES ISSUES - DO NOT USE
+bob --yolo --chat-mode plan --message "Define scope..."
+```
+
+✅ **ALWAYS use temp file + command substitution**:
+```bash
+# THIS WORKS - ALWAYS USE THIS PATTERN
+cat > /tmp/msg.txt << 'EOFMSG'
+[message]
+EOFMSG
+bob --yolo --chat-mode plan "$(cat /tmp/msg.txt)"
+```
+
+### Validation Checklist
+
+Before generating ANY phase scripts, verify:
+- [ ] Script uses `cat > /tmp/phaseX_msg_$EPIC_ID.txt << 'EOFMSG'`
+- [ ] Script uses `bob --yolo --chat-mode MODE "$(cat /tmp/...)"`
+- [ ] NO inline message strings in bob command
+- [ ] NO --message flag without temp file
+- [ ] Pattern matches Wave 4 exactly
+
+---
+
 ## Phase-Specific Requirements
 
 ### Phase 0 (Hotspot Analysis)
 - **Mode**: `ask`
-- **Command**: `bob --yolo --chat-mode ask "$(cat /tmp/phase0_msg_X.txt)"`
+- **Command**: `bob --yolo --chat-mode ask "$(cat /tmp/phase0_msg_$EPIC_ID.txt)"`
 - **Output**: `00-hotspots.md`, `manifest.json`
 - **Validation**: jCodemunch hotspot data
 
 ### Phase 1 (Scope Definition)
 - **Mode**: `plan`
-- **Command**: `bob --yolo --chat-mode plan "$(cat /tmp/phase1_msg_X.txt)"`
-- **Output**: `00-scope.md`
+- **Command**: `bob --yolo --chat-mode plan "$(cat /tmp/phase1_msg_$EPIC_ID.txt)"`
+- **Output**: `00-scope.md`, `01-scope-boundary.md` (combined Phase 1 + 1.5)
 - **Validation**: Single-method boundary
+
+### Phase 1.5 (Scope Boundary Validation)
+- **Mode**: `v12-phase1-5-boundary`
+- **Command**: `bob --yolo --chat-mode v12-phase1-5-boundary "$(cat /tmp/phase1_5_msg_$EPIC_ID.txt)"`
+- **Output**: `01-scope-boundary.md`
+- **Validation**: Single-method boundary, no scope creep
+- **Note**: Wave 4 combined this with Phase 1; Wave 6+ separates it
 
 ### Phase 2 (Architecture Planning)
 - **Mode**: `plan`
-- **Command**: `bob --yolo --chat-mode plan "$(cat /tmp/phase2_msg_X.txt)"`
+- **Command**: `bob --yolo --chat-mode plan "$(cat /tmp/phase2_msg_$EPIC_ID.txt)"`
 - **Output**: `02-architecture-plan.md`, `02-diagrams.mmd`
 - **Validation**: Jane Street alignment
 
 ### Phase 3 (DNA & PR Audit)
 - **Mode**: `advanced`
-- **Command**: `bob --yolo --chat-mode advanced "$(cat /tmp/phase3_msg_X.txt)"`
+- **Command**: `bob --yolo --chat-mode advanced "$(cat /tmp/phase3_msg_$EPIC_ID.txt)"`
 - **Output**: `03-audit-report.md`
 - **Validation**: DNA compliance, PR hygiene
 
 ### Phase 4 (Ticket Generation)
 - **Mode**: `plan`
-- **Command**: `bob --yolo --chat-mode plan "$(cat /tmp/phase4_msg_X.txt)"`
+- **Command**: `bob --yolo --chat-mode plan "$(cat /tmp/phase4_msg_$EPIC_ID.txt)"`
 - **Output**: `04-tickets.md`
 - **Validation**: Ticket breakdown, execution order
 
 ### Phase 5 (Ticket Execution)
 - **Mode**: `v12-engineer`
-- **Command**: `bob --yolo --chat-mode v12-engineer "$(cat /tmp/phase5_msg_X.txt)"`
+- **Command**: `bob --yolo --chat-mode v12-engineer "$(cat /tmp/phase5_msg_$EPIC_ID.txt)"`
 - **Output**: `ticket-X-completion.md`
 - **Validation**: Build passes, tests pass
 - **Test Framework**: xUnit ONLY (project uses xUnit 2.9.0+)
@@ -575,7 +728,7 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a \
 
 ### Phase 6 (Final Review)
 - **Mode**: `advanced`
-- **Command**: `bob --yolo --chat-mode advanced "$(cat /tmp/phase6_msg_X.txt)"`
+- **Command**: `bob --yolo --chat-mode advanced "$(cat /tmp/phase6_msg_$EPIC_ID.txt)"`
 - **Output**: `05-completion-report.md`
 - **Validation**: All tickets verified, roadmap updated
 
@@ -787,6 +940,14 @@ Total Impact = Lost Cost + Retry Cost
 ---
 
 ## Version History
+
+### V3.8 (2026-06-18)
+- **Added**: Lamport Clock Event Log vs Manifest Events section
+- **Fixed**: `check_dependencies()` now checks BOTH global event log AND manifest `lamport_events` array
+- **Updated**: `scripts/lamport_clock.py` with `_load_manifest_events()` fallback method
+- **Reason**: Wave 6 Phase 1 blocked 4 epics - manifests showed Phase 0 complete but events missing from global log
+- **Impact**: Permanent fix prevents future manifest migration issues
+- **Reference**: scripts/lamport_clock.py (lines 229-318)
 
 ### V3.7 (2026-06-16)
 - **Added**: Skill Reading Verification section (Step -3) with BLOCKING GATE

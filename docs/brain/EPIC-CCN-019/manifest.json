@@ -3,164 +3,67 @@
   "method": "TryHandleFleet_MoveTarget",
   "file": "src/V12_002.UI.IPC.Commands.Fleet.cs",
   "complexity": 15,
-  "target_complexity": 8,
+  "threshold": 8,
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
-      "date": "2026-06-15",
+      "dependencies": [],
       "mode": "v12-phase0-hotspot",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking"
-      ]
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
       ],
-      "approval": "APPROVED",
-      "date": "2026-06-15",
-      "mode": "v12-phase1-5-boundary",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "2.0": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
+      "started_at": "2026-06-17T23:48:20.017063+00:00",
+      "completed_at": "2026-06-17T23:48:20.067573+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-019/00-hotspots.md"
       ],
-      "date": "2026-06-15",
-      "extraction_strategy": {
-        "helper_count": 2,
-        "target_complexity_per_method": 5,
-        "helpers": [
-          "ValidateFleetMoveCommand",
-          "ProcessFleetMoveTarget"
-        ]
-      },
-      "mode": "v12-phase2-architecture",
+      "notes": "Hotspot analysis complete"
+    },
+    "1": {
+      "status": "completed",
+      "dependencies": [
+        "0"
+      ],
+      "mode": "v12-phase1-scope",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking",
         "graphify"
-      ]
-    },
-    "3.0": {
-      "status": "completed",
-      "outputs": [
-        "03-audit-report.md"
       ],
-      "audit_result": "PASS",
-      "approval": "APPROVED",
-      "date": "2026-06-15",
-      "blockers": 0,
-      "risk_level": "LOW",
-      "confidence": "HIGH (95%)",
-      "mode": "v12-phase3-audit",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "4.0": {
-      "status": "completed",
-      "outputs": [
-        "04-tickets.md"
+      "started_at": "2026-06-18T02:04:15.689576+00:00",
+      "completed_at": "2026-06-18T02:08:55.622683+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-019/00-scope.md"
       ],
-      "date": "2026-06-15",
-      "ticket_count": 3,
-      "tickets": [
-        "TICKET-1: Extract ValidateFleetMoveCommand",
-        "TICKET-2: Extract ProcessFleetMoveTarget",
-        "TICKET-3: Refactor TryHandleFleet_MoveTarget Orchestrator"
-      ],
-      "estimated_effort": "4-6 hours",
-      "execution_order": "Sequential (TICKET-1 \u2192 TICKET-2 \u2192 TICKET-3)",
-      "mode": "v12-phase4-tickets",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "5.0": {
-      "status": "completed",
-      "outputs": [
-        "05-phase5-completion.md",
-        "ticket-1-completion.md",
-        "ticket-2-completion.md",
-        "ticket-3-completion.md"
-      ],
-      "date": "2026-06-15",
-      "tickets_completed": 3,
-      "complexity_achieved": {
-        "ValidateFleetMoveCommand": 10,
-        "ProcessFleetMoveTarget": 7,
-        "TryHandleFleet_MoveTarget": 5
-      },
-      "mode": "v12-engineer",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "6.0": {
-      "status": "completed",
-      "outputs": [
-        "06-completion-report.md"
-      ],
-      "date": "2026-06-15",
-      "mode": "v12-phase6-review",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "01-scope.md"
-      ],
-      "date": "2026-06-15",
-      "mode": "v12-phase1-scope",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
+      "notes": "Scope definition complete"
     }
   },
-  "epic_status": "COMPLETED",
-  "completion_date": "2026-06-15T21:17:59Z",
-  "final_complexity": {
-    "before": 15,
-    "after": {
-      "ValidateFleetMoveCommand": 10,
-      "ProcessFleetMoveTarget": 7,
-      "TryHandleFleet_MoveTarget": 5,
-      "total_distributed": 22
-    }
-  },
-  "protocol_version": "V12.23",
   "dependencies": {
     "0": [],
-    "1.5": [
-      "1"
-    ],
-    "5.0": [
-      "4"
-    ],
     "1": [
       "0"
     ]
   },
   "description": "Reduce complexity of TryHandleFleet_MoveTarget in src/V12_002.UI.IPC.Commands.Fleet.cs (CYC: 15)",
   "status": "completed",
-  "created_at": "2026-06-17T20:25:00.002457+00:00"
+  "created_at": "2026-06-17T20:25:00.002457+00:00",
+  "updated_at": "2026-06-18T02:08:55.622683+00:00",
+  "lamport_events": [
+    {
+      "event_type": "phase_start",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:20.017063+00:00",
+      "clock": 1
+    },
+    {
+      "event_type": "phase_complete",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:20.067573+00:00",
+      "clock": 2
+    }
+  ],
+  "lamport_clock": 2
 }

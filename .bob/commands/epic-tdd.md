@@ -66,7 +66,7 @@ When v12-epic-planner outputs [PLAN-GATE], present key findings.
 ---
 
 ### GATE 2.3: SENTINEL AUDIT (Manual Review)
-**MANUAL TASK (Greptile MCP not working)**
+**MANUAL TASK (jcodemunch-mcp not working)**
 
 Director must manually verify:
 1. Read ticket file: `docs/brain/$1/ticket-$2.md`

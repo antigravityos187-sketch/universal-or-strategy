@@ -2,144 +2,68 @@
   "epic_id": "EPIC-CCN-063",
   "method": "DrainAllDispatchQueuesOnAbort",
   "file": "src/V12_002.SIMA.Fleet.cs",
-  "complexity_before": 11,
-  "complexity_after": 4,
-  "jane_street_violations": 0,
-  "epic_status": "COMPLETED",
-  "completion_date": "2026-06-15T21:25:57Z",
+  "complexity": 0,
+  "threshold": 8,
   "phases": {
     "0": {
       "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
+      "dependencies": [],
       "mode": "v12-phase0-hotspot",
       "mcp_tools": [
         "jcodemunch-mcp",
         "sequential-thinking"
-      ]
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
       ],
-      "mode": "v12-phase1-5-boundary",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
+      "started_at": "2026-06-17T23:48:36.113685+00:00",
+      "completed_at": "2026-06-17T23:48:36.164492+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-063/00-hotspots.md"
       ],
-      "completed_date": "2026-06-15",
-      "architect": "Bob CLI (v12-engineer)",
-      "extraction_strategy": "Single-Responsibility Helper Methods",
-      "helper_methods": [
-        "DrainPhotonRingSlot",
-        "DrainLegacyQueueRequest"
-      ],
-      "target_complexity": {
-        "main_method": "3-4",
-        "helper_1": "4-5",
-        "helper_2": "2-3"
-      },
-      "mode": "v12-phase2-architecture",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "graphify"
-      ]
-    },
-    "4": {
-      "status": "completed",
-      "output": "04-tickets.md",
-      "ticket_count": 2,
-      "completed_date": "2026-06-15",
-      "tickets": [
-        {
-          "id": "TICKET-1",
-          "name": "Extract DrainPhotonRingSlot Helper",
-          "target_cyc": "4-5",
-          "dependencies": [],
-          "status": "completed"
-        },
-        {
-          "id": "TICKET-2",
-          "name": "Extract DrainLegacyQueueRequest Helper",
-          "target_cyc": "2-3",
-          "dependencies": [
-            "TICKET-1"
-          ],
-          "status": "completed"
-        }
-      ],
-      "mode": "v12-phase4-tickets",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "5": {
-      "status": "completed",
-      "outputs": [
-        "ticket-1-completion.md",
-        "ticket-2-completion.md"
-      ],
-      "completed_date": "2026-06-15",
-      "mode": "v12-engineer",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
-    },
-    "6": {
-      "status": "completed",
-      "output": "06-completion-report.md",
-      "completed_date": "2026-06-15T21:25:57Z",
-      "verification_status": "partial",
-      "verification_notes": "Build/test verification pending (requires Windows + dotnet environment)",
-      "mode": "v12-phase6-review",
-      "mcp_tools": [
-        "jcodemunch-mcp",
-        "sequential-thinking",
-        "greptile"
-      ]
+      "notes": "Hotspot analysis complete"
     },
     "1": {
       "status": "completed",
-      "outputs": [
-        "01-scope.md"
+      "dependencies": [
+        "0"
       ],
       "mode": "v12-phase1-scope",
       "mcp_tools": [
         "jcodemunch-mcp",
-        "sequential-thinking"
-      ]
+        "sequential-thinking",
+        "graphify"
+      ],
+      "started_at": "2026-06-18T02:04:38.388332+00:00",
+      "completed_at": "2026-06-18T02:08:48.135000+00:00",
+      "output_artifacts": [
+        "docs/brain/EPIC-CCN-063/00-scope.md"
+      ],
+      "notes": "Scope definition complete"
     }
   },
   "dependencies": {
     "0": [],
-    "1.5": [
-      "1"
-    ],
-    "2": [
-      "1.5"
-    ],
-    "4": [
-      "3"
-    ],
-    "6": [
-      "4"
-    ],
     "1": [
       "0"
     ]
   },
   "description": "Reduce complexity of DrainAllDispatchQueuesOnAbort in src/V12_002.SIMA.Fleet.cs (CYC: 11)",
   "status": "completed",
-  "created_at": "2026-06-17T20:25:00.086399+00:00"
+  "created_at": "2026-06-17T20:25:00.086399+00:00",
+  "updated_at": "2026-06-18T02:08:48.135000+00:00",
+  "lamport_events": [
+    {
+      "event_type": "phase_start",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:36.113685+00:00",
+      "clock": 1
+    },
+    {
+      "event_type": "phase_complete",
+      "phase": "0",
+      "agent_id": "unknown",
+      "timestamp": "2026-06-17T23:48:36.164492+00:00",
+      "clock": 2
+    }
+  ],
+  "lamport_clock": 2
 }

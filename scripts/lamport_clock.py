@@ -215,13 +215,14 @@ class DeterministicWorkflow:
             if len(set(hashes)) > 1:
                 return False, f"State hash mismatch: {len(set(hashes))} different states"
         
-        # 3. Check for concurrent conflicts (only check phase_start events)
+        # 3. Check for concurrent conflicts (only check phase_start events FOR THIS EPIC)
+        # Allow parallel execution of DIFFERENT epics, only block concurrent execution of SAME epic
         running_events = [
             e for e in events
-            if e['status'] == 'running' and e['event_type'] == 'phase_start'
+            if e['epic_id'] == epic_id and e['status'] == 'running' and e['event_type'] == 'phase_start'
         ]
         if len(running_events) > 1:
-            return False, f"Concurrent execution detected: {len(running_events)} agents"
+            return False, f"Concurrent execution detected for {epic_id}: {len(running_events)} agents"
         
         return True, "Workflow is deterministic"
     
@@ -231,6 +232,10 @@ class DeterministicWorkflow:
         
         Phase dependency graph (deterministic order):
         -1 → 0 → 1 → 1.5 → 2 → 3 → 4 → 4.5 → 5.X → 5.X.V → 6
+        
+        Checks BOTH:
+        1. Global event log (.lamport/event_log.jsonl)
+        2. Manifest lamport_events array (fallback for migrated epics)
         
         Args:
             epic_id: Epic identifier
@@ -269,18 +274,66 @@ class DeterministicWorkflow:
         if not required_phases:
             return True, "No dependencies"
         
-        # Check each required phase
-        events = self.get_event_log(epic_id)
+        # Check each required phase FOR THIS EPIC ONLY
+        # First check global event log
+        events = self.get_event_log(epic_id)  # Already filtered by epic_id
+        
+        # Also load manifest events as fallback (for migrated epics)
+        manifest_events = self._load_manifest_events(epic_id)
+        
         for req_phase in required_phases:
+            # Check global event log first
             completions = [
                 e for e in events
-                if e['phase'] == req_phase and e['event_type'] == 'phase_complete' and e['status'] == 'completed'
+                if e['phase'] == req_phase and e['event_type'] == 'phase_complete' and e.get('status', 'completed') == 'completed'
             ]
             
+            # Fallback: check manifest events
+            if not completions and manifest_events:
+                completions = [
+                    e for e in manifest_events
+                    if e.get('phase') == req_phase and e.get('event_type') == 'phase_complete'
+                ]
+            
             if not completions:
-                return False, f"Phase {req_phase} not complete"
+                return False, f"Phase {req_phase} not complete (checked event log + manifest)"
         
         return True, "All dependencies satisfied"
+    
+    def _load_manifest_events(self, epic_id: str) -> List[Dict]:
+        """
+        Load lamport_events from manifest as fallback.
+        
+        This handles migrated epics where events exist in manifest
+        but not in global event log.
+        
+        Args:
+            epic_id: Epic identifier
+        
+        Returns:
+            List of events from manifest, or empty list if not found
+        """
+        manifest_path = Path(f"docs/brain/{epic_id}/manifest.json")
+        if not manifest_path.exists():
+            return []
+        
+        try:
+            with open(manifest_path, 'r') as f:
+                manifest = json.load(f)
+                
+                # Collect events from all phases
+                all_events = []
+                for phase_id, phase_data in manifest.get('phases', {}).items():
+                    phase_events = phase_data.get('lamport_events', [])
+                    # Add phase field if missing
+                    for event in phase_events:
+                        if 'phase' not in event:
+                            event['phase'] = phase_id
+                        all_events.append(event)
+                
+                return all_events
+        except Exception:
+            return []
     
     def get_next_phases(self, epic_id: str) -> List[str]:
         """

@@ -1,7 +1,7 @@
 # /mcp-loop - MCP Quality Loop (Pre-Push Semantic Review)
 
 ## Purpose
-Execute MCP-based semantic quality checks (Greptile + Cubic) AFTER `/local-loop` and BEFORE pushing to GitHub. This loop uses MCP servers to achieve 5/5 scores on both tools, completing in ~3 minutes.
+Execute MCP-based semantic quality checks (jcodemunch + Cubic) AFTER `/local-loop` and BEFORE pushing to GitHub. This loop uses MCP servers to achieve 5/5 scores on both tools, completing in ~3 minutes.
 
 ## Position in Triple-Nested Architecture
 ```
@@ -21,8 +21,8 @@ Execute MCP-based semantic quality checks (Greptile + Cubic) AFTER `/local-loop`
 
 ## What This Loop Does
 
-### 1. Greptile Code Quality Review
-**Tool**: Greptile MCP Server
+### 1. jcodemunch Code Quality Review
+**Tool**: jcodemunch-mcp Server
 **Target**: All modified files (full context)
 **Checks**:
 - Semantic correctness
@@ -30,10 +30,10 @@ Execute MCP-based semantic quality checks (Greptile + Cubic) AFTER `/local-loop`
 - Architectural violations
 - V12 DNA compliance (FSM/Actor, no locks, ASCII-only)
 
-**MCP Tool**: `use_mcp_tool` with `greptile` server
+**MCP Tool**: `use_mcp_tool` with `jcodemunch` server
 **Command**:
 ```
-Ask Bob: "Run Greptile review on current changes"
+Ask Bob: "Run jcodemunch code analysis on current changes"
 ```
 
 **Output**: Code quality score (0-5)
@@ -63,25 +63,25 @@ cubic review --base main
 
 ### Exit Conditions
 **SUCCESS** (proceed to Pre-Push Validation):
-- ✅ Greptile: Score = 5/5 OR documented exceptions only
+- ✅ jcodemunch: Score = 5/5 OR documented exceptions only
 - ✅ Cubic: Score = 5/5 OR documented exceptions only
 - ✅ Zero issues from either tool (unless explicitly suppressed)
 
 **FAILURE** (fix and retry):
-- ❌ Greptile: Score < 5/5
+- ❌ jcodemunch: Score < 5/5
 - ❌ Cubic: Score < 5/5
 - ❌ ANY issues detected (P0, P1, P2, or style)
 
 **Exception Protocol**:
 1. **Jane Street Suppression**: Query KB via `python scripts/query_kb.py "<issue>"`, verify pattern is intentional
-2. **Director Override**: Manual approval with documentation in `greptile.json` or `.cubic/suppressions.json`
+2. **Director Override**: Manual approval with documentation in `.jcodemunch.jsonc` or `.cubic/suppressions.json`
 3. **Tool Hallucination**: Verified false positive, add to suppression config
 
 **Target**: 5/5 clean score (zero issues) unless explicitly suppressed via Jane Street KB
 
 ### Loop Logic
 ```
-1. Run Greptile review
+1. Run jcodemunch code analysis
    ├─ Score < 5/5? → FIX → Restart loop
    ├─ ANY issues? → FIX OR SUPPRESS → Restart loop
    └─ Score = 5/5? → Continue
@@ -98,17 +98,17 @@ cubic review --base main
 
 ## Autonomous Execution
 
-### Step 1: Greptile Review
+### Step 1: jcodemunch code analysis
 ```bash
 # Via MCP (Bob IDE)
-use_mcp_tool greptile query_repository \
+use_mcp_tool jcodemunch-mcp query_repository \
   --query "Review changes for V12 DNA compliance and semantic correctness"
 
 # Parse response
-GREPTILE_SCORE=$(extract_score_from_response)
+JCODEMUNCH_SCORE=$(extract_score_from_response)
 
-if [[ $GREPTILE_SCORE -lt 5 ]]; then
-  echo "[MCP-LOOP] Greptile score: $GREPTILE_SCORE/5 (threshold: 5/5)"
+if [[ $JCODEMUNCH_SCORE -lt 5 ]]; then
+  echo "[MCP-LOOP] jcodemunch score: $JCODEMUNCH_SCORE/5 (threshold: 5/5)"
   
   # Extract issues
   ISSUES=$(extract_issues_from_response)
@@ -129,13 +129,13 @@ if [[ $GREPTILE_SCORE -lt 5 ]]; then
   
   # Commit fixes
   git add .
-  git commit -m "fix(mcp-loop): address Greptile findings"
+  git commit -m "fix(mcp-loop): address jcodemunch analysis results"
   
   # Restart loop
   exec /mcp-loop
 fi
 
-echo "[MCP-LOOP] Greptile: $GREPTILE_SCORE/5 ✅"
+echo "[MCP-LOOP] jcodemunch: $JCODEMUNCH_SCORE/5 ✅"
 ```
 
 ### Step 2: Cubic Review
@@ -171,7 +171,7 @@ echo "[MCP-LOOP] Cubic: $CUBIC_SCORE/5 ✅"
 ### Step 3: Success Exit
 ```bash
 echo "[MCP-LOOP-PASS] All MCP checks passed"
-echo "Greptile: $GREPTILE_SCORE/5"
+echo "jcodemunch: $JCODEMUNCH_SCORE/5"
 echo "Cubic: $CUBIC_SCORE/5"
 echo "Duration: $(($SECONDS / 60)) minutes"
 echo "Next: Pre-Push Validation"
@@ -211,16 +211,16 @@ After all 157 epics:
 - Early detection of V12 DNA violations (locks, Unicode, non-FSM)
 - Prevents 157 epics worth of work being rejected at batch PR time
 - Jane Street KB validation happens incrementally
-- Greptile semantic analysis catches cross-file issues immediately
+- jcodemunch semantic search catches cross-file issues immediately
 
-## Greptile MCP Integration
+## jcodemunch-mcp Integration
 
 ### Configuration (`.bob/mcp.json`)
 ```json
 {
   "mcpServers": {
-    "greptile": {
-      "url": "https://api.greptile.com/mcp",
+    "jcodemunch-mcp": {
+      "url": "https://api.jcodemunch.com/mcp",
       "type": "streamable-http",
       "headers": {
         "Authorization": "Bearer YOUR_GREPTILE_TOKEN"
@@ -237,9 +237,9 @@ After all 157 epics:
 3. `index_repository` - Update repo index
 4. `get_repository_info` - Check index status
 
-### V12 DNA Patterns (Greptile Config)
+### V12 DNA Patterns (jcodemunch Config)
 
-**File**: `greptile.json` (repo root)
+**File**: `.jcodemunch.jsonc` (repo root)
 ```json
 {
   "instructions": "Enforce NinjaScript V12 Project Standards. BANNED: lock(stateLock), Unicode in strings, non-FSM order submission. MANDATORY: ASCII Gate, Enqueue model for all state mutations.",
@@ -309,7 +309,7 @@ cubic auth login
 ### VALID-SUPPRESS (Add Comment)
 - False positives (verified by Jane Street KB)
 - Intentional deviations (documented in ARCHITECTURE.md)
-- Tool limitations (e.g., Greptile can't see NinjaTrader API)
+- Tool limitations (e.g., jcodemunch can't see NinjaTrader API)
 
 ### HALLUCINATION (Ignore)
 - Issues in files not modified
@@ -318,11 +318,11 @@ cubic auth login
 
 ## Error Recovery
 
-### Greptile Failures
+### jcodemunch Failures
 **Symptom**: Score stuck at 3/5 after 3 fix attempts
 **Action**:
 1. STOP loop
-2. Export Greptile findings: `greptile_findings.json`
+2. Export jcodemunch analysis results: `jcodemunch_analysis.json`
 3. Escalate to Director with context
 4. Manual review required
 5. Document in `docs/brain/EPIC-X/mcp-loop-failure.md`
@@ -337,7 +337,7 @@ cubic auth login
 5. Restart loop
 
 ### Both Tools Disagree
-**Symptom**: Greptile 5/5, Cubic 2/5 (or vice versa)
+**Symptom**: jcodemunch 5/5, Cubic 2/5 (or vice versa)
 **Action**:
 1. STOP loop
 2. Compare findings side-by-side
@@ -355,14 +355,14 @@ cubic auth login
 - Average loop iterations
 - Most common failure modes
 - Time per iteration
-- Tool agreement rate (Greptile vs Cubic)
+- Tool agreement rate (jcodemunch vs Cubic)
 
 ## Comparison with /pr-loop
 
 | Feature | /mcp-loop | /pr-loop |
 |---------|-----------|----------|
 | **Timing** | Pre-push | Post-push |
-| **Tools** | Greptile + Cubic | GitHub bots (29 bots) |
+| **Tools** | jcodemunch + Cubic | GitHub bots (29 bots) |
 | **Duration** | 3 minutes | 15 minutes |
 | **API Cost** | Low (2 tools) | High (29 bots) |
 | **Scope** | Semantic + merge safety | Style + security + complexity |
@@ -372,7 +372,7 @@ cubic auth login
 ## Next Steps
 
 1. ✅ Document `/mcp-loop` protocol
-2. ⏳ Test Greptile MCP integration
+2. ⏳ Test jcodemunch-mcp integration
 3. ⏳ Test Cubic CLI integration
 4. ⏳ Validate on EPIC-51 (first run)
 5. ⏳ Integrate into `/epic-run` Phase 5
@@ -382,5 +382,5 @@ cubic auth login
 
 **Status**: Protocol defined, awaiting first execution
 **Owner**: V12 Orchestrator
-**Dependencies**: Greptile MCP (✅), Cubic CLI (⏳)
+**Dependencies**: jcodemunch-mcp (✅), Cubic CLI (⏳)
 **Last Updated**: 2026-06-08

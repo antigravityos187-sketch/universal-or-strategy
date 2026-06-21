@@ -1,11 +1,11 @@
 {
   "apis": [
     {
-      "name": "davidgreen77",
+      "name": "jimmydore",
       "bobcoins": 160,
-      "apikey": "bob_prod_bob-admin_5Bz5pSNqYrcS8x9tBBMmEPfRhoiGcuNcr1hAHwhRq4iGC9XuWxtDqiW8onyc8rbALacHstrp8SXpgeRpQRWSmqpj_8N1GQNJojMmhEtSXeCPGVpvXbx4zCJHXovJe66br4uJo",
+      "apikey": "bob_prod_bob-admin_58sbZY3cBGWbej6dmAvwYeRTKyuceZJppgm4vYoS7bb2yzKqFxwAmzsR46D6G86LVJWNBmsUaZLBpMgRpiZyPQDf_GpwXFSKRi7nWHCJP2m1S6guZ1Y4kzUKBR9C1mrkKQm3s",
       "status": "active",
-      "added": "2026-06-17"
+      "added": "2026-06-20"
     }
   ],
   "rotation_strategy": "round_robin",

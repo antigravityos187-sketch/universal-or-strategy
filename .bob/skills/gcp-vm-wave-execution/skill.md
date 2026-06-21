@@ -34,11 +34,11 @@ Launch autonomous epic execution waves on GCP VMs using pre-configured golden im
 
 ## What it does
 
-Orchestrates parallel execution of V12 epic workflows on a GCP VM, using Bob Shell agents running in screen sessions. Each agent executes phases independently (Phase 0 → Phase 6), with automatic file verification and bobcoin tracking.
+Orchestrates parallel execution of V12 epic workflows on a GCP VM, using Bob Shell agents running in screen sessions in the foreground. Each agent executes phases independently (Phase 0 → Phase 6), with automatic file verification and bobcoin tracking.
 
 ## When to use
 
-- Starting a new wave of epic refactoring (Wave 2, Wave 3, etc.)
+- Starting a new wave of epic refactoring (Wave 2, Wave 3, etc.) and starting a new phase and working on /autonomous-refactor
 - Need to execute 9+ epics in parallel
 - Want to leverage GCP spot instances for cost efficiency
 - Require isolated execution environments for each epic
@@ -48,7 +48,7 @@ Orchestrates parallel execution of V12 epic workflows on a GCP VM, using Bob She
 
 - GCP project with 12+ vCPU quota
 - Golden image `v12-bob-shell-golden-v2` (or later)
-- 15 Bob Shell API keys (160 bobcoins each = 2,400 total)
+- Bob Shell API keys (160 bobcoins each = 2,400 total) @api.bob.sh/docs/api-keys 
 - jCodemunch-MCP with indexed repository
 - Sequential Thinking MCP configured (`.bob/mcp.json`)
 - gcloud CLI installed and authenticated
@@ -556,6 +556,71 @@ gcloud compute ssh v12-test-golden-v2 --zone=us-central1-a --troubleshoot
 - Each phase updates `manifest.json` with status
 - Can resume from any phase after failure
 - No need to restart entire wave
+### 6. Lamport Clock Conflict Recovery (V12.52)
+
+**Problem**: Epic blocked with "NON-DETERMINISTIC: State hash mismatch"
+
+**Solution**: Automatic conflict detection and surgical repair
+- Detects Lamport clock conflicts in logs
+- Identifies conflicting events in `.lamport/event_log.jsonl`
+- Backs up event log automatically
+- Removes conflicting entries for affected epics
+- Resets manifest phase status to `pending`
+- Relaunches epic with clean state
+
+**Manual Recovery** (if auto-recovery fails):
+```bash
+# Use Lamport Clock Recovery skill
+# See: .bob/skills/lamport-clock-recovery/skill.md
+
+# Quick fix:
+python3 scripts/fix_phase0_status.py
+python3 scripts/clean_lamport_event_log.py
+
+# Relaunch affected epics
+bash scripts/wave6/launch_phase0_lamport_recovery.sh
+```
+
+**Verification**:
+```bash
+# No more "State hash mismatch" errors
+grep "NON-DETERMINISTIC" logs/wave6/phase0/*.log | wc -l  # Should be 0
+
+# Event log integrity
+cat .lamport/event_log.jsonl | jq -s '.' > /dev/null && echo "✅ Valid"
+```
+
+**Related Skill**: [`lamport-clock-recovery`](.bob/skills/lamport-clock-recovery/skill.md)
+
+
+### 7. Lamport Clock Event Source Fallback (V2.11 - Wave 6)
+
+**Issue**: Phase dependencies blocked with "Phase X not complete" despite manifest showing completion.
+
+**Root Cause**: `check_dependencies()` only checked global event log (`.lamport/event_log.jsonl`), but events existed in manifest `lamport_events` array.
+
+**Permanent Fix** (V2.11):
+- Updated `scripts/lamport_clock.py` with `_load_manifest_events()` fallback
+- `check_dependencies()` now checks BOTH global log AND manifest events
+- Handles manifest migration scenarios automatically
+
+**Verification**:
+```bash
+# Check if epic has events in manifest
+python3 -c "
+import json
+with open('docs/brain/EPIC-CCN-001/manifest.json') as f:
+    m = json.load(f)
+    print(f'Lamport events: {len(m.get(\"lamport_events\", []))}')
+"
+```
+
+**When This Helps**:
+- Manifest migration from pre-V12.52 to V12.52
+- Event log and manifest out of sync
+- Phase dependencies blocked despite manifest showing completion
+
+**Reference**: `docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md` (V3.8)
 
 ## Common Issues & Auto-Recovery
 
@@ -791,6 +856,7 @@ Login to IBM Bob Shell dashboard and verify all APIs remain positive.
 
 ## Related Skills
 
+- [`lamport-clock-recovery`](.bob/skills/lamport-clock-recovery/skill.md) - Diagnose and repair Lamport clock conflicts
 - `gcp-golden-image-creation` (prerequisite)
 - `jcodemunch-complexity-analysis` (prerequisite)
 - `v12-epic-workflow` (phase definitions)
