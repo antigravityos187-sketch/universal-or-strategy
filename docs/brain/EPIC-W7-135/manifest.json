@@ -1,0 +1,43 @@
+{
+  "epic_id": "EPIC-W7-135",
+  "target_method": "HandleMatchedFollower_PendingCleanupPurge",
+  "target_file": "V12_002.Orders.Callbacks.AccountOrders.cs",
+  "complexity": 9,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "agent": "v12-phase0-hotspot",
+      "output": "00-hotspots.md",
+      "completed_at": "2026-06-22T04:04:07Z",
+      "bobcoins_used": 0.94
+    },
+    "phase_1": {
+      "status": "pending",
+      "dependencies": ["phase_0"]
+    },
+    "phase_1_5": {
+      "status": "pending",
+      "dependencies": ["phase_1"]
+    },
+    "phase_2": {
+      "status": "pending",
+      "dependencies": ["phase_1_5"]
+    },
+    "phase_3": {
+      "status": "pending",
+      "dependencies": ["phase_2"]
+    },
+    "phase_4": {
+      "status": "pending",
+      "dependencies": ["phase_3"]
+    },
+    "phase_5": {
+      "status": "pending",
+      "dependencies": ["phase_4"]
+    },
+    "phase_6": {
+      "status": "pending",
+      "dependencies": ["phase_5"]
+    }
+  }
+}

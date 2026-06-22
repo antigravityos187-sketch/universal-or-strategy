@@ -1,0 +1,42 @@
+{
+  "epic_id": "EPIC-W7-141",
+  "target_method": "AuditFleet_CheckWorkingStop",
+  "target_file": "V12_002.REAPER.Audit.cs",
+  "current_complexity": 9,
+  "threshold": 8,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output_file": "00-hotspots.md",
+      "completed_at": "2026-06-22T04:04:10Z",
+      "agent": "v12-phase0-hotspot",
+      "bobcoins_used": 1.34
+    },
+    "phase_1": {
+      "name": "Scope Definition",
+      "status": "pending",
+      "dependencies": ["phase_0"]
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "pending",
+      "dependencies": ["phase_1"]
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "pending",
+      "dependencies": ["phase_1_5"]
+    },
+    "phase_3": {
+      "name": "DNA Audit",
+      "status": "pending",
+      "dependencies": ["phase_2"]
+    },
+    "phase_4": {
+      "name": "Ticket Generation",
+      "status": "pending",
+      "dependencies": ["phase_3"]
+    }
+  }
+}

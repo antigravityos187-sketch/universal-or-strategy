@@ -1,0 +1,15 @@
+{
+  "epic_id": "EPIC-W7-158",
+  "method": "SyncModeChipVisuals",
+  "file": "V12_002.UI.Panel.StateSync.cs",
+  "complexity": 9,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "timestamp": "2026-06-22T04:05:42Z",
+      "agent": "v12-phase0-hotspot",
+      "bobcoins": 1.96
+    }
+  }
+}
