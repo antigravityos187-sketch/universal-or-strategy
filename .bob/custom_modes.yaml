@@ -261,132 +261,105 @@ customModes:
       3. Generate and validate wave scripts using Building-Blocks Method
       4. Coordinate VM and local execution
       5. Track bobcoin usage and cost optimization
-      
+
       CRITICAL PROTOCOLS:
       - Building-Blocks Method: ALWAYS copy scripts from previous wave's SAME phase
       - Bob CLI Pattern: ALWAYS use temp file + command substitution (NEVER inline strings)
       - Lamport Events: Track all phase transitions with deterministic clock
       - Cost Optimization: 4-minute polling intervals (88% cost reduction)
       - Jane Street KB: Query before all architectural decisions
-      
+
       SCOPE:
       - Wave 7: 180 complexity epics (CYC > 8 → CYC ≤ 8) - FRESH START
       - Target: CodeScene complexity score ≤8 (Jane Street strict standard)
       - Phases: 0 (Hotspot) → 1 (Scope) → 1.5 (Boundary) → 2 (Architecture) → 3 (Audit) → 4 (Tickets) → 5 (Execute) → 5.V (Verify) → 6 (Review)
-      
+
       CRITICAL REQUIREMENTS:
       - UTF-8 Encoding: ALL files MUST be UTF-8 (no BOM, no ASCII-only violations)
       - xUnit Tests: ALWAYS generate xUnit tests ([Fact], Assert.Equal()) - NEVER NUnit/MSTest
-      
+
       MANDATORY READING:
       - docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md (Building-Blocks Method)
       - docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL.md (4-minute intervals)
       - building-blocks/autonomous-refactoring/ARCHITECTURE.md (Nested loop architecture)
     whenToUse: Wave orchestration, script generation, progress monitoring, cost tracking
-    skills:
-      - "@.bob/skills/launch-agent"
-      - "@.bob/skills/gcp-vm-wave-execution"
-      - "@.bob/skills/wrap-up"
-      - "@plugins/bobcoin-account-switch/SKILL.md"
     customInstructions: |-
       ## Wave 7 Execution Context (Fresh Start)
-      
+
       **Goal**: Reduce all 180 methods from CYC > 8 to CYC ≤ 8 (Jane Street strict standard)
-      
+
       **Source Data**: complexity_audit_fresh_2026-06-14.txt (180 methods)
-      
+
       **Execution Model**:
       - VM: All epics (automated wave execution)
       - Local: Fallback for .dll dependencies (if discovered)
-      
+
       **Critical Requirements**:
       - UTF-8 Encoding: ALL source files MUST be UTF-8 encoded
       - xUnit Tests: ALWAYS generate xUnit tests - NEVER NUnit or MSTest
       - Verify encoding before every commit
-      
+
       **Building-Blocks Method (MANDATORY)**:
       1. ALWAYS copy scripts from previous wave's SAME phase
       2. NEVER generate scripts from scratch
       3. NEVER copy adjacent phases (e.g., Phase 1 from Phase 0)
       4. Update ONLY epic numbers and method-specific data
       5. Verify against SOP before execution
-      
+
       **Bob CLI Invocation Pattern (MANDATORY)**:
       ```bash
       # Step 1: Create message file
       cat > /tmp/phaseX_msg_$EPIC_ID.txt << 'EOFMSG'
       [message content]
       EOFMSG
-      
+
       # Step 2: Invoke Bob with command substitution
       ~/.npm-global/bin/bob --yolo --chat-mode MODE "$(cat /tmp/phaseX_msg_$EPIC_ID.txt)"
       ```
-      
+
       ❌ NEVER: `bob --yolo --chat-mode MODE "inline message"` (causes freeze)
       ✅ ALWAYS: Use temp file + command substitution pattern
-      
+
       **Lamport Event Tracking**:
       - All phase transitions logged to .lamport/wave7/event_log.jsonl
       - Deterministic clock for causality tracking
       - Event schema: {timestamp, lamport_clock, epic_id, phase, event_type, status}
-      
+
       **Cost Optimization**:
       - Polling interval: 4 minutes (not 30 seconds)
       - Cache optimization: Reuse jCodemunch index
       - Batch operations: Group similar queries
       - Reference: docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL.md
-      
+
       **Jane Street KB Integration**:
       - Query before Phase 2 (Architecture Planning)
       - Query before Phase 5 (Ticket Execution)
       - Query before Phase 5.V (Verification)
       - Command: `python scripts/query_kb.py "<term>"`
-      
+
       **Special Cases**:
       - Check for .dll dependencies during execution
       - No pre-excluded epics (fresh start with all 180 methods)
       - UTF-8 encoding violations = BLOCKER (must fix before proceeding)
       - xUnit test framework violations = BLOCKER (must fix before proceeding)
-      
+
       **Pilot Protocol**:
       - Test 3 epics before full wave (low/medium/high complexity)
       - Validate all phases complete successfully
       - Fix issues before proceeding to full execution
-      
+
       **Recovery Loop**:
       - Failed epics MUST be fixed before phase completion
       - Document failures in docs/brain/EPIC-XXX/failure-analysis.md
       - Apply fixes and re-run failed epics
       - Wave is NOT complete until N/N (100%)
+
+
+      run the scriptes generator directly on the VM. SSH in and generate the scripts there.
     source: project
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|sh|ps1|py)$
+      - edit
       - command
       - mcp
       - browser
-    customRules:
-      - buildingBlocks: |
-          MANDATORY: Use Building-Blocks Method for all script generation.
-          ALWAYS copy from previous wave's SAME phase. NEVER generate from scratch.
-      - bobCLIPattern: |
-          MANDATORY: Use temp file + command substitution pattern for Bob CLI.
-          NEVER use inline message strings (causes freeze).
-      - lamportEvents: |
-          MANDATORY: Log all phase transitions to Lamport event log.
-          Maintain deterministic clock for causality tracking.
-      - costOptimization: |
-          MANDATORY: Use 4-minute polling intervals (not 30 seconds).
-          Reference: docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL.md
-      - janeStreetKB: |
-          MANDATORY: Query Jane Street KB before architectural decisions.
-          Command: python scripts/query_kb.py "<term>"
-      - utf8Encoding: |
-          MANDATORY: ALL source files MUST be UTF-8 encoded (no BOM).
-          Verify with: file --mime-encoding <file>
-          Fix with: dos2unix or iconv if needed.
-      - xUnitTests: |
-          MANDATORY: ALWAYS generate xUnit tests ([Fact], Assert.Equal()).
-          NEVER use NUnit ([Test], Assert.AreEqual()) or MSTest ([TestMethod], Assert.AreEqual()).
-          Verify test framework before every commit.
