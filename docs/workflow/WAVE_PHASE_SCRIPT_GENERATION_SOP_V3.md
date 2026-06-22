@@ -675,6 +675,87 @@ Before generating ANY phase scripts, verify:
 - [ ] Pattern matches Wave 4 exactly
 
 ---
+## CRITICAL: Screen Session Script Protocol (V3.10 - MANDATORY)
+
+**Reference**: `docs/protocol/SCREEN_SESSION_SCRIPT_PROTOCOL.md`
+
+### No Heredocs in Screen Sessions
+
+**HEREDOCS ARE BANNED in all scripts launched via screen sessions.**
+
+Wave 7 incident (2026-06-22): 72/161 epics failed due to nested heredoc syntax errors.
+
+#### The Rule
+
+```bash
+# ❌ WRONG - Heredoc in screen script
+cat > /tmp/message.txt << 'EOF'
+Message content
+EOF
+
+# ✅ CORRECT - Python file writing
+# In generator:
+with open(f'/tmp/message_{epic_num}.txt', 'w') as f:
+    f.write(message_content)
+
+# In script:
+command "$(cat /tmp/message_{epic_num}.txt)"
+```
+
+### Pre-Launch Syntax Validation (MANDATORY)
+
+**ALL generated scripts MUST pass `bash -n` validation before launch.**
+
+Add to every script generator:
+
+```python
+def validate_script_syntax(script_path: str) -> bool:
+    """Validate bash script syntax"""
+    result = subprocess.run(
+        ['bash', '-n', script_path],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        print(f"[ERROR] Syntax error in {script_path}:")
+        print(result.stderr)
+        return False
+    return True
+
+# After generating all scripts
+print("\n[*] Validating script syntax...")
+failed = []
+for epic_num in epic_numbers:
+    script_path = f"scripts/wave{wave_num}/_p{phase}_{epic_num:03d}.sh"
+    if not validate_script_syntax(script_path):
+        failed.append(epic_num)
+
+if failed:
+    print(f"\n[ERROR] {len(failed)} scripts failed syntax validation")
+    sys.exit(1)
+
+print(f"[OK] All scripts passed syntax validation")
+```
+
+### Incremental Rollout (MANDATORY)
+
+**NEVER launch all epics at once without validation.**
+
+1. **Pilot** (3 epics): Low/medium/high complexity
+2. **First Batch** (10 epics): Verify all complete
+3. **Full Wave** (remaining): Only if pilot + batch succeeded
+
+### Validation Checklist
+
+- [ ] No heredocs in generated scripts
+- [ ] Syntax validation added to generator
+- [ ] All scripts pass `bash -n` check
+- [ ] Pilot test (3 epics) completed successfully
+- [ ] First batch (10 epics) completed successfully
+- [ ] Screen Session Script Protocol reviewed
+
+---
+
 
 ## Phase-Specific Requirements
 
