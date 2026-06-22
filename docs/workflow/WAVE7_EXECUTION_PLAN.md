@@ -494,23 +494,79 @@ python scripts/complexity_audit.py
 
 ---
 
+## Launch Scripts (Task 7 - COMPLETE)
+
+**Status**: ✅ Master launch scripts created
+
+### Scripts Created
+
+1. **`scripts/launch_wave7.sh`** - Master launch script
+   - Launches all 161 epics sequentially
+   - Two-phase polling (1-min → 4-min)
+   - Lamport event monitoring
+   - Progress reporting
+   - Recovery loop for failures
+   - Cost tracking
+   - Graceful shutdown
+
+2. **`scripts/check_wave7_status.sh`** - Status monitoring
+   - Overall progress dashboard
+   - VM status (sessions, disk)
+   - Phase distribution
+   - Error analysis
+   - Performance metrics
+   - Recent activity
+   - Recommendations
+
+3. **`scripts/WAVE7_LAUNCH_README.md`** - Complete documentation
+   - Usage instructions
+   - Execution workflow
+   - Monitoring & observability
+   - Cost tracking
+   - Recovery protocol
+   - Troubleshooting guide
+
+4. **`scripts/WAVE7_QUICK_REFERENCE.md`** - Quick command reference
+   - Launch commands
+   - Monitoring commands
+   - Debugging commands
+   - Recovery commands
+   - Emergency procedures
+
+### Quick Start
+
+```bash
+# Launch Wave 7 (all 161 epics)
+bash scripts/launch_wave7.sh
+
+# Monitor progress
+bash scripts/check_wave7_status.sh
+
+# Watch continuously (every 4 minutes)
+watch -n 240 bash scripts/check_wave7_status.sh
+```
+
+---
+
 ## Next Steps
 
-1. **User**: Review this execution plan
-2. **User**: Type `/continue` to spawn new session
-3. **Agent**: Load minimal context (~500 tokens)
-4. **Agent**: Create master launch script (Task 7)
-5. **Agent**: Execute pilot test (3 epics)
-6. **Agent**: Launch full wave (161 epics)
-7. **Agent**: Monitor progress (1-minute → 4-minute polling)
-8. **Agent**: Apply recovery loop for failures
-9. **Agent**: Verify 161/161 completion
-10. **User**: Sync to local and verify NinjaTrader
+1. **User**: Review launch scripts and documentation
+2. **User**: Run pre-flight checks (VM connectivity, roadmap, templates)
+3. **User**: Launch Wave 7: `bash scripts/launch_wave7.sh`
+4. **User**: Monitor progress: `bash scripts/check_wave7_status.sh`
+5. **User**: Handle failures (if any) via recovery loop
+6. **User**: Verify 161/161 completion
+7. **User**: Sync to local: `powershell -File .\deploy-sync.ps1`
+8. **User**: Run pre-push validation: `powershell -File .\scripts\pre_push_validation.ps1`
+9. **User**: Test in NinjaTrader (F5)
+10. **User**: Create PR for Wave 7
 
 ---
 
 ## References
 
+- **Launch Scripts**: `scripts/launch_wave7.sh`, `scripts/check_wave7_status.sh`
+- **Documentation**: `scripts/WAVE7_LAUNCH_README.md`, `scripts/WAVE7_QUICK_REFERENCE.md`
 - **SOP V3**: `docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md`
 - **Cost Protocol**: `docs/protocol/COST_OPTIMIZED_POLLING_PROTOCOL.md`
 - **Lamport Clock**: `.lamport/wave7/README.md`
