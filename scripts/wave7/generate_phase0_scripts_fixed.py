@@ -36,13 +36,17 @@ def load_pending_epics():
     
     return epics_list
 
-# Load 15 API keys from docs/API/*.json files (verified on VM)
+# Load 20 API keys from docs/API/*.json files (verified on VM)
+# Updated 2026-06-22: Removed exhausted "b.json", added "danfarah.json" and "snyder.johnson.json"
+# Strategy: Use ALL 20 keys for even distribution (161 epics ÷ 20 = 8.05 epics per key)
 API_FILES = [
-    "bob.json", "bob (1).json", "bob (2).json", "bob (3).json",
+    "bob.json", "bob (1).json", "bob (2).json", "pepeescobar.json",
     "bob (4).json", "bob (5).json", "bob (6).json",
-    "b.json", "b (3).json",
+    "danfarah.json", "snyder.johnson.json",  # Fresh keys (replaced exhausted b.json)
+    "b (3).json",
     "jessica.json", "mikethelife.json", "sammy96.json",
-    "sean.carter.jr@atomicmail.io.json", "tory.json", "iyanajackson.json"
+    "sean.carter.jr@atomicmail.io.json", "tory.json", "iyanajackson.json",
+    "alprofit.json", "rakaarababa.json", "ranirabah (1).json", "jimmydore.json"
 ]
 
 def load_api_keys():
@@ -144,8 +148,8 @@ def generate_scripts(failed_only=False, failed_list=None):
     epics = load_pending_epics()
     api_keys = load_api_keys()
     
-    if len(api_keys) != 15:
-        print(f"[ERROR] Expected 15 API keys, got {len(api_keys)}")
+    if len(api_keys) != 20:
+        print(f"[ERROR] Expected 20 API keys, got {len(api_keys)}")
         return
     
     print(f"[*] Loaded {len(api_keys)} API keys")
@@ -166,8 +170,8 @@ def generate_scripts(failed_only=False, failed_list=None):
         file_path = epic['file']
         complexity = epic['cyclomatic']
         
-        # Round-robin API key selection
-        api_index = i % 15
+        # Round-robin API key selection (20 keys for even distribution)
+        api_index = i % 20
         api_key = api_keys[api_index]
         
         # Generate Bob CLI message content
@@ -195,10 +199,11 @@ def generate_scripts(failed_only=False, failed_list=None):
         print(f"[OK] Generated {script_path} + {msg_path} (API {api_index + 1}/15)")
     
     print(f"\n[OK] Generated {len(epics)} Phase 0 scripts")
-    print(f"\n[*] API Distribution:")
-    for i in range(15):
-        count = len([e for idx, e in enumerate(epics) if idx % 15 == i])
-        print(f"    API {i+1}: {count} epics")
+    print(f"\n[*] API Distribution (20 keys, ~8 epics each):")
+    for i in range(20):
+        count = len([e for idx, e in enumerate(epics) if idx % 20 == i])
+        key_name = API_FILES[i].replace('.json', '')
+        print(f"    API {i+1:2d} ({key_name:30s}): {count} epics")
     
     if not failed_only:
         print(f"\n[*] Next steps:")
