@@ -18,27 +18,27 @@ echo "Current status: 16/161 complete"
 echo "After pilot: 19/161 complete"
 echo ""
 
-# Pilot epics (not yet completed)
+# Pilot epics (not yet completed) - using numeric IDs
 PILOT_EPICS=(
-    "EPIC-W7-002"
-    "EPIC-W7-050"
-    "EPIC-W7-100"
+    "002"
+    "050"
+    "100"
 )
 
-SCRIPT_DIR="scripts/wave7/phase0_scripts"
+SCRIPT_DIR="scripts/wave7"
 
 echo "Launching pilot epics..."
 echo ""
 
-for EPIC_ID in "${PILOT_EPICS[@]}"; do
-    SCRIPT_PATH="$SCRIPT_DIR/${EPIC_ID}_phase0.sh"
+for EPIC_NUM in "${PILOT_EPICS[@]}"; do
+    SCRIPT_PATH="$SCRIPT_DIR/_p0_${EPIC_NUM}.sh"
     
     if [ ! -f "$SCRIPT_PATH" ]; then
         echo "❌ ERROR: Script not found: $SCRIPT_PATH"
         exit 1
     fi
     
-    echo "🚀 Launching $EPIC_ID..."
+    echo "🚀 Launching EPIC-W7-${EPIC_NUM}..."
     bash "$SCRIPT_PATH" &
     
     # 12-second stagger between launches
