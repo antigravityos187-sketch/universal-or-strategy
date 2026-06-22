@@ -1,0 +1,34 @@
+{
+  "epic_id": "EPIC-W7-098",
+  "target_method": "PropagateMaster_ApplyFollowerMove",
+  "target_file": "V12_002.Orders.Callbacks.Propagation.cs",
+  "complexity": 11,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "completed_at": "2026-06-22T04:02:49Z"
+    },
+    "phase_1": {
+      "status": "pending"
+    },
+    "phase_1_5": {
+      "status": "pending"
+    },
+    "phase_2": {
+      "status": "pending"
+    },
+    "phase_3": {
+      "status": "pending"
+    },
+    "phase_4": {
+      "status": "pending"
+    },
+    "phase_5": {
+      "status": "pending"
+    },
+    "phase_6": {
+      "status": "pending"
+    }
+  }
+}

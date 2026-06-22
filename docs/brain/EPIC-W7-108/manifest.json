@@ -1,0 +1,44 @@
+{
+  "epic_id": "EPIC-W7-108",
+  "method": "DrainPhotonQueuesOnShutdown",
+  "file": "V12_002.SIMA.Lifecycle.cs",
+  "complexity": 11,
+  "threshold": 8,
+  "phases": {
+    "phase0": {
+      "status": "completed",
+      "agent": "v12-phase0-hotspot",
+      "output": "00-hotspots.md",
+      "timestamp": "2026-06-22T04:03:21Z",
+      "bobcoins": 0.69
+    },
+    "phase1": {
+      "status": "pending",
+      "dependencies": ["phase0"]
+    },
+    "phase1.5": {
+      "status": "pending",
+      "dependencies": ["phase1"]
+    },
+    "phase2": {
+      "status": "pending",
+      "dependencies": ["phase1.5"]
+    },
+    "phase3": {
+      "status": "pending",
+      "dependencies": ["phase2"]
+    },
+    "phase4": {
+      "status": "pending",
+      "dependencies": ["phase3"]
+    },
+    "phase5": {
+      "status": "pending",
+      "dependencies": ["phase4"]
+    },
+    "phase6": {
+      "status": "pending",
+      "dependencies": ["phase5"]
+    }
+  }
+}
