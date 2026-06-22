@@ -36,21 +36,21 @@ def load_pending_epics():
     
     return epics_list
 
-# Load 20 API keys from docs/API/*.json files (verified on VM)
-# Updated 2026-06-22: Removed exhausted "b.json", added "danfarah.json" and "snyder.johnson.json"
-# Strategy: Use ALL 20 keys for even distribution (161 epics ÷ 20 = 8.05 epics per key)
+# Load 16 API keys from docs/API/*.json files (verified on VM)
+# Updated 2026-06-22 (Pilot Recovery): Removed 4 exhausted keys (b (3), bob (1), bob (2), bob (4))
+# Removed api_rotation.json (not a valid API key file - different structure)
+# Strategy: Use ALL 16 fresh keys for even distribution (161 epics ÷ 16 = 10.06 epics per key)
 API_FILES = [
-    "bob.json", "bob (1).json", "bob (2).json", "pepeescobar.json",
-    "bob (4).json", "bob (5).json", "bob (6).json",
+    "bob.json", "pepeescobar.json",
+    "bob (5).json", "bob (6).json",
     "danfarah.json", "snyder.johnson.json",  # Fresh keys (replaced exhausted b.json)
-    "b (3).json",
     "jessica.json", "mikethelife.json", "sammy96.json",
     "sean.carter.jr@atomicmail.io.json", "tory.json", "iyanajackson.json",
     "alprofit.json", "rakaarababa.json", "ranirabah (1).json", "jimmydore.json"
 ]
 
 def load_api_keys():
-    """Load all 15 API keys from JSON files."""
+    """Load all 16 API keys from JSON files."""
     api_keys = []
     for api_file in API_FILES:
         json_path = os.path.join("docs", "API", api_file)
@@ -148,8 +148,8 @@ def generate_scripts(failed_only=False, failed_list=None):
     epics = load_pending_epics()
     api_keys = load_api_keys()
     
-    if len(api_keys) != 20:
-        print(f"[ERROR] Expected 20 API keys, got {len(api_keys)}")
+    if len(api_keys) != 16:
+        print(f"[ERROR] Expected 16 API keys, got {len(api_keys)}")
         return
     
     print(f"[*] Loaded {len(api_keys)} API keys")
@@ -170,8 +170,8 @@ def generate_scripts(failed_only=False, failed_list=None):
         file_path = epic['file']
         complexity = epic['cyclomatic']
         
-        # Round-robin API key selection (20 keys for even distribution)
-        api_index = i % 20
+        # Round-robin API key selection (16 keys for even distribution)
+        api_index = i % 16
         api_key = api_keys[api_index]
         
         # Generate Bob CLI message content
@@ -196,12 +196,12 @@ def generate_scripts(failed_only=False, failed_list=None):
         # Make executable
         os.chmod(script_path, 0o755)
         
-        print(f"[OK] Generated {script_path} + {msg_path} (API {api_index + 1}/15)")
+        print(f"[OK] Generated {script_path} + {msg_path} (API {api_index + 1}/16)")
     
     print(f"\n[OK] Generated {len(epics)} Phase 0 scripts")
-    print(f"\n[*] API Distribution (20 keys, ~8 epics each):")
-    for i in range(20):
-        count = len([e for idx, e in enumerate(epics) if idx % 20 == i])
+    print(f"\n[*] API Distribution (16 keys, ~10 epics each):")
+    for i in range(16):
+        count = len([e for idx, e in enumerate(epics) if idx % 16 == i])
         key_name = API_FILES[i].replace('.json', '')
         print(f"    API {i+1:2d} ({key_name:30s}): {count} epics")
     
