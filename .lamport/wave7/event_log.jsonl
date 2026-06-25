@@ -1,2 +1,4 @@
 {"timestamp": "2026-06-25T19:04:45Z", "lamport_clock": 0, "epic_id": "WAVE-7", "phase": "init", "tier": "top_orch", "event_type": "wave_reset", "status": "clean_start", "note": "Full reset \u2014 starting Wave 7 from Phase 0"}
 {"timestamp": "2026-06-25T19:30:00Z", "lamport_clock": 1, "epic_id": "WAVE-7", "phase": "init", "tier": "top_orch", "event_type": "wave_start", "status": "running", "note": "Wave 7 start \u2014 161 epics, Phase 0 first, 3-tier subagent architecture V2.4"}
+{"timestamp":"2026-06-25T20:00:00Z","lamport_clock":2,"epic_id":"WAVE-7","phase":"0","tier":"top_orch","event_type":"phase_0_start","status":"running","note":"Firing wave-orch-phase0 via start_subtask"}
+{"timestamp":"2026-06-25T20:05:00Z","lamport_clock":3,"epic_id":"WAVE-7","phase":"0","tier":"phase_orch","event_type":"phase_0_orchestrator_start","status":"running","note":"Phase 0 orchestrator started - spawning 161 workers for hotspot analysis"}

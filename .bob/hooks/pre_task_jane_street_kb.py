@@ -2,10 +2,14 @@
 """
 Pre-Task Jane Street KB Auto-Query Hook
 
-Automatically queries Jane Street Knowledge Base when Bob starts a task
-that involves refactoring, architecture, or concurrency work.
+Automatically queries Jane Street Knowledge Base (OKF local wiki) when Bob
+starts a task that involves refactoring, architecture, or concurrency work.
 
-Triggered by: v12-engineer, v12-epic-planner, v12-phase7-lead modes
+Backend: OKF local wiki at docs/intel/jane-street/ (query_kb.py handles
+Firebase-first with OKF fallback — OKF always resolves).
+
+Triggered by: ALL wave-orch-* and v12-phase* modes (Wave 7 3-tier architecture)
+plus legacy v12-engineer, v12-epic-planner, v12-phase7-lead modes.
 """
 
 import os
@@ -41,10 +45,28 @@ TOPIC_MAP = {
     'ticket': 'refactoring patterns function extraction'
 }
 
+# All modes used in Wave 7 3-tier architecture that require OKF KB queries
+TRIGGER_MODES = {
+    # Tier 1 — Top Orchestrator
+    'autonomous-refactor',
+    # Tier 2 — Phase Orchestrators
+    'wave-orch-phase0', 'wave-orch-phase1', 'wave-orch-phase1-5',
+    'wave-orch-phase2', 'wave-orch-phase3', 'wave-orch-phase4',
+    'wave-orch-phase4-5', 'wave-orch-phase5', 'wave-orch-phase5v',
+    'wave-orch-phase6',
+    # Tier 3 — Epic Workers
+    'v12-phase0-hotspot', 'v12-phase1-scope', 'v12-phase1-5-boundary',
+    'v12-phase2-architecture', 'v12-phase3-audit', 'v12-phase4-tickets',
+    'v12-phase4-5-review', 'v12-engineer', 'v12-phase5-v-verify',
+    'v12-phase6-review',
+    # Legacy modes
+    'v12-epic-planner', 'v12-phase7-lead',
+}
+
 def should_trigger(task_description, mode):
     """Check if task should trigger Jane Street KB query"""
-    # Always trigger for v12 modes
-    if mode in ['v12-engineer', 'v12-epic-planner', 'v12-phase7-lead']:
+    # Always trigger for all wave-7 and v12 modes
+    if mode in TRIGGER_MODES:
         return True
     
     # Check for trigger keywords in task description

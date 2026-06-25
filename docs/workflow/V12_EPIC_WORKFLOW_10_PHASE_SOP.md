@@ -11,27 +11,28 @@ The V12 Epic Workflow uses a **10-phase manifest-based architecture** where each
 
 ## Phase Structure Overview
 
-| Phase | Name | Time | Jane Street | Firebase Hook | Mode | Purpose |
-|-------|------|------|-------------|---------------|------|---------|
+| Phase | Name | Time | Jane Street | OKF KB Hook | Mode | Purpose |
+|-------|------|------|-------------|-------------|------|---------|
 | **-1** | Pre-flight | 5 min | ❌ | ❌ | `ask` | Branch validation, build check |
 | **0** | Hotspot | 10 min | ❌ | ❌ | `ask` | jCodemunch complexity analysis |
 | **1** | Scope + Boundary | 20 min | ⚠️ | ⚠️ | `plan` | Define scope + validate boundaries |
 | **2** | Architecture | 25 min | ✅ | ✅ | `plan` | Design extraction plan |
-| **3** | Audit | 10 min | ⚠️ | ⚠️ | `advanced` | DNA & PR hygiene checks |
+| **3** | Audit | 10 min | ⚠️ | ⚠️ | `agent` | DNA & PR hygiene checks |
 | **4** | Tickets | 10 min | ⚠️ | ⚠️ | `plan` | Generate surgical tickets |
 | **4.5** | Ticket Review | 10 min | ✅ | ✅ | `plan` | Jane Street validation gate |
 | **5** | Execution | 10 min/ticket | ✅ | ✅ | `v12-engineer` | Surgical refactoring |
-| **5.V** | Verification | 5 min/ticket | ⚠️ | ⚠️ | `advanced` | Per-ticket validation |
-| **6** | Final Review | 10 min | ❌ | ❌ | `advanced` | Epic completion report |
+| **5.V** | Verification | 5 min/ticket | ⚠️ | ⚠️ | `agent` | Per-ticket validation |
+| **6** | Final Review | 10 min | ❌ | ❌ | `agent` | Epic completion report |
 
 **Total Planning Time**: 100 minutes per epic
 **Jane Street Gates**: 3 (Phase 2, 4.5, 5)
 **Total Phases**: 10
 
 ### Legend
-- ✅ **Full Jane Street Integration**: Firebase RAG + custom mode hooks
-- ⚠️ **Partial Integration**: Should have Firebase hooks (pending implementation)
+- ✅ **Full Jane Street Integration**: OKF local wiki (`docs/intel/jane-street/`) + `query_kb.py` mandatory
+- ⚠️ **Partial Integration**: OKF query optional (recommended)
 - ❌ **No Integration**: Analysis-only, no Jane Street validation needed
+**Note**: `query_kb.py` uses OKF local wiki as primary source. Firebase is tried first but OKF fallback always resolves.
 
 ## Phase Definitions
 

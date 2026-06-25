@@ -424,7 +424,7 @@ top-level `autonomous-refactor` session.
 
 ### Overview
 
-The Jane Street Knowledge Base (Firebase RAG/CAG) contains 100+ ingested rules covering HFT patterns, FSM/Actor patterns, complexity reduction strategies, and testing standards. Phases query the KB via `scripts/query_kb.py` to ensure architectural decisions align with Jane Street's strict microsecond-latency standards.
+The Jane Street Knowledge Base (OKF — Open Knowledge Format) contains 100+ ingested rules covering HFT patterns, FSM/Actor patterns, complexity reduction strategies, and testing standards. The KB is stored as local markdown files in `docs/intel/jane-street/` (14 OKF files). Phases query it via `scripts/query_kb.py` which tries Firebase first then falls back to the local OKF wiki automatically. Queries always resolve via OKF.
 
 ### Hook Status by Phase
 
@@ -466,9 +466,9 @@ The Jane Street Knowledge Base (Firebase RAG/CAG) contains 100+ ingested rules c
 ### KB Access Method
 
 **Script**: `scripts/query_kb.py`
-**Backend**: Firebase Firestore (RAG/CAG ingested)
+**Backend**: OKF local wiki at `docs/intel/jane-street/` (14 markdown files, OKF v0.1 format) — Firebase tried first, OKF fallback always resolves
 **Coverage**: 100+ rules with P0/P1/P2 severity
-**Authentication**: Requires `firebase-credentials.json`
+**Authentication**: None required — OKF wiki is local, no Firebase dependency
 
 **Example Usage**:
 ```bash
@@ -493,9 +493,10 @@ python scripts/query_kb.py "complexity reduction"
 ### Enforcement Protocol
 
 **If KB Query Fails**:
-1. Phase 4.5, 5, 5.V, 6: **HALT** - KB required for validation
+1. Phase 4.5, 5, 5.V, 6: **HALT** - KB required for validation (OKF wiki must exist at `docs/intel/jane-street/`)
 2. Phase 2: **WARN** - Optional guidance, can proceed without KB
 3. All other phases: **N/A** - No KB dependency
+**Note**: Firebase unavailability is NOT a failure condition. OKF local wiki is the authoritative fallback and is always available.
 
 **Violation Handling**:
 - New Jane Street violations detected → REVERT changes
