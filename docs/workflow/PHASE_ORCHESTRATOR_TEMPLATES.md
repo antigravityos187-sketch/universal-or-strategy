@@ -54,19 +54,166 @@ COMPLETION VERIFICATION LOOP:
 
 ---
 
+## Lamport Clock Protocol (MANDATORY — ALL Phase Orchestrators)
+
+The Lamport clock is a **causality enforcement gate**, not just a tracking ledger.
+**A phase MUST NOT start work if its dependency phase has not completed per the log.**
+
+### Step 1 — DEPENDENCY GATE (run BEFORE any work, BEFORE spawning workers)
+
+```python
+# Run this check as the VERY FIRST ACTION of every Phase Orchestrator.
+# Replace REQUIRED_EVENT and REQUIRED_PHASE with the predecessor values.
+
+import json, sys
+
+log_path = ".lamport/wave7/event_log.jsonl"
+REQUIRED_EVENT = "phase_N_minus_1_orchestrator_complete"   # e.g. "phase_0_orchestrator_complete"
+REQUIRED_PHASE = "N-1"                                      # e.g. "0"
+
+try:
+    events = [json.loads(l) for l in open(log_path) if l.strip()]
+except FileNotFoundError:
+    print("HALT: Lamport log missing — wave never started"); sys.exit(1)
+
+gate = [e for e in events
+        if e.get("event_type") == REQUIRED_EVENT
+        and e.get("phase") == REQUIRED_PHASE
+        and e.get("status") == "complete"]
+
+if not gate:
+    # HARD STOP — dependency not satisfied
+    print(f"HALT: {REQUIRED_EVENT} not found in Lamport log.")
+    print("This phase MUST NOT proceed. Report DEPENDENCY_NOT_MET to Tier 1.")
+    sys.exit(1)
+
+gate_clock = gate[-1]["lamport_clock"]
+print(f"Gate passed: {REQUIRED_EVENT} at clock={gate_clock}. Proceeding.")
+```
+
+**DEPENDENCY MAP (what each phase requires in the log before starting):**
+
+| Phase | Required Lamport Event | Required Status |
+|-------|----------------------|-----------------|
+| **0** | `wave_start` (clock ≥ 1) | `running` |
+| **1** | `phase_0_orchestrator_complete` | `complete` |
+| **1.5** | `phase_1_orchestrator_complete` | `complete` |
+| **2** | `phase_1_5_orchestrator_complete` | `complete` |
+| **3** | `phase_2_orchestrator_complete` | `complete` |
+| **4** | `phase_3_orchestrator_complete` | `complete` |
+| **4.5** | `phase_4_orchestrator_complete` | `complete` |
+| **5** | `phase_4_5_orchestrator_complete` | `complete` |
+| **5.V** | `phase_5_orchestrator_complete` | `complete` |
+| **6** | `phase_5_v_orchestrator_complete` | `complete` |
+
+If the required event is absent → **HALT immediately. Report `DEPENDENCY_NOT_MET` to Tier 1. Do NOT spawn any workers.**
+
+---
+
+### Step 2 — WRITE EVENTS (read-increment-append)
+
+```python
+# Use this exact pattern for every Lamport event write.
+
+import json, datetime
+
+def lamport_append(event_type, phase, tier, status, epic_id="WAVE-7", note=""):
+    log_path = ".lamport/wave7/event_log.jsonl"
+    try:
+        lines = [l for l in open(log_path) if l.strip()]
+        current_clock = json.loads(lines[-1])["lamport_clock"] if lines else 0
+    except Exception:
+        current_clock = 0
+    new_clock = current_clock + 1
+    entry = {
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+        "lamport_clock": new_clock,
+        "epic_id": epic_id,
+        "phase": phase,
+        "tier": tier,
+        "event_type": event_type,
+        "status": status,
+        "note": note
+    }
+    with open(log_path, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+    return new_clock
+```
+
+**Rules:**
+- Each append increments clock by exactly 1. Never reuse a value.
+- All orchestrators share ONE log file — sequential appends only.
+- `phase_N_orchestrator_complete` MUST have a strictly higher clock than all `phase_N_epic_*` events.
+- Workers (Tier 3) do **NOT** write to the log. Only Phase Orchestrators (Tier 2) write events.
+
+**Clock assignment per phase:**
+| Event | event_type value | tier |
+|-------|-----------------|------|
+| Phase N starts | `phase_N_orchestrator_start` | `phase_orch` |
+| Worker succeeded | `phase_N_epic_complete` | `phase_orch` |
+| Worker failed | `phase_N_epic_failed` | `phase_orch` |
+| Worker retry | `phase_N_epic_retry` | `phase_orch` |
+| 161/161 verified | `phase_N_orchestrator_complete` | `phase_orch` |
+| Hard failure | `phase_N_hard_failure` | `phase_orch` |
+| Wave done | `wave_7_complete` | `phase_orch` |
+
+---
+
+## Pilot Gate Protocol (Phase 0 ONLY)
+
+Before spawning all 161 workers, Phase 0 MUST run a 1-epic pilot:
+
+```
+PILOT_GATE (embedded in Phase 0 Orchestrator — not a separate session):
+  1. Pick EPIC-W7-001 (first epic in wave7-epic-list.json) as pilot.
+  2. Spawn ONE worker: mode=v12-phase0-hotspot, same description format as full run.
+  3. Verify output:
+       - docs/brain/EPIC-W7-001/00-hotspots.md exists and is non-empty
+       - docs/brain/EPIC-W7-001/manifest.json has phase_0 status=completed
+       - Worker returned { status:"success", output_path, cyc_confirmed }
+  4. IF pilot PASSES: proceed immediately to spawn remaining 160 workers in parallel.
+  5. IF pilot FAILS:
+       - Log: { event_type:"pilot_failed", epic_id:"EPIC-W7-001", phase:"0" }
+       - Write: docs/brain/EPIC-W7-001/failure-analysis.md with exact error
+       - HALT — do NOT spawn remaining 160 workers
+       - Report PILOT_FAILURE to Tier 1 with failure details
+       - Tier 1 escalates to Director
+  
+  WHY: If the worker description format, manifest schema, or artifact path is wrong,
+  better to catch it on 1 epic than waste 160 subagent contexts.
+```
+
+---
+
 ## Template 1: Phase 0 Orchestrator
 
 ```
 ROLE: You are the Phase 0 (Hotspot Analysis) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase0
 MISSION: Run Phase 0 for ALL 161 epics. Do NOT hand off until 161/161 are verified complete.
 
-PHASE 0 EPIC LIST:
-  Read the epic list from: docs/brain/wave7-epic-list.json
-  Each entry has: { epic_id, method_name, cyc, source_file }
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  Run the dependency gate check from the Lamport Clock Protocol above.
+  Required event: event_type="wave_start", status="running"
+  Command:
+    python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='wave_start' and e.get('status')=='running']
+sys.exit(0) if gate else (print('HALT: wave_start not found. Report DEPENDENCY_NOT_MET.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET to Tier 1. Do NOT proceed.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic in the list, spawn a subagent:
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_0_orchestrator_start", phase="0", tier="phase_orch", status="running")
+
+STEP 2 — PILOT GATE (before spawning all 161 — see Pilot Gate Protocol above):
+  Spawn ONE worker for EPIC-W7-001. Verify output exists. If fails: log pilot_failed, halt, report PILOT_FAILURE.
+  If passes: log pilot_passed, continue to Step 3.
+
+STEP 3 — SPAWN REMAINING 160 WORKERS SIMULTANEOUSLY:
+  Read docs/brain/wave7-epic-list.json. Skip EPIC-W7-001 (already done in pilot).
+  For each remaining epic, spawn a subagent:
     mode: v12-phase0-hotspot
     description: |
       Epic: <epic_id>
@@ -76,23 +223,26 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
         1. Use jcodemunch-mcp: get_symbol_complexity, get_hotspots, get_blast_radius for <method_name>
         2. Use sequential-thinking to structure your analysis
         3. Write output to docs/brain/<epic_id>/00-hotspots.md
-        4. Create docs/brain/<epic_id>/manifest.json with phase_0 status=completed
+        4. Update docs/brain/<epic_id>/manifest.json: set phase_0.status=completed
         Return: { status: "success"|"failure", output_path, cyc_confirmed }
 
-COMPLETION VERIFICATION LOOP (MANDATORY before reporting back):
-  1. After all workers return, count confirmed outputs (file exists + non-empty).
-  2. For any epic WITHOUT a valid 00-hotspots.md:
-     - Log failure: .lamport/wave7/event_log.jsonl
-       { timestamp, lamport_clock, epic_id, phase:"0", event_type:"worker_failed", status:"retry" }
-     - Write: docs/brain/<epic_id>/failure-analysis.md
-     - Re-spawn that epic worker (same mode, same inputs).
-  3. Repeat until 161/161 have valid output OR 3 retry rounds exhausted.
-  4. If 3 rounds exhausted with failures remaining, report HARD FAILURE to Tier 1.
+STEP 4 — COMPLETION VERIFICATION LOOP (161/161 required):
+  After all workers return, count confirmed outputs (file exists + non-empty).
+  For any epic WITHOUT valid 00-hotspots.md:
+    lamport_append(event_type="phase_0_epic_failed", phase="0", tier="phase_orch",
+                   status="retry", epic_id=<epic_id>)
+    Write: docs/brain/<epic_id>/failure-analysis.md
+    Re-spawn that worker ONLY (do not re-run successes). Up to 3 retry rounds.
+  For each success:
+    lamport_append(event_type="phase_0_epic_complete", phase="0", tier="phase_orch",
+                   status="success", epic_id=<epic_id>)
+  If still < 161/161 after 3 rounds:
+    lamport_append(event_type="phase_0_hard_failure", phase="0", tier="phase_orch", status="hard_failure")
+    Report HARD_FAILURE to Tier 1 with stuck epic list. HALT.
 
-LAMPORT EVENTS TO LOG:
-  - phase_0_orchestrator_start (lamport_clock++)
-  - each worker: phase_0_epic_complete / phase_0_epic_failed
-  - phase_0_orchestrator_complete: { verified_count: 161, failed_count: 0 }
+STEP 5 — LOG PHASE COMPLETE (only after 161/161 verified):
+  lamport_append(event_type="phase_0_orchestrator_complete", phase="0", tier="phase_orch",
+                 status="complete", note="161/161 verified")
 
 REPORT BACK TO TIER 1:
   {
@@ -100,6 +250,7 @@ REPORT BACK TO TIER 1:
     "status": "VERIFIED_COMPLETE",
     "completed": 161,
     "failed": 0,
+    "lamport_complete_clock": <clock from step 5>,
     "output_base": "docs/brain/EPIC-W7-NNN/00-hotspots.md"
   }
 ```
@@ -110,14 +261,22 @@ REPORT BACK TO TIER 1:
 
 ```
 ROLE: You are the Phase 1 (Scope Definition) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase1
 MISSION: Run Phase 1 for ALL 161 epics. Do NOT hand off until 161/161 are verified complete.
 
-PREREQUISITE CHECK:
-  Verify Phase 0 is complete: all 161 docs/brain/EPIC-W7-NNN/00-hotspots.md exist.
-  If any are missing, HALT and report "Phase 0 prerequisite not met" to Tier 1.
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='phase_0_orchestrator_complete' and e.get('status')=='complete']
+sys.exit(0) if gate else (print('HALT: phase_0_orchestrator_complete not found.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET (Phase 0 not complete) to Tier 1. Do NOT proceed.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_1_orchestrator_start", phase="1", tier="phase_orch", status="running")
+
+STEP 2 — SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
   For each epic, spawn a subagent:
     mode: v12-phase1-scope
     description: |
@@ -133,15 +292,14 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
         5. Update manifest.json with phase_1 status=completed
         Return: { status, output_path, scope_confirmed_single_method: true|false }
 
-COMPLETION VERIFICATION LOOP (MANDATORY):
-  Same protocol as Phase 0 — retry failures up to 3 rounds before hard failure.
-  Additional check: scope_confirmed_single_method MUST be true for all 161.
-  If any epic has scope_confirmed_single_method=false, flag it and report to Tier 1.
+STEP 3 — COMPLETION VERIFICATION LOOP (161/161 required):
+  For each success: lamport_append(event_type="phase_1_epic_complete", phase="1", tier="phase_orch", status="success", epic_id=<epic_id>)
+  For each failure: lamport_append(event_type="phase_1_epic_failed", ...)  → re-spawn up to 3 rounds.
+  Additional check: scope_confirmed_single_method MUST be true for all 161. Flag false=HARD_FAILURE.
+  After 3 rounds still incomplete: lamport_append(event_type="phase_1_hard_failure", ...) → HALT.
 
-LAMPORT EVENTS TO LOG:
-  - phase_1_orchestrator_start
-  - each worker: phase_1_epic_complete / phase_1_epic_failed
-  - phase_1_orchestrator_complete: { verified_count: 161, scope_violations: 0 }
+STEP 4 — LOG PHASE COMPLETE (only after 161/161 verified):
+  lamport_append(event_type="phase_1_orchestrator_complete", phase="1", tier="phase_orch", status="complete", note="161/161 verified")
 
 REPORT BACK TO TIER 1:
   {
@@ -149,7 +307,8 @@ REPORT BACK TO TIER 1:
     "status": "VERIFIED_COMPLETE",
     "completed": 161,
     "failed": 0,
-    "scope_violations": 0
+    "scope_violations": 0,
+    "lamport_complete_clock": <clock>
   }
 ```
 
@@ -159,15 +318,23 @@ REPORT BACK TO TIER 1:
 
 ```
 ROLE: You are the Phase 1.5 (Scope Boundary Validation) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase1-5
 MISSION: Run Phase 1.5 for ALL 161 epics. This is the SCOPE CREEP BLOCKER gate.
          Do NOT hand off until 161/161 pass the boundary check.
 
-PREREQUISITE CHECK:
-  Verify all 161 docs/brain/EPIC-W7-NNN/00-scope.md exist.
-  If any are missing, HALT and report "Phase 1 prerequisite not met" to Tier 1.
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='phase_1_orchestrator_complete' and e.get('status')=='complete']
+sys.exit(0) if gate else (print('HALT: phase_1_orchestrator_complete not found.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET (Phase 1 not complete) to Tier 1. Do NOT proceed.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_1_5_orchestrator_start", phase="1.5", tier="phase_orch", status="running")
+
+STEP 2 — SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
   For each epic, spawn a subagent:
     mode: v12-phase1-5-boundary
     description: |
@@ -185,16 +352,14 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
         6. Update manifest.json with phase_1_5 status=completed|blocked
         Return: { status, output_path, boundary_verdict: "PASS"|"FAIL" }
 
-COMPLETION VERIFICATION LOOP (MANDATORY):
-  - Retry failed workers (technical failures) up to 3 rounds.
-  - SCOPE_VIOLATION epics are NOT retried — they are flagged for Director review.
-  - Wave does not proceed with any SCOPE_VIOLATION unresolved.
-  - All 161 must return boundary_verdict=PASS.
+STEP 3 — COMPLETION VERIFICATION LOOP (161/161 PASS required):
+  For each PASS: lamport_append(event_type="phase_1_5_epic_complete", phase="1.5", ..., status="success")
+  For SCOPE_VIOLATION: lamport_append(event_type="phase_1_5_epic_blocked", ..., status="hard_failure") → NOT retried → HALT.
+  For technical failure: lamport_append(event_type="phase_1_5_epic_failed", ..., status="retry") → re-spawn up to 3 rounds.
+  Wave does not proceed with any boundary_verdict=FAIL unresolved.
 
-LAMPORT EVENTS TO LOG:
-  - phase_1_5_orchestrator_start
-  - each worker: phase_1_5_epic_pass / phase_1_5_epic_blocked / phase_1_5_epic_failed
-  - phase_1_5_orchestrator_complete: { verified_count: 161, scope_violations: 0, blocked: 0 }
+STEP 4 — LOG PHASE COMPLETE (only after all 161 PASS):
+  lamport_append(event_type="phase_1_5_orchestrator_complete", phase="1.5", tier="phase_orch", status="complete", note="161/161 PASS")
 
 REPORT BACK TO TIER 1:
   {
@@ -202,7 +367,8 @@ REPORT BACK TO TIER 1:
     "status": "VERIFIED_COMPLETE",
     "completed": 161,
     "passed_boundary": 161,
-    "scope_violations": 0
+    "scope_violations": 0,
+    "lamport_complete_clock": <clock>
   }
 ```
 
@@ -212,15 +378,23 @@ REPORT BACK TO TIER 1:
 
 ```
 ROLE: You are the Phase 2 (Architecture Planning) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase2
 MISSION: Run Phase 2 for ALL 161 epics. Mandatory Jane Street KB query before spawning workers.
          Do NOT hand off until 161/161 architecture plans are verified.
 
-PREREQUISITE CHECK:
-  Verify all 161 docs/brain/EPIC-W7-NNN/01-scope-boundary.md exist and are PASS.
-  If any are missing or FAIL, HALT and report to Tier 1.
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='phase_1_5_orchestrator_complete' and e.get('status')=='complete']
+sys.exit(0) if gate else (print('HALT: phase_1_5_orchestrator_complete not found.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET (Phase 1.5 not complete) to Tier 1. Do NOT proceed.
 
-MANDATORY JANE STREET KB QUERY (run THIS before spawning workers):
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_2_orchestrator_start", phase="2", tier="phase_orch", status="running")
+
+MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "extraction patterns"
   python scripts/query_kb.py "complexity reduction FSM"
   python scripts/query_kb.py "lock-free actor pattern"
@@ -246,15 +420,14 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
         7. Update manifest.json with phase_2 status=completed
         Return: { status, output_path, extraction_count, max_cyc_projected }
 
-COMPLETION VERIFICATION LOOP (MANDATORY):
-  - max_cyc_projected MUST be <= 8 for all 161 epics. Flag any that project > 8.
-  - Retry technical failures up to 3 rounds.
-  - Epics projecting > 8 after extraction must be re-planned.
+STEP 3 — COMPLETION VERIFICATION LOOP (161/161 required, max_cyc_projected <= 8):
+  lamport_append(event_type="phase_2_kb_query_complete", phase="2", ..., status="success")
+  For each success: lamport_append(event_type="phase_2_epic_complete", ...)
+  For each failure/replan: lamport_append(event_type="phase_2_epic_failed", ...) → re-spawn up to 3 rounds.
+  After 3 rounds: lamport_append(event_type="phase_2_hard_failure", ...) → HALT.
 
-LAMPORT EVENTS TO LOG:
-  - phase_2_orchestrator_start, kb_query_complete
-  - each worker: phase_2_epic_complete / phase_2_epic_failed
-  - phase_2_orchestrator_complete: { verified_count: 161, max_cyc_violations: 0 }
+STEP 4 — LOG PHASE COMPLETE:
+  lamport_append(event_type="phase_2_orchestrator_complete", phase="2", tier="phase_orch", status="complete", note="161/161 verified")
 
 REPORT BACK TO TIER 1:
   {
@@ -263,6 +436,7 @@ REPORT BACK TO TIER 1:
     "completed": 161,
     "failed": 0,
     "max_cyc_violations": 0,
+    "lamport_complete_clock": <clock>,
     "kb_queries_run": ["extraction patterns", "complexity reduction FSM", "lock-free actor pattern"]
   }
 ```
@@ -273,15 +447,23 @@ REPORT BACK TO TIER 1:
 
 ```
 ROLE: You are the Phase 3 (DNA & PR Audit) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase3
 MISSION: Run Phase 3 for ALL 161 epics. Verify V12 DNA compliance before any code is written.
          Do NOT hand off until 161/161 audits pass.
 
-PREREQUISITE CHECK:
-  Verify all 161 docs/brain/EPIC-W7-NNN/02-architecture-plan.md exist.
-  If any are missing, HALT and report to Tier 1.
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='phase_2_orchestrator_complete' and e.get('status')=='complete']
+sys.exit(0) if gate else (print('HALT: phase_2_orchestrator_complete not found.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET (Phase 2 not complete) to Tier 1. Do NOT proceed.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_3_orchestrator_start", phase="3", tier="phase_orch", status="running")
+
+STEP 2 — SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
   For each epic, spawn a subagent:
     mode: v12-phase3-audit
     description: |
@@ -303,15 +485,13 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
         5. Update manifest.json with phase_3 status=completed|blocked
         Return: { status, output_path, dna_verdict: "PASS"|"FAIL", violations: [] }
 
-COMPLETION VERIFICATION LOOP (MANDATORY):
-  - dna_verdict MUST be PASS for all 161 epics.
-  - Epics with FAIL verdict are NOT retried — they require architecture revision (loop back to Phase 2).
-  - Flag all FAIL epics with their violation list and report to Tier 1.
+STEP 3 — COMPLETION VERIFICATION LOOP (161/161 dna_verdict=PASS required):
+  For each PASS: lamport_append(event_type="phase_3_epic_complete", phase="3", ..., status="success")
+  For DNA FAIL: lamport_append(event_type="phase_3_epic_blocked", ..., status="hard_failure") → NOT retried → report to Tier 1.
+  For technical failure: lamport_append(event_type="phase_3_epic_failed", ..., status="retry") → re-spawn up to 3 rounds.
 
-LAMPORT EVENTS TO LOG:
-  - phase_3_orchestrator_start
-  - each worker: phase_3_epic_pass / phase_3_epic_blocked / phase_3_epic_failed
-  - phase_3_orchestrator_complete: { verified_count: 161, dna_violations: 0, blocked: 0 }
+STEP 4 — LOG PHASE COMPLETE:
+  lamport_append(event_type="phase_3_orchestrator_complete", phase="3", tier="phase_orch", status="complete", note="161/161 PASS")
 
 REPORT BACK TO TIER 1:
   {
@@ -319,7 +499,8 @@ REPORT BACK TO TIER 1:
     "status": "VERIFIED_COMPLETE",
     "completed": 161,
     "dna_violations": 0,
-    "blocked": 0
+    "blocked": 0,
+    "lamport_complete_clock": <clock>
   }
 ```
 
@@ -329,15 +510,23 @@ REPORT BACK TO TIER 1:
 
 ```
 ROLE: You are the Phase 4 (Ticket Generation) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase4
 MISSION: Run Phase 4 for ALL 161 epics. Generate actionable implementation tickets.
          Do NOT hand off until 161/161 ticket files are verified.
 
-PREREQUISITE CHECK:
-  Verify all 161 docs/brain/EPIC-W7-NNN/03-audit-report.md exist with dna_verdict=PASS.
-  If any are missing or FAIL, HALT and report to Tier 1.
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='phase_3_orchestrator_complete' and e.get('status')=='complete']
+sys.exit(0) if gate else (print('HALT: phase_3_orchestrator_complete not found.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET (Phase 3 not complete) to Tier 1. Do NOT proceed.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_4_orchestrator_start", phase="4", tier="phase_orch", status="running")
+
+STEP 2 — SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
   For each epic, spawn a subagent:
     mode: v12-phase4-tickets
     description: |
@@ -358,14 +547,13 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
         5. Update manifest.json with phase_4 status=completed, ticket_count=N
         Return: { status, output_path, ticket_count }
 
-COMPLETION VERIFICATION LOOP (MANDATORY):
-  - All 161 must have valid 04-tickets.md with at least 1 ticket.
-  - Retry technical failures up to 3 rounds.
+STEP 3 — COMPLETION VERIFICATION LOOP (161/161, ticket_count >= 1 required):
+  For each success: lamport_append(event_type="phase_4_epic_complete", phase="4", ..., status="success")
+  For failure: lamport_append(event_type="phase_4_epic_failed", ..., status="retry") → re-spawn up to 3 rounds.
+  After 3 rounds: lamport_append(event_type="phase_4_hard_failure", ...) → HALT.
 
-LAMPORT EVENTS TO LOG:
-  - phase_4_orchestrator_start
-  - each worker: phase_4_epic_complete / phase_4_epic_failed
-  - phase_4_orchestrator_complete: { verified_count: 161, total_tickets_generated: N }
+STEP 4 — LOG PHASE COMPLETE:
+  lamport_append(event_type="phase_4_orchestrator_complete", phase="4", tier="phase_orch", status="complete")
 
 REPORT BACK TO TIER 1:
   {
@@ -373,7 +561,8 @@ REPORT BACK TO TIER 1:
     "status": "VERIFIED_COMPLETE",
     "completed": 161,
     "failed": 0,
-    "total_tickets_generated": "<sum>"
+    "total_tickets_generated": "<sum>",
+    "lamport_complete_clock": <clock>
   }
 ```
 
@@ -383,15 +572,23 @@ REPORT BACK TO TIER 1:
 
 ```
 ROLE: You are the Phase 4.5 (Ticket Review) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase4-5
 MISSION: Validate ALL 161 ticket sets against Jane Street KB standards.
          This is the last gate before code is written. 100% pass required.
 
-PREREQUISITE CHECK:
-  Verify all 161 docs/brain/EPIC-W7-NNN/04-tickets.md exist.
-  If any are missing, HALT and report to Tier 1.
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='phase_4_orchestrator_complete' and e.get('status')=='complete']
+sys.exit(0) if gate else (print('HALT: phase_4_orchestrator_complete not found.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET (Phase 4 not complete) to Tier 1. Do NOT proceed.
 
-MANDATORY JANE STREET KB QUERY (run THIS before spawning workers):
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_4_5_orchestrator_start", phase="4.5", tier="phase_orch", status="running")
+
+MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "complexity reduction"
   python scripts/query_kb.py "testing strategies xUnit"
   python scripts/query_kb.py "FSM actor enqueue"
@@ -419,16 +616,14 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
         4. Update manifest.json with phase_4_5 status=completed|blocked
         Return: { status, output_path, review_verdict: "PASS"|"FAIL", failed_tickets: [] }
 
-COMPLETION VERIFICATION LOOP (MANDATORY):
-  - review_verdict MUST be PASS for all 161.
-  - FAIL epics loop back to Phase 4 (ticket regeneration). Do NOT proceed to Phase 5 with any FAIL.
-  - Re-spawn Phase 4 worker for FAIL epics, then re-run Phase 4.5 worker for those same epics.
-  - Retry loop up to 3 rounds before escalating to Tier 1 as HARD FAILURE.
+STEP 3 — COMPLETION VERIFICATION LOOP (review_verdict=PASS required for all 161):
+  lamport_append(event_type="phase_4_5_kb_query_complete", phase="4.5", ..., status="success")
+  For each PASS: lamport_append(event_type="phase_4_5_epic_complete", ..., status="success")
+  For FAIL: lamport_append(event_type="phase_4_5_epic_blocked", ...) → re-spawn Ph4 worker then Ph4.5 for that epic. Up to 3 rounds.
+  After 3 rounds: lamport_append(event_type="phase_4_5_hard_failure", ...) → HALT.
 
-LAMPORT EVENTS TO LOG:
-  - phase_4_5_orchestrator_start, kb_query_complete
-  - each worker: phase_4_5_epic_pass / phase_4_5_epic_blocked / phase_4_5_epic_failed
-  - phase_4_5_orchestrator_complete: { verified_count: 161, ticket_failures_resolved: N, kb_rules: [] }
+STEP 4 — LOG PHASE COMPLETE:
+  lamport_append(event_type="phase_4_5_orchestrator_complete", phase="4.5", tier="phase_orch", status="complete")
 
 REPORT BACK TO TIER 1:
   {
@@ -436,6 +631,7 @@ REPORT BACK TO TIER 1:
     "status": "VERIFIED_COMPLETE",
     "completed": 161,
     "failed": 0,
+    "lamport_complete_clock": <clock>,
     "kb_queries_run": ["complexity reduction", "testing strategies xUnit", "FSM actor enqueue", "lock-free patterns"]
   }
 ```
@@ -446,16 +642,24 @@ REPORT BACK TO TIER 1:
 
 ```
 ROLE: You are the Phase 5 (Ticket Execution) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase5
 MISSION: Execute ALL implementation tickets for ALL 161 epics.
          THIS IS THE CODE-WRITING PHASE. Workers have full file access.
          Do NOT hand off until 161/161 are verified complete.
 
-PREREQUISITE CHECK:
-  Verify all 161 docs/brain/EPIC-W7-NNN/04-5-ticket-review.md exist with review_verdict=PASS.
-  If any are missing or FAIL, HALT and report to Tier 1.
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='phase_4_5_orchestrator_complete' and e.get('status')=='complete']
+sys.exit(0) if gate else (print('HALT: phase_4_5_orchestrator_complete not found.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET (Phase 4.5 not complete) to Tier 1. Do NOT proceed.
 
-MANDATORY JANE STREET KB QUERY (run THIS before spawning workers):
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_5_orchestrator_start", phase="5", tier="phase_orch", status="running")
+
+MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "FSM extraction implementation"
   python scripts/query_kb.py "xUnit test patterns Fact Assert"
   python scripts/query_kb.py "C# method extraction CYC reduction"
@@ -493,16 +697,14 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
           7. Update manifest.json with phase_5 status=completed, cyc_achieved=N
         Return: { status, cyc_achieved, build_passed: true|false, tests_written: N }
 
-COMPLETION VERIFICATION LOOP (MANDATORY):
-  - cyc_achieved MUST be <= 8 for all 161 epics.
-  - build_passed MUST be true for all 161.
-  - Retry technical failures (build errors, CYC > 8) up to 3 rounds.
-  - If CYC still > 8 after 3 rounds, escalate to Tier 1 as HARD FAILURE with analysis.
+STEP 3 — COMPLETION VERIFICATION LOOP (cyc_achieved<=8 AND build_passed=true for all 161):
+  lamport_append(event_type="phase_5_kb_query_complete", phase="5", ..., status="success")
+  For each success: lamport_append(event_type="phase_5_epic_complete", phase="5", ..., status="success", epic_id=<epic_id>)
+  For failure (CYC>8 or build error): lamport_append(event_type="phase_5_epic_failed", ..., status="retry") → re-spawn up to 3 rounds.
+  After 3 rounds: lamport_append(event_type="phase_5_hard_failure", ...) → HALT.
 
-LAMPORT EVENTS TO LOG:
-  - phase_5_orchestrator_start, kb_query_complete
-  - each worker: phase_5_epic_complete / phase_5_epic_failed
-  - phase_5_orchestrator_complete: { verified_count: 161, cyc_violations: 0, build_failures: 0 }
+STEP 4 — LOG PHASE COMPLETE (only after 161/161 cyc<=8 AND build pass):
+  lamport_append(event_type="phase_5_orchestrator_complete", phase="5", tier="phase_orch", status="complete", note="161/161 CYC<=8 build pass")
 
 REPORT BACK TO TIER 1:
   {
@@ -512,6 +714,7 @@ REPORT BACK TO TIER 1:
     "failed": 0,
     "cyc_violations": 0,
     "build_failures": 0,
+    "lamport_complete_clock": <clock>,
     "kb_queries_run": ["FSM extraction implementation", "xUnit test patterns Fact Assert", "C# method extraction CYC reduction"]
   }
 ```
@@ -522,16 +725,24 @@ REPORT BACK TO TIER 1:
 
 ```
 ROLE: You are the Phase 5.V (Verification) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase5v
 MISSION: Independently verify ALL 161 implementations. This is a SEPARATE verification pass —
          do NOT trust Phase 5's self-reported results. Verify everything from scratch.
          Do NOT hand off until 161/161 pass independent verification.
 
-PREREQUISITE CHECK:
-  Verify all 161 docs/brain/EPIC-W7-NNN/ticket-X-completion.md exist.
-  If any are missing, HALT and report to Tier 1.
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='phase_5_orchestrator_complete' and e.get('status')=='complete']
+sys.exit(0) if gate else (print('HALT: phase_5_orchestrator_complete not found.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET (Phase 5 not complete) to Tier 1. Do NOT proceed.
 
-MANDATORY JANE STREET KB QUERY (run THIS before spawning workers):
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_5v_orchestrator_start", phase="5.V", tier="phase_orch", status="running")
+
+MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "lock-free patterns verification"
   python scripts/query_kb.py "DNA compliance audit C#"
   python scripts/query_kb.py "complexity threshold 8 Jane Street"
@@ -561,17 +772,14 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
         Update manifest.json with phase_5v status=completed|failed, verification_verdict
         Return: { status, output_path, verification_verdict: "PASS"|"FAIL", failures: [] }
 
-COMPLETION VERIFICATION LOOP (MANDATORY):
-  - verification_verdict MUST be PASS for all 161.
-  - FAIL epics loop back to Phase 5 (re-execution). The Phase 5 Orchestrator must re-spawn those epics.
-  - Coordinate with Tier 1: report FAIL list with failure details.
-  - After Phase 5 re-execution, re-spawn Phase 5.V workers for those epics only.
-  - Repeat until 161/161 PASS or 3 rounds exhausted.
+STEP 3 — COMPLETION VERIFICATION LOOP (verification_verdict=PASS for all 161):
+  lamport_append(event_type="phase_5v_kb_query_complete", phase="5.V", ..., status="success")
+  For each PASS: lamport_append(event_type="phase_5v_epic_complete", phase="5.V", ..., status="success", epic_id=<epic_id>)
+  For FAIL: lamport_append(event_type="phase_5v_epic_failed", ..., status="retry") → coordinate with Tier 1 to re-run Ph5 for that epic, then re-verify. Up to 3 rounds.
+  After 3 rounds: lamport_append(event_type="phase_5v_hard_failure", ...) → HALT.
 
-LAMPORT EVENTS TO LOG:
-  - phase_5v_orchestrator_start, kb_query_complete
-  - each worker: phase_5v_epic_pass / phase_5v_epic_failed
-  - phase_5v_orchestrator_complete: { verified_count: 161, verification_failures: 0 }
+STEP 4 — LOG PHASE COMPLETE (only after 161/161 independent PASS):
+  lamport_append(event_type="phase_5_v_orchestrator_complete", phase="5.V", tier="phase_orch", status="complete", note="161/161 independently verified")
 
 REPORT BACK TO TIER 1:
   {
@@ -581,6 +789,7 @@ REPORT BACK TO TIER 1:
     "failed": 0,
     "verification_failures": 0,
     "independent_cyc_confirmed": 161,
+    "lamport_complete_clock": <clock>,
     "kb_queries_run": ["lock-free patterns verification", "DNA compliance audit C#", "complexity threshold 8 Jane Street"]
   }
 ```
@@ -591,15 +800,23 @@ REPORT BACK TO TIER 1:
 
 ```
 ROLE: You are the Phase 6 (Final Review) Orchestrator for Wave 7.
-MODE: autonomous-refactor
+MODE: wave-orch-phase6
 MISSION: Generate final completion reports for ALL 161 epics and validate wave completion.
          This is the TERMINAL phase. Report wave success to Tier 1 only after 161/161 confirmed.
 
-PREREQUISITE CHECK:
-  Verify all 161 docs/brain/EPIC-W7-NNN/ticket-X-verification.md exist with verification_verdict=PASS.
-  If any are missing or FAIL, HALT and report to Tier 1 (cannot finalize with open failures).
+STEP 0 — LAMPORT DEPENDENCY GATE (FIRST ACTION — halt if not met):
+  python3 -c "
+import json,sys
+events=[json.loads(l) for l in open('.lamport/wave7/event_log.jsonl') if l.strip()]
+gate=[e for e in events if e.get('event_type')=='phase_5_v_orchestrator_complete' and e.get('status')=='complete']
+sys.exit(0) if gate else (print('HALT: phase_5_v_orchestrator_complete not found.') or sys.exit(1))
+"
+  If exit code 1: HALT. Report DEPENDENCY_NOT_MET (Phase 5.V not complete) to Tier 1. Do NOT proceed.
 
-MANDATORY JANE STREET KB QUERY (run THIS before spawning workers):
+STEP 1 — LOG PHASE START:
+  lamport_append(event_type="phase_6_orchestrator_start", phase="6", tier="phase_orch", status="running")
+
+MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "testing strategies coverage"
   python scripts/query_kb.py "final audit complexity Jane Street"
   Capture KB results and include them in ALL worker descriptions below.
@@ -627,21 +844,24 @@ SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
         6. Run final complexity check: python scripts/complexity_audit.py | grep <method_name>
         Return: { status, output_path, final_cyc, wave_ready: true|false }
 
-COMPLETION VERIFICATION LOOP (MANDATORY):
-  - wave_ready MUST be true for all 161.
-  - final_cyc MUST be <= 8 for all 161.
-  - Retry technical failures up to 3 rounds.
+STEP 3 — COMPLETION VERIFICATION LOOP (wave_ready=true AND final_cyc<=8 for all 161):
+  lamport_append(event_type="phase_6_kb_query_complete", phase="6", ..., status="success")
+  For each success: lamport_append(event_type="phase_6_epic_complete", phase="6", ..., status="success", epic_id=<epic_id>)
+  For failure: lamport_append(event_type="phase_6_epic_failed", ..., status="retry") → re-spawn up to 3 rounds.
+  After 3 rounds: lamport_append(event_type="phase_6_hard_failure", ...) → HALT.
 
-WAVE COMPLETION FINAL CHECK (Phase 6 Orchestrator runs this directly):
-  1. python scripts/complexity_audit.py > /tmp/wave7_final_audit.txt
-  2. Count methods still > 8: grep -c "CYC > 8" /tmp/wave7_final_audit.txt
-  3. MUST be 0. If > 0, identify which epics regressed and escalate to Tier 1.
-  4. git diff --stat src/ (confirm only target methods were touched)
+STEP 4 — WAVE-LEVEL FINAL SCAN (Phase 6 Orchestrator runs directly — NOT via workers):
+  python scripts/complexity_audit.py > /tmp/wave7_final_audit.txt
+  remaining=$(grep -c "CYC > 8" /tmp/wave7_final_audit.txt || echo 0)
+  If remaining > 0:
+    lamport_append(event_type="wave_7_regression_detected", ..., status="hard_failure", note="N methods still >8")
+    HALT. Escalate to Tier 1 — do NOT write wave_7_complete.
+  git diff --stat src/  → confirm only target methods modified.
 
-LAMPORT EVENTS TO LOG:
-  - phase_6_orchestrator_start, kb_query_complete
-  - each worker: phase_6_epic_complete / phase_6_epic_failed
-  - wave_7_complete: { total_epics: 161, total_cyc_reduced: 161, build_clean: true }
+STEP 5 — LOG WAVE COMPLETE (terminal event — only if remaining==0):
+  lamport_append(event_type="phase_6_orchestrator_complete", phase="6", tier="phase_orch", status="complete")
+  lamport_append(event_type="wave_7_complete", phase="6", tier="phase_orch", status="complete",
+                 note="161/161 methods CYC<=8. Wave 7 done.")
 
 REPORT BACK TO TIER 1 (WAVE COMPLETE):
   {
@@ -652,6 +872,7 @@ REPORT BACK TO TIER 1 (WAVE COMPLETE):
     "failed": 0,
     "final_cyc_max": 8,
     "methods_above_8_remaining": 0,
+    "lamport_wave_complete_clock": <clock of wave_7_complete event>,
     "wave_7_final_audit_path": "/tmp/wave7_final_audit.txt",
     "kb_queries_run": ["testing strategies coverage", "final audit complexity Jane Street"]
   }

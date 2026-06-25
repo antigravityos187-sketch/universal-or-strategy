@@ -343,7 +343,13 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 1 for exact worker
       description.
     whenToUse: Phase 0 Orchestrator - spawns 161 hotspot workers, enforces 100% completion
-    customInstructions: ""
+    customInstructions: "LAMPORT GATE IS MANDATORY: Your VERY FIRST action is to
+      run the dependency gate from PHASE_ORCHESTRATOR_TEMPLATES.md. Verify
+      wave_start exists in .lamport/wave7/event_log.jsonl. If absent: HALT,
+      report DEPENDENCY_NOT_MET, do NOT spawn any workers. After gate passes:
+      lamport_append phase_0_orchestrator_start. Run PILOT GATE on EPIC-W7-001
+      before spawning remaining 160. lamport_append phase_0_orchestrator_complete
+      ONLY after 161/161 verified. See Template 1 for full protocol."
     groups:
       - read
       - - edit
@@ -384,7 +390,12 @@ customModes:
       phase_1_orchestrator_complete. TEMPLATES: See
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 2.
     whenToUse: Phase 1 Orchestrator - spawns 161 scope workers, enforces 100% completion
-    customInstructions: ""
+    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+      phase_0_orchestrator_complete status=complete exists in Lamport log before
+      doing anything else. If absent: HALT, report DEPENDENCY_NOT_MET, do NOT
+      spawn workers. lamport_append phase_1_orchestrator_start after gate.
+      lamport_append phase_1_orchestrator_complete ONLY after 161/161 verified.
+      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 2."
     groups:
       - read
       - - edit
@@ -426,7 +437,12 @@ customModes:
       phase_1_5_orchestrator_complete. TEMPLATES: See
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 3.
     whenToUse: Phase 1.5 Orchestrator - spawns 161 boundary workers, blocks scope creep
-    customInstructions: ""
+    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+      phase_1_orchestrator_complete status=complete exists in Lamport log before
+      doing anything else. If absent: HALT, report DEPENDENCY_NOT_MET, do NOT
+      spawn workers. lamport_append phase_1_5_orchestrator_start after gate.
+      lamport_append phase_1_5_orchestrator_complete ONLY after all 161 PASS.
+      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 3."
     groups:
       - read
       - - edit
@@ -473,7 +489,12 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 4.
     whenToUse: Phase 2 Orchestrator - spawns 161 architecture workers, mandatory KB
       queries
-    customInstructions: ""
+    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+      phase_1_5_orchestrator_complete status=complete in Lamport log first. If
+      absent: HALT, report DEPENDENCY_NOT_MET. lamport_append
+      phase_2_orchestrator_start after gate. KB query runs after gate, before
+      workers. lamport_append phase_2_orchestrator_complete after 161/161.
+      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 4."
     groups:
       - read
       - - edit
@@ -514,6 +535,12 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 5.
     whenToUse: Phase 3 Orchestrator - spawns 161 DNA audit workers, blocks
       non-compliant plans
+    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+      phase_2_orchestrator_complete status=complete in Lamport log before
+      anything else. If absent: HALT, report DEPENDENCY_NOT_MET, do NOT spawn
+      workers. lamport_append phase_3_orchestrator_start after gate.
+      lamport_append phase_3_orchestrator_complete ONLY after 161/161 PASS.
+      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 5."
     groups:
       - read
       - - edit
@@ -552,7 +579,12 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 6.
     whenToUse: Phase 4 Orchestrator - spawns 161 ticket generation workers,
       validates ticket counts
-    customInstructions: ""
+    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+      phase_3_orchestrator_complete status=complete in Lamport log before
+      anything else. If absent: HALT, report DEPENDENCY_NOT_MET, do NOT spawn
+      workers. lamport_append phase_4_orchestrator_start after gate.
+      lamport_append phase_4_orchestrator_complete ONLY after 161/161 verified.
+      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 6."
     groups:
       - read
       - - edit
@@ -600,7 +632,12 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 7.
     whenToUse: Phase 4.5 Orchestrator - last gate before code writing, mandatory KB
       validation
-    customInstructions: ""
+    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+      phase_4_orchestrator_complete status=complete in Lamport log first. If
+      absent: HALT, report DEPENDENCY_NOT_MET. KB query runs AFTER gate, BEFORE
+      workers. lamport_append phase_4_5_orchestrator_start after gate.
+      lamport_append phase_4_5_orchestrator_complete after 161/161 PASS.
+      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 7."
     groups:
       - read
       - - edit
@@ -656,7 +693,12 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 8.
     whenToUse: Phase 5 Orchestrator - spawns 161 code-writing workers, enforces
       CYC<=8 + build pass
-    customInstructions: ""
+    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+      phase_4_5_orchestrator_complete status=complete in Lamport log first. If
+      absent: HALT, report DEPENDENCY_NOT_MET. KB query runs AFTER gate, BEFORE
+      workers. lamport_append phase_5_orchestrator_start after gate.
+      lamport_append phase_5_orchestrator_complete ONLY after 161/161 CYC<=8
+      AND build pass. See PHASE_ORCHESTRATOR_TEMPLATES.md Template 8."
     groups:
       - read
       - - edit
@@ -712,7 +754,12 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 9.
     whenToUse: Phase 5.V Orchestrator - independent verification, re-triggers Phase
       5 on failures
-    customInstructions: ""
+    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+      phase_5_orchestrator_complete status=complete in Lamport log first. If
+      absent: HALT, report DEPENDENCY_NOT_MET. KB query AFTER gate. lamport_append
+      phase_5v_orchestrator_start after gate. lamport_append
+      phase_5_v_orchestrator_complete ONLY after 161/161 independent PASS.
+      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 9."
     groups:
       - read
       - - edit
@@ -765,7 +812,12 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 10.
     whenToUse: Phase 6 Orchestrator - final review, wave-level complexity scan,
       WAVE_COMPLETE report
-    customInstructions: ""
+    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+      phase_5_v_orchestrator_complete status=complete in Lamport log first. If
+      absent: HALT, report DEPENDENCY_NOT_MET. KB query AFTER gate. lamport_append
+      phase_6_orchestrator_start after gate. After 161/161 workers complete: run
+      complexity_audit.py scan directly. ONLY if 0 methods above 8 remaining:
+      lamport_append wave_7_complete status=complete. See Template 10."
     groups:
       - read
       - - edit
