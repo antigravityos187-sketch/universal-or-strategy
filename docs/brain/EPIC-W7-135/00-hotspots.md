@@ -1,110 +1,108 @@
 # Phase 0: Hotspot Analysis - EPIC-W7-135
 
-**Agent**: v12-phase0-hotspot
-**Target Method**: HandleMatchedFollower_PendingCleanupPurge
-**File**: V12_002.Orders.Callbacks.AccountOrders.cs
-**Complexity**: 9 (Exceeds Jane Street threshold of 8)
-**Date**: 2026-06-22
+## Agent Tracking
+- **Agent Name**: v12-phase0-hotspot
+- **Bobcoins Used**: 0.74
+- **API Key**: jCodemunch MCP
+- **Execution Time**: ~15 seconds
 
-## Executive Summary
+## Target Method
+- **Method**: FindTargetOrderForPosition
+- **File**: src/V12_002.Trailing.Breakeven.cs
+- **Line**: 186
+- **Cyclomatic Complexity**: 10
+- **Assessment**: MEDIUM
 
-Method HandleMatchedFollower_PendingCleanupPurge has cyclomatic complexity of 9, exceeding the V12 DNA mandate of CYC ≤ 8. This method handles cleanup and purge operations for matched follower orders in pending states.
+## Complexity Metrics
+```json
+{
+  "cyclomatic": 10,
+  "max_nesting": 3,
+  "param_count": 4,
+  "lines": 37,
+  "assessment": "medium"
+}
+```
 
-## Complexity Analysis
+**Analysis**:
+- Cyclomatic complexity of 10 exceeds V12 threshold of 8 (Jane Street strict standard)
+- Moderate nesting depth (3 levels)
+- 4 parameters (reasonable)
+- 37 lines of code (compact)
 
-### Current Metrics
-- Cyclomatic Complexity: 9
-- Threshold: 8 (Jane Street strict standard)
-- Overage: +1 (11% over threshold)
-- File: V12_002.Orders.Callbacks.AccountOrders.cs
+## Method Signature
+```csharp
+private Order FindTargetOrderForPosition(
+    PositionInfo pos,
+    string entryName,
+    int targetNum,
+    out string notFoundReason
+)
+```
 
-### Hotspot Characteristics
-- Category: Order lifecycle management
-- Risk Level: Medium (CYC 9 - just above threshold)
-- Refactoring Priority: P2 (single point overage)
+## Blast Radius
+```json
+{
+  "importer_count": 0,
+  "direct_dependents_count": 0,
+  "overall_risk_score": 0.0,
+  "confirmed_count": 0,
+  "potential_count": 0
+}
+```
 
-## Method Context
+**Analysis**:
+- **ZERO external dependencies** - method is not imported by other files
+- **ZERO confirmed dependents** - no files directly depend on this method
+- **Overall risk score: 0.0** - extremely low blast radius
+- This is an internal helper method with minimal coupling
 
-### Purpose
-Handles cleanup and purge operations for follower orders that are in pending states and have been matched. This is part of the order callback system that manages order state transitions.
+## Call Hierarchy
 
-### Dependencies
-- Order state management
-- FSM (Finite State Machine) integration
-- Cleanup/purge logic coordination
+### Callers (Who calls this method)
+1. **MoveSpecificTarget** (src/V12_002.Trailing.Breakeven.cs:335)
+   - Resolution: AST-resolved
+   - Depth: 1
 
-## Blast Radius Assessment
+### Callees (What this method calls)
+- **NONE** - This method does not call other indexed symbols
+- Likely uses only framework APIs and local logic
 
-### Direct Impact
-- Order callback processing pipeline
-- Follower order state transitions
-- Cleanup/purge workflow
-
-### Indirect Impact
-- Order lifecycle integrity
-- FSM state consistency
-- Memory management (cleanup operations)
-
-## Refactoring Strategy
-
-### Recommended Approach
-1. Extract conditional logic: Separate pending state checks
-2. Extract cleanup operations: Isolate purge logic into helper method
-3. Simplify control flow: Reduce nested conditionals
-
-### Target Complexity
-- Goal: CYC ≤ 8
-- Method: Extract 1-2 helper methods
-- Estimated Effort: Low (single point reduction)
-
-## Jane Street Alignment
-
-### Cognitive Simplicity
-- Current CYC 9 slightly exceeds microsecond-latency reasoning threshold
-- Extraction will improve testability and race condition auditing
-- Aligns with "Make illegal states unrepresentable" principle
-
-### Testing Impact
-- Reduced path complexity enables exhaustive testing
-- Extracted methods can be unit tested independently
-- Improves lock-free pattern verification
+**Analysis**:
+- Single caller: MoveSpecificTarget
+- No downstream calls to other custom methods
+- Isolated helper method pattern
 
 ## Risk Assessment
 
-### Refactoring Risk: LOW
-- Single point complexity overage
-- Well-defined method boundary
-- Clear extraction candidates
+### Overall Risk: **LOW**
 
-### Business Risk: LOW
-- Order callback system is well-tested
-- Cleanup/purge operations are defensive
-- No hot-path performance impact
+**Rationale**:
+1. ✅ **Blast Radius**: Zero external dependencies, zero confirmed dependents
+2. ⚠️ **Complexity**: CYC 10 exceeds threshold of 8 (needs reduction)
+3. ✅ **Isolation**: Single caller, no callees - changes are contained
+4. ✅ **Scope**: 37 lines - manageable extraction target
+
+### Refactoring Safety
+- **Safe to refactor**: YES
+- **Breaking change risk**: MINIMAL (private method, single caller)
+- **Test coverage required**: Unit tests for extracted logic
+- **Recommended approach**: Extract conditional branches to helper methods
+
+## Hotspot Score Calculation
+Using CodeScene methodology: `hotspot_score = complexity × log(1 + churn)`
+
+**Note**: Churn data not available in current analysis. Complexity alone (10) suggests this is a **MEDIUM priority** refactoring target.
 
 ## Recommendations
+1. **Extract conditional logic** to reduce CYC from 10 to ≤8
+2. **Add unit tests** before refactoring (currently no test coverage detected)
+3. **Verify MoveSpecificTarget** behavior after extraction
+4. **Low risk**: Isolated method with minimal coupling makes this an ideal refactoring candidate
 
-1. Phase 1: Define scope boundary (validate extraction points)
-2. Phase 2: Design extraction strategy (2 helper methods max)
-3. Phase 3: DNA audit (verify no lock() usage)
-4. Phase 4: Generate tickets (1-2 tickets expected)
-5. Phase 5: Execute extraction (surgical refactoring)
-
-## Success Criteria
-
-- CYC reduced from 9 to ≤8
-- No new lock() blocks introduced
-- All extracted methods have unit tests
-- Build passes after refactoring
-- F5 in NinjaTrader successful
-
-## Agent Tracking
-
-- Agent Name: v12-phase0-hotspot
-- Bobcoins Used: 0.80
-- API Key: premium
-- Execution Time: <1 minute
-
----
-
-Status: Phase 0 Complete
-Next Phase: Phase 1 (Scope Definition)
+## Phase 0 Completion
+- ✅ Complexity metrics gathered
+- ✅ Blast radius analyzed
+- ✅ Call hierarchy mapped
+- ✅ Risk assessment completed
+- ✅ Ready for Phase 1 (Scope Definition)

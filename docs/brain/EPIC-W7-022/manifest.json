@@ -1,0 +1,37 @@
+{
+  "epic_id": "EPIC-W7-022",
+  "method": "PropagateMaster_IdentifyMove",
+  "file": "src/V12_002.Orders.Callbacks.Propagation.cs",
+  "complexity": 18,
+  "actual_complexity": 5,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "agent": "v12-phase0-hotspot",
+      "bobcoins": 0.75,
+      "timestamp": "2026-06-23T03:58:43Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"],
+      "agent": "v12-phase1-scope",
+      "bobcoins": 0.98,
+      "timestamp": "2026-06-24T19:27:03Z"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"],
+      "agent": "v12-phase1-5-boundary",
+      "bobcoins": 0.00,
+      "timestamp": "2026-06-23T23:57:09Z"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "agent": "v12-phase2-architecture",
+      "bobcoins": 0.00,
+      "timestamp": "2026-06-24T03:32:05Z"
+    }
+  }
+}

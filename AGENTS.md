@@ -41,23 +41,24 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 - `.bob/skills/gcp-vm-wave-execution/skill.md` - V2.5 update
 - `docs/protocol/RECOVERY_LOOP_PROTOCOL.md` - V1.1 update
 
-## ⚠️ CRITICAL: Code Mode Deprecation (V12.18)
+## ⚠️ CRITICAL: Code/Advanced Mode Removal (V12.18+)
 
-**EFFECTIVE IMMEDIATELY**: Code mode is **BANNED** for all code modification tasks.
+**EFFECTIVE IMMEDIATELY**: `code` and `advanced` modes are **GONE**. Current default modes are `plan`, `agent`, `ask`.
 
 **Enforcement**:
-- ❌ **Code mode** (`code`): DEPRECATED - Do not use for any task
-- ✅ **Advanced mode** (`advanced`): PRIMARY for all code changes
+- ❌ **Code mode** (`code`): REMOVED - does not exist
+- ❌ **Advanced mode** (`advanced`): REMOVED - does not exist
+- ✅ **Agent mode** (`agent`): PRIMARY for all code changes (replaces both)
 - ✅ **Bob CLI** (`v12-engineer`): PRIMARY for src/ architectural work
 
-**Rationale**: Advanced mode provides:
+**Rationale**: Agent mode provides:
 - MCP tool access (jcodemunch, graphify)
 - Browser tools for research
-- Superior context management
-- Full feature parity with code mode
+- Subagents support (spawn_subagent, start_subtask)
+- Full feature parity with former advanced/code modes
 
-**Violation Protocol**: Any agent attempting to use code mode must:
-1. Immediately switch to advanced mode
+**Violation Protocol**: Any agent attempting to use code or advanced mode must:
+1. Immediately switch to agent mode
 2. Document the attempted violation
 3. Report to Director for protocol review
 
@@ -67,10 +68,11 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 - **ARCHITECT (P3)   escalation only**: **Claude Opus 4.7** is reserved for (a) non-src architectural review, (b) $battlezip compound intelligence sessions, and (c) cross-subgraph design decisions that span >3 files outside Bob's current context. Claude remains PLAN-ONLY when invoked.
 - **ADJUDICATOR (Arena AI)**: **P4 Vetting Gate**. Adversarial consensus and **PR Audit** required BEFORE surgery.
 - **ENGINEER (P4/P5)   non-src tasks**: Target selection follows strict routing logic:
-    - **Advanced Mode** (`advanced`): Primary non-src engineer for all code modification tasks
+    - **Agent Mode** (`agent`): Primary non-src engineer for all code modification tasks (replaces advanced)
     - **Jules AI**: GitHub-based workflows only
     - **Gemini CLI** (`yolo`): Secondary for tasks requiring local file access or visual context
-    - ~~**Code Mode** (`code`): DEPRECATED - DO NOT USE~~
+    - ~~**Code Mode** (`code`): REMOVED~~
+    - ~~**Advanced Mode** (`advanced`): REMOVED~~
 - **FORENSICS (P2/P6)**: Diagnosis (P2) and Adversarial Audit (P6).
 
 ## 2. Architectural Mandates (THE PLATINUM STANDARD)
@@ -383,11 +385,11 @@ graph TD
 | **1** | `epic-scope-boundary` | `plan` | Scope definition | `00-hotspots.md` | `00-scope.md` |
 | **1.5** | `epic-scope-boundary` | `plan` | Scope validation | `00-scope.md` | `01-scope-boundary.md` |
 | **2** | `epic-plan` | `plan` | Architecture design | `01-scope-boundary.md` | `02-architecture-plan.md` |
-| **3** | `epic-scan` | `advanced` | DNA & PR audit | `02-architecture-plan.md` | `03-audit-report.md` |
+| **3** | `epic-scan` | `agent` | DNA & PR audit | `02-architecture-plan.md` | `03-audit-report.md` |
 | **4** | `epic-tickets` | `plan` | Ticket generation | `02-architecture-plan.md` | `04-tickets.md` |
 | **5.X** | `epic-validate` | `v12-engineer` | Ticket execution | `04-tickets.md` | `ticket-X-completion.md` |
-| **5.X.V** | `epic-verify-ticket` | `advanced` | Per-ticket verification | `ticket-X-completion.md` | `ticket-X-verification.md` |
-| **6** | `epic-review-final` | `advanced` | Final review | All verification reports | `05-completion-report.md` |
+| **5.X.V** | `epic-verify-ticket` | `agent` | Per-ticket verification | `ticket-X-completion.md` | `ticket-X-verification.md` |
+| **6** | `epic-review-final` | `agent` | Final review | All verification reports | `05-completion-report.md` |
 
 ### Manifest-Based State Management
 
@@ -714,23 +716,26 @@ Rules:
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
 
-## Mode Selection Rules (V12.18)
+## Mode Selection Rules (V12.18+)
+
+Current default modes: `plan`, `agent`, `ask`. (`advanced` and `code` are REMOVED.)
 
 When delegating code modification tasks:
-- ✅ ALWAYS use `advanced` mode for non-src code work
+- ✅ ALWAYS use `agent` mode for non-src code work (replaces `advanced`)
 - ✅ ALWAYS use `v12-engineer` (Bob CLI) for src/ work
-- ❌ NEVER use `code` mode (deprecated V12.18)
+- ❌ NEVER use `code` mode (REMOVED)
+- ❌ NEVER use `advanced` mode (REMOVED)
 
 **Routing Decision Tree**:
 ```
 Is task modifying code?
 ├─ YES → Is task in src/?
 │  ├─ YES → Use Bob CLI (`v12-engineer`)
-│  └─ NO → Use Advanced mode (`advanced`)
+│  └─ NO → Use Agent mode (`agent`)
 └─ NO → Use Ask mode (`ask`) or Plan mode (`plan`)
 ```
 
-**Code Mode**: BANNED - Any delegation to code mode is a protocol violation.
+**Code/Advanced Mode**: REMOVED - these modes no longer exist.
 
 
 ## 11. No Scope Creep Protocol (V12.23 - MANDATORY)

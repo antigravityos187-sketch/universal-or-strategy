@@ -1,0 +1,43 @@
+{
+  "epic_id": "EPIC-W7-086",
+  "method": "ProcessReaperFlatten_CancelWorkingOrders",
+  "file": "src/V12_002.REAPER.Audit.cs",
+  "complexity": 10,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ],
+      "agent": "v12-phase0-hotspot",
+      "bobcoins_used": 0.77,
+      "timestamp": "2026-06-23T02:50:54Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "agent": "v12-phase1-scope",
+      "bobcoins_used": 0.0,
+      "timestamp": "2026-06-23T21:45:52Z"
+    },
+    "1.5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "completed_at": "2026-06-24T00:09:54.169482Z",
+      "agent": "v12-phase1-scope",
+      "input_artifacts": [
+        "00-scope.md"
+      ],
+      "output_artifacts": [
+        "01-scope-boundary.md"
+      ],
+      "validation": {
+        "scope_creep_detected": false,
+        "boundaries_clear": true,
+        "risks_mitigated": true
+      }
+    }
+  }
+}

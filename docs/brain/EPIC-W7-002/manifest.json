@@ -1,0 +1,31 @@
+{
+  "epic_id": "EPIC-W7-002",
+  "method": "SymmetryGuardTryResolveFollowersForDispatch",
+  "file": "src/V12_002.Symmetry.Replace.cs",
+  "complexity": 16,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ],
+      "timestamp": "2026-06-23T02:34:52Z",
+      "agent": "v12-phase0-hotspot"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "timestamp": "2026-06-24T18:59:15Z",
+      "agent": "v12-phase1-scope",
+      "extraction_targets": 3,
+      "next_phase": "1.5"
+    },
+    "1.5": {
+      "status": "pending",
+      "outputs": [],
+      "dependencies": ["1"]
+    }
+  }
+}

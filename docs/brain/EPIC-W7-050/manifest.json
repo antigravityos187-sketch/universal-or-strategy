@@ -1,0 +1,36 @@
+{
+  "epic_id": "EPIC-W7-050",
+  "method": "FleetSync_SyncFollowersToLevel",
+  "file": "src/V12_002.Trailing.cs",
+  "complexity": 13,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "agent": "v12-phase0-hotspot",
+      "bobcoins": 2.61,
+      "timestamp": "2026-06-23T02:45:19Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"],
+      "agent": "v12-phase1-scope",
+      "bobcoins": 1.22,
+      "timestamp": "2026-06-24T19:31:40Z"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"],
+      "agent": "v12-phase1-5-boundary",
+      "bobcoins": 1.03,
+      "timestamp": "2026-06-24T00:01:40Z"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "agent": "v12-phase2-architecture",
+      "bobcoins": 1.69,
+      "timestamp": "2026-06-24T03:01:11Z"
+    }
+  }
+}

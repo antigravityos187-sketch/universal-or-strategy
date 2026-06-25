@@ -20,22 +20,91 @@ This document validates that the `/autonomous-refactor` master orchestrator prop
 
 ---
 
+## Bob IDE V2 Subagent Execution Model (V2.3 — AUTHORITATIVE)
+
+### What Changed (V1 Shell → V2 IDE)
+
+| Concept | V1 (Bob Shell — OBSOLETE) | V2 (Bob IDE — CURRENT) |
+|---------|--------------------------|------------------------|
+| Parallel execution | GCP VM + screen sessions + `_pX_NNN.sh` scripts | Bob IDE spawns N subagents natively in parallel |
+| Epic invocation | `bob --yolo --chat-mode MODE "$(cat /tmp/msg.txt)"` | Orchestrator spawns subagent with custom mode |
+| 12-second delay | Required between parallel shell launches | Not needed — subagents launch natively |
+| File persistence | SSH verification loop required | Subagent writes directly to local filesystem |
+| Context isolation | Each screen session = isolated context | Each subagent = own clean context window |
+| Result aggregation | Poll output files every 4 minutes | Subagent result returns to main agent |
+| Script generation | Building-Blocks Method (copy `_pX_NNN.sh`) | **NOT NEEDED** — no scripts to generate |
+
+### Subagent Spawn Pattern (MANDATORY for all wave phases)
+
+When the orchestrator (`autonomous-refactor` mode) needs to execute a phase for N epics in parallel:
+
+```
+SPAWN SUBAGENT:
+  mode: <custom-mode-slug>          # e.g. v12-phase1-scope
+  context: <epic-specific data>     # hotspot file path, method name, CYC, file
+  task: <phase-specific instruction> # read 00-hotspots.md → write 00-scope.md
+
+SUBAGENT BEHAVIOR:
+  1. Receives clean context (no pollution from orchestrator history)
+  2. Reads its assigned input artifacts
+  3. Executes phase work (MCP calls, analysis, writing)
+  4. Writes output artifact to docs/brain/EPIC-W7-NNN/
+  5. Returns summary to orchestrator (not intermediate steps)
+
+ORCHESTRATOR RECEIVES:
+  - Success/failure status
+  - Output artifact path
+  - Key metrics (e.g. CYC achieved, extraction count)
+```
+
+### Parallel Execution for Wave Phases
+
+For a batch of N epics in the same phase:
+1. Orchestrator spawns **all N subagents simultaneously** (no delay needed)
+2. Each subagent operates independently in its own context
+3. Orchestrator monitors completion and logs Lamport events
+4. Failed subagents are re-spawned individually without affecting others
+
+### What Is Still Needed (Unchanged)
+
+- ✅ All 10 custom modes (unchanged — same slugs, same roles)
+- ✅ Lamport event tracking (`.lamport/wave7/event_log.jsonl`)
+- ✅ Manifest-based state (`docs/brain/EPIC-W7-NNN/manifest.json`)
+- ✅ Phase artifact chain (00-hotspots → 00-scope → 01-scope-boundary → ...)
+- ✅ Jane Street KB queries at phases 2, 4.5, 5, 5.V, 6
+- ✅ Custom mode restrictions (edit scope, MCP requirements)
+
+### What Is Obsolete (Do Not Use)
+
+- ❌ `_p0_NNN.sh`, `_p1_NNN.sh`, `_p2_NNN.sh` shell scripts
+- ❌ Bob CLI invocation: `bob --yolo --chat-mode MODE "$(cat /tmp/msg.txt)"`
+- ❌ GCP VM screen sessions for phase execution
+- ❌ `gcp-vm-wave-execution` skill for spawning agents
+- ❌ 12-second delay between parallel launches
+- ❌ SSH file persistence verification
+- ❌ `WAVE2_SHELL_WORKAROUND` pattern
+- ❌ `launch_wave7_phase1_batched.sh` and similar master launch scripts
+- ❌ `scripts/wave7/_pX_NNN.sh` building blocks
+
+---
+
 ## Phase-by-Phase Integration Matrix (CORRECTED)
 
 | Phase | Slash Command | Custom Mode | MCPs Used | Skills Used | Jane Street KB Hook | Status |
 |-------|---------------|-------------|-----------|-------------|---------------------|--------|
-| **0** | `/epic-intake` | `v12-phase0-hotspot` | jcodemunch, sequential-thinking | `gcp-vm-wave-execution` (implicit), `WAVE2_SHELL_WORKAROUND` (implicit) | ❌ No | ✅ Mapped |
+| **0** | `/epic-intake` | `v12-phase0-hotspot` | jcodemunch, sequential-thinking | None (V2: subagent spawned natively) | ❌ No | ✅ Mapped |
 | **1** | `/epic-scope-boundary` | `v12-phase1-scope` | jcodemunch, sequential-thinking | None | ❌ No | ✅ Mapped |
 | **1.5** | `/epic-scope-boundary --phase 1.5` | `v12-phase1-5-boundary` | jcodemunch, sequential-thinking | `scope-boundary-check` (implicit) | ❌ No | ✅ Mapped |
 | **2** | `/epic-plan` | `v12-phase2-architecture` | jcodemunch, sequential-thinking, graphify | `architecture-validation` (explicit) | ⚠️ Optional (extraction patterns) | ✅ Mapped |
 | **3** | `/epic-scan` | `v12-phase3-audit` | jcodemunch, sequential-thinking | None | ❌ No | ✅ Mapped |
 | **4** | `/epic-tickets` | `v12-phase4-tickets` | jcodemunch, sequential-thinking | None | ❌ No | ✅ Mapped |
 | **4.5** | `/epic-review-tickets` | `v12-phase4-5-review` | sequential-thinking | None | ✅ **MANDATORY** (ticket validation) | ✅ Automated |
-| **5** | `/epic-validate` | `v12-engineer` | jcodemunch, sequential-thinking | `gcp-vm-wave-execution` (implicit), `parallel-epic-execution` (implicit) | ✅ **MANDATORY** (implementation patterns) | ✅ Mapped |
+| **5** | `/epic-validate` | `v12-engineer` | jcodemunch, sequential-thinking | None (V2: subagent spawned natively) | ✅ **MANDATORY** (implementation patterns) | ✅ Mapped |
 | **5.V** | `/epic-verify-ticket` | `v12-phase5-v-verify` | jcodemunch, sequential-thinking | None | ✅ **MANDATORY** (DNA compliance) | ✅ Mapped |
 | **6** | `/epic-review-final` | `v12-phase6-review` | jcodemunch, sequential-thinking | None | ✅ **MANDATORY** (final audit) | ✅ Mapped |
 
 **CRITICAL CORRECTION**: All phases use **custom modes**, NOT generic `ask`/`plan`/`advanced` modes!
+**V2.3 NOTE**: Execution model is Bob IDE native subagents — no Bob Shell, no GCP VM scripts needed.
 
 ---
 

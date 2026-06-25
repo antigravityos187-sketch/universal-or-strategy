@@ -1,0 +1,20 @@
+{
+  "epic_id": "EPIC-W7-043",
+  "method": "SymmetryGuardSubmitFollowerBracket",
+  "file": "src/V12_002.Symmetry.Follower.cs",
+  "complexity": 16,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"]
+    },
+    "2": {
+      "status": "pending",
+      "outputs": []
+    }
+  }
+}

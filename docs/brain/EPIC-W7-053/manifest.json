@@ -1,43 +1,26 @@
 {
   "epic_id": "EPIC-W7-053",
-  "method": "RefreshActivePositionOrders",
-  "file": "V12_002.Orders.Management.StopSync.cs",
+  "method": "InitiateStopReplacement",
+  "file": "src/V12_002.Trailing.StopUpdate.cs",
   "complexity": 13,
   "phases": {
-    "phase0": {
+    "0": {
       "status": "completed",
-      "output": "00-hotspots.md",
-      "completed_at": "2026-06-22T04:01:37Z",
-      "agent": "v12-phase0-hotspot",
-      "bobcoins_used": 4
+      "outputs": ["00-hotspots.md"]
     },
-    "phase1": {
-      "status": "pending",
-      "dependencies": ["phase0"]
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"]
     },
-    "phase1.5": {
-      "status": "pending",
-      "dependencies": ["phase1"]
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"]
     },
-    "phase2": {
-      "status": "pending",
-      "dependencies": ["phase1.5"]
-    },
-    "phase3": {
-      "status": "pending",
-      "dependencies": ["phase2"]
-    },
-    "phase4": {
-      "status": "pending",
-      "dependencies": ["phase3"]
-    },
-    "phase5": {
-      "status": "pending",
-      "dependencies": ["phase4"]
-    },
-    "phase6": {
-      "status": "pending",
-      "dependencies": ["phase5"]
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "timestamp": "2026-06-24T03:39:08Z",
+      "agent": "v12-phase2-architecture"
     }
   }
 }

@@ -1,131 +1,122 @@
 # Phase 0: Hotspot Analysis - EPIC-W7-069
 
-**Agent**: v12-phase0-hotspot
-**Target Method**: ProcessIpcCommandCore
-**File**: V12_002.UI.IPC.cs
-**Complexity**: 13
-**Date**: 2026-06-22
+## Agent Tracking
+- **Agent Name**: v12-phase0-hotspot
+- **Bobcoins Used**: 0.77
+- **API Key**: jCodemunch MCP
+- **Execution Time**: 2026-06-23T02:47:40Z
 
-## Executive Summary
+## Target Method
+- **Method**: GetFsmExpectedPosition
+- **File**: src/V12_002.Symmetry.BracketFSM.cs
+- **Line**: 422
+- **Cyclomatic Complexity**: 14
+- **Kind**: method
 
-ProcessIpcCommandCore is a moderate-complexity method (CYC 13) that handles IPC command processing in the V12 trading strategy. This method exceeds the Jane Street strict threshold of CYC ≤ 8 and requires refactoring to improve maintainability and testability.
+## Complexity Metrics
+Based on jCodemunch analysis:
 
-## Complexity Analysis
+- **Cyclomatic Complexity**: 14 (HIGH - exceeds Jane Street threshold of 8)
+- **Max Nesting Depth**: 4
+- **Parameter Count**: 1
+- **Lines of Code**: 39
+- **Assessment**: HIGH complexity
 
-### Current Metrics
-- **Cyclomatic Complexity**: 13
-- **Threshold**: 8 (Jane Street strict standard)
-- **Overage**: +5 (62.5% over threshold)
-- **Priority**: Medium (CYC 9-15 range)
+### Complexity Context
+The method has a cyclomatic complexity of 14, which is 75% above the V12 DNA mandate of CYC ≤ 8 (Jane Street strict standard). This indicates:
+- Multiple decision paths (14 distinct execution paths)
+- Moderate nesting (depth 4)
+- Potential for cognitive overload during maintenance
+- Higher risk of race conditions in lock-free code
 
-### Complexity Breakdown
-The method contains multiple conditional branches for:
-- IPC command type validation
-- Command parameter parsing
-- State validation checks
-- Error handling paths
-- Response generation logic
+## Blast Radius Analysis
+Based on jCodemunch get_blast_radius:
 
-## Blast Radius Assessment
+- **Direct Dependents**: 0
+- **Importer Count**: 0
+- **Overall Risk Score**: 0.0 (LOW)
+- **Confirmed Files**: 0
+- **Potential Files**: 0
 
-### Direct Dependencies
-- Called by: IPC message handlers
-- Calls: State management methods, logging utilities
-- Shared State: FSM state objects, order tracking
+### Blast Radius Interpretation
+The method has **ZERO external dependencies**, meaning:
+- No other files import or call this method
+- Changes are isolated to the containing file
+- Refactoring risk is MINIMAL from a dependency perspective
+- This is an ideal candidate for extraction (low blast radius)
 
-### Impact Analysis
-- **Risk Level**: Medium
-- **Coupling**: Moderate (IPC subsystem isolated)
-- **Test Coverage**: Unknown (requires verification)
+## Call Hierarchy Analysis
+Based on jCodemunch get_call_hierarchy (depth=3):
 
-### Affected Components
-1. IPC command processing pipeline
-2. UI state synchronization
-3. Order management integration
-4. Logging and diagnostics
+### Callers (Incoming)
+- **Count**: 0
+- **Analysis**: No callers detected in the call graph
 
-## Hotspot Ranking
+### Callees (Outgoing)
+- **Count**: 0
+- **Analysis**: No callees detected (method may use only local logic or primitives)
 
-### Multi-Signal Analysis
-Based on jCodemunch hotspot analysis:
-- **Complexity Score**: 13/8 = 1.625x threshold
-- **Churn Risk**: Medium (IPC layer changes infrequently)
-- **Code Health**: Requires assessment via CodeScene
+### Call Hierarchy Interpretation
+The method appears to be:
+- **Self-contained**: No detected calls to other methods
+- **Potentially unused**: Zero callers suggests it may be dead code OR called via reflection/dynamic dispatch
+- **Low coupling**: Minimal dependencies on other methods
 
-### Comparison to Repository Hotspots
-ProcessIpcCommandCore ranks in the moderate complexity tier. Higher priority targets exist (CYC > 20), but this method is a good candidate for incremental improvement.
+## Hotspot Ranking Context
+From top 50 hotspots analysis, the target method does NOT appear in the top 50 hotspots list. This suggests:
+- Lower churn rate compared to top hotspots
+- Not a high-frequency change area
+- Complexity is the primary concern, not volatility
 
-## Refactoring Strategy
-
-### Recommended Approach
-1. **Extract Command Validators**: Separate validation logic into dedicated methods
-2. **Extract Command Handlers**: Create handler methods per command type
-3. **Extract Response Builders**: Isolate response generation logic
-4. **Simplify Control Flow**: Reduce nested conditionals
-
-### Expected Outcome
-- Target CYC: ≤ 8 per extracted method
-- Improved testability (unit test each handler)
-- Better separation of concerns
-- Maintained functionality (no behavioral changes)
-
-## Jane Street Alignment
-
-### Applicable Patterns
-- **Correctness by Construction**: Use enums for command types
-- **Single Responsibility**: Each handler does one thing
-- **Cognitive Simplicity**: CYC ≤ 8 for microsecond-latency reasoning
-
-### Violations to Address
-- **P1**: Cyclomatic complexity exceeds threshold
-- **P2**: Multiple responsibilities in single method
-- **P2**: Nested conditionals reduce readability
+### Top 5 Hotspots for Reference
+1. HydrateFromOpenPositions (CYC=34, hotspot_score=120.88)
+2. IsCommandForThisInstrument (CYC=38, hotspot_score=109.83)
+3. HandleTerminated (CYC=30, hotspot_score=102.04)
+4. SweepBrokerOrders (CYC=28, hotspot_score=99.55)
+5. HydrateWorkingOrdersFromBroker (CYC=23, hotspot_score=81.77)
 
 ## Risk Assessment
 
-### Refactoring Risks
-- **Low**: IPC layer is well-isolated
-- **Low**: Method has clear input/output contract
-- **Medium**: Requires careful testing of all command paths
+### Overall Risk: **LOW-MEDIUM**
 
-### Mitigation Strategy
-- Comprehensive unit tests before refactoring
-- Incremental extraction (one handler at a time)
-- Regression testing after each extraction
-- F5 verification in NinjaTrader IDE
+**Risk Factors**:
+- LOW Blast Radius: Zero external dependencies
+- LOW Churn: Not in top 50 hotspots
+- LOW Coupling: No detected callers/callees
+- HIGH Complexity: CYC=14 (75% above threshold)
+- MEDIUM Nesting: Depth 4 (manageable but not ideal)
 
-## Success Criteria
+**Risk Breakdown**:
+- **Refactoring Risk**: LOW (isolated method, no dependents)
+- **Testing Risk**: MEDIUM (14 paths to test)
+- **Maintenance Risk**: MEDIUM (cognitive complexity)
+- **Production Risk**: LOW (appears unused or low-traffic)
 
-### Phase 0 Completion
-- ✅ Hotspot analysis completed
-- ✅ Blast radius assessed
-- ✅ Refactoring strategy defined
-- ✅ Manifest updated
+## Recommendations
 
-### Epic Completion (Future Phases)
-- All extracted methods CYC ≤ 8
-- Unit tests for all handlers
-- Build passes (dotnet build)
-- F5 verification successful
-- deploy-sync.ps1 executed
+### Priority: MEDIUM
+This method is a good candidate for complexity reduction due to:
+1. **Isolated scope**: Zero blast radius makes refactoring safe
+2. **Complexity violation**: CYC=14 exceeds V12 DNA threshold
+3. **Low risk**: No external dependencies to break
 
-## Next Steps
+### Suggested Approach
+1. **Extract decision logic**: Break 14-path complexity into smaller methods (CYC ≤ 8 each)
+2. **Verify usage**: Confirm if method is actually called (may be dead code)
+3. **Add tests**: Cover all 14 execution paths before refactoring
+4. **Apply FSM pattern**: If state-dependent logic, consider FSM extraction
 
-**Phase 1**: Scope Definition
-- Define exact extraction boundaries
-- Identify all command types
-- Map validation rules
-- Plan test coverage
+### Complexity Reduction Strategy
+Target: Reduce from CYC=14 to CYC ≤ 8 (Jane Street standard)
+- Extract 2-3 helper methods
+- Each helper should have CYC ≤ 5
+- Maintain single responsibility per method
 
-**Phase 2**: Architecture Planning
-- Design handler interface
-- Plan validator structure
-- Define response builder pattern
-- Create extraction sequence
+## Phase 0 Completion
+- Hotspot analysis complete
+- Blast radius assessed
+- Call hierarchy mapped
+- Complexity metrics gathered
+- Risk assessment documented
 
-## Metadata
-
-**Bobcoins Used**: 4 (jCodemunch queries)
-**API Key**: jcodemunch-mcp
-**Execution Time**: <1 minute
-**Agent Mode**: v12-phase0-hotspot
+**Next Phase**: Phase 1 (Scope Definition)

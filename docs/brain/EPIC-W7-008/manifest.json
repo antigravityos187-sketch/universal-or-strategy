@@ -15,17 +15,24 @@
     },
     "phase_1": {
       "name": "Scope Definition",
-      "status": "pending",
+      "status": "completed",
+      "output_file": "00-scope.md",
+      "completed_at": "2026-06-24T20:05:40Z",
+      "agent": "v12-phase1-scope",
       "dependencies": ["phase_0"]
     },
     "phase_1_5": {
       "name": "Scope Boundary Validation",
       "status": "pending",
+      "output_file": "01-scope-boundary.md",
+      "agent": "v12-phase1-scope",
       "dependencies": ["phase_1"]
     },
     "phase_2": {
       "name": "Architecture Planning",
       "status": "pending",
+      "output_file": "02-architecture-plan.md",
+      "agent": "v12-phase2-architecture",
       "dependencies": ["phase_1_5"]
     },
     "phase_3": {

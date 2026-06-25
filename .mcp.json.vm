@@ -3,7 +3,10 @@
     "sequential-thinking": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": {
+        "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/home/malhitticrypto/.npm-global/bin:/home/malhitticrypto/.local/bin"
+      }
     }
   },
   "_comment": "VM-specific MCP configuration (V12.42 - Cleanup 2026-06-18). Phase-specific MCPs removed (replaced by custom modes in .bob/custom_modes.yaml). Essential MCPs: sequential-thinking (used by all phases). Excluded: jcodemunch-mcp.exe (Windows-only), greptile (auth required), worker-* (not needed for wave execution)."

@@ -1,0 +1,54 @@
+{
+  "epic_id": "EPIC-W7-010",
+  "method": "ShowModeSpecificControls",
+  "file": "src/V12_002.UI.Panel.Handlers.cs",
+  "complexity": 8,
+  "original_complexity": 20,
+  "refactored_by": "EPIC-CCN-15",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ],
+      "agent": "v12-phase0-hotspot",
+      "bobcoins_used": 1.54,
+      "timestamp": "2026-06-23T02:37:23Z",
+      "finding": "Method already refactored to CYC 8 by EPIC-CCN-15"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "agent": "v12-phase1-scope",
+      "bobcoins_used": 0.74,
+      "timestamp": "2026-06-24T18:59:38Z",
+      "recommendation": "CANCEL EPIC - already completed in EPIC-CCN-15"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "agent": "v12-phase1-5-boundary",
+      "bobcoins_used": 0.98,
+      "timestamp": "2026-06-23T23:54:40Z",
+      "boundary_validation": "PASS",
+      "scope_creep_risk": "NONE",
+      "recommendation": "CANCEL EPIC - redundant, target already meets all criteria"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "agent": "v12-phase2-architecture",
+      "bobcoins_used": 1.20,
+      "timestamp": "2026-06-24T03:05:25Z",
+      "architecture_type": "verification-only",
+      "code_changes_required": false,
+      "recommended_path": "Fast-Track Verification (Option A)"
+    }
+  }
+}

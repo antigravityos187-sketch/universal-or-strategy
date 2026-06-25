@@ -9,42 +9,84 @@
       "status": "completed",
       "agent": "v12-phase0-hotspot",
       "mode": "ask",
-      "outputs": ["00-hotspots.md"],
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "completed_at": "2026-06-22T04:01:56Z",
       "bobcoins_used": 4,
       "api_key": "jCodemunch MCP"
     },
     "phase_1": {
-      "status": "pending",
-      "dependencies": ["phase_0"]
+      "status": "completed",
+      "agent": "v12-phase1-scope",
+      "mode": "plan",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "completed_at": "2026-06-24T19:29:19Z",
+      "bobcoins_used": 1,
+      "api_key": "Sequential Thinking MCP",
+      "dependencies": [
+        "phase_0"
+      ]
     },
     "phase_1_5": {
-      "status": "pending",
-      "dependencies": ["phase_1"]
+      "status": "completed",
+      "agent": "v12-phase1-scope",
+      "mode": "plan",
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "completed_at": "2026-06-24T00:00:45.437954Z",
+      "bobcoins_used": 0,
+      "api_key": "none",
+      "dependencies": [
+        "phase_1"
+      ]
     },
     "phase_2": {
-      "status": "pending",
-      "dependencies": ["phase_1_5"]
+      "status": "completed",
+      "agent": "v12-phase2-architecture",
+      "mode": "plan",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "completed_at": "2026-06-24T03:37:37Z",
+      "bobcoins_used": 0,
+      "api_key": "none",
+      "dependencies": [
+        "phase_1_5"
+      ]
     },
     "phase_3": {
       "status": "pending",
-      "dependencies": ["phase_2"]
+      "dependencies": [
+        "phase_2"
+      ]
     },
     "phase_4": {
       "status": "pending",
-      "dependencies": ["phase_3"]
+      "dependencies": [
+        "phase_3"
+      ]
     },
     "phase_5": {
       "status": "pending",
-      "dependencies": ["phase_4"]
+      "dependencies": [
+        "phase_4"
+      ]
     },
     "phase_5_v": {
       "status": "pending",
-      "dependencies": ["phase_5"]
+      "dependencies": [
+        "phase_5"
+      ]
     },
     "phase_6": {
       "status": "pending",
-      "dependencies": ["phase_5_v"]
+      "dependencies": [
+        "phase_5_v"
+      ]
     }
   }
 }

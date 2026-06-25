@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 cd /home/malhitticrypto/universal-or-strategy
-export BOBSHELL_API_KEY='bob_prod_bob-admin_22HihoispYfg9TBX2smEUD6b18c9zwRRFnssCBDwTquLYiH4bvHLkntgiNVgt5DZtcfSUqE7LDbMBJxrb9W6cCQc_AKDtJW7uTVi1ZpoDxktCmz2WNcvi2REwiTe88STW7h4J'
-mkdir -p docs/brain/EPIC-CCN-013
+export BOBSHELL_API_KEY='bob_prod_bob-admin_aRSjzM4xwaEhbcjDdViPqh3giwmvtQksbGerdHvRxq8MPyN2X7KHUU9q6H9DYDBj2YaJwhkgDci2HcT1gRbS9d6_9MHxQ1wMuJVJYeJG2gbRe4NCDCAdf2GBd4wKLhQMg1hS'
+mkdir -p docs/brain/EPIC-W7-013
 mkdir -p logs/phase0
 
 cat > /tmp/phase0_msg_013.txt << 'EOFMSG'
-Execute Phase 0 (Hotspot Analysis) for EPIC-CCN-013.
+Execute Phase 0 (Hotspot Analysis) for EPIC-W7-013.
 
 **🚨 CRITICAL FILE I/O PROTOCOL - READ THIS FIRST 🚨**
 
@@ -43,13 +43,13 @@ Use these jCodemunch tools:
 4. get_symbol_complexity(repo='universal-or-strategy', symbol_id='UpdatePanelState')
 
 ### Step 2: Write 00-hotspots.md using execute_command
-Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-CCN-013/00-hotspots.md:
+Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-W7-013/00-hotspots.md:
 
 ```xml
 <execute_command>
 <command>
-cat > docs/brain/EPIC-CCN-013/00-hotspots.md << 'EOF'
-# Phase 0: Hotspot Analysis - EPIC-CCN-013
+cat > docs/brain/EPIC-W7-013/00-hotspots.md << 'EOF'
+# Phase 0: Hotspot Analysis - EPIC-W7-013
 
 ## Target Method
 - **Method**: UpdatePanelState
@@ -73,14 +73,14 @@ EOF</command>
 ```
 
 ### Step 3: Write manifest.json using execute_command
-Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-CCN-013/manifest.json:
+Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-W7-013/manifest.json:
 
 ```xml
 <execute_command>
 <command>
-cat > docs/brain/EPIC-CCN-013/manifest.json << 'EOF'
+cat > docs/brain/EPIC-W7-013/manifest.json << 'EOF'
 {
-  "epic_id": "EPIC-CCN-013",
+  "epic_id": "EPIC-W7-013",
   "method": "UpdatePanelState",
   "file": "src/V12_002.UI.Panel.StateSync.cs",
   "complexity": 16,
@@ -103,7 +103,7 @@ Use execute_command (NOT run_shell_command) to verify BOTH files were created:
 ```xml
 <execute_command>
 <command>
-ls -lh docs/brain/EPIC-CCN-013/00-hotspots.md && wc -l docs/brain/EPIC-CCN-013/00-hotspots.md</command>
+ls -lh docs/brain/EPIC-W7-013/00-hotspots.md && wc -l docs/brain/EPIC-W7-013/00-hotspots.md</command>
 <cwd>/home/malhitticrypto/universal-or-strategy</cwd>
 </execute_command>
 ```
@@ -112,7 +112,7 @@ ls -lh docs/brain/EPIC-CCN-013/00-hotspots.md && wc -l docs/brain/EPIC-CCN-013/0
 ```xml
 <execute_command>
 <command>
-ls -lh docs/brain/EPIC-CCN-013/manifest.json && cat docs/brain/EPIC-CCN-013/manifest.json | head -20</command>
+ls -lh docs/brain/EPIC-W7-013/manifest.json && cat docs/brain/EPIC-W7-013/manifest.json | head -20</command>
 <cwd>/home/malhitticrypto/universal-or-strategy</cwd>
 </execute_command>
 ```
@@ -135,5 +135,5 @@ Only use attempt_completion when:
 ALWAYS use execute_command with cwd parameter. NEVER use run_shell_command, write_to_file, or read_file in SSH mode.
 EOFMSG
 
-bob --yolo --chat-mode v12-phase0-hotspot "$(cat /tmp/phase0_msg_013.txt)" 2>&1 | tee logs/phase0/EPIC-CCN-013.log
+bob --yolo --chat-mode v12-phase0-hotspot "$(cat /tmp/phase0_msg_013.txt)" 2>&1 | tee logs/phase0/EPIC-W7-013.log
 echo "DONE_EXIT=$?"

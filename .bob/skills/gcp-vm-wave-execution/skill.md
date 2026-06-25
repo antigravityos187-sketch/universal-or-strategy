@@ -1,12 +1,31 @@
 ---
 name: gcp-vm-wave-execution
-description: Launch autonomous epic execution waves on GCP VMs using pre-configured golden images for parallel refactoring with automatic recovery and file persistence verification
+description: "[DEPRECATED FOR PHASE EXECUTION] GCP VM wave execution via Bob Shell. Use Bob IDE V2 subagents instead. This skill retained only for VM infrastructure management (git sync, build verification)."
 ---
 
 # GCP VM Wave Execution
+
+> ## 🚫 DEPRECATION NOTICE (Bob IDE V2 — 2026-06-24)
+>
+> **This skill is OBSOLETE for epic phase execution.**
+>
+> Bob IDE V2 introduces native subagent spawning. Each epic/phase now runs as a
+> subagent with its own clean context — directly in Bob IDE, with no VM, no screen
+> sessions, and no Bob Shell scripts required.
+>
+> **DO NOT USE this skill to launch wave phases.** Spawn subagents instead.
+> See: `docs/workflow/AUTONOMOUS_REFACTOR_INTEGRATION_MATRIX_V2.md` (V2.3)
+>
+> **This skill is RETAINED only for**:
+> - VM infrastructure management (if VM still needed for other purposes)
+> - Git sync verification between VM and local
+> - Reference: how the old model worked
+>
+> **CURRENT EXECUTION MODEL**: Bob IDE → spawn N subagents → each writes its own output
+
 ---
 
-## ⚠️ READ THIS FIRST (MANDATORY)
+## ⚠️ READ THIS FIRST (MANDATORY — for VM infrastructure use only)
 
 **CRITICAL**: This skill document contains essential information about VM setup and wave execution. You MUST read this entire document before ANY VM operation.
 
@@ -1203,3 +1222,77 @@ After every use of this skill:
 4. Test one script before deploying all 9
 
 **Reference**: `docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP.md` for complete procedure
+
+## Post-Phase Validation (V2.6 - MANDATORY)
+
+**CRITICAL**: After EVERY phase completion, run Integration Matrix V2 compliance validation.
+
+### Validation Protocol
+
+**After phase completes (N/N status):**
+
+```bash
+# Run validation script
+python scripts/validate_phase_compliance.py --all
+
+# Or validate specific epic
+python scripts/validate_phase_compliance.py EPIC-W7-001 1
+```
+
+### What Gets Validated
+
+1. **Custom Mode Compliance**:
+   - Verifies correct custom mode was used (from Integration Matrix V2)
+   - Checks for Sequential Thinking MCP usage
+   - Validates Agent Tracking section exists
+
+2. **Output Files**:
+   - Required phase output files exist
+   - Files are not empty
+   - Manifest updated correctly
+
+3. **Lamport Events**:
+   - Phase completion event logged
+   - Event schema correct
+
+### Blocking Conditions
+
+**Phase is NOT complete if validation fails:**
+- ❌ Wrong custom mode detected (e.g., `plan` instead of `v12-phase1-scope`)
+- ❌ Missing output files
+- ❌ No Sequential Thinking MCP evidence
+- ❌ Manifest not updated
+
+### Recovery Protocol
+
+**If validation fails:**
+
+1. **Identify Root Cause**:
+   ```bash
+   # Check which epics failed
+   python scripts/validate_phase_compliance.py --all | grep "FAILED"
+   ```
+
+2. **Fix and Re-run**:
+   - Delete invalid output files
+   - Regenerate scripts with CORRECT custom mode from Integration Matrix
+   - Re-run failed epics
+   - Re-validate
+
+3. **Document Failure**:
+   - Create `docs/brain/EPIC-XXX/validation-failure.md`
+   - Document what was wrong
+   - Document fix applied
+
+### Integration Matrix V2 Reference
+
+**ALWAYS consult before ANY phase:**
+- File: `docs/workflow/AUTONOMOUS_REFACTOR_INTEGRATION_MATRIX_V2.md`
+- Purpose: Authoritative source for custom mode selection
+- Status: Living document (updated as workflow evolves)
+
+**Building-Blocks vs Integration Matrix**:
+- Building-blocks: Script MECHANICS (--yolo, temp files, nohup)
+- Integration Matrix: Script WORKFLOW (custom mode, MCPs, skills)
+- NEVER copy custom mode from building-blocks
+- ALWAYS use custom mode from Integration Matrix V2

@@ -30,12 +30,14 @@ Phase 6 ← Phase 5.N.V ← Phase 5.N (Ticket Execution)
 
 ## ORCHESTRATION RULES
 
-- **AUTONOMOUS MANDATE**: You run continuously until ALL hotspots reach CYC ≤ 8
+- **AUTONOMOUS MANDATE**: Spawn subagents continuously until ALL hotspots reach CYC ≤ 8
+- **SUBAGENT MODEL**: Each epic/phase = one subagent with its own clean context (Bob IDE V2)
+- **PARALLEL EXECUTION**: Spawn ALL epics for a phase simultaneously — no delays needed
 - **MANIFEST-BASED**: Each phase is independent subtask with clear artifact handoff
 - **DIRECTOR GATES**: Only manual actions are F5 verification and approval to continue
-- **JANE STREET GODMODE**: ALL 299 violations MUST be fixed before autonomous mode
-- **CHECKPOINT SYSTEM**: Save progress after each epic completion
-- **FAILURE RECOVERY**: If any epic fails, log failure and continue with next epic
+- **CHECKPOINT SYSTEM**: Save progress after each phase batch completion
+- **FAILURE RECOVERY**: If any subagent fails, re-spawn that epic individually
+- **NO SCRIPTS**: Do NOT generate shell scripts. Spawn subagents directly.
 
 ---
 
@@ -121,38 +123,49 @@ Total CYC Debt  : [current] (started at [baseline])
 ============================================================
 ```
 
-### Step B: Run Epic via /epic-run
+### Step B: Spawn Phase Subagents (Bob IDE V2)
 
-**Switch to: Orchestrator mode**
+Spawn one subagent per epic for the current phase, all in parallel:
 
-Hand off:
 ```
-TASK: Execute Epic via /epic-run
-EPIC: EPIC-CCN-X
-TARGET: [MethodName from epic_candidates.json]
-PROTOCOL:
-  1. Run: /epic-run EPIC-CCN-X "[MethodName] extraction"
-  2. /epic-run will handle:
-     - Phase 0: Hotspot analysis
-     - Phase 1: Intake
-     - Phase 2: Plan
-     - Phase 2.3: Scan (Sentinel audit)
-     - Phase 3: Validate
-     - Phase 4: Tickets
-     - Execution Pipeline (all tickets)
-     - Phase 6: PR submission
-  3. STOP when /epic-run outputs [EPIC-COMPLETE]
+FOR EACH epic in current_phase_queue:
+  SPAWN SUBAGENT:
+    mode: <custom-mode-slug for this phase>  # from Integration Matrix V2.3
+    context:
+      - epic_id: EPIC-W7-NNN
+      - method: [MethodName]
+      - cyc: [current CYC]
+      - source_file: [src/V12_002.*.cs]
+      - input_artifact: docs/brain/EPIC-W7-NNN/[previous-phase-output].md
+    task: |
+      Read input artifact. Execute [phase name] work.
+      Write output to docs/brain/EPIC-W7-NNN/[output-filename].md
+      Return: {status, output_path, key_metrics}
+
+SPAWN ALL simultaneously — no delay needed.
+WAIT for all subagents to complete.
+COLLECT results (status + output paths).
 ```
 
-**CRITICAL**: `/epic-run` includes `/pr-loop` in Step F of the Execution Pipeline. Each ticket automatically goes through the perfection loop.
+**Phase → Custom Mode mapping** (from Integration Matrix V2.3):
+- Phase 0 → `v12-phase0-hotspot`
+- Phase 1 → `v12-phase1-scope`
+- Phase 1.5 → `v12-phase1-5-boundary`
+- Phase 2 → `v12-phase2-architecture`
+- Phase 3 → `v12-phase3-audit`
+- Phase 4 → `v12-phase4-tickets`
+- Phase 4.5 → `v12-phase4-5-review`
+- Phase 5 → `v12-engineer`
+- Phase 5.V → `v12-phase5-v-verify`
+- Phase 6 → `v12-phase6-review`
 
-### Step C: Verify Epic Completion
+### Step C: Verify Phase Batch Completion
 
-When `/epic-run` outputs [EPIC-COMPLETE], verify:
-- PHS = 100/100
-- CYC reduction achieved
-- All tickets merged
-- No Jane Street violations introduced
+When all subagents for the phase report back, verify:
+- All output artifacts written (check `docs/brain/EPIC-W7-NNN/[output].md` exists)
+- No subagents failed (re-spawn any failures individually)
+- Log Lamport events for all completions
+- Update manifests for all epics in the batch
 
 ### Step D: Update Progress Log
 

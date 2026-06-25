@@ -10,6 +10,20 @@
       "timestamp": "2026-06-22T04:05:42Z",
       "agent": "v12-phase0-hotspot",
       "bobcoins": 1.96
+    },
+    "phase_1": {
+      "status": "completed",
+      "output": "00-scope.md",
+      "timestamp": "2026-06-24T19:47:10.346514+00:00",
+      "agent": "v12-phase1-scope",
+      "bobcoins": 0.96
+    },
+    "phase_1.5": {
+      "status": "completed",
+      "output": "01-scope-boundary.md",
+      "timestamp": "2026-06-24T00:37:47Z",
+      "agent": "v12-phase1-scope",
+      "bobcoins": 0.99
     }
   }
 }

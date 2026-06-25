@@ -1,0 +1,44 @@
+{
+  "epic_id": "EPIC-W7-040",
+  "method": "FindTargetOrderForPosition",
+  "file": "src/V12_002.Trailing.Breakeven.cs",
+  "complexity": 10,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "timestamp": "2026-06-24T19:29:30Z",
+      "agent": "v12-phase1-scope",
+      "scope_defined": true,
+      "extraction_candidates": 2,
+      "target_cyc_reduction": "10 to 4"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "validation_result": "PASS",
+      "scope_creep_detected": false,
+      "timestamp": "2026-06-23T23:59:40Z"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "helper_methods": 3,
+      "target_cyc": 8,
+      "extraction_approach": "minimal_viable",
+      "timestamp": "2026-06-24T03:37:18Z"
+    }
+  }
+}
