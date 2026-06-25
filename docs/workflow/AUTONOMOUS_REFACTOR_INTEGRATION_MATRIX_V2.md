@@ -1,22 +1,107 @@
 # Autonomous Refactor Integration Matrix V2
 
-**Date**: 2026-06-21
-**Version**: 2.2 (Jane Street KB Hooks + Explicit Skills)
+**Date**: 2026-06-24
+**Version**: 2.4 (Bob IDE V2 — 3-Tier Subagent Architecture — AUTHORITATIVE)
 **Purpose**: Map skills, MCPs, custom modes, slash commands, and Jane Street KB hooks across all 10 phases
-**Context**: Wave 7 preparation - validate complete integration with custom modes
+**Context**: Wave 7 execution — 3-tier subagent model (1 top orch → 10 phase orcbs → 161 epic workers)
 
 ## Executive Summary
 
 This document validates that the `/autonomous-refactor` master orchestrator properly integrates all 10 phases of the V12 epic workflow, showing which MCPs, skills, and **custom modes** each phase uses.
 
-### Key Findings (V2 Corrections)
+### Key Findings (V2.4 — 3-Tier Architecture)
 
-✅ **All 10 phases mapped to custom modes** (NOT generic modes!)  
-✅ **Custom modes defined in `.bob/custom_modes.yaml`**  
-✅ **MCP usage validated for all custom modes**  
-✅ **Skill references documented (1 explicit, 5 implicit)**  
-❌ **CRITICAL**: Greptile MCP referenced in system prompt but NOT used in any phase  
-⚠️ **Gap identified**: Several phases lack explicit skill references
+✅ **All 10 phases mapped to custom modes** (NOT generic modes!)
+✅ **Custom modes defined in `.bob/custom_modes.yaml`**
+✅ **MCP usage validated for all custom modes**
+✅ **Bob IDE V2 native subagent model CONFIRMED WORKING** (Wave 7 Phase 1: 161/161 epics)
+✅ **All skills updated to V12.28 subagent pattern** (no Bob Shell, no scripts)
+✅ **3-TIER SUBAGENT ARCHITECTURE** — 1 top orch → 10 phase orchs → 161 epic workers
+✅ **100% COMPLETION ENFORCEMENT** — per-phase verification loop before hand-off
+✅ **Phase Orchestrator Templates** — `docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`
+❌ **OBSOLETE**: `gcp-vm-wave-execution` skill — marked retired, do not use
+❌ **OBSOLETE**: Greptile MCP referenced in old system prompts — not used in any phase
+❌ **OBSOLETE**: 2-tier model (top orch spawning workers directly) — replaced by 3-tier
+
+---
+
+## 3-Tier Subagent Architecture (V2.4 — NEW)
+
+### Why 3 Tiers?
+
+The previous 2-tier model (Tier 1 Orchestrator → N workers) had one weakness:
+**The top-level orchestrator's context window would grow unbounded** as it tracked 161 results per phase × 10 phases = 1,610 result summaries accumulating in one session.
+
+The 3-tier model solves this:
+- **Tier 1** (top orchestrator) only tracks 10 phase results — stays lightweight the entire wave
+- **Tier 2** (phase orchestrators) each handle 161 results — clean context per phase, discarded after
+- **Tier 3** (epic workers) — leaf nodes, clean context, only write artifacts and return summary
+
+### Architecture Diagram
+
+```
+Tier 1: Top-Level Orchestrator (autonomous-refactor mode — YOUR SESSION)
+   Spawns Phase Orchestrators SEQUENTIALLY
+   Only advances to Ph(N+1) after Ph(N) reports VERIFIED_COMPLETE
+   Total workload tracked by Tier 1: 10 phase completion reports
+   |
+   +-> Ph0 Orch -> [161 v12-phase0-hotspot workers in parallel]  -> VERIFIED_COMPLETE
+   +-> Ph1 Orch -> [161 v12-phase1-scope workers in parallel]    -> VERIFIED_COMPLETE
+   +-> Ph1.5 Orch-> [161 v12-phase1-5-boundary workers]          -> VERIFIED_COMPLETE
+   +-> Ph2 Orch -> [161 v12-phase2-architecture workers]         -> VERIFIED_COMPLETE
+   +-> Ph3 Orch -> [161 v12-phase3-audit workers]                -> VERIFIED_COMPLETE
+   +-> Ph4 Orch -> [161 v12-phase4-tickets workers]              -> VERIFIED_COMPLETE
+   +-> Ph4.5 Orch-> [161 v12-phase4-5-review workers]            -> VERIFIED_COMPLETE
+   +-> Ph5 Orch -> [161 v12-engineer workers]                    -> VERIFIED_COMPLETE
+   +-> Ph5.V Orch-> [161 v12-phase5-v-verify workers]            -> VERIFIED_COMPLETE
+   +-> Ph6 Orch -> [161 v12-phase6-review workers]               -> WAVE_COMPLETE
+```
+
+### Peak Concurrency
+
+- **Agents in flight at peak**: 1 (Tier 1) + 1 (Phase Orch) + 161 (workers) = **163**
+- **Context isolation**: Each worker has its own clean context — no cross-epic contamination
+- **Phase Orchestrator lifecycle**: spawned → runs verification loop → reports back → context discarded
+
+### 100% Completion Enforcement (Per Phase)
+
+Every Phase Orchestrator (Tier 2) MUST run this loop before reporting VERIFIED_COMPLETE:
+
+```
+Round 1: Spawn all 161 workers simultaneously. Collect results.
+If < 161/161 success:
+  Log failures to .lamport/wave7/event_log.jsonl
+  Write failure-analysis.md for each failed epic
+  Re-spawn ONLY failed workers (never re-run successes)
+  Round 2... Round 3...
+After 3 rounds still incomplete:
+  Report HARD_FAILURE to Tier 1 with stuck epic list
+  Tier 1 escalates to Director
+```
+
+**Phase-specific success criteria (must ALL be true for 100% to pass):**
+
+| Phase | Success Criteria |
+|-------|-----------------|
+| 0 | `00-hotspots.md` exists and non-empty |
+| 1 | `scope_confirmed_single_method=true` |
+| 1.5 | `boundary_verdict=PASS` |
+| 2 | `max_cyc_projected <= 8` |
+| 3 | `dna_verdict=PASS` |
+| 4 | `ticket_count >= 1` |
+| 4.5 | `review_verdict=PASS` |
+| 5 | `cyc_achieved <= 8` AND `build_passed=true` |
+| 5.V | `verification_verdict=PASS` (independent check) |
+| 6 | `wave_ready=true` AND `final_cyc <= 8` |
+
+### Reference: Phase Orchestrator Templates
+
+All 10 Phase Orchestrator `description` payloads are fully specified in:
+**`docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`**
+
+This document contains the exact text to pass to each `spawn_subagent()` call from Tier 1.
+
+---
 
 ---
 
@@ -117,10 +202,9 @@ For a batch of N epics in the same phase:
 - ✅ `jcodemunch-mcp` (MANDATORY) - search_symbols, get_hotspots, get_symbol_complexity, get_blast_radius
 - ✅ `sequential-thinking` (MANDATORY) - Break down analysis into explicit steps
 
-**Groups**: read, edit (md/json/yaml/yml/txt only), command, mcp  
+**Groups**: read, edit (md/json/yaml/yml/txt only), command, mcp
 **Skills**:
-- `.bob/skills/gcp-vm-wave-execution/` (implicit) - VM parallel execution
-- `plugins/multi-agent-orchestrator/WAVE2_SHELL_WORKAROUND.md` (implicit) - SSH file I/O
+- `.bob/skills/autonomous-refactor/SKILL.md` — orchestrator spawns this mode as subagent
 
 **Output**: `docs/brain/EPIC-{ID}/00-hotspots.md`, `manifest.json`
 
@@ -147,9 +231,9 @@ For a batch of N epics in the same phase:
 - ✅ `jcodemunch-mcp` (MANDATORY) - get_symbol_source, get_blast_radius, find_references
 - ✅ `sequential-thinking` (MANDATORY) - Validate no scope creep
 
-**Groups**: read, edit (md/json/yaml/yml/txt only), command, mcp  
+**Groups**: read, edit (md/json/yaml/yml/txt only), command, mcp
 **Skills**:
-- `plugins/scope-boundary-check/SKILL.md` (implicit) - Validation logic
+- `.bob/skills/epic-scope-boundary/SKILL.md` — subagent instructions for this phase
 
 **Output**: `docs/brain/EPIC-{ID}/01-scope-boundary.md`
 
@@ -165,9 +249,9 @@ For a batch of N epics in the same phase:
 - ✅ `sequential-thinking` (MANDATORY) - Validate architecture decisions
 - ✅ `graphify` (MANDATORY) - Codebase structure visualization
 
-**Groups**: read, edit (md/json/yaml/yml/txt only), command, mcp, browser  
+**Groups**: read, edit (md/json/yaml/yml/txt only), command, mcp, browser
 **Skills**:
-- ✅ `@plugins/architecture-validation/SKILL.md` (explicit)
+- `.bob/skills/epic-plan/SKILL.md` — subagent instructions for this phase
 
 **Output**: `docs/brain/EPIC-{ID}/02-architecture-plan.md`
 
@@ -229,10 +313,9 @@ For a batch of N epics in the same phase:
 - ✅ `jcodemunch-mcp` (MANDATORY) - get_symbol_source, get_context_bundle, plan_refactoring
 - ✅ `sequential-thinking` (MANDATORY) - Validate implementation
 
-**Groups**: read, edit (ALL files), command, mcp, browser  
+**Groups**: read, edit (ALL files), command, mcp, browser
 **Skills**:
-- `plugins/parallel-epic-execution/SKILL.md` (implicit) - Local parallel execution
-- `.bob/skills/gcp-vm-wave-execution/` (implicit) - VM execution
+- None — `v12-engineer` mode handles this phase directly as subagent
 
 **Output**: `docs/brain/EPIC-{ID}/ticket-X-completion.md`
 

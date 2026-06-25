@@ -1,440 +1,220 @@
 ---
 name: autonomous-refactor
 description: >-
-  Master autonomous refactoring orchestrator. Runs nested loops - outer loop
-  executes EPICs sequentially via individual phase commands, inner loop drives
-  each PR to 100/100 via /pr-loop. Continues until entire codebase reaches CYC ≤
-  8 with Jane Street compliance.
+  Wave orchestrator for autonomous complexity refactoring (Bob IDE V2).
+  3-tier subagent architecture: 1 top-level orchestrator spawns 10 phase
+  orchestrators sequentially; each phase orchestrator spawns 161 epic workers
+  in parallel. 100% completion enforced per phase before hand-off.
+  All 161 methods reach CYC <= 8 (Jane Street strict standard).
 metadata:
   user-invocable: true
   disable-model-invocation: true
-  argument-hint: '[--start-epic EPIC-CCN-X] [--target-cyc N] [--dry-run]'
+  argument-hint: '[--phase PHASE] [--start-epic EPIC-W7-NNN] [--target-cyc N]'
 ---
 
-# AUTONOMOUS REFACTOR -- MASTER ORCHESTRATOR
+# AUTONOMOUS REFACTOR — WAVE ORCHESTRATOR
 
-**Mode:** Orchestrator (Master Control)
-**Protocol:** V12.25 Photon Kernel -- Manifest-Based Independent Subtasks
-**Goal:** Refactor entire codebase to CYC ≤ 8, 100/100 PHS, Jane Street compliance
+**Protocol:** V12.28 Bob IDE V2 — 3-Tier Subagent Architecture
+**Goal:** All 161 methods CYC > 8 → CYC ≤ 8, Jane Street strict standard
 
-You are the Master Autonomous Refactoring Orchestrator. You coordinate the complete codebase transformation using the V12.25 manifest-based workflow:
+---
 
-**OUTER LOOP**: Individual phase commands → Execute EPICs sequentially (Phase 0 through Phase 6)
-**INNER LOOP**: `/pr-loop` → Drive each PR to 100/100 PHS (runs AFTER Phase 6)
+## ARCHITECTURE: 3-TIER SUBAGENT TREE
 
-You do NOT read files, run commands, or edit files directly. You ONLY orchestrate mode switches and track progress.
-
-**V12.25 WORKFLOW** (replaces deprecated `/epic-run`):
 ```
-Phase 0 → Phase 1 → Phase 1.5 → Phase 2 → Phase 3 → Phase 4 → Phase 4.5
-                                                                    ↓
-Phase 6 ← Phase 5.N.V ← Phase 5.N (Ticket Execution)
-         ← Phase 5.2.V ← Phase 5.2
-         ← Phase 5.1.V ← Phase 5.1
+Tier 1: Top-Level Orchestrator (THIS SESSION — autonomous-refactor mode)
+   |
+   |-- spawns SEQUENTIALLY (wait for VERIFIED_COMPLETE before next phase)
+   |
+   +--> Phase 0 Orchestrator  (autonomous-refactor)  → spawns 161 workers → v12-phase0-hotspot
+   +--> Phase 1 Orchestrator  (autonomous-refactor)  → spawns 161 workers → v12-phase1-scope
+   +--> Phase 1.5 Orchestrator (autonomous-refactor) → spawns 161 workers → v12-phase1-5-boundary
+   +--> Phase 2 Orchestrator  (autonomous-refactor)  → spawns 161 workers → v12-phase2-architecture
+   +--> Phase 3 Orchestrator  (autonomous-refactor)  → spawns 161 workers → v12-phase3-audit
+   +--> Phase 4 Orchestrator  (autonomous-refactor)  → spawns 161 workers → v12-phase4-tickets
+   +--> Phase 4.5 Orchestrator (autonomous-refactor) → spawns 161 workers → v12-phase4-5-review
+   +--> Phase 5 Orchestrator  (autonomous-refactor)  → spawns 161 workers → v12-engineer
+   +--> Phase 5.V Orchestrator (autonomous-refactor) → spawns 161 workers → v12-phase5-v-verify
+   +--> Phase 6 Orchestrator  (autonomous-refactor)  → spawns 161 workers → v12-phase6-review
 ```
 
-**PR submission happens AFTER Phase 6** via separate `/pr-loop` command.
+**Total agents in flight at peak:** 1 top + 1 phase orch + 161 workers = 163 concurrent agents per phase.
+
+---
+
+## TIER 1: TOP-LEVEL ORCHESTRATOR PROTOCOL
+
+1. Read `docs/brain/wave7-epic-list.json` — all 161 epic IDs + metadata
+2. Create `.lamport/wave7/event_log.jsonl` (if not exists)
+3. Spawn Phase Orchestrators **sequentially** using templates in `docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`
+4. Each Phase Orchestrator receives:
+   - Phase number + mode map
+   - Full epic list (161 entries)
+   - Jane Street KB query results (for phases that require them)
+5. **WAIT** for `"status": "VERIFIED_COMPLETE"` before spawning next phase orchestrator
+6. On `HARD_FAILURE`: write incident report → escalate to Director → do NOT proceed to next phase
+
+---
+
+## TIER 2: PHASE ORCHESTRATOR PROTOCOL
+
+Each Phase Orchestrator (`autonomous-refactor` mode) runs this loop:
+
+```
+STEP 1: Verify prerequisite artifacts from previous phase (all 161 exist)
+         If missing → HALT → report "prerequisite not met" to Tier 1
+
+STEP 2: (Phases 2, 4.5, 5, 5.V, 6 only) Run Jane Street KB queries:
+         python scripts/query_kb.py "<relevant term>"
+         Capture results to include in worker descriptions
+
+STEP 3: Spawn all 161 epic workers SIMULTANEOUSLY (no delay needed)
+         mode: <phase-specific custom mode>
+         description: <see PHASE_ORCHESTRATOR_TEMPLATES.md for exact payload>
+
+STEP 4: COMPLETION VERIFICATION LOOP (MANDATORY — 100% enforcement):
+         Round 1: collect all worker results
+         If < 161/161 success:
+           Log failures to .lamport/wave7/event_log.jsonl
+           Write failure-analysis.md for each failed epic
+           Re-spawn ONLY the failed workers (Round 2)
+         Repeat up to 3 rounds
+         After 3 rounds: if still incomplete → HARD_FAILURE → report to Tier 1
+
+STEP 5: Final validation checks (phase-specific — see templates)
+         e.g. Phase 1.5: boundary_verdict=PASS for all 161
+              Phase 5: cyc_achieved <= 8 + build_passed for all 161
+              Phase 5.V: verification_verdict=PASS (independent check)
+
+STEP 6: Report VERIFIED_COMPLETE to Tier 1
+```
+
+---
+
+## TIER 3: EPIC WORKER SPAWN PATTERN
+
+Each epic worker receives a clean-context subagent spawn:
+
+```
+spawn_subagent(
+  mode: <phase-specific custom mode slug>
+  description: |
+    Epic: EPIC-W7-NNN
+    Method: [MethodName] (CYC: N)
+    Source: src/V12_002.*.cs
+    Input: docs/brain/EPIC-W7-NNN/[previous-phase-output].md
+    Task: Read input. Execute phase work.
+          Write output to docs/brain/EPIC-W7-NNN/[output].md
+          Return: {status, output_path, <phase-specific metrics>}
+)
+```
+
+### Phase → Custom Mode Map
+
+| Phase | Custom Mode Slug | Output Artifact | 100% Check |
+|-------|-----------------|-----------------|------------|
+| 0 | `v12-phase0-hotspot` | `00-hotspots.md` | file exists + non-empty |
+| 1 | `v12-phase1-scope` | `00-scope.md` | scope_confirmed_single_method=true |
+| 1.5 | `v12-phase1-5-boundary` | `01-scope-boundary.md` | boundary_verdict=PASS |
+| 2 | `v12-phase2-architecture` | `02-architecture-plan.md` | max_cyc_projected <= 8 |
+| 3 | `v12-phase3-audit` | `03-audit-report.md` | dna_verdict=PASS |
+| 4 | `v12-phase4-tickets` | `04-tickets.md` | ticket_count >= 1 |
+| 4.5 | `v12-phase4-5-review` | `04-5-ticket-review.md` | review_verdict=PASS |
+| 5 | `v12-engineer` | `ticket-X-completion.md` | cyc_achieved <= 8 + build_passed |
+| 5.V | `v12-phase5-v-verify` | `ticket-X-verification.md` | verification_verdict=PASS (independent) |
+| 6 | `v12-phase6-review` | `05-completion-report.md` | wave_ready=true + final_cyc <= 8 |
+
+---
+
+## 100% COMPLETION ENFORCEMENT
+
+**The wave is NOT complete until every single phase reports VERIFIED_COMPLETE.**
+
+- Phase orchestrator NEVER hands off with any epic still pending
+- Re-spawn failures individually (never re-run successes)
+- 3 retry rounds max → then HARD_FAILURE escalation
+- Phase 5.V is an **independent** verification pass — re-triggers Phase 5 for any failures
+- Phase 6 runs a final `complexity_audit.py` scan — zero methods > 8 required
+
+---
+
+## NEVER USE (Obsolete — V1 Bob Shell patterns)
+
+- ❌ `_p0_NNN.sh`, `_p1_NNN.sh`, `_p2_NNN.sh` shell scripts
+- ❌ `bob --yolo --chat-mode MODE "$(cat /tmp/msg.txt)"`
+- ❌ GCP VM screen sessions
+- ❌ `gcp-vm-wave-execution` skill
+- ❌ 12-second delays between launches
+- ❌ "Switch to: Advanced mode" — does not exist
+- ❌ `/epic-run` — deprecated monolithic command
+- ❌ 2-tier model (orchestrator → workers directly without phase orchestrator)
 
 ---
 
 ## ORCHESTRATION RULES
 
-- **AUTONOMOUS MANDATE**: You run continuously until ALL hotspots reach CYC ≤ 8
-- **MANIFEST-BASED**: Each phase is independent subtask with clear artifact handoff
-- **DIRECTOR GATES**: Only manual actions are F5 verification and approval to continue
-- **JANE STREET GODMODE**: ALL 299 violations MUST be fixed before autonomous mode
-- **CHECKPOINT SYSTEM**: Save progress after each epic completion
-- **FAILURE RECOVERY**: If any epic fails, log failure and continue with next epic
+- **SEQUENTIAL PHASES**: Phase N+1 never starts until Phase N is VERIFIED_COMPLETE
+- **PARALLEL WORKERS**: All 161 workers within a phase launch simultaneously
+- **ISOLATION**: Each subagent has clean context; only summary returns to orchestrator
+- **LAMPORT**: Log all transitions to `.lamport/wave7/event_log.jsonl`
+- **JANE STREET KB**: `python scripts/query_kb.py "<term>"` before phases 2, 4.5, 5, 5.V, 6
+- **100% MANDATE**: Each phase NOT complete until N/N = 161/161
+- **RECOVERY**: Re-spawn failed subagents individually; log failures
+- **xUnit ONLY**: `[Fact]` / `Assert.Equal()` — NEVER NUnit/MSTest
+- **UTF-8**: All files UTF-8 (no BOM)
 
 ---
 
-## PREREQUISITES (CRITICAL - CHECK FIRST)
+## PHASE SEQUENCE
 
-Before starting autonomous refactoring, verify:
-
-### 1. GitHub Branch Protection Complete
 ```
-TASK: Verify GitHub Rules Setup
-PROTOCOL:
-  1. Check: Branch protection rules exist for main
-  2. Check: Required status check "Verify src/ vs non-src/ Separation" is enabled
-  3. Check: CODEOWNERS file exists
-  4. If ANY missing: HALT and report "GitHub rules incomplete - run Phase 6 first"
+Ph0 Orch (161 workers) → Ph1 Orch (161) → Ph1.5 Orch (161) → Ph2 Orch (161)
+     → Ph3 Orch (161) → Ph4 Orch (161) → Ph4.5 Orch (161)
+          → Ph5 Orch (161) → Ph5.V Orch (161) → Ph6 Orch (161)
+                                                      → WAVE 7 COMPLETE
 ```
 
-### 2. Jane Street GODMODE Violations Fixed
-```
-TASK: Check Jane Street Compliance
-PROTOCOL:
-  1. Run: python scripts/jane_street_rule_checker.py src/ --severity P0 --json
-  2. Count P0 violations
-  3. If P0 violations > 0: HALT and report "299 Jane Street violations must be fixed first"
-  4. Emit: [GODMODE-READY] Zero P0 violations
-```
-
-### 3. Baseline Metrics Established
-```
-TASK: Capture Baseline Metrics
-PROTOCOL:
-  1. Run: python scripts/epic_planner.py
-  2. Read: epic_candidates.json
-  3. Count total hotspots with CYC > 8
-  4. Calculate total CYC debt (sum of all CYC > 8)
-  5. Emit: [BASELINE] X hotspots, Y total CYC debt
-```
-
-**GATE 0:**
-> "Prerequisites check: GitHub rules [PASS/FAIL], Jane Street GODMODE [PASS/FAIL], Baseline [X hotspots, Y CYC debt]. Type START to begin autonomous refactoring or FIX to address prerequisites."
-
-- START: Proceed to Phase 1
-- FIX: HALT and report which prerequisites failed
+Each arrow represents: VERIFIED_COMPLETE handoff
 
 ---
 
-## PHASE 1: INITIALIZE AUTONOMOUS SESSION
+## LAMPORT EVENT SCHEMA
 
-**Switch to: Advanced mode**
-
-Hand off:
-```
-TASK: Initialize Autonomous Refactoring Session
-PROTOCOL:
-  1. Create session tracking:
-     python scripts/session_snapshot.py init "YYYY-MM-DD-autonomous-refactor" "Orchestrator" "Full codebase refactoring to CYC ≤ 8"
-  2. Create progress log: docs/brain/autonomous_refactor_progress.md
-  3. Initialize with:
-     - Start time
-     - Baseline metrics (from Gate 0)
-     - Epic queue (from epic_candidates.json)
-     - Target: CYC ≤ 8 for all methods
-  4. Emit: [SESSION-INITIALIZED] Session ID: <session-id>
+```json
+{
+  "timestamp": "ISO8601",
+  "lamport_clock": 42,
+  "epic_id": "EPIC-W7-NNN",
+  "phase": "1",
+  "tier": "worker|phase_orch|top_orch",
+  "event_type": "phase_complete|phase_failed|phase_orch_start|phase_orch_verified_complete|wave_complete",
+  "status": "success|failure|hard_failure",
+  "output_artifact": "docs/brain/EPIC-W7-NNN/00-scope.md",
+  "retry_round": 0
+}
 ```
 
 ---
 
-## PHASE 2: EPIC EXECUTION LOOP (OUTER LOOP)
+## FAILURE RECOVERY
 
-For each epic in epic_candidates.json (sorted by composite score, highest first):
-
-### Step A: Epic Status Report
-
-Output (you generate this, no mode switch):
-```
-[AUTONOMOUS-REFACTOR] Progress Report
-============================================================
-Completed Epics : [N of M]
-Current Epic    : EPIC-CCN-X
-Target Method   : [MethodName] (CYC: [before])
-Remaining Epics : [list with scores]
-Total CYC Debt  : [current] (started at [baseline])
-============================================================
-```
-
-### Step B: Run Epic via /epic-run
-
-**Switch to: Orchestrator mode**
-
-Hand off:
-```
-TASK: Execute Epic via /epic-run
-EPIC: EPIC-CCN-X
-TARGET: [MethodName from epic_candidates.json]
-PROTOCOL:
-  1. Run: /epic-run EPIC-CCN-X "[MethodName] extraction"
-  2. /epic-run will handle:
-     - Phase 0: Hotspot analysis
-     - Phase 1: Intake
-     - Phase 2: Plan
-     - Phase 2.3: Scan (Sentinel audit)
-     - Phase 3: Validate
-     - Phase 4: Tickets
-     - Execution Pipeline (all tickets)
-     - Phase 6: PR submission
-  3. STOP when /epic-run outputs [EPIC-COMPLETE]
-```
-
-**CRITICAL**: `/epic-run` includes `/pr-loop` in Step F of the Execution Pipeline. Each ticket automatically goes through the perfection loop.
-
-### Step C: Verify Epic Completion
-
-When `/epic-run` outputs [EPIC-COMPLETE], verify:
-- PHS = 100/100
-- CYC reduction achieved
-- All tickets merged
-- No Jane Street violations introduced
-
-### Step D: Update Progress Log
-
-**Switch to: Advanced mode**
-
-Hand off:
-```
-TASK: Update Progress Log
-PROTOCOL:
-  1. Append to docs/brain/autonomous_refactor_progress.md:
-     - Epic: EPIC-CCN-X
-     - Status: COMPLETE
-     - CYC: [before] → [after]
-     - PHS: 100/100
-     - Commits: [list]
-     - Duration: [time]
-  2. Update session snapshot:
-     python scripts/session_snapshot.py record-read "session-id" "docs/brain/EPIC-CCN-X/EXECUTION_GUIDE.md" "full"
-  3. Emit: [PROGRESS-UPDATED]
-```
-
-### Step E: Check Completion Criteria
-
-**Switch to: Advanced mode**
-
-Hand off:
-```
-TASK: Check if Refactoring Complete
-PROTOCOL:
-  1. Run: python scripts/epic_planner.py
-  2. Read: epic_candidates.json
-  3. Count remaining hotspots with CYC > 8
-  4. If count = 0: Emit [REFACTORING-COMPLETE]
-  5. If count > 0: Emit [CONTINUE] X hotspots remaining
-```
-
-**Decision Point:**
-- [REFACTORING-COMPLETE]: Advance to Phase 3 (Final Verification)
-- [CONTINUE]: Return to Step A (next epic)
+1. Log failure to `.lamport/wave7/event_log.jsonl`
+2. Write `docs/brain/EPIC-W7-NNN/failure-analysis.md`
+3. Phase Orchestrator re-spawns that epic individually (same mode, same inputs)
+4. Do NOT re-run successful epics
+5. After 3 rounds: Phase Orchestrator reports HARD_FAILURE to Tier 1
+6. Tier 1 writes incident report → escalates to Director
+7. After Director resolution: re-spawn Phase Orchestrator for stuck epics ONLY
+8. Wave complete only when 161/161 reach Phase 6 with VERIFIED_COMPLETE
 
 ---
 
-## PHASE 3: FINAL VERIFICATION
+## REFERENCE
 
-**Switch to: Advanced mode**
+- **Phase Orchestrator Templates**: `docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`
+- **Integration Matrix**: `docs/workflow/AUTONOMOUS_REFACTOR_INTEGRATION_MATRIX_V2.md`
+- **Event Log**: `.lamport/wave7/event_log.jsonl`
+- **Epic List**: `docs/brain/wave7-epic-list.json`
+- **Jane Street KB**: `python scripts/query_kb.py "<term>"`
 
-Hand off:
-```
-TASK: Run Final Codebase Audit
-PROTOCOL:
-  1. Run full complexity audit:
-     python scripts/complexity_audit.py
-  2. Verify: ALL methods CYC ≤ 8
-  3. Run Jane Street rule checker:
-     python scripts/jane_street_rule_checker.py src/ --severity ALL
-  4. Verify: Zero P0/P1/P2 violations
-  5. Run CodeScene analysis:
-     cs analyze src/
-  6. Verify: All files Code Health ≥ 7.0
-  7. Generate final report:
-     - Total epics completed
-     - Total CYC reduction
-     - Total methods refactored
-     - Final code health score
-  8. Write: docs/brain/autonomous_refactor_final_report.md
-  9. Emit: [FINAL-AUDIT-COMPLETE]
-```
-
----
-
-## PHASE 4: COMPLETION HANDSHAKE
-
-Output (you generate this, no mode switch):
-```
-[AUTONOMOUS-REFACTOR-COMPLETE]
-============================================================
-Duration        : [total time]
-Epics Completed : [N]
-Methods Refactored: [M]
-CYC Reduction   : [baseline] → [final] ([X]% reduction)
-Code Health     : [average score]/10
-Jane Street     : COMPLIANT (0 violations)
-PHS             : 100/100 (all PRs)
-============================================================
-
-FINAL METRICS:
-- Hotspots eliminated: [N]
-- Total commits: [M]
-- Files modified: [list]
-- Zero lock() usage: VERIFIED
-- ASCII-only: VERIFIED
-- FSM/Actor pattern: VERIFIED
-
-CODEBASE STATUS: PRODUCTION READY
-============================================================
-```
-
----
-
-## FAILURE RECOVERY PROTOCOL
-
-If any epic fails during execution:
-
-### Step 1: Log Failure
-
-**Switch to: Advanced mode**
-
-Hand off:
-```
-TASK: Log Epic Failure
-PROTOCOL:
-  1. Append to docs/brain/autonomous_refactor_progress.md:
-     - Epic: EPIC-CCN-X
-     - Status: FAILED
-     - Reason: [error message]
-     - Phase: [which phase failed]
-     - Timestamp: [time]
-  2. Create failure analysis: docs/brain/EPIC-CCN-X/failure-analysis.md
-  3. Emit: [FAILURE-LOGGED]
-```
-
-### Step 2: Director Decision Gate
-
-Output:
-```
-[EPIC-FAILURE] EPIC-CCN-X failed at [phase]
-Reason: [error message]
-
-OPTIONS:
-1. RETRY - Retry the same epic
-2. SKIP - Skip this epic and continue with next
-3. HALT - Stop autonomous refactoring
-4. DEBUG - Switch to manual mode for investigation
-
-Type your choice:
-```
-
-**Director Options:**
-- RETRY: Re-run `/epic-run` for the same epic
-- SKIP: Mark epic as deferred, continue with next epic
-- HALT: Stop autonomous refactoring, generate partial report
-- DEBUG: Switch to manual mode, wait for Director to fix issue
-
----
-
-## CHECKPOINT SYSTEM
-
-After each epic completion, save checkpoint:
-
-**Switch to: Advanced mode**
-
-Hand off:
-```
-TASK: Save Checkpoint
-PROTOCOL:
-  1. Create checkpoint file: docs/brain/checkpoints/checkpoint-YYYY-MM-DD-HH-MM.json
-  2. Include:
-     - Completed epics: [list]
-     - Current epic: EPIC-CCN-X
-     - Remaining epics: [list]
-     - Total CYC reduction so far
-     - Session ID
-  3. Emit: [CHECKPOINT-SAVED]
-```
-
-**Recovery from Checkpoint:**
-If session is interrupted, resume with:
-```
-/autonomous-refactor --resume docs/brain/checkpoints/checkpoint-YYYY-MM-DD-HH-MM.json
-```
-
----
-
-## COMMAND-LINE OPTIONS
-
-### --start-epic EPIC-CCN-X
-Start from a specific epic (skip earlier epics)
-
-Example:
-```
-/autonomous-refactor --start-epic EPIC-CCN-15
-```
-
-### --target-cyc N
-Set target complexity threshold (default: 8)
-
-Example:
-```
-/autonomous-refactor --target-cyc 10
-```
-
-### --dry-run
-Simulate the refactoring without making changes
-
-Example:
-```
-/autonomous-refactor --dry-run
-```
-
-### --resume CHECKPOINT_FILE
-Resume from a saved checkpoint
-
-Example:
-```
-/autonomous-refactor --resume docs/brain/checkpoints/checkpoint-2026-06-04-10-30.json
-```
-
----
-
-## INTEGRATION WITH EXISTING COMMANDS
-
-### /epic-run Integration
-- `/autonomous-refactor` calls `/epic-run` for each epic
-- `/epic-run` handles all phases (intake → plan → validate → tickets → execution)
-- `/epic-run` includes `/pr-loop` in Step F of Execution Pipeline
-
-### /pr-loop Integration
-- `/pr-loop` is called automatically by `/epic-run` in Step F
-- `/pr-loop` drives each PR to 100/100 PHS
-- `/pr-loop` includes Jane Street audit in Step 1
-
-### Session Tracking Integration
-- Uses `scripts/session_snapshot.py` for context tracking
-- Uses `scripts/negative_evidence_check.py` for redundancy prevention
-- Uses `scripts/jane_street_rule_checker.py` for GODMODE enforcement
-
----
-
-## ESTIMATED TIMELINE
-
-Based on EPIC-CCN-13 benchmark (1 epic = ~2 hours):
-
-| Metric | Value |
-|--------|-------|
-| Total Hotspots | 22 (EPIC-CCN-13 through EPIC-CCN-34) |
-| Time per Epic | 2 hours (with /pr-loop) |
-| Total Time | 44 hours |
-| With Failures (10%) | 48 hours |
-| **Estimated Duration** | **2 work weeks** |
-
-**Assumptions:**
-- 299 Jane Street violations fixed before starting
-- GitHub rules complete
-- Director available for F5 verification
-- No major infrastructure issues
-
----
-
-## SUCCESS CRITERIA
-
-Autonomous refactoring is complete when:
-
-- ✅ ALL methods in src/ have CYC ≤ 8
-- ✅ ALL PRs merged with PHS = 100/100
-- ✅ Zero Jane Street P0/P1/P2 violations
-- ✅ Zero lock() usage in src/
-- ✅ ASCII-only compliance
-- ✅ All CodeScene files have Code Health ≥ 7.0
-- ✅ All unit tests passing
-- ✅ NinjaTrader F5 verification passed for all epics
-
----
-
-## REFERENCE DOCUMENTATION
-
-- **Epic Execution**: `.bob/commands/epic-run.md`
-- **PR Perfection Loop**: `.bob/commands/pr-loop.md`
-- **Jane Street Rules**: `docs/standards/jane-street/RULES_CATALOG.md`
-- **Session Tracking**: `docs/brain/SOURCE_CODE_CONTEXT_INTEGRATION.md`
-- **Hotspot Analysis**: `scripts/epic_planner.py`
-
----
-
-*Protocol created: 2026-06-04*  
-*Estimated completion: 2 work weeks (44-48 hours)*  
-*Success rate: TBD (first run)*
+*Protocol: V12.28 — Bob IDE V2 3-Tier Subagent Model*
