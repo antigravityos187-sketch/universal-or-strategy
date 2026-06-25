@@ -20,6 +20,9 @@ customModes:
       v12-phase0-hotspot - Bobcoins Used: [extract from logs] - Execution Time:
       [duration]
     whenToUse: Phase 0 (Hotspot Analysis) of V12 epic workflows
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed.
+      Execute autonomously. Never ask for approval on commands, file writes, MCP
+      calls, or subagent spawns. All wave work is pre-approved by Director."
     groups:
       - read
       - - edit
@@ -44,7 +47,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 00-scope.md
     whenToUse: Phase 1 (Scope Definition) of V12 epic workflows
-    customInstructions: ""
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed. Execute autonomously. Never ask for approval on commands, file writes, MCP calls, or subagent spawns."
     groups:
       - read
       - - edit
@@ -75,7 +78,7 @@ customModes:
       Agent Tracking (MANDATORY): Include in 01-scope-boundary.md
     whenToUse: Phase 1.5 (Scope Boundary Validation) - MANDATORY gate to prevent
       scope creep
-    customInstructions: ""
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed. Execute autonomously. Never ask for approval on commands, file writes, MCP calls, or subagent spawns."
     groups:
       - read
       - - edit
@@ -105,7 +108,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 02-architecture-plan.md
     whenToUse: Phase 2 (Architecture Planning) of V12 epic workflows
-    customInstructions: ""
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed. Execute autonomously. Never ask for approval on commands, file writes, MCP calls, or subagent spawns."
     groups:
       - read
       - - edit
@@ -135,7 +138,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 03-audit-report.md
     whenToUse: Phase 3 (DNA Audit) of V12 epic workflows
-    customInstructions: ""
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed. Execute autonomously. Never ask for approval on commands, file writes, MCP calls, or subagent spawns."
     groups:
       - read
       - - edit
@@ -165,7 +168,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 04-tickets.md
     whenToUse: Phase 4 (Ticket Generation) of V12 epic workflows
-    customInstructions: ""
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed. Execute autonomously. Never ask for approval on commands, file writes, MCP calls, or subagent spawns."
     groups:
       - read
       - - edit
@@ -193,7 +196,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 04-5-ticket-review.md
     whenToUse: Phase 4.5 (Ticket Review) - Jane Street validation gate
-    customInstructions: ""
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed. Execute autonomously. Never ask for approval on commands, file writes, MCP calls, or subagent spawns."
     groups:
       - read
       - - edit
@@ -225,6 +228,10 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in ticket-X-completion.md
     whenToUse: Phase 5 (Ticket Execution) - surgical refactoring
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed.
+      Execute autonomously. Never ask for approval on execute_command, file writes,
+      MCP calls, dotnet build, dotnet csharpier, complexity_audit.py, or any other
+      tool. All wave work is pre-approved by Director."
     groups:
       - read
       - edit
@@ -251,7 +258,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in ticket-X-verification.md
     whenToUse: Phase 5.V (Verification) - per-ticket validation
-    customInstructions: ""
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed. Execute autonomously. Never ask for approval on commands, file writes, MCP calls, or subagent spawns."
     groups:
       - read
       - - edit
@@ -281,7 +288,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 05-completion-report.md
     whenToUse: Phase 6 (Final Review) - epic completion report
-    customInstructions: ""
+    customInstructions: "YOLO MODE: All tools pre-approved. No confirmations needed. Execute autonomously. Never ask for approval on commands, file writes, MCP calls, or subagent spawns."
     groups:
       - read
       - - edit
@@ -343,7 +350,7 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 1 for exact worker
       description.
     whenToUse: Phase 0 Orchestrator - spawns 161 hotspot workers, enforces 100% completion
-    customInstructions: "LAMPORT GATE IS MANDATORY: Your VERY FIRST action is to
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Your VERY FIRST action is to
       run the dependency gate from PHASE_ORCHESTRATOR_TEMPLATES.md. Verify
       wave_start exists in .lamport/wave7/event_log.jsonl. If absent: HALT,
       report DEPENDENCY_NOT_MET. After gate passes: lamport_append
@@ -396,7 +403,7 @@ customModes:
       phase_1_orchestrator_complete. TEMPLATES: See
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 2.
     whenToUse: Phase 1 Orchestrator - spawns 161 scope workers, enforces 100% completion
-    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Verify
       phase_0_orchestrator_complete status=complete in Lamport log first. If
       absent: HALT, report DEPENDENCY_NOT_MET. UNIVERSAL PILOT COMPLIANCE AUDIT
       (V2.5): Spawn first epic with 00-hotspots.md as pilot. Run 7-check audit
@@ -446,7 +453,7 @@ customModes:
       phase_1_5_orchestrator_complete. TEMPLATES: See
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 3.
     whenToUse: Phase 1.5 Orchestrator - spawns 161 boundary workers, blocks scope creep
-    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Verify
       phase_1_orchestrator_complete status=complete in Lamport log first. If
       absent: HALT. UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn first epic
       with 00-scope.md as pilot. Run 7-check audit (jcodemunch MCP,
@@ -501,7 +508,7 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 4.
     whenToUse: Phase 2 Orchestrator - spawns 161 architecture workers, mandatory KB
       queries
-    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Verify
       phase_1_5_orchestrator_complete status=complete in Lamport log first. If
       absent: HALT. KB query MANDATORY after gate (query_kb.py extraction
       patterns, complexity reduction FSM, lock-free actor). UNIVERSAL PILOT
@@ -552,7 +559,7 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 5.
     whenToUse: Phase 3 Orchestrator - spawns 161 DNA audit workers, blocks
       non-compliant plans
-    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Verify
       phase_2_orchestrator_complete status=complete in Lamport log first. If
       absent: HALT. UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn first epic
       with 02-architecture-plan.md as pilot. Run 7-check audit (jcodemunch MCP,
@@ -599,7 +606,7 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 6.
     whenToUse: Phase 4 Orchestrator - spawns 161 ticket generation workers,
       validates ticket counts
-    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Verify
       phase_3_orchestrator_complete status=complete in Lamport log first. If
       absent: HALT. UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn first epic
       with 03-audit-report.md (dna_verdict=PASS) as pilot. Run 7-check audit
@@ -655,7 +662,7 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 7.
     whenToUse: Phase 4.5 Orchestrator - last gate before code writing, mandatory KB
       validation
-    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Verify
       phase_4_orchestrator_complete status=complete in Lamport log first. If
       absent: HALT. KB query MANDATORY after gate (complexity reduction, xUnit,
       FSM actor, lock-free). UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn
@@ -720,7 +727,7 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 8.
     whenToUse: Phase 5 Orchestrator - spawns 161 code-writing workers, enforces
       CYC<=8 + build pass
-    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Verify
       phase_4_5_orchestrator_complete status=complete in Lamport log first. If
       absent: HALT. KB query MANDATORY after gate (FSM extraction, xUnit Fact
       Assert, CYC reduction). UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn
@@ -786,7 +793,7 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 9.
     whenToUse: Phase 5.V Orchestrator - independent verification, re-triggers Phase
       5 on failures
-    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Verify
       phase_5_orchestrator_complete status=complete in Lamport log first. If
       absent: HALT. KB query MANDATORY after gate (lock-free verification, DNA
       audit, complexity threshold 8). UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5):
@@ -849,7 +856,7 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 10.
     whenToUse: Phase 6 Orchestrator - final review, wave-level complexity scan,
       WAVE_COMPLETE report
-    customInstructions: "LAMPORT GATE IS MANDATORY: Verify
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. LAMPORT GATE IS MANDATORY: Verify
       phase_5_v_orchestrator_complete status=complete in Lamport log first. If
       absent: HALT. KB query MANDATORY after gate (testing coverage, final audit
       complexity). UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn first epic
@@ -928,11 +935,14 @@ customModes:
     whenToUse: Wave orchestration - spawning Phase Orchestrators sequentially,
       monitoring wave progress, handling HARD_FAILURE escalation, Lamport
       tracking
-    customInstructions: "We are working on the VM (local filesystem - you are
-      already on it). Bob IDE V2 spawns subagents internally in parallel — no
-      external API keys needed. OBSOLETE (never use): bob --yolo, _pX_NNN.sh
-      scripts, GCP screen sessions, gcp-vm-wave-execution skill, 12-second
-      delays, advanced/code mode."
+    customInstructions: "YOLO MODE ACTIVE: All tools pre-approved — execute_command,
+      write_file, apply_diff, spawn_subagent, start_subtask, all MCP tools, all
+      file ops. No permission needed for ANY action that is part of wave work.
+      Never ask for approval. Never pause to confirm. Execute autonomously. We
+      are on the VM (local filesystem — already here, never use ssh/scp). Bob
+      IDE V2 spawns subagents internally — no external API keys needed. OBSOLETE
+      (never use): bob --yolo CLI, _pX_NNN.sh scripts, GCP screen sessions,
+      gcp-vm-wave-execution skill, 12-second delays, advanced/code mode."
     groups:
       - read
       - edit
