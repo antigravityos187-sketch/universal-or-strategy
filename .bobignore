@@ -1,4 +1,7 @@
-# Bob IDE Context Exclusions
+# VM-Specific .bobignore for Wave 7 Execution
+# This version ALLOWS access to phase scripts and epic directories
+
+# Bob IDE Context Exclusions (keep these)
 .agent/
 .agents/
 mcp-servers/
@@ -8,16 +11,21 @@ obj/
 .vscode/
 .history/
 .git/
+
+# Historical waves (keep blocked)
 docs/brain/WAVE1*/
 docs/brain/WAVE2*/
 docs/brain/WAVE3*/
 docs/brain/WAVE4*/
 docs/brain/WAVE5*/
 docs/brain/WAVE6*/
-docs/brain/EPIC-CCN-*/
-docs/brain/EPIC-*/
+!docs/brain/EPIC-W7-*/
+
+# Building blocks (keep blocked except wave7)
 building-blocks/*
 !building-blocks/wave7/
+
+# Documentation (keep blocked)
 docs/andrewngtrascript.md
 docs/bobshell_docs.md
 docs/goose cli api.md
@@ -25,19 +33,10 @@ docs/Hermes Architecture.md
 docs/droid api docs.md
 docs/greptiledocs.md
 docs/Gitbutlerdocs.md
+
+# Backups and temp (keep blocked)
 docs/brain-vm-backup/
 temp_epic_*/
-EPIC-CCN-*/
-_p0_*.sh
-_p1_*.sh
-_p2_*.sh
-_p3_*.sh
-_p4_*.sh
-_p5_*.sh
-_p5v_*.sh
-_p6_*.sh
-_phase*.sh
-complete_epic_*.sh
 conductor/
 routa-tools/
 sandbox/
@@ -49,13 +48,19 @@ src-vm-backup/
 temp_*/
 *.bak*
 *.tmp
-*.log
 
-# Exclude entire docs/brain/ directory (386 files, 3.55 MB)
-# Only essential Wave 7 execution files are needed
-docs/brain/*
+# CRITICAL: DO NOT BLOCK THESE ON VM
+# _p0_*.sh - ALLOWED (needed for Phase 0 execution)
+# _p1_*.sh - ALLOWED (needed for Phase 1 execution)
+# _p2_*.sh - ALLOWED (needed for Phase 2 execution)
+# _p3_*.sh - ALLOWED (needed for Phase 3 execution)
+# _p4_*.sh - ALLOWED (needed for Phase 4 execution)
+# _p5_*.sh - ALLOWED (needed for Phase 5 execution)
+# _p5v_*.sh - ALLOWED (needed for Phase 5.V execution)
+# _p6_*.sh - ALLOWED (needed for Phase 6 execution)
+# phase*.sh - ALLOWED (needed for phase execution)
+# complete_epic_*.sh - ALLOWED (needed for epic completion)
+# EPIC-CCN-*/ - ALLOWED (needed for epic brain directories)
+# docs/brain/EPIC-CCN-*/ - ALLOWED (needed for epic documentation)
 
-# Whitelist: Essential Wave 7 files only
-!docs/brain/WAVE7_SETUP_COMPLETE.md
-!docs/brain/WAVE7_CONTEXT_VERIFICATION.md
-!docs/brain/task.md
+.bobignore

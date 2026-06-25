@@ -1,0 +1,25 @@
+{
+  "epic_id": "EPIC-W7-020",
+  "method": "HandleSecondaryOrderFilled",
+  "file": "src/V12_002.Orders.Callbacks.cs",
+  "complexity": 4,
+  "task_description_complexity": 21,
+  "discrepancy_note": "Task claims CYC=21 but jCodemunch measures CYC=4",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "agent": "v12-phase0-hotspot",
+      "timestamp": "2026-06-23T02:39:30Z",
+      "bobcoins_used": 1.64
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"],
+      "agent": "v12-phase1-scope",
+      "timestamp": "2026-06-24T20:06:20Z",
+      "bobcoins_used": 0.99,
+      "recommendation": "CANCEL EPIC - Method already has CYC=4, well below threshold. Redirect to actual hotspots."
+    }
+  }
+}

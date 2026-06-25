@@ -1,0 +1,44 @@
+{
+  "epic_id": "EPIC-W7-004",
+  "method": "HandleFleetTargetFill",
+  "file": "src/V12_002.UI.Compliance.cs",
+  "complexity": 17,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ],
+      "agent": "v12-phase0-hotspot",
+      "bobcoins": 0.93,
+      "timestamp": "2026-06-23T02:35:20Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "agent": "v12-phase1-scope",
+      "bobcoins": 0.99,
+      "timestamp": "2026-06-24T19:25:35Z"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "agent": "v12-phase1-scope",
+      "bobcoins": 0.0,
+      "timestamp": "2026-06-24T01:30:43Z"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "agent": "v12-phase2-architecture",
+      "bobcoins": 1.42,
+      "timestamp": "2026-06-24T03:04:11Z"
+    }
+  }
+}

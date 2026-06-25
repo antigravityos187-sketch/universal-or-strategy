@@ -1,46 +1,41 @@
 #!/bin/bash
+# Building-Blocks Method: Copied from _p1_5_002.sh (successful pattern)
+# Changes: phase1 -> phase2, scope -> architecture
 set -e
 cd /home/malhitticrypto/universal-or-strategy
-export BOBSHELL_API_KEY='bob_prod_bob-admin_2am9d3VjQYnC4mSub1z5SzdSZJeyptWhfMrxGeEBSorZRPj8WmQvBPtTf8qTpjWHWdRuf7toP2WTDtPEfS6aoTYF_7ufADbTYhnLEY42csrSet3f3ssJuNddPhXD65YewpCWX'
-mkdir -p docs/brain/EPIC-CCN-110
-mkdir -p logs/phase2
+export BOBSHELL_API_KEY='bob_prod_bob-admin_5WciJzobAhwqBg9mGnufiVpP8YQgvkxKSa2qkm6RhvBX7zHGmKLvkMzCPxorABYn17ecfDWFAXNS8VH7R1kJvt88_4esgR8gBMyHk9tfni1DdvaZZRYAroncZNrj9SXack9GC'
+mkdir -p docs/brain/EPIC-W7-110
+mkdir -p logs/wave7/phase2
+
+if [ ! -f "docs/brain/EPIC-W7-110/01-scope-boundary.md" ]; then
+    echo "BLOCKED: Phase 1.5 not complete"
+    exit 1
+fi
 
 cat > /tmp/phase2_msg_110.txt << 'EOFMSG'
-You are executing Phase 2 (Architecture Planning) for EPIC-CCN-110.
+Execute Phase 2 (Architecture Planning) for EPIC-W7-110.
 
-**Input Artifact**: Read `docs/brain/EPIC-CCN-110/01-scope-boundary.md` for scope definition.
+CRITICAL FILE I/O PROTOCOL:
+1. NEVER use write_to_file, read_file, or run_shell_command tools
+2. ALWAYS use execute_command tool with cat > file
+3. ALWAYS set cwd parameter to /home/malhitticrypto/universal-or-strategy
 
-**Your Task**: Create detailed architecture plan for the extraction.
+Input: docs/brain/EPIC-W7-110/01-scope-boundary.md
 
-**Output Requirements**:
-1. Create `docs/brain/EPIC-CCN-110/02-architecture-plan.md` with:
-   - Method signatures (before/after)
-   - Call graph analysis
-   - Dependency mapping
-   - Extraction sequence
-   - Jane Street compliance checks
-   - Risk mitigation strategies
+Required Actions:
+1. Read scope boundary validation
+2. Query Jane Street KB for extraction patterns: python scripts/query_kb.py "complexity reduction"
+3. Design extraction architecture (method splitting, parameter reduction, FSM patterns)
+4. Write docs/brain/EPIC-W7-110/02-architecture-plan.md using execute_command
+5. Update manifest.json using execute_command
+6. Verify both files exist using execute_command
 
-2. Update `docs/brain/EPIC-CCN-110/manifest.json`:
-   - Set phase "2" status to "completed"
-   - Add "02-architecture-plan.md" to outputs
-
-**MANDATORY REPORTING**:
-After completing all tasks, you MUST report:
-1. Bobcoins used this session: [X.XX]
-2. Remaining balance in API key: [Y.YY]
-Format: "Cost: X.XX | Balance: Y.YY"
-
-**Critical Rules**:
-- Use execute_command with printf for file creation (SSH-safe)
-- Verify files exist with ls -lh before completion
-- Target complexity <= 8 (Jane Street alignment)
-- Single method extraction only (V12.23 Protocol)
-
-**Phase**: 2 (Architecture Planning)
+Success Criteria:
+- 02-architecture-plan.md exists and contains architecture design
+- manifest.json updated to show phase 2 completed
 EOFMSG
 
-bob --yolo /epic-plan EPIC-CCN-110 2>&1 | tee logs/phase2/EPIC-CCN-110.log
+bob --yolo --chat-mode plan "$(cat /tmp/phase2_msg_110.txt)" 2>&1 | tee logs/wave7/phase2/EPIC-W7-110.log
 echo "DONE_EXIT=$?"
 
 # Made with Bob

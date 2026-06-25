@@ -1,0 +1,29 @@
+{
+  "epic_id": "EPIC-W7-097",
+  "method": "ExecuteRMAEntryV2",
+  "file": "src/V12_002.SIMA.Execution.cs",
+  "complexity": 14,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ]
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "validation_result": "APPROVED",
+      "scope_creep_risk": "LOW",
+      "timestamp": "2026-06-24T00:10:51Z"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "epic_id": "EPIC-W7-101",
+  "method": "VerifyPhotonSlotIntegrity",
+  "file": "src/V12_002.SIMA.Fleet.cs",
+  "complexity": 16,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ]
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ]
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "epic_id": "EPIC-W7-025",
+  "method": "CheckFFMAConditions",
+  "file": "src/V12_002.Entries.FFMA.cs",
+  "complexity": 16,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "completed_at": "2026-06-24T19:27:32Z",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "agent": "v12-phase1-scope"
+    },
+    "1.5": {
+      "status": "completed",
+      "completed_at": "2026-06-23T23:51:25Z",
+      "output": "docs/brain/EPIC-W7-025/01-scope-boundary.md",
+      "agent": "v12-phase1-scope-boundary"
+    },
+    "2": {
+      "status": "completed",
+      "completed_at": "2026-06-24T03:34:45Z",
+      "output": "docs/brain/EPIC-W7-025/02-architecture-plan.md",
+      "agent": "v12-phase2-architecture"
+    }
+  }
+}

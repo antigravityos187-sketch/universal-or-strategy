@@ -1,0 +1,1 @@
+{"epic_id":"EPIC-W7-041","method":"SymmetryGuardPruneDispatches","file":"src/V12_002.Symmetry.Replace.cs","complexity":8,"phases":{"0":{"status":"completed","outputs":["00-hotspots.md"],"timestamp":"2026-06-24T19:28:00Z","agent":"v12-phase0-hotspot"},"1":{"status":"completed","outputs":["00-scope.md"],"timestamp":"2026-06-24T19:29:30Z","agent":"v12-phase1-scope"}}}

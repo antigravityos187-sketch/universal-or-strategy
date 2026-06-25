@@ -1,0 +1,24 @@
+{
+    "epic_id": "EPIC-W7-079",
+    "method": "CreateSection0_Identity",
+    "file": "src/V12_002.UI.Panel.Construction.cs",
+    "complexity": 12,
+    "phases": {
+        "0": {
+            "status": "completed",
+            "outputs": [
+                "00-hotspots.md"
+            ]
+        },
+        "1": {
+            "status": "completed",
+            "outputs": [
+                "00-scope.md"
+            ]
+        },
+        "2": {
+            "status": "pending",
+            "outputs": []
+        }
+    }
+}

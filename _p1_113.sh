@@ -1,39 +1,36 @@
 #!/bin/bash
 set -e
 cd /home/malhitticrypto/universal-or-strategy
-export BOBSHELL_API_KEY='bob_prod_bob-admin_3vzs4jptuwZ7Z63gqpyn3aNy89ozwWyanh2aNB7TQDa22rfmiRJXWCUivJphxYNLAoT8nJMEYmUxaTgWA5Z8URUd_F6U16mpCReKejNsSHgrd7VxPEHuX8sedjJm4hrV7srcQ'
-mkdir -p docs/brain/EPIC-CCN-113
-mkdir -p logs/phase1
+export BOBSHELL_API_KEY='bob_prod_bob-admin_c8SKNdvWX47LjEA1771m3PtSTg5Rd95DFurnpmpuoEEBD4Q1DAwe9UibFmH1wSeyL5u2MwZFGWDZPbbS5iPh8jC_ESknTx4s3SD4zbfW5Gu6sHTNPA5AYwSnsWy9uS5rkpKu'
+mkdir -p docs/brain/EPIC-W7-113
+mkdir -p logs/wave7/phase1
+
+if [ ! -f "docs/brain/EPIC-W7-113/00-hotspots.md" ]; then
+    echo "BLOCKED: Phase 0 not complete"
+    exit 1
+fi
 
 cat > /tmp/phase1_msg_113.txt << 'EOFMSG'
-You are executing Phase 1 (Scope Definition) for EPIC-CCN-113.
+Execute Phase 1 (Scope Definition) for EPIC-W7-113.
 
-**Input Artifact**: Read `docs/brain/EPIC-CCN-113/00-hotspots.md` for hotspot analysis.
+CRITICAL FILE I/O PROTOCOL:
+1. NEVER use write_to_file, read_file, or run_shell_command tools
+2. ALWAYS use execute_command tool with cat > file
+3. ALWAYS set cwd parameter to /home/malhitticrypto/universal-or-strategy
 
-**Your Task**: Define the extraction scope based on the hotspot analysis.
+Input: docs/brain/EPIC-W7-113/00-hotspots.md
 
-**Output Requirements**:
-1. Create `docs/brain/EPIC-CCN-113/00-scope.md` with:
-   - Target method details
-   - Extraction strategy (what to extract, what to keep)
-   - Boundary definition (single method only, no scope creep)
-   - Success criteria (target complexity <= 8)
-   - Risk assessment
+Required Actions:
+1. Read hotspot analysis
+2. Define extraction scope (IN SCOPE vs OUT OF SCOPE)
+3. Write docs/brain/EPIC-W7-113/00-scope.md using execute_command
+4. Update manifest.json using execute_command
+5. Verify both files exist using execute_command
 
-2. Update `docs/brain/EPIC-CCN-113/manifest.json`:
-   - Set phase "1" status to "completed"
-   - Add "00-scope.md" to outputs
-
-**Critical Rules**:
-- Use execute_command with printf for file creation (SSH-safe)
-- Verify files exist with ls -lh before completion
-- Keep scope to single method (V12.23 No Scope Creep Protocol)
-- Target complexity <= 8 (Jane Street alignment)
-
-**Phase**: 1 (Scope Definition)
+Success Criteria:
+- 00-scope.md exists and contains scope definition
+- manifest.json updated to show phase 1 completed
 EOFMSG
 
-bob --yolo /epic-intake EPIC-CCN-113 2>&1 | tee logs/phase1/EPIC-CCN-113.log
+bob --yolo --chat-mode v12-phase1-scope "$(cat /tmp/phase1_msg_113.txt)" 2>&1 | tee logs/wave7/phase1/EPIC-W7-113.log
 echo "DONE_EXIT=$?"
-
-# Made with Bob

@@ -1,0 +1,30 @@
+{
+  "epic_id": "EPIC-W7-123",
+  "method": "SymmetryGuardOnMasterFill",
+  "file": "src/V12_002.Symmetry.cs",
+  "complexity": 14,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "timestamp": "2026-06-24T04:00:00Z",
+      "agent": "v12-phase1-scope"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "timestamp": "2026-06-24T03:52:52Z",
+      "agent": "v12-phase2-architecture"
+    }
+  }
+}

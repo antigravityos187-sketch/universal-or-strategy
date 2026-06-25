@@ -1,39 +1,116 @@
 #!/bin/bash
-set -e
-cd /home/malhitticrypto/universal-or-strategy
-export BOBSHELL_API_KEY='bob_prod_bob-admin_t9tV9fuaYCkKYJNm5xCaHWAAR5yJT59mUXoLRHLyb3G4uVHazEQaFacXSz2Nd9Pij2WYNHkvn7THr5amYPqQeDa_ASoyvBNoW8FE2m47D2fhv67cbYGy7TXVeWYswv5N1MNF'
-mkdir -p docs/brain/EPIC-CCN-109
-mkdir -p logs/phase1
+# Wave 7 Phase 1 Template: Scope Definition (Fixed)
+# Epic: EPIC-W7-109
+# Agent: jessica
+# Dependencies: Phase 0 (00-hotspots.md)
+# Output: docs/brain/EPIC-W7-109/00-scope.md
 
-cat > /tmp/phase1_msg_109.txt << 'EOFMSG'
-You are executing Phase 1 (Scope Definition) for EPIC-CCN-109.
+set -euo pipefail
 
-**Input Artifact**: Read `docs/brain/EPIC-CCN-109/00-hotspots.md` for hotspot analysis.
+EPIC_ID="EPIC-W7-109"
+AGENT_ID="jessica"
+PHASE="1"
 
-**Your Task**: Define the extraction scope based on the hotspot analysis.
+echo "=========================================="
+echo "Wave 7 Phase 1: Scope Definition"
+echo "Epic: $EPIC_ID"
+echo "Agent: $AGENT_ID"
+echo "=========================================="
 
-**Output Requirements**:
-1. Create `docs/brain/EPIC-CCN-109/00-scope.md` with:
-   - Target method details
-   - Extraction strategy (what to extract, what to keep)
-   - Boundary definition (single method only, no scope creep)
-   - Success criteria (target complexity <= 8)
-   - Risk assessment
+# Step 1: Verify Dependencies
+echo ""
+echo "Step 1: Verify Dependencies"
+echo "-----------------------------------"
 
-2. Update `docs/brain/EPIC-CCN-109/manifest.json`:
-   - Set phase "1" status to "completed"
-   - Add "00-scope.md" to outputs
+# Check Phase 0 output exists
+if [ ! -f "docs/brain/$EPIC_ID/00-hotspots.md" ]; then
+    echo "❌ BLOCKED: Phase 0 not complete (00-hotspots.md missing)"
+    exit 1
+fi
+echo "✅ Phase 0 complete (00-hotspots.md exists)"
 
-**Critical Rules**:
-- Use execute_command with printf for file creation (SSH-safe)
-- Verify files exist with ls -lh before completion
-- Keep scope to single method (V12.23 No Scope Creep Protocol)
-- Target complexity <= 8 (Jane Street alignment)
+# Step 2: Create Bob CLI Message
+echo ""
+echo "Step 2: Create Bob CLI Message"
+echo "-----------------------------------"
 
-**Phase**: 1 (Scope Definition)
+mkdir -p /tmp
+cat > /tmp/phase1_msg_$EPIC_ID.txt << 'EOFMSG'
+# Phase 1: Scope Definition
+
+You are in **Plan mode** for Phase 1 (Scope Definition) of epic EPIC-W7-109.
+
+## Context
+- **Epic**: EPIC-W7-109
+- **Phase**: 1 (Scope Definition)
+- **Input**: docs/brain/EPIC-W7-109/00-hotspots.md
+- **Output**: docs/brain/EPIC-W7-109/00-scope.md
+
+## Your Task
+Read the hotspot analysis and define the refactoring scope:
+
+1. **Read Input**: Read docs/brain/EPIC-W7-109/00-hotspots.md
+2. **Define Scope**: 
+   - What code will be extracted?
+   - What will remain in the original method?
+   - What are the boundaries?
+3. **Write Output**: Create docs/brain/EPIC-W7-109/00-scope.md with:
+   - Extraction targets (methods to extract)
+   - Boundary definitions (what stays, what goes)
+   - Dependencies and risks
+   - Success criteria
+
+## Critical Rules
+- Use **Plan mode** (no code changes)
+- Read the hotspot analysis first
+- Define clear boundaries
+- Document all extraction targets
+- Identify dependencies
+
+Begin by reading the hotspot analysis, then define the scope.
 EOFMSG
 
-bob --yolo /epic-intake EPIC-CCN-109 2>&1 | tee logs/phase1/EPIC-CCN-109.log
-echo "DONE_EXIT=$?"
+echo "✅ Message file created: /tmp/phase1_msg_$EPIC_ID.txt"
+
+# Step 3: Invoke Bob CLI
+echo ""
+echo "Step 3: Invoke Bob CLI (Plan Mode)"
+echo "-----------------------------------"
+
+export BOBSHELL_API_KEY='bob_prod_bob-admin_2FTTdxZo3mEs7ek4rbpBLVdpkTinfTdgG6Zj2CK9D2A7ct7TwUi1CyQSaHwqEozi9npR6Go4BLkBzAyxQzaWpaii_B1y7Ji37WbeKFZgREwNCqjQEJCdzqfhwpCN9Rfa1BiMN'
+~/.npm-global/bin/bob --yolo --chat-mode v12-phase1-scope "$(cat /tmp/phase1_msg_$EPIC_ID.txt)"
+
+if [ $? -ne 0 ]; then
+    echo "❌ Bob CLI failed"
+    exit 1
+fi
+
+# Step 4: Verify Output
+echo ""
+echo "Step 4: Verify Output"
+echo "-----------------------------------"
+
+if [ ! -f "docs/brain/$EPIC_ID/00-scope.md" ]; then
+    echo "❌ FAILED: Output file not created (00-scope.md missing)"
+    exit 1
+fi
+
+echo "✅ Output file created: docs/brain/$EPIC_ID/00-scope.md"
+
+# Step 5: Update Manifest
+echo ""
+echo "Step 5: Update Manifest"
+echo "-----------------------------------"
+
+python3 scripts/epic_manifest.py update "$EPIC_ID" "$PHASE" "completed" "docs/brain/$EPIC_ID/00-scope.md"
+
+if [ $? -ne 0 ]; then
+    echo "⚠️  Warning: Manifest update failed (non-blocking)"
+fi
+
+echo ""
+echo "=========================================="
+echo "✅ Phase 1 Complete: $EPIC_ID"
+echo "=========================================="
 
 # Made with Bob

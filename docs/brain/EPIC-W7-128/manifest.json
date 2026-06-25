@@ -1,35 +1,44 @@
 {
   "epic_id": "EPIC-W7-128",
-  "method": "DumpVisualTree",
-  "file": "V12_002.UI.Panel.Helpers.cs",
-  "complexity": 10,
+  "method": "SymmetryGuardReplaceExistingFollowerTarget",
+  "file": "src/V12_002.Symmetry.Replace.cs",
+  "complexity": 20,
   "phases": {
-    "phase0": {
+    "0": {
       "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ],
       "agent": "v12-phase0-hotspot",
-      "output": "00-hotspots.md",
-      "bobcoins": 0.80,
-      "timestamp": "2026-06-22T04:03:37Z"
+      "bobcoins_used": 0.74,
+      "completed_at": "2026-06-23T02:59:48Z"
     },
-    "phase1": {
-      "status": "pending",
-      "dependencies": ["phase0"]
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "agent": "v12-phase1-scope",
+      "bobcoins_used": 0.0,
+      "completed_at": "2026-06-23T21:54:59Z"
     },
-    "phase1.5": {
-      "status": "pending",
-      "dependencies": ["phase1"]
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "agent": "v12-phase1-scope",
+      "bobcoins_used": 0.0,
+      "completed_at": "2026-06-24T00:12:34Z"
     },
-    "phase2": {
-      "status": "pending",
-      "dependencies": ["phase1.5"]
-    },
-    "phase3": {
-      "status": "pending",
-      "dependencies": ["phase2"]
-    },
-    "phase4": {
-      "status": "pending",
-      "dependencies": ["phase3"]
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "agent": "v12-phase2-architecture",
+      "bobcoins_used": 0.97,
+      "completed_at": "2026-06-24T03:53:52Z"
     }
   }
 }

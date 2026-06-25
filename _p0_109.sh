@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 cd /home/malhitticrypto/universal-or-strategy
-export BOBSHELL_API_KEY='bob_prod_bob-admin_t9tV9fuaYCkKYJNm5xCaHWAAR5yJT59mUXoLRHLyb3G4uVHazEQaFacXSz2Nd9Pij2WYNHkvn7THr5amYPqQeDa_ASoyvBNoW8FE2m47D2fhv67cbYGy7TXVeWYswv5N1MNF'
-mkdir -p docs/brain/EPIC-CCN-109
+export BOBSHELL_API_KEY='bob_prod_bob-admin_3yjmERkNNh2XmujxzhYwLuTDZYpVFnfsGkprcHKjsQorxhwDPxnrVETB3RtXwBLc565zrsDcVKrCxsKB5uqWANpY_EJiS1xkNmY2hW2SowTmNRy5nd6HUiPiFkSRsCxpgLKuh'
+mkdir -p docs/brain/EPIC-W7-109
 mkdir -p logs/phase0
 
 cat > /tmp/phase0_msg_109.txt << 'EOFMSG'
-Execute Phase 0 (Hotspot Analysis) for EPIC-CCN-109.
+Execute Phase 0 (Hotspot Analysis) for EPIC-W7-109.
 
 **🚨 CRITICAL FILE I/O PROTOCOL - READ THIS FIRST 🚨**
 
@@ -43,11 +43,11 @@ Use these jCodemunch tools:
 4. get_symbol_complexity(repo='universal-or-strategy', symbol_id='HydrateWorkingOrdersFromBroker')
 
 ### Step 2: Write 00-hotspots.md using execute_command
-Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-CCN-109/00-hotspots.md:
+Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-W7-109/00-hotspots.md:
 
 ```bash
-cat > docs/brain/EPIC-CCN-109/00-hotspots.md << 'EOF'
-# Phase 0: Hotspot Analysis - EPIC-CCN-109
+cat > docs/brain/EPIC-W7-109/00-hotspots.md << 'EOF'
+# Phase 0: Hotspot Analysis - EPIC-W7-109
 
 ## Target Method
 - **Method**: HydrateWorkingOrdersFromBroker
@@ -69,12 +69,12 @@ EOF
 ```
 
 ### Step 3: Write manifest.json using execute_command
-Use execute_command to create docs/brain/EPIC-CCN-109/manifest.json:
+Use execute_command to create docs/brain/EPIC-W7-109/manifest.json:
 
 ```bash
-cat > docs/brain/EPIC-CCN-109/manifest.json << 'EOF'
+cat > docs/brain/EPIC-W7-109/manifest.json << 'EOF'
 {
-  "epic_id": "EPIC-CCN-109",
+  "epic_id": "EPIC-W7-109",
   "method": "HydrateWorkingOrdersFromBroker",
   "file": "src/V12_002.SIMA.Lifecycle.cs",
   "complexity": 19,
@@ -93,12 +93,12 @@ Use execute_command to verify BOTH files were created:
 
 1. Verify 00-hotspots.md:
 ```bash
-ls -lh docs/brain/EPIC-CCN-109/00-hotspots.md && wc -l docs/brain/EPIC-CCN-109/00-hotspots.md
+ls -lh docs/brain/EPIC-W7-109/00-hotspots.md && wc -l docs/brain/EPIC-W7-109/00-hotspots.md
 ```
 
 2. Verify manifest.json:
 ```bash
-ls -lh docs/brain/EPIC-CCN-109/manifest.json && cat docs/brain/EPIC-CCN-109/manifest.json | head -20
+ls -lh docs/brain/EPIC-W7-109/manifest.json && cat docs/brain/EPIC-W7-109/manifest.json | head -20
 ```
 
 If either file is missing, CREATE IT AGAIN using the shell commands above.
@@ -120,5 +120,5 @@ ALWAYS use execute_command with cwd parameter. NEVER use run_shell_command, writ
 
 EOFMSG
 
-bob --yolo --chat-mode v12-phase0-hotspot "$(cat /tmp/phase0_msg_109.txt)" 2>&1 | tee logs/phase0/EPIC-CCN-109.log
+bob --yolo --chat-mode v12-phase0-hotspot "$(cat /tmp/phase0_msg_109.txt)" 2>&1 | tee logs/phase0/EPIC-W7-109.log
 echo "DONE_EXIT=$?"

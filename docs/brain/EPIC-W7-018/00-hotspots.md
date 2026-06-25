@@ -1,100 +1,111 @@
 # Phase 0: Hotspot Analysis - EPIC-W7-018
 
-**Agent**: v12-phase0-hotspot
-**Target Method**: MonitorRmaProximity
-**File**: V12_002.Entries.RMA.cs
-**Complexity**: 17
-**Date**: 2026-06-22
+## Agent Tracking
+- **Agent Name**: v12-phase0-hotspot
+- **Bobcoins Used**: 0.58
+- **API Key**: jCodemunch MCP
+- **Execution Time**: 2026-06-23T02:37:47Z
 
-## Executive Summary
+## Target Method
+- **Method**: IsSymbolMatch
+- **File**: src/V12_002.UI.IPC.cs
+- **Line**: 398
+- **Cyclomatic Complexity**: 18
+- **Max Nesting Depth**: 2
+- **Parameter Count**: 1
+- **Lines of Code**: 22
 
-MonitorRmaProximity is a complexity hotspot (CYC 17) that monitors RMA (Risk Management Area) proximity and triggers entry logic. This method exceeds the Jane Street threshold of CYC ≤ 8 by 9 points.
+## Complexity Metrics
 
-## jCodemunch Analysis
+### Assessment
+- **Complexity Rating**: HIGH (CYC=18, threshold=8)
+- **Cognitive Load**: Medium (nesting depth=2)
+- **Interface Complexity**: Low (1 parameter)
 
-### Complexity Metrics
-- **Cyclomatic Complexity**: 17
-- **Threshold Violation**: +9 over Jane Street standard (CYC ≤ 8)
-- **Risk Level**: HIGH
+### Jane Street Alignment
+- **Target Threshold**: CYC ≤ 8 (Jane Street strict standard)
+- **Current Deviation**: +10 (125% over threshold)
+- **Refactoring Priority**: HIGH
 
-### Blast Radius
-Based on jCodemunch analysis:
-- **Direct Callers**: Methods that invoke MonitorRmaProximity
-- **Downstream Impact**: RMA entry logic, position management
-- **Risk Assessment**: Changes affect core entry decision-making
+## Blast Radius Analysis
 
-### Call Hierarchy
-- **Called By**: Main strategy loop, RMA monitoring subsystem
-- **Calls To**: Entry validation, position sizing, risk checks
-- **Coupling**: Moderate - integrated with RMA subsystem
+### Direct Impact
+- **Importer Count**: 0
+- **Direct Dependents**: 0
+- **Overall Risk Score**: 0.0 (LOW)
 
-### Hotspot Ranking
-MonitorRmaProximity ranks in the top 50 complexity hotspots in the codebase based on:
-- Cyclomatic complexity (17)
-- Code churn (frequency of changes)
-- Blast radius (impact scope)
+### Confirmed Dependencies
+- None detected
 
-## Refactoring Scope
+### Potential Dependencies
+- None detected
 
-### Primary Goal
-Reduce MonitorRmaProximity from CYC 17 to ≤ 8 through extraction of:
-1. RMA proximity calculation logic
-2. Entry condition validation
-3. Position sizing logic
-4. Risk threshold checks
+### Risk Assessment
+**LOW BLAST RADIUS**: This method has minimal external dependencies. Refactoring is low-risk from a dependency perspective.
 
-### Extraction Candidates
-1. **CalculateRmaProximity()** - Extract proximity calculation (CYC ~3)
-2. **ValidateEntryConditions()** - Extract entry validation (CYC ~3)
-3. **DeterminePositionSize()** - Extract sizing logic (CYC ~2)
+## Call Hierarchy
 
-### Expected Outcome
-- MonitorRmaProximity: CYC 17 → CYC 6-8
-- 3 new extracted methods: CYC ≤ 3 each
-- Improved testability and maintainability
+### Callers (Who calls this method)
+1. **ProcessIpc_MatchSymbol** (depth 1)
+   - File: src/V12_002.UI.IPC.cs
+   - Line: 424
+   - Resolution: AST-resolved
+   
+2. **ProcessIpcCommands** (depth 2)
+   - File: src/V12_002.UI.IPC.cs
+   - Line: 283
+   - Resolution: AST-resolved
+
+### Callees (What this method calls)
+- None detected (leaf method)
+
+### Call Chain Analysis
+```
+ProcessIpcCommands (CYC=19, hotspot rank #23)
+  └─> ProcessIpc_MatchSymbol
+      └─> IsSymbolMatch (CYC=18) ← TARGET
+```
+
+**Note**: Parent method `ProcessIpcCommands` is also a hotspot (rank #23 in top 50, CYC=19). Consider coordinated refactoring.
+
+## Hotspot Context
+
+### Repository-Wide Hotspot Ranking
+IsSymbolMatch (CYC=18) is **NOT in top 50 hotspots** by composite score (complexity × log(1 + churn)).
+
+### Top 5 Hotspots for Reference
+1. HydrateFromOpenPositions (CYC=34, score=120.88)
+2. IsCommandForThisInstrument (CYC=38, score=109.83)
+3. HandleTerminated (CYC=30, score=102.04)
+4. SweepBrokerOrders (CYC=28, score=99.55)
+5. HydrateWorkingOrdersFromBroker (CYC=23, score=81.77)
+
+### Interpretation
+While IsSymbolMatch has high complexity (CYC=18), it has **low churn** (not in top 50 hotspots). This suggests:
+- Stable implementation (not frequently modified)
+- Lower bug-introduction risk than top hotspots
+- Good candidate for refactoring (low churn = easier to test changes)
 
 ## Risk Assessment
 
-### Low Risk
-- Method is well-contained within RMA subsystem
-- Clear single responsibility (RMA monitoring)
-- Existing test coverage available
+### Overall Risk: **LOW-MEDIUM**
 
-### Mitigation
-- Extract methods maintain same logic flow
-- Preserve all conditional branches
-- Add unit tests for extracted methods
+**Factors**:
+- ✅ **Low Blast Radius**: 0 external dependencies
+- ✅ **Low Churn**: Not in top 50 hotspots
+- ✅ **Leaf Method**: No callees to coordinate
+- ⚠️ **High Complexity**: CYC=18 (125% over threshold)
+- ⚠️ **Parent Hotspot**: ProcessIpcCommands (CYC=19) also needs refactoring
 
-## Dependencies
+### Refactoring Recommendation
+**PROCEED WITH CAUTION**: 
+- Low external risk makes this a good refactoring candidate
+- Consider extracting sub-methods to reduce CYC to ≤8
+- Coordinate with parent method refactoring (ProcessIpcCommands)
+- Add unit tests before refactoring (currently no test coverage detected)
 
-### Prerequisites
-- V12_002.Entries.RMA.cs must compile
-- RMA subsystem tests must pass
-- No pending changes in RMA module
-
-### Blockers
-None identified
-
-## Success Criteria
-
-1. ✅ MonitorRmaProximity reduced to CYC ≤ 8
-2. ✅ All extracted methods have CYC ≤ 3
-3. ✅ Build passes (dotnet build)
-4. ✅ RMA tests pass
-5. ✅ deploy-sync.ps1 executes successfully
-6. ✅ F5 in NinjaTrader successful
-
-## Agent Tracking
-
-- **Agent Name**: v12-phase0-hotspot
-- **Bobcoins Used**: 0.53 (as of file creation)
-- **API Key**: premium model
-- **Execution Time**: ~1 minute
-
-## Next Phase
-
-Phase 1 (Scope Definition) should:
-1. Load this hotspot analysis
-2. Define exact extraction boundaries
-3. Validate scope against V12 DNA principles
-4. Generate scope boundary document
+## Next Steps (Phase 1)
+1. Define scope boundary (what stays, what gets extracted)
+2. Identify extraction candidates within IsSymbolMatch
+3. Plan test coverage strategy
+4. Consider coordinated refactoring with ProcessIpcCommands

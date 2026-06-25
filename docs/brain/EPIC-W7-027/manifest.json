@@ -1,0 +1,46 @@
+{
+  "epic_id": "EPIC-W7-027",
+  "method": "Dispatch_PublishMarketBracketToPhoton",
+  "file": "src/V12_002.SIMA.Dispatch.cs",
+  "complexity": 9,
+  "stated_complexity": 21,
+  "discrepancy_note": "Roadmap states CYC=21 but jCodemunch reports CYC=9 - index freshness verification required",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "agent": "v12-phase0-hotspot",
+      "bobcoins_used": 0.77,
+      "timestamp": "2026-06-23T02:39:42Z",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "agent": "v12-phase1-scope",
+      "bobcoins_used": 0.82,
+      "timestamp": "2026-06-24T20:06:58Z",
+      "outputs": [
+        "00-scope.md"
+      ]
+    },
+    "1.5": {
+      "status": "completed",
+      "agent": "v12-phase1-5-boundary",
+      "bobcoins_used": 1.22,
+      "timestamp": "2026-06-23T23:53:11Z",
+      "outputs": [
+        "01-scope-boundary.md"
+      ]
+    },
+    "2": {
+      "status": "completed",
+      "agent": "v12-phase2-architecture",
+      "bobcoins_used": 1.68,
+      "timestamp": "2026-06-24T03:34:35Z",
+      "outputs": [
+        "02-architecture-plan.md"
+      ]
+    }
+  }
+}

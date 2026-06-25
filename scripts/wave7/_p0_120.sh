@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 cd /home/malhitticrypto/universal-or-strategy
-export BOBSHELL_API_KEY='bob_prod_bob-admin_58sbZY3cBGWbej6dmAvwYeRTKyuceZJppgm4vYoS7bb2yzKqFxwAmzsR46D6G86LVJWNBmsUaZLBpMgRpiZyPQDf_GpwXFSKRi7nWHCJP2m1S6guZ1Y4kzUKBR9C1mrkKQm3s'
+export BOBSHELL_API_KEY='bob_prod_bob-admin_5AhL7B8mdcv3xYTjzNDqWnK3WJvnHgAjfNh29jy7FsJ7VTpNM3j6AqoTouBQxoguDXHYzS5d6MPfBm7Qei19WA2y_2sR99qCwwuCZBB9rcWNUh9wLyg9frjYS6gW64BNavSoD'
 mkdir -p docs/brain/EPIC-W7-120
 mkdir -p logs/phase0
 

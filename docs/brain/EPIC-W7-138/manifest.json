@@ -1,0 +1,29 @@
+{
+  "epic_id": "EPIC-W7-138",
+  "method": "ManageTrail_RunPerTradeBranches",
+  "file": "src/V12_002.Trailing.cs",
+  "complexity": 11,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "agent": "v12-phase0-hotspot",
+      "bobcoins_used": 0.74,
+      "timestamp": "2026-06-23T03:00:41Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"],
+      "agent": "v12-phase1-scope",
+      "bobcoins_used": 0.18,
+      "timestamp": "2026-06-24T19:43:12Z"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"],
+      "agent": "v12-phase1-5-boundary",
+      "bobcoins_used": 0.00,
+      "timestamp": "2026-06-24T00:32:45Z"
+    }
+  }
+}

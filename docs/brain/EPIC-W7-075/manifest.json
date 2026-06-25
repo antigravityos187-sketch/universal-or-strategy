@@ -1,0 +1,24 @@
+{
+  "epic_id": "EPIC-W7-075",
+  "method": "OnSubmitClick",
+  "file": "src/V12_002.UI.Panel.Handlers.cs",
+  "complexity": 20,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ]
+    },
+    "2": {
+      "status": "pending",
+      "outputs": []
+    }
+  }
+}

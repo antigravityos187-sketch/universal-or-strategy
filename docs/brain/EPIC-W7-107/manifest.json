@@ -1,0 +1,29 @@
+{
+  "epic_id": "EPIC-W7-107",
+  "method": "HydrateFromOpenPositions",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "complexity": 34,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "agent": "v12-phase0-hotspot",
+      "bobcoins": 0.58,
+      "timestamp": "2026-06-23T02:54:49Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"],
+      "agent": "v12-phase1-scope",
+      "bobcoins": 0.59,
+      "timestamp": "2026-06-24T19:39:08Z"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "agent": "v12-phase2-architecture",
+      "bobcoins": 1.26,
+      "timestamp": "2026-06-24T03:50:48Z"
+    }
+  }
+}

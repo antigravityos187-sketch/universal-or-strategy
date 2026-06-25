@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 cd /home/malhitticrypto/universal-or-strategy
-export BOBSHELL_API_KEY='bob_prod_bob-admin_t9tV9fuaYCkKYJNm5xCaHWAAR5yJT59mUXoLRHLyb3G4uVHazEQaFacXSz2Nd9Pij2WYNHkvn7THr5amYPqQeDa_ASoyvBNoW8FE2m47D2fhv67cbYGy7TXVeWYswv5N1MNF'
-mkdir -p docs/brain/EPIC-CCN-049
+export BOBSHELL_API_KEY='bob_prod_bob-admin_44TtZXuuACpNu133KVpJ7nSGsRr8hhdVUJj3h3jYe5MUk44L1xm6bUAbv5WDab98VadJx53pvp1Kdxmch4E4Qh1H_7J5ULr6U54NC12M2tpGVD6FWjmjk5rgZWcDie42W6mRh'
+mkdir -p docs/brain/EPIC-W7-049
 mkdir -p logs/phase0
 
 cat > /tmp/phase0_msg_049.txt << 'EOFMSG'
-Execute Phase 0 (Hotspot Analysis) for EPIC-CCN-049.
+Execute Phase 0 (Hotspot Analysis) for EPIC-W7-049.
 
 **🚨 CRITICAL FILE I/O PROTOCOL - READ THIS FIRST 🚨**
 
@@ -43,13 +43,13 @@ Use these jCodemunch tools:
 4. get_symbol_complexity(repo='universal-or-strategy', symbol_id='ManageTrail_RunPerTradeBranches')
 
 ### Step 2: Write 00-hotspots.md using execute_command
-Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-CCN-049/00-hotspots.md:
+Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-W7-049/00-hotspots.md:
 
 ```xml
 <execute_command>
 <command>
-cat > docs/brain/EPIC-CCN-049/00-hotspots.md << 'EOF'
-# Phase 0: Hotspot Analysis - EPIC-CCN-049
+cat > docs/brain/EPIC-W7-049/00-hotspots.md << 'EOF'
+# Phase 0: Hotspot Analysis - EPIC-W7-049
 
 ## Target Method
 - **Method**: ManageTrail_RunPerTradeBranches
@@ -73,14 +73,14 @@ EOF</command>
 ```
 
 ### Step 3: Write manifest.json using execute_command
-Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-CCN-049/manifest.json:
+Use execute_command (NOT run_shell_command) to create docs/brain/EPIC-W7-049/manifest.json:
 
 ```xml
 <execute_command>
 <command>
-cat > docs/brain/EPIC-CCN-049/manifest.json << 'EOF'
+cat > docs/brain/EPIC-W7-049/manifest.json << 'EOF'
 {
-  "epic_id": "EPIC-CCN-049",
+  "epic_id": "EPIC-W7-049",
   "method": "ManageTrail_RunPerTradeBranches",
   "file": "src/V12_002.Trailing.cs",
   "complexity": 9,
@@ -103,7 +103,7 @@ Use execute_command (NOT run_shell_command) to verify BOTH files were created:
 ```xml
 <execute_command>
 <command>
-ls -lh docs/brain/EPIC-CCN-049/00-hotspots.md && wc -l docs/brain/EPIC-CCN-049/00-hotspots.md</command>
+ls -lh docs/brain/EPIC-W7-049/00-hotspots.md && wc -l docs/brain/EPIC-W7-049/00-hotspots.md</command>
 <cwd>/home/malhitticrypto/universal-or-strategy</cwd>
 </execute_command>
 ```
@@ -112,7 +112,7 @@ ls -lh docs/brain/EPIC-CCN-049/00-hotspots.md && wc -l docs/brain/EPIC-CCN-049/0
 ```xml
 <execute_command>
 <command>
-ls -lh docs/brain/EPIC-CCN-049/manifest.json && cat docs/brain/EPIC-CCN-049/manifest.json | head -20</command>
+ls -lh docs/brain/EPIC-W7-049/manifest.json && cat docs/brain/EPIC-W7-049/manifest.json | head -20</command>
 <cwd>/home/malhitticrypto/universal-or-strategy</cwd>
 </execute_command>
 ```
@@ -135,5 +135,5 @@ Only use attempt_completion when:
 ALWAYS use execute_command with cwd parameter. NEVER use run_shell_command, write_to_file, or read_file in SSH mode.
 EOFMSG
 
-bob --yolo --chat-mode v12-phase0-hotspot "$(cat /tmp/phase0_msg_049.txt)" 2>&1 | tee logs/phase0/EPIC-CCN-049.log
+bob --yolo --chat-mode v12-phase0-hotspot "$(cat /tmp/phase0_msg_049.txt)" 2>&1 | tee logs/phase0/EPIC-W7-049.log
 echo "DONE_EXIT=$?"

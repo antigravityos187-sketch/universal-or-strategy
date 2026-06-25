@@ -2,9 +2,24 @@
 
 **Version**: 3.9
 **Date**: 2026-06-18
-**Status**: MANDATORY
+**Status**: SUPERSEDED by Bob IDE V2 Subagent Model (2026-06-24)
 **Supersedes**: V3.8
 **Critical Update**: Bob CLI invocation pattern (V3.9) - fixes Phase 1.5 freeze issue
+
+> ## 🚫 SUPERSEDED NOTICE (Bob IDE V2 — 2026-06-24)
+>
+> **This SOP is OBSOLETE for wave phase execution.**
+>
+> Bob IDE V2 introduces native subagent spawning. Shell scripts (`_pX_NNN.sh`),
+> Bob CLI invocation patterns, GCP VM screen sessions, and the Building-Blocks
+> Method for script generation are **no longer needed**.
+>
+> **For current execution model**, see:
+> `docs/workflow/AUTONOMOUS_REFACTOR_INTEGRATION_MATRIX_V2.md` (V2.3)
+> → Section: "Bob IDE V2 Subagent Execution Model"
+>
+> **This document is RETAINED** as historical reference for the V1 shell execution model.
+> Do NOT follow these instructions for new wave execution.
 
 ---
 
@@ -466,6 +481,81 @@ cp scripts/wave2/generate_phase4_scripts.py scripts/wave3/generate_wave3_phase4_
 - Copy adjacent phase from current wave
 - Generate from scratch
 - Assume patterns are similar
+
+### Step 1.5: MANDATORY Integration Matrix V2 Validation (V3.11 - NEW - BLOCKING GATE)
+
+**CRITICAL**: Before generating ANY phase script, you MUST verify the correct custom mode from Integration Matrix V2.
+
+#### Integration Matrix Validation Checklist
+
+**BEFORE script generation:**
+
+1. **Open Integration Matrix V2**:
+   ```bash
+   cat docs/workflow/AUTONOMOUS_REFACTOR_INTEGRATION_MATRIX_V2.md
+   ```
+
+2. **Verify Custom Mode for Target Phase**:
+   - Phase 0: `v12-phase0-hotspot`
+   - Phase 1: `v12-phase1-scope`
+   - Phase 1.5: `v12-phase1-5-boundary`
+   - Phase 2: `v12-phase2-architecture`
+   - Phase 3: `v12-phase3-audit`
+   - Phase 4: `v12-phase4-tickets`
+   - Phase 4.5: `v12-phase4-5-review`
+   - Phase 5: `v12-engineer`
+   - Phase 5.V: `v12-phase5-v-verify`
+   - Phase 6: `v12-phase6-review`
+
+3. **Check Required MCPs**:
+   - Verify which MCPs are MANDATORY for this phase
+   - Common MCPs: jcodemunch, sequential-thinking, graphify
+   - Phase-specific: Check Integration Matrix for exact requirements
+
+4. **Verify Building-Blocks Source**:
+   - Building-blocks provide MECHANICS (--yolo, temp files, nohup)
+   - Integration Matrix provides WORKFLOW (custom mode, MCPs)
+   - NEVER copy custom mode from building-blocks
+   - ALWAYS use custom mode from Integration Matrix V2
+
+#### BLOCKING GATE
+
+**Script generation is BLOCKED if:**
+- ❌ Integration Matrix V2 not consulted
+- ❌ Wrong custom mode selected (e.g., `plan` instead of `v12-phase1-scope`)
+- ❌ Custom mode copied from building-blocks instead of Integration Matrix
+- ❌ Required MCPs not verified against Integration Matrix
+
+**Example of CORRECT workflow:**
+```bash
+# 1. Check Integration Matrix for Phase 1
+grep "Phase 1:" docs/workflow/AUTONOMOUS_REFACTOR_INTEGRATION_MATRIX_V2.md
+# Output: Custom Mode: v12-phase1-scope, MCPs: jcodemunch + sequential-thinking
+
+# 2. Copy Phase 1 script mechanics from building-blocks
+cp building-blocks/wave4/phase1/_p1_001.sh _p1_001.sh
+
+# 3. Update ONLY the custom mode to match Integration Matrix
+# Change: bob --yolo --chat-mode plan
+# To: bob --yolo --chat-mode v12-phase1-scope
+```
+
+**Example of WRONG workflow (VIOLATION):**
+```bash
+# ❌ WRONG: Copying custom mode from building-blocks
+cp building-blocks/wave4/phase1/_p1_001.sh _p1_001.sh
+# Script has: bob --yolo --chat-mode plan
+# This is WRONG - Integration Matrix says v12-phase1-scope
+```
+
+#### Post-Generation Validation
+
+After generating scripts, run validation:
+```bash
+# Validate custom mode in generated script
+grep "chat-mode" _p1_001.sh
+# Should show: --chat-mode v12-phase1-scope (NOT plan)
+```
 
 ### Step 2: Update Epic Numbers ONLY
 

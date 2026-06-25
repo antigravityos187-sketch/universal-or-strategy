@@ -1,11 +1,12 @@
 # Bob Configuration - V12 Photon Strategy
-# Updated: 2026-06-20 - Auto-Select Model Configuration
-# This file configures Bob CLI defaults and mode-specific overrides for V12 missions.
+# Updated: 2026-06-25 - Mode overhaul (advanced/code removed, agent is new primary)
+# Default modes as of current Bob IDE: plan, agent, ask
+# advanced and code modes are GONE.
 
 # ============================================================================
 # GLOBAL DEFAULTS
 # ============================================================================
-default_mode: advanced          # Primary mode for V12 missions
+default_mode: agent             # Primary mode for V12 missions (replaces advanced)
 auto_apply: true                # Always save changes to disk (--yes equivalent)
 checkpointing: true             # Enable automated safety backups before edits
 
@@ -13,10 +14,11 @@ checkpointing: true             # Enable automated safety backups before edits
 # MODE-SPECIFIC OVERRIDES
 # ============================================================================
 
-# Advanced Mode - Primary engineering mode with MCP tools
-advanced:
-  apply: true                   # Auto-apply changes
-  system_prompt_prefix: "You are in Advanced Mode with full MCP tool access. Follow V12 DNA strictly."
+# Agent Mode - Primary engineering mode (replaces advanced)
+# Has full tool access including subagents, MCP, browser
+agent:
+  apply: true
+  system_prompt_prefix: "You are in Agent Mode with full tool access including subagents. Follow V12 DNA strictly."
 
 # Plan Mode - Strategic planning and architecture
 plan:
@@ -27,11 +29,6 @@ plan:
 ask:
   apply: false                  # Ask mode is read-only
   system_prompt_prefix: "You are in Ask Mode. Provide clear, technical explanations."
-
-# Code Mode - DEPRECATED (V12.18) - Use Advanced mode instead
-code:
-  apply: true
-  system_prompt_prefix: "WARNING: Code mode is DEPRECATED. Switch to Advanced mode for code tasks."
 
 # ============================================================================
 # V12 CUSTOM MODES
@@ -44,7 +41,7 @@ v12-epic-planner:
 
 # V12 Engineer - Surgical refactoring specialist
 v12-engineer:
-  mode: advanced                # Inherits advanced mode capabilities
+  mode: agent                   # Inherits agent mode capabilities (replaces advanced)
   apply: true                   # Auto-apply surgical edits
   system_prompt_prefix: "You are in YOLO Engineering Mode. Follow V12 DNA strictly. Surgical edits only."
 
@@ -60,14 +57,15 @@ orchestrator:
 
 # Autonomous Refactor Mode - Wave execution orchestration
 autonomous-refactor:
-  apply: true                   # Can write scripts and docs
-  mode: advanced                # Inherits advanced mode capabilities (MCP + browser)
-  system_prompt_prefix: "You are the Wave Execution Lead. Follow building-blocks method, pilot testing, and Jane Street validation strictly."
+  apply: true
+  mode: agent                   # Inherits agent mode (has subagents permission)
+  system_prompt_prefix: "You are the Wave Execution Lead. Spawn subagents per epic/phase. Jane Street validation strictly."
 
 # ============================================================================
 # NOTES
 # ============================================================================
-# - Bob will auto-select the best available model based on your API keys
+# - Default modes: plan, agent, ask (advanced and code are REMOVED as of 2026-06)
+# - agent mode = new primary mode with full tools including subagents
 # - Custom modes defined in .bob/custom_modes.yaml
 # - Mode-specific rules in .bob/rules-{mode-slug}/
 # - Checkpointing enabled globally via .bob/settings.json

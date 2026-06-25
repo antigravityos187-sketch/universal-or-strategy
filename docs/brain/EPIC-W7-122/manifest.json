@@ -1,0 +1,34 @@
+{
+  "epic_id": "EPIC-W7-122",
+  "method": "RemoveFsmOrderIdMappings",
+  "file": "src/V12_002.Symmetry.BracketFSM.cs",
+  "complexity": 10,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "completed_at": "2026-06-24T19:41:27.522540Z"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ]
+    },
+    "2": {
+      "status": "completed",
+      "outputs": [
+        "02-architecture-plan.md"
+      ],
+      "completed_at": "2026-06-24T03:53:27Z"
+    }
+  }
+}

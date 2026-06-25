@@ -1,39 +1,36 @@
 #!/bin/bash
 set -e
 cd /home/malhitticrypto/universal-or-strategy
-export BOBSHELL_API_KEY='bob_prod_bob-admin_5A6hXsy7FL4vf9T2jqr11gdYTmAZcFgxVm1dGD9qGPmpD5fV6emRy6XYzZPsqw56mjCtoiEbJmLU8B2VL4ZtgXeS_ALp1DF9sj3R3cU3dzddRRAVu44Y52VHhkt1BNkSdC2Nq'
-mkdir -p docs/brain/EPIC-CCN-115
-mkdir -p logs/phase1_5
+export BOBSHELL_API_KEY='bob_prod_bob-admin_aRSjzM4xwaEhbcjDdViPqh3giwmvtQksbGerdHvRxq8MPyN2X7KHUU9q6H9DYDBj2YaJwhkgDci2HcT1gRbS9d6_9MHxQ1wMuJVJYeJG2gbRe4NCDCAdf2GBd4wKLhQMg1hS'
+mkdir -p docs/brain/EPIC-W7-115
+mkdir -p logs/wave7/phase1
 
-cat > /tmp/phase1_5_msg_115.txt << 'EOFMSG'
-You are executing Phase 1.5 (Scope Boundary Validation) for EPIC-CCN-115.
+if [ ! -f "docs/brain/EPIC-W7-115/00-hotspots.md" ]; then
+    echo "BLOCKED: Phase 0 not complete"
+    exit 1
+fi
 
-**Input Artifact**: Read `docs/brain/EPIC-CCN-115/00-hotspots.md` for hotspot analysis.
+cat > /tmp/phase1_5_msg_001.txt << 'EOFMSG'
+Execute Phase 1 (Scope Definition) for EPIC-W7-115.
 
-**Your Task**: Define the extraction scope based on the hotspot analysis.
+CRITICAL FILE I/O PROTOCOL:
+1. NEVER use write_to_file, read_file, or run_shell_command tools
+2. ALWAYS use execute_command tool with cat > file
+3. ALWAYS set cwd parameter to /home/malhitticrypto/universal-or-strategy
 
-**Output Requirements**:
-1. Create `docs/brain/EPIC-CCN-115/01-scope-boundary.md` with:
-   - Target method details
-   - Extraction strategy (what to extract, what to keep)
-   - Boundary definition (single method only, no scope creep)
-   - Success criteria (target complexity <= 8)
-   - Risk assessment
+Input: docs/brain/EPIC-W7-115/00-hotspots.md
 
-2. Update `docs/brain/EPIC-CCN-115/manifest.json`:
-   - Set phase "1.5" status to "completed"
-   - Add "01-scope-boundary.md" to outputs
+Required Actions:
+1. Read hotspot analysis
+2. Define extraction scope (IN SCOPE vs OUT OF SCOPE)
+3. Write docs/brain/EPIC-W7-115/01-scope-boundary.md using execute_command
+4. Update manifest.json using execute_command
+5. Verify both files exist using execute_command
 
-**Critical Rules**:
-- Use execute_command with printf for file creation (SSH-safe)
-- Verify files exist with ls -lh before completion
-- Keep scope to single method (V12.23 No Scope Creep Protocol)
-- Target complexity <= 8 (Jane Street alignment)
-
-**Phase**: 1.5 (Scope Boundary Validation)
+Success Criteria:
+- 01-scope-boundary.md exists and contains scope definition
+- manifest.json updated to show phase 1 completed
 EOFMSG
 
-bob --yolo /epic-scope-boundary EPIC-CCN-115 --phase 1.5 2>&1 | tee logs/phase1_5/EPIC-CCN-115.log
+bob --yolo --chat-mode v12-phase1-scope "$(cat /tmp/phase1_5_msg_001.txt)" 2>&1 | tee logs/wave7/phase1/EPIC-W7-115.log
 echo "DONE_EXIT=$?"
-
-# Made with Bob

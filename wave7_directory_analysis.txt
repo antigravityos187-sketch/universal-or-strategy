@@ -1,0 +1,90 @@
+================================================================================
+IDENTIFYING WAVE 7 DIRECTORIES (V2)
+================================================================================
+
+Wave 7 contains 161 unique methods
+Sample methods:
+  1. ShouldSkipFleet_RunHealthCheck
+  2. HandleSecondaryOrderFilled
+  3. ShadowPropagateStopMoves
+  4. ShowModeSpecificControls
+  5. FindChartTraderViaChartTab
+
+Found 174 total epic directories
+
+================================================================================
+RESULTS
+================================================================================
+
+✅ WAVE 7 DIRECTORIES (15):
+
+Current Name -> Method -> Should Be
+--------------------------------------------------------------------------------
+EPIC-W7-001               -> ShouldSkipFleet_RunHealthCheck           -> EPIC-W7-001          ✓ OK
+EPIC-W7-008               -> ManageCIT                                -> EPIC-W7-008          ✓ OK
+EPIC-CCN-155              -> TryHandleFleetCommand                    -> EPIC-W7-009          ✓ RENAME
+EPIC-CCN-98               -> ProcessFlattenWorkItem_CancelOrders      -> EPIC-W7-013          ✓ RENAME
+EPIC-CCN-128              -> SymmetryGuardReplaceExistingFollowerTarget -> EPIC-W7-014          ✓ RENAME
+EPIC-CCN-129              -> SymmetryGuardTryResolveFollowersForDispatch -> EPIC-W7-015          ✓ RENAME
+EPIC-CCN-023              -> HandleFlatPosition_CleanupActivePositions -> EPIC-W7-019          ✓ RENAME
+EPIC-W7-038               -> VerifyPhotonSlotIntegrity                -> EPIC-W7-038          ✓ OK
+EPIC-W7-068               -> TryParseTargetMode                       -> EPIC-W7-068          ✓ OK
+EPIC-W7-072               -> ProcessAccountOrder_UpdateMasterExpected -> EPIC-W7-072          ✓ OK
+EPIC-W7-099               -> PurgePositionIfEligible                  -> EPIC-W7-099          ✓ OK
+EPIC-W7-108               -> DrainPhotonQueuesOnShutdown              -> EPIC-W7-108          ✓ OK
+EPIC-W7-121               -> SymmetryGuardCascadeFollowerCleanup      -> EPIC-W7-121          ✓ OK
+EPIC-W7-141               -> AuditFleet_CheckWorkingStop              -> EPIC-W7-141          ✓ OK
+EPIC-W7-158               -> SyncModeChipVisuals                      -> EPIC-W7-158          ✓ OK
+
+⚠️  OTHER WAVE DIRECTORIES (1):
+(These are from previous waves - DO NOT RENAME)
+  EPIC-CCN-164              -> IsCommandForThisInstrument
+
+❓ UNKNOWN DIRECTORIES (158):
+(No 00-hotspots.md found - likely incomplete)
+  EPIC-001
+  EPIC-002
+  EPIC-003
+  EPIC-004
+  EPIC-005
+  EPIC-006
+  EPIC-007
+  EPIC-008
+  EPIC-009
+  EPIC-010
+  ... and 148 more
+
+================================================================================
+SAFE RENAME SCRIPT
+================================================================================
+
+# 5 Wave 7 directories need renaming
+
+#!/bin/bash
+set -e
+
+# TryHandleFleetCommand
+mv "docs/brain/EPIC-CCN-155" "docs/brain/EPIC-W7-009"
+
+# ProcessFlattenWorkItem_CancelOrders
+mv "docs/brain/EPIC-CCN-98" "docs/brain/EPIC-W7-013"
+
+# SymmetryGuardReplaceExistingFollowerTarget
+mv "docs/brain/EPIC-CCN-128" "docs/brain/EPIC-W7-014"
+
+# SymmetryGuardTryResolveFollowersForDispatch
+mv "docs/brain/EPIC-CCN-129" "docs/brain/EPIC-W7-015"
+
+# HandleFlatPosition_CleanupActivePositions
+mv "docs/brain/EPIC-CCN-023" "docs/brain/EPIC-W7-019"
+
+
+================================================================================
+SUMMARY
+================================================================================
+Wave 7 directories found: 15
+  - Already correct: 10
+  - Need renaming: 5
+Other wave directories: 1 (SAFE - will not touch)
+Unknown directories: 158 (incomplete epics)
+================================================================================

@@ -1,0 +1,20 @@
+{
+  "epic_id": "EPIC-W7-150",
+  "method": "ProcessQueuedExecution_HandleFleetBrackets",
+  "file": "src/V12_002.UI.Compliance.cs",
+  "complexity": 10,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ]
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ]
+    }
+  }
+}

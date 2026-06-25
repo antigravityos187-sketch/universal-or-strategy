@@ -1,0 +1,41 @@
+{
+  "epic_id": "EPIC-W7-058",
+  "method": "MapOrderStateToFSMState",
+  "file": "src/V12_002.SIMA.Lifecycle.cs",
+  "complexity": 13,
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": [
+        "00-hotspots.md"
+      ],
+      "agent": "v12-phase0-hotspot",
+      "bobcoins_used": 0.93,
+      "timestamp": "2026-06-23T02:45:46Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "agent": "v12-phase1-scope",
+      "bobcoins_used": 0.59,
+      "timestamp": "2026-06-24T19:31:49Z"
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": [
+        "01-scope-boundary.md"
+      ],
+      "agent": "v12-phase1-5-boundary",
+      "bobcoins_used": 0.79,
+      "timestamp": "2026-06-24T00:03:04Z"
+    },
+    "phase_2": {
+      "status": "completed",
+      "completed_at": "2026-06-24T03:41:04.239810+00:00",
+      "output_file": "docs/brain/EPIC-W7-058/02-architecture-plan.md",
+      "agent": "v12-phase2-architecture"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "epic_id": "EPIC-W7-030",
+  "method": "ValidateOrphanedMasterOrders",
+  "file": "src/V12_002.Orders.Management.Cleanup.cs",
+  "complexity": 19,
+  "status": "aborted",
+  "abort_reason": "Method already compliant with Jane Street standard (CYC=4 < 8)",
+  "phases": {
+    "0": {
+      "status": "completed",
+      "outputs": ["00-hotspots.md"],
+      "timestamp": "2026-06-23T02:40:18Z"
+    },
+    "1": {
+      "status": "completed",
+      "outputs": ["00-scope.md"],
+      "notes": "CRITICAL: CYC discrepancy detected (expected 19, actual 4). Method already refactored in EPIC-CCN-18. ABORT recommended.",
+      "timestamp": "2026-06-24T19:27:57Z",
+      "agent": "v12-phase1-scope",
+      "bobcoins_used": 0.94
+    },
+    "1.5": {
+      "status": "completed",
+      "outputs": ["01-scope-boundary.md"],
+      "decision": "ABORT",
+      "rationale": "Method complexity (CYC=4) is 50% below Jane Street threshold (8). No refactoring needed. False positive epic from stale audit data.",
+      "timestamp": "2026-06-23T23:58:40Z"
+    },
+    "2": {
+      "status": "completed",
+      "outputs": ["02-architecture-plan.md"],
+      "decision": "ABORT",
+      "rationale": "Conditional architecture documented for completeness. ABORT recommendation confirmed. Method already compliant (CYC=4 < 8).",
+      "timestamp": "2026-06-24T03:34:33Z",
+      "notes": "Architecture plan includes conditional extraction strategy (IF CYC=19 verified) and formal ABORT recommendation. Director approval required."
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "timestamp": "2026-06-23T02:01:42.928603",
+  "launcher_running": true,
+  "wave7_complete": 10,
+  "wave7_remaining": 151,
+  "other_waves_complete": 9,
+  "wave7_epics": [
+    [
+      "EPIC-W7-001",
+      "ShouldSkipFleet_RunHealthCheck",
+      "EPIC-W7-001",
+      "2026-06-22T20:07:30Z"
+    ],
+    [
+      "EPIC-W7-008",
+      "ManageCIT",
+      "EPIC-W7-008",
+      ""
+    ],
+    [
+      "EPIC-W7-038",
+      "VerifyPhotonSlotIntegrity",
+      "EPIC-W7-038",
+      ""
+    ],
+    [
+      "EPIC-W7-068",
+      "TryParseTargetMode",
+      "EPIC-W7-068",
+      "2026-06-22T04:01:24Z"
+    ],
+    [
+      "EPIC-W7-072",
+      "ProcessAccountOrder_UpdateMasterExpected",
+      "EPIC-W7-072",
+      ""
+    ],
+    [
+      "EPIC-W7-099",
+      "PurgePositionIfEligible",
+      "EPIC-W7-099",
+      ""
+    ],
+    [
+      "EPIC-W7-108",
+      "DrainPhotonQueuesOnShutdown",
+      "EPIC-W7-108",
+      ""
+    ],
+    [
+      "EPIC-W7-121",
+      "SymmetryGuardCascadeFollowerCleanup",
+      "EPIC-W7-121",
+      "2026-06-22T04:02:58Z"
+    ],
+    [
+      "EPIC-W7-141",
+      "AuditFleet_CheckWorkingStop",
+      "EPIC-W7-141",
+      ""
+    ],
+    [
+      "EPIC-W7-158",
+      "SyncModeChipVisuals",
+      "EPIC-W7-158",
+      "2026-06-22T04:05:42Z"
+    ]
+  ]
+}

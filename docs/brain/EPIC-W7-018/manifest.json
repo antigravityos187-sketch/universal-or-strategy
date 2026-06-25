@@ -1,57 +1,31 @@
 {
   "epic_id": "EPIC-W7-018",
-  "method": "MonitorRmaProximity",
-  "file": "V12_002.Entries.RMA.cs",
-  "complexity_before": 17,
-  "target_complexity": 8,
+  "method": "IsSymbolMatch",
+  "file": "src/V12_002.UI.IPC.cs",
+  "complexity": 18,
   "phases": {
-    "phase_0": {
-      "name": "Hotspot Analysis",
+    "0": {
       "status": "completed",
-      "agent": "v12-phase0-hotspot",
-      "output": "00-hotspots.md",
-      "completed_at": "2026-06-22T04:00:48Z",
-      "bobcoins_used": 0.67
+      "outputs": [
+        "00-hotspots.md"
+      ]
     },
-    "phase_1": {
-      "name": "Scope Definition",
-      "status": "pending",
-      "dependencies": ["phase_0"]
+    "1": {
+      "status": "completed",
+      "outputs": [
+        "00-scope.md"
+      ],
+      "completed_at": "2026-06-24T19:26:24Z",
+      "agent": "v12-phase1-scope",
+      "bobcoins_used": 0.96
     },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
+    "1.5": {
       "status": "pending",
-      "dependencies": ["phase_1"]
+      "outputs": []
     },
-    "phase_2": {
-      "name": "Architecture Planning",
+    "2": {
       "status": "pending",
-      "dependencies": ["phase_1_5"]
-    },
-    "phase_3": {
-      "name": "DNA & PR Audit",
-      "status": "pending",
-      "dependencies": ["phase_2"]
-    },
-    "phase_4": {
-      "name": "Ticket Generation",
-      "status": "pending",
-      "dependencies": ["phase_3"]
-    },
-    "phase_5": {
-      "name": "Ticket Execution",
-      "status": "pending",
-      "dependencies": ["phase_4"]
-    },
-    "phase_5_v": {
-      "name": "Ticket Verification",
-      "status": "pending",
-      "dependencies": ["phase_5"]
-    },
-    "phase_6": {
-      "name": "Final Review",
-      "status": "pending",
-      "dependencies": ["phase_5_v"]
+      "outputs": []
     }
   }
 }
