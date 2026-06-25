@@ -1,151 +1,113 @@
 ---
-description: Master autonomous refactoring orchestrator. Spawns subagents per epic per phase (Bob IDE V2). Runs all N epics in parallel per phase until entire codebase reaches CYC <= 8 with Jane Street compliance.
-argument-hint: "[--phase PHASE] [--start-epic EPIC-W7-NNN] [--target-cyc N]"
+description: Wave 7 Top-Level Orchestrator (Tier 1). Starts the sequential chain of 10 Phase Orchestrators. Each Phase Orchestrator runs as a start_subtask, spawns 161 parallel epic workers, enforces 100% completion, then start_subtask hands off to the next phase. Final phase reports WAVE_COMPLETE back here.
+argument-hint: "[--reset] [--resume-phase PHASE]"
 ---
-# AUTONOMOUS REFACTOR — WAVE ORCHESTRATOR
 
-**Mode:** `autonomous-refactor` (this mode)
-**Protocol:** V12.28 Bob IDE V2 — Native Subagent Parallel Execution
+# AUTONOMOUS REFACTOR — WAVE 7 TOP-LEVEL ORCHESTRATOR (TIER 1)
+
+**Mode:** `autonomous-refactor`
+**Architecture:** 3-Tier Subagent Chain (V2.4)
 **Goal:** All 161 methods CYC > 8 → CYC ≤ 8, Jane Street strict standard
 
 ---
 
-## EXECUTION MODEL (BOB IDE V2 — AUTHORITATIVE)
+## YOUR ROLE (Tier 1)
 
-**SPAWN SUBAGENTS. DO NOT use scripts, Bob Shell, or screen sessions.**
-
-```
-FOR EACH epic in current_phase_queue (ALL simultaneously):
-  spawn_subagent(
-    mode: <custom-mode-slug>         # from phase→mode map below
-    description: |
-      Epic: EPIC-W7-NNN
-      Method: [MethodName] (CYC: N)
-      Source: src/V12_002.*.cs
-      Input: docs/brain/EPIC-W7-NNN/[previous-phase-output].md
-      Task: Read input artifact. Execute [phase] work.
-             Write output to docs/brain/EPIC-W7-NNN/[output].md
-             Return: {status, output_path, cyc_achieved}
-  )
-
-WAIT for all subagents to complete.
-Log Lamport events for all completions.
-Re-spawn any failures individually.
-```
-
-### Phase → Custom Mode Map (MANDATORY)
-
-| Phase | Custom Mode Slug | Output Artifact |
-|-------|-----------------|-----------------|
-| 0 | `v12-phase0-hotspot` | `00-hotspots.md` |
-| 1 | `v12-phase1-scope` | `00-scope.md` |
-| 1.5 | `v12-phase1-5-boundary` | `01-scope-boundary.md` |
-| 2 | `v12-phase2-architecture` | `02-architecture-plan.md` |
-| 3 | `v12-phase3-audit` | `03-audit-report.md` |
-| 4 | `v12-phase4-tickets` | `04-tickets.md` |
-| 4.5 | `v12-phase4-5-review` | `04-5-ticket-review.md` |
-| 5 | `v12-engineer` | `ticket-X-completion.md` |
-| 5.V | `v12-phase5-v-verify` | `ticket-X-verification.md` |
-| 6 | `v12-phase6-review` | `05-completion-report.md` |
-
-**CRITICAL — NEVER USE:**
-- ❌ `_p0_NNN.sh`, `_p1_NNN.sh`, `_p2_NNN.sh` shell scripts
-- ❌ `bob --yolo --chat-mode MODE "$(cat /tmp/msg.txt)"`
-- ❌ GCP VM screen sessions
-- ❌ `gcp-vm-wave-execution` skill
-- ❌ 12-second delays between launches
-- ❌ "Switch to: Advanced mode" — Advanced mode does not exist
-- ❌ `/epic-run` — deprecated monolithic command
+You are the **entry point** only. You do NOT spawn 161 workers directly.
+You spawn **one Phase Orchestrator at a time** using `start_subtask`, then wait.
+Each Phase Orchestrator is responsible for its own 161 workers AND for chaining to the next phase.
 
 ---
 
-## ORCHESTRATION RULES
+## EXECUTION PROTOCOL
 
-- **PARALLEL**: Spawn ALL N epics for a phase simultaneously — no delay needed
-- **SUBAGENT ISOLATION**: Each subagent has clean context; only summary returns to orchestrator
-- **LAMPORT TRACKING**: Log all phase transitions to `.lamport/wave7/event_log.jsonl`
-- **JANE STREET KB**: Query `python scripts/query_kb.py "<term>"` before phases 2, 4.5, 5, 5.V, 6
-- **100% MANDATE**: Wave is NOT complete until N/N epics complete — never accept N-1/N
-- **FAILURE RECOVERY**: Re-spawn failed subagents individually; do not re-run successful ones
-- **xUnit ONLY**: ALL tests must use xUnit `[Fact]` / `Assert.Equal()` — NEVER NUnit/MSTest
-- **UTF-8**: ALL files must be UTF-8 encoded (no BOM)
-
----
-
-## PROGRESS REPORTING
-
-After each phase batch completes, output:
-
+### Step 1: Verify Prerequisites
 ```
-[WAVE-7] Phase [X] Progress
-============================================================
-Phase     : [X] [Phase Name]
-Complete  : [N]/161 epics
-Failed    : [F] (queued for re-spawn)
-Duration  : [T]
-Lamport   : [clock value]
-Next Phase: [X+1] — ready to spawn
-============================================================
+- Read docs/brain/wave7-epic-list.json → confirm 161 entries
+- Verify .lamport/wave7/event_log.jsonl exists
+- Confirm docs/brain/EPIC-W7-* directories exist (161 total)
 ```
 
----
-
-## PHASE SEQUENCE
-
-```
-Phase 0 → Phase 1 → Phase 1.5 → Phase 2 → Phase 3 → Phase 4 → Phase 4.5
-                                                                    ↓
-Phase 6 ← Phase 5.N.V ← Phase 5.N (Ticket Execution, parallel per ticket)
-```
-
-**Jane Street KB queries required at:** Phase 2, 4.5, 5, 5.V, 6
-
----
-
-## FAILURE RECOVERY PROTOCOL
-
-1. Identify failed subagents from phase batch results
-2. Log failure to `.lamport/wave7/event_log.jsonl`
-3. Write failure note to `docs/brain/EPIC-W7-NNN/failure-analysis.md`
-4. Re-spawn that epic's subagent individually (same mode, same inputs)
-5. Do NOT re-run already-successful epics
-6. Wave is complete only when 161/161 epics reach Phase 6
-
----
-
-## LAMPORT EVENT SCHEMA
-
+### Step 2: Log Wave Start
+Append to `.lamport/wave7/event_log.jsonl`:
 ```json
-{
-  "timestamp": "2026-06-24T18:00:00Z",
-  "lamport_clock": 42,
-  "epic_id": "EPIC-W7-NNN",
-  "phase": "1",
-  "event_type": "phase_complete",
-  "status": "success",
-  "output_artifact": "docs/brain/EPIC-W7-NNN/00-scope.md"
-}
+{"timestamp":"<ISO8601>","lamport_clock":1,"epic_id":"WAVE-7","phase":"init","tier":"top_orch","event_type":"wave_start","status":"running","note":"Wave 7 start — 161 epics, Phase 0 first"}
+```
+
+### Step 3: Launch Phase 0 Orchestrator via start_subtask
+```
+start_subtask(
+  title: "Wave 7 — Phase 0 Orchestrator",
+  mode: "wave-orch-phase0",
+  message: |
+    You are the Phase 0 (Hotspot Analysis) Orchestrator for Wave 7.
+    Epic list: docs/brain/wave7-epic-list.json (161 epics)
+    Lamport log: .lamport/wave7/event_log.jsonl
+    
+    Execute your full protocol:
+    1. Spawn 161 v12-phase0-hotspot workers in parallel (spawn_subagent)
+    2. Enforce 100% completion (retry loop up to 3 rounds)
+    3. On VERIFIED_COMPLETE: start_subtask the Phase 1 Orchestrator
+    4. The chain continues automatically through all 10 phases
+    5. Phase 6 Orchestrator will report WAVE_COMPLETE back
+    
+    See your roleDefinition and docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md for full protocol.
+)
+```
+
+### Step 4: Wait for WAVE_COMPLETE
+- The subtask chain runs autonomously: Ph0 → Ph1 → Ph1.5 → Ph2 → Ph3 → Ph4 → Ph4.5 → Ph5 → Ph5.V → Ph6
+- Each phase orchestrator hands off via start_subtask to the next
+- Phase 6 Orchestrator returns WAVE_COMPLETE to you
+
+### Step 5: On WAVE_COMPLETE
+```
+- Log wave_7_complete to .lamport/wave7/event_log.jsonl
+- Verify: python scripts/complexity_audit.py | grep "REFACTOR" | wc -l → should be 0
+- Report: "Wave 7 complete — 161/161 methods now CYC ≤ 8"
 ```
 
 ---
 
-## COMPLETION CRITERIA
+## HARD_FAILURE HANDLING
 
-Wave 7 is complete when:
-- ✅ All 161 EPIC-W7-NNN directories have `05-completion-report.md`
-- ✅ All methods verified CYC ≤ 8
-- ✅ All xUnit tests passing
-- ✅ UTF-8 compliance verified
-- ✅ Lamport event log shows 161 phase_6_complete events
+If any phase reports `HARD_FAILURE`:
+1. Log to `.lamport/wave7/event_log.jsonl`
+2. Write `docs/brain/wave7-incident-report.md` with stuck epic list
+3. HALT — do NOT proceed
+4. Report to Director for manual resolution
+5. After resolution: re-start_subtask that specific Phase Orchestrator only
 
 ---
+
+## PHASE CHAIN MAP
+
+| Phase | Orchestrator Mode | Worker Mode | Hands Off To |
+|-------|-------------------|-------------|--------------|
+| 0 | `wave-orch-phase0` | `v12-phase0-hotspot` | `wave-orch-phase1` |
+| 1 | `wave-orch-phase1` | `v12-phase1-scope` | `wave-orch-phase1-5` |
+| 1.5 | `wave-orch-phase1-5` | `v12-phase1-5-boundary` | `wave-orch-phase2` |
+| 2 | `wave-orch-phase2` | `v12-phase2-architecture` | `wave-orch-phase3` |
+| 3 | `wave-orch-phase3` | `v12-phase3-audit` | `wave-orch-phase4` |
+| 4 | `wave-orch-phase4` | `v12-phase4-tickets` | `wave-orch-phase4-5` |
+| 4.5 | `wave-orch-phase4-5` | `v12-phase4-5-review` | `wave-orch-phase5` |
+| 5 | `wave-orch-phase5` | `v12-engineer` | `wave-orch-phase5v` |
+| 5.V | `wave-orch-phase5v` | `v12-phase5-v-verify` | `wave-orch-phase6` |
+| 6 | `wave-orch-phase6` | `v12-phase6-review` | → WAVE_COMPLETE to Tier 1 |
+
+---
+
+## CRITICAL RULES
+
+- **NEVER** spawn 161 workers directly from Tier 1 — delegate to Phase Orchestrators
+- **NEVER** use spawn_subagent for Phase Orchestrators — use `start_subtask`
+- **NEVER** skip a phase — each phase's output is the next phase's input
+- **xUnit ONLY**: `[Fact]`, `Assert.Equal()` — NEVER NUnit/MSTest
+- **UTF-8**: All files UTF-8 (no BOM)
+- **Workers**: Bob IDE V2 spawns subagents internally — no external API keys needed
 
 ## REFERENCE
-
-- **Integration Matrix**: `docs/workflow/AUTONOMOUS_REFACTOR_INTEGRATION_MATRIX_V2.md`
-- **Source Data**: `complexity_audit_fresh_2026-06-14.txt`
-- **Event Log**: `.lamport/wave7/event_log.jsonl`
-- **Jane Street KB**: `python scripts/query_kb.py "<term>"`
-
-*Protocol: V12.28 — Bob IDE V2 Native Subagent Model*
-*Obsoletes: V12.25 epic-run monolithic, gcp-vm-wave-execution, _pX_NNN.sh scripts*
+- Epic list: `docs/brain/wave7-epic-list.json`
+- Templates: `docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`
+- Matrix: `docs/workflow/AUTONOMOUS_REFACTOR_INTEGRATION_MATRIX_V2.md`
+- Lamport: `.lamport/wave7/event_log.jsonl`

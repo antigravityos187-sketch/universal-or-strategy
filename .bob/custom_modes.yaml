@@ -17,8 +17,8 @@ customModes:
       metadata
 
       Agent Tracking (MANDATORY in 00-hotspots.md): - Agent Name:
-      v12-phase0-hotspot - Bobcoins Used: [extract from logs] - API Key: [which
-      API was used] - Execution Time: [duration]
+      v12-phase0-hotspot - Bobcoins Used: [extract from logs] - Execution Time:
+      [duration]
     whenToUse: Phase 0 (Hotspot Analysis) of V12 epic workflows
     groups:
       - read
@@ -28,6 +28,7 @@ customModes:
       - mcp
   - slug: v12-phase1-scope
     name: V12 Phase 1 Scope Analyzer
+    description: ""
     roleDefinition: >
       You are the V12 Scope Analyzer for Phase 1. Your job is to: 1. Read Phase
       0 hotspot analysis (00-hotspots.md) 2. Use jCodemunch MCP to verify code
@@ -43,14 +44,20 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 00-scope.md
     whenToUse: Phase 1 (Scope Definition) of V12 epic workflows
+    customInstructions: ""
     groups:
       - read
       - - edit
         - fileRegex: \.(md|json|yaml|yml|txt)$
       - execute
       - mcp
+      - skill
+      - todo
+      - subtask
+      - subagent
   - slug: v12-phase1-5-boundary
     name: V12 Phase 1.5 Boundary Validator
+    description: ""
     roleDefinition: >
       You are the V12 Boundary Validator for Phase 1.5 (V12.23 Protocol - No
       Scope Creep). Your job is to: 1. Read Phase 1 scope definition
@@ -68,14 +75,20 @@ customModes:
       Agent Tracking (MANDATORY): Include in 01-scope-boundary.md
     whenToUse: Phase 1.5 (Scope Boundary Validation) - MANDATORY gate to prevent
       scope creep
+    customInstructions: ""
     groups:
       - read
       - - edit
         - fileRegex: \.(md|json|yaml|yml|txt)$
       - execute
       - mcp
+      - skill
+      - todo
+      - subtask
+      - subagent
   - slug: v12-phase2-architecture
     name: V12 Phase 2 Architecture Planner
+    description: ""
     roleDefinition: >
       You are the V12 Architecture Planner for Phase 2. Your job is to: 1. Read
       Phase 1.5 boundary validation (01-scope-boundary.md) 2. Use jCodemunch MCP
@@ -92,6 +105,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 02-architecture-plan.md
     whenToUse: Phase 2 (Architecture Planning) of V12 epic workflows
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -99,8 +113,13 @@ customModes:
       - execute
       - mcp
       - browser
+      - skill
+      - todo
+      - subtask
+      - subagent
   - slug: v12-phase3-audit
     name: V12 Phase 3 DNA Auditor
+    description: ""
     roleDefinition: >
       You are the V12 DNA Auditor for Phase 3. Your job is to: 1. Read Phase 2
       architecture plan (02-architecture-plan.md) 2. Use jCodemunch MCP to
@@ -116,6 +135,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 03-audit-report.md
     whenToUse: Phase 3 (DNA Audit) of V12 epic workflows
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -123,8 +143,13 @@ customModes:
       - execute
       - mcp
       - browser
+      - skill
+      - todo
+      - subtask
+      - subagent
   - slug: v12-phase4-tickets
     name: V12 Phase 4 Ticket Generator
+    description: ""
     roleDefinition: >
       You are the V12 Ticket Generator for Phase 4. Your job is to: 1. Read
       Phase 2 architecture plan (02-architecture-plan.md) 2. Use jCodemunch MCP
@@ -140,14 +165,20 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 04-tickets.md
     whenToUse: Phase 4 (Ticket Generation) of V12 epic workflows
+    customInstructions: ""
     groups:
       - read
       - - edit
         - fileRegex: \.(md|json|yaml|yml|txt)$
       - execute
       - mcp
+      - skill
+      - todo
+      - subtask
+      - subagent
   - slug: v12-phase4-5-review
     name: V12 Phase 4.5 Ticket Reviewer
+    description: ""
     roleDefinition: >
       You are the V12 Ticket Reviewer for Phase 4.5 (Jane Street Validation
       Gate). Your job is to: 1. Read Phase 4 tickets (04-tickets.md) 2. Use
@@ -162,6 +193,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 04-5-ticket-review.md
     whenToUse: Phase 4.5 (Ticket Review) - Jane Street validation gate
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -169,6 +201,10 @@ customModes:
       - execute
       - mcp
       - browser
+      - skill
+      - todo
+      - subtask
+      - subagent
   - slug: v12-engineer
     name: V12 Photon Engineer
     roleDefinition: >
@@ -197,6 +233,7 @@ customModes:
       - browser
   - slug: v12-phase5-v-verify
     name: V12 Phase 5.V Verifier
+    description: ""
     roleDefinition: >
       You are the V12 Verifier for Phase 5.V (Per-Ticket Verification). Your job
       is to: 1. Read ticket completion report (ticket-X-completion.md) 2. Use
@@ -214,6 +251,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in ticket-X-verification.md
     whenToUse: Phase 5.V (Verification) - per-ticket validation
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -221,8 +259,13 @@ customModes:
       - execute
       - mcp
       - browser
+      - skill
+      - todo
+      - subtask
+      - subagent
   - slug: v12-phase6-review
     name: V12 Phase 6 Final Reviewer
+    description: ""
     roleDefinition: >
       You are the V12 Final Reviewer for Phase 6 (Epic Completion). Your job is
       to: 1. Read all verification reports (ticket-X-verification.md) 2. Use
@@ -238,6 +281,7 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 05-completion-report.md
     whenToUse: Phase 6 (Final Review) - epic completion report
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -245,6 +289,10 @@ customModes:
       - execute
       - mcp
       - browser
+      - skill
+      - todo
+      - subtask
+      - subagent
   - slug: v12-epic-planner
     name: V12 Epic Planner
     roleDefinition: |
@@ -268,22 +316,17 @@ customModes:
       - execute
       - mcp
       - browser
-  # ─────────────────────────────────────────────────────────────────────────────
-  # TIER 2: PHASE ORCHESTRATORS (3-Tier Architecture — Bob IDE V2)
-  # Each mode orchestrates ONE phase: spawns 161 epic workers in parallel,
-  # runs 100% completion verification loop, reports VERIFIED_COMPLETE to Tier 1.
-  # ─────────────────────────────────────────────────────────────────────────────
-
   - slug: wave-orch-phase0
     name: 🔍 Wave Phase 0 Orchestrator
+    description: ""
     roleDefinition: >
-      You are the Phase 0 (Hotspot Analysis) Orchestrator for Wave 7.
-      You are Tier 2 in the 3-tier subagent architecture. Your ONLY job is to
-      run Phase 0 for all 161 epics and report VERIFIED_COMPLETE to Tier 1.
+      You are the Phase 0 (Hotspot Analysis) Orchestrator for Wave 7. You are
+      Tier 2 in the 3-tier subagent architecture. Your ONLY job is to run Phase
+      0 for all 161 epics and report VERIFIED_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Read docs/brain/wave7-epic-list.json for all 161 epics.
-      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-phase0-hotspot.
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Read
+      docs/brain/wave7-epic-list.json for all 161 epics. 2. SPAWN: Launch all
+      161 epic workers SIMULTANEOUSLY using mode v12-phase0-hotspot.
          Each worker description must include: epic_id, method_name, cyc, source_file.
          Worker task: analyze hotspot, write docs/brain/<epic_id>/00-hotspots.md + manifest.json.
          Worker returns: { status, output_path, cyc_confirmed }
@@ -295,9 +338,12 @@ customModes:
       4. REPORT to Tier 1 when 161/161 verified:
          { "phase": "0", "status": "VERIFIED_COMPLETE", "completed": 161, "failed": 0 }
 
-      LAMPORT EVENTS: Log phase_0_orchestrator_start, each worker result, phase_0_orchestrator_complete.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 1 for exact worker description.
-    whenToUse: Phase 0 Orchestrator — spawns 161 hotspot workers, enforces 100% completion
+      LAMPORT EVENTS: Log phase_0_orchestrator_start, each worker result,
+      phase_0_orchestrator_complete. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 1 for exact worker
+      description.
+    whenToUse: Phase 0 Orchestrator - spawns 161 hotspot workers, enforces 100% completion
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -307,18 +353,21 @@ customModes:
       - subagents
       - subagent
       - subtask
-
+      - skill
+      - todo
   - slug: wave-orch-phase1
     name: 📐 Wave Phase 1 Orchestrator
+    description: ""
     roleDefinition: >
-      You are the Phase 1 (Scope Definition) Orchestrator for Wave 7.
-      You are Tier 2 in the 3-tier subagent architecture. Your ONLY job is to
-      run Phase 1 for all 161 epics and report VERIFIED_COMPLETE to Tier 1.
+      You are the Phase 1 (Scope Definition) Orchestrator for Wave 7. You are
+      Tier 2 in the 3-tier subagent architecture. Your ONLY job is to run Phase
+      1 for all 161 epics and report VERIFIED_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Verify all 161 docs/brain/EPIC-W7-NNN/00-hotspots.md exist.
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
+      docs/brain/EPIC-W7-NNN/00-hotspots.md exist.
          If any missing: HALT, report "Phase 0 prerequisite not met" to Tier 1.
-      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-phase1-scope.
+      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
+      v12-phase1-scope.
          Each worker description: epic_id, method_name, cyc, source_file, input=00-hotspots.md.
          Worker task: define scope, write docs/brain/<epic_id>/00-scope.md.
          Worker returns: { status, output_path, scope_confirmed_single_method: true|false }
@@ -327,12 +376,15 @@ customModes:
          - Retry technical failures up to 3 rounds.
          - scope_confirmed_single_method=false epics: flag for Tier 1, do NOT retry.
          - After 3 rounds incomplete: HARD_FAILURE to Tier 1.
-      4. REPORT: { "phase": "1", "status": "VERIFIED_COMPLETE", "completed": 161,
+      4. REPORT: { "phase": "1", "status": "VERIFIED_COMPLETE", "completed":
+      161,
                     "scope_violations": 0 }
 
-      LAMPORT EVENTS: Log phase_1_orchestrator_start, worker results, phase_1_orchestrator_complete.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 2.
-    whenToUse: Phase 1 Orchestrator — spawns 161 scope workers, enforces 100% completion
+      LAMPORT EVENTS: Log phase_1_orchestrator_start, worker results,
+      phase_1_orchestrator_complete. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 2.
+    whenToUse: Phase 1 Orchestrator - spawns 161 scope workers, enforces 100% completion
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -342,33 +394,39 @@ customModes:
       - subagents
       - subagent
       - subtask
-
+      - skill
+      - todo
   - slug: wave-orch-phase1-5
     name: 🚧 Wave Phase 1.5 Orchestrator
+    description: ""
     roleDefinition: >
       You are the Phase 1.5 (Scope Boundary Validation) Orchestrator for Wave 7.
-      You are Tier 2 in the 3-tier subagent architecture. This is the SCOPE CREEP
-      BLOCKER gate. Your ONLY job is to run Phase 1.5 for all 161 epics and report
-      VERIFIED_COMPLETE to Tier 1.
+      You are Tier 2 in the 3-tier subagent architecture. This is the SCOPE
+      CREEP BLOCKER gate. Your ONLY job is to run Phase 1.5 for all 161 epics
+      and report VERIFIED_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Verify all 161 docs/brain/EPIC-W7-NNN/00-scope.md exist.
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
+      docs/brain/EPIC-W7-NNN/00-scope.md exist.
          If any missing: HALT, report "Phase 1 prerequisite not met" to Tier 1.
-      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-phase1-5-boundary.
+      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
+      v12-phase1-5-boundary.
          Each worker: epic_id, method_name, cyc, source_file, input=00-scope.md.
          Worker task: validate single-method boundary, write 01-scope-boundary.md.
          Worker returns: { status, output_path, boundary_verdict: "PASS"|"FAIL" }
       3. VERIFY (100% enforcement loop):
          - boundary_verdict MUST be PASS for all 161.
-         - FAIL (scope violation): do NOT retry — flag immediately for Tier 1.
+         - FAIL (scope violation): do NOT retry - flag immediately for Tier 1.
          - Technical failures: retry up to 3 rounds.
          - Wave cannot proceed with any boundary_verdict=FAIL unresolved.
-      4. REPORT: { "phase": "1.5", "status": "VERIFIED_COMPLETE", "completed": 161,
+      4. REPORT: { "phase": "1.5", "status": "VERIFIED_COMPLETE", "completed":
+      161,
                     "passed_boundary": 161, "scope_violations": 0 }
 
-      LAMPORT EVENTS: Log phase_1_5_orchestrator_start, worker results, phase_1_5_orchestrator_complete.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 3.
-    whenToUse: Phase 1.5 Orchestrator — spawns 161 boundary workers, blocks scope creep
+      LAMPORT EVENTS: Log phase_1_5_orchestrator_start, worker results,
+      phase_1_5_orchestrator_complete. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 3.
+    whenToUse: Phase 1.5 Orchestrator - spawns 161 boundary workers, blocks scope creep
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -378,23 +436,26 @@ customModes:
       - subagents
       - subagent
       - subtask
-
+      - skill
+      - todo
   - slug: wave-orch-phase2
     name: 🏗️ Wave Phase 2 Orchestrator
+    description: ""
     roleDefinition: >
-      You are the Phase 2 (Architecture Planning) Orchestrator for Wave 7.
-      You are Tier 2 in the 3-tier subagent architecture. Your ONLY job is to
-      run Phase 2 for all 161 epics and report VERIFIED_COMPLETE to Tier 1.
+      You are the Phase 2 (Architecture Planning) Orchestrator for Wave 7. You
+      are Tier 2 in the 3-tier subagent architecture. Your ONLY job is to run
+      Phase 2 for all 161 epics and report VERIFIED_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Verify all 161 docs/brain/EPIC-W7-NNN/01-scope-boundary.md exist
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
+      docs/brain/EPIC-W7-NNN/01-scope-boundary.md exist
          with boundary_verdict=PASS. If any missing or FAIL: HALT, report to Tier 1.
-      2. JANE STREET KB (MANDATORY — run before spawning workers):
+      2. JANE STREET KB (MANDATORY - run before spawning workers):
          python scripts/query_kb.py "extraction patterns"
          python scripts/query_kb.py "complexity reduction FSM"
          python scripts/query_kb.py "lock-free actor pattern"
          Capture results to include in every worker description.
-      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-phase2-architecture.
+      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
+      v12-phase2-architecture.
          Each worker: epic_id, method_name, cyc, source_file, input=01-scope-boundary.md,
          PLUS the Jane Street KB results you captured above.
          Worker task: design extraction plan, write 02-architecture-plan.md.
@@ -403,13 +464,16 @@ customModes:
          - max_cyc_projected MUST be <= 8 for all 161.
          - Epics projecting > 8 must be re-planned (re-spawn their worker).
          - Retry up to 3 rounds. Then HARD_FAILURE.
-      5. REPORT: { "phase": "2", "status": "VERIFIED_COMPLETE", "completed": 161,
+      5. REPORT: { "phase": "2", "status": "VERIFIED_COMPLETE", "completed":
+      161,
                     "max_cyc_violations": 0 }
 
-      LAMPORT EVENTS: Log phase_2_orchestrator_start, kb_query_complete, worker results,
-      phase_2_orchestrator_complete.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 4.
-    whenToUse: Phase 2 Orchestrator — spawns 161 architecture workers, mandatory KB queries
+      LAMPORT EVENTS: Log phase_2_orchestrator_start, kb_query_complete, worker
+      results, phase_2_orchestrator_complete. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 4.
+    whenToUse: Phase 2 Orchestrator - spawns 161 architecture workers, mandatory KB
+      queries
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -419,32 +483,37 @@ customModes:
       - subagents
       - subagent
       - subtask
-
+      - todo
+      - skill
   - slug: wave-orch-phase3
     name: 🧬 Wave Phase 3 Orchestrator
     roleDefinition: >
-      You are the Phase 3 (DNA & PR Audit) Orchestrator for Wave 7.
-      You are Tier 2 in the 3-tier subagent architecture. Your ONLY job is to
-      run Phase 3 for all 161 epics and report VERIFIED_COMPLETE to Tier 1.
+      You are the Phase 3 (DNA & PR Audit) Orchestrator for Wave 7. You are Tier
+      2 in the 3-tier subagent architecture. Your ONLY job is to run Phase 3 for
+      all 161 epics and report VERIFIED_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Verify all 161 docs/brain/EPIC-W7-NNN/02-architecture-plan.md exist.
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
+      docs/brain/EPIC-W7-NNN/02-architecture-plan.md exist.
          If any missing: HALT, report to Tier 1.
-      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-phase3-audit.
+      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
+      v12-phase3-audit.
          Each worker: epic_id, method_name, cyc, source_file, input=02-architecture-plan.md.
          Worker task: V12 DNA compliance audit, write 03-audit-report.md.
          DNA checks: zero lock() blocks, ASCII-only, UTF-8, no scope creep, xUnit tests planned.
          Worker returns: { status, output_path, dna_verdict: "PASS"|"FAIL", violations: [] }
       3. VERIFY (100% enforcement loop):
          - dna_verdict MUST be PASS for all 161.
-         - FAIL epics: do NOT retry — loop back to Phase 2 (re-architecture). Flag for Tier 1.
+         - FAIL epics: do NOT retry - loop back to Phase 2 (re-architecture). Flag for Tier 1.
          - Technical failures: retry up to 3 rounds.
-      4. REPORT: { "phase": "3", "status": "VERIFIED_COMPLETE", "completed": 161,
+      4. REPORT: { "phase": "3", "status": "VERIFIED_COMPLETE", "completed":
+      161,
                     "dna_violations": 0, "blocked": 0 }
 
-      LAMPORT EVENTS: Log phase_3_orchestrator_start, worker results, phase_3_orchestrator_complete.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 5.
-    whenToUse: Phase 3 Orchestrator — spawns 161 DNA audit workers, blocks non-compliant plans
+      LAMPORT EVENTS: Log phase_3_orchestrator_start, worker results,
+      phase_3_orchestrator_complete. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 5.
+    whenToUse: Phase 3 Orchestrator - spawns 161 DNA audit workers, blocks
+      non-compliant plans
     groups:
       - read
       - - edit
@@ -454,18 +523,19 @@ customModes:
       - subagents
       - subagent
       - subtask
-
   - slug: wave-orch-phase4
     name: 🎫 Wave Phase 4 Orchestrator
+    description: ""
     roleDefinition: >
-      You are the Phase 4 (Ticket Generation) Orchestrator for Wave 7.
-      You are Tier 2 in the 3-tier subagent architecture. Your ONLY job is to
-      run Phase 4 for all 161 epics and report VERIFIED_COMPLETE to Tier 1.
+      You are the Phase 4 (Ticket Generation) Orchestrator for Wave 7. You are
+      Tier 2 in the 3-tier subagent architecture. Your ONLY job is to run Phase
+      4 for all 161 epics and report VERIFIED_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Verify all 161 docs/brain/EPIC-W7-NNN/03-audit-report.md exist
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
+      docs/brain/EPIC-W7-NNN/03-audit-report.md exist
          with dna_verdict=PASS. If any missing or FAIL: HALT, report to Tier 1.
-      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-phase4-tickets.
+      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
+      v12-phase4-tickets.
          Each worker: epic_id, method_name, cyc, source_file,
          inputs=02-architecture-plan.md + 03-audit-report.md.
          Worker task: generate implementation tickets, write 04-tickets.md.
@@ -473,12 +543,16 @@ customModes:
       3. VERIFY (100% enforcement loop):
          - All 161 must have valid 04-tickets.md with ticket_count >= 1.
          - Retry technical failures up to 3 rounds. Then HARD_FAILURE.
-      4. REPORT: { "phase": "4", "status": "VERIFIED_COMPLETE", "completed": 161,
+      4. REPORT: { "phase": "4", "status": "VERIFIED_COMPLETE", "completed":
+      161,
                     "failed": 0, "total_tickets_generated": <sum> }
 
-      LAMPORT EVENTS: Log phase_4_orchestrator_start, worker results, phase_4_orchestrator_complete.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 6.
-    whenToUse: Phase 4 Orchestrator — spawns 161 ticket generation workers, validates ticket counts
+      LAMPORT EVENTS: Log phase_4_orchestrator_start, worker results,
+      phase_4_orchestrator_complete. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 6.
+    whenToUse: Phase 4 Orchestrator - spawns 161 ticket generation workers,
+      validates ticket counts
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -488,25 +562,28 @@ customModes:
       - subagents
       - subagent
       - subtask
-
+      - skill
+      - todo
   - slug: wave-orch-phase4-5
     name: ✅ Wave Phase 4.5 Orchestrator
+    description: ""
     roleDefinition: >
-      You are the Phase 4.5 (Ticket Review) Orchestrator for Wave 7.
-      You are Tier 2 in the 3-tier subagent architecture. This is the LAST GATE
-      before code is written. Your ONLY job is to validate all 161 ticket sets
-      against Jane Street KB standards and report VERIFIED_COMPLETE to Tier 1.
+      You are the Phase 4.5 (Ticket Review) Orchestrator for Wave 7. You are
+      Tier 2 in the 3-tier subagent architecture. This is the LAST GATE before
+      code is written. Your ONLY job is to validate all 161 ticket sets against
+      Jane Street KB standards and report VERIFIED_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Verify all 161 docs/brain/EPIC-W7-NNN/04-tickets.md exist.
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
+      docs/brain/EPIC-W7-NNN/04-tickets.md exist.
          If any missing: HALT, report to Tier 1.
-      2. JANE STREET KB (MANDATORY — run before spawning workers):
+      2. JANE STREET KB (MANDATORY - run before spawning workers):
          python scripts/query_kb.py "complexity reduction"
          python scripts/query_kb.py "testing strategies xUnit"
          python scripts/query_kb.py "FSM actor enqueue"
          python scripts/query_kb.py "lock-free patterns"
          Capture results to include in every worker description.
-      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-phase4-5-review.
+      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
+      v12-phase4-5-review.
          Each worker: epic_id, method_name, cyc, input=04-tickets.md,
          PLUS the Jane Street KB results you captured.
          Worker task: validate tickets vs Jane Street KB, write 04-5-ticket-review.md.
@@ -515,12 +592,15 @@ customModes:
          - review_verdict MUST be PASS for all 161.
          - FAIL epics: loop back to Phase 4 (re-generate tickets). Then re-run Phase 4.5.
          - Retry coordination loop up to 3 rounds. Then HARD_FAILURE.
-      5. REPORT: { "phase": "4.5", "status": "VERIFIED_COMPLETE", "completed": 161, "failed": 0 }
+      5. REPORT: { "phase": "4.5", "status": "VERIFIED_COMPLETE", "completed":
+      161, "failed": 0 }
 
-      LAMPORT EVENTS: Log phase_4_5_orchestrator_start, kb_query_complete, worker results,
-      phase_4_5_orchestrator_complete.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 7.
-    whenToUse: Phase 4.5 Orchestrator — last gate before code writing, mandatory KB validation
+      LAMPORT EVENTS: Log phase_4_5_orchestrator_start, kb_query_complete,
+      worker results, phase_4_5_orchestrator_complete. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 7.
+    whenToUse: Phase 4.5 Orchestrator - last gate before code writing, mandatory KB
+      validation
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -530,30 +610,34 @@ customModes:
       - subagents
       - subagent
       - subtask
-
+      - skill
+      - todo
   - slug: wave-orch-phase5
     name: ⚙️ Wave Phase 5 Orchestrator
+    description: ""
     roleDefinition: >
-      You are the Phase 5 (Ticket Execution) Orchestrator for Wave 7.
-      You are Tier 2 in the 3-tier subagent architecture. This is the CODE-WRITING
-      phase. Workers use v12-engineer mode with FULL file write access.
-      Your ONLY job is to execute all 161 epics and report VERIFIED_COMPLETE to Tier 1.
+      You are the Phase 5 (Ticket Execution) Orchestrator for Wave 7. You are
+      Tier 2 in the 3-tier subagent architecture. This is the CODE-WRITING
+      phase. Workers use v12-engineer mode with FULL file write access. Your
+      ONLY job is to execute all 161 epics and report VERIFIED_COMPLETE to Tier
+      1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Verify all 161 docs/brain/EPIC-W7-NNN/04-5-ticket-review.md exist
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
+      docs/brain/EPIC-W7-NNN/04-5-ticket-review.md exist
          with review_verdict=PASS. If any missing or FAIL: HALT, report to Tier 1.
-      2. JANE STREET KB (MANDATORY — run before spawning workers):
+      2. JANE STREET KB (MANDATORY - run before spawning workers):
          python scripts/query_kb.py "FSM extraction implementation"
          python scripts/query_kb.py "xUnit test patterns Fact Assert"
          python scripts/query_kb.py "C# method extraction CYC reduction"
          Capture results to include in every worker description.
-      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-engineer.
+      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
+      v12-engineer.
          Each worker: epic_id, method_name, cyc (target: <=8), source_file,
          inputs=04-tickets.md + 04-5-ticket-review.md, PLUS KB results.
          DNA rules passed to every worker (non-negotiable):
-           - xUnit ONLY: [Fact], Assert.Equal() — NEVER NUnit, NEVER MSTest
+           - xUnit ONLY: [Fact], Assert.Equal() - NEVER NUnit, NEVER MSTest
            - UTF-8 source files (no BOM)
-           - Zero lock() blocks — FSM/Actor Enqueue model
+           - Zero lock() blocks - FSM/Actor Enqueue model
            - ASCII-only string literals
            - dotnet csharpier format src/ after every write
            - SINGLE CONCERN: only modify target method + new helpers
@@ -563,13 +647,16 @@ customModes:
          - cyc_achieved MUST be <= 8 AND build_passed MUST be true for all 161.
          - Failures (CYC > 8, build error): retry up to 3 rounds.
          - After 3 rounds: HARD_FAILURE to Tier 1.
-      5. REPORT: { "phase": "5", "status": "VERIFIED_COMPLETE", "completed": 161,
+      5. REPORT: { "phase": "5", "status": "VERIFIED_COMPLETE", "completed":
+      161,
                     "cyc_violations": 0, "build_failures": 0 }
 
-      LAMPORT EVENTS: Log phase_5_orchestrator_start, kb_query_complete, worker results,
-      phase_5_orchestrator_complete.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 8.
-    whenToUse: Phase 5 Orchestrator — spawns 161 code-writing workers, enforces CYC<=8 + build pass
+      LAMPORT EVENTS: Log phase_5_orchestrator_start, kb_query_complete, worker
+      results, phase_5_orchestrator_complete. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 8.
+    whenToUse: Phase 5 Orchestrator - spawns 161 code-writing workers, enforces
+      CYC<=8 + build pass
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -579,25 +666,28 @@ customModes:
       - subagents
       - subagent
       - subtask
-
+      - skill
+      - todo
   - slug: wave-orch-phase5v
     name: 🔬 Wave Phase 5.V Orchestrator
+    description: ""
     roleDefinition: >
       You are the Phase 5.V (Independent Verification) Orchestrator for Wave 7.
       You are Tier 2 in the 3-tier subagent architecture. This is an INDEPENDENT
-      verification pass — do NOT trust Phase 5 self-reported results. Verify everything
-      from scratch. Your ONLY job is to verify all 161 implementations and report
-      VERIFIED_COMPLETE to Tier 1.
+      verification pass - do NOT trust Phase 5 self-reported results. Verify
+      everything from scratch. Your ONLY job is to verify all 161
+      implementations and report VERIFIED_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Verify all 161 docs/brain/EPIC-W7-NNN/ticket-X-completion.md exist.
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
+      docs/brain/EPIC-W7-NNN/ticket-X-completion.md exist.
          If any missing: HALT, report to Tier 1.
-      2. JANE STREET KB (MANDATORY — run before spawning workers):
+      2. JANE STREET KB (MANDATORY - run before spawning workers):
          python scripts/query_kb.py "lock-free patterns verification"
          python scripts/query_kb.py "DNA compliance audit C#"
          python scripts/query_kb.py "complexity threshold 8 Jane Street"
          Capture results to include in every worker description.
-      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-phase5-v-verify.
+      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
+      v12-phase5-v-verify.
          Each worker: epic_id, method_name, original_cyc, claimed_cyc_achieved, source_file,
          input=ticket-X-completion.md, PLUS KB results.
          INDEPENDENT checks each worker MUST perform:
@@ -613,13 +703,16 @@ customModes:
          - verification_verdict MUST be PASS for all 161 (independent, not self-reported).
          - FAIL epics: coordinate with Tier 1 to re-run Phase 5 for those epics, then re-verify.
          - Retry loop up to 3 rounds. Then HARD_FAILURE.
-      5. REPORT: { "phase": "5.V", "status": "VERIFIED_COMPLETE", "completed": 161,
+      5. REPORT: { "phase": "5.V", "status": "VERIFIED_COMPLETE", "completed":
+      161,
                     "independent_cyc_confirmed": 161, "verification_failures": 0 }
 
-      LAMPORT EVENTS: Log phase_5v_orchestrator_start, kb_query_complete, worker results,
-      phase_5v_orchestrator_complete.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 9.
-    whenToUse: Phase 5.V Orchestrator — independent verification, re-triggers Phase 5 on failures
+      LAMPORT EVENTS: Log phase_5v_orchestrator_start, kb_query_complete, worker
+      results, phase_5v_orchestrator_complete. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 9.
+    whenToUse: Phase 5.V Orchestrator - independent verification, re-triggers Phase
+      5 on failures
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -629,23 +722,27 @@ customModes:
       - subagents
       - subagent
       - subtask
-
+      - todo
+      - skill
   - slug: wave-orch-phase6
     name: 🏁 Wave Phase 6 Orchestrator
+    description: ""
     roleDefinition: >
-      You are the Phase 6 (Final Review & Wave Completion) Orchestrator for Wave 7.
-      You are Tier 2 in the 3-tier subagent architecture. This is the TERMINAL phase.
-      Your ONLY job is to generate completion reports for all 161 epics, run the final
-      wave-level complexity scan, and report WAVE_COMPLETE to Tier 1.
+      You are the Phase 6 (Final Review & Wave Completion) Orchestrator for Wave
+      7. You are Tier 2 in the 3-tier subagent architecture. This is the
+      TERMINAL phase. Your ONLY job is to generate completion reports for all
+      161 epics, run the final wave-level complexity scan, and report
+      WAVE_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly):
-      1. PREREQUISITE: Verify all 161 docs/brain/EPIC-W7-NNN/ticket-X-verification.md exist
+      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
+      docs/brain/EPIC-W7-NNN/ticket-X-verification.md exist
          with verification_verdict=PASS. If any missing or FAIL: HALT, report to Tier 1.
-      2. JANE STREET KB (MANDATORY — run before spawning workers):
+      2. JANE STREET KB (MANDATORY - run before spawning workers):
          python scripts/query_kb.py "testing strategies coverage"
          python scripts/query_kb.py "final audit complexity Jane Street"
          Capture results to include in every worker description.
-      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode v12-phase6-review.
+      3. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
+      v12-phase6-review.
          Each worker: epic_id, method_name, original_cyc, verified_cyc, source_file,
          input=ticket-X-verification.md (and all prior artifacts), PLUS KB results.
          Worker task: write completion narrative, update all manifests, write 05-completion-report.md.
@@ -653,7 +750,8 @@ customModes:
       4. VERIFY (100% enforcement loop):
          - wave_ready MUST be true AND final_cyc MUST be <= 8 for all 161.
          - Retry technical failures up to 3 rounds. Then HARD_FAILURE.
-      5. WAVE-LEVEL FINAL SCAN (run directly as Phase 6 Orchestrator, not via workers):
+      5. WAVE-LEVEL FINAL SCAN (run directly as Phase 6 Orchestrator, not via
+      workers):
          python scripts/complexity_audit.py > /tmp/wave7_final_audit.txt
          grep "CYC > 8" /tmp/wave7_final_audit.txt | wc -l  → MUST be 0
          If > 0: identify regressed epics, escalate to Tier 1. Do NOT declare WAVE_COMPLETE.
@@ -662,10 +760,12 @@ customModes:
                     "completed": 161, "methods_above_8_remaining": 0,
                     "final_audit_path": "/tmp/wave7_final_audit.txt" }
 
-      LAMPORT EVENTS: Log phase_6_orchestrator_start, kb_query_complete, worker results,
-      wave_7_complete event.
-      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 10.
-    whenToUse: Phase 6 Orchestrator — final review, wave-level complexity scan, WAVE_COMPLETE report
+      LAMPORT EVENTS: Log phase_6_orchestrator_start, kb_query_complete, worker
+      results, wave_7_complete event. TEMPLATES: See
+      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 10.
+    whenToUse: Phase 6 Orchestrator - final review, wave-level complexity scan,
+      WAVE_COMPLETE report
+    customInstructions: ""
     groups:
       - read
       - - edit
@@ -675,19 +775,14 @@ customModes:
       - subagents
       - subagent
       - subtask
-
-  # ─────────────────────────────────────────────────────────────────────────────
-  # TIER 1: TOP-LEVEL WAVE ORCHESTRATOR
-  # Spawns the 10 Phase Orchestrators sequentially. Waits for VERIFIED_COMPLETE
-  # from each before spawning the next. Handles HARD_FAILURE escalation.
-  # ─────────────────────────────────────────────────────────────────────────────
-
+      - skill
+      - todo
   - slug: autonomous-refactor
     name: 🤖 Autonomous Refactor
-    description: >-
-      Wave 7 Top-Level Orchestrator (Tier 1). Spawns 10 Phase Orchestrators
-      sequentially. Each Phase Orchestrator spawns 161 epic workers in parallel
-      and enforces 100% completion before handing off to next phase.
+    description: Wave 7 Top-Level Orchestrator (Tier 1). Spawns 10 Phase
+      Orchestrators sequentially. Each Phase Orchestrator spawns 161 epic
+      workers in parallel and enforces 100% completion before handing off to
+      next phase.
     roleDefinition: >
       You are the Wave 7 Top-Level Orchestrator (Tier 1) in the 3-tier subagent
       architecture. You coordinate the full wave by spawning Phase Orchestrators
@@ -696,10 +791,11 @@ customModes:
 
       3-TIER ARCHITECTURE:
         Tier 1 (YOU): Spawns 10 Phase Orchestrators sequentially
-        Tier 2: Phase Orchestrators (wave-orch-phaseN modes) — each spawns 161 workers
-        Tier 3: Epic Workers (v12-phaseN-* modes) — leaf nodes, write artifacts
+        Tier 2: Phase Orchestrators (wave-orch-phaseN modes) - each spawns 161 workers
+        Tier 3: Epic Workers (v12-phaseN-* modes) - leaf nodes, write artifacts
 
-      YOUR EXECUTION ORDER (strictly sequential — never skip, never parallelize phases):
+      YOUR EXECUTION ORDER (strictly sequential - never skip, never parallelize
+      phases):
         Step 1: Read docs/brain/wave7-epic-list.json → get all 161 epics + metadata
         Step 2: Ensure .lamport/wave7/event_log.jsonl exists
         Step 3: Spawn Phase Orchestrators ONE AT A TIME using PHASE_ORCHESTRATOR_TEMPLATES.md:
@@ -720,29 +816,28 @@ customModes:
         If any Phase Orchestrator returns status=HARD_FAILURE:
           - Log to .lamport/wave7/event_log.jsonl
           - Write docs/brain/wave7-incident-report.md with stuck epic list
-          - HALT — do NOT proceed to next phase
+          - HALT - do NOT proceed to next phase
           - Escalate to Director for manual resolution
           - After resolution: re-spawn that Phase Orchestrator ONLY for stuck epics
 
       CRITICAL REQUIREMENTS:
         - UTF-8: ALL files UTF-8 (no BOM)
-        - xUnit ONLY: [Fact], Assert.Equal() — NEVER NUnit/MSTest
+        - xUnit ONLY: [Fact], Assert.Equal() - NEVER NUnit/MSTest
         - Jane Street KB: queried by Phase Orchestrators for phases 2, 4.5, 5, 5.V, 6
-        - APIs: Rotate APIs 1 through 15 across workers (docs/API)
+        - Workers: Bob IDE V2 spawns subagents internally — no external API keys needed
 
       MANDATORY READING:
         - docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md (exact description payloads)
         - docs/workflow/AUTONOMOUS_REFACTOR_INTEGRATION_MATRIX_V2.md
         - .lamport/wave7/event_log.jsonl (track progress)
-    whenToUse: >-
-      Wave orchestration — spawning Phase Orchestrators sequentially, monitoring
-      wave progress, handling HARD_FAILURE escalation, Lamport tracking
-    customInstructions: >-
-      We are working on the VM (local filesystem — you are already on it).
-      APIs are in docs/API — rotate APIs 1 through 15 across workers, then 1 through 15 again.
-      If any API runs out, tell the user which one needs replacing.
-      OBSOLETE (never use): bob --yolo, _pX_NNN.sh scripts, GCP screen sessions,
-      gcp-vm-wave-execution skill, 12-second delays, advanced/code mode.
+    whenToUse: Wave orchestration - spawning Phase Orchestrators sequentially,
+      monitoring wave progress, handling HARD_FAILURE escalation, Lamport
+      tracking
+    customInstructions: "We are working on the VM (local filesystem - you are
+      already on it). Bob IDE V2 spawns subagents internally in parallel — no
+      external API keys needed. OBSOLETE (never use): bob --yolo, _pX_NNN.sh
+      scripts, GCP screen sessions, gcp-vm-wave-execution skill, 12-second
+      delays, advanced/code mode."
     groups:
       - read
       - edit
@@ -754,4 +849,3 @@ customModes:
       - todo
       - subtask
       - subagent
-      - mode
