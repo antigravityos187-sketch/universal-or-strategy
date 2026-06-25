@@ -1,0 +1,13 @@
+{
+  "balance_estimate": 500.0,
+  "last_updated": "2026-06-25T19:30:00Z",
+  "last_phase": "init",
+  "note": "Initial balance estimate. Phase Orchestrators update this after each pilot and batch. Director reloads bobcoins by updating balance_estimate manually.",
+  "schema": {
+    "balance_estimate": "float — estimated bobcoins remaining",
+    "last_updated": "ISO timestamp of last update",
+    "last_phase": "which phase last wrote to this file",
+    "pilot_costs": "map of phase -> pilot cost extracted from agent tracking block"
+  },
+  "pilot_costs": {}
+}

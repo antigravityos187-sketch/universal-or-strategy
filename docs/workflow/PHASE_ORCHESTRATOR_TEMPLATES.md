@@ -159,28 +159,142 @@ def lamport_append(event_type, phase, tier, status, epic_id="WAVE-7", note=""):
 
 ---
 
-## Pilot Gate Protocol (Phase 0 ONLY)
+## Pilot Gate Protocol (ALL Phase Orchestrators — UNIVERSAL)
 
-Before spawning all 161 workers, Phase 0 MUST run a 1-epic pilot:
+**Every Phase Orchestrator MUST run a 1-epic pilot BEFORE batching the remaining epics.**
+The pilot is not just an output check — it is a FULL COMPLIANCE AUDIT of the worker's behavior.
 
 ```
-PILOT_GATE (embedded in Phase 0 Orchestrator — not a separate session):
-  1. Pick EPIC-W7-001 (first epic in wave7-epic-list.json) as pilot.
-  2. Spawn ONE worker: mode=v12-phase0-hotspot, same description format as full run.
-  3. Verify output:
-       - docs/brain/EPIC-W7-001/00-hotspots.md exists and is non-empty
-       - docs/brain/EPIC-W7-001/manifest.json has phase_0 status=completed
-       - Worker returned { status:"success", output_path, cyc_confirmed }
-  4. IF pilot PASSES: proceed immediately to spawn remaining 160 workers in parallel.
-  5. IF pilot FAILS:
-       - Log: { event_type:"pilot_failed", epic_id:"EPIC-W7-001", phase:"0" }
-       - Write: docs/brain/EPIC-W7-001/failure-analysis.md with exact error
-       - HALT — do NOT spawn remaining 160 workers
-       - Report PILOT_FAILURE to Tier 1 with failure details
-       - Tier 1 escalates to Director
-  
-  WHY: If the worker description format, manifest schema, or artifact path is wrong,
-  better to catch it on 1 epic than waste 160 subagent contexts.
+UNIVERSAL PILOT_GATE PROTOCOL (V2.5):
+
+PHASE A — SPAWN PILOT
+  1. Pick the first unprocessed epic in wave7-epic-list.json as pilot (usually EPIC-W7-001 for Phase 0;
+     for subsequent phases, pick the first epic whose prior-phase artifact exists).
+  2. Spawn ONE worker with the standard description for this phase.
+  3. Wait for the worker to return.
+
+PHASE B — COMPLIANCE AUDIT (inspect the worker's behavior — 7 checks)
+  Examine the returned result AND the artifact on disk:
+
+  CHECK 1 — MCP Tool Usage (MANDATORY):
+    The worker MUST have called the required jcodemunch-mcp tools for this phase.
+    Evidence: worker summary must mention tool calls (e.g. "called get_symbol_complexity",
+    "called get_hotspots"). If NO jcodemunch-mcp calls are mentioned → PILOT_FAIL reason=NO_MCP_USAGE.
+
+  CHECK 2 — Sequential Thinking MCP (MANDATORY for all phases):
+    The worker MUST have used mcp__sequential-thinking__sequentialthinking.
+    Evidence: summary mentions "sequential thinking" or "reasoning steps".
+    If absent → PILOT_FAIL reason=NO_SEQUENTIAL_THINKING.
+
+  CHECK 3 — Output File Exists and is Non-Empty:
+    Read the output artifact from disk (e.g. 00-hotspots.md for Phase 0).
+    Must exist, be non-empty (> 200 bytes), and contain the expected sections.
+    If missing or empty → PILOT_FAIL reason=MISSING_OUTPUT.
+
+  CHECK 4 — Manifest Updated Correctly:
+    Read docs/brain/<pilot_epic_id>/manifest.json.
+    Must show this phase's status = "completed" with a timestamp.
+    If not updated → PILOT_FAIL reason=MANIFEST_NOT_UPDATED.
+
+  CHECK 5 — Agent Tracking Block Present:
+    The output artifact must contain the Agent Tracking block:
+      - Agent Name: <mode-slug>
+      - Bobcoins Used: <amount>
+      - Execution Time: <duration>
+    If absent → PILOT_FAIL reason=NO_AGENT_TRACKING (soft warning — do not halt, log only).
+
+  CHECK 6 — Phase-Specific Success Criterion Met:
+    Each phase has its own criterion (see Success Criteria table in Integration Matrix V2.5):
+      Phase 0: cyc_confirmed present in return value
+      Phase 1: scope_confirmed_single_method=true
+      Phase 1.5: boundary_verdict=PASS
+      Phase 2: max_cyc_projected <= 8
+      Phase 3: dna_verdict=PASS
+      Phase 4: ticket_count >= 1
+      Phase 4.5: review_verdict=PASS
+      Phase 5: cyc_achieved <= 8 AND build_passed=true
+      Phase 5.V: verification_verdict=PASS
+      Phase 6: wave_ready=true AND final_cyc <= 8
+    If criterion not met → PILOT_FAIL reason=PHASE_CRITERION_FAILED.
+
+  CHECK 7 — No Forbidden Patterns (Phase 5 only):
+    For Phase 5 workers additionally check:
+      - No NUnit/MSTest ([TestFixture], [Test], [TestMethod]) in written test files
+      - No lock() blocks in modified source files
+      - Source file encoding is UTF-8 (no BOM)
+    If any found → PILOT_FAIL reason=DNA_VIOLATION.
+
+PHASE C — DECISION
+  If ALL checks PASS (or only CHECK 5 soft-warning):
+    - Log: lamport_append(event_type="pilot_passed", epic_id=<pilot>, phase=N, status="success",
+                          note="checks 1-7 passed")
+    - Extract bobcoin cost from agent tracking block → set PILOT_COST
+    - Continue to PHASE D (batch sizing)
+
+  If ANY check FAILS (hard fail):
+    - Log: lamport_append(event_type="pilot_failed", epic_id=<pilot>, phase=N, status="hard_failure",
+                          note=<reason>)
+    - Write: docs/brain/<pilot_epic_id>/failure-analysis.md with:
+        * Which check failed
+        * Exact evidence (or absence of evidence)
+        * Recommended fix
+    - HALT — do NOT spawn any more workers
+    - Report PILOT_FAILURE to Tier 1 with { pilot_epic, failed_check, reason }
+    - Tier 1 escalates to Director for worker description fix before re-attempting
+
+PHASE D — BATCH SIZING (only reached after pilot PASSES)
+  Purpose: size remaining batches so bobcoins never run out mid-phase.
+
+  BATCH_SIZE_FORMULA:
+    PILOT_COST = bobcoin cost extracted from pilot's agent tracking block (or 1.0 if not found)
+    REMAINING_EPICS = 160  (161 total minus pilot already done)
+
+    # Read current balance estimate from .lamport/wave7/bobcoin_tracker.json (create if absent)
+    # File schema: { "balance_estimate": <float>, "last_updated": "<iso>" }
+    # If file absent or balance unknown: use DEFAULT_BALANCE = 500.0
+    BALANCE = read from bobcoin_tracker.json OR 500.0
+
+    SAFETY_BUFFER = 0.15  # keep 15% reserve so we never hit zero mid-batch
+    SPENDABLE = BALANCE * (1 - SAFETY_BUFFER)
+    BATCH_SIZE = max(1, min(50, int(SPENDABLE / PILOT_COST)))
+    # Cap at 50 — never spawn more than 50 workers per batch regardless of balance
+    # Floor at 1 — always spawn at least 1
+
+  LOG BATCH PLAN:
+    lamport_append(event_type="batch_plan", phase=N, status="info",
+                   note=f"pilot_cost={PILOT_COST}, balance={BALANCE}, batch_size={BATCH_SIZE}, batches_needed={ceil(REMAINING_EPICS/BATCH_SIZE)}")
+    Write to .lamport/wave7/bobcoin_tracker.json:
+      { "balance_estimate": BALANCE - PILOT_COST, "last_updated": <now>, "last_phase": N }
+
+  IF BATCH_SIZE == 1:
+    This means balance is critically low (near 15% buffer).
+    Log warning: lamport_append(event_type="low_balance_warning", phase=N, status="warning",
+                                note="Balance near safety buffer. Spawning 1 at a time. Notify Director.")
+    Proceed with BATCH_SIZE=1.
+
+PHASE E — SPAWN REMAINING EPICS IN BATCHES
+  remaining_epics = [all epics except pilot]
+  batches = split remaining_epics into chunks of BATCH_SIZE
+
+  For each batch:
+    1. Spawn all BATCH_SIZE workers simultaneously (spawn_subagent for each)
+    2. Wait for all to return
+    3. Count successes/failures
+    4. Update bobcoin_tracker.json: subtract (BATCH_SIZE * PILOT_COST) from balance_estimate
+    5. If failures: log them, add to retry queue (do not block next batch)
+    6. If balance_estimate drops below 15% of original BALANCE:
+         Log low_balance_warning
+         PAUSE — do NOT start next batch
+         Report to Tier 1: "BOBCOIN_PAUSE: N epics remaining, balance low. Director must reload."
+         Wait for Director to reload. Resume when balance_estimate is updated in bobcoin_tracker.json.
+
+  After all batches complete: run COMPLETION VERIFICATION LOOP (retry failed up to 3 rounds).
+
+  WHY BATCHING:
+    - Prevents running 160 workers simultaneously when balance is low
+    - Pilot cost gives accurate per-worker estimate (not a guess)
+    - 15% safety buffer ensures we never strand mid-phase
+    - Director can reload bobcoins and we resume exactly where we paused
 ```
 
 ---
@@ -207,27 +321,41 @@ sys.exit(0) if gate else (print('HALT: wave_start not found. Report DEPENDENCY_N
 STEP 1 — LOG PHASE START:
   lamport_append(event_type="phase_0_orchestrator_start", phase="0", tier="phase_orch", status="running")
 
-STEP 2 — PILOT GATE (before spawning all 161 — see Pilot Gate Protocol above):
-  Spawn ONE worker for EPIC-W7-001. Verify output exists. If fails: log pilot_failed, halt, report PILOT_FAILURE.
-  If passes: log pilot_passed, continue to Step 3.
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol above — ALL 5 PHASES A-E):
+  Pilot epic: EPIC-W7-001
+  Worker mode: v12-phase0-hotspot
+  Worker description format: same as Step 3 below.
 
-STEP 3 — SPAWN REMAINING 160 WORKERS SIMULTANEOUSLY:
-  Read docs/brain/wave7-epic-list.json. Skip EPIC-W7-001 (already done in pilot).
-  For each remaining epic, spawn a subagent:
-    mode: v12-phase0-hotspot
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (CYC: <cyc>)
-      Source: <source_file>
-      Task: Run Phase 0 (Hotspot Analysis).
-        1. Use jcodemunch-mcp: get_symbol_complexity, get_hotspots, get_blast_radius for <method_name>
-        2. Use sequential-thinking to structure your analysis
-        3. Write output to docs/brain/<epic_id>/00-hotspots.md
-        4. Update docs/brain/<epic_id>/manifest.json: set phase_0.status=completed
-        Return: { status: "success"|"failure", output_path, cyc_confirmed }
+  PHASE A: Spawn EPIC-W7-001 worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: jcodemunch-mcp calls (get_symbol_complexity, get_hotspots, get_blast_radius) mentioned in summary.
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/EPIC-W7-001/00-hotspots.md exists and > 200 bytes.
+    Check 4: manifest.json shows phase_0.status=completed.
+    Check 5: Agent Tracking block present (soft warning only).
+    Check 6: cyc_confirmed present in return value.
+    Check 7: N/A (Phase 5 only).
+  PHASE C: If any hard check fails → log pilot_failed, write failure-analysis.md, HALT, report PILOT_FAILURE.
+           If passes → log pilot_passed, extract PILOT_COST from agent tracking.
+  PHASE D: Compute BATCH_SIZE from balance and PILOT_COST. Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining 160 epics in batches of BATCH_SIZE (pause if balance low).
+
+WORKER DESCRIPTION FORMAT (used for both pilot and batch workers):
+  Epic: <epic_id>
+  Method: <method_name> (CYC: <cyc>)
+  Source: <source_file>
+  Task: Run Phase 0 (Hotspot Analysis).
+    1. Use jcodemunch-mcp: get_symbol_complexity, get_hotspots, get_blast_radius for <method_name>
+    2. Use mcp__sequential-thinking__sequentialthinking to structure your analysis into explicit steps
+    3. Write output to docs/brain/<epic_id>/00-hotspots.md
+       MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+    4. Update docs/brain/<epic_id>/manifest.json: set phase_0.status=completed with timestamp
+    Return: { status: "success"|"failure", output_path, cyc_confirmed, bobcoins_used }
+
+STEP 3 — (handled by Pilot Gate Phase E above — all batches)
 
 STEP 4 — COMPLETION VERIFICATION LOOP (161/161 required):
-  After all workers return, count confirmed outputs (file exists + non-empty).
+  After all batches complete, count confirmed outputs (file exists + non-empty).
   For any epic WITHOUT valid 00-hotspots.md:
     lamport_append(event_type="phase_0_epic_failed", phase="0", tier="phase_orch",
                    status="retry", epic_id=<epic_id>)
@@ -276,21 +404,36 @@ sys.exit(0) if gate else (print('HALT: phase_0_orchestrator_complete not found.'
 STEP 1 — LOG PHASE START:
   lamport_append(event_type="phase_1_orchestrator_start", phase="1", tier="phase_orch", status="running")
 
-STEP 2 — SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic, spawn a subagent:
-    mode: v12-phase1-scope
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (CYC: <cyc>)
-      Source: <source_file>
-      Input: docs/brain/<epic_id>/00-hotspots.md
-      Task: Run Phase 1 (Scope Definition).
-        1. Read 00-hotspots.md
-        2. Use jcodemunch-mcp: get_file_outline, find_references, get_dependency_graph
-        3. Use sequential-thinking to validate scope is SINGLE METHOD only
-        4. Write output to docs/brain/<epic_id>/00-scope.md
-        5. Update manifest.json with phase_1 status=completed
-        Return: { status, output_path, scope_confirmed_single_method: true|false }
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol — ALL 5 PHASES A-E):
+  Pilot epic: first epic in wave7-epic-list.json with 00-hotspots.md present
+  Worker mode: v12-phase1-scope
+  PHASE A: Spawn pilot worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: jcodemunch-mcp calls (get_file_outline, find_references, get_dependency_graph) in summary.
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/<pilot>/00-scope.md exists and > 200 bytes.
+    Check 4: manifest.json shows phase_1.status=completed.
+    Check 5: Agent Tracking block present (soft warning).
+    Check 6: scope_confirmed_single_method=true in return value.
+    Check 7: N/A.
+  PHASE C: Hard fail → log pilot_failed, HALT, report PILOT_FAILURE.
+           Pass → log pilot_passed, extract PILOT_COST.
+  PHASE D: Compute BATCH_SIZE. Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining epics in batches of BATCH_SIZE.
+
+WORKER DESCRIPTION FORMAT:
+  Epic: <epic_id>
+  Method: <method_name> (CYC: <cyc>)
+  Source: <source_file>
+  Input: docs/brain/<epic_id>/00-hotspots.md
+  Task: Run Phase 1 (Scope Definition).
+    1. Read 00-hotspots.md
+    2. Use jcodemunch-mcp: get_file_outline, find_references, get_dependency_graph
+    3. Use mcp__sequential-thinking__sequentialthinking to validate scope is SINGLE METHOD only
+    4. Write output to docs/brain/<epic_id>/00-scope.md
+       MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+    5. Update manifest.json with phase_1 status=completed with timestamp
+    Return: { status, output_path, scope_confirmed_single_method: true|false, bobcoins_used }
 
 STEP 3 — COMPLETION VERIFICATION LOOP (161/161 required):
   For each success: lamport_append(event_type="phase_1_epic_complete", phase="1", tier="phase_orch", status="success", epic_id=<epic_id>)
@@ -334,23 +477,38 @@ sys.exit(0) if gate else (print('HALT: phase_1_orchestrator_complete not found.'
 STEP 1 — LOG PHASE START:
   lamport_append(event_type="phase_1_5_orchestrator_start", phase="1.5", tier="phase_orch", status="running")
 
-STEP 2 — SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic, spawn a subagent:
-    mode: v12-phase1-5-boundary
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (CYC: <cyc>)
-      Source: <source_file>
-      Input: docs/brain/<epic_id>/00-scope.md
-      Task: Run Phase 1.5 (Scope Boundary Validation).
-        1. Read 00-scope.md
-        2. Use jcodemunch-mcp: get_symbol_source, get_blast_radius, find_references
-        3. Use sequential-thinking to validate: scope touches ONLY <method_name>, zero adjacent changes
-        4. BLOCKER: If scope exceeds single method, mark as SCOPE_VIOLATION and halt epic
-        5. Write output to docs/brain/<epic_id>/01-scope-boundary.md
-           Include: boundary_verdict: PASS|FAIL, blocker_reason (if FAIL)
-        6. Update manifest.json with phase_1_5 status=completed|blocked
-        Return: { status, output_path, boundary_verdict: "PASS"|"FAIL" }
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol — ALL 5 PHASES A-E):
+  Pilot epic: first epic in wave7-epic-list.json with 00-scope.md present
+  Worker mode: v12-phase1-5-boundary
+  PHASE A: Spawn pilot worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: jcodemunch-mcp calls (get_symbol_source, get_blast_radius, find_references) in summary.
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/<pilot>/01-scope-boundary.md exists and > 200 bytes.
+    Check 4: manifest.json shows phase_1_5.status=completed.
+    Check 5: Agent Tracking block present (soft warning).
+    Check 6: boundary_verdict=PASS in return value.
+    Check 7: N/A.
+  PHASE C: Hard fail → log pilot_failed, HALT, report PILOT_FAILURE.
+           Pass → log pilot_passed, extract PILOT_COST.
+  PHASE D: Compute BATCH_SIZE. Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining epics in batches of BATCH_SIZE.
+
+WORKER DESCRIPTION FORMAT:
+  Epic: <epic_id>
+  Method: <method_name> (CYC: <cyc>)
+  Source: <source_file>
+  Input: docs/brain/<epic_id>/00-scope.md
+  Task: Run Phase 1.5 (Scope Boundary Validation).
+    1. Read 00-scope.md
+    2. Use jcodemunch-mcp: get_symbol_source, get_blast_radius, find_references
+    3. Use mcp__sequential-thinking__sequentialthinking to validate scope touches ONLY <method_name>
+    4. BLOCKER: If scope exceeds single method, mark as SCOPE_VIOLATION and halt epic
+    5. Write output to docs/brain/<epic_id>/01-scope-boundary.md
+       Include: boundary_verdict: PASS|FAIL, blocker_reason (if FAIL)
+       MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+    6. Update manifest.json with phase_1_5 status=completed|blocked with timestamp
+    Return: { status, output_path, boundary_verdict: "PASS"|"FAIL", bobcoins_used }
 
 STEP 3 — COMPLETION VERIFICATION LOOP (161/161 PASS required):
   For each PASS: lamport_append(event_type="phase_1_5_epic_complete", phase="1.5", ..., status="success")
@@ -400,25 +558,40 @@ MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "lock-free actor pattern"
   Capture KB results and include them in ALL worker descriptions below.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic, spawn a subagent:
-    mode: v12-phase2-architecture
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (CYC: <cyc>)
-      Source: <source_file>
-      Input: docs/brain/<epic_id>/01-scope-boundary.md
-      Jane Street KB Results: <paste KB results here>
-      Task: Run Phase 2 (Architecture Planning).
-        1. Read 01-scope-boundary.md
-        2. Use jcodemunch-mcp: get_context_bundle, get_call_hierarchy, get_dependency_graph
-        3. Use sequential-thinking to design extraction plan: which sub-methods to extract, names, CYC targets
-        4. Validate: extracted methods must ALL be CYC <= 8. Parent method must be CYC <= 8.
-        5. Write output to docs/brain/<epic_id>/02-architecture-plan.md
-           Include: extraction_map, target_cyc_per_method, jane_street_patterns_applied
-        6. Optionally write docs/brain/<epic_id>/02-diagrams.mmd (Mermaid)
-        7. Update manifest.json with phase_2 status=completed
-        Return: { status, output_path, extraction_count, max_cyc_projected }
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol — ALL 5 PHASES A-E):
+  Pilot epic: first epic with 01-scope-boundary.md present (boundary_verdict=PASS)
+  Worker mode: v12-phase2-architecture
+  PHASE A: Spawn pilot worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: jcodemunch-mcp calls (get_context_bundle, get_call_hierarchy, get_dependency_graph) in summary.
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/<pilot>/02-architecture-plan.md exists and > 200 bytes.
+    Check 4: manifest.json shows phase_2.status=completed.
+    Check 5: Agent Tracking block present (soft warning).
+    Check 6: max_cyc_projected <= 8 in return value.
+    Check 7: N/A.
+  PHASE C: Hard fail → log pilot_failed, HALT, report PILOT_FAILURE.
+           Pass → log pilot_passed, extract PILOT_COST.
+  PHASE D: Compute BATCH_SIZE. Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining epics in batches of BATCH_SIZE.
+
+WORKER DESCRIPTION FORMAT:
+  Epic: <epic_id>
+  Method: <method_name> (CYC: <cyc>)
+  Source: <source_file>
+  Input: docs/brain/<epic_id>/01-scope-boundary.md
+  Jane Street KB Results: <paste KB results here>
+  Task: Run Phase 2 (Architecture Planning).
+    1. Read 01-scope-boundary.md
+    2. Use jcodemunch-mcp: get_context_bundle, get_call_hierarchy, get_dependency_graph
+    3. Use mcp__sequential-thinking__sequentialthinking to design extraction plan
+    4. Validate: extracted methods must ALL be CYC <= 8. Parent method must be CYC <= 8.
+    5. Write output to docs/brain/<epic_id>/02-architecture-plan.md
+       Include: extraction_map, target_cyc_per_method, jane_street_patterns_applied
+       MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+    6. Optionally write docs/brain/<epic_id>/02-diagrams.mmd (Mermaid)
+    7. Update manifest.json with phase_2 status=completed with timestamp
+    Return: { status, output_path, extraction_count, max_cyc_projected, bobcoins_used }
 
 STEP 3 — COMPLETION VERIFICATION LOOP (161/161 required, max_cyc_projected <= 8):
   lamport_append(event_type="phase_2_kb_query_complete", phase="2", ..., status="success")
@@ -464,26 +637,42 @@ STEP 1 — LOG PHASE START:
   lamport_append(event_type="phase_3_orchestrator_start", phase="3", tier="phase_orch", status="running")
 
 STEP 2 — SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic, spawn a subagent:
-    mode: v12-phase3-audit
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (CYC: <cyc>)
-      Source: <source_file>
-      Input: docs/brain/<epic_id>/02-architecture-plan.md
-      Task: Run Phase 3 (DNA & PR Audit).
-        1. Read 02-architecture-plan.md
-        2. Use jcodemunch-mcp: search_ast, get_layer_violations, get_dependency_cycles
-        3. Use sequential-thinking to validate against V12 DNA rules:
-           - Zero lock() blocks in proposed extraction
-           - ASCII-only (no Unicode/emoji in string literals)
-           - UTF-8 source files (no BOM)
-           - No scope creep (single method only)
-           - xUnit tests planned (NOT NUnit/MSTest)
-        4. Write output to docs/brain/<epic_id>/03-audit-report.md
-           Include: dna_verdict: PASS|FAIL, violations (list), blocker_count
-        5. Update manifest.json with phase_3 status=completed|blocked
-        Return: { status, output_path, dna_verdict: "PASS"|"FAIL", violations: [] }
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol — ALL 5 PHASES A-E):
+  Pilot epic: first epic with 02-architecture-plan.md present
+  Worker mode: v12-phase3-audit
+  PHASE A: Spawn pilot worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: jcodemunch-mcp calls (search_ast, get_layer_violations, get_dependency_cycles) in summary.
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/<pilot>/03-audit-report.md exists and > 200 bytes.
+    Check 4: manifest.json shows phase_3.status=completed.
+    Check 5: Agent Tracking block present (soft warning).
+    Check 6: dna_verdict=PASS in return value.
+    Check 7: N/A.
+  PHASE C: Hard fail → log pilot_failed, HALT, report PILOT_FAILURE.
+           Pass → log pilot_passed, extract PILOT_COST.
+  PHASE D: Compute BATCH_SIZE. Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining epics in batches of BATCH_SIZE.
+
+WORKER DESCRIPTION FORMAT:
+  Epic: <epic_id>
+  Method: <method_name> (CYC: <cyc>)
+  Source: <source_file>
+  Input: docs/brain/<epic_id>/02-architecture-plan.md
+  Task: Run Phase 3 (DNA & PR Audit).
+    1. Read 02-architecture-plan.md
+    2. Use jcodemunch-mcp: search_ast, get_layer_violations, get_dependency_cycles
+    3. Use mcp__sequential-thinking__sequentialthinking to validate against V12 DNA rules:
+       - Zero lock() blocks in proposed extraction
+       - ASCII-only (no Unicode/emoji in string literals)
+       - UTF-8 source files (no BOM)
+       - No scope creep (single method only)
+       - xUnit tests planned (NOT NUnit/MSTest)
+    4. Write output to docs/brain/<epic_id>/03-audit-report.md
+       Include: dna_verdict: PASS|FAIL, violations (list), blocker_count
+       MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+    5. Update manifest.json with phase_3 status=completed|blocked with timestamp
+    Return: { status, output_path, dna_verdict: "PASS"|"FAIL", violations: [], bobcoins_used }
 
 STEP 3 — COMPLETION VERIFICATION LOOP (161/161 dna_verdict=PASS required):
   For each PASS: lamport_append(event_type="phase_3_epic_complete", phase="3", ..., status="success")
@@ -526,26 +715,41 @@ sys.exit(0) if gate else (print('HALT: phase_3_orchestrator_complete not found.'
 STEP 1 — LOG PHASE START:
   lamport_append(event_type="phase_4_orchestrator_start", phase="4", tier="phase_orch", status="running")
 
-STEP 2 — SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic, spawn a subagent:
-    mode: v12-phase4-tickets
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (CYC: <cyc>)
-      Source: <source_file>
-      Input: docs/brain/<epic_id>/02-architecture-plan.md (primary)
-             docs/brain/<epic_id>/03-audit-report.md (constraint reference)
-      Task: Run Phase 4 (Ticket Generation).
-        1. Read 02-architecture-plan.md and 03-audit-report.md
-        2. Use jcodemunch-mcp: get_symbol_complexity, get_extraction_candidates
-        3. Use sequential-thinking to break architecture plan into concrete implementation tickets:
-           - Ticket 1: Extract <sub-method-A> (target CYC <= 8)
-           - Ticket 2: Extract <sub-method-B> (target CYC <= 8)
-           - Ticket N: Update parent to CYC <= 8, write xUnit tests
-           Each ticket: { id, title, files_to_modify, lines_to_change, test_requirement }
-        4. Write output to docs/brain/<epic_id>/04-tickets.md
-        5. Update manifest.json with phase_4 status=completed, ticket_count=N
-        Return: { status, output_path, ticket_count }
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol — ALL 5 PHASES A-E):
+  Pilot epic: first epic with 03-audit-report.md present (dna_verdict=PASS)
+  Worker mode: v12-phase4-tickets
+  PHASE A: Spawn pilot worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: jcodemunch-mcp calls (get_symbol_complexity, get_extraction_candidates) in summary.
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/<pilot>/04-tickets.md exists and > 200 bytes.
+    Check 4: manifest.json shows phase_4.status=completed.
+    Check 5: Agent Tracking block present (soft warning).
+    Check 6: ticket_count >= 1 in return value.
+    Check 7: N/A.
+  PHASE C: Hard fail → log pilot_failed, HALT, report PILOT_FAILURE.
+           Pass → log pilot_passed, extract PILOT_COST.
+  PHASE D: Compute BATCH_SIZE. Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining epics in batches of BATCH_SIZE.
+
+WORKER DESCRIPTION FORMAT:
+  Epic: <epic_id>
+  Method: <method_name> (CYC: <cyc>)
+  Source: <source_file>
+  Input: docs/brain/<epic_id>/02-architecture-plan.md (primary)
+         docs/brain/<epic_id>/03-audit-report.md (constraint reference)
+  Task: Run Phase 4 (Ticket Generation).
+    1. Read 02-architecture-plan.md and 03-audit-report.md
+    2. Use jcodemunch-mcp: get_symbol_complexity, get_extraction_candidates
+    3. Use mcp__sequential-thinking__sequentialthinking to break architecture plan into tickets:
+       - Ticket 1: Extract <sub-method-A> (target CYC <= 8)
+       - Ticket 2: Extract <sub-method-B> (target CYC <= 8)
+       - Ticket N: Update parent to CYC <= 8, write xUnit tests
+       Each ticket: { id, title, files_to_modify, lines_to_change, test_requirement }
+    4. Write output to docs/brain/<epic_id>/04-tickets.md
+       MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+    5. Update manifest.json with phase_4 status=completed, ticket_count=N, timestamp
+    Return: { status, output_path, ticket_count, bobcoins_used }
 
 STEP 3 — COMPLETION VERIFICATION LOOP (161/161, ticket_count >= 1 required):
   For each success: lamport_append(event_type="phase_4_epic_complete", phase="4", ..., status="success")
@@ -595,26 +799,41 @@ MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "lock-free patterns"
   Capture KB results and include them in ALL worker descriptions below.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic, spawn a subagent:
-    mode: v12-phase4-5-review
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (CYC: <cyc>)
-      Input: docs/brain/<epic_id>/04-tickets.md
-      Jane Street KB Results: <paste KB results here>
-      Task: Run Phase 4.5 (Ticket Review).
-        1. Read 04-tickets.md
-        2. Use sequential-thinking to validate each ticket against Jane Street KB:
-           - CYC reduction path is provably achievable (math: complexity sum check)
-           - No lock() patterns introduced
-           - xUnit tests specified per ticket ([Fact], Assert.Equal())
-           - ASCII-only identifiers
-           - Single-concern per ticket (no scope creep)
-        3. Write output to docs/brain/<epic_id>/04-5-ticket-review.md
-           Include: review_verdict: PASS|FAIL, failed_tickets: [], kb_rules_applied: []
-        4. Update manifest.json with phase_4_5 status=completed|blocked
-        Return: { status, output_path, review_verdict: "PASS"|"FAIL", failed_tickets: [] }
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol — ALL 5 PHASES A-E):
+  Pilot epic: first epic with 04-tickets.md present
+  Worker mode: v12-phase4-5-review
+  PHASE A: Spawn pilot worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: sequential-thinking used (this phase does not require jcodemunch tools — that is OK).
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/<pilot>/04-5-ticket-review.md exists and > 200 bytes.
+    Check 4: manifest.json shows phase_4_5.status=completed.
+    Check 5: Agent Tracking block present (soft warning).
+    Check 6: review_verdict=PASS in return value.
+    Check 7: N/A.
+  PHASE C: Hard fail → log pilot_failed, HALT, report PILOT_FAILURE.
+           Pass → log pilot_passed, extract PILOT_COST.
+  PHASE D: Compute BATCH_SIZE. Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining epics in batches of BATCH_SIZE.
+
+WORKER DESCRIPTION FORMAT:
+  Epic: <epic_id>
+  Method: <method_name> (CYC: <cyc>)
+  Input: docs/brain/<epic_id>/04-tickets.md
+  Jane Street KB Results: <paste KB results here>
+  Task: Run Phase 4.5 (Ticket Review).
+    1. Read 04-tickets.md
+    2. Use mcp__sequential-thinking__sequentialthinking to validate each ticket against Jane Street KB:
+       - CYC reduction path is provably achievable (math: complexity sum check)
+       - No lock() patterns introduced
+       - xUnit tests specified per ticket ([Fact], Assert.Equal())
+       - ASCII-only identifiers
+       - Single-concern per ticket (no scope creep)
+    3. Write output to docs/brain/<epic_id>/04-5-ticket-review.md
+       Include: review_verdict: PASS|FAIL, failed_tickets: [], kb_rules_applied: []
+       MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+    4. Update manifest.json with phase_4_5 status=completed|blocked with timestamp
+    Return: { status, output_path, review_verdict: "PASS"|"FAIL", failed_tickets: [], bobcoins_used }
 
 STEP 3 — COMPLETION VERIFICATION LOOP (review_verdict=PASS required for all 161):
   lamport_append(event_type="phase_4_5_kb_query_complete", phase="4.5", ..., status="success")
@@ -665,37 +884,54 @@ MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "C# method extraction CYC reduction"
   Capture KB results and include them in ALL worker descriptions below.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic, spawn a subagent:
-    mode: v12-engineer
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (CYC: <cyc> → target CYC <= 8)
-      Source: <source_file> (UTF-8, no BOM)
-      Input: docs/brain/<epic_id>/04-tickets.md
-             docs/brain/<epic_id>/04-5-ticket-review.md
-      Jane Street KB Results: <paste KB results here>
-      Task: Run Phase 5 (Ticket Execution). You have FULL file write access.
-        CRITICAL RULES (V12 DNA — non-negotiable):
-          - xUnit ONLY: [Fact], Assert.Equal() — NEVER NUnit, NEVER MSTest
-          - UTF-8 source files (no BOM, no ASCII-only violations)
-          - Zero lock() blocks — use FSM/Actor Enqueue model
-          - ASCII-only string literals (no Unicode, no emoji)
-          - CSharpier format after every file write: dotnet csharpier format src/
-          - SINGLE CONCERN: only modify <method_name> and its new extracted helpers
-        EXECUTION:
-          1. Read 04-tickets.md and 04-5-ticket-review.md
-          2. Execute each ticket in order:
-             a. Use jcodemunch-mcp: get_symbol_source, get_context_bundle, plan_refactoring
-             b. Write extracted helper method(s) to <source_file>
-             c. Refactor <method_name> to call the helpers (CYC <= 8 achieved)
-             d. Write xUnit test(s) to tests/ covering extracted logic
-          3. Run: python scripts/complexity_audit.py (verify CYC <= 8)
-          4. Run: dotnet build (must pass with ZERO errors)
-          5. Run: dotnet csharpier format src/
-          6. Write docs/brain/<epic_id>/ticket-X-completion.md for each ticket
-          7. Update manifest.json with phase_5 status=completed, cyc_achieved=N
-        Return: { status, cyc_achieved, build_passed: true|false, tests_written: N }
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol — ALL 5 PHASES A-E):
+  Pilot epic: first epic with 04-5-ticket-review.md present (review_verdict=PASS)
+  Worker mode: v12-engineer
+  PHASE A: Spawn pilot worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: jcodemunch-mcp calls (get_symbol_source, get_context_bundle, plan_refactoring) in summary.
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/<pilot>/ticket-1-completion.md exists and > 200 bytes.
+    Check 4: manifest.json shows phase_5.status=completed.
+    Check 5: Agent Tracking block present (soft warning).
+    Check 6: cyc_achieved <= 8 AND build_passed=true in return value.
+    Check 7 (HARD): No NUnit/MSTest in test files. No lock() in source. UTF-8 encoding confirmed.
+  PHASE C: Hard fail → log pilot_failed, HALT, report PILOT_FAILURE.
+           Pass → log pilot_passed, extract PILOT_COST.
+  PHASE D: Compute BATCH_SIZE (Phase 5 workers are most expensive — be conservative).
+           Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining epics in batches of BATCH_SIZE.
+
+WORKER DESCRIPTION FORMAT:
+  Epic: <epic_id>
+  Method: <method_name> (CYC: <cyc> → target CYC <= 8)
+  Source: <source_file> (UTF-8, no BOM)
+  Input: docs/brain/<epic_id>/04-tickets.md
+         docs/brain/<epic_id>/04-5-ticket-review.md
+  Jane Street KB Results: <paste KB results here>
+  Task: Run Phase 5 (Ticket Execution). You have FULL file write access.
+    CRITICAL RULES (V12 DNA — non-negotiable):
+      - xUnit ONLY: [Fact], Assert.Equal() — NEVER NUnit, NEVER MSTest
+      - UTF-8 source files (no BOM, no ASCII-only violations)
+      - Zero lock() blocks — use FSM/Actor Enqueue model
+      - ASCII-only string literals (no Unicode, no emoji)
+      - CSharpier format after every file write: dotnet csharpier format src/
+      - SINGLE CONCERN: only modify <method_name> and its new extracted helpers
+    EXECUTION:
+      1. Read 04-tickets.md and 04-5-ticket-review.md
+      2. Execute each ticket in order:
+         a. Use jcodemunch-mcp: get_symbol_source, get_context_bundle, plan_refactoring
+         b. Use mcp__sequential-thinking__sequentialthinking for refactoring plan
+         c. Write extracted helper method(s) to <source_file>
+         d. Refactor <method_name> to call the helpers (CYC <= 8 achieved)
+         e. Write xUnit test(s) to tests/ covering extracted logic ([Fact], Assert.Equal())
+      3. Run: python scripts/complexity_audit.py (verify CYC <= 8)
+      4. Run: dotnet build (must pass with ZERO errors)
+      5. Run: dotnet csharpier format src/
+      6. Write docs/brain/<epic_id>/ticket-X-completion.md for each ticket
+         MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+      7. Update manifest.json with phase_5 status=completed, cyc_achieved=N, timestamp
+    Return: { status, cyc_achieved, build_passed: true|false, tests_written: N, bobcoins_used }
 
 STEP 3 — COMPLETION VERIFICATION LOOP (cyc_achieved<=8 AND build_passed=true for all 161):
   lamport_append(event_type="phase_5_kb_query_complete", phase="5", ..., status="success")
@@ -748,29 +984,44 @@ MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "complexity threshold 8 Jane Street"
   Capture KB results and include them in ALL worker descriptions below.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic, spawn a subagent:
-    mode: v12-phase5-v-verify
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (original CYC: <cyc> → claimed CYC: <cyc_achieved>)
-      Source: <source_file>
-      Input: docs/brain/<epic_id>/ticket-X-completion.md
-      Jane Street KB Results: <paste KB results here>
-      Task: Run Phase 5.V (Independent Verification). Do NOT trust Phase 5 self-report.
-        VERIFY ALL of the following independently:
-          1. Use jcodemunch-mcp: get_symbol_complexity(<method_name>) → MUST be <= 8
-          2. Use jcodemunch-mcp: get_changed_symbols() → MUST only show <method_name> + new helpers
-          3. Use jcodemunch-mcp: search_ast("lock", file=<source_file>) → MUST return zero matches
-          4. Check source file encoding: file --mime-encoding <source_file> → MUST be utf-8
-          5. Verify xUnit tests exist: grep -r "[Fact]" tests/ → MUST find tests for <method_name>
-          6. Verify NO NUnit/MSTest: grep -r "TestFixture\|TestMethod\|\[Test\]" tests/ → MUST be zero
-          7. Run: python scripts/complexity_audit.py → confirm <method_name> CYC <= 8
-          8. Run: dotnet build → MUST pass with ZERO errors
-        Write output to docs/brain/<epic_id>/ticket-X-verification.md
-          Include: verification_verdict: PASS|FAIL, failures: []
-        Update manifest.json with phase_5v status=completed|failed, verification_verdict
-        Return: { status, output_path, verification_verdict: "PASS"|"FAIL", failures: [] }
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol — ALL 5 PHASES A-E):
+  Pilot epic: first epic with ticket-1-completion.md present
+  Worker mode: v12-phase5-v-verify
+  PHASE A: Spawn pilot worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: jcodemunch-mcp calls (get_symbol_complexity, get_changed_symbols, search_ast) in summary.
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/<pilot>/ticket-1-verification.md exists and > 200 bytes.
+    Check 4: manifest.json shows phase_5v.status=completed.
+    Check 5: Agent Tracking block present (soft warning).
+    Check 6: verification_verdict=PASS in return value.
+    Check 7: N/A.
+  PHASE C: Hard fail → log pilot_failed, HALT, report PILOT_FAILURE.
+           Pass → log pilot_passed, extract PILOT_COST.
+  PHASE D: Compute BATCH_SIZE. Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining epics in batches of BATCH_SIZE.
+
+WORKER DESCRIPTION FORMAT:
+  Epic: <epic_id>
+  Method: <method_name> (original CYC: <cyc> → claimed CYC: <cyc_achieved>)
+  Source: <source_file>
+  Input: docs/brain/<epic_id>/ticket-X-completion.md
+  Jane Street KB Results: <paste KB results here>
+  Task: Run Phase 5.V (Independent Verification). Do NOT trust Phase 5 self-report.
+    VERIFY ALL of the following independently:
+      1. Use jcodemunch-mcp: get_symbol_complexity(<method_name>) → MUST be <= 8
+      2. Use jcodemunch-mcp: get_changed_symbols() → MUST only show <method_name> + new helpers
+      3. Use jcodemunch-mcp: search_ast("lock", file=<source_file>) → MUST return zero matches
+      4. Check source file encoding: file --mime-encoding <source_file> → MUST be utf-8
+      5. Verify xUnit tests exist: grep -r "[Fact]" tests/ → MUST find tests for <method_name>
+      6. Verify NO NUnit/MSTest: grep -r "TestFixture\|TestMethod\|\[Test\]" tests/ → MUST be zero
+      7. Run: python scripts/complexity_audit.py → confirm <method_name> CYC <= 8
+      8. Run: dotnet build → MUST pass with ZERO errors
+    Write output to docs/brain/<epic_id>/ticket-X-verification.md
+      Include: verification_verdict: PASS|FAIL, failures: []
+      MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+    Update manifest.json with phase_5v status=completed|failed, verification_verdict, timestamp
+    Return: { status, output_path, verification_verdict: "PASS"|"FAIL", failures: [], bobcoins_used }
 
 STEP 3 — COMPLETION VERIFICATION LOOP (verification_verdict=PASS for all 161):
   lamport_append(event_type="phase_5v_kb_query_complete", phase="5.V", ..., status="success")
@@ -821,28 +1072,43 @@ MANDATORY JANE STREET KB QUERY (run AFTER gate, BEFORE spawning workers):
   python scripts/query_kb.py "final audit complexity Jane Street"
   Capture KB results and include them in ALL worker descriptions below.
 
-SPAWN ALL 161 WORKERS SIMULTANEOUSLY:
-  For each epic, spawn a subagent:
-    mode: v12-phase6-review
-    description: |
-      Epic: <epic_id>
-      Method: <method_name> (original CYC: <cyc> → verified CYC: <cyc_achieved>)
-      Source: <source_file>
-      Input: docs/brain/<epic_id>/ticket-X-verification.md (and all prior artifacts)
-      Jane Street KB Results: <paste KB results here>
-      Task: Run Phase 6 (Final Review).
-        1. Read all phase artifacts: 00-hotspots.md through ticket-X-verification.md
-        2. Use jcodemunch-mcp: get_repo_health, get_hotspots (confirm this method no longer a hotspot)
-        3. Use sequential-thinking to write a complete completion narrative:
-           - What was refactored
-           - Before/after CYC
-           - Tests written
-           - Jane Street patterns applied
-           - DNA compliance confirmed
-        4. Write docs/brain/<epic_id>/05-completion-report.md
-        5. Update manifest.json: all phases status=completed, wave=7, final_cyc=<cyc_achieved>
-        6. Run final complexity check: python scripts/complexity_audit.py | grep <method_name>
-        Return: { status, output_path, final_cyc, wave_ready: true|false }
+STEP 2 — UNIVERSAL PILOT GATE (see Pilot Gate Protocol — ALL 5 PHASES A-E):
+  Pilot epic: first epic with ticket-1-verification.md present (verification_verdict=PASS)
+  Worker mode: v12-phase6-review
+  PHASE A: Spawn pilot worker.
+  PHASE B: Run compliance audit — 7 checks:
+    Check 1: jcodemunch-mcp calls (get_repo_health, get_hotspots) in summary.
+    Check 2: sequential-thinking used.
+    Check 3: docs/brain/<pilot>/05-completion-report.md exists and > 200 bytes.
+    Check 4: manifest.json shows all phases status=completed and wave=7.
+    Check 5: Agent Tracking block present (soft warning).
+    Check 6: wave_ready=true AND final_cyc <= 8 in return value.
+    Check 7: N/A.
+  PHASE C: Hard fail → log pilot_failed, HALT, report PILOT_FAILURE.
+           Pass → log pilot_passed, extract PILOT_COST.
+  PHASE D: Compute BATCH_SIZE. Log batch_plan. Update bobcoin_tracker.json.
+  PHASE E: Spawn remaining epics in batches of BATCH_SIZE.
+
+WORKER DESCRIPTION FORMAT:
+  Epic: <epic_id>
+  Method: <method_name> (original CYC: <cyc> → verified CYC: <cyc_achieved>)
+  Source: <source_file>
+  Input: docs/brain/<epic_id>/ticket-X-verification.md (and all prior artifacts)
+  Jane Street KB Results: <paste KB results here>
+  Task: Run Phase 6 (Final Review).
+    1. Read all phase artifacts: 00-hotspots.md through ticket-X-verification.md
+    2. Use jcodemunch-mcp: get_repo_health, get_hotspots (confirm method no longer a hotspot)
+    3. Use mcp__sequential-thinking__sequentialthinking to write a complete completion narrative:
+       - What was refactored
+       - Before/after CYC
+       - Tests written
+       - Jane Street patterns applied
+       - DNA compliance confirmed
+    4. Write docs/brain/<epic_id>/05-completion-report.md
+       MANDATORY: Include Agent Tracking section: Agent Name / Bobcoins Used / Execution Time
+    5. Update manifest.json: all phases status=completed, wave=7, final_cyc=<cyc_achieved>, timestamp
+    6. Run final complexity check: python scripts/complexity_audit.py | grep <method_name>
+    Return: { status, output_path, final_cyc, wave_ready: true|false, bobcoins_used }
 
 STEP 3 — COMPLETION VERIFICATION LOOP (wave_ready=true AND final_cyc<=8 for all 161):
   lamport_append(event_type="phase_6_kb_query_complete", phase="6", ..., status="success")

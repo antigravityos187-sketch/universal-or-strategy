@@ -1,9 +1,9 @@
 # Autonomous Refactor Integration Matrix V2
 
-**Date**: 2026-06-24
-**Version**: 2.4 (Bob IDE V2 — 3-Tier Subagent Architecture — AUTHORITATIVE)
+**Date**: 2026-06-25
+**Version**: 2.5 (Bob IDE V2 — Universal Pilot Compliance Audit + Adaptive Batch Sizing — AUTHORITATIVE)
 **Purpose**: Map skills, MCPs, custom modes, slash commands, and Jane Street KB hooks across all 10 phases
-**Context**: Wave 7 execution — 3-tier subagent model (1 top orch → 10 phase orcbs → 161 epic workers)
+**Context**: Wave 7 execution — 3-tier subagent model (1 top orch → 10 phase orchs → 161 epic workers)
 
 ## Executive Summary
 
@@ -18,6 +18,9 @@ This document validates that the `/autonomous-refactor` master orchestrator prop
 ✅ **All skills updated to V12.28 subagent pattern** (no Bob Shell, no scripts)
 ✅ **3-TIER SUBAGENT ARCHITECTURE** — 1 top orch → 10 phase orchs → 161 epic workers
 ✅ **100% COMPLETION ENFORCEMENT** — per-phase verification loop before hand-off
+✅ **UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5)** — ALL 10 phase orchs run 7-check pilot before batching
+✅ **ADAPTIVE BATCH SIZING (V2.5)** — batch size computed from actual pilot cost + balance estimate
+✅ **BOBCOIN PAUSE PROTOCOL (V2.5)** — auto-pauses if balance drops to 15% buffer, resumes on reload
 ✅ **Phase Orchestrator Templates** — `docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`
 ❌ **OBSOLETE**: `gcp-vm-wave-execution` skill — marked retired, do not use
 ❌ **OBSOLETE**: Greptile MCP referenced in old system prompts — not used in any phase
@@ -25,7 +28,56 @@ This document validates that the `/autonomous-refactor` master orchestrator prop
 
 ---
 
-## 3-Tier Subagent Architecture (V2.4 — NEW)
+## V2.5 Upgrades — Universal Pilot Compliance Audit + Adaptive Batch Sizing
+
+### Universal Pilot Compliance Audit
+
+**New in V2.5**: Every Phase Orchestrator (all 10) now runs a 7-check pilot before batching any workers.
+The old Phase 0-only pilot gate is replaced by this universal protocol.
+
+| Check | What is Verified | Hard Fail? |
+|-------|-----------------|------------|
+| 1 | jcodemunch-mcp tools called (phase-specific) | YES |
+| 2 | sequential-thinking MCP used | YES |
+| 3 | Output artifact exists and > 200 bytes | YES |
+| 4 | manifest.json updated with this phase's status=completed | YES |
+| 5 | Agent Tracking block present (Agent Name, Bobcoins Used, Execution Time) | SOFT WARNING |
+| 6 | Phase-specific success criterion met | YES |
+| 7 | No DNA violations (Phase 5 only: no NUnit, no lock(), UTF-8 encoding) | YES (Phase 5 only) |
+
+**Pilot Fail = HALT**: If any hard check fails, the Phase Orchestrator logs `pilot_failed`,
+writes a `failure-analysis.md`, and reports `PILOT_FAILURE` to Tier 1. No workers are spawned.
+
+**Why**: Catches worker description format bugs, missing MCP usage, and manifest schema errors
+on the very first epic instead of discovering them 160 epics in.
+
+### Adaptive Batch Sizing
+
+**New in V2.5**: After a pilot passes, batch size is computed from the actual pilot cost:
+
+```
+BATCH_SIZE = max(1, min(50, floor(BALANCE * 0.85 / PILOT_COST)))
+```
+
+- **Cap = 50**: Never spawn more than 50 workers per batch regardless of balance
+- **Floor = 1**: Always spawn at least 1 (even if balance is critically low)
+- **15% safety buffer**: Never spend the last 15% of balance
+- **Balance source**: `.lamport/wave7/bobcoin_tracker.json` (Director updates `balance_estimate` after reload)
+- **Pause protocol**: If balance drops below 15% of original, Phase Orchestrator pauses and reports `BOBCOIN_PAUSE` to Tier 1
+
+### Bobcoin Tracker
+
+**File**: [`.lamport/wave7/bobcoin_tracker.json`](.lamport/wave7/bobcoin_tracker.json)
+
+**Director reload protocol**: When bobcoins run out mid-wave:
+1. Phase Orchestrator pauses, reports `BOBCOIN_PAUSE: N epics remaining`
+2. Director reloads bobcoins
+3. Director updates `balance_estimate` in `bobcoin_tracker.json`
+4. Phase Orchestrator resumes next batch automatically
+
+---
+
+## 3-Tier Subagent Architecture (V2.4)
 
 ### Why 3 Tiers?
 
@@ -173,23 +225,32 @@ For a batch of N epics in the same phase:
 
 ---
 
-## Phase-by-Phase Integration Matrix (CORRECTED)
+## Phase-by-Phase Integration Matrix (V2.4 — CORRECTED + DEDICATED MCPs)
 
-| Phase | Slash Command | Custom Mode | MCPs Used | Skills Used | Jane Street KB Hook | Status |
-|-------|---------------|-------------|-----------|-------------|---------------------|--------|
-| **0** | `/epic-intake` | `v12-phase0-hotspot` | jcodemunch, sequential-thinking | None (V2: subagent spawned natively) | ❌ No | ✅ Mapped |
-| **1** | `/epic-scope-boundary` | `v12-phase1-scope` | jcodemunch, sequential-thinking | None | ❌ No | ✅ Mapped |
-| **1.5** | `/epic-scope-boundary --phase 1.5` | `v12-phase1-5-boundary` | jcodemunch, sequential-thinking | `scope-boundary-check` (implicit) | ❌ No | ✅ Mapped |
-| **2** | `/epic-plan` | `v12-phase2-architecture` | jcodemunch, sequential-thinking, graphify | `architecture-validation` (explicit) | ⚠️ Optional (extraction patterns) | ✅ Mapped |
-| **3** | `/epic-scan` | `v12-phase3-audit` | jcodemunch, sequential-thinking | None | ❌ No | ✅ Mapped |
-| **4** | `/epic-tickets` | `v12-phase4-tickets` | jcodemunch, sequential-thinking | None | ❌ No | ✅ Mapped |
-| **4.5** | `/epic-review-tickets` | `v12-phase4-5-review` | sequential-thinking | None | ✅ **MANDATORY** (ticket validation) | ✅ Automated |
-| **5** | `/epic-validate` | `v12-engineer` | jcodemunch, sequential-thinking | None (V2: subagent spawned natively) | ✅ **MANDATORY** (implementation patterns) | ✅ Mapped |
-| **5.V** | `/epic-verify-ticket` | `v12-phase5-v-verify` | jcodemunch, sequential-thinking | None | ✅ **MANDATORY** (DNA compliance) | ✅ Mapped |
-| **6** | `/epic-review-final` | `v12-phase6-review` | jcodemunch, sequential-thinking | None | ✅ **MANDATORY** (final audit) | ✅ Mapped |
+| Phase | Phase Orch Mode | Worker Mode | MCPs Used (3 per phase) | Jane Street KB | Status |
+|-------|----------------|-------------|------------------------|----------------|--------|
+| **0** | `wave-orch-phase0` | `v12-phase0-hotspot` | jcodemunch-mcp, sequential-thinking, **phase-0-hotspot** | ❌ No | ✅ |
+| **1** | `wave-orch-phase1` | `v12-phase1-scope` | jcodemunch-mcp, sequential-thinking, **phase-1-scope** | ❌ No | ✅ |
+| **1.5** | `wave-orch-phase1-5` | `v12-phase1-5-boundary` | jcodemunch-mcp, sequential-thinking, **phase-1-5-boundary** | ❌ No | ✅ |
+| **2** | `wave-orch-phase2` | `v12-phase2-architecture` | jcodemunch-mcp, sequential-thinking, **phase-2-architecture** | ✅ MANDATORY | ✅ |
+| **3** | `wave-orch-phase3` | `v12-phase3-audit` | jcodemunch-mcp, sequential-thinking, **phase-3-audit** | ❌ No | ✅ |
+| **4** | `wave-orch-phase4` | `v12-phase4-tickets` | jcodemunch-mcp, sequential-thinking, **phase-4-tickets** | ❌ No | ✅ |
+| **4.5** | `wave-orch-phase4-5` | `v12-phase4-5-review` | sequential-thinking, **phase-4-tickets** (review) | ✅ MANDATORY | ✅ |
+| **5** | `wave-orch-phase5` | `v12-engineer` | jcodemunch-mcp, sequential-thinking, **phase-5-execute** | ✅ MANDATORY | ✅ |
+| **5.V** | `wave-orch-phase5v` | `v12-phase5-v-verify` | jcodemunch-mcp, sequential-thinking, **phase-5-verify** | ✅ MANDATORY | ✅ |
+| **6** | `wave-orch-phase6` | `v12-phase6-review` | jcodemunch-mcp, sequential-thinking, **phase-6-review** | ✅ MANDATORY | ✅ |
 
-**CRITICAL CORRECTION**: All phases use **custom modes**, NOT generic `ask`/`plan`/`advanced` modes!
-**V2.3 NOTE**: Execution model is Bob IDE native subagents — no Bob Shell, no GCP VM scripts needed.
+**Dedicated Phase MCPs** (registered in `.bob/mcp.linux.json`):
+Each phase has its own FastMCP Python server (`scripts/phase_N_*_mcp*.py`) providing phase-specific
+tooling — Jane Street violation loading, context preparation, artifact coordination. These are in
+ADDITION to `jcodemunch-mcp` and `sequential-thinking`, not replacements.
+
+**Chain Model (V2.4)**: Each Phase Orchestrator uses `start_subtask` to hand off to the next phase
+orchestrator, forming a sequential chain. The final Phase 6 Orchestrator reports back to the
+top-level `autonomous-refactor` session.
+
+**CRITICAL**: All phases use **custom modes** (wave-orch-phaseN → v12-phaseN-*), NOT generic modes!
+**V2.4 NOTE**: 3-tier model — Tier 1 (autonomous-refactor) → Tier 2 (wave-orch-phaseN) → Tier 3 (v12-phaseN-*)
 
 ---
 

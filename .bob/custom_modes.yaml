@@ -346,10 +346,16 @@ customModes:
     customInstructions: "LAMPORT GATE IS MANDATORY: Your VERY FIRST action is to
       run the dependency gate from PHASE_ORCHESTRATOR_TEMPLATES.md. Verify
       wave_start exists in .lamport/wave7/event_log.jsonl. If absent: HALT,
-      report DEPENDENCY_NOT_MET, do NOT spawn any workers. After gate passes:
-      lamport_append phase_0_orchestrator_start. Run PILOT GATE on EPIC-W7-001
-      before spawning remaining 160. lamport_append phase_0_orchestrator_complete
-      ONLY after 161/161 verified. See Template 1 for full protocol."
+      report DEPENDENCY_NOT_MET. After gate passes: lamport_append
+      phase_0_orchestrator_start. UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5) IS
+      MANDATORY: Spawn EPIC-W7-001 pilot FIRST, run 7-check compliance audit
+      (MCP usage, sequential-thinking, output exists, manifest updated, agent
+      tracking, cyc_confirmed, DNA checks). HALT if any hard check fails. If
+      pilot passes: compute BATCH_SIZE from PILOT_COST + balance in
+      .lamport/wave7/bobcoin_tracker.json (max 50, min 1, 15% buffer). Spawn
+      remaining 160 in batches of BATCH_SIZE. Pause and report BOBCOIN_PAUSE
+      if balance < 15%. lamport_append phase_0_orchestrator_complete ONLY after
+      161/161 verified. See PHASE_ORCHESTRATOR_TEMPLATES.md Template 1."
     groups:
       - read
       - - edit
@@ -391,11 +397,14 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 2.
     whenToUse: Phase 1 Orchestrator - spawns 161 scope workers, enforces 100% completion
     customInstructions: "LAMPORT GATE IS MANDATORY: Verify
-      phase_0_orchestrator_complete status=complete exists in Lamport log before
-      doing anything else. If absent: HALT, report DEPENDENCY_NOT_MET, do NOT
-      spawn workers. lamport_append phase_1_orchestrator_start after gate.
-      lamport_append phase_1_orchestrator_complete ONLY after 161/161 verified.
-      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 2."
+      phase_0_orchestrator_complete status=complete in Lamport log first. If
+      absent: HALT, report DEPENDENCY_NOT_MET. UNIVERSAL PILOT COMPLIANCE AUDIT
+      (V2.5): Spawn first epic with 00-hotspots.md as pilot. Run 7-check audit
+      (jcodemunch MCP, sequential-thinking, 00-scope.md exists, manifest, agent
+      tracking, scope_confirmed_single_method=true). HALT if hard check fails.
+      Compute BATCH_SIZE from pilot cost + bobcoin_tracker.json. Spawn batches
+      of max 50. Pause on BOBCOIN_PAUSE if balance < 15%. lamport_append
+      phase_1_orchestrator_complete after 161/161. See Template 2."
     groups:
       - read
       - - edit
@@ -438,11 +447,14 @@ customModes:
       docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 3.
     whenToUse: Phase 1.5 Orchestrator - spawns 161 boundary workers, blocks scope creep
     customInstructions: "LAMPORT GATE IS MANDATORY: Verify
-      phase_1_orchestrator_complete status=complete exists in Lamport log before
-      doing anything else. If absent: HALT, report DEPENDENCY_NOT_MET, do NOT
-      spawn workers. lamport_append phase_1_5_orchestrator_start after gate.
-      lamport_append phase_1_5_orchestrator_complete ONLY after all 161 PASS.
-      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 3."
+      phase_1_orchestrator_complete status=complete in Lamport log first. If
+      absent: HALT. UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn first epic
+      with 00-scope.md as pilot. Run 7-check audit (jcodemunch MCP,
+      sequential-thinking, 01-scope-boundary.md exists, manifest,
+      agent tracking, boundary_verdict=PASS). HALT if hard check fails. Compute
+      BATCH_SIZE from pilot cost + bobcoin_tracker.json. Spawn batches max 50.
+      Pause on BOBCOIN_PAUSE. lamport_append phase_1_5_orchestrator_complete
+      after 161/161 PASS. See Template 3."
     groups:
       - read
       - - edit
@@ -491,10 +503,15 @@ customModes:
       queries
     customInstructions: "LAMPORT GATE IS MANDATORY: Verify
       phase_1_5_orchestrator_complete status=complete in Lamport log first. If
-      absent: HALT, report DEPENDENCY_NOT_MET. lamport_append
-      phase_2_orchestrator_start after gate. KB query runs after gate, before
-      workers. lamport_append phase_2_orchestrator_complete after 161/161.
-      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 4."
+      absent: HALT. KB query MANDATORY after gate (query_kb.py extraction
+      patterns, complexity reduction FSM, lock-free actor). UNIVERSAL PILOT
+      COMPLIANCE AUDIT (V2.5): Spawn first epic with 01-scope-boundary.md as
+      pilot. Run 7-check audit (jcodemunch MCP, sequential-thinking,
+      02-architecture-plan.md exists, manifest, agent tracking,
+      max_cyc_projected<=8). HALT if hard check fails. Compute BATCH_SIZE from
+      pilot cost + bobcoin_tracker.json. Spawn batches max 50. Pause on
+      BOBCOIN_PAUSE. lamport_append phase_2_orchestrator_complete after 161/161.
+      See Template 4."
     groups:
       - read
       - - edit
@@ -536,11 +553,14 @@ customModes:
     whenToUse: Phase 3 Orchestrator - spawns 161 DNA audit workers, blocks
       non-compliant plans
     customInstructions: "LAMPORT GATE IS MANDATORY: Verify
-      phase_2_orchestrator_complete status=complete in Lamport log before
-      anything else. If absent: HALT, report DEPENDENCY_NOT_MET, do NOT spawn
-      workers. lamport_append phase_3_orchestrator_start after gate.
-      lamport_append phase_3_orchestrator_complete ONLY after 161/161 PASS.
-      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 5."
+      phase_2_orchestrator_complete status=complete in Lamport log first. If
+      absent: HALT. UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn first epic
+      with 02-architecture-plan.md as pilot. Run 7-check audit (jcodemunch MCP,
+      sequential-thinking, 03-audit-report.md exists, manifest, agent tracking,
+      dna_verdict=PASS). HALT if hard check fails. Compute BATCH_SIZE from
+      pilot cost + bobcoin_tracker.json. Spawn batches max 50. Pause on
+      BOBCOIN_PAUSE. lamport_append phase_3_orchestrator_complete after 161/161
+      PASS. See Template 5."
     groups:
       - read
       - - edit
@@ -580,11 +600,14 @@ customModes:
     whenToUse: Phase 4 Orchestrator - spawns 161 ticket generation workers,
       validates ticket counts
     customInstructions: "LAMPORT GATE IS MANDATORY: Verify
-      phase_3_orchestrator_complete status=complete in Lamport log before
-      anything else. If absent: HALT, report DEPENDENCY_NOT_MET, do NOT spawn
-      workers. lamport_append phase_4_orchestrator_start after gate.
-      lamport_append phase_4_orchestrator_complete ONLY after 161/161 verified.
-      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 6."
+      phase_3_orchestrator_complete status=complete in Lamport log first. If
+      absent: HALT. UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn first epic
+      with 03-audit-report.md (dna_verdict=PASS) as pilot. Run 7-check audit
+      (jcodemunch MCP, sequential-thinking, 04-tickets.md exists, manifest,
+      agent tracking, ticket_count>=1). HALT if hard check fails. Compute
+      BATCH_SIZE from pilot cost + bobcoin_tracker.json. Spawn batches max 50.
+      Pause on BOBCOIN_PAUSE. lamport_append phase_4_orchestrator_complete after
+      161/161. See Template 6."
     groups:
       - read
       - - edit
@@ -634,10 +657,14 @@ customModes:
       validation
     customInstructions: "LAMPORT GATE IS MANDATORY: Verify
       phase_4_orchestrator_complete status=complete in Lamport log first. If
-      absent: HALT, report DEPENDENCY_NOT_MET. KB query runs AFTER gate, BEFORE
-      workers. lamport_append phase_4_5_orchestrator_start after gate.
-      lamport_append phase_4_5_orchestrator_complete after 161/161 PASS.
-      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 7."
+      absent: HALT. KB query MANDATORY after gate (complexity reduction, xUnit,
+      FSM actor, lock-free). UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn
+      first epic with 04-tickets.md as pilot. Run 7-check audit
+      (sequential-thinking, 04-5-ticket-review.md exists, manifest, agent
+      tracking, review_verdict=PASS). HALT if hard check fails. Compute
+      BATCH_SIZE from pilot cost + bobcoin_tracker.json. Spawn batches max 50.
+      Pause on BOBCOIN_PAUSE. lamport_append phase_4_5_orchestrator_complete
+      after 161/161 PASS. See Template 7."
     groups:
       - read
       - - edit
@@ -695,10 +722,15 @@ customModes:
       CYC<=8 + build pass
     customInstructions: "LAMPORT GATE IS MANDATORY: Verify
       phase_4_5_orchestrator_complete status=complete in Lamport log first. If
-      absent: HALT, report DEPENDENCY_NOT_MET. KB query runs AFTER gate, BEFORE
-      workers. lamport_append phase_5_orchestrator_start after gate.
-      lamport_append phase_5_orchestrator_complete ONLY after 161/161 CYC<=8
-      AND build pass. See PHASE_ORCHESTRATOR_TEMPLATES.md Template 8."
+      absent: HALT. KB query MANDATORY after gate (FSM extraction, xUnit Fact
+      Assert, CYC reduction). UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn
+      first epic with 04-5-ticket-review.md (PASS) as pilot using v12-engineer.
+      Run 7-check audit — CHECK 7 IS HARD: verify no NUnit/MSTest in test
+      files, no lock() in source, UTF-8 encoding confirmed. HALT if any check
+      fails. Compute BATCH_SIZE from pilot cost (most expensive phase — be
+      conservative). Spawn batches max 50. Pause on BOBCOIN_PAUSE. lamport_append
+      phase_5_orchestrator_complete ONLY after 161/161 CYC<=8 AND build pass.
+      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 8."
     groups:
       - read
       - - edit
@@ -756,10 +788,15 @@ customModes:
       5 on failures
     customInstructions: "LAMPORT GATE IS MANDATORY: Verify
       phase_5_orchestrator_complete status=complete in Lamport log first. If
-      absent: HALT, report DEPENDENCY_NOT_MET. KB query AFTER gate. lamport_append
-      phase_5v_orchestrator_start after gate. lamport_append
-      phase_5_v_orchestrator_complete ONLY after 161/161 independent PASS.
-      See PHASE_ORCHESTRATOR_TEMPLATES.md Template 9."
+      absent: HALT. KB query MANDATORY after gate (lock-free verification, DNA
+      audit, complexity threshold 8). UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5):
+      Spawn first epic with ticket-1-completion.md as pilot using
+      v12-phase5-v-verify. Run 7-check audit (jcodemunch MCP calls, sequential-
+      thinking, ticket-1-verification.md exists, manifest, agent tracking,
+      verification_verdict=PASS). HALT if any check fails. Compute BATCH_SIZE
+      from pilot cost + bobcoin_tracker.json. Spawn batches max 50. Pause on
+      BOBCOIN_PAUSE. lamport_append phase_5_v_orchestrator_complete after
+      161/161 independent PASS. See Template 9."
     groups:
       - read
       - - edit
@@ -814,9 +851,15 @@ customModes:
       WAVE_COMPLETE report
     customInstructions: "LAMPORT GATE IS MANDATORY: Verify
       phase_5_v_orchestrator_complete status=complete in Lamport log first. If
-      absent: HALT, report DEPENDENCY_NOT_MET. KB query AFTER gate. lamport_append
-      phase_6_orchestrator_start after gate. After 161/161 workers complete: run
-      complexity_audit.py scan directly. ONLY if 0 methods above 8 remaining:
+      absent: HALT. KB query MANDATORY after gate (testing coverage, final audit
+      complexity). UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5): Spawn first epic
+      with ticket-1-verification.md (PASS) as pilot using v12-phase6-review.
+      Run 7-check audit (jcodemunch get_repo_health+get_hotspots, sequential-
+      thinking, 05-completion-report.md exists, manifest all phases
+      completed+wave=7, agent tracking, wave_ready=true+final_cyc<=8). HALT if
+      any check fails. Compute BATCH_SIZE from pilot cost + bobcoin_tracker.json.
+      Spawn batches max 50. Pause on BOBCOIN_PAUSE. After 161/161: run
+      complexity_audit.py scan directly. ONLY if 0 methods above 8:
       lamport_append wave_7_complete status=complete. See Template 10."
     groups:
       - read
