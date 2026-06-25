@@ -1,24 +1,6 @@
 {
   "epic_id": "EPIC-W7-059",
-  "method": "AdoptMasterWorkingOrders",
-  "file": "src/V12_002.SIMA.Lifecycle.cs",
-  "complexity": 11,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "00-scope.md"
-      ]
-    },
-    "2": {
-      "status": "pending",
-      "outputs": []
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

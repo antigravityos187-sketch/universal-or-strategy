@@ -1,39 +1,6 @@
 {
   "epic_id": "EPIC-W7-005",
-  "method_name": "ClassifyAndRouteFleetOrder",
-  "file": "src-vm-backup/V12_002.SIMA.Lifecycle.cs",
-  "line": 531,
-  "complexity": 19,
-  "status": "already_refactored",
-  "current_method": "RouteOrderToTargetDict",
-  "current_complexity": 9,
-  "phases": {
-    "phase_0": {
-      "status": "completed",
-      "output": "00-hotspots.md",
-      "timestamp": "2026-06-23T04:08:00Z",
-      "finding": "Method already refactored in current src/ - no action needed"
-    },
-    "phase_1": {
-      "status": "completed",
-      "output": "00-scope.md",
-      "timestamp": "2026-06-24T19:24:33Z",
-      "finding": "Scope defined: OUT OF SCOPE - already refactored, documentation only"
-    },
-    "phase_1.5": {
-      "status": "pending",
-      "output": null,
-      "timestamp": null,
-      "finding": null
-    },
-    "phase_2": {
-      "status": "pending",
-      "output": null,
-      "timestamp": null,
-      "finding": null
-    }
-  },
   "wave": 7,
-  "created_at": "2026-06-23T04:08:00Z",
-  "updated_at": "2026-06-24T19:24:33Z"
+  "status": "pending",
+  "phases": {}
 }

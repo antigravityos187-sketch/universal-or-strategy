@@ -1,20 +1,6 @@
 {
   "epic_id": "EPIC-W7-060",
-  "method": "SweepTrackedOrders",
-  "file": "src/V12_002.SIMA.Lifecycle.cs",
-  "complexity": 11,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "00-scope.md"
-      ]
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

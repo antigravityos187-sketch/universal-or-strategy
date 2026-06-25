@@ -1,63 +1,6 @@
 {
   "epic_id": "EPIC-W7-121",
-  "target_method": "SymmetryGuardCascadeFollowerCleanup",
-  "target_file": "V12_002.Symmetry.Replace.cs",
-  "current_complexity": 10,
-  "target_complexity": 8,
-  "phases": {
-    "phase_0": {
-      "status": "completed",
-      "agent": "v12-phase0-hotspot",
-      "timestamp": "2026-06-22T04:02:58Z",
-      "outputs": [
-        "00-hotspots.md"
-      ],
-      "bobcoins_used": 0.67
-    },
-    "phase_1": {
-      "status": "completed",
-      "agent": "v12-phase1-scope",
-      "timestamp": "2026-06-24T19:40:57Z",
-      "outputs": [
-        "00-scope.md"
-      ],
-      "dependencies": [
-        "phase_0"
-      ]
-    },
-    "phase_1_5": {
-      "status": "completed",
-      "agent": "v12-phase1-scope",
-      "timestamp": "2026-06-24T00:11:09Z",
-      "outputs": [
-        "01-scope-boundary.md"
-      ],
-      "dependencies": [
-        "phase_1"
-      ]
-    },
-    "phase_2": {
-      "status": "completed",
-      "agent": "v12-phase2-architecture",
-      "timestamp": "2026-06-24T03:53:48Z",
-      "outputs": [
-        "02-architecture-plan.md"
-      ],
-      "dependencies": [
-        "phase_1_5"
-      ]
-    },
-    "phase_3": {
-      "status": "pending",
-      "dependencies": [
-        "phase_2"
-      ]
-    },
-    "phase_4": {
-      "status": "pending",
-      "dependencies": [
-        "phase_3"
-      ]
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

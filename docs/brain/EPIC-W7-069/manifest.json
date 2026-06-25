@@ -1,33 +1,6 @@
 {
   "epic_id": "EPIC-W7-069",
-  "method": "GetFsmExpectedPosition",
-  "file": "src/V12_002.Symmetry.BracketFSM.cs",
-  "complexity": 14,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "00-scope.md"
-      ],
-      "timestamp": "2026-06-24T19:33:46Z"
-    },
-    "1.5": {
-      "status": "completed",
-      "completed_at": "2026-06-24T00:05:16Z",
-      "output": "docs/brain/EPIC-W7-069/01-scope-boundary.md",
-      "agent": "v12-phase1-5-boundary"
-    },
-    "2": {
-      "status": "completed",
-      "completed_at": "2026-06-24T03:42:19Z",
-      "output": "docs/brain/EPIC-W7-069/02-architecture-plan.md",
-      "agent": "v12-phase2-architecture"
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

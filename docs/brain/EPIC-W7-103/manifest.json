@@ -1,26 +1,6 @@
 {
   "epic_id": "EPIC-W7-103",
-  "method": "ProcessFleetSlot",
-  "file": "src/V12_002.SIMA.Fleet.cs",
-  "complexity": 13,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "00-scope.md"
-      ]
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
-      ]
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

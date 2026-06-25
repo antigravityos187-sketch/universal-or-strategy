@@ -1,25 +1,6 @@
 {
   "epic_id": "EPIC-W7-068",
-  "phases": {
-    "phase_0": {
-      "status": "completed",
-      "output": "00-hotspots.md",
-      "timestamp": "2026-06-22T04:01:24Z"
-    },
-    "phase_1": {
-      "status": "completed",
-      "output": "00-scope.md",
-      "timestamp": "2026-06-24T20:08:37Z"
-    },
-    "phase_1.5": {
-      "status": "pending",
-      "output": "01-scope-boundary.md",
-      "timestamp": null
-    },
-    "phase_2": {
-      "status": "completed",
-      "output": "02-architecture-plan.md",
-      "timestamp": "2026-06-24T03:42:00Z"
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

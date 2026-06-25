@@ -1,39 +1,6 @@
 {
   "epic_id": "EPIC-W7-013",
-  "method": "UpdatePanelState",
-  "file": "src/V12_002.UI.Panel.StateSync.cs",
-  "complexity": 22,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "00-scope.md"
-      ],
-      "timestamp": "2026-06-24T19:24:57Z"
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
-      ],
-      "timestamp": "2026-06-23T23:54:15Z",
-      "validation": "approved",
-      "scope_creep_risk": "low"
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
-      ],
-      "timestamp": "2026-06-24T03:04:40Z",
-      "extraction_strategy": "orchestrator_pattern",
-      "extracted_methods_count": 4
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

@@ -1,16 +1,6 @@
 {
   "epic_id": "EPIC-W7-071",
-  "method": "ShadowProcessFollowerStopUpdate",
-  "file": "src/V12_002.SIMA.Shadow.cs",
-  "complexity": 13,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": ["00-scope.md"]
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

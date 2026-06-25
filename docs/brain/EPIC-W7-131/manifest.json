@@ -1,20 +1,6 @@
 {
   "epic_id": "EPIC-W7-131",
-  "method": "SymmetryGuardPruneDispatches",
-  "file": "src/V12_002.Symmetry.Replace.cs",
-  "complexity": 8,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": ["00-scope.md"],
-      "timestamp": "2026-06-24T19:42:41Z",
-      "agent": "v12-phase1-scope",
-      "decision": "OUT_OF_SCOPE",
-      "reason": "Method already meets CYC<=8 threshold, zero blast radius, not a hotspot"
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

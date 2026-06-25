@@ -1,20 +1,6 @@
 {
   "epic_id": "EPIC-W7-007",
-  "method": "ShadowPropagateStopMoves",
-  "file": "src/V12_002.SIMA.Shadow.cs",
-  "complexity": 4,
-  "status": "cancelled",
-  "cancellation_reason": "Method complexity (4) is below Jane Street threshold (8) - no refactoring required",
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": ["00-scope.md"],
-      "decision": "CANCEL - Method complexity (4) below threshold (8), no refactoring required",
-      "timestamp": "2026-06-24T20:04:17Z"
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

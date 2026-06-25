@@ -1,26 +1,6 @@
 {
   "epic_id": "EPIC-W7-053",
-  "method": "InitiateStopReplacement",
-  "file": "src/V12_002.Trailing.StopUpdate.cs",
-  "complexity": 13,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": ["00-scope.md"]
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": ["01-scope-boundary.md"]
-    },
-    "2": {
-      "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
-      "timestamp": "2026-06-24T03:39:08Z",
-      "agent": "v12-phase2-architecture"
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

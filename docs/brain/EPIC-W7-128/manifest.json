@@ -1,44 +1,6 @@
 {
   "epic_id": "EPIC-W7-128",
-  "method": "SymmetryGuardReplaceExistingFollowerTarget",
-  "file": "src/V12_002.Symmetry.Replace.cs",
-  "complexity": 20,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
-      "agent": "v12-phase0-hotspot",
-      "bobcoins_used": 0.74,
-      "completed_at": "2026-06-23T02:59:48Z"
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "00-scope.md"
-      ],
-      "agent": "v12-phase1-scope",
-      "bobcoins_used": 0.0,
-      "completed_at": "2026-06-23T21:54:59Z"
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
-      ],
-      "agent": "v12-phase1-scope",
-      "bobcoins_used": 0.0,
-      "completed_at": "2026-06-24T00:12:34Z"
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
-      ],
-      "agent": "v12-phase2-architecture",
-      "bobcoins_used": 0.97,
-      "completed_at": "2026-06-24T03:53:52Z"
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

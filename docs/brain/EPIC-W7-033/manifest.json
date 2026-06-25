@@ -1,42 +1,6 @@
 {
   "epic_id": "EPIC-W7-033",
-  "method": "FlattenSinglePosition",
-  "file": "src/V12_002.Orders.Management.Flatten.cs",
-  "complexity": 27,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
-      "agent": "v12-phase0-hotspot",
-      "bobcoins": 0.77,
-      "timestamp": "2026-06-23T02:40:54Z"
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "00-scope.md"
-      ],
-      "agent": "v12-phase1-scope",
-      "bobcoins": 0.80,
-      "timestamp": "2026-06-24T19:27:22Z"
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
-      ],
-      "agent": "v12-phase1-5-boundary",
-      "timestamp": "2026-06-23T23:59:43Z"
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
-      ],
-      "agent": "v12-phase2-architecture",
-      "timestamp": "2026-06-24T03:36:45Z"
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

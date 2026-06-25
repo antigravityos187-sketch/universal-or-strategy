@@ -1,25 +1,6 @@
 {
   "epic_id": "EPIC-W7-081",
-  "method": "AuditMaster_HandleNakedPosition",
-  "file": "src/V12_002.REAPER.Audit.cs",
-  "complexity": 19,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": ["00-hotspots.md"]
-    },
-    "1": {
-      "status": "completed",
-      "outputs": ["00-scope.md"]
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": ["01-scope-boundary.md"]
-    },
-    "2": {
-      "status": "completed",
-      "outputs": ["02-architecture-plan.md"],
-      "completed_at": "2026-06-24T03:44:30Z"
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

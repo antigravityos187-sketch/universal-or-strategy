@@ -1,44 +1,6 @@
 {
   "epic_id": "EPIC-W7-088",
-  "method": "SubmitRepairOrderWithAuthorization",
-  "file": "src/V12_002.REAPER.Repair.cs",
-  "complexity": 19,
-  "phases": {
-    "0": {
-      "status": "completed",
-      "outputs": [
-        "00-hotspots.md"
-      ],
-      "agent": "v12-phase0-hotspot",
-      "bobcoins": 0.93,
-      "timestamp": "2026-06-23T03:32:03Z"
-    },
-    "1": {
-      "status": "completed",
-      "outputs": [
-        "00-scope.md"
-      ],
-      "agent": "v12-phase1-scope",
-      "bobcoins": 0.59,
-      "timestamp": "2026-06-24T19:35:46Z"
-    },
-    "1.5": {
-      "status": "completed",
-      "outputs": [
-        "01-scope-boundary.md"
-      ],
-      "agent": "v12-phase1-5-boundary",
-      "bobcoins": 0.0,
-      "timestamp": "2026-06-24T00:10:07Z"
-    },
-    "2": {
-      "status": "completed",
-      "outputs": [
-        "02-architecture-plan.md"
-      ],
-      "agent": "v12-phase2-architecture",
-      "bobcoins": 0.0,
-      "timestamp": "2026-06-24T03:45:03Z"
-    }
-  }
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }

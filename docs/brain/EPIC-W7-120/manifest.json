@@ -1,33 +1,6 @@
-
 {
-    "epic_id": "EPIC-W7-120",
-    "method": "HandleFsmFilled",
-    "file": "src/V12_002.Symmetry.BracketFSM.cs",
-    "complexity": 14,
-    "phases": {
-        "0": {
-            "status": "completed",
-            "outputs": [
-                "00-hotspots.md"
-            ],
-            "agent": "v12-phase0-hotspot",
-            "timestamp": "2026-06-23T02:57:16Z"
-        },
-        "1": {
-            "status": "completed",
-            "outputs": [
-                "00-scope.md"
-            ],
-            "agent": "v12-phase1-scope",
-            "timestamp": "2026-06-24T19:41:09Z"
-        },
-        "1.5": {
-            "status": "pending",
-            "outputs": []
-        },
-        "2": {
-            "status": "pending",
-            "outputs": []
-        }
-    }
+  "epic_id": "EPIC-W7-120",
+  "wave": 7,
+  "status": "pending",
+  "phases": {}
 }
