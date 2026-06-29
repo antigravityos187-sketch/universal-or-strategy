@@ -1,6 +1,40 @@
 {
-  "epic_id": "EPIC-W7-082",
+  "epic": "EPIC-W7-082",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "AuditSingleFleetAccount",
+  "source": "src/V12_002.REAPER.Audit.cs",
+  "cyc": 90,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Planning",
+      "status": "completed",
+      "output": null,
+      "output_path": "docs/brain/EPIC-W7-082/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.736489Z"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-082/02-architecture-plan.md",
+      "completed_at": "2026-06-29T01:02:00Z",
+      "extraction_count": 11,
+      "max_cyc_projected": 8,
+      "parent_cyc_projected": 6
+    },
+    "phase_3": {
+      "name": "Test Coverage",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

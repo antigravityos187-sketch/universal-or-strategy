@@ -1,6 +1,41 @@
 {
   "epic_id": "EPIC-W7-064",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "ResolveFsm_ByScan",
+  "cyc": 11,
+  "source_file": "src/V12_002.Symmetry.BracketFSM.cs",
+  "status": "in_progress",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Planning",
+      "status": "completed",
+      "output": "00-scope.md",
+      "output_path": "docs/brain/EPIC-W7-064/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.635815Z"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "output_path": "docs/brain/EPIC-W7-064/02-architecture-plan.md",
+      "completed_at": "2026-06-29T01:15:00Z",
+      "extraction_count": 1,
+      "max_cyc_projected": 5
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

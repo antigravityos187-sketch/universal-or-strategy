@@ -1,6 +1,40 @@
 {
   "epic_id": "EPIC-W7-075",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "OnSubmitClick",
+  "cyc": 34,
+  "source_file": "src/V12_002.UI.Panel.Handlers.cs",
+  "status": "in_progress",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Planning",
+      "status": "completed",
+      "output": null,
+      "output_path": "docs/brain/EPIC-W7-075/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.698168Z"
+    },
+    "phase_2": {
+      "name": "Refactor Implementation",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-075/02-architecture-plan.md",
+      "completed_at": "2026-06-29T02:15:00Z",
+      "extraction_count": 6,
+      "max_cyc_projected": 7
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

@@ -2,5 +2,33 @@
   "epic_id": "EPIC-W7-154",
   "wave": 7,
   "status": "pending",
-  "phases": {}
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "note": "manifest patched by top_orch \u2014 worker wrote artifact but did not update manifest"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output_path": "docs/brain/EPIC-W7-154/00-scope.md",
+      "completed_at": "2026-06-26T02:35:32.094840Z"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "method": "TryHandleFleet_LongShort",
+      "file": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+      "cyc_baseline": 11,
+      "cyc_projected_max": 7,
+      "helpers": [
+        "HandleTosSyncArming",
+        "CalculateIpcEntryQty"
+      ]
+    }
+  }
 }

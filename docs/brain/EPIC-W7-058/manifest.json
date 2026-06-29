@@ -1,6 +1,39 @@
 {
-  "epic_id": "EPIC-W7-058",
+  "epic": "EPIC-W7-058",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "MapOrderStateToFSMState",
+  "source": "src/V12_002.SIMA.Lifecycle.cs",
+  "cyc": 34,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Decomposition Planning",
+      "status": "completed",
+      "output": "00-scope.md",
+      "output_path": "docs/brain/EPIC-W7-058/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.593507Z"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "completed_at": "2026-06-29T02:00:00Z",
+      "max_cyc_projected": 5,
+      "extractions": 2
+    },
+    "phase_3": {
+      "name": "Validation & Coverage",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

@@ -1,6 +1,34 @@
 {
-  "epic_id": "EPIC-W7-027",
+  "epic": "EPIC-W7-027",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "Dispatch_PublishMarketBracketToPhoton",
+  "source": "src/V12_002.SIMA.Dispatch.cs",
+  "cyc": 9,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Design",
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_2": {
+      "name": "Refactor Implementation",
+      "status": "completed",
+      "output": "02-architecture-plan.md"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

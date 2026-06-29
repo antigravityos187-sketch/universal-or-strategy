@@ -1,6 +1,34 @@
 {
   "epic_id": "EPIC-W7-081",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "status": "in_progress",
+  "method": "AuditMaster_HandleNakedPosition",
+  "source": "src/V12_002.REAPER.Audit.cs",
+  "cyc": 0,
+  "predecessor_epic": "EPIC-W7-031",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output_path": "docs/brain/EPIC-W7-081/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.731301Z"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-081/02-architecture-plan.md",
+      "completed_at": "2026-06-29T00:58:00Z",
+      "extraction_count": 3,
+      "max_cyc_projected": 3
+    }
+  }
 }

@@ -1,6 +1,39 @@
 {
-  "epic_id": "EPIC-W7-099",
+  "epic": "EPIC-W7-099",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "PurgePositionIfEligible",
+  "source": "V12_002.Orders.Management.Cleanup.cs",
+  "cyc": 11,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Decompose Guards + Merge Purge Paths",
+      "status": "completed",
+      "output": null,
+      "output_path": "docs/brain/EPIC-W7-099/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.820218Z"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "completed_at": "2026-06-29T01:15:00.000000Z",
+      "max_cyc_projected": 8,
+      "helpers_extracted": 2
+    },
+    "phase_3": {
+      "name": "Verification + CYC Confirmation",
+      "status": "pending",
+      "output": null
+    }
+  }
 }

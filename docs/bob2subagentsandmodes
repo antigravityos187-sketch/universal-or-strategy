@@ -1,0 +1,151 @@
+# Subagents
+
+Learn how Bob uses subagents to handle focused, self-contained tasks in isolated contexts without polluting the main conversation.
+
+## What are subagents?
+A subagent is an independent agent that Bob can spawn to handle a focused, self-contained task. It runs in its own isolated context window, executes its assigned work, and returns a summary of the results back to the main conversation.
+
+Subagents are useful for work that would otherwise add large amounts of irrelevant content to the ongoing conversation—for example, deeply exploring a section of a codebase to gather specific information before Bob continues with the main task.
+
+## How subagents work
+When Bob spawns a subagent:
+
+. A new, independent agent is created with its own context window.
+. Bob passes it a description of the focused task to perform.
+. You are prompted to approve the spawn before it starts. Bob waits until you confirm.
+. The subagent executes the task using its available tools.
+. The subagent returns a summary of its findings back to Bob.
+. Bob uses that summary to continue the main conversation.
+
+The subagent runs separately from the main conversation. It does not share state, files, or tool results with Bob unless Bob explicitly passes them in the description.
+
+## Subagent types
+There are two subagent types, each suited to different tasks:
+
+| Type      | Description                                             | Best for                                                                        |
+| --------- | ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `explore` | Read-only codebase exploration, runs on a lighter model | Searching and summarizing code, finding relevant files, understanding structure |
+| `general` | Full tool access, runs on the default model             | Any self-contained task requiring reads, writes, or commands                    |
+
+## Context and conversation history
+By default, a subagent does not see the parent conversation history. This keeps its context lean and focused on the task at hand.
+
+When a subagent needs to understand prior decisions, constraints, or preferences expressed earlier in the conversation, Bob can set `fork_context: true` to pass the conversation history into the subagent.
+
+## Mode restrictions
+The mode you are working in controls which subagent types Bob is permitted to spawn. Some modes allow all subagent types; others restrict spawning to specific types or disallow it entirely. If a subagent spawn is not permitted by the active mode, Bob will complete the work directly without spawning.
+
+## When Bob uses subagents
+Bob uses subagents sparingly. The default is always to do the work directly without spawning a subagent. A subagent is only considered when **all** of the following are true:
+
+* The task is clearly self-contained and only a summary is needed back.
+* It would add significant irrelevant content to the main context.
+* It cannot be accomplished with one or two direct tool calls.
+
+Bob does **not** use subagents for:
+
+* Simple file reads or quick searches.
+* Single-tool operations.
+* Tasks where the relevant context is already available.
+
+## Subagents vs. subtasks
+Subagents and subtasks are related but distinct concepts:
+
+|                 | Subagent                                                                    | Subtask                                                                             |
+| --------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| **Visibility**  | Runs silently in the background                                             | Appears in the UI with its own breadcrumb and conversation                          |
+| **Interaction** | Not interactive—returns only a summary                                      | Fully interactive—you can follow progress and continue the conversation             |
+| **Purpose**     | Gather information or complete isolated work without polluting main context | Handle work complex enough to benefit from dedicated tracking and a separate thread |
+| **Output**      | Summary returned to Bob                                                     | Independent conversation thread                                                     |
+
+Use subagents for background information-gathering. Use subtasks for complex work that benefits from visibility and a dedicated conversation.
+
+## Related topics
+* [Subagent tools](/docs/ide/core-concepts/tools#subagent-tools) — `spawn_subagent` tool reference
+* [Subtask tools](/docs/ide/core-concepts/tools#subtask-tools) — `start_subtask` tool reference
+
+# Modes
+
+Modes are specialized personas that tailor Bob's behavior for your specific tasks. Each mode offers different capabilities and access levels to help you accomplish particular goals more efficiently.
+
+## Why use different modes?
+* **Task specialization**: Get precisely the type of assistance you need for your current task.
+* **Safety controls**: Prevent unintended file modifications when focusing on planning or learning.
+* **Focused interactions**: Receive responses optimized for your current activity.
+* **Workflow optimization**: Transition seamlessly between planning, implementing, debugging, and learning.
+
+## Built-in modes
+By default, the following three modes are available with Bob:
+
+## Agent mode
+| Aspect                  | Details                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Description**         | Take your idea, or plan, and bring it to life                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Scope**               | Workspace                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Role definition**     | You are Bob, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.                                                                                                                                                                                                                                                                                                    |
+| **When to use**         | Use this mode when you need to write, modify, or refactor code. Ideal for implementing features, fixing bugs, creating new files, or making code improvements across any programming language or framework.                                                                                                                                                                                                                                                 |
+| **Custom instructions** | You can write, modify, and refactor code in any programming language or framework. Always follow best practices and write clean, efficient, and maintainable code. Make sure to test your code thoroughly before submitting it. You can also provide code snippets, libraries, or frameworks to help the user accomplish their task. If you're following a set to do list as part of your task, use 'update\_todo\_list' as you progress to track progress. |
+| **Available tools**     | `Read`, `Edit`, `Execute`, `MCP`, `Skill`, `Todo`, `Subtask`, `Subagent`, `Mode`                                                                                                                                                                                                                                                                                                                                                                            |
+| **Allowed subagents**   | `All`                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+
+## Plan mode
+| Aspect                  | Details                                                                                                                                                                                                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Description**         | Plans tasks: analyzes requirements, researches and designs implementation steps                                                                                                                                                                                                                                                      |
+| **Scope**               | Workspace                                                                                                                                                                                                                                                                                                                            |
+| **Role definition**     | You are Bob, an experienced technical leader who is inquisitive and an excellent planner. Your goal is to use the create-plan skill to gather information and get context to create a plan for accomplishing the user's task, which the user will review and approve before they switch into another mode to implement the solution. |
+| **When to use**         | Use this mode when you need to plan, design, or strategize before implementation. Perfect for breaking down complex problems, creating technical specifications, designing system architecture, or brainstorming solutions before coding.                                                                                            |
+| **Custom instructions** | Must always start of every planning session, call `use_skill` with `skill_name: "create-plan"` to load the full planning workflow before responding.                                                                                                                                                                                 |
+| **Available tools**     | `Read`, `Edit`, `MCP`, `Skill`, `Subagent`, `Mode`                                                                                                                                                                                                                                                                                   |
+| **Allowed subagents**   | `Explore`                                                                                                                                                                                                                                                                                                                            |
+
+## Ask mode
+| Aspect                  | Details                                                                                                                                                                                                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Description**         | Ask questions and get explanations                                                                                                                                                                                                                              |
+| **Scope**               | Workspace                                                                                                                                                                                                                                                       |
+| **Role definition**     | You are Bob, a knowledgeable technical assistant focused on answering questions and providing information about software development, technology, and related topics.                                                                                           |
+| **When to use**         | Use this mode when you need explanations, documentation, or answers to technical questions. Best for understanding concepts, analyzing existing code, getting recommendations, or learning about technologies without making changes.                           |
+| **Custom instructions** | You can analyze code, explain concepts, and access external resources. Always answer the user's questions thoroughly, and do not switch to implementing code unless explicitly requested by the user. Include Mermaid diagrams when they clarify your response. |
+| **Available tools**     | `Read`, `MCP`, `Skill`, `Subagent`, `Mode`                                                                                                                                                                                                                      |
+| **Allowed subagents**   | `Explore`                                                                                                                                                                                                                                                       |
+
+## Switching between modes
+You have four options to switch modes:
+
+* **Dropdown menu:** Click the selector to the left of the chat interface.
+
+* **Toggle command/Keyboard shortcut:** Use the keyboard shortcut below. Each press cycles through the available modes in sequence, wrapping back to the first mode after reaching the end.
+
+| OS      | Shortcut                       |
+| ------- | ------------------------------ |
+| macOS   | `⌘` + `.`    |
+| Windows | `Ctrl` + `.` |
+| Linux   | `Ctrl` + `.` |
+
+* **Accept suggestions:** Click mode switch suggestions that Bob offers when appropriate.
+
+* **Mid-task switching:** Bob can switch modes autonomously during a task when the work evolves — for example, moving from Plan mode into Agent mode once a plan is ready to implement. You do not need to intervene; Bob handles the transition and continues the task in the new mode.
+
+## Comparing the built-in modes
+The following table compares the built-in modes to help you choose the right one for your specific task:
+
+| Mode      | Primary Purpose                      | When to Use                                                                                   | Key Capabilities                                                       | Tool Access                                                                      |
+| --------- | ------------------------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **Agent** | Writing and modifying code           | When implementing features, fixing bugs, or performing file operations                        | Full tool access for implementation, debugging, and complex workflows  | `Read`, `Edit`, `Execute`, `MCP`, `Skill`, `Todo`, `Subtask`, `Subagent`, `Mode` |
+| **Plan**  | Planning and designing               | Before implementation, when you need to think through architecture or create a technical plan | System design, breaking down complex problems, creating specifications | `Read`, `Edit`, `MCP`, `Skill`, `Subagent`, `Mode`                               |
+| **Ask**   | Getting information and explanations | When you need to understand concepts or analyze existing code without making changes          | Detailed explanations, code analysis, and technical recommendations    | `Read`, `MCP`, `Skill`, `Subagent`, `Mode`                                       |
+
+## Subagent restrictions per mode
+Each mode defines which subagent types it permits Bob to spawn. The "Allowed subagents" row in the table above shows what is permitted in each mode. If Bob determines that a subagent would help, it will only spawn a type that the active mode allows.
+
+## Mode selection guidelines
+* **Start with Plan mode** for new projects or complex features to design before implementation.
+* **Use Agent mode** for implementing features, fixing bugs, and any tasks requiring file modifications.
+* **Switch to Ask mode** when you need explanations or information without making changes.
+
+## Customizing modes
+Tailor Bob's behavior by customizing existing modes or creating new specialized assistants.
+Define tool access, file permissions, and behavior instructions to enforce team standards or create purpose-specific assistants.
+
+For setup instructions, see [Custom modes](/docs/ide/configuration/custom-modes).

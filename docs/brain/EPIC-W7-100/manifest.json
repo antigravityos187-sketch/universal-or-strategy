@@ -1,6 +1,39 @@
 {
-  "epic_id": "EPIC-W7-100",
+  "epic": "EPIC-W7-100",
+  "method": "ClosePositionsOnlyApexAccounts",
+  "cyc": 0,
+  "cyc_manual": 10,
+  "cyc_note": "Tool returned 0 (measurement artifact). Manual branch count from source lines 516-589: CYC=10 (1 base + if/foreach/if/if+&&/if/catch+when/catch). Extraction required.",
+  "source_file": "src/V12_002.SIMA.Flatten.cs",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Planning",
+      "status": "completed",
+      "output": null,
+      "output_path": "docs/brain/EPIC-W7-100/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.824790Z"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "completed_at": "2026-06-29T01:10:00Z"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    }
+  }
 }

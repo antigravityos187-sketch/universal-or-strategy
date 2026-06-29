@@ -14,6 +14,27 @@
       "enabled": false,
       "script": ".bob/hooks/after_edit.py",
       "description": "Auto-assign edited files to current virtual branch (experimental)"
+    },
+    "after_subagent_batch": {
+      "enabled": true,
+      "script": ".bob/hooks/after_subagent_batch.py",
+      "description": "V2.8: Deterministic MCP compliance audit after every wave-7 batch. Reads WAVE7_BATCH_PHASE + WAVE7_BATCH_EPICS env vars. Exit 0=all pass, Exit 1=failures (redo list at /tmp/wave7_redo.txt), Exit 2=hook error.",
+      "trigger": "manual_and_wave_orch",
+      "env_vars": {
+        "WAVE7_BATCH_PHASE": "Phase being audited (0, 1, 1.5, 2, 3, 4, 4.5, 5, 5v, 6)",
+        "WAVE7_BATCH_EPICS": "Space-separated EPIC-W7-NNN IDs in the completed batch",
+        "WAVE7_BATCH_TICKET": "(optional) Ticket ID for phase 5/5v"
+      },
+      "output_files": {
+        "/tmp/wave7_redo.txt":          "Failed epic IDs, one per line — read by orchestrator redo loop",
+        "/tmp/wave7_audit_result.json": "Full JSON audit result for this batch"
+      },
+      "audit_script": "scripts/wave7_batch_audit.py",
+      "exit_codes": {
+        "0": "ALL_PASS — orchestrator may proceed to next batch",
+        "1": "HAS_FAILURES — orchestrator reads /tmp/wave7_redo.txt and re-spawns those epics",
+        "2": "HOOK_ERROR — missing args or script not found; escalate to Director"
+      }
     }
   },
   "gitbutler": {

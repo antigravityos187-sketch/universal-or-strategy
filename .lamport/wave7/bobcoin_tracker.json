@@ -1,13 +1,23 @@
 {
-  "balance_estimate": 500.0,
-  "last_updated": "2026-06-25T19:30:00Z",
-  "last_phase": "init",
-  "note": "Initial balance estimate. Phase Orchestrators update this after each pilot and batch. Director reloads bobcoins by updating balance_estimate manually.",
+  "balance_estimate": 155.0,
+  "last_updated": "2026-06-26T02:30:00Z",
+  "last_phase": "phase_0_complete",
+  "note": "Phase 0 COMPLETE — 161/161. 3 sparse entries resolved by top_orch (0 bobcoins). 18 manifests patched. Ready for Phase 1.",
   "schema": {
     "balance_estimate": "float — estimated bobcoins remaining",
     "last_updated": "ISO timestamp of last update",
     "last_phase": "which phase last wrote to this file",
     "pilot_costs": "map of phase -> pilot cost extracted from agent tracking block"
   },
-  "pilot_costs": {}
+  "pilot_costs": {
+    "phase_0": 1.0
+  },
+  "batch_size_cap": 40,
+  "batch_size_cap_version": "V2.6",
+  "phase_0_progress": {
+    "total_epics": 161,
+    "done": 161,
+    "remaining": 0,
+    "status": "COMPLETE"
+  }
 }

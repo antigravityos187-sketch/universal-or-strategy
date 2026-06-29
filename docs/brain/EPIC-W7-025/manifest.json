@@ -1,6 +1,44 @@
 {
-  "epic_id": "EPIC-W7-025",
+  "epic": "EPIC-W7-025",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "CheckFFMAConditions",
+  "source": "src/V12_002.Entries.FFMA.cs",
+  "cyc": 2,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Decomposition Planning",
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  },
+  "mcp_tools_used": [
+    "resolve_repo",
+    "search_symbols",
+    "get_symbol_complexity",
+    "get_blast_radius",
+    "get_hotspots",
+    "sequentialthinking"
+  ],
+  "agent": "v12-phase0-hotspot",
+  "created": "2025-07-11"
 }

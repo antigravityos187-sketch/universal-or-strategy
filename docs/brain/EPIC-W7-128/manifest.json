@@ -1,6 +1,49 @@
 {
   "epic_id": "EPIC-W7-128",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "status": "in_progress",
+  "method": "SymmetryGuardReplaceExistingFollowerTarget",
+  "file": "src/V12_002.Symmetry.Replace.cs",
+  "cyc_before": 20,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "timestamp_utc": "2025-07-15T00:00:00Z"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output": null,
+      "output_path": "docs/brain/EPIC-W7-128/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.963608Z"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "max_cyc_projected": 7,
+      "helpers_count": 3,
+      "completed_at": "2026-06-29T01:10:00Z"
+    },
+    "phase_3": {
+      "status": "pending",
+      "output": null
+    },
+    "phase_4": {
+      "status": "pending",
+      "output": null
+    },
+    "phase_5": {
+      "status": "pending",
+      "output": null
+    },
+    "phase_6": {
+      "status": "pending",
+      "output": null
+    }
+  }
 }

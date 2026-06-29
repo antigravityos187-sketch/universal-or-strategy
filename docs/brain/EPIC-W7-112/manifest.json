@@ -1,6 +1,38 @@
 {
   "epic_id": "EPIC-W7-112",
+  "method": "ClassifyOrderByPrefix",
+  "cyc": 20,
+  "source_file": "src/V12_002.SIMA.Lifecycle.cs",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "status": "in_progress",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Planning",
+      "status": "completed",
+      "output": null,
+      "output_path": "docs/brain/EPIC-W7-112/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.884775Z"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-112/02-architecture-plan.md",
+      "completed_at": "2026-06-29T01:10:00Z"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

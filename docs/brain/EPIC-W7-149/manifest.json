@@ -2,5 +2,29 @@
   "epic_id": "EPIC-W7-149",
   "wave": 7,
   "status": "pending",
-  "phases": {}
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "note": "manifest patched by top_orch \u2014 worker wrote artifact but did not update manifest"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output_path": "docs/brain/EPIC-W7-149/00-scope.md",
+      "completed_at": "2026-06-26T02:35:32.068054Z"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-149/02-architecture-plan.md",
+      "max_cyc_projected": 7,
+      "extraction_count": 3,
+      "completed_at": "2026-06-29T01:15:00Z"
+    }
+  }
 }

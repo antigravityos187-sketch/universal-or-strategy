@@ -1,6 +1,52 @@
 {
-  "epic_id": "EPIC-W7-132",
+  "epic": "EPIC-W7-132",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "SymmetryNormalizeTradeType",
+  "source_file": "src/V12_002.Symmetry.Replace.cs",
+  "cyc_reported": 0,
+  "cyc_manual": 8,
+  "cyc_override_reason": "MCP symbol index did not resolve partial-class file; manual branch-count applied",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "agent": "v12-phase0-hotspot",
+      "bobcoins_used": 6,
+      "completed_at": "2025-07-14T00:00:00Z"
+    },
+    "phase_1": {
+      "name": "Extraction Planning",
+      "status": "completed",
+      "output": null,
+      "agent": null,
+      "output_path": "docs/brain/EPIC-W7-132/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.982980Z"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "agent": "v12-phase2-architecture",
+      "cyc_before": 10,
+      "max_cyc_projected": 8,
+      "extractions": 1,
+      "completed_at": "2026-06-29T01:10:00Z"
+    },
+    "phase_3": {
+      "name": "Validation & Tests",
+      "status": "pending",
+      "output": null,
+      "agent": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  },
+  "flags": {
+    "requires_manual_review": true,
+    "reason": "CYC=0 returned by MCP tool; method physically present in source but not indexed"
+  }
 }

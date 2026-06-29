@@ -1,6 +1,48 @@
 {
-  "epic_id": "EPIC-W7-014",
+  "epic": "EPIC-W7-014",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "TryHandleFleetCommand",
+  "source_file": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+  "cyc_confirmed": 20,
+  "cyc_task_spec_fallback": 9,
+  "cyc_audit_list": 0,
+  "cyc_note": "audit-list value 0 is a measurement gap; manual McCabe count of dispatcher body (lines 37-81) = 20",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "redo_version": "V3.0"
+    },
+    "phase_1": {
+      "name": "Extraction Planning",
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "max_cyc_projected": 8,
+      "helpers_extracted": ["TryHandleFleet_BasicOps", "TryHandleFleet_DirectionalOps", "TryHandleFleet_StateOps"]
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  },
+  "mcp_tools_used": [
+    "resolve_repo",
+    "search_symbols",
+    "get_symbol_complexity",
+    "get_blast_radius",
+    "get_hotspots",
+    "sequentialthinking"
+  ]
 }

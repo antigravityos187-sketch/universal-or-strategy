@@ -1,6 +1,40 @@
 {
-  "epic_id": "EPIC-W7-042",
+  "epic": "EPIC-W7-042",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "SymmetryGuardOnFollowerFill",
+  "cyc": 16,
+  "source": "src/V12_002.Symmetry.Follower.cs",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Planning",
+      "status": "completed",
+      "output": "00-scope.md",
+      "output_path": "docs/brain/EPIC-W7-042/00-scope.md",
+      "completed_at": "2026-06-26T03:00:00Z"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "output_path": "docs/brain/EPIC-W7-042/02-architecture-plan.md",
+      "extraction_count": 2,
+      "max_cyc_projected": 5,
+      "completed_at": "2026-06-29T00:00:00Z"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

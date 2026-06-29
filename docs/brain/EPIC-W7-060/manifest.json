@@ -1,6 +1,28 @@
 {
   "epic_id": "EPIC-W7-060",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "status": "in_progress",
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "cyc_baseline": 11,
+      "max_cyc_projected": 5,
+      "extractions": 2
+    }
+  }
 }

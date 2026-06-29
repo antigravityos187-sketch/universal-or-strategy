@@ -1,6 +1,34 @@
 {
-  "epic_id": "EPIC-W7-030",
+  "epic": "EPIC-W7-030",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "ValidateOrphanedMasterOrders",
+  "source": "src/V12_002.Orders.Management.Cleanup.cs",
+  "cyc": 0,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Scope Definition",
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_2": {
+      "name": "Implementation",
+      "status": "completed",
+      "output": "02-architecture-plan.md"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

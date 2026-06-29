@@ -1,6 +1,46 @@
 {
   "epic_id": "EPIC-W7-123",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "HandleMatchedFollowerOrder",
+  "cyc": 14,
+  "source_file": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "status": "completed",
+      "output": "02-architecture-plan.md"
+    },
+    "phase_3": {
+      "status": "pending",
+      "output": null
+    },
+    "phase_4": {
+      "status": "pending",
+      "output": null
+    },
+    "phase_5": {
+      "status": "pending",
+      "output": null
+    },
+    "phase_5_V": {
+      "status": "pending",
+      "output": null
+    },
+    "phase_6": {
+      "status": "pending",
+      "output": null
+    }
+  }
 }

@@ -1,6 +1,45 @@
 {
-  "epic_id": "EPIC-W7-130",
+  "epic": "EPIC-W7-130",
+  "method": "SymmetryGuardCascadeFollowerCleanup",
+  "source_file": "src/V12_002.Symmetry.Replace.cs",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "cyc_tool_reported": 0,
+  "cyc_manual": 4,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "agent": "v12-phase0-hotspot",
+      "bobcoins": 6,
+      "notes": "CYC=0 from tooling is a parse miss on partial class. Manual CYC=4 confirmed."
+    },
+    "phase_1": {
+      "name": "Extraction Plan",
+      "status": "completed",
+      "output": null,
+      "output_path": "docs/brain/EPIC-W7-130/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.972257Z"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "agent": "v12-phase2-architecture",
+      "cyc_before": 7,
+      "max_cyc_projected": 7,
+      "extractions_planned": 1,
+      "completed_at": "2026-06-29T01:10:00Z"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

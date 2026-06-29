@@ -1,6 +1,35 @@
 {
-  "epic_id": "EPIC-W7-010",
+  "epic": "EPIC-W7-010",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "ShowModeSpecificControls",
+  "source": "src/V12_002.UI.Panel.Handlers.cs",
+  "cyc": 8,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Decomposition Planning",
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-010/02-architecture-plan.md",
+      "completed_at": "2026-06-29T01:10:00Z"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

@@ -1,6 +1,34 @@
 {
-  "epic_id": "EPIC-W7-015",
+  "epic": "EPIC-W7-015",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "CancelAll_ProcessSingleFleetAccount",
+  "cyc": 18,
+  "source": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Plan",
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

@@ -1,0 +1,22 @@
+{
+  "schema_version": "3.0",
+  "epic_id": "EPIC-W7-025",
+  "method_name": "CheckFFMAConditions",
+  "source_file": "src/V12_002.Entries.FFMA.cs",
+  "cyc": 2,
+  "cyc_raw_list": 2,
+  "max_nesting": null,
+  "line_count": null,
+  "param_count": null,
+  "risk_level": "LOW",
+  "jane_street_threshold": 8,
+  "cyc_over_threshold": 0,
+  "blast_radius": {
+    "status": "pending_phase_1_5",
+    "note": "Will be confirmed in Phase 1.5 via get_blast_radius"
+  },
+  "estimated_extractions": 1,
+  "okf_cache_path": "docs/brain/wave7-okf-cache.json",
+  "epic_list_path": "docs/brain/wave7-epic-list.json",
+  "precomputed_by": "precompute_wave7_graph.py v3.0"
+}

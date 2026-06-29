@@ -1,6 +1,39 @@
 {
-  "epic_id": "EPIC-W7-072",
+  "epic": "EPIC-W7-072",
+  "method": "ProcessAccountOrder_UpdateMasterExpected",
+  "cyc": 12,
+  "source_file": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Planning",
+      "status": "completed",
+      "output": null,
+      "output_path": "docs/brain/EPIC-W7-072/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.683888Z"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-072/02-architecture-plan.md",
+      "completed_at": "2026-06-29T04:00:00Z",
+      "max_cyc_projected": 6,
+      "extraction_count": 2
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

@@ -1,6 +1,37 @@
 {
-  "epic_id": "EPIC-W7-037",
+  "epic": "EPIC-W7-037",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "SymmetryNormalizeTradeType",
+  "source": "src/V12_002.Symmetry.Replace.cs",
+  "cyc": 9,
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "redo": true,
+      "redo_reason": "Previous artifact contained disallowed denial phrase; rewritten with native-tool grounded analysis"
+    },
+    "phase_1": {
+      "name": "Extraction Design",
+      "status": "completed",
+      "output": "00-scope.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-037/02-architecture-plan.md",
+      "completed_at": "2026-06-29T01:10:00Z"
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

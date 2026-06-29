@@ -1,7 +1,7 @@
 # Autonomous Refactor Integration Matrix V2
 
-**Date**: 2026-06-25
-**Version**: 2.5 (Bob IDE V2 — Universal Pilot Compliance Audit + Adaptive Batch Sizing — AUTHORITATIVE)
+**Date**: 2026-06-27
+**Version**: 2.8 (Bob IDE V2 — MCP Cold-Start Hardening + Post-Batch Hook + Deterministic Audit — AUTHORITATIVE)
 **Purpose**: Map skills, MCPs, custom modes, slash commands, and Jane Street KB hooks across all 10 phases
 **Context**: Wave 7 execution — 3-tier subagent model (1 top orch → 10 phase orchs → 161 epic workers)
 
@@ -9,7 +9,7 @@
 
 This document validates that the `/autonomous-refactor` master orchestrator properly integrates all 10 phases of the V12 epic workflow, showing which MCPs, skills, and **custom modes** each phase uses.
 
-### Key Findings (V2.4 — 3-Tier Architecture)
+### Key Findings (V2.8 — MCP Cold-Start Hardening + Deterministic Post-Batch Hook)
 
 ✅ **All 10 phases mapped to custom modes** (NOT generic modes!)
 ✅ **Custom modes defined in `.bob/custom_modes.yaml`**
@@ -18,28 +18,45 @@ This document validates that the `/autonomous-refactor` master orchestrator prop
 ✅ **All skills updated to V12.28 subagent pattern** (no Bob Shell, no scripts)
 ✅ **3-TIER SUBAGENT ARCHITECTURE** — 1 top orch → 10 phase orchs → 161 epic workers
 ✅ **100% COMPLETION ENFORCEMENT** — per-phase verification loop before hand-off
-✅ **UNIVERSAL PILOT COMPLIANCE AUDIT (V2.5)** — ALL 10 phase orchs run 7-check pilot before batching
-✅ **ADAPTIVE BATCH SIZING (V2.5)** — batch size computed from actual pilot cost + balance estimate
+✅ **UNIVERSAL PILOT COMPLIANCE AUDIT (V2.8)** — ALL 10 phase orchs run 8-check pilot before batching (Check 0 = MCP probe WITH retry)
+✅ **ADAPTIVE BATCH SIZING (V2.8)** — first batch after cold-start capped at 20; subsequent batches up to 40
 ✅ **BOBCOIN PAUSE PROTOCOL (V2.5)** — auto-pauses if balance drops to 15% buffer, resumes on reload
+✅ **NO-PIVOT RULE (V2.8)** — workers HAVE MCP access; orchestrators MUST always spawn workers, never execute directly
+✅ **MCP COLD-START RETRY (V2.8)** — workers probe both MCPs at startup, retry once after 5s; return MCP_FAILED (not native fallback) if still unavailable
+✅ **POST-BATCH HOOK (V2.8)** — `.bob/hooks/after_subagent_batch.py` fires after EVERY batch; deterministic 7-check audit; redo list at `/tmp/wave7_redo.txt`
+✅ **DETERMINISTIC AUDIT SCRIPT (V2.8)** — `scripts/wave7_batch_audit.py` checks all 7 hard checks including Cat B/C denial-phrase detection
 ✅ **Phase Orchestrator Templates** — `docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`
 ❌ **OBSOLETE**: `gcp-vm-wave-execution` skill — marked retired, do not use
 ❌ **OBSOLETE**: Greptile MCP referenced in old system prompts — not used in any phase
 ❌ **OBSOLETE**: 2-tier model (top orch spawning workers directly) — replaced by 3-tier
+❌ **OBSOLETE**: Inline `python3 -c "..."` compliance scan from V2.7 — replaced by `wave7_batch_audit.py`
 
 ---
 
-## V2.5 Upgrades — Universal Pilot Compliance Audit + Adaptive Batch Sizing
+## V2.8 Upgrades — MCP Cold-Start Hardening + Post-Batch Deterministic Hook
 
-### Universal Pilot Compliance Audit
+### Root Cause of Category B Failures (Diagnosed Wave 7)
 
-**New in V2.5**: Every Phase Orchestrator (all 10) now runs a 7-check pilot before batching any workers.
-The old Phase 0-only pilot gate is replaced by this universal protocol.
+Three categories of non-compliant artifacts were produced across Wave 7 Phase 0:
+- **Cat A (real MCP)**: 56 epics — resolve_repo + tool calls evidenced, Bobcoins > 0
+- **Cat B (admitted failure)**: 9 epics — workers wrote "not available as callable tool" / "no MCP server process responded"
+- **Cat C (silent native)**: 96 epics — orchestrator direct-write with no MCP calls at all
+
+**Root cause of Cat B**: `jcodemunch-mcp` uses `stdio` transport. When 40 workers spawn simultaneously,
+the stdio pipe backlog is overloaded — workers that lose the startup race get no initial handshake
+and silently fall back to native tools. `sequential-thinking` uses `npx -y` which adds 3–15s
+cold-start download time. V2.8 fixes both with explicit probes + retry + cold-start batch cap.
+
+### Universal Pilot Compliance Audit (V2.8)
+
+Every Phase Orchestrator (all 10) runs this before batching:
 
 | Check | What is Verified | Hard Fail? |
 |-------|-----------------|------------|
-| 1 | jcodemunch-mcp tools called (phase-specific) | YES |
-| 2 | sequential-thinking MCP used | YES |
-| 3 | Output artifact exists and > 200 bytes | YES |
+| 0 | **MCP PROBE WITH RETRY**: pilot's FIRST action must be `mcp__jcodemunch-mcp__resolve_repo`. If error → wait 5s → retry once. If still fails → HARD FAIL. HALT, report PILOT_FAILURE, do NOT execute epics directly. | YES |
+| 1 | jcodemunch-mcp tools called (phase-specific) AND evidenced in artifact | YES |
+| 2 | sequential-thinking MCP used AND evidenced in artifact | YES |
+| 3 | Output artifact exists and ≥ 200 bytes | YES |
 | 4 | manifest.json updated with this phase's status=completed | YES |
 | 5 | Agent Tracking block present (Agent Name, Bobcoins Used, Execution Time) | SOFT WARNING |
 | 6 | Phase-specific success criterion met | YES |
@@ -48,22 +65,62 @@ The old Phase 0-only pilot gate is replaced by this universal protocol.
 **Pilot Fail = HALT**: If any hard check fails, the Phase Orchestrator logs `pilot_failed`,
 writes a `failure-analysis.md`, and reports `PILOT_FAILURE` to Tier 1. No workers are spawned.
 
-**Why**: Catches worker description format bugs, missing MCP usage, and manifest schema errors
-on the very first epic instead of discovering them 160 epics in.
+### Post-Batch Deterministic Hook (V2.8 — NEW)
 
-### Adaptive Batch Sizing
+**The single most important change in V2.8.** Previous checks ran only at phase end — meaning
+all 161 workers could complete with Cat B/C artifacts before anything was caught.
 
-**New in V2.5**: After a pilot passes, batch size is computed from the actual pilot cost:
+**New flow:**
+```
+Spawn pilot → audit pilot (8-check) → PASS
+↓
+Spawn batch-1 (20 workers, cold-start cap)
+  → workers return → ALL return before hook fires
+  → run: python3 .bob/hooks/after_subagent_batch.py  (WAVE7_BATCH_PHASE=0, WAVE7_BATCH_EPICS=...)
+  → exit 0: proceed  |  exit 1: redo /tmp/wave7_redo.txt epics → re-run hook → exit 0: proceed
+↓
+Spawn batch-2 (up to 40 workers)
+  → same hook pattern
+↓
+... repeat for all batches ...
+↓
+Final scan: python3 scripts/wave7_batch_audit.py --phase 0 --all
+  → exit 0: log phase_N_orchestrator_complete → report VERIFIED_COMPLETE to Tier 1
+```
+
+**The hook (`after_subagent_batch.py`) runs 7 hard checks per epic:**
+
+| # | Check | Catches |
+|---|-------|---------|
+| 1 | `artifact_exists` | Missing file |
+| 2 | `min_size ≥ 200b` | Empty/stub file |
+| 3 | **`no_denial`** | **Cat B/C artifacts** — any denial phrase = immediate FAIL |
+| 4 | `jcm_evidence` | No jcodemunch tool keywords in artifact |
+| 5 | `seq_evidence` | No sequential-thinking evidence in artifact |
+| 6 | `manifest_complete` | manifest.json not updated |
+| 7 | `agent_name` | Wrong agent mode (direct orchestrator execution) |
+
+**Why a hook instead of inline orchestrator logic?**
+Hooks execute as a separate OS process. They fire deterministically regardless of:
+- LLM context pressure causing the orchestrator to skip checks
+- The orchestrator convincing itself the artifacts "look good enough"
+- Batch-level summary errors where 1 failure is swallowed by 39 successes
+The hook's exit code is an objective signal — `0` or `1` — that the orchestrator must branch on.
+
+### Adaptive Batch Sizing (V2.8)
 
 ```
-BATCH_SIZE = max(1, min(50, floor(BALANCE * 0.85 / PILOT_COST)))
+First batch (cold-start): BATCH_SIZE = min(20, computed_size)   ← NEW: 20 hard cap
+Subsequent batches:        BATCH_SIZE = max(1, min(40, floor(BALANCE * 0.85 / PILOT_COST)))
 ```
 
-- **Cap = 50**: Never spawn more than 50 workers per batch regardless of balance
-- **Floor = 1**: Always spawn at least 1 (even if balance is critically low)
+- **Cold-start cap = 20**: First batch after any session start or pause. MCP stdio servers need
+  warm-up time; 40 simultaneous handshakes overload the pipe. 20 is empirically safe.
+- **Warm cap = 40**: After first batch succeeds (servers warm), full cap applies.
+- **Floor = 1**: Always spawn at least 1
 - **15% safety buffer**: Never spend the last 15% of balance
-- **Balance source**: `.lamport/wave7/bobcoin_tracker.json` (Director updates `balance_estimate` after reload)
-- **Pause protocol**: If balance drops below 15% of original, Phase Orchestrator pauses and reports `BOBCOIN_PAUSE` to Tier 1
+- **Balance source**: `.lamport/wave7/bobcoin_tracker.json`
+- **Pause protocol**: If balance drops below 15%, Phase Orchestrator pauses and reports `BOBCOIN_PAUSE` to Tier 1
 
 ### Bobcoin Tracker
 

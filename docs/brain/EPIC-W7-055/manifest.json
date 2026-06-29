@@ -1,6 +1,40 @@
 {
   "epic_id": "EPIC-W7-055",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "method": "DrainPhotonQueuesOnShutdown",
+  "source": "src/V12_002.SIMA.Lifecycle.cs",
+  "cyc": 8,
+  "status": "in_progress",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md"
+    },
+    "phase_1": {
+      "name": "Extraction Plan",
+      "status": "completed",
+      "output": "00-scope.md",
+      "output_path": "docs/brain/EPIC-W7-055/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.578741Z"
+    },
+    "phase_2": {
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-055/02-architecture-plan.md",
+      "completed_at": "2026-06-29T02:05:00Z",
+      "agent": "v12-phase2-architecture",
+      "extraction_count": 2,
+      "max_cyc_projected": 7
+    },
+    "phase_3": {
+      "name": "Validation",
+      "status": "pending",
+      "output": null
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    }
+  }
 }

@@ -1,6 +1,51 @@
 {
   "epic_id": "EPIC-W7-125",
   "wave": 7,
-  "status": "pending",
-  "phases": {}
+  "status": "in_progress",
+  "phases": {
+    "phase_0": {
+      "name": "Hotspot Analysis",
+      "status": "completed",
+      "output": "00-hotspots.md",
+      "cyc_confirmed": 20,
+      "method": "ShadowPropagateStopMoves",
+      "file": "src/V12_002.SIMA.Shadow.cs",
+      "note": "method_name and source_file missing from epic list \u2014 best-effort hotspot match via TIER2_METHODS_ANALYSIS.md + git log archaeology"
+    },
+    "phase_1": {
+      "status": "completed",
+      "output_path": "docs/brain/EPIC-W7-125/00-scope.md",
+      "completed_at": "2026-06-26T02:35:31.947732Z"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
+    },
+    "phase_2": {
+      "name": "Architecture Planning",
+      "status": "completed",
+      "output": "02-architecture-plan.md",
+      "completed_at": "2026-06-29T01:15:00Z",
+      "max_cyc_projected": 8,
+      "extraction_count": 1,
+      "extractions": [
+        {
+          "name": "ValidateCachedPosition",
+          "type": "new_extraction",
+          "extracted_from": "ValidateCachedEntry",
+          "projected_cyc": 5,
+          "responsibility": "Validates active-position side of a cache key (TryGetValue + 4 guards)"
+        }
+      ],
+      "helpers_verified": [
+        { "name": "ShadowPropagateStopMoves", "cyc": 4, "status": "pass" },
+        { "name": "ValidateLeaderPosition", "cyc": 8, "status": "pass" },
+        { "name": "DetectStopPriceChange", "cyc": 2, "status": "pass" },
+        { "name": "PropagateAndCacheStopPrice", "cyc": 2, "status": "pass" },
+        { "name": "ValidateCachedEntry", "cyc_current": 9, "cyc_projected": 5, "status": "requires_extraction" },
+        { "name": "ValidateCachedPosition", "cyc_projected": 5, "status": "new" }
+      ]
+    }
+  }
 }

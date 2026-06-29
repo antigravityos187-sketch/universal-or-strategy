@@ -1,15 +1,33 @@
 # Phase Orchestrator Templates — Wave 7
 
-**Version**: V2.5 (Bob IDE V2 — 3-Tier Architecture)
+**Version**: V2.9 (Bob IDE V2 — sequential start_subtask model, MCP confirmed working)
 **Used By**: All 10 wave-orch-phaseN modes (Tier 2 Phase Orchestrators)
-**Purpose**: Exact worker description payloads and verification protocols per phase
+**Purpose**: Exact worker message payloads and verification protocols per phase
+
+---
+
+## CRITICAL: Execution Model (V2.9 — confirmed by live test 2026-06-28)
+
+**USE `start_subtask`, NOT `spawn_subagent`.**
+
+| Mechanism | Custom mode? | MCP tools? | Parallel? |
+|---|---|---|---|
+| `spawn_subagent("general")` | NO | NO — 16 base tools only | YES but useless without MCP |
+| `spawn_subagent("v12-phase0-hotspot")` | ERROR — invalid name | N/A | N/A |
+| `start_subtask(mode="v12-phase0-hotspot")` | YES | YES — full MCP | NO — sequential |
+
+**Rules derived from live testing:**
+- `start_subtask` with a custom mode slug → worker runs that mode with full MCP access
+- Only **one** `start_subtask` can run at a time — calling 2+ in one turn causes "Severe error"
+- Each subtask must return before the next is started
+- `spawn_subagent` workers confirmed to receive 0 MCP tools — never use for MCP work
 
 ---
 
 ## How To Use These Templates
 
-Each Phase Orchestrator (`wave-orch-phaseN`) spawns 161 workers using `spawn_subagent`.
-The worker `description` parameter must follow the template for that phase exactly.
+Each Phase Orchestrator (`wave-orch-phaseN`) calls `start_subtask` sequentially for each epic.
+The `message` parameter must follow the template for that phase exactly.
 Replace `<EPIC_ID>`, `<METHOD_NAME>`, `<CYC>`, `<SOURCE_FILE>` from `docs/brain/wave7-epic-list.json`.
 
 **epic list access**: `docs/brain/wave7-epic-list.json` is a flat JSON array.
@@ -17,36 +35,35 @@ Access entries as `data[0]`, `data[1]`, ..., `data[160]` — NOT `data["epics"]`
 
 ---
 
-## Adaptive Batch Size Formula (V2.5 — ALL 10 orchestrators)
+## Audit Cadence (V2.9 — ALL 10 orchestrators)
 
-After pilot passes, compute batch size before spawning remaining workers:
+After every 20 epics run the compliance hook before continuing:
 
+```bash
+python3 scripts/wave7_batch_audit.py --phase <N> --epics <space-separated IDs>
 ```
-BATCH_SIZE = max(1, min(50, floor(BALANCE * 0.85 / PILOT_COST)))
-```
 
-- Read `BALANCE` from `.lamport/wave7/bobcoin_tracker.json` → `balance_estimate`
-- Read `PILOT_COST` from agent tracking block in pilot output artifact
-- Cap = 50 (never spawn more than 50 per batch)
-- Floor = 1 (always spawn at least 1)
-- 15% safety buffer (never spend last 15% of balance)
-- If balance < 15% of original → pause → report `BOBCOIN_PAUSE: N epics remaining` to Tier 1
-- After Director reloads → update `balance_estimate` in `bobcoin_tracker.json` → resume
+- Exit 0 = all pass → continue to next 20
+- Exit 1 = failures → immediately retry failed epics (up to 2x each) via start_subtask
+- After 2 retries still failing → log HARD_FAILURE to event_log.jsonl, continue with remaining
+
+**Skip list**: Before starting, run `--all` to find already-passing epics. Do NOT redo them.
 
 ---
 
-## Universal Pilot Compliance Audit (V2.5 — ALL 10 orchestrators)
+## Universal Pilot Compliance Audit (V2.8 — ALL 10 orchestrators)
 
 Before batching remaining 160 workers, EVERY Phase Orchestrator MUST:
 
 1. Spawn EPIC-W7-001 (or first available epic) as a pilot worker
 2. Wait for result
-3. Run 7-check audit:
+3. Run 8-check audit:
 
 | Check | Verification | Hard Fail? |
 |-------|-------------|------------|
-| 1 | Phase-specific jcodemunch-mcp tools were called | YES |
-| 2 | sequential-thinking MCP was used | YES |
+| 0 | **MCP PROBE**: pilot's FIRST action must be `mcp__jcodemunch-mcp__resolve_repo` WITH RETRY (see V2.8 MCP Retry Rule below). If still fails after retry → HARD FAIL immediately. Do NOT proceed. | YES |
+| 1 | Phase-specific jcodemunch-mcp tools were called AND evidenced in artifact text | YES |
+| 2 | sequential-thinking MCP was used AND evidenced in artifact text | YES |
 | 3 | Output artifact exists AND size > 200 bytes | YES |
 | 4 | `manifest.json` updated: this phase's status = completed | YES |
 | 5 | Agent Tracking block present (Agent Name, Bobcoins Used, Execution Time) | SOFT WARNING only |
@@ -57,7 +74,119 @@ Before batching remaining 160 workers, EVERY Phase Orchestrator MUST:
 - Log `pilot_failed` to `.lamport/wave7/event_log.jsonl`
 - Write `docs/brain/EPIC-W7-001/failure-analysis.md` (or first epic used)
 - Report `PILOT_FAILURE` to Tier 1
-- HALT — do NOT spawn remaining workers
+- **HALT — do NOT spawn remaining workers**
+- **If Check 0 fails after retry (MCP_UNAVAILABLE): HALT immediately. Report `PILOT_FAILURE` to Tier 1. Do NOT execute epics directly. Do NOT pivot. Escalate for environment fix.**
+
+## V2.8 MCP Cold-Start Retry Rule (ALL workers, ALL phases — PERMANENT)
+
+Root cause of Category B failures: `jcodemunch-mcp` uses `stdio` transport — the server process
+needs ~2–5s to start on a cold subagent session. `sequential-thinking` uses `npx -y` which needs
+~3–15s on first use (package download). When 40 workers spawn simultaneously, the later workers
+in the batch hit the `stdio` pipe backlog and get no handshake response, causing them to silently
+mark MCP as unavailable.
+
+**Every worker MUST implement this startup sequence:**
+
+```
+STEP 0a (jcodemunch probe):
+  Call mcp__jcodemunch-mcp__resolve_repo.
+  If it returns a valid repo object → proceed.
+  If it returns error/null → wait 5 seconds → retry ONCE.
+  If retry still fails → set internal flag MCP_FAILED=true.
+  Return { "status": "MCP_FAILED", "epic_id": "<EPIC_ID>", "error": "jcodemunch unavailable after retry" }
+  DO NOT produce a native-fallback artifact. HALT and return MCP_FAILED.
+
+STEP 0b (sequential-thinking probe):
+  Call mcp__sequential-thinking__sequentialthinking with thought="probe: starting <EPIC_ID> analysis", thoughtNumber=1, totalThoughts=1, nextThoughtNeeded=false.
+  If it returns a valid response → proceed.
+  If it fails → wait 5 seconds → retry ONCE.
+  If retry still fails → set internal flag SEQ_FAILED=true.
+  Return { "status": "MCP_FAILED", "epic_id": "<EPIC_ID>", "error": "sequential-thinking unavailable after retry" }
+  DO NOT produce a native-fallback artifact. HALT and return MCP_FAILED.
+```
+
+**If worker returns MCP_FAILED**: orchestrator logs it, waits 30 seconds, then re-spawns that single
+worker. This gives the stdio process time to finish initializing before the retry. Up to 2 re-spawns
+per epic before escalating to HARD_FAILURE.
+
+**Why NOT native fallback**: Native-fallback artifacts (Cat B/C) are indistinguishable from real MCP
+output to downstream phases. A false "completed" state in Phase 0 corrupts all downstream phases (1–6)
+that depend on live complexity data. A clean MCP_FAILED return is far preferable — it is retryable
+and traceable.
+
+---
+
+## NO PIVOT RULE (V2.8 — PERMANENT)
+
+`spawn_subagent` workers HAVE full MCP access (`jcodemunch-mcp`, `sequential-thinking`). The orchestrator MUST always delegate work to workers via `spawn_subagent`:
+- **REQUIRED**: All epics executed by spawned workers using the appropriate v12-phaseN worker mode
+- **FORBIDDEN**: Orchestrator executes epics directly in its own session as a fallback to failed workers
+- **FORBIDDEN**: Orchestrator writes templated artifacts using only epic-list data without live MCP calls
+- **FORBIDDEN**: Orchestrator marks phase complete when worker MCP tool calls were not made
+- Any orchestrator that executes epics directly instead of spawning workers = PROTOCOL VIOLATION
+- If workers genuinely cannot access MCP: HALT, report `MCP_UNAVAILABLE` to Tier 1, escalate for environment fix — do NOT work around it
+
+---
+
+## POST-BATCH HOOK (V2.8 — MANDATORY after EVERY batch, not just at phase end)
+
+After every batch of workers returns — BEFORE spawning the next batch — the orchestrator MUST
+run the deterministic compliance hook. This catches Cat B/C artifacts immediately, within the
+same phase execution, rather than discovering them 160 epics later.
+
+```bash
+# Set env vars from the batch that just completed, then run:
+export WAVE7_BATCH_PHASE="<phase>"           # e.g. "0"
+export WAVE7_BATCH_EPICS="EPIC-W7-001 EPIC-W7-002 ..."  # the IDs in this batch
+python3 .bob/hooks/after_subagent_batch.py
+```
+
+**Interpreting exit code:**
+
+| Exit | Meaning | Orchestrator action |
+|------|---------|---------------------|
+| `0`  | ALL_PASS — all epics in batch pass all 7 hard checks | Proceed to next batch |
+| `1`  | HAS_FAILURES — one or more epics failed a hard check | Read `/tmp/wave7_redo.txt`; re-spawn only those epics; re-run hook on redo results; repeat until exit 0 or redo count = 2 (then HARD_FAILURE) |
+| `2`  | HOOK_ERROR — hook invocation failed | Escalate to Tier 1 immediately; do NOT proceed |
+
+**Hard checks run by the hook (all 7 must pass per epic):**
+
+| # | Check | What it detects |
+|---|-------|----------------|
+| 1 | `artifact_exists` | Output file is present |
+| 2 | `min_size` | File ≥ 200 bytes |
+| 3 | `no_denial` | **No Cat B/C denial phrase** ("not available as callable tool", "simulated via static", etc.) |
+| 4 | `jcm_evidence` | Phase-specific jcodemunch tool keywords in content |
+| 5 | `seq_evidence` | "sequential" / "sequentialthinking" / "thought 1" in content |
+| 6 | `manifest_complete` | `manifest.json` phases.<key>.status = "completed" |
+| 7 | `agent_name` | Correct mode slug present in artifact Agent Tracking |
+
+**Machine-readable JSON** is always written to `/tmp/wave7_audit_result.json`.
+**Redo list** written to `/tmp/wave7_redo.txt` (one epic ID per line, empty if all pass).
+
+**Why hooks instead of inline script?** Hooks fire deterministically outside the orchestrator's
+LLM context, on every batch, regardless of what the orchestrator decides to check. The orchestrator
+cannot "forget" to run the check — the hook is a separate process with its own exit code that
+the orchestrator reads. This is structurally different from an inline `python3 -c "..."` snippet
+that the orchestrator might skip if context pressure is high.
+
+---
+
+## POST-PHASE COMPLIANCE SCAN (V2.8 — MANDATORY, runs after ALL batches complete)
+
+After ALL batches complete (every batch already passed post-batch hook), run a final full-phase
+scan to verify the phase-level invariant (161/161 compliant) before logging `phase_N_complete`:
+
+```bash
+python3 scripts/wave7_batch_audit.py --phase <N> --all
+# Exit 0 → log phase_N_orchestrator_complete and report VERIFIED_COMPLETE to Tier 1
+# Exit 1 → re-spawn non-compliant epics (redo list at /tmp/wave7_redo.txt)
+# Do NOT log phase_N_complete until exit code is 0
+```
+
+**This replaces** the old inline `python3 -c "..."` compliance snippet from V2.7. The new script
+is deterministic, checks all 7 hard checks (including denial-phrase detection the old script missed),
+and produces machine-readable JSON + a redo list file.
 
 ---
 
@@ -76,22 +205,43 @@ Source: <SOURCE_FILE>
 Wave: 7
 Phase: 0 — Hotspot Analysis
 
-YOUR TASK:
-1. Use mcp__jcodemunch-mcp__search_symbols to locate method <METHOD_NAME> in <SOURCE_FILE>
-2. Use mcp__jcodemunch-mcp__get_symbol_complexity to get current CYC score
-3. Use mcp__jcodemunch-mcp__get_blast_radius to identify impact scope
-4. Use mcp__jcodemunch-mcp__get_hotspots to identify related complexity hotspots
-5. Use mcp__sequential-thinking__sequentialthinking to structure your analysis
-6. Write docs/brain/<EPIC_ID>/00-hotspots.md with:
+YOUR TASK (V2.8 — follow EXACTLY, including cold-start probes):
+
+STEP 0a — jcodemunch cold-start probe (MANDATORY FIRST ACTION):
+  Call mcp__jcodemunch-mcp__resolve_repo with path "/home/malhitticrypto/universal-or-strategy".
+  If it returns a valid repo object → proceed to STEP 0b.
+  If it returns error or is unavailable → wait 5 seconds → retry ONCE.
+  If retry still fails → return { "status": "MCP_FAILED", "epic_id": "<EPIC_ID>", "error": "jcodemunch unavailable after retry" } and STOP.
+  DO NOT write any artifact. DO NOT fall back to native tools.
+
+STEP 0b — sequential-thinking cold-start probe (MANDATORY SECOND ACTION):
+  Call mcp__sequential-thinking__sequentialthinking with:
+    thought="probe: starting <EPIC_ID> Phase 0 analysis", thoughtNumber=1, totalThoughts=1, nextThoughtNeeded=false
+  If it returns a valid response → proceed to STEP 1.
+  If it fails → wait 5 seconds → retry ONCE.
+  If retry still fails → return { "status": "MCP_FAILED", "epic_id": "<EPIC_ID>", "error": "sequential-thinking unavailable after retry" } and STOP.
+  DO NOT write any artifact. DO NOT fall back to native tools.
+
+STEP 1. Use mcp__jcodemunch-mcp__search_symbols to locate method <METHOD_NAME> in <SOURCE_FILE>
+STEP 2. Use mcp__jcodemunch-mcp__get_symbol_complexity to get current CYC score
+STEP 3. Use mcp__jcodemunch-mcp__get_blast_radius to identify impact scope
+STEP 4. Use mcp__jcodemunch-mcp__get_hotspots to identify related complexity hotspots
+STEP 5. Use mcp__sequential-thinking__sequentialthinking (3 thoughts minimum) to structure your analysis:
+   - Thought 1: Complexity drivers — what are the top 3 sources of CYC?
+   - Thought 2: Extraction strategy — how many helpers, what are their responsibilities?
+   - Thought 3: Risk assessment — threading constraints, blast radius, correctness risks
+STEP 6. Write docs/brain/<EPIC_ID>/00-hotspots.md with:
    - Method name, CYC, file path
-   - Blast radius summary
-   - Top 3 complexity drivers (if/switch/loop nesting)
-   - Recommended extraction count
+   - Blast radius summary (from get_blast_radius output)
+   - Top 3 complexity drivers (from sequential thinking Thought 1)
+   - Recommended extraction count and helper names
+   - MCP Evidence section with actual tool call results
+   - Sequential Thinking Evidence section with actual thought content
    - Agent Tracking block (Agent Name: v12-phase0-hotspot, Bobcoins Used: [amount], Execution Time: [duration])
-7. Update docs/brain/<EPIC_ID>/manifest.json:
+STEP 7. Update docs/brain/<EPIC_ID>/manifest.json:
    - Set phases.phase_0.status = "completed"
    - Set phases.phase_0.output = "00-hotspots.md"
-8. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/00-hotspots.md", "cyc_confirmed": <CYC> }
+STEP 8. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/00-hotspots.md", "cyc_confirmed": <CYC> }
 ```
 
 ---
@@ -534,5 +684,7 @@ If the predecessor event is absent: **HALT**, report `DEPENDENCY_NOT_MET` to Tie
 
 ---
 
-*Templates Version: V2.5 — Bob IDE V2 — 3-Tier Subagent Architecture*
+*Templates Version: V2.7 — Bob IDE V2 — 3-Tier Subagent Architecture*
 *Created: 2026-06-25*
+*V2.7 Change: spawn_subagent workers confirmed to HAVE full MCP access. Removed stale "execute directly" fallback. Orchestrators MUST always delegate to workers via spawn_subagent. HALT on MCP failure — never work around it.*
+*V2.6 Change: BATCH_SIZE cap permanently reduced from 50 to 40. Batch cadence: 1 pilot + 4x40 for 161-epic waves.*
