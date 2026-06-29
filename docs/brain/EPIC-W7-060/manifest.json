@@ -23,6 +23,13 @@
       "cyc_baseline": 11,
       "max_cyc_projected": 5,
       "extractions": 2
+    },
+    "phase_3": {
+      "name": "DNA & PR Audit",
+      "status": "completed",
+      "output": "03-audit-report.md",
+      "dna_verdict": "PASS",
+      "violations": []
     }
   }
 }

@@ -21,9 +21,9 @@
       "output": "02-architecture-plan.md"
     },
     "phase_3": {
-      "name": "Verification",
-      "status": "pending",
-      "output": null
+      "name": "DNA Audit",
+      "status": "completed",
+      "output": "03-audit-report.md"
     },
     "phase_1_5": {
       "name": "Scope Boundary Validation",

@@ -25,6 +25,14 @@
       "max_cyc_projected": 5,
       "extraction_count": 3,
       "completed_at": "2026-06-29T01:10:00Z"
+    },
+    "phase_3": {
+      "name": "DNA & PR Audit",
+      "status": "completed",
+      "output": "03-audit-report.md",
+      "dna_verdict": "PASS",
+      "violations": [],
+      "completed_at": "2026-06-29T01:15:00Z"
     }
   }
 }

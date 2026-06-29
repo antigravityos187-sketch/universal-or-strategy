@@ -24,6 +24,13 @@
       "output": "02-architecture-plan.md",
       "max_cyc_projected": 8,
       "extractions": 2
+    },
+    "phase_3": {
+      "name": "DNA & PR Audit",
+      "status": "completed",
+      "output": "03-audit-report.md",
+      "dna_verdict": "PASS",
+      "violations": []
     }
   }
 }
