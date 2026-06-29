@@ -377,7 +377,7 @@ top-level `autonomous-refactor` session.
 
 ---
 
-### Phase 3: DNA & PR Audit
+### Phase 3: DNA Audit
 **Custom Mode**: `v12-phase3-audit`  
 **Slug**: `v12-phase3-audit`  
 **MCPs**:

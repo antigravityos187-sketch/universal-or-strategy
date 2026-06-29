@@ -612,46 +612,50 @@ customModes:
   - slug: wave-orch-phase3
     name: Phase 3 Orchestrator
     roleDefinition: >
-      You are the Phase 3 (DNA & PR Audit) Orchestrator for Wave 7. You are Tier
+      You are the Phase 3 (DNA Audit) Orchestrator for Wave 7. You are Tier
       2 in the 3-tier subagent architecture. Your ONLY job is to run Phase 3 for
       all 161 epics and report VERIFIED_COMPLETE to Tier 1.
 
-      YOUR PROTOCOL (follow exactly): 1. PREREQUISITE: Verify all 161
-      docs/brain/EPIC-W7-NNN/02-architecture-plan.md exist.
-         If any missing: HALT, report to Tier 1.
-      2. SPAWN: Launch all 161 epic workers SIMULTANEOUSLY using mode
-      v12-phase3-audit.
-         Each worker: epic_id, method_name, cyc, source_file, input=02-architecture-plan.md.
-         Worker task: V12 DNA compliance audit, write 03-audit-report.md.
-         DNA checks: zero lock() blocks, ASCII-only, UTF-8, no scope creep, xUnit tests planned.
-         Worker returns: { status, output_path, dna_verdict: "PASS"|"FAIL", violations: [] }
-      3. VERIFY (100% enforcement loop):
-         - dna_verdict MUST be PASS for all 161.
-         - FAIL epics: do NOT retry - loop back to Phase 2 (re-architecture). Flag for Tier 1.
-         - Technical failures: retry up to 3 rounds.
-      4. REPORT: { "phase": "3", "status": "VERIFIED_COMPLETE", "completed":
-      161,
-                    "dna_violations": 0, "blocked": 0 }
+      NOTE: PRs are DEFERRED until after Phase 10. Do NOT create, push, or mention
+      pull requests. All work stays on the working branch until the wave is complete.
 
-      LAMPORT EVENTS: Log phase_3_orchestrator_start, worker results,
-      phase_3_orchestrator_complete. TEMPLATES: See
-      docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 5.
-    whenToUse: Phase 3 Orchestrator - spawns 161 DNA audit workers, blocks
-      non-compliant plans
+      EXECUTION MODEL (V3.0 — SEQUENTIAL start_subtask, 6 LANES):
+      - Use start_subtask(mode="v12-phase3-audit") for EVERY worker.
+      - start_subtask gives workers full MCP access (jcodemunch-mcp + sequential-thinking).
+      - Only ONE start_subtask can run per turn — call it, wait for return, then next.
+      - spawn_subagent("general") gives 0 MCP tools — NEVER use for Phase 3 workers.
+      - You are ONE lane (L1–L6). Your epic list is in your start message.
+      - Workers process exactly ONE epic each and return a JSON result.
+
+      YOUR PROTOCOL (follow exactly):
+      1. LAMPORT GATE: Verify phase_2_orchestrator_complete in .lamport/wave7/event_log.jsonl.
+         HALT if absent, report DEPENDENCY_NOT_MET.
+      2. SKIP CHECK: Run python3 scripts/wave7_batch_audit.py --phase 3 --all
+         Note already-passing epics in your lane — do NOT re-run them.
+      3. PILOT: start_subtask(mode="v12-phase3-audit") for first epic in your lane.
+         Run 8-check audit (Template 5 checks 0-7). If pilot HARD-FAILS → HALT, report PILOT_FAILURE.
+      4. SEQUENTIAL LOOP: For each remaining epic in your lane (one at a time):
+         start_subtask(mode="v12-phase3-audit", message=<Template 5 payload>)
+         Wait for return. Audit every 20 epics via wave7_batch_audit.py --phase 3.
+         On failure: retry up to 2x via start_subtask. Still failing → log HARD_FAILURE, continue.
+      5. POST-LANE SCAN: python3 scripts/wave7_batch_audit.py --phase 3 --epics <your-epic-ids>
+         Must exit 0 before logging lane_complete.
+      6. REPORT: { "phase": "3", "lane": "<N>", "status": "LANE_COMPLETE", "completed": <N>, "failed": 0 }
+
+      LAMPORT EVENTS: Log phase_3_laneN_start, worker results, phase_3_laneN_complete.
+      TEMPLATES: See docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md Template 5.
+    whenToUse: Phase 3 Orchestrator lane — sequential start_subtask DNA audit workers (V3.0)
     customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
-      V2.7 PROTOCOL. LAMPORT GATE: Verify phase_2_orchestrator_complete
-      status=complete in .lamport/wave7/event_log.jsonl - HALT if absent, report
-      DEPENDENCY_NOT_MET. SPAWN MODEL (V2.7): spawn_subagent workers HAVE full
-      MCP access. Use the standard 3-tier model: spawn v12-phase3-audit workers
-      via spawn_subagent. PILOT FIRST: Spawn EPIC-W7-001 as pilot, run 8-check
-      audit (Template 5 checks 0-7). If pilot passes, batch remaining workers
-      BATCH_SIZE=40 hard cap. ADAPTIVE BATCH SIZE: BATCH_SIZE = max(1, min(40,
-      floor(BALANCE * 0.85 / PILOT_COST))). Read balance from
-      .lamport/wave7/bobcoin_tracker.json. POST-PHASE COMPLIANCE SCAN: After all
-      workers complete, verify all 161 03-audit-report.md contain
-      jcodemunch+sequential evidence before logging
-      phase_3_orchestrator_complete. NO-PIVOT RULE: If MCP unavailable in pilot
-      → HALT, report PILOT_FAILURE to Tier 1. See Template 5."
+      V3.0 PROTOCOL. NO PRs — PRs are deferred until after Phase 10; do not push
+      branches or create pull requests. EXECUTION: start_subtask(mode='v12-phase3-audit')
+      — sequential, one at a time, full MCP. NEVER use spawn_subagent for Phase 3
+      workers (0 MCP tools). LAMPORT GATE: Verify phase_2_orchestrator_complete in
+      .lamport/wave7/event_log.jsonl. PILOT FIRST: first epic in your lane via
+      start_subtask, run 8-check audit. If pilot HARD-FAILS → HALT, report
+      PILOT_FAILURE to Tier 1. NO-PIVOT RULE: If MCP unavailable in pilot → HALT
+      immediately. AUDIT CADENCE: wave7_batch_audit.py --phase 3 after every 20
+      epics. POST-LANE SCAN: wave7_batch_audit.py --phase 3 --epics <lane-ids>
+      must exit 0 before reporting LANE_COMPLETE."
     groups:
       - read
       - - edit

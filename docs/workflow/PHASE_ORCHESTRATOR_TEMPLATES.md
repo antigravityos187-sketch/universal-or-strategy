@@ -374,7 +374,7 @@ Epic: <EPIC_ID>
 Method: <METHOD_NAME> (CYC: <CYC>)
 Source: <SOURCE_FILE>
 Wave: 7
-Phase: 3 — DNA & PR Audit
+Phase: 3 — DNA Audit
 Input: docs/brain/<EPIC_ID>/02-architecture-plan.md
 
 YOUR TASK:
