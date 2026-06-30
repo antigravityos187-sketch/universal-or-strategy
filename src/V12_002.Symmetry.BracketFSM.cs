@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using NinjaTrader.Cbi;
 using NinjaTrader.NinjaScript;
 using NinjaTrader.NinjaScript.Strategies;
@@ -31,6 +32,17 @@ namespace NinjaTrader.NinjaScript.Strategies
             Cancelled, // Final: All orders cancelled
             Rejected, // Final: Broker rejected (requires audit)
             Disconnected, // Temporary: Account connection lost, FSM frozen
+        }
+
+        /// <summary>
+        /// Classifies a fill event signal into Stop, Target, or Entry kind.
+        /// Eliminates stringly-typed comparisons at call sites (illegal states unrepresentable).
+        /// </summary>
+        private enum FillSignalKind
+        {
+            Entry,
+            Stop,
+            Target,
         }
 
         /// <summary>
@@ -100,28 +112,53 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        // ---------------------------------------------------------------------------
+        // W7-066 / W7-122: RemoveFsmOrderIdMappings helpers
+        // ---------------------------------------------------------------------------
+
+        /// <summary>
+        /// Removes a single Order's OrderId from the FSM lookup map if present.
+        /// Structurally prevents null or empty OrderId from reaching TryRemove.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void RemoveSingleOrderMapping(Order order)
+        {
+            if (order != null && !string.IsNullOrEmpty(order.OrderId))
+                _orderIdToFsmKey.TryRemove(order.OrderId, out _);
+        }
+
+        /// <summary>
+        /// Removes a replacing-cancel OrderId from the FSM lookup map if present.
+        /// Single-responsibility: handles the bare string field that has no Order wrapper.
+        /// </summary>
+        private void RemoveReplacingCancelMapping(string cancelOrderId)
+        {
+            if (!string.IsNullOrEmpty(cancelOrderId))
+                _orderIdToFsmKey.TryRemove(cancelOrderId, out _);
+        }
+
+        /// <summary>
+        /// Removes all target Order ids from the FSM lookup map.
+        /// Isolated iteration kernel -- delegates per-element to RemoveSingleOrderMapping.
+        /// </summary>
+        private void RemoveTargetOrderMappings(Order[] targets)
+        {
+            if (targets == null)
+                return;
+
+            foreach (Order target in targets)
+                RemoveSingleOrderMapping(target);
+        }
+
         private void RemoveFsmOrderIdMappings(FollowerBracketFSM fsm)
         {
             if (fsm == null)
                 return;
 
-            if (fsm.EntryOrder != null && !string.IsNullOrEmpty(fsm.EntryOrder.OrderId))
-                _orderIdToFsmKey.TryRemove(fsm.EntryOrder.OrderId, out _);
-
-            if (!string.IsNullOrEmpty(fsm.ReplacingCancelOrderId))
-                _orderIdToFsmKey.TryRemove(fsm.ReplacingCancelOrderId, out _);
-
-            if (fsm.StopOrder != null && !string.IsNullOrEmpty(fsm.StopOrder.OrderId))
-                _orderIdToFsmKey.TryRemove(fsm.StopOrder.OrderId, out _);
-
-            if (fsm.Targets == null)
-                return;
-
-            foreach (Order target in fsm.Targets)
-            {
-                if (target != null && !string.IsNullOrEmpty(target.OrderId))
-                    _orderIdToFsmKey.TryRemove(target.OrderId, out _);
-            }
+            RemoveSingleOrderMapping(fsm.EntryOrder);
+            RemoveReplacingCancelMapping(fsm.ReplacingCancelOrderId);
+            RemoveSingleOrderMapping(fsm.StopOrder);
+            RemoveTargetOrderMappings(fsm.Targets);
         }
 
         private bool TryTerminateFollowerBracket(string entryName, out FollowerBracketFSM removedFsm)
@@ -202,6 +239,40 @@ namespace NinjaTrader.NinjaScript.Strategies
             return null;
         }
 
+        // ---------------------------------------------------------------------------
+        // W7-064: ResolveFsm_ByScan helper
+        // ---------------------------------------------------------------------------
+
+        /// <summary>
+        /// Per-FSM slot scan (StopOrder -> Targets[0-4] -> EntryOrder) with
+        /// _orderIdToFsmKey backfill on match. Dead-code bool foundT removed.
+        /// </summary>
+        private FollowerBracketFSM MatchOrderInFsm(FollowerBracketFSM f, string orderId)
+        {
+            if (f.StopOrder != null && f.StopOrder.OrderId == orderId)
+            {
+                _orderIdToFsmKey[orderId] = f.EntryName;
+                return f;
+            }
+
+            for (int i = 0; i < 5; i++)
+            {
+                if (f.Targets[i] != null && f.Targets[i].OrderId == orderId)
+                {
+                    _orderIdToFsmKey[orderId] = f.EntryName;
+                    return f;
+                }
+            }
+
+            if (f.EntryOrder != null && f.EntryOrder.OrderId == orderId)
+            {
+                _orderIdToFsmKey[orderId] = f.EntryName;
+                return f;
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Tier 3: Last-resort O(N) scan with backfill.
         /// Scan order: StopOrder -> Targets[0-4] -> EntryOrder.
@@ -216,30 +287,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (f.AccountName != accountAlias)
                     continue;
 
-                if (f.StopOrder != null && f.StopOrder.OrderId == orderId)
-                {
-                    _orderIdToFsmKey[orderId] = f.EntryName;
-                    return f;
-                }
-
-                bool foundT = false;
-                for (int i = 0; i < 5; i++)
-                {
-                    if (f.Targets[i] != null && f.Targets[i].OrderId == orderId)
-                    {
-                        _orderIdToFsmKey[orderId] = f.EntryName;
-                        foundT = true;
-                        return f;
-                    }
-                }
-                if (foundT)
-                    break;
-
-                if (f.EntryOrder != null && f.EntryOrder.OrderId == orderId)
-                {
-                    _orderIdToFsmKey[orderId] = f.EntryName;
-                    return f;
-                }
+                var match = MatchOrderInFsm(f, orderId);
+                if (match != null)
+                    return match;
             }
 
             return null;
@@ -342,30 +392,71 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        // ---------------------------------------------------------------------------
+        // W7-065 / W7-120: HandleFsmFilled helpers
+        // ---------------------------------------------------------------------------
+
+        /// <summary>
+        /// Returns true when the signal name matches a stop-order fill prefix.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsStopSignal(string name) =>
+            !string.IsNullOrEmpty(name) && (name.StartsWith("Stop_") || name.StartsWith("S_"));
+
+        /// <summary>
+        /// Returns true when the signal name matches any of the five target-order fill prefixes.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsTargetSignal(string name) =>
+            !string.IsNullOrEmpty(name)
+            && (
+                name.StartsWith("T1_")
+                || name.StartsWith("T2_")
+                || name.StartsWith("T3_")
+                || name.StartsWith("T4_")
+                || name.StartsWith("T5_")
+            );
+
+        // ---------------------------------------------------------------------------
+        // W7-102: FillSignalKind classifier
+        // ---------------------------------------------------------------------------
+
+        /// <summary>
+        /// Classifies a fill signal name into a FillSignalKind enum value.
+        /// Replaces stringly-typed StartsWith checks at the call site.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static FillSignalKind ClassifyFillSignalType(string signalName)
+        {
+            if (IsStopSignal(signalName))
+                return FillSignalKind.Stop;
+            if (IsTargetSignal(signalName))
+                return FillSignalKind.Target;
+            return FillSignalKind.Entry;
+        }
+
+        /// <summary>
+        /// Decrements remaining contracts and transitions FSM state to Filled or Active.
+        /// Called only for Stop and Target fill events (caller contract).
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ApplyFillContracts(FollowerBracketFSM fsm, int filledQty)
+        {
+            fsm.RemainingContracts = Math.Max(0, fsm.RemainingContracts - Math.Max(0, filledQty));
+            fsm.State = fsm.RemainingContracts <= 0 ? FollowerBracketState.Filled : FollowerBracketState.Active;
+        }
+
         /// <summary>
         /// Handles Filled/PartFilled events with stop/target detection and contract tracking.
         /// Updates FSM state based on remaining contracts after fill.
         /// </summary>
         private void HandleFsmFilled(AccountEvent evt, FollowerBracketFSM fsm)
         {
-            // Phase 2 [D2/D3]: Precise target matching with null guards
-            bool isStop =
-                !string.IsNullOrEmpty(evt.SignalName)
-                && (evt.SignalName.StartsWith("Stop_") || evt.SignalName.StartsWith("S_"));
-            bool isTarget =
-                !string.IsNullOrEmpty(evt.SignalName)
-                && (
-                    evt.SignalName.StartsWith("T1_")
-                    || evt.SignalName.StartsWith("T2_")
-                    || evt.SignalName.StartsWith("T3_")
-                    || evt.SignalName.StartsWith("T4_")
-                    || evt.SignalName.StartsWith("T5_")
-                );
+            FillSignalKind kind = ClassifyFillSignalType(evt.SignalName);
 
-            if (isStop || isTarget)
+            if (kind == FillSignalKind.Stop || kind == FillSignalKind.Target)
             {
-                fsm.RemainingContracts = Math.Max(0, fsm.RemainingContracts - Math.Max(0, evt.FilledQty));
-                fsm.State = fsm.RemainingContracts <= 0 ? FollowerBracketState.Filled : FollowerBracketState.Active;
+                ApplyFillContracts(fsm, evt.FilledQty);
             }
             else if (fsm.State == FollowerBracketState.Accepted || fsm.State == FollowerBracketState.Submitted)
             {
@@ -413,6 +504,42 @@ namespace NinjaTrader.NinjaScript.Strategies
             LogFsmTransition(fsm, oldState, evt);
         }
 
+        // ---------------------------------------------------------------------------
+        // W7-069: GetFsmExpectedPosition helpers
+        // ---------------------------------------------------------------------------
+
+        /// <summary>
+        /// Returns true when a FollowerBracketState is non-terminal (contributes to expected position).
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsActiveFollowerState(FollowerBracketState state)
+        {
+            return state switch
+            {
+                FollowerBracketState.Active
+                or FollowerBracketState.Accepted
+                or FollowerBracketState.Submitted
+                or FollowerBracketState.PendingSubmit
+                or FollowerBracketState.Replacing
+                or FollowerBracketState.Modifying => true,
+                _ => false,
+            };
+        }
+
+        /// <summary>
+        /// Computes the signed quantity contribution of an entry order.
+        /// Caller contract: entryOrder != null (guarded at call site).
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ComputeEntrySignedQuantity(Order entryOrder)
+        {
+            int sign =
+                (entryOrder.OrderAction == OrderAction.Buy || entryOrder.OrderAction == OrderAction.BuyToCover)
+                    ? 1
+                    : -1;
+            return entryOrder.Quantity * sign;
+        }
+
         /// <summary>
         /// Computes the net expected position for a given account by summing all
         /// non-terminal FollowerBracketFSMs. This is the SOLE authority for
@@ -427,33 +554,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                 FollowerBracketFSM f = kvp.Value;
                 if (f == null || f.AccountName != accountName)
                     continue;
-
-                if (
-                    f.State == FollowerBracketState.Active
-                    || f.State == FollowerBracketState.Accepted
-                    || f.State == FollowerBracketState.Submitted
-                    || f.State == FollowerBracketState.PendingSubmit
-                    || f.State == FollowerBracketState.Replacing
-                    || f.State == FollowerBracketState.Modifying
-                )
+                if (!IsActiveFollowerState(f.State))
+                    continue;
+                if (f.EntryOrder != null)
+                    sum += ComputeEntrySignedQuantity(f.EntryOrder);
+                else if (f.State == FollowerBracketState.Active)
                 {
-                    if (f.EntryOrder != null)
-                    {
-                        int entrySign =
-                            (
-                                f.EntryOrder.OrderAction == OrderAction.Buy
-                                || f.EntryOrder.OrderAction == OrderAction.BuyToCover
-                            )
-                                ? 1
-                                : -1;
-                        sum += f.EntryOrder.Quantity * entrySign;
-                    }
-                    else if (f.State == FollowerBracketState.Active)
-                    {
-                        // Hydrated Active FSM: entry was terminal at restart.
-                        // Cannot determine sign without broker -- caller handles this.
-                        // Return 0 contribution; REAPER falls back to broker position.
-                    }
+                    // Hydrated Active FSM -- caller handles fallback to broker position
                 }
             }
             return sum;

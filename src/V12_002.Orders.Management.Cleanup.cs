@@ -202,43 +202,62 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         /// <summary>
         /// Purge activePositions entry if no active/pending orders remain and META-GUARD allows.
-        /// Includes FIX-ZP-02 secondary follower purge for broker-confirmed flat positions.
+        /// Dispatches to TryPurgeStandardPosition (hot path) and TryPurgeFlatFollowerByBroker (cold path).
+        /// EPIC-W7-099: Extracted from CYC=11 monolith; residual parent CYC=3.
         /// </summary>
         private void PurgePositionIfEligible(string entryName, int followerExpected)
         {
-            // V12.1101E [DESYNC-01]: Defer activePositions removal until no dict holds an active/pending order.
-            // V12.Phase8.2 [META-GUARD]: Skip purge if Reaper Repair Hook is active (followerExpected != 0).
-            if (followerExpected == 0 && !HasActiveOrPendingOrderForEntry(entryName))
+            if (followerExpected == 0)
+                TryPurgeStandardPosition(entryName);
+
+            if (followerExpected == 0)
+                TryPurgeFlatFollowerByBroker(entryName);
+        }
+
+        /// <summary>
+        /// Hot-path standard META-GUARD position purge (Block A).
+        /// V12.1101E [DESYNC-01]: Defer activePositions removal until no dict holds an active/pending order.
+        /// V12.Phase8.2 [META-GUARD]: Only called when followerExpected == 0.
+        /// CYC=3.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private void TryPurgeStandardPosition(string entryName)
+        {
+            if (!HasActiveOrPendingOrderForEntry(entryName))
             {
-                bool removed;
-                removed = activePositions.TryRemove(entryName, out _);
+                bool removed = activePositions.TryRemove(entryName, out _);
                 if (removed)
                     SymmetryGuardForgetEntry(entryName);
             }
+        }
 
-            // [FIX-ZP-02]: Secondary safety net for SIMA followers -- force purge if broker confirms flat.
-            // Guards against lingering non-terminal dict entries preventing HasActiveOrPendingOrderForEntry
-            // from returning false even though the actual broker position is already flat.
-            if (
-                followerExpected == 0
-                && activePositions.TryGetValue(entryName, out var followerCheck)
-                && followerCheck.IsFollower
-                && followerCheck.ExecutingAccount != null
-            )
+        /// <summary>
+        /// Cold-path FIX-ZP-02 broker-confirmed flat SIMA follower force-purge (Block B).
+        /// Guards against lingering non-terminal dict entries preventing HasActiveOrPendingOrderForEntry
+        /// from returning false even though the actual broker position is already flat.
+        /// Contains LINQ and Print -- cold diagnostic path only. CYC=8.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void TryPurgeFlatFollowerByBroker(string entryName)
+        {
+            if (!activePositions.TryGetValue(entryName, out var followerCheck))
+                return;
+            if (!followerCheck.IsFollower)
+                return;
+            if (followerCheck.ExecutingAccount == null)
+                return;
+            var brokerPos = followerCheck.ExecutingAccount.Positions.FirstOrDefault(p => p.Instrument == Instrument);
+            if (brokerPos == null)
+                return;
+            if (brokerPos.MarketPosition != MarketPosition.Flat)
+                return;
+            bool removedFZP = activePositions.TryRemove(entryName, out _);
+            if (removedFZP)
             {
-                var brokerPos = followerCheck.ExecutingAccount.Positions.FirstOrDefault(p =>
-                    p.Instrument == Instrument
-                );
-                if (brokerPos != null && brokerPos.MarketPosition == MarketPosition.Flat)
-                {
-                    bool removedFZP;
-                    removedFZP = activePositions.TryRemove(entryName, out _);
-                    if (removedFZP)
-                    {
-                        SymmetryGuardForgetEntry(entryName);
-                        Print(string.Format("[FIXED_G] Purging {0} - confirmed flat by broker.", entryName));
-                    }
-                }
+                SymmetryGuardForgetEntry(entryName);
+                Print(string.Format("[FIXED_G] Purging {0} - confirmed flat by broker.", entryName));
             }
         }
 

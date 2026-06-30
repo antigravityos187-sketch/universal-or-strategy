@@ -173,6 +173,124 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        private void SetTargetPrice(PositionInfo pos, int targetNum, double price)
+        {
+            switch (targetNum)
+            {
+                case 1:
+                    pos.Target1Price = price;
+                    break;
+                case 2:
+                    pos.Target2Price = price;
+                    break;
+                case 3:
+                    pos.Target3Price = price;
+                    break;
+                case 4:
+                    pos.Target4Price = price;
+                    break;
+                case 5:
+                    pos.Target5Price = price;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void SyncLimitTarget_Reprice(
+            string entryName,
+            PositionInfo pos,
+            int targetNum,
+            Order existingOrder,
+            double newPrice,
+            ref int refreshed
+        )
+        {
+            if (Math.Abs(existingOrder.LimitPrice - newPrice) < tickSize)
+            {
+                Print(
+                    string.Format(
+                        "[SYNC_ALL] T{0} {1}: Price unchanged at {2:F2} -- no action",
+                        targetNum,
+                        entryName,
+                        newPrice
+                    )
+                );
+                return;
+            }
+
+            try
+            {
+                ChangeOrder(existingOrder, existingOrder.Quantity, newPrice, 0);
+                SetTargetPrice(pos, targetNum, newPrice);
+                Print(string.Format("[SYNC_ALL] T{0} {1}: Repriced -> {2:F2}", targetNum, entryName, newPrice));
+                refreshed++;
+            }
+            catch (Exception ex)
+            {
+                Print(
+                    string.Format("[SYNC_ALL] T{0} {1}: ChangeOrder failed -- {2}", targetNum, entryName, ex.Message)
+                );
+            }
+        }
+
+        private void SyncLimitTarget_Submit(
+            string entryName,
+            PositionInfo pos,
+            int targetNum,
+            int targetQty,
+            ConcurrentDictionary<string, Order> targetDict,
+            double newPrice,
+            ref int refreshed
+        )
+        {
+            OrderAction exitAction = pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
+            try
+            {
+                Order newLimit = SubmitOrderUnmanaged(
+                    0,
+                    exitAction,
+                    OrderType.Limit,
+                    targetQty,
+                    newPrice,
+                    0,
+                    "",
+                    "T" + targetNum + "_" + entryName
+                );
+
+                if (newLimit != null)
+                {
+                    targetDict[entryName] = newLimit;
+                    SetTargetPrice(pos, targetNum, newPrice);
+                    Print(
+                        string.Format(
+                            "[SYNC_ALL] T{0} {1}: New limit submitted @ {2:F2} qty={3}",
+                            targetNum,
+                            entryName,
+                            newPrice,
+                            targetQty
+                        )
+                    );
+                    refreshed++;
+                }
+                else
+                {
+                    Print(
+                        string.Format(
+                            "[SYNC_ALL] T{0} {1}: SubmitOrderUnmanaged returned null @ {2:F2}",
+                            targetNum,
+                            entryName,
+                            newPrice
+                        )
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Print(string.Format("[SYNC_ALL] T{0} {1}: Submit failed -- {2}", targetNum, entryName, ex.Message));
+            }
+        }
+
         private void SyncLimitTarget(
             string entryName,
             PositionInfo pos,
@@ -200,139 +318,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             if (hasWorkingOrder)
-            {
-                if (Math.Abs(existingOrder.LimitPrice - newPrice) >= tickSize)
-                {
-                    try
-                    {
-                        ChangeOrder(existingOrder, existingOrder.Quantity, newPrice, 0);
-                        switch (targetNum)
-                        {
-                            case 1:
-                                pos.Target1Price = newPrice;
-                                break;
-                            case 2:
-                                pos.Target2Price = newPrice;
-                                break;
-                            case 3:
-                                pos.Target3Price = newPrice;
-                                break;
-                            case 4:
-                                pos.Target4Price = newPrice;
-                                break;
-                            case 5:
-                                pos.Target5Price = newPrice;
-                                break;
-                            default:
-                                // Invalid target number - should never reach here
-                                return;
-                        }
-                        Print(string.Format("[SYNC_ALL] T{0} {1}: Repriced -> {2:F2}", targetNum, entryName, newPrice));
-                        refreshed++;
-                    }
-                    catch (Exception ex)
-                    {
-                        Print(
-                            string.Format(
-                                "[SYNC_ALL] T{0} {1}: ChangeOrder failed -- {2}",
-                                targetNum,
-                                entryName,
-                                ex.Message
-                            )
-                        );
-                    }
-                }
-                else
-                {
-                    Print(
-                        string.Format(
-                            "[SYNC_ALL] T{0} {1}: Price unchanged at {2:F2} -- no action",
-                            targetNum,
-                            entryName,
-                            newPrice
-                        )
-                    );
-                }
-            }
+                SyncLimitTarget_Reprice(entryName, pos, targetNum, existingOrder, newPrice, ref refreshed);
             else
-            {
-                try
-                {
-                    Order newLimit =
-                        pos.Direction == MarketPosition.Long
-                            ? SubmitOrderUnmanaged(
-                                0,
-                                OrderAction.Sell,
-                                OrderType.Limit,
-                                targetQty,
-                                newPrice,
-                                0,
-                                "",
-                                "T" + targetNum + "_" + entryName
-                            )
-                            : SubmitOrderUnmanaged(
-                                0,
-                                OrderAction.BuyToCover,
-                                OrderType.Limit,
-                                targetQty,
-                                newPrice,
-                                0,
-                                "",
-                                "T" + targetNum + "_" + entryName
-                            );
-
-                    if (newLimit != null)
-                    {
-                        targetDict[entryName] = newLimit;
-                        switch (targetNum)
-                        {
-                            case 1:
-                                pos.Target1Price = newPrice;
-                                break;
-                            case 2:
-                                pos.Target2Price = newPrice;
-                                break;
-                            case 3:
-                                pos.Target3Price = newPrice;
-                                break;
-                            case 4:
-                                pos.Target4Price = newPrice;
-                                break;
-                            case 5:
-                                pos.Target5Price = newPrice;
-                                break;
-                            default:
-                                // Invalid target number - should never reach here
-                                return;
-                        }
-                        Print(
-                            string.Format(
-                                "[SYNC_ALL] T{0} {1}: New limit submitted @ {2:F2} qty={3}",
-                                targetNum,
-                                entryName,
-                                newPrice,
-                                targetQty
-                            )
-                        );
-                        refreshed++;
-                    }
-                    else
-                    {
-                        Print(
-                            string.Format(
-                                "[SYNC_ALL] T{0} {1}: SubmitOrderUnmanaged returned null @ {2:F2}",
-                                targetNum,
-                                entryName,
-                                newPrice
-                            )
-                        );
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Print(string.Format("[SYNC_ALL] T{0} {1}: Submit failed -- {2}", targetNum, entryName, ex.Message));
-                }
-            }
+                SyncLimitTarget_Submit(entryName, pos, targetNum, targetQty, targetDict, newPrice, ref refreshed);
         }
 
         /// <summary>
@@ -978,121 +966,119 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Build 950: Re-submit profit targets that were OCO-cascade-cancelled during stop replacement.
         // Runs on strategy thread via TriggerCustomEvent. Checks Order.OrderState directly on the
         // captured Order object -- avoids dict-timing races with RemoveGhostOrderRef.
+        private bool TryLoadActivePosition(string entryName, TargetSnapshot[] capturedTargets, out PositionInfo pos)
+        {
+            pos = null;
+            if (capturedTargets == null || capturedTargets.Length == 0)
+                return false;
+            if (!activePositions.TryGetValue(entryName, out pos))
+                return false;
+            if (!pos.EntryFilled)
+                return false;
+            if (pos.RemainingContracts <= 0)
+                return false;
+            return true;
+        }
+
+        private static bool ShouldRestoreTarget(TargetSnapshot snap)
+        {
+            if (snap == null)
+                return false;
+            if (snap.CapturedOrder == null)
+                return false;
+            if (snap.CapturedOrder.OrderState == OrderState.Cancelled)
+                return true;
+            if (snap.CapturedOrder.OrderState == OrderState.Rejected)
+                return true;
+            return false;
+        }
+
+        private Order SubmitFollowerTarget(
+            string entryName,
+            TargetSnapshot snap,
+            OrderAction exitAction,
+            double restoredPrice,
+            string bracketOcoId,
+            Account executingAccount
+        )
+        {
+            string tSig = SymmetryTrim("T" + snap.TargetNum + "_" + entryName, 40);
+            Order tOrd = executingAccount.CreateOrder(
+                Instrument,
+                exitAction,
+                OrderType.Limit,
+                TimeInForce.Gtc,
+                snap.Qty,
+                restoredPrice,
+                0,
+                bracketOcoId,
+                tSig,
+                null
+            );
+            if (tOrd == null)
+                return null;
+            executingAccount.Submit(new[] { tOrd });
+            return tOrd;
+        }
+
+        private Order SubmitLeaderTarget(
+            TargetSnapshot snap,
+            OrderAction exitAction,
+            double restoredPrice,
+            string bracketOcoId
+        )
+        {
+            string tSig = "T" + snap.TargetNum + "_" + snap.TargetNum;
+            return SubmitOrderUnmanaged(0, exitAction, OrderType.Limit, snap.Qty, restoredPrice, 0, bracketOcoId, tSig);
+        }
+
         private void RestoreCascadedTargets(string entryName, TargetSnapshot[] capturedTargets)
         {
-            if (capturedTargets == null || capturedTargets.Length == 0)
-                return;
-
             PositionInfo pos;
-            if (!activePositions.TryGetValue(entryName, out pos))
+            if (!TryLoadActivePosition(entryName, capturedTargets, out pos))
                 return;
 
-            bool entryFilled;
-            int remainingContracts;
-            MarketPosition direction;
-            bool isFollower;
-            Account executingAccount;
-            string ocoGroupId;
-
-            entryFilled = pos.EntryFilled;
-            remainingContracts = pos.RemainingContracts;
-            direction = pos.Direction;
-            isFollower = pos.IsFollower;
-            executingAccount = pos.ExecutingAccount;
-            ocoGroupId = pos.OcoGroupId;
-
-            if (!entryFilled || remainingContracts <= 0)
-                return;
-
-            OrderAction exitAction = direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
-            string bracketOcoId = ocoGroupId ?? string.Empty;
+            OrderAction exitAction = pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
+            string bracketOcoId = pos.OcoGroupId ?? string.Empty;
 
             foreach (TargetSnapshot snap in capturedTargets)
             {
-                if (snap == null || snap.CapturedOrder == null)
-                    continue;
-
-                // Only restore targets the broker OCO cascade-cancelled.
-                // Filled targets have OrderState.Filled -- skip them.
-                if (
-                    snap.CapturedOrder.OrderState != OrderState.Cancelled
-                    && snap.CapturedOrder.OrderState != OrderState.Rejected
-                )
+                if (!ShouldRestoreTarget(snap))
                     continue;
 
                 double restoredPrice = Instrument.MasterInstrument.RoundToTickSize(snap.Price);
-                Order newTarget = null;
+                Order newTarget =
+                    (pos.IsFollower && pos.ExecutingAccount != null)
+                        ? SubmitFollowerTarget(
+                            entryName,
+                            snap,
+                            exitAction,
+                            restoredPrice,
+                            bracketOcoId,
+                            pos.ExecutingAccount
+                        )
+                        : SubmitLeaderTarget(snap, exitAction, restoredPrice, bracketOcoId);
 
-                if (isFollower && executingAccount != null)
+                var tDict = GetTargetOrdersDictionary(snap.TargetNum);
+                if (tDict == null)
+                    continue;
+
+                if (newTarget != null)
                 {
-                    string tSig = SymmetryTrim("T" + snap.TargetNum + "_" + entryName, 40);
-                    Order tOrd = executingAccount.CreateOrder(
-                        Instrument,
-                        exitAction,
-                        OrderType.Limit,
-                        TimeInForce.Gtc,
-                        snap.Qty,
-                        restoredPrice,
-                        0,
-                        bracketOcoId,
-                        tSig,
-                        null
+                    tDict[entryName] = newTarget;
+                    Print(
+                        string.Format(
+                            "[B950] Target T{0} restored for {1} @ {2:F2} qty={3}",
+                            snap.TargetNum,
+                            entryName,
+                            restoredPrice,
+                            snap.Qty
+                        )
                     );
-                    if (tOrd != null)
-                    {
-                        executingAccount.Submit(new[] { tOrd });
-                        newTarget = tOrd;
-                    }
                 }
                 else
                 {
-                    string tSig = "T" + snap.TargetNum + "_" + entryName;
-                    newTarget =
-                        direction == MarketPosition.Long
-                            ? SubmitOrderUnmanaged(
-                                0,
-                                OrderAction.Sell,
-                                OrderType.Limit,
-                                snap.Qty,
-                                restoredPrice,
-                                0,
-                                bracketOcoId,
-                                tSig
-                            )
-                            : SubmitOrderUnmanaged(
-                                0,
-                                OrderAction.BuyToCover,
-                                OrderType.Limit,
-                                snap.Qty,
-                                restoredPrice,
-                                0,
-                                bracketOcoId,
-                                tSig
-                            );
-                }
-
-                var tDict = GetTargetOrdersDictionary(snap.TargetNum);
-                if (tDict != null)
-                {
-                    if (newTarget != null)
-                    {
-                        tDict[entryName] = newTarget;
-                        Print(
-                            string.Format(
-                                "[B950] Target T{0} restored for {1} @ {2:F2} qty={3}",
-                                snap.TargetNum,
-                                entryName,
-                                restoredPrice,
-                                snap.Qty
-                            )
-                        );
-                    }
-                    else
-                    {
-                        Print(
-                            string.Format("[B950] WARN: Target T{0} restore NULL for {1}", snap.TargetNum, entryName)
-                        );
-                    }
+                    Print(string.Format("[B950] WARN: Target T{0} restore NULL for {1}", snap.TargetNum, entryName));
                 }
             }
         }

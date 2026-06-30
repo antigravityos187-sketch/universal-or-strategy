@@ -29,6 +29,60 @@
       "dna_verdict": "PASS",
       "violations": [],
       "completed_at": "2026-06-29T01:15:00Z"
+    },
+    "phase_4": {
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-140/04-tickets.md",
+      "ticket_count": 3,
+      "tickets": [
+        {
+          "id": "T1",
+          "helper": "TrySnapshotReplacementTargets",
+          "projected_cyc": 5
+        },
+        {
+          "id": "T2",
+          "helper": "TryEnqueuePendingReplacement",
+          "projected_cyc": 3
+        },
+        {
+          "id": "T3",
+          "helper": "FormatTrailLevelName",
+          "projected_cyc": 2
+        }
+      ],
+      "projected_parent_cyc_after_all": 5,
+      "max_cyc_projected": 5,
+      "completed_at": "2026-06-29T01:20:00Z"
+    },
+    "phase_4_5": {
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-140/04-5-ticket-review.md",
+      "review_verdict": "PASS",
+      "failed_tickets": [],
+      "tickets_passed": 3,
+      "tickets_failed": 0,
+      "max_cyc_projected": 5,
+      "completed_at": "2026-06-29T01:25:00Z"
+    },
+    "phase_5_ticket_1": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:16:46Z"
+    },
+    "phase_5_ticket_2": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:16:46Z"
+    },
+    "phase_5_ticket_3": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:16:46Z"
+    },
+    "phase_5": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:18:14Z",
+      "final_cyc": 1,
+      "wave_ready": true,
+      "build_passed": true
     }
   }
 }

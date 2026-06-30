@@ -93,59 +93,69 @@ namespace NinjaTrader.NinjaScript.Strategies
                 submitButton.Click += OnSubmitClick;
         }
 
+        // [EPIC-W7-074] BindClick: null-safe event subscription helper (CYC=2)
+        private void BindClick(Button btn, RoutedEventHandler handler)
+        {
+            if (btn != null)
+                btn.Click += handler;
+        }
+
+        // [EPIC-W7-074] AttachExecutionPanelHandlers refactored to 11 sequential BindClick calls (CYC=1)
         private void AttachExecutionPanelHandlers()
         {
-            if (orLongButton != null)
-                orLongButton.Click += (s, e) =>
-                {
-                    PanelCommand("OR_LONG");
-                    ResetExecutionMode();
-                    TriggerGlow(CyanAccent);
-                };
-            if (orShortButton != null)
-                orShortButton.Click += (s, e) =>
-                {
-                    PanelCommand("OR_SHORT");
-                    ResetExecutionMode();
-                    TriggerGlow(PinkFg);
-                };
-            if (retestButton != null)
-                retestButton.Click += OnRetestClick;
-            if (retestRmaToggle != null)
-                retestRmaToggle.Click += OnRetestRmaToggleClick;
-            if (rmaButton != null)
-                rmaButton.Click += OnRmaClick;
-            if (momoButton != null)
-                momoButton.Click += (s, e) =>
-                {
-                    PanelCommand("MODE_MOMO");
-                    ResetExecutionMode();
-                    TriggerGlow(GreenFg);
-                };
-            if (ffmaButton != null)
-                ffmaButton.Click += (s, e) =>
-                {
-                    PanelCommand("MODE_FFMA");
-                    ResetExecutionMode();
-                    TriggerGlow(PinkFg);
-                };
-            if (ffmaManualButton != null)
-                ffmaManualButton.Click += (s, e) =>
-                {
-                    PanelCommand("FFMA_MANUAL_MARKET");
-                    ResetExecutionMode();
-                    TriggerGlow(PinkFg);
-                };
-            if (mButton != null)
-                mButton.Click += (s, e) =>
-                {
-                    PanelCommand("MODE_M");
-                    TriggerGlow(OrangeFg);
-                };
-            if (trendButton != null)
-                trendButton.Click += OnTrendClick;
-            if (trendRmaToggle != null)
-                trendRmaToggle.Click += OnTrendRmaToggleClick;
+            BindClick(orLongButton, OnOrLongClick);
+            BindClick(orShortButton, OnOrShortClick);
+            BindClick(retestButton, OnRetestClick);
+            BindClick(retestRmaToggle, OnRetestRmaToggleClick);
+            BindClick(rmaButton, OnRmaClick);
+            BindClick(momoButton, OnMomoClick);
+            BindClick(ffmaButton, OnFfmaClick);
+            BindClick(ffmaManualButton, OnFfmaManualClick);
+            BindClick(mButton, OnMClick);
+            BindClick(trendButton, OnTrendClick);
+            BindClick(trendRmaToggle, OnTrendRmaToggleClick);
+        }
+
+        // [EPIC-W7-074] Named handler methods extracted from inline lambdas (CYC=1 each)
+        private void OnOrLongClick(object s, RoutedEventArgs e)
+        {
+            PanelCommand("OR_LONG");
+            ResetExecutionMode();
+            TriggerGlow(CyanAccent);
+        }
+
+        private void OnOrShortClick(object s, RoutedEventArgs e)
+        {
+            PanelCommand("OR_SHORT");
+            ResetExecutionMode();
+            TriggerGlow(PinkFg);
+        }
+
+        private void OnMomoClick(object s, RoutedEventArgs e)
+        {
+            PanelCommand("MODE_MOMO");
+            ResetExecutionMode();
+            TriggerGlow(GreenFg);
+        }
+
+        private void OnFfmaClick(object s, RoutedEventArgs e)
+        {
+            PanelCommand("MODE_FFMA");
+            ResetExecutionMode();
+            TriggerGlow(PinkFg);
+        }
+
+        private void OnFfmaManualClick(object s, RoutedEventArgs e)
+        {
+            PanelCommand("FFMA_MANUAL_MARKET");
+            ResetExecutionMode();
+            TriggerGlow(PinkFg);
+        }
+
+        private void OnMClick(object s, RoutedEventArgs e)
+        {
+            PanelCommand("MODE_M");
+            TriggerGlow(OrangeFg);
         }
 
         private void AttachTargetButtonHandlers()
@@ -258,48 +268,80 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        // [EPIC-W7-075] OnSubmitClick refactored to pure sequential orchestration (CYC=1)
         private void OnSubmitClick(object sender, RoutedEventArgs e)
         {
-            string direction =
-                (directionCombo != null && directionCombo.SelectedItem is ComboBoxItem directionItem)
-                    ? (directionItem.Content as string ?? "OR LONG")
-                    : "OR LONG";
-            string price = priceInput != null ? priceInput.Text.Trim() : string.Empty;
+            string direction = ReadSubmitDirection();
+            string price = ReadSubmitPrice();
+            string mode = ResolveSubmitMode();
+            string symbol = ResolveSubmitSymbol();
+            string dir = ClassifyDirectionFlag(direction);
+            string cmd = BuildSubmitCommand(mode, dir, symbol, price);
+            PanelCommand(cmd);
+            TriggerGlow(GreenFg);
+        }
+
+        // [EPIC-W7-075] ReadSubmitDirection: reads directionCombo, defaults to "OR LONG" (CYC=3)
+        private string ReadSubmitDirection()
+        {
+            if (directionCombo == null)
+                return "OR LONG";
+            if (!(directionCombo.SelectedItem is ComboBoxItem directionItem))
+                return "OR LONG";
+            return directionItem.Content as string ?? "OR LONG";
+        }
+
+        // [EPIC-W7-075] ReadSubmitPrice: reads priceInput.Text, returns empty on null (CYC=2)
+        private string ReadSubmitPrice()
+        {
+            if (priceInput == null)
+                return string.Empty;
+            return priceInput.Text.Trim();
+        }
+
+        // [EPIC-W7-075] ResolveSubmitMode: resolves mode with fallback and OR->ORB normalization (CYC=3)
+        private string ResolveSubmitMode()
+        {
             string mode = _panelLastSyncedMode;
             if (string.IsNullOrEmpty(mode))
                 mode = GetCurrentConfigMode();
             if (string.Equals(mode, "OR", StringComparison.OrdinalIgnoreCase))
                 mode = "ORB";
+            return mode;
+        }
 
-            string symbol =
-                Instrument != null && Instrument.MasterInstrument != null
-                    ? Instrument.MasterInstrument.Name
-                    : string.Empty;
-            string dir = direction.IndexOf("SHORT", StringComparison.OrdinalIgnoreCase) >= 0 ? "SHORT" : "LONG";
-            string cmd;
+        // [EPIC-W7-075] ResolveSubmitSymbol: traverses Instrument chain, returns empty on null (CYC=3)
+        private string ResolveSubmitSymbol()
+        {
+            if (Instrument == null)
+                return string.Empty;
+            if (Instrument.MasterInstrument == null)
+                return string.Empty;
+            return Instrument.MasterInstrument.Name;
+        }
 
+        // [EPIC-W7-075] ClassifyDirectionFlag: maps direction string to SHORT/LONG flag (CYC=2)
+        private string ClassifyDirectionFlag(string direction)
+        {
+            if (direction.IndexOf("SHORT", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "SHORT";
+            return "LONG";
+        }
+
+        // [EPIC-W7-075] BuildSubmitCommand: pure command-string factory, 4-way mode dispatch (CYC=7)
+        private string BuildSubmitCommand(string mode, string dir, string symbol, string price)
+        {
             if (string.Equals(mode, "TREND", StringComparison.OrdinalIgnoreCase))
-            {
-                cmd = "TREND_MANUAL_LIMIT|" + symbol + "|" + dir + "|" + price;
-            }
-            else if (string.Equals(mode, "RETEST", StringComparison.OrdinalIgnoreCase))
-            {
-                cmd = "RETEST_MANUAL_LIMIT|" + symbol + "|" + dir + "|" + price;
-            }
-            else if (string.Equals(mode, "FFMA", StringComparison.OrdinalIgnoreCase))
-            {
-                cmd = "FFMA_MANUAL_LIMIT|" + symbol + "|" + dir + "|" + price;
-            }
-            else
-            {
-                cmd = dir == "LONG" ? "OR_LONG" : "OR_SHORT";
-                cmd += "|" + symbol;
-                if (!string.IsNullOrEmpty(price) && price != "0.00")
-                    cmd += "|" + price;
-            }
-
-            PanelCommand(cmd);
-            TriggerGlow(GreenFg);
+                return "TREND_MANUAL_LIMIT|" + symbol + "|" + dir + "|" + price;
+            if (string.Equals(mode, "RETEST", StringComparison.OrdinalIgnoreCase))
+                return "RETEST_MANUAL_LIMIT|" + symbol + "|" + dir + "|" + price;
+            if (string.Equals(mode, "FFMA", StringComparison.OrdinalIgnoreCase))
+                return "FFMA_MANUAL_LIMIT|" + symbol + "|" + dir + "|" + price;
+            string cmd = dir == "LONG" ? "OR_LONG" : "OR_SHORT";
+            cmd += "|" + symbol;
+            if (!string.IsNullOrEmpty(price) && price != "0.00")
+                cmd += "|" + price;
+            return cmd;
         }
 
         private void OnRetestClick(object sender, RoutedEventArgs e)
@@ -686,36 +728,30 @@ namespace NinjaTrader.NinjaScript.Strategies
                 manualEntryRow.Visibility = Visibility.Visible;
         }
 
-        // [EPIC-CCN-15] Refactored to dispatch-only pattern (CYC 8, Jane Street ultra-aligned)
+        // [EPIC-W7-010] Dictionary-dispatch replaces 8-arm switch (CYC 8 -> 2)
+        private Dictionary<string, Action> _modeControlMap;
+
+        // [EPIC-W7-010] InitializeModeControlMap: builds mode->action lookup (CYC=1)
+        private void InitializeModeControlMap()
+        {
+            _modeControlMap = new Dictionary<string, Action>
+            {
+                { "ORB", ShowOrbControls },
+                { "RMA", ShowRmaControls },
+                { "RETEST", ShowRetestControls },
+                { "MOMO", ShowMomoControls },
+                { "FFMA", ShowFfmaControls },
+                { "TREND", ShowTrendControls },
+                { "MNL", ShowMnlControls },
+            };
+        }
+
+        // [EPIC-W7-010] ShowModeSpecificControls refactored to TryGetValue dispatch (CYC=2)
         private void ShowModeSpecificControls(string mode)
         {
-            switch (mode)
-            {
-                case "ORB":
-                    ShowOrbControls();
-                    break;
-                case "RMA":
-                    ShowRmaControls();
-                    break;
-                case "RETEST":
-                    ShowRetestControls();
-                    break;
-                case "MOMO":
-                    ShowMomoControls();
-                    break;
-                case "FFMA":
-                    ShowFfmaControls();
-                    break;
-                case "TREND":
-                    ShowTrendControls();
-                    break;
-                case "MNL":
-                    ShowMnlControls();
-                    break;
-                default:
-                    ShowOrbControls();
-                    break;
-            }
+            if (!_modeControlMap.TryGetValue(mode, out var show))
+                show = ShowOrbControls;
+            show();
         }
 
         // [EPIC-CCN-15] Mode-specific visibility helpers (CYC 2-4 each)

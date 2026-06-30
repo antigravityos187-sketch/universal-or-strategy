@@ -34,6 +34,40 @@
       "violations": [],
       "max_cyc_projected": 7,
       "completed_at": "2026-06-29T01:05:00.000000Z"
+    },
+    "phase_4": {
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-118/04-tickets.md",
+      "ticket_count": 2
+    },
+    "phase_4_5": {
+      "status": "completed",
+      "output": "04-5-ticket-review.md",
+      "review_verdict": "PASS",
+      "failed_tickets": [],
+      "completed_at": "2026-06-29T01:10:00.000000Z"
+    },
+    "phase_5_ticket_1": {
+      "status": "completed",
+      "helper_extracted": "ParseAccountPositions",
+      "cyc_achieved": 7,
+      "timestamp": "2026-06-30T03:16:46Z"
+    },
+    "phase_5_ticket_2": {
+      "status": "completed",
+      "helper_extracted": "HandleDeserializationFailure",
+      "cyc_achieved": 1,
+      "timestamp": "2026-06-30T03:16:46Z"
+    },
+    "phase_5": {
+      "status": "completed",
+      "final_cyc": 7,
+      "helpers_extracted": ["ParseAccountPositions", "HandleDeserializationFailure"],
+      "DeserializeSnapshot_cyc_after": 2,
+      "tests_written": 2,
+      "build_passed": true,
+      "wave_ready": true,
+      "timestamp": "2026-06-30T03:18:14Z"
     }
   }
 }

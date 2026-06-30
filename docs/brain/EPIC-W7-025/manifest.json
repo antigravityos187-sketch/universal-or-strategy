@@ -3,7 +3,10 @@
   "wave": 7,
   "method": "CheckFFMAConditions",
   "source": "src/V12_002.Entries.FFMA.cs",
-  "cyc": 2,
+  "original_cyc": 16,
+  "final_cyc": 4,
+  "cyc_reduction": 12,
+  "cluster": "S6_SIGNALS",
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -29,6 +32,59 @@
       "name": "Scope Boundary Validation",
       "status": "completed",
       "output": "01-scope-boundary.md"
+    },
+    "phase_4": {
+      "name": "Ticket Generation",
+      "status": "completed",
+      "output": "04-tickets.md"
+    },
+    "phase_4_5": {
+      "name": "Ticket Review (Jane Street Validation Gate)",
+      "status": "completed",
+      "output_artifacts": [
+        "04-5-ticket-review.md"
+      ],
+      "review_verdict": "PASS",
+      "failed_tickets": []
+    },
+    "phase_5_ticket_1": {
+      "status": "completed",
+      "helper": "CheckFFMAGuards",
+      "cyc": 7,
+      "output": "ticket-1-completion.md"
+    },
+    "phase_5_ticket_2": {
+      "status": "completed",
+      "helper": "ComputeFFMAStopDistance",
+      "cyc": 2,
+      "output": "ticket-2-completion.md",
+      "tests": "xunit-tests/W7-025/W7_025_ComputeFFMAStopDistanceTests.cs"
+    },
+    "phase_5_ticket_3": {
+      "status": "completed",
+      "helper": "TryExecuteFFMAShort",
+      "cyc": 4,
+      "output": "ticket-3-completion.md"
+    },
+    "phase_5_ticket_4": {
+      "status": "completed",
+      "helper": "TryExecuteFFMALong",
+      "cyc": 4,
+      "output": "ticket-4-completion.md"
+    },
+    "phase_5": {
+      "status": "completed",
+      "final_cyc": 4,
+      "wave_ready": true,
+      "build_passed": true,
+      "helpers_extracted": [
+        "CheckFFMAGuards",
+        "ComputeFFMAStopDistance",
+        "TryExecuteFFMAShort",
+        "TryExecuteFFMALong"
+      ],
+      "tests_written_total": 3,
+      "output": "05-completion-report.md"
     }
   },
   "mcp_tools_used": [
@@ -39,6 +95,6 @@
     "get_hotspots",
     "sequentialthinking"
   ],
-  "agent": "v12-phase0-hotspot",
+  "agent": "v12-engineer",
   "created": "2025-07-11"
 }

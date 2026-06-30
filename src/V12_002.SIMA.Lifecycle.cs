@@ -468,29 +468,25 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </remarks>
         private FollowerBracketState? MapOrderStateToFSMState(OrderState entryState)
         {
-            if (entryState == OrderState.Filled || entryState == OrderState.PartFilled)
-            {
+            if (IsActiveOrderState(entryState))
                 return FollowerBracketState.Active;
-            }
-            else if (entryState == OrderState.Accepted)
-            {
+            if (entryState == OrderState.Accepted)
                 return FollowerBracketState.Accepted;
-            }
-            else if (
-                entryState == OrderState.Working
-                || entryState == OrderState.Submitted
-                || entryState == OrderState.Initialized
-                || entryState == OrderState.ChangePending
-                || entryState == OrderState.ChangeSubmitted
-            )
-            {
+            if (IsSubmittedOrderState(entryState))
                 return FollowerBracketState.Submitted;
-            }
-            else
-            {
-                return null; // Terminal state - skip FSM creation
-            }
+            return null; // Terminal state - skip FSM creation
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsActiveOrderState(OrderState s) => s == OrderState.Filled || s == OrderState.PartFilled;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsSubmittedOrderState(OrderState s) =>
+            s == OrderState.Working
+            || s == OrderState.Submitted
+            || s == OrderState.Initialized
+            || s == OrderState.ChangePending
+            || s == OrderState.ChangeSubmitted;
 
         /// <summary>
         /// Factory method to construct FollowerBracketFSM instance.

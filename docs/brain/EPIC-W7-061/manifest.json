@@ -1,9 +1,11 @@
 {
   "epic": "EPIC-W7-061",
   "wave": 7,
+  "status": "complete",
   "method": "SubmitAndRegisterFleetOrders",
   "source": "src/V12_002.SIMA.Fleet.cs",
-  "cyc": 12,
+  "cyc_before": 11,
+  "final_cyc": 4,
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -16,6 +18,11 @@
       "output": "00-scope.md",
       "output_path": "docs/brain/EPIC-W7-061/00-scope.md",
       "completed_at": "2026-06-26T02:35:31.609666Z"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
     },
     "phase_2": {
       "name": "Architecture Planning",
@@ -35,10 +42,51 @@
       "violations": [],
       "completed_at": "2026-06-29T00:00:00Z"
     },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
+    "phase_4": {
+      "name": "Ticket Generation",
       "status": "completed",
-      "output": "01-scope-boundary.md"
+      "output": "04-tickets.md",
+      "output_path": "docs/brain/EPIC-W7-061/04-tickets.md",
+      "ticket_count": 2,
+      "max_cyc_projected": 5,
+      "projected_parent_cyc": 4,
+      "completed_at": "2026-06-29T01:10:00Z"
+    },
+    "phase_4_5": {
+      "name": "Ticket Review (Jane Street Validation Gate)",
+      "status": "completed",
+      "output": "04-5-ticket-review.md",
+      "output_path": "docs/brain/EPIC-W7-061/04-5-ticket-review.md",
+      "review_verdict": "PASS",
+      "failed_tickets": [],
+      "completed_at": "2026-06-29T01:15:00Z"
+    },
+    "phase_5_ticket_1": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:18:14Z",
+      "output": "docs/brain/EPIC-W7-061/ticket-T1-completion.md"
+    },
+    "phase_5_ticket_2": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:18:14Z",
+      "output": "docs/brain/EPIC-W7-061/ticket-T2-completion.md"
+    },
+    "phase_5": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:18:14Z",
+      "final_cyc": 4,
+      "wave_ready": true,
+      "build_passed": true,
+      "helpers_extracted": [
+        "UpdateFleetFsmState",
+        "RegisterOrderIdsToFsmKey"
+      ],
+      "test_file": "src/W7_061_SubmitAndRegisterTests.cs"
+    },
+    "phase_6": {
+      "status": "completed"
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-01T00:00:00Z"
 }

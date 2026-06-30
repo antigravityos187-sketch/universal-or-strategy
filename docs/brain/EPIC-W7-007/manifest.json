@@ -52,10 +52,66 @@
       "dna_verdict": "PASS",
       "violations": []
     },
+    "phase_4": {
+      "name": "Ticket Generation",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-007/04-tickets.md",
+      "completed_at": "2026-06-29T01:20:00Z",
+      "agent": "v12-phase4-tickets",
+      "bobcoins_used": 1.0,
+      "ticket_count": 2,
+      "tickets": [
+        {
+          "ticket_id": "T1",
+          "helper_name": "ComputeSlotQuantity",
+          "projected_helper_cyc": 2
+        },
+        {
+          "ticket_id": "T2",
+          "helper_name": "ValidateAndAdjustBucketSum",
+          "projected_helper_cyc": 2
+        }
+      ],
+      "projected_parent_cyc_after_all": 4
+    },
+    "phase_4_5": {
+      "name": "Ticket Review (Jane Street Validation Gate)",
+      "status": "completed",
+      "output": "docs/brain/EPIC-W7-007/04-5-ticket-review.md",
+      "completed_at": "2026-06-29T01:25:00Z",
+      "agent": "v12-phase4-5-review",
+      "bobcoins_used": 0.5,
+      "review_verdict": "PASS",
+      "failed_tickets": []
+    },
     "phase_1_5": {
       "name": "Scope Boundary Validation",
       "status": "completed",
       "output": "01-scope-boundary.md"
+    },
+    "phase_5_ticket_T1": {
+      "status": "completed",
+      "helper_extracted": "ComputeSlotQuantity",
+      "helper_cyc": 1,
+      "agent": "v12-engineer",
+      "timestamp": "2026-07-01T00:00:00Z"
+    },
+    "phase_5_ticket_T2": {
+      "status": "completed",
+      "helper_extracted": "ValidateAndAdjustBucketSum",
+      "helper_cyc": 2,
+      "agent": "v12-engineer",
+      "timestamp": "2026-07-01T00:00:00Z"
+    },
+    "phase_5": {
+      "status": "completed",
+      "agent": "v12-engineer",
+      "final_cyc": 3,
+      "helpers_extracted": ["ComputeSlotQuantity", "ValidateAndAdjustBucketSum"],
+      "tests_written": 4,
+      "build_passed": true,
+      "wave_ready": true,
+      "timestamp": "2026-07-01T00:00:00Z"
     }
   }
 }

@@ -9,27 +9,33 @@
 
 This document validates that the `/autonomous-refactor` master orchestrator properly integrates all 10 phases of the V12 epic workflow, showing which MCPs, skills, and **custom modes** each phase uses.
 
-### Key Findings (V2.8 — MCP Cold-Start Hardening + Deterministic Post-Batch Hook)
+### Key Findings (V3.0 — Per-Ticket Execution + File-Lane Architecture)
 
-✅ **All 10 phases mapped to custom modes** (NOT generic modes!)
+✅ **All phases mapped to custom modes** (NOT generic modes!)
 ✅ **Custom modes defined in `.bob/custom_modes.yaml`**
 ✅ **MCP usage validated for all custom modes**
-✅ **Bob IDE V2 native subagent model CONFIRMED WORKING** (Wave 7 Phase 1: 161/161 epics)
-✅ **All skills updated to V12.28 subagent pattern** (no Bob Shell, no scripts)
-✅ **3-TIER SUBAGENT ARCHITECTURE** — 1 top orch → 10 phase orchs → 161 epic workers
+✅ **Bob IDE V2 native subagent model CONFIRMED WORKING** (Wave 7 Phases 0–3: 161/161 each)
+✅ **3-TIER SUBAGENT ARCHITECTURE** — 1 top orch → phase orchs → epic/ticket workers
 ✅ **100% COMPLETION ENFORCEMENT** — per-phase verification loop before hand-off
-✅ **UNIVERSAL PILOT COMPLIANCE AUDIT (V2.8)** — ALL 10 phase orchs run 8-check pilot before batching (Check 0 = MCP probe WITH retry)
-✅ **ADAPTIVE BATCH SIZING (V2.8)** — first batch after cold-start capped at 20; subsequent batches up to 40
-✅ **BOBCOIN PAUSE PROTOCOL (V2.5)** — auto-pauses if balance drops to 15% buffer, resumes on reload
-✅ **NO-PIVOT RULE (V2.8)** — workers HAVE MCP access; orchestrators MUST always spawn workers, never execute directly
-✅ **MCP COLD-START RETRY (V2.8)** — workers probe both MCPs at startup, retry once after 5s; return MCP_FAILED (not native fallback) if still unavailable
-✅ **POST-BATCH HOOK (V2.8)** — `.bob/hooks/after_subagent_batch.py` fires after EVERY batch; deterministic 7-check audit; redo list at `/tmp/wave7_redo.txt`
-✅ **DETERMINISTIC AUDIT SCRIPT (V2.8)** — `scripts/wave7_batch_audit.py` checks all 7 hard checks including Cat B/C denial-phrase detection
+✅ **UNIVERSAL PILOT COMPLIANCE AUDIT (V2.8)** — ALL phase orchs run 8-check pilot before batching
+✅ **ADAPTIVE BATCH SIZING (V2.8)** — first batch cold-start capped at 20; subsequent batches up to 40
+✅ **BOBCOIN PAUSE PROTOCOL (V2.5)** — auto-pauses if balance drops to 15% buffer
+✅ **NO-PIVOT RULE (V2.8)** — workers HAVE MCP access; orchestrators MUST always spawn workers
+✅ **MCP COLD-START RETRY (V2.8)** — workers probe both MCPs at startup, retry once after 5s
+✅ **POST-BATCH HOOK (V2.8)** — `.bob/hooks/after_subagent_batch.py` fires after EVERY batch
+✅ **DETERMINISTIC AUDIT SCRIPT** — `scripts/wave7_batch_audit.py` 7-check compliance audit
 ✅ **Phase Orchestrator Templates** — `docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`
-❌ **OBSOLETE**: `gcp-vm-wave-execution` skill — marked retired, do not use
-❌ **OBSOLETE**: Greptile MCP referenced in old system prompts — not used in any phase
-❌ **OBSOLETE**: 2-tier model (top orch spawning workers directly) — replaced by 3-tier
-❌ **OBSOLETE**: Inline `python3 -c "..."` compliance scan from V2.7 — replaced by `wave7_batch_audit.py`
+✅ **FILE-LANE ARCHITECTURE (V3.0 NEW)** — Phase 5 uses 40 file-lanes across 7 clusters. One lane per .cs file. Eliminates ALL same-file write conflicts by construction.
+✅ **PER-TICKET EXECUTION (V3.0 NEW)** — Each ticket in an epic = its own start_subtask(v12-p5-ticket) + start_subtask(v12-p5-verify). Phase 6 per-epic after all tickets pass.
+✅ **CLUSTER DOMAIN CONTEXT (V3.0 NEW)** — Cluster description injected into every Phase 5 worker. Better helper naming, better tests, better invariant preservation.
+✅ **BUILD RETRY PROTOCOL (V3.0 NEW)** — dotnet build lock collisions handled: wait 15s, retry max 3. Expected ~1 collision per wave.
+✅ **LANE ASSIGNMENT TABLE** — `docs/workflow/WAVE7_PHASE5_LANE_ASSIGNMENT.md` — canonical 40-lane mapping
+❌ **OBSOLETE**: `gcp-vm-wave-execution` skill — marked retired
+❌ **OBSOLETE**: Greptile MCP referenced in old system prompts
+❌ **OBSOLETE**: 2-tier model (top orch spawning workers directly)
+❌ **OBSOLETE**: Inline `python3 -c "..."` compliance scan
+❌ **OBSOLETE**: Single Phase 5 worker per epic (V2.x model) — replaced by per-ticket file-lane model
+❌ **OBSOLETE**: wave-orch-phase5v as separate phase — verification is now inline with each ticket
 
 ---
 
@@ -152,19 +158,34 @@ The 3-tier model solves this:
 Tier 1: Top-Level Orchestrator (autonomous-refactor mode — YOUR SESSION)
    Spawns Phase Orchestrators SEQUENTIALLY
    Only advances to Ph(N+1) after Ph(N) reports VERIFIED_COMPLETE
-   Total workload tracked by Tier 1: 10 phase completion reports
    |
-   +-> Ph0 Orch -> [161 v12-phase0-hotspot workers in parallel]  -> VERIFIED_COMPLETE
-   +-> Ph1 Orch -> [161 v12-phase1-scope workers in parallel]    -> VERIFIED_COMPLETE
-   +-> Ph1.5 Orch-> [161 v12-phase1-5-boundary workers]          -> VERIFIED_COMPLETE
-   +-> Ph2 Orch -> [161 v12-phase2-architecture workers]         -> VERIFIED_COMPLETE
-   +-> Ph3 Orch -> [161 v12-phase3-audit workers]                -> VERIFIED_COMPLETE
-   +-> Ph4 Orch -> [161 v12-phase4-tickets workers]              -> VERIFIED_COMPLETE
-   +-> Ph4.5 Orch-> [161 v12-phase4-5-review workers]            -> VERIFIED_COMPLETE
-   +-> Ph5 Orch -> [161 v12-engineer workers]                    -> VERIFIED_COMPLETE
-   +-> Ph5.V Orch-> [161 v12-phase5-v-verify workers]            -> VERIFIED_COMPLETE
-   +-> Ph6 Orch -> [161 v12-phase6-review workers]               -> WAVE_COMPLETE
+   +-> Ph0 Orch  -> [161 v12-phase0-hotspot workers, spawn_subagent parallel]  -> VERIFIED_COMPLETE
+   +-> Ph1 Orch  -> [161 v12-phase1-scope workers, spawn_subagent parallel]    -> VERIFIED_COMPLETE
+   +-> Ph1.5 Orch-> [161 v12-phase1-5-boundary workers, spawn_subagent parallel] -> VERIFIED_COMPLETE
+   +-> Ph2 Orch  -> [161 v12-phase2-architecture workers, start_subtask seq]   -> VERIFIED_COMPLETE
+   +-> Ph3 Orch  -> [161 v12-phase3-audit workers, start_subtask seq 6 lanes]  -> VERIFIED_COMPLETE
+   +-> Ph4 Orch  -> [161 v12-phase4-tickets workers, spawn_subagent parallel]  -> VERIFIED_COMPLETE
+   +-> Ph4.5 Orch-> [161 v12-phase4-5-review workers, start_subtask seq]       -> VERIFIED_COMPLETE
+   |
+   +-> Ph5 Orch  -> [40 FILE-LANE ORCHESTRATORS in parallel]                   -> VERIFIED_COMPLETE
+   |     |
+   |     +-> FL-01 (S1_SIMA / SIMA.Dispatch.cs, 3 epics)
+   |     |     Epic W7-119: ticket-1 → verify-1 → ticket-2 → verify-2 → review
+   |     |     Epic W7-027: ticket-1 → verify-1 → review
+   |     |     Epic W7-093: ticket-1 → verify-1 → review
+   |     |     [all sequential, start_subtask one at a time]
+   |     |
+   |     +-> FL-02 (S1_SIMA / SIMA.Execution.cs, 4 epics)  [parallel to FL-01]
+   |     +-> FL-03 (S1_SIMA / SIMA.Flatten.cs, 3 epics)    [parallel to FL-01]
+   |     +-> ...
+   |     +-> FL-40 (S7_MISC / PureLogic.cs, 1 epic)        [parallel to all others]
+   |
+   +-> Ph6 Orch  -> [161 v12-p6-review workers already run inline in Phase 5] -> WAVE_COMPLETE
 ```
+
+**Phase 5 is the only phase with TRUE PARALLELISM** — 40 lanes run concurrently as separate Bob IDE sessions.
+**All writes within each lane are sequential** — zero file conflict risk.
+**Phase 6 reviews happen inline** — each epic gets its Phase 6 review immediately after all its tickets pass, within its lane.
 
 ### Peak Concurrency
 
@@ -197,18 +218,20 @@ After 3 rounds still incomplete:
 | 1.5 | `boundary_verdict=PASS` |
 | 2 | `max_cyc_projected <= 8` |
 | 3 | `dna_verdict=PASS` |
-| 4 | `ticket_count >= 1` |
-| 4.5 | `review_verdict=PASS` |
-| 5 | `cyc_achieved <= 8` AND `build_passed=true` |
-| 5.V | `verification_verdict=PASS` (independent check) |
-| 6 | `wave_ready=true` AND `final_cyc <= 8` |
+| 4 | `ticket_count >= 1` AND `projected_parent_cyc_after_all <= 8` |
+| 4.5 | `review_verdict=PASS` AND `failed_tickets=[]` |
+| 5 | ALL 40 `phase_5_lane_complete` events in Lamport log AND all epics have `05-completion-report.md` |
+| 6 | `wave_ready=true` AND `final_cyc <= 8` (already embedded in Phase 5 inline) |
+
+**Phase 5 success is lane-gated**: The Phase 5 Orchestrator does not log `phase_5_orchestrator_complete` until all 40 lanes log `phase_5_lane_complete`. Each lane must have 0 stuck epics (or all stuck epics documented in event_log with STUCK_TICKET events).
 
 ### Reference: Phase Orchestrator Templates
 
-All 10 Phase Orchestrator `description` payloads are fully specified in:
-**`docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`**
+All phase worker payloads are fully specified in:
+**`docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md`** (V3.0)
 
-This document contains the exact text to pass to each `spawn_subagent()` call from Tier 1.
+File-lane assignment for Phase 5:
+**`docs/workflow/WAVE7_PHASE5_LANE_ASSIGNMENT.md`** (V1.0)
 
 ---
 
@@ -282,32 +305,25 @@ For a batch of N epics in the same phase:
 
 ---
 
-## Phase-by-Phase Integration Matrix (V2.4 — CORRECTED + DEDICATED MCPs)
+## Phase-by-Phase Integration Matrix (V3.0 — FILE-LANE ARCHITECTURE)
 
-| Phase | Phase Orch Mode | Worker Mode | MCPs Used (3 per phase) | Jane Street KB | Status |
-|-------|----------------|-------------|------------------------|----------------|--------|
-| **0** | `wave-orch-phase0` | `v12-phase0-hotspot` | jcodemunch-mcp, sequential-thinking, **phase-0-hotspot** | ❌ No | ✅ |
-| **1** | `wave-orch-phase1` | `v12-phase1-scope` | jcodemunch-mcp, sequential-thinking, **phase-1-scope** | ❌ No | ✅ |
-| **1.5** | `wave-orch-phase1-5` | `v12-phase1-5-boundary` | jcodemunch-mcp, sequential-thinking, **phase-1-5-boundary** | ❌ No | ✅ |
-| **2** | `wave-orch-phase2` | `v12-phase2-architecture` | jcodemunch-mcp, sequential-thinking, **phase-2-architecture** | ✅ MANDATORY | ✅ |
-| **3** | `wave-orch-phase3` | `v12-phase3-audit` | jcodemunch-mcp, sequential-thinking, **phase-3-audit** | ❌ No | ✅ |
-| **4** | `wave-orch-phase4` | `v12-phase4-tickets` | jcodemunch-mcp, sequential-thinking, **phase-4-tickets** | ❌ No | ✅ |
-| **4.5** | `wave-orch-phase4-5` | `v12-phase4-5-review` | sequential-thinking, **phase-4-tickets** (review) | ✅ MANDATORY | ✅ |
-| **5** | `wave-orch-phase5` | `v12-engineer` | jcodemunch-mcp, sequential-thinking, **phase-5-execute** | ✅ MANDATORY | ✅ |
-| **5.V** | `wave-orch-phase5v` | `v12-phase5-v-verify` | jcodemunch-mcp, sequential-thinking, **phase-5-verify** | ✅ MANDATORY | ✅ |
-| **6** | `wave-orch-phase6` | `v12-phase6-review` | jcodemunch-mcp, sequential-thinking, **phase-6-review** | ✅ MANDATORY | ✅ |
+| Phase | Orch Mode | Worker Mode(s) | Spawn Mechanism | Jane Street KB | Parallelism |
+|-------|-----------|----------------|-----------------|----------------|-------------|
+| **0** | `wave-orch-phase0` | `v12-phase0-hotspot` | `spawn_subagent("general")` 20/turn | ❌ No | ✅ Full parallel |
+| **1** | `wave-orch-phase1` | `v12-phase1-scope` | `spawn_subagent("general")` 20/turn | ❌ No | ✅ Full parallel |
+| **1.5** | `wave-orch-phase1-5` | `v12-phase1-5-boundary` | `spawn_subagent("general")` 20/turn | ❌ No | ✅ Full parallel |
+| **2** | `wave-orch-phase2` | `v12-phase2-architecture` | `start_subtask` sequential, 5 lanes | ✅ MANDATORY | ⚡ 5-lane parallel |
+| **3** | `wave-orch-phase3` | `v12-phase3-audit` | `start_subtask` sequential, 6 lanes | ❌ No | ⚡ 6-lane parallel |
+| **4** | `wave-orch-phase4` | `v12-phase4-tickets` | `spawn_subagent("general")` 20/turn | ❌ No | ✅ Full parallel |
+| **4.5** | `wave-orch-phase4-5` | `v12-phase4-5-review` | `start_subtask` sequential | ✅ Hardcoded | 🔄 Sequential |
+| **5** | `wave-orch-phase5` | `v12-p5-ticket` + `v12-p5-verify` + `v12-p6-review` | `start_subtask` sequential **within each of 40 file-lanes** | ✅ MANDATORY | ⚡ **40-lane parallel** |
+| **6** | _(inline in Phase 5)_ | `v12-p6-review` | `start_subtask` per-epic (within lane) | ✅ MANDATORY | _(part of Phase 5 lane)_ |
 
-**Dedicated Phase MCPs** (registered in `.bob/mcp.linux.json`):
-Each phase has its own FastMCP Python server (`scripts/phase_N_*_mcp*.py`) providing phase-specific
-tooling — Jane Street violation loading, context preparation, artifact coordination. These are in
-ADDITION to `jcodemunch-mcp` and `sequential-thinking`, not replacements.
+**Phase 5 is the parallelism apex**: 40 independent file-lane sessions run concurrently. Within each lane, the ticket → verify → review cycle is strictly sequential. This prevents any two agents from writing the same `.cs` file simultaneously.
 
-**Chain Model (V2.4)**: Each Phase Orchestrator uses `start_subtask` to hand off to the next phase
-orchestrator, forming a sequential chain. The final Phase 6 Orchestrator reports back to the
-top-level `autonomous-refactor` session.
+**Phase 6 is now inline**: `v12-p6-review` runs per-epic at the end of each lane, not as a separate phase sweep. After all 40 lanes complete, Tier 1 runs a final `python3 scripts/complexity_audit.py` gate and logs `wave_7_complete`.
 
-**CRITICAL**: All phases use **custom modes** (wave-orch-phaseN → v12-phaseN-*), NOT generic modes!
-**V2.4 NOTE**: 3-tier model — Tier 1 (autonomous-refactor) → Tier 2 (wave-orch-phaseN) → Tier 3 (v12-phaseN-*)
+**CRITICAL**: All phases use **custom modes**, NOT generic modes! See `.bob/custom_modes.yaml`.
 
 ---
 

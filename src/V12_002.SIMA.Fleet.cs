@@ -67,33 +67,51 @@ namespace NinjaTrader.NinjaScript.Strategies
             catch (Exception ex)
             {
                 Print(string.Format("[PUMP] Submit FAILED for {0} ({1}): {2}", fleetEntryName, acct.Name, ex.Message));
-                if (!syncCleared)
-                    ClearDispatchSyncPending(expectedKey);
-                if (reservedDelta != 0)
-                    AddExpectedPositionDeltaLocked(expectedKey, -reservedDelta);
-                RollbackFleetDispatchState(fleetEntryName);
+                HandleFleetSlotCatch(fleetEntryName, expectedKey, reservedDelta, syncCleared);
             }
             finally
             {
-                if (poolSlotIndex >= 0)
-                    _photonPool.ReleaseByIndex(poolSlotIndex);
-                Interlocked.Decrement(ref _pendingFleetDispatchCount);
-
-                // REAPER-EXPANSION Ticket 2: Circuit breaker reset logic
-                int currentCount = Volatile.Read(ref _pendingFleetDispatchCount);
-                TryResetCircuitBreakerIfBelow(currentCount);
-
-                if ((_photonDispatchRing != null && !_photonDispatchRing.IsEmpty) || !_pendingFleetDispatches.IsEmpty)
-                    try
-                    {
-                        TriggerCustomEvent(o => PumpFleetDispatch(), null);
-                    }
-                    catch (Exception ex)
-                    {
-                        if (_diagFleet)
-                            Print("[FLEET_CATCH] ProcessFleetSlot pump prime failed: " + ex.Message);
-                    }
+                HandleFleetSlotFinally(poolSlotIndex);
             }
+        }
+
+        /// <summary>
+        /// W7-062 T1: Catch-block recovery logic for ProcessFleetSlot.
+        /// </summary>
+        private void HandleFleetSlotCatch(
+            string fleetEntryName,
+            string expectedKey,
+            int reservedDelta,
+            bool syncCleared
+        )
+        {
+            if (!syncCleared)
+                ClearDispatchSyncPending(expectedKey);
+            if (reservedDelta != 0)
+                AddExpectedPositionDeltaLocked(expectedKey, -reservedDelta);
+            RollbackFleetDispatchState(fleetEntryName);
+        }
+
+        /// <summary>
+        /// W7-062 T2: Finally-block cleanup and re-trigger for ProcessFleetSlot.
+        /// </summary>
+        private void HandleFleetSlotFinally(int poolSlotIndex)
+        {
+            if (poolSlotIndex >= 0)
+                _photonPool.ReleaseByIndex(poolSlotIndex);
+            Interlocked.Decrement(ref _pendingFleetDispatchCount);
+            int currentCount = Volatile.Read(ref _pendingFleetDispatchCount);
+            TryResetCircuitBreakerIfBelow(currentCount);
+            if ((_photonDispatchRing != null && !_photonDispatchRing.IsEmpty) || !_pendingFleetDispatches.IsEmpty)
+                try
+                {
+                    TriggerCustomEvent(o => PumpFleetDispatch(), null);
+                }
+                catch (Exception ex)
+                {
+                    if (_diagFleet)
+                        Print("[FLEET_CATCH] ProcessFleetSlot pump prime failed: " + ex.Message);
+                }
         }
 
         private bool ValidateDispatchTimestamp(
@@ -190,7 +208,16 @@ namespace NinjaTrader.NinjaScript.Strategies
             acct.Submit(submitOrders);
             ClearDispatchSyncPending(expectedKey);
             syncCleared = true;
+            UpdateFleetFsmState(fleetEntryName);
+            RegisterOrderIdsToFsmKey(fleetEntryName, orders, orderCount);
+            Print(string.Format("[PUMP] Submitted {0} orders for {1} | {2}", orderCount, fleetEntryName, acct.Name));
+        }
 
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private void UpdateFleetFsmState(string fleetEntryName)
+        {
             FollowerBracketFSM pFsm;
             if (
                 _followerBrackets.TryGetValue(fleetEntryName, out pFsm)
@@ -201,7 +228,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 pFsm.State = FollowerBracketState.Submitted;
                 pFsm.LastUpdateUtc = DateTime.UtcNow;
             }
+        }
 
+        private void RegisterOrderIdsToFsmKey(string fleetEntryName, Order[] orders, int orderCount)
+        {
             FollowerBracketFSM fsm;
             if (_followerBrackets.TryGetValue(fleetEntryName, out fsm))
             {
@@ -212,8 +242,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                         _orderIdToFsmKey[ord.OrderId] = fleetEntryName;
                 }
             }
-
-            Print(string.Format("[PUMP] Submitted {0} orders for {1} | {2}", orderCount, fleetEntryName, acct.Name));
         }
 
         private void RollbackFleetDispatchState(string fleetEntryName)
@@ -286,26 +314,54 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void DrainAllDispatchQueuesOnAbort()
         {
-            // v28.0: drain Photon ring FIRST with sideband-aware delta rollback + pool release
+            DrainPhotonRingOnAbort();
+            DrainLegacyDispatchQueueOnAbort();
+
+            // REAPER-EXPANSION P0 FIX: Reset circuit breaker after drain completes
+            // After flatten drains both queues to zero, CB must reset to accept future dispatches
+            int finalCount = Volatile.Read(ref _pendingFleetDispatchCount);
+            TryResetCircuitBreakerIfBelow(finalCount);
+        }
+
+        /// <summary>
+        /// W7-063 T1: Drain Photon ring with sideband-aware delta rollback and pool release.
+        /// Cold abort path - NoInlining to avoid polluting hot-path JIT.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void DrainPhotonRingOnAbort()
+        {
             FleetDispatchSlot abortSlot;
             while (_photonDispatchRing != null && _photonDispatchRing.TryDequeue(out abortSlot))
+                ProcessPhotonAbortSlot(abortSlot);
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void ProcessPhotonAbortSlot(FleetDispatchSlot abortSlot)
+        {
+            TrackPhotonDequeue();
+            int _sbIdx = abortSlot.PoolSlotIndex;
+            string _expectedKey =
+                (_sbIdx >= 0 && _sbIdx < _photonSideband.Length) ? _photonSideband[_sbIdx].ExpectedKey : null;
+            if (abortSlot.ReservedDelta != 0 && _expectedKey != null)
+                AddExpectedPositionDeltaLocked(_expectedKey, -abortSlot.ReservedDelta);
+            if (_expectedKey != null)
+                ClearDispatchSyncPending(_expectedKey);
+            if (_sbIdx >= 0)
             {
-                TrackPhotonDequeue();
-                int _sbIdx = abortSlot.PoolSlotIndex;
-                string _expectedKey =
-                    (_sbIdx >= 0 && _sbIdx < _photonSideband.Length) ? _photonSideband[_sbIdx].ExpectedKey : null;
-                if (abortSlot.ReservedDelta != 0 && _expectedKey != null)
-                    AddExpectedPositionDeltaLocked(_expectedKey, -abortSlot.ReservedDelta);
-                if (_expectedKey != null)
-                    ClearDispatchSyncPending(_expectedKey);
-                if (_sbIdx >= 0)
-                {
-                    _photonPool.ReleaseByIndex(_sbIdx);
-                    if (_sbIdx < _photonSideband.Length)
-                        _photonSideband[_sbIdx] = default(FleetDispatchSideband);
-                }
-                Interlocked.Decrement(ref _pendingFleetDispatchCount);
+                _photonPool.ReleaseByIndex(_sbIdx);
+                if (_sbIdx < _photonSideband.Length)
+                    _photonSideband[_sbIdx] = default(FleetDispatchSideband);
             }
+            Interlocked.Decrement(ref _pendingFleetDispatchCount);
+        }
+
+        /// <summary>
+        /// W7-063 T2: Drain legacy ConcurrentQueue with delta rollback.
+        /// Cold abort path - NoInlining to avoid polluting hot-path JIT.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void DrainLegacyDispatchQueueOnAbort()
+        {
             // Then drain legacy ConcurrentQueue
             FleetDispatchRequest stale;
             while (_pendingFleetDispatches.TryDequeue(out stale))
@@ -315,24 +371,21 @@ namespace NinjaTrader.NinjaScript.Strategies
                 ClearDispatchSyncPending(stale.ExpectedKey);
                 Interlocked.Decrement(ref _pendingFleetDispatchCount);
             }
-
-            // REAPER-EXPANSION P0 FIX: Reset circuit breaker after drain completes
-            // After flatten drains both queues to zero, CB must reset to accept future dispatches
-            int finalCount = Volatile.Read(ref _pendingFleetDispatchCount);
-            TryResetCircuitBreakerIfBelow(finalCount);
         }
 
         /// <summary>
         /// V12 Phase 7 [T13]: XorShadow integrity verification for Photon ring slot.
         /// Returns true if valid, false if corrupted. Handles full rollback on failure.
         /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
         private bool VerifyPhotonSlotIntegrity(ref FleetDispatchSlot _ringSlot, FleetDispatchSideband _sb, int _sbIdx)
         {
-            // XorShadow integrity verification (defense-in-depth, structurally stronger than CRC16)
             ulong _stored = _ringSlot.Shadow;
-            _ringSlot.Shadow = 0UL; // zero before recompute (compute excludes Shadow by construction, but this is belt-and-braces)
+            _ringSlot.Shadow = 0UL;
             ulong _recomputed = ComputeFleetDispatchShadow(ref _ringSlot, _photonShadowSalt);
-            _ringSlot.Shadow = _stored; // restore for downstream logging
+            _ringSlot.Shadow = _stored;
             if (_recomputed != _stored)
             {
                 TrackPhotonCrcFailure();
@@ -344,48 +397,69 @@ namespace NinjaTrader.NinjaScript.Strategies
                         _sb.FleetEntryName
                     )
                 );
-                if (_ringSlot.ReservedDelta != 0 && _sb.ExpectedKey != null)
-                    AddExpectedPositionDeltaLocked(_sb.ExpectedKey, -_ringSlot.ReservedDelta);
-                if (_sb.ExpectedKey != null)
-                    ClearDispatchSyncPending(_sb.ExpectedKey);
-                if (_sb.FleetEntryName != null)
-                {
-                    activePositions.TryRemove(_sb.FleetEntryName, out _);
-                    entryOrders.TryRemove(_sb.FleetEntryName, out _);
-                    stopOrders.TryRemove(_sb.FleetEntryName, out _);
-                    for (int tNum = 1; tNum <= 5; tNum++)
-                    {
-                        var td = GetTargetOrdersDictionary(tNum);
-                        if (td != null)
-                            td.TryRemove(_sb.FleetEntryName, out _);
-                    }
-                    _followerBrackets.TryRemove(_sb.FleetEntryName, out _);
-                }
-                if (_sbIdx >= 0)
-                {
-                    _photonPool.ReleaseByIndex(_sbIdx);
-                    if (_sbIdx < _photonSideband.Length)
-                        _photonSideband[_sbIdx] = default(FleetDispatchSideband);
-                }
-                Interlocked.Decrement(ref _pendingFleetDispatchCount);
-
-                // REAPER-EXPANSION P0 FIX: Circuit breaker reset logic (integrity failure path)
-                int currentCount = Volatile.Read(ref _pendingFleetDispatchCount);
-                TryResetCircuitBreakerIfBelow(currentCount);
-
-                if (!_photonDispatchRing.IsEmpty || !_pendingFleetDispatches.IsEmpty)
-                    try
-                    {
-                        TriggerCustomEvent(o => PumpFleetDispatch(), null);
-                    }
-                    catch (Exception ex)
-                    {
-                        if (_diagFleet)
-                            Print("[FLEET_CATCH] ValidateDispatchTimestamp pump prime failed: " + ex.Message);
-                    }
+                RollbackPhotonStateOnIntegrityFailure(ref _ringSlot, _sb, _sbIdx);
+                PumpFleetDispatchIfPending();
                 return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// W7-101 T1: Failure-path state rollback on Photon integrity failure.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void RollbackPhotonStateOnIntegrityFailure(
+            ref FleetDispatchSlot _ringSlot,
+            FleetDispatchSideband _sb,
+            int _sbIdx
+        )
+        {
+            if (_sb.ExpectedKey != null)
+            {
+                if (_ringSlot.ReservedDelta != 0)
+                    AddExpectedPositionDeltaLocked(_sb.ExpectedKey, -_ringSlot.ReservedDelta);
+                ClearDispatchSyncPending(_sb.ExpectedKey);
+            }
+            if (_sb.FleetEntryName != null)
+            {
+                activePositions.TryRemove(_sb.FleetEntryName, out _);
+                entryOrders.TryRemove(_sb.FleetEntryName, out _);
+                stopOrders.TryRemove(_sb.FleetEntryName, out _);
+                for (int tNum = 1; tNum <= 5; tNum++)
+                {
+                    var td = GetTargetOrdersDictionary(tNum);
+                    if (td != null)
+                        td.TryRemove(_sb.FleetEntryName, out _);
+                }
+                _followerBrackets.TryRemove(_sb.FleetEntryName, out _);
+            }
+            if (_sbIdx >= 0)
+            {
+                _photonPool.ReleaseByIndex(_sbIdx);
+                if (_sbIdx < _photonSideband.Length)
+                    _photonSideband[_sbIdx] = default(FleetDispatchSideband);
+            }
+        }
+
+        /// <summary>
+        /// W7-101 T2: Counter management, circuit-breaker reset, and conditional dispatch pump-prime.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void PumpFleetDispatchIfPending()
+        {
+            Interlocked.Decrement(ref _pendingFleetDispatchCount);
+            int currentCount = Volatile.Read(ref _pendingFleetDispatchCount);
+            TryResetCircuitBreakerIfBelow(currentCount);
+            if (!_photonDispatchRing.IsEmpty || !_pendingFleetDispatches.IsEmpty)
+                try
+                {
+                    TriggerCustomEvent(o => PumpFleetDispatch(), null);
+                }
+                catch (Exception ex)
+                {
+                    if (_diagFleet)
+                        Print("[FLEET_CATCH] ValidateDispatchTimestamp pump prime failed: " + ex.Message);
+                }
         }
 
         /// <summary>
@@ -587,26 +661,87 @@ namespace NinjaTrader.NinjaScript.Strategies
             StringBuilder dispatchLog
         )
         {
-            if (brokerFlat && !hasActiveFsm && !hasActivePosition && !hasDispatchPending)
+            if (IsAccountTrulyFlat(brokerFlat, hasActiveFsm, hasActivePosition, hasDispatchPending))
             {
-                // Truly stale: broker flat, no FSM, no position, no dispatch in flight. No-op (nothing to reset).
-                dispatchLog.AppendLine(
-                    string.Format(
-                        "[DISPATCH] H-13: {0} broker flat, no FSM/position/dispatch -- no action",
-                        accountName
-                    )
-                );
+                LogHealthCheck_TrulyFlat(accountName, dispatchLog);
             }
-            else if (brokerFlat && (hasActiveFsm || hasActivePosition || hasDispatchPending))
+            else if (brokerFlat && HasAnyActiveState(hasActiveFsm, hasActivePosition, hasDispatchPending))
             {
-                dispatchLog.AppendLine(
-                    string.Format(
-                        "[DISPATCH] H-13 SKIP: {0} Flat but {1} -- not resetting",
-                        accountName,
-                        hasActiveFsm ? "FSM active" : (hasDispatchPending ? "dispatch pending" : "activePos present")
-                    )
-                );
+                string reason = BuildHealthCheckSkipReason(hasActiveFsm, hasDispatchPending, hasActivePosition);
+                LogHealthCheck_FlatWithActiveState(accountName, reason, dispatchLog);
             }
+        }
+
+        /// <summary>
+        /// W7-001 T1: Pure predicate -- account is broker-flat with zero active state.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private static bool IsAccountTrulyFlat(
+            bool brokerFlat,
+            bool hasActiveFsm,
+            bool hasActivePosition,
+            bool hasDispatchPending
+        )
+        {
+            return brokerFlat && !hasActiveFsm && !hasActivePosition && !hasDispatchPending;
+        }
+
+        /// <summary>
+        /// W7-001 T2: Pure predicate -- at least one of FSM / position / dispatch-pending is active.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private static bool HasAnyActiveState(bool hasActiveFsm, bool hasActivePosition, bool hasDispatchPending)
+        {
+            return hasActiveFsm || hasActivePosition || hasDispatchPending;
+        }
+
+        /// <summary>
+        /// W7-001 T3: String label selector -- human-readable health-check skip reason.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private static string BuildHealthCheckSkipReason(
+            bool hasActiveFsm,
+            bool hasDispatchPending,
+            bool hasActivePosition
+        )
+        {
+            if (hasActiveFsm)
+                return "FSM active";
+            if (hasDispatchPending)
+                return "dispatch pending";
+            return "activePos present";
+        }
+
+        /// <summary>
+        /// W7-001 T4: Cold-path log writer -- truly flat, no action required.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void LogHealthCheck_TrulyFlat(string accountName, StringBuilder dispatchLog)
+        {
+            dispatchLog.AppendLine(
+                string.Format("[DISPATCH] H-13: {0} broker flat, no FSM/position/dispatch -- no action", accountName)
+            );
+        }
+
+        /// <summary>
+        /// W7-001 T5: Cold-path log writer -- flat but active state present, skip reset.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void LogHealthCheck_FlatWithActiveState(
+            string accountName,
+            string skipReason,
+            StringBuilder dispatchLog
+        )
+        {
+            dispatchLog.AppendLine(
+                string.Format("[DISPATCH] H-13 SKIP: {0} Flat but {1} -- not resetting", accountName, skipReason)
+            );
         }
 
         /// <summary>

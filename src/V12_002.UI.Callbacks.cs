@@ -286,12 +286,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // Build 1102Z: UI Safety Fence -- Ignore clicks outside the actual price plotting area
             // This prevents trades from triggering when clicking on the side panel, price axis, or scrollbars.
-            if (
-                mouseInPanel.X < 0
-                || mouseInPanel.X > ChartPanel.W
-                || mouseInPanel.Y < 0
-                || mouseInPanel.Y > ChartPanel.H
-            )
+            if (!IsClickWithinChartBounds(mouseInPanel, ChartPanel.W, ChartPanel.H))
             {
                 return false;
             }
@@ -305,27 +300,19 @@ namespace NinjaTrader.NinjaScript.Strategies
             // The actual price plotting area is approximately 67% of total panel height
             double effectivePriceHeight = panelHeight * 0.667;
 
-            // Clamp Y to valid range
+            // Coordinate conversion: clamp + linear interpolation (EPIC-W7-046 T2)
             double yInPanel = mouseInPanel.Y;
-            if (yInPanel < 0)
-                yInPanel = 0;
-            if (yInPanel > effectivePriceHeight)
-                yInPanel = effectivePriceHeight;
-
-            // Convert: Y=0 is top (maxPrice), Y=effectivePriceHeight is bottom (minPrice)
-            double yRatio = yInPanel / effectivePriceHeight;
-            clickPrice = maxPrice - (yRatio * priceRange);
+            clickPrice = ConvertYCoordToPrice(yInPanel, effectivePriceHeight, maxPrice, priceRange);
 
             string modeLabel = momoActive ? "MOMO" : "RMA";
             Print(
                 string.Format(
-                    "{0} v12.4 CLICK: x={1:F1}, y={2:F1}, w={3:F1}, h={4:F1}, ratio={5:F3}, price={6:F2} (Market={7:F2})",
+                    "{0} v12.4 CLICK: x={1:F1}, y={2:F1}, w={3:F1}, h={4:F1}, price={5:F2} (Market={6:F2})",
                     modeLabel,
                     mouseInPanel.X,
                     mouseInPanel.Y,
                     ChartPanel.W,
                     panelHeight,
-                    yRatio,
                     clickPrice,
                     currentPrice
                 )
@@ -335,6 +322,46 @@ namespace NinjaTrader.NinjaScript.Strategies
             clickPrice = Instrument.MasterInstrument.RoundToTickSize(clickPrice);
 
             // Validate price is within chart range
+            if (!ValidatePriceInRange(clickPrice, minPrice, maxPrice, priceRange, modeLabel))
+                return false;
+
+            return true;
+        }
+
+        // Coordinate conversion: clamps yInPanel to [0, effectivePriceHeight], then converts Y pixel to price
+        // via linear interpolation. Y=0 => maxPrice (top); Y=effectivePriceHeight => minPrice (bottom).
+        // Extracted from HandleChartClick_ConvertPrice (EPIC-W7-046 T2)
+        private double ConvertYCoordToPrice(
+            double yInPanel,
+            double effectivePriceHeight,
+            double maxPrice,
+            double priceRange
+        )
+        {
+            if (yInPanel < 0)
+                yInPanel = 0;
+            if (yInPanel > effectivePriceHeight)
+                yInPanel = effectivePriceHeight;
+            return maxPrice - (yInPanel / effectivePriceHeight) * priceRange;
+        }
+
+        // Build 1102Z: UI Safety Fence predicate -- extracted from HandleChartClick_ConvertPrice (EPIC-W7-046 T1)
+        // Returns true if mouseInPanel is within [0..panelW] x [0..panelH]; false otherwise.
+        private bool IsClickWithinChartBounds(Point mouseInPanel, double panelW, double panelH)
+        {
+            return !(mouseInPanel.X < 0 || mouseInPanel.X > panelW || mouseInPanel.Y < 0 || mouseInPanel.Y > panelH);
+        }
+
+        // Post-round range guard -- returns false (with diagnostic Print) if clickPrice falls outside
+        // [minPrice - priceRange, maxPrice + priceRange]. Extracted from HandleChartClick_ConvertPrice (EPIC-W7-046 T3)
+        private bool ValidatePriceInRange(
+            double clickPrice,
+            double minPrice,
+            double maxPrice,
+            double priceRange,
+            string modeLabel
+        )
+        {
             if (clickPrice < minPrice - priceRange || clickPrice > maxPrice + priceRange)
             {
                 Print(
@@ -348,7 +375,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
                 return false;
             }
-
             return true;
         }
 
@@ -387,7 +413,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             Print("V12.43: RMA auto-deactivated after entry (lightweight signal, no CONFIG clobber)");
         }
 
-        // [Phase7-UI T-A] OnKeyDown residual dispatcher (CYC 3) - Command Pattern with O(1) lookup
+        // [Phase7-UI T-A] OnKeyDown dispatcher (CYC 2) - Command Pattern with O(1) lookup
+        // Extracted: ResolveModifierGroup (EPIC-W7-045 T1), DispatchModifierAction (EPIC-W7-045 T2)
         private void OnKeyDown(object sender, KeyEventArgs e)
         {
             // Basic hotkeys (no modifiers) - O(1) dictionary lookup
@@ -398,31 +425,39 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
             }
 
-            // T1 Actions (1 + letter)
-            if (Keyboard.IsKeyDown(Key.D1) || Keyboard.IsKeyDown(Key.NumPad1))
+            var group = ResolveModifierGroup(e);
+            if (group != null)
             {
-                HandleTargetAction("T1", e.Key);
+                DispatchModifierAction(group, e.Key);
                 e.Handled = true;
-                return;
-            }
-
-            // T2 Actions (2 + letter)
-            if (Keyboard.IsKeyDown(Key.D2) || Keyboard.IsKeyDown(Key.NumPad2))
-            {
-                HandleTargetAction("T2", e.Key);
-                e.Handled = true;
-                return;
-            }
-
-            // Runner Actions (3 + letter)
-            if (Keyboard.IsKeyDown(Key.D3) || Keyboard.IsKeyDown(Key.NumPad3))
-            {
-                HandleRunnerAction(e.Key);
-                e.Handled = true;
-                return;
             }
 
             // RMA uses Shift+Click (R conflicts with NT search, Ctrl conflicts with chart drag)
+        }
+
+        // Isolates Keyboard.IsKeyDown modifier-key polling from dispatch (EPIC-W7-045 T1)
+        // Returns "T1", "T2", "Runner", or null if no modifier digit is held.
+        private static string ResolveModifierGroup(KeyEventArgs e)
+        {
+            if (Keyboard.IsKeyDown(Key.D1) || Keyboard.IsKeyDown(Key.NumPad1))
+                return "T1";
+            if (Keyboard.IsKeyDown(Key.D2) || Keyboard.IsKeyDown(Key.NumPad2))
+                return "T2";
+            if (Keyboard.IsKeyDown(Key.D3) || Keyboard.IsKeyDown(Key.NumPad3))
+                return "Runner";
+            return null;
+        }
+
+        // Routes dispatch to HandleTargetAction / HandleRunnerAction (EPIC-W7-045 T2)
+        // Caller (OnKeyDown) owns e.Handled; this helper owns only business routing.
+        private void DispatchModifierAction(string group, Key key)
+        {
+            if (group == "T1")
+                HandleTargetAction("T1", key);
+            else if (group == "T2")
+                HandleTargetAction("T2", key);
+            else
+                HandleRunnerAction(key);
         }
 
         // [Phase7-UI T-A] Helper: Route T1/T2 target actions (CYC 6)

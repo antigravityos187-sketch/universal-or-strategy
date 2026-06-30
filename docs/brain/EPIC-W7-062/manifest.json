@@ -1,7 +1,8 @@
 {
   "epic_id": "EPIC-W7-062",
   "wave": 7,
-  "status": "in_progress",
+  "status": "complete",
+  "final_cyc": 3,
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -31,6 +32,49 @@
       "output": "03-audit-report.md",
       "dna_verdict": "PASS",
       "violations": []
+    },
+    "phase_4": {
+      "name": "Ticket Generation",
+      "status": "completed",
+      "output": "04-tickets.md",
+      "ticket_count": 2,
+      "projected_parent_cyc_after_all": 3,
+      "max_cyc_projected": 8,
+      "tickets": [
+        "EPIC-W7-062-T1",
+        "EPIC-W7-062-T2"
+      ]
+    },
+    "phase_4_5": {
+      "name": "Ticket Review (Jane Street Validation Gate)",
+      "status": "completed",
+      "output": "04-5-ticket-review.md",
+      "review_verdict": "PASS",
+      "failed_tickets": []
+    },
+    "phase_5": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:18:14Z",
+      "final_cyc": 3,
+      "wave_ready": true,
+      "build_passed": true,
+      "helpers_extracted": [
+        "HandleFleetSlotCatch",
+        "HandleFleetSlotFinally"
+      ]
+    },
+    "phase_5_ticket_1": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:18:14Z"
+    },
+    "phase_5_ticket_2": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:18:14Z"
+    },
+    "phase_6": {
+      "status": "completed"
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-01T00:00:00Z"
 }

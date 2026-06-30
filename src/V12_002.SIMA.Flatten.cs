@@ -198,24 +198,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (order.Instrument.FullName != Instrument.FullName)
                     continue;
 
-                bool isTerminal =
-                    order.OrderState == OrderState.Cancelled
-                    || order.OrderState == OrderState.CancelPending
-                    || order.OrderState == OrderState.CancelSubmitted
-                    || order.OrderState == OrderState.Filled
-                    || order.OrderState == OrderState.Rejected;
+                bool isTerminal = IsTerminalOrderState(order.OrderState);
                 if (isTerminal)
                     continue;
 
                 if (item.ZombieSweepOnly)
                 {
-                    bool isZombieTarget =
-                        order.Name.StartsWith("EMERGENCY_STOP_", StringComparison.OrdinalIgnoreCase)
-                        || order.Name.StartsWith("T1_", StringComparison.OrdinalIgnoreCase)
-                        || order.Name.StartsWith("T2_", StringComparison.OrdinalIgnoreCase)
-                        || order.Name.StartsWith("T3_", StringComparison.OrdinalIgnoreCase)
-                        || order.Name.StartsWith("T4_", StringComparison.OrdinalIgnoreCase)
-                        || order.Name.StartsWith("T5_", StringComparison.OrdinalIgnoreCase);
+                    bool isZombieTarget = IsZombieTargetOrder(order.Name);
                     if (!isZombieTarget)
                         continue;
                 }
@@ -523,6 +512,19 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             Account[] snapshot = Account.All.ToArray();
             int enqueued = 0;
+            EnqueueFleetAccountFlattenOps(snapshot, ref enqueued);
+
+            bool masterCovered = IsFleetAccount(Account);
+            EnqueueMasterAccountFallbackFlatten(masterCovered, ref enqueued);
+
+            Print(string.Format("[SIMA] Enqueued {0} account(s) for chunked close", enqueued));
+
+            TriggerOrFallbackFlattenExecution();
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void EnqueueFleetAccountFlattenOps(Account[] snapshot, ref int enqueued)
+        {
             foreach (Account acct in snapshot)
             {
                 if (!IsFleetAccount(acct))
@@ -540,9 +542,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
                 enqueued++;
             }
+        }
 
-            // Master fallback
-            bool masterCovered = IsFleetAccount(Account);
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void EnqueueMasterAccountFallbackFlatten(bool masterCovered, ref int enqueued)
+        {
             if (!masterCovered && Account.Positions.Count > 0)
             {
                 _pendingFlattenOps.Enqueue(
@@ -557,9 +561,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
                 enqueued++;
             }
+        }
 
-            Print(string.Format("[SIMA] Enqueued {0} account(s) for chunked close", enqueued));
-
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void TriggerOrFallbackFlattenExecution()
+        {
             if (!_pendingFlattenOps.IsEmpty)
             {
                 try
@@ -586,6 +592,31 @@ namespace NinjaTrader.NinjaScript.Strategies
                 isFlattenRunning = false;
                 Print("[SIMA] ====== GLOBAL POSITIONS CLOSE COMPLETE (no accounts) ======");
             }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private static bool IsTerminalOrderState(OrderState state)
+        {
+            return state == OrderState.Cancelled
+                || state == OrderState.CancelPending
+                || state == OrderState.CancelSubmitted
+                || state == OrderState.Filled
+                || state == OrderState.Rejected;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private static bool IsZombieTargetOrder(string orderName)
+        {
+            return orderName.StartsWith("EMERGENCY_STOP_", StringComparison.OrdinalIgnoreCase)
+                || orderName.StartsWith("T1_", StringComparison.OrdinalIgnoreCase)
+                || orderName.StartsWith("T2_", StringComparison.OrdinalIgnoreCase)
+                || orderName.StartsWith("T3_", StringComparison.OrdinalIgnoreCase)
+                || orderName.StartsWith("T4_", StringComparison.OrdinalIgnoreCase)
+                || orderName.StartsWith("T5_", StringComparison.OrdinalIgnoreCase);
         }
 
         #endregion

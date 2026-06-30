@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,6 +67,47 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// [W7-036/W7-133] Pure arithmetic: direction-aware EntryPrice +/- offsetPoints, rounded to tick size.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private double ComputeBreakevenStopPrice(PositionInfo pos, double offsetPoints)
+        {
+            double price =
+                pos.Direction == MarketPosition.Long ? pos.EntryPrice + offsetPoints : pos.EntryPrice - offsetPoints;
+            return Instrument.MasterInstrument.RoundToTickSize(price);
+        }
+
+        /// <summary>
+        /// [W7-036/W7-133] Returns true when newStopPrice is a profit-protecting improvement for pos.Direction.
+        /// Long: newStopPrice must be above current stop. Short: newStopPrice must be below current stop.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool IsBetterStop(PositionInfo pos, double newStopPrice)
+        {
+            return (pos.Direction == MarketPosition.Long && newStopPrice > pos.CurrentStopPrice)
+                || (pos.Direction == MarketPosition.Short && newStopPrice < pos.CurrentStopPrice);
+        }
+
+        /// <summary>
+        /// [W7-036/W7-133] Complete follower breakeven path: improvement guard -> UpdateStopOrder -> flags -> log.
+        /// </summary>
+        private void ApplyFollowerBreakeven(
+            string entryName,
+            PositionInfo pos,
+            double newStopPrice,
+            double offsetPoints
+        )
+        {
+            if (!IsBetterStop(pos, newStopPrice))
+                return;
+
+            UpdateStopOrder(entryName, pos, newStopPrice, 1);
+            pos.ManualBreakevenTriggered = true;
+            MarkStickyDirty();
+            Print(string.Format("BE+{0} MOVED (follower): {1} Stop -> {2:F2}", offsetPoints, entryName, newStopPrice));
+        }
+
+        /// <summary>
         /// [Phase7-M2-A] Helper: Processes single position breakeven logic.
         /// Handles Master/Follower routing and ARM GUARD logic (V12.12).
         /// Zero new heap allocations (hot-path critical).
@@ -77,50 +119,24 @@ namespace NinjaTrader.NinjaScript.Strategies
             double lastKnownPrice
         )
         {
-            double newStopPrice;
-            if (pos.Direction == MarketPosition.Long)
-                newStopPrice = pos.EntryPrice + offsetPoints;
-            else
-                newStopPrice = pos.EntryPrice - offsetPoints;
-
-            // Round to tick size
-            newStopPrice = Instrument.MasterInstrument.RoundToTickSize(newStopPrice);
+            double newStopPrice = ComputeBreakevenStopPrice(pos, offsetPoints);
 
             // [Build 1108.002-HF1] Master-drives-followers: followers skip priceCleared gate.
-            // BE is an explicit manual action -- threshold logic protects the master only.
-            // UpdateStopOrder handles IsFollower routing (account-level cancel+resubmit).
             if (pos.IsFollower)
             {
-                bool isBetterF =
-                    (pos.Direction == MarketPosition.Long && newStopPrice > pos.CurrentStopPrice)
-                    || (pos.Direction == MarketPosition.Short && newStopPrice < pos.CurrentStopPrice);
-                if (isBetterF)
-                {
-                    UpdateStopOrder(entryName, pos, newStopPrice, 1);
-                    pos.ManualBreakevenTriggered = true;
-                    MarkStickyDirty();
-                    Print(
-                        string.Format(
-                            "BE+{0} MOVED (follower): {1} Stop -> {2:F2}",
-                            offsetPoints,
-                            entryName,
-                            newStopPrice
-                        )
-                    );
-                }
+                ApplyFollowerBreakeven(entryName, pos, newStopPrice, offsetPoints);
                 return;
             }
 
             // [V12.12] ARM GUARD: If price hasn't cleared the BE threshold yet, arm instead of executing.
-            // ManageTrailingStops() will call UpdateStopOrder when price crosses the threshold.
             if (lastKnownPrice <= 0)
             {
                 Print(string.Format("[BE_ABORT] {0}: Price data stale (0). Waiting for next tick.", entryName));
                 return;
             }
-            double referencePrice = lastKnownPrice;
+
             bool priceCleared =
-                pos.Direction == MarketPosition.Long ? referencePrice >= newStopPrice : referencePrice <= newStopPrice;
+                pos.Direction == MarketPosition.Long ? lastKnownPrice >= newStopPrice : lastKnownPrice <= newStopPrice;
 
             if (!priceCleared)
             {
@@ -135,12 +151,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
             }
 
-            // Only move stop if it's a better price (profit-protecting direction)
-            bool isBetter =
-                (pos.Direction == MarketPosition.Long && newStopPrice > pos.CurrentStopPrice)
-                || (pos.Direction == MarketPosition.Short && newStopPrice < pos.CurrentStopPrice);
-
-            if (!isBetter)
+            if (!IsBetterStop(pos, newStopPrice))
             {
                 Print(
                     string.Format(
@@ -155,10 +166,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // V12.10: Use UpdateStopOrder for proper Master/Follower routing
-            // (ChangeOrder only works for Master -- followers were silently skipped)
             UpdateStopOrder(entryName, pos, newStopPrice, 1);
             pos.ManualBreakevenTriggered = true;
-            MarkStickyDirty(); // Build 1103: Persist breakeven state
+            MarkStickyDirty();
             Print(string.Format("BE+{0} MOVED: {1} Stop -> {2:F2}", offsetPoints, entryName, newStopPrice));
         }
 
@@ -182,6 +192,26 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        /// <summary>
+        /// [W7-040/W7-135] Returns true if order is a working/accepted order matching the target name and instrument.
+        /// </summary>
+        private bool IsMatchingWorkingOrder(Order order, string targetOrderName, string instrumentFullName)
+        {
+            return order != null
+                && order.Name == targetOrderName
+                && order.Instrument.FullName == instrumentFullName
+                && (order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted);
+        }
+
+        /// <summary>
+        /// [W7-040/W7-135] Returns the account to search for orders: follower account if applicable, else master account.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private Account ResolveSearchAccount(PositionInfo pos)
+        {
+            return (pos.IsFollower && pos.ExecutingAccount != null) ? pos.ExecutingAccount : Account;
+        }
+
         // [Phase7-S5-T05] Helper 2: Find target order for position
         private Order FindTargetOrderForPosition(
             PositionInfo pos,
@@ -201,16 +231,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             // [1102Z-F]: Search the correct account -- follower orders live on their own account,
             // not on the Master account from which Account.Orders is sourced.
             string targetOrderName = $"T{targetNum}_{entryName}";
-            var searchAcct = (pos.IsFollower && pos.ExecutingAccount != null) ? pos.ExecutingAccount : Account;
 
-            foreach (Order order in searchAcct.Orders)
+            foreach (Order order in ResolveSearchAccount(pos).Orders)
             {
-                if (
-                    order != null
-                    && order.Name == targetOrderName
-                    && order.Instrument.FullName == Instrument.FullName
-                    && (order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted)
-                )
+                if (IsMatchingWorkingOrder(order, targetOrderName, Instrument.FullName))
                 {
                     return order;
                 }
@@ -346,9 +370,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Step 2: Iterate through all active positions
             foreach (var kvp in activePositions.ToArray())
             {
-                if (!activePositions.ContainsKey(kvp.Key))
-                    continue;
-
                 PositionInfo pos = kvp.Value;
                 string entryName = kvp.Key;
 
@@ -356,8 +377,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Order targetOrder = FindTargetOrderForPosition(pos, entryName, targetNum, out string notFoundReason);
                 if (targetOrder == null)
                 {
-                    if (notFoundReason != null)
-                        Print(notFoundReason);
+                    Print(notFoundReason);
                     continue;
                 }
 
@@ -372,28 +392,16 @@ namespace NinjaTrader.NinjaScript.Strategies
                     )
                 )
                 {
-                    if (rejectionReason != null)
-                        Print(rejectionReason);
+                    Print(rejectionReason);
                     continue;
                 }
 
                 // Step 5: Execute move (follower FSM vs master ChangeOrder)
-                try
-                {
-                    if (pos.IsFollower && pos.ExecutingAccount != null)
-                    {
-                        ExecuteFollowerTargetMove(pos, entryName, targetNum, targetOrder, newTargetPrice);
-                    }
-                    else
-                    {
-                        ExecuteMasterTargetMove(pos, entryName, targetNum, targetOrder, newTargetPrice);
-                    }
-                    movedCount++;
-                }
-                catch (Exception ex)
-                {
-                    Print($"[V14] MoveSpecificTarget T{targetNum}: Move FAILED for {entryName} - {ex.Message}");
-                }
+                if (pos.IsFollower && pos.ExecutingAccount != null)
+                    ExecuteFollowerTargetMove(pos, entryName, targetNum, targetOrder, newTargetPrice);
+                else
+                    ExecuteMasterTargetMove(pos, entryName, targetNum, targetOrder, newTargetPrice);
+                movedCount++;
             }
 
             // Step 6: Summary reporting
@@ -443,16 +451,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             string targetOrderName = string.Format("T{0}_{1}", targetNum, entryName);
-            searchAcct = (pos.IsFollower && pos.ExecutingAccount != null) ? pos.ExecutingAccount : Account;
+            searchAcct = ResolveSearchAccount(pos);
 
             foreach (Order order in searchAcct.Orders)
             {
-                if (
-                    order != null
-                    && order.Name == targetOrderName
-                    && order.Instrument.FullName == Instrument.FullName
-                    && (order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted)
-                )
+                if (IsMatchingWorkingOrder(order, targetOrderName, Instrument.FullName))
                 {
                     return order;
                 }

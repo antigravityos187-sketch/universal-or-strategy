@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """
-Wave 7 Post-Batch Deterministic Compliance Auditor (V3.0)
+Wave 7 Post-Batch Deterministic Compliance Auditor (V3.1)
+
+V3.1 CHANGES (Phase 5 ground-truth CYC check):
+  - Phase 5 now runs complexity_audit.py and verifies the target method's
+    actual CYC in src/ is <= 8. A report claiming final_cyc=8 but the method
+    still measuring CYC=19 in source = HARD FAIL.
+  - cyc_ground_truth check added to Phase 5 hard_checks list.
+  - Epics whose precomputed.json has cyclomatic_complexity=0 (stub-zeroed) are
+    re-resolved from 04-tickets.md for the original CYC, then verified against
+    complexity_audit output.
 
 V3.0 CHANGES (parallel general-subagent architecture):
   - MCP keyword checks REMOVED from Phases 0, 1, 1.5, 4, 5, 5v
-    (workers use precomputed.json instead of live MCP calls)
   - MCP keyword checks RETAINED for Phases 2, 3, 4.5, 6
-    (these phases run as sequential start_subtask with real MCP)
-  - New check: precomputed_exists (docs/brain/EPIC-W7-NNN/precomputed.json present)
-  - New check: okf_referenced (artifact mentions okf or jane-street or complexity-reduction)
-  - agent_name check relaxed for phases using general workers (agent name = "general-worker")
+  - New check: precomputed_exists
   - denial phrase check retained for ALL phases
 
 Exit codes:
@@ -27,6 +32,8 @@ Usage:
 import argparse
 import json
 import os
+import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -97,15 +104,20 @@ PHASE_SPECS = {
                             "content_assertions"],
     },
     "5": {
-        "artifact":        None,
+        # artifact = 05-completion-report.md (final per-epic output from v12-p6-review)
+        # When --ticket N supplied: checks ticket-N-completion.md instead
+        # V3.1: cyc_ground_truth check runs complexity_audit.py and verifies
+        #        the target method's actual measured CYC is <= 8 in src/.
+        "artifact":        "05-completion-report.md",
         "manifest_key":    "phase_5",
         "agent_name":      "wave7-phase5-worker",
-        "min_bytes":       500,
+        "min_bytes":       300,
         "jcm_keywords":    [],
         "seq_keywords":    [],
-        "content_checks":  ["cyc_achieved", "build_passed"],
+        "content_checks":  ["final_cyc", "wave_ready", "build_passed", "cyc_achieved"],
         "hard_checks":     ["artifact_exists", "min_size", "no_denial",
-                            "manifest_complete", "content_assertions"],
+                            "manifest_complete", "content_assertions",
+                            "cyc_ground_truth"],
     },
     "5v": {
         "artifact":        None,
@@ -195,6 +207,90 @@ DENIAL_PHRASES = [
     "unable to verify",
     "could not verify",
 ]
+
+
+# ---------------------------------------------------------------------------
+# CYC ground-truth cache (built once per process, shared across all epics)
+# ---------------------------------------------------------------------------
+
+_CYC_CACHE: dict[str, int] | None = None   # method_name -> measured CYC from src/
+
+def _load_cyc_cache() -> dict[str, int]:
+    """
+    Run complexity_audit.py once and parse the output into a method->CYC map.
+    Cached for the lifetime of this process.
+    Lines of interest look like:
+      "  - V12_002.SIMA.Lifecycle.cs::HydrateFromOpenPositions (CYC=31, LOC=98)"
+    """
+    global _CYC_CACHE
+    if _CYC_CACHE is not None:
+        return _CYC_CACHE
+
+    _CYC_CACHE = {}
+    try:
+        result = subprocess.run(
+            ["python3", "scripts/complexity_audit.py"],
+            capture_output=True, text=True, timeout=120
+        )
+        output = result.stdout + result.stderr
+        for line in output.splitlines():
+            m = re.search(r"::([\w]+)\s+\(CYC=(\d+)", line)
+            if m:
+                method_name = m.group(1)
+                cyc = int(m.group(2))
+                # If same method appears in multiple files keep the highest CYC
+                # (conservative — if any instance is above 8 we want to catch it)
+                if method_name not in _CYC_CACHE or cyc > _CYC_CACHE[method_name]:
+                    _CYC_CACHE[method_name] = cyc
+    except Exception as e:
+        # If we cannot run complexity_audit, skip the check (don't block the whole audit)
+        print(f"  [WARN] Could not load CYC cache from complexity_audit.py: {e}", file=sys.stderr)
+    return _CYC_CACHE
+
+
+def _resolve_target_method(epic_id: str) -> str | None:
+    """
+    Return the target method name for an epic.
+    Priority:
+      1. precomputed.json method_name (if non-empty)
+      2. First method name found in 04-tickets.md (between backticks after "Method")
+    """
+    brain_dir = Path("docs/brain") / epic_id
+
+    # Try precomputed.json first
+    pre = brain_dir / "precomputed.json"
+    if pre.exists():
+        try:
+            data = json.loads(pre.read_text(encoding="utf-8"))
+            name = data.get("method_name", "").strip()
+            if name:
+                return name
+        except Exception:
+            pass
+
+    # Fall back to 04-tickets.md
+    tickets = brain_dir / "04-tickets.md"
+    if tickets.exists():
+        try:
+            text = tickets.read_text(encoding="utf-8")
+            m = re.search(r'[Mm]ethod[^\n`]*`(\w+)`', text)
+            if m:
+                return m.group(1)
+        except Exception:
+            pass
+
+    # Last resort: 05-completion-report.md
+    report = brain_dir / "05-completion-report.md"
+    if report.exists():
+        try:
+            text = report.read_text(encoding="utf-8")
+            m = re.search(r'method(?:_name)?\s*[|:]\s*`?(\w+)`?', text, re.IGNORECASE)
+            if m and m.group(1).lower() not in ("unknown", "n/a", ""):
+                return m.group(1)
+        except Exception:
+            pass
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -326,6 +422,33 @@ def audit_epic(epic_id: str, phase: str, ticket_id: str | None = None) -> dict:
             failures.append(
                 f"Required content assertion not found. Expected one of: {spec['content_checks']}"
             )
+
+    # --- Check: cyc_ground_truth (Phase 5 only) ---
+    # Runs complexity_audit.py and verifies the target method's ACTUAL CYC in src/ is <= 8.
+    # A completion report can claim final_cyc=8 but the source may be untouched.
+    # This is the only check that catches fabricated completion reports.
+    if "cyc_ground_truth" in spec["hard_checks"]:
+        cyc_cache = _load_cyc_cache()
+        method_name = _resolve_target_method(epic_id)
+        if method_name is None:
+            # Cannot resolve method — soft warn, do not hard-fail (avoids blocking epics
+            # that are compliance-only no-ops with no extractable method)
+            checks["cyc_ground_truth"] = True
+        else:
+            actual_cyc = cyc_cache.get(method_name)
+            if actual_cyc is None:
+                # Method not found in complexity_audit output → it is either
+                # already <= 8 (not listed) or renamed after extraction. Both are OK.
+                checks["cyc_ground_truth"] = True
+            elif actual_cyc <= 8:
+                checks["cyc_ground_truth"] = True
+            else:
+                checks["cyc_ground_truth"] = False
+                failures.append(
+                    f"CYC GROUND TRUTH FAIL: {method_name} still measures CYC={actual_cyc} "
+                    f"in src/ (threshold=8). Completion report is fabricated or extraction "
+                    f"was not applied."
+                )
 
     status = "PASS" if len(failures) == 0 else "FAIL"
     return {

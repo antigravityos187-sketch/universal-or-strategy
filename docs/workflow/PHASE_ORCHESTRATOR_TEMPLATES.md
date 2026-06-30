@@ -1,6 +1,6 @@
 # Phase Orchestrator Templates — Wave 7
 
-**Version**: V2.9 (Bob IDE V2 — sequential start_subtask model, MCP confirmed working)
+**Version**: V3.0 (Bob IDE V2 — per-ticket execution model + file-lane architecture)
 **Used By**: All 10 wave-orch-phaseN modes (Tier 2 Phase Orchestrators)
 **Purpose**: Exact worker message payloads and verification protocols per phase
 
@@ -405,9 +405,10 @@ YOUR TASK:
 
 **Phase Orchestrator Mode**: `wave-orch-phase4`
 **Worker Mode**: `v12-phase4-tickets`
+**Execution model**: `spawn_subagent("general")` — parallel, 20/turn (read-only planning, no .cs writes)
 **Pilot Check 6 criterion**: return value has `ticket_count >= 1`
 
-### Worker Description (spawn_subagent)
+### Worker Description
 
 ```
 Epic: <EPIC_ID>
@@ -418,18 +419,31 @@ Phase: 4 — Ticket Generation
 Inputs: docs/brain/<EPIC_ID>/02-architecture-plan.md + docs/brain/<EPIC_ID>/03-audit-report.md
 
 YOUR TASK:
-1. Read docs/brain/<EPIC_ID>/02-architecture-plan.md and 03-audit-report.md
-2. Use mcp__jcodemunch-mcp__get_symbol_complexity for <METHOD_NAME>
-3. Use mcp__jcodemunch-mcp__get_extraction_candidates for detailed extraction targets
-4. Use mcp__sequential-thinking__sequentialthinking to decompose into tickets
-5. Write docs/brain/<EPIC_ID>/04-tickets.md with:
-   - One ticket per extraction (minimum 1 ticket)
-   - Each ticket: ticket ID, target helper method name, what code to move, expected CYC reduction
-   - Final ticket: "Verify parent <METHOD_NAME> CYC <= 8 after all extractions"
-   - ticket_count: N
+STEP 0a — MCP probe: mcp__jcodemunch-mcp__resolve_repo ("/home/malhitticrypto/universal-or-strategy")
+  If fails → retry once after 5s → if still fails → return MCP_FAILED, STOP.
+STEP 0b — SEQ probe: mcp__sequential-thinking__sequentialthinking (thought="probe", thoughtNumber=1, totalThoughts=1, nextThoughtNeeded=false)
+  If fails → retry once → return MCP_FAILED, STOP.
+
+STEP 1. Read docs/brain/<EPIC_ID>/02-architecture-plan.md and 03-audit-report.md
+STEP 2. mcp__jcodemunch-mcp__get_symbol_complexity for <METHOD_NAME>
+STEP 3. mcp__jcodemunch-mcp__get_extraction_candidates for <SOURCE_FILE>
+STEP 4. mcp__sequential-thinking__sequentialthinking (min 3 thoughts):
+   Thought 1: How many extraction tickets? One ticket = one extracted helper = one concern.
+   Thought 2: For each ticket: what lines move, what the helper is named, projected CYC after.
+   Thought 3: Verify every helper AND parent method will have CYC <= 8 post-extraction.
+STEP 5. Write docs/brain/<EPIC_ID>/04-tickets.md with:
+   - ticket_count: N  (minimum 1; one per extracted helper)
+   - For each ticket 1..N:
+       ticket_id: T
+       helper_name: <HelperMethodName>
+       concern: <single responsibility this helper will own>
+       lines_to_move: <description of code block>
+       cyc_reduction: <estimated CYC removed from parent>
+       projected_helper_cyc: <CYC of new helper, MUST be <= 8>
+   - projected_parent_cyc_after_all: <parent CYC after all extractions, MUST be <= 8>
    - Agent Tracking block (Agent Name: v12-phase4-tickets, Bobcoins Used: [amount], Execution Time: [duration])
-6. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_4.status = "completed"
-7. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/04-tickets.md", "ticket_count": N }
+STEP 6. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_4.status = "completed"
+STEP 7. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/04-tickets.md", "ticket_count": N }
 ```
 
 ---
@@ -438,225 +452,324 @@ YOUR TASK:
 
 **Phase Orchestrator Mode**: `wave-orch-phase4-5`
 **Worker Mode**: `v12-phase4-5-review`
+**Execution model**: `start_subtask(mode="v12-phase4-5-review")` — sequential MCP
 **Pilot Check 6 criterion**: return value has `review_verdict: "PASS"`
-**Jane Street KB**: Phase Orchestrator runs BEFORE spawning workers:
-- `python scripts/query_kb.py "complexity reduction"`
-- `python scripts/query_kb.py "testing strategies xUnit"`
-- `python scripts/query_kb.py "FSM actor enqueue"`
-- `python scripts/query_kb.py "lock-free patterns"`
+**Jane Street KB** (orchestrator loads before spawning — hardcoded fallback if Firebase unavailable):
+```
+CYC<=8 mandatory. Single-responsibility extraction. Actor/Enqueue model — no lock() blocks.
+Make illegal states unrepresentable. Zero-allocation hot paths. Pure predicates for REAPER/Safety.
+```
 
-### Worker Description (spawn_subagent)
+### Worker Description
 
 ```
 Epic: <EPIC_ID>
 Method: <METHOD_NAME> (CYC: <CYC>)
 Source: <SOURCE_FILE>
+Cluster: <CLUSTER_NAME> — <CLUSTER_DESC>
 Wave: 7
 Phase: 4.5 — Ticket Review (Jane Street Validation Gate)
 Input: docs/brain/<EPIC_ID>/04-tickets.md
 
-Jane Street KB Results (validate against these rules):
-<INSERT KB QUERY RESULTS HERE>
+Jane Street KB Rules:
+CYC<=8 mandatory — functions >8 are cognitively unsafe at microsecond latency.
+Single-responsibility extraction. Actor/Enqueue model — no lock() blocks.
+Make illegal states unrepresentable. Zero-allocation hot paths.
 
 YOUR TASK:
-1. Read docs/brain/<EPIC_ID>/04-tickets.md
-2. Use mcp__sequential-thinking__sequentialthinking to validate each ticket
-3. Validate each ticket against Jane Street KB rules:
-   - Each extraction reduces CYC to <= 8 (no exceptions)
-   - No lock() patterns introduced
-   - xUnit tests ([Fact], Assert.Equal()) required for each new helper
-   - ASCII-only string literals in all new code
-   - Single concern per ticket (no mixed-concern extractions)
-4. Write docs/brain/<EPIC_ID>/04-5-ticket-review.md with:
+STEP 0 — MCP probes (same as all workers, see Cold-Start Retry Rule above).
+STEP 1. Read docs/brain/<EPIC_ID>/04-tickets.md
+STEP 2. mcp__sequential-thinking__sequentialthinking (one thought per ticket + summary thought):
+   For each ticket: does it extract exactly ONE concern? Is projected_helper_cyc <= 8?
+   Is projected_parent_cyc_after_all <= 8? No lock()? Valid xUnit test plan possible?
+   Summary: overall review_verdict.
+STEP 3. Write docs/brain/<EPIC_ID>/04-5-ticket-review.md with:
    - review_verdict: PASS or FAIL
-   - Per-ticket validation result
-   - failed_tickets: [] (empty if PASS)
-   - Jane Street alignment confirmation
+   - per_ticket_results: [{ticket_id, verdict, reason}] for each ticket
+   - failed_tickets: [] (empty if PASS, list of ticket_ids if FAIL)
+   - jane_street_alignment: brief statement per cluster domain
    - Agent Tracking block (Agent Name: v12-phase4-5-review, Bobcoins Used: [amount], Execution Time: [duration])
-5. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_4_5.status = "completed"
-6. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/04-5-ticket-review.md", "review_verdict": "PASS", "failed_tickets": [] }
+STEP 4. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_4_5.status = "completed"
+STEP 5. Return: { "status": "success", "review_verdict": "PASS", "failed_tickets": [] }
+  If review_verdict = FAIL: phase orchestrator must re-run phase 4 for this epic, then re-run 4.5.
 ```
 
 ---
 
-## Template 8 — Phase 5: Ticket Execution (Code Writing)
+## Template 8 — Phase 5: Per-Ticket Execution (Code Writing)
 
-**Phase Orchestrator Mode**: `wave-orch-phase5`
-**Worker Mode**: `v12-engineer`
-**Pilot Check 6 criterion**: return has `cyc_achieved <= 8` AND `build_passed: true`
-**Pilot Check 7 (HARD — DNA)**: no NUnit/MSTest, no lock(), UTF-8 confirmed
-**Jane Street KB**: Phase Orchestrator runs BEFORE spawning workers:
-- `python scripts/query_kb.py "FSM extraction implementation"`
-- `python scripts/query_kb.py "xUnit test patterns Fact Assert"`
-- `python scripts/query_kb.py "C# method extraction CYC reduction"`
+**Architecture**: V3.0 FILE-LANE MODEL — see `docs/workflow/WAVE7_PHASE5_LANE_ASSIGNMENT.md`
+**Lane Orchestrator Mode**: `wave-orch-phase5` (one per cluster, 7 total)
+**Ticket Worker Mode**: `v12-p5-ticket` (code writing, uses `v12-engineer` permissions)
+**Verify Worker Mode**: `v12-p5-verify` (independent verification)
+**Review Worker Mode**: `v12-p6-review` (final epic review)
+**Execution model**: `start_subtask` sequential within lane — one ticket at a time, verify immediately after
 
-### Worker Description (spawn_subagent)
+### KEY DESIGN RULES (V3.0)
+
+1. **One lane per source file** — 40 file-lanes total (see lane table in WAVE7_PHASE5_LANE_ASSIGNMENT.md)
+2. **Lanes run in parallel** — each is a separate Bob IDE session with exclusive file ownership
+3. **Tickets run sequentially within a lane** — never two ticket workers writing the same `.cs` file
+4. **Each ticket = its own start_subtask** — followed immediately by its own verify start_subtask
+5. **Phase 6 review runs per-epic** — after ALL tickets for that epic pass verification
+6. **Build retry protocol** — if `dotnet build` fails with a lock error, wait 15s + retry (max 3 retries)
+7. **Epic order in lane**: CYC descending — hardest methods first (see WAVE7_PHASE5_LANE_ASSIGNMENT.md)
+
+### Lane Orchestrator Loop (pseudo-code)
+
+```
+# Lane orchestrator receives: cluster_name, cluster_desc, file_path, epic_list (CYC desc)
+# Runs as: start_subtask(mode="wave-orch-phase5", message=LANE_ORCH_MSG)
+
+for EPIC_ID in epic_list:
+    read docs/brain/EPIC_ID/04-tickets.md → ticket_count = N
+
+    for T in 1..N:
+        # --- TICKET EXECUTION ---
+        start_subtask(mode="v12-p5-ticket", message=TICKET_MSG(EPIC_ID, T, cluster_desc))
+        # worker writes: docs/brain/EPIC_ID/ticket-T-completion.md
+        # worker runs: dotnet csharpier format src/ AND dotnet build
+
+        if return.status == "BUILD_FAIL":
+            wait 15s → retry start_subtask(mode="v12-p5-ticket", ...) once
+            if still BUILD_FAIL: log STUCK_TICKET, skip to next epic
+
+        # --- TICKET VERIFICATION ---
+        start_subtask(mode="v12-p5-verify", message=VERIFY_MSG(EPIC_ID, T, claimed_cyc))
+        # worker writes: docs/brain/EPIC_ID/ticket-T-verification.md
+        # worker independently re-measures CYC, checks lock(), build, xUnit
+
+        if verification_verdict == "FAIL":
+            retry: start_subtask(mode="v12-p5-ticket", ...) + start_subtask(mode="v12-p5-verify", ...)
+            if still FAIL: log STUCK_TICKET, skip to next epic
+
+    # --- EPIC FINAL REVIEW ---
+    start_subtask(mode="v12-p6-review", message=REVIEW_MSG(EPIC_ID, verified_cycs))
+    # worker writes: docs/brain/EPIC_ID/05-completion-report.md
+
+python3 scripts/wave7_batch_audit.py --phase 5 --epics <all_epic_ids_in_lane>
+# exit 0 → log lane_FL-XX_complete
+# exit 1 → redo failed epics
+```
+
+---
+
+### Ticket Worker Message Template (v12-p5-ticket)
 
 ```
 Epic: <EPIC_ID>
 Method: <METHOD_NAME> (CYC: <CYC>, Target: <= 8)
-Source: <SOURCE_FILE>
+Source: src/<SOURCE_FILE>
+Ticket: T of N  (<TICKET_ID>: extract <HELPER_NAME> — <CONCERN>)
+Cluster: <CLUSTER_NAME> — <CLUSTER_DESC>
 Wave: 7
-Phase: 5 — Ticket Execution (Code Writing)
-Inputs: docs/brain/<EPIC_ID>/04-tickets.md + docs/brain/<EPIC_ID>/04-5-ticket-review.md
 
-Jane Street KB Results (apply these patterns in implementation):
-<INSERT KB QUERY RESULTS HERE>
+CLUSTER CONTEXT: <CLUSTER_DESC>
+(This shapes how you name helpers, what invariants they must preserve, and what to test.)
 
-DNA RULES (non-negotiable — violation = BLOCKER):
+Jane Street KB:
+CYC<=8 mandatory — functions >8 are cognitively unsafe at microsecond latency.
+Single-responsibility extraction. Actor/Enqueue model — no lock() blocks.
+Make illegal states unrepresentable. Zero-allocation hot paths.
+
+DNA RULES (non-negotiable — violation = immediate FAIL):
 - xUnit ONLY: [Fact], Assert.Equal() — NEVER NUnit, NEVER MSTest
 - UTF-8 source files (no BOM)
 - Zero lock() blocks — use FSM/Actor Enqueue model
 - ASCII-only string literals (no Unicode, no curly quotes)
-- dotnet csharpier format src/ after every write
-- SINGLE CONCERN: only modify <METHOD_NAME> + its new extracted helpers
+- SINGLE CONCERN: only modify <METHOD_NAME> in src/<SOURCE_FILE>
+- Run: dotnet csharpier format src/  AFTER every write
+- Run: dotnet build  MUST pass with zero errors
+  If build fails with lock/access error: wait 15s, retry build up to 3 times.
+  If build fails with compilation error: fix it before returning.
 
 YOUR TASK:
-1. Read docs/brain/<EPIC_ID>/04-tickets.md and 04-5-ticket-review.md
-2. Use mcp__jcodemunch-mcp__get_symbol_source for <METHOD_NAME>
-3. Use mcp__jcodemunch-mcp__get_context_bundle for full method context
-4. Use mcp__jcodemunch-mcp__plan_refactoring to validate extraction approach
-5. Use mcp__sequential-thinking__sequentialthinking to plan implementation steps
-6. Execute each ticket:
-   a. Extract helper methods from <METHOD_NAME>
-   b. Write xUnit tests for each extracted helper ([Fact], Assert.Equal())
-   c. Run: dotnet csharpier format src/
-   d. Run: dotnet build (MUST pass with zero errors)
-   e. Run: python scripts/complexity_audit.py | grep "<METHOD_NAME>" (MUST show CYC <= 8)
-7. Write docs/brain/<EPIC_ID>/ticket-1-completion.md with:
-   - Original CYC: <CYC>
-   - cyc_achieved: <new CYC> (MUST be <= 8)
+STEP 0a — MCP probe: mcp__jcodemunch-mcp__resolve_repo("/home/malhitticrypto/universal-or-strategy")
+  If fails → retry once after 5s → return { "status": "MCP_FAILED" }, STOP.
+STEP 0b — SEQ probe: mcp__sequential-thinking__sequentialthinking (probe thought)
+  If fails → retry once → return { "status": "MCP_FAILED" }, STOP.
+
+STEP 1. mcp__jcodemunch-mcp__get_symbol_source for <METHOD_NAME> in src/<SOURCE_FILE>
+        (Get the current state of the method — may already be partially extracted by prior tickets)
+STEP 2. mcp__jcodemunch-mcp__get_context_bundle for <METHOD_NAME>
+        (Understand callers, callees, field dependencies)
+STEP 3. mcp__sequential-thinking__sequentialthinking (min 3 thoughts):
+   Thought 1: What exact lines constitute <CONCERN>? Where do they start/end?
+   Thought 2: What parameters does <HELPER_NAME> need? What does it return?
+              Are there field reads that must become parameters (no hidden state access)?
+   Thought 3: Write the xUnit test FIRST. What inputs → what outputs?
+              Name test: <HELPER_NAME>_<Scenario>_<ExpectedResult>
+STEP 4. Apply the extraction:
+   a. Read src/<SOURCE_FILE>
+   b. Extract the <CONCERN> lines into private method <HELPER_NAME>(params) : returnType
+   c. Replace extracted lines in <METHOD_NAME> with a call to <HELPER_NAME>(args)
+   d. write_file / apply_diff with the modified src/<SOURCE_FILE>
+   e. Write xUnit test to tests/ for <HELPER_NAME> with [Fact] attribute
+   f. run: dotnet csharpier format src/
+   g. run: dotnet build
+      If lock error: wait 15s, retry (max 3). If compilation error: fix and rebuild.
+   h. run: python3 scripts/complexity_audit.py | grep "<METHOD_NAME>"
+      Verify CYC is reduced. (Final CYC <= 8 required after ALL tickets complete, not after each ticket.)
+STEP 5. Write docs/brain/<EPIC_ID>/ticket-T-completion.md:
+   - epic_id: <EPIC_ID>
+   - ticket_id: T
+   - helper_name: <HELPER_NAME>
+   - concern_extracted: <CONCERN>
+   - cyc_parent_now: <current CYC of METHOD_NAME after this extraction>
    - build_passed: true
-   - tests_written: N (count of [Fact] tests)
-   - Extracted helper methods list
-   - Agent Tracking block (Agent Name: v12-engineer, Bobcoins Used: [amount], Execution Time: [duration])
-8. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_5.status = "completed"
-9. Return: { "status": "success", "cyc_achieved": M, "build_passed": true, "tests_written": N }
+   - tests_written: N (count of [Fact] tests added)
+   - source_file: src/<SOURCE_FILE>
+   - Agent Tracking block (Agent Name: v12-p5-ticket, Bobcoins Used: [amount], Execution Time: [duration])
+STEP 6. Update docs/brain/<EPIC_ID>/manifest.json:
+   - phases.phase_5_ticket_<T>.status = "completed"
+STEP 7. Return: {
+   "status": "success",
+   "epic_id": "<EPIC_ID>",
+   "ticket_id": T,
+   "helper_name": "<HELPER_NAME>",
+   "cyc_parent_now": <N>,
+   "build_passed": true,
+   "tests_written": <N>
+}
 ```
 
 ---
 
-## Template 9 — Phase 5.V: Independent Verification
-
-**Phase Orchestrator Mode**: `wave-orch-phase5v`
-**Worker Mode**: `v12-phase5-v-verify`
-**Pilot Check 6 criterion**: return has `verification_verdict: "PASS"`
-**Jane Street KB**: Phase Orchestrator runs BEFORE spawning workers:
-- `python scripts/query_kb.py "lock-free patterns verification"`
-- `python scripts/query_kb.py "DNA compliance audit C#"`
-- `python scripts/query_kb.py "complexity threshold 8 Jane Street"`
-
-### Worker Description (spawn_subagent)
+### Verify Worker Message Template (v12-p5-verify)
 
 ```
 Epic: <EPIC_ID>
-Method: <METHOD_NAME> (Original CYC: <CYC>, Claimed CYC Achieved: <CYC_ACHIEVED>)
-Source: <SOURCE_FILE>
+Method: <METHOD_NAME> (Original CYC: <CYC>)
+Ticket: T of N — verifying extraction of <HELPER_NAME>
+Source: src/<SOURCE_FILE>
+Claimed cyc_parent_now: <CLAIMED_CYC>
 Wave: 7
-Phase: 5.V — Independent Verification (do NOT trust Phase 5 self-reported results)
-Input: docs/brain/<EPIC_ID>/ticket-1-completion.md
-
-Jane Street KB Results:
-<INSERT KB QUERY RESULTS HERE>
-
-YOUR TASK (independent verification — verify everything from scratch):
-1. Read docs/brain/<EPIC_ID>/ticket-1-completion.md
-2. INDEPENDENT CHECK 1: Use mcp__jcodemunch-mcp__get_symbol_complexity(<METHOD_NAME>)
-   → MUST return CYC <= 8 (not self-reported, actually measured)
-3. INDEPENDENT CHECK 2: Use mcp__jcodemunch-mcp__get_changed_symbols()
-   → MUST only show <METHOD_NAME> + helper methods (no unintended changes)
-4. INDEPENDENT CHECK 3: Use mcp__jcodemunch-mcp__search_ast("lock(") on <SOURCE_FILE>
-   → MUST return zero matches
-5. INDEPENDENT CHECK 4: grep [Fact] in test files
-   → MUST find at least 1 xUnit [Fact] test
-6. INDEPENDENT CHECK 5: grep "TestFixture\|[Test]\|[TestCase]" in test files
-   → MUST return zero (no NUnit/MSTest)
-7. INDEPENDENT CHECK 6: execute_command: dotnet build
-   → MUST pass with zero errors
-8. INDEPENDENT CHECK 7: execute_command: python scripts/complexity_audit.py | grep "<METHOD_NAME>"
-   → MUST show CYC <= 8
-9. Use mcp__sequential-thinking__sequentialthinking to summarize verification result
-10. Write docs/brain/<EPIC_ID>/ticket-1-verification.md with:
-    - verification_verdict: PASS or FAIL
-    - Each check result (pass/fail + measured value)
-    - failures: [] (empty if all pass)
-    - Agent Tracking block (Agent Name: v12-phase5-v-verify, Bobcoins Used: [amount], Execution Time: [duration])
-11. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_5_v.status = "completed"
-12. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/ticket-1-verification.md", "verification_verdict": "PASS", "failures": [] }
-```
-
----
-
-## Template 10 — Phase 6: Final Review & Wave Completion
-
-**Phase Orchestrator Mode**: `wave-orch-phase6`
-**Worker Mode**: `v12-phase6-review`
-**Pilot Check 6 criterion**: return has `wave_ready: true` AND `final_cyc <= 8`
-**Jane Street KB**: Phase Orchestrator runs BEFORE spawning workers:
-- `python scripts/query_kb.py "testing strategies coverage"`
-- `python scripts/query_kb.py "final audit complexity Jane Street"`
-
-**TERMINAL PHASE**: After all 161 workers complete, Phase 6 Orchestrator DIRECTLY runs:
-```bash
-python scripts/complexity_audit.py > /tmp/wave7_final_audit.txt
-grep "CYC > 8" /tmp/wave7_final_audit.txt | wc -l  # MUST be 0
-git diff --stat src/  # confirm only target methods touched
-```
-
-Only if count == 0: append `wave_7_complete` to Lamport log and report `WAVE_COMPLETE` to Tier 1.
-
-### Worker Description (spawn_subagent)
-
-```
-Epic: <EPIC_ID>
-Method: <METHOD_NAME> (Original CYC: <CYC>, Verified CYC: <VERIFIED_CYC>)
-Source: <SOURCE_FILE>
-Wave: 7
-Phase: 6 — Final Review & Epic Completion
-Input: docs/brain/<EPIC_ID>/ticket-1-verification.md (+ all prior artifacts)
-
-Jane Street KB Results:
-<INSERT KB QUERY RESULTS HERE>
+Phase: 5.V Ticket Verification — DO NOT TRUST Phase 5 self-reports. Verify independently.
 
 YOUR TASK:
-1. Read docs/brain/<EPIC_ID>/ticket-1-verification.md
-2. Use mcp__jcodemunch-mcp__get_repo_health to confirm codebase health
-3. Use mcp__jcodemunch-mcp__get_hotspots to confirm <METHOD_NAME> no longer a hotspot
-4. Use mcp__sequential-thinking__sequentialthinking to write completion narrative
-5. Verify all manifests updated correctly (phases 0 through 5.V all completed)
-6. Write docs/brain/<EPIC_ID>/05-completion-report.md with:
-   - Epic summary: <METHOD_NAME> CYC <CYC> → <VERIFIED_CYC>
-   - All phase status summary
-   - final_cyc: <VERIFIED_CYC> (MUST be <= 8)
+STEP 0 — MCP probes (same cold-start retry as all workers).
+
+STEP 1. mcp__jcodemunch-mcp__register_edit for src/<SOURCE_FILE>
+        (Force re-index so complexity data reflects latest writes)
+STEP 2. INDEPENDENT CHECK A: mcp__jcodemunch-mcp__get_symbol_complexity(<METHOD_NAME>)
+   → Record actual measured CYC. If T < N (not last ticket): just record, don't require <= 8 yet.
+     If T == N (last ticket): MUST be <= 8 or this is a FAIL.
+STEP 3. INDEPENDENT CHECK B: mcp__jcodemunch-mcp__search_ast pattern="lock(" on src/<SOURCE_FILE>
+   → MUST return zero matches (no lock() in entire file)
+STEP 4. INDEPENDENT CHECK C: mcp__jcodemunch-mcp__get_changed_symbols()
+   → MUST only show <METHOD_NAME> + <HELPER_NAME> as changed (no unintended symbol changes)
+STEP 5. INDEPENDENT CHECK D: grep "[Fact]" in tests/ subdirectory
+   → MUST find at least 1 new [Fact] test for <HELPER_NAME>
+STEP 6. INDEPENDENT CHECK E: grep "TestFixture\|\[Test\]\|\[TestCase\]" in tests/
+   → MUST return zero (no NUnit/MSTest contamination)
+STEP 7. INDEPENDENT CHECK F: execute_command: dotnet build
+   → MUST pass with zero errors
+STEP 8. mcp__sequential-thinking__sequentialthinking:
+   Summarize all check results. Is verification_verdict PASS or FAIL?
+STEP 9. Write docs/brain/<EPIC_ID>/ticket-T-verification.md:
+   - epic_id: <EPIC_ID>
+   - ticket_id: T
+   - helper_name: <HELPER_NAME>
+   - verification_verdict: PASS or FAIL
+   - check_A_cyc_measured: <N>  (claimed: <CLAIMED_CYC>)
+   - check_B_no_lock: true/false
+   - check_C_scope_clean: true/false
+   - check_D_xunit_test_found: true/false
+   - check_E_no_nunit: true/false
+   - check_F_build: true/false
+   - failures: [] or [list of failed checks]
+   - Agent Tracking block (Agent Name: v12-p5-verify, Bobcoins Used: [amount], Execution Time: [duration])
+STEP 10. Update docs/brain/<EPIC_ID>/manifest.json:
+   - phases.phase_5_verify_<T>.status = "completed"
+STEP 11. Return: {
+   "status": "success",
+   "verification_verdict": "PASS",
+   "ticket_id": T,
+   "cyc_measured": <N>,
+   "failures": []
+}
+```
+
+---
+
+### Final Review Worker Message Template (v12-p6-review)
+
+```
+Epic: <EPIC_ID>
+Method: <METHOD_NAME> (Original CYC: <ORIGINAL_CYC>)
+Source: src/<SOURCE_FILE>
+Cluster: <CLUSTER_NAME> — <CLUSTER_DESC>
+All tickets completed: <N> tickets, all verified PASS
+Final claimed CYC: <FINAL_CLAIMED_CYC>
+Wave: 7
+Phase: 6 — Final Epic Review & Completion
+
+YOUR TASK:
+STEP 0 — MCP probes (same cold-start retry as all workers).
+
+STEP 1. mcp__jcodemunch-mcp__register_edit for src/<SOURCE_FILE>
+STEP 2. mcp__jcodemunch-mcp__get_symbol_complexity(<METHOD_NAME>)
+   → final_cyc MUST be <= 8 — if not, this review FAILS and lane orch must re-run tickets
+STEP 3. mcp__jcodemunch-mcp__get_hotspots
+   → confirm <METHOD_NAME> is no longer in top hotspots
+STEP 4. mcp__jcodemunch-mcp__get_repo_health
+   → confirm no new dependency cycles or dead code introduced
+STEP 5. mcp__sequential-thinking__sequentialthinking:
+   Thought 1: CYC journey: <ORIGINAL_CYC> → <FINAL_CYC>. Is Jane Street standard met?
+   Thought 2: Are all N helpers well-named for the <CLUSTER_NAME> domain context?
+   Thought 3: Are xUnit tests sufficient? Do they cover edge cases relevant to this cluster?
+   Thought 4: Write completion narrative (2-3 sentences summarizing the refactor).
+STEP 6. Write docs/brain/<EPIC_ID>/05-completion-report.md:
+   - epic_id: <EPIC_ID>
+   - method_name: <METHOD_NAME>
+   - source_file: src/<SOURCE_FILE>
+   - cluster: <CLUSTER_NAME>
+   - original_cyc: <ORIGINAL_CYC>
+   - final_cyc: <FINAL_CYC>  (MUST be <= 8)
    - wave_ready: true
-   - Tests written count
-   - Jane Street compliance statement
-   - Agent Tracking block (Agent Name: v12-phase6-review, Bobcoins Used: [amount], Execution Time: [duration])
-7. Update docs/brain/<EPIC_ID>/manifest.json:
+   - ticket_count: N
+   - helpers_extracted: [list of helper method names]
+   - tests_written_total: <total [Fact] tests across all tickets>
+   - jane_street_compliant: true
+   - completion_narrative: "<narrative from Thought 4>"
+   - phases_completed: [0, 1, 1.5, 2, 3, 4, 4.5, "5.1".."5.N", "5.1V".."5.NV", 6]
+   - Agent Tracking block (Agent Name: v12-p6-review, Bobcoins Used: [amount], Execution Time: [duration])
+STEP 7. Update docs/brain/<EPIC_ID>/manifest.json:
    - phases.phase_6.status = "completed"
    - status = "complete"
    - wave = 7
-8. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/05-completion-report.md", "final_cyc": M, "wave_ready": true }
+   - final_cyc = <FINAL_CYC>
+STEP 8. Return: {
+   "status": "success",
+   "epic_id": "<EPIC_ID>",
+   "final_cyc": <N>,
+   "wave_ready": true,
+   "helpers_extracted": N,
+   "tests_written_total": N
+}
 ```
 
 ---
 
-## Lamport Event Sequence (All 10 Phases)
+## Lamport Event Sequence (All Phases)
 
 Each Phase Orchestrator appends to `.lamport/wave7/event_log.jsonl`:
 
 ```jsonl
-// On start:
+// Phase start (all phases):
 {"timestamp":"<ISO>","lamport_clock":<N>,"epic_id":"WAVE-7","phase":"<P>","tier":"phase_orch","event_type":"phase_<P>_orchestrator_start","status":"running"}
 
-// After pilot passes:
-{"timestamp":"<ISO>","lamport_clock":<N+1>,"epic_id":"EPIC-W7-001","phase":"<P>","tier":"phase_orch","event_type":"pilot_passed","status":"success","pilot_cost":<cost>,"batch_size":<bs>}
+// Phase 5 file-lane start (one per lane, 40 total):
+{"timestamp":"<ISO>","lamport_clock":<N>,"epic_id":"WAVE-7","phase":"5","tier":"phase_orch","event_type":"phase_5_lane_start","lane":"FL-XX","cluster":"<S>","file":"<FILE>","epic_count":<N>,"status":"running"}
 
-// After all 161 complete:
-{"timestamp":"<ISO>","lamport_clock":<N+2>,"epic_id":"WAVE-7","phase":"<P>","tier":"phase_orch","event_type":"phase_<P>_orchestrator_complete","status":"complete","completed":161,"failed":0}
+// Phase 5 file-lane complete (one per lane, 40 total):
+{"timestamp":"<ISO>","lamport_clock":<N>,"epic_id":"WAVE-7","phase":"5","tier":"phase_orch","event_type":"phase_5_lane_complete","lane":"FL-XX","completed":<N>,"failed":0,"status":"complete"}
+
+// Phase complete (after all lanes/workers done):
+{"timestamp":"<ISO>","lamport_clock":<N>,"epic_id":"WAVE-7","phase":"<P>","tier":"phase_orch","event_type":"phase_<P>_orchestrator_complete","status":"complete","completed":161,"failed":0}
 ```
 
-Phase 6 additionally appends:
+Phase 6 (terminal wave gate) additionally appends:
 ```jsonl
 {"timestamp":"<ISO>","lamport_clock":<FINAL>,"epic_id":"WAVE-7","phase":"6","tier":"phase_orch","event_type":"wave_7_complete","status":"complete","methods_above_8_remaining":0}
 ```
@@ -677,14 +790,15 @@ Each Phase Orchestrator's VERY FIRST action is to verify the predecessor event:
 | wave-orch-phase4 | `phase_3_orchestrator_complete` with `status=complete` |
 | wave-orch-phase4-5 | `phase_4_orchestrator_complete` with `status=complete` |
 | wave-orch-phase5 | `phase_4_5_orchestrator_complete` with `status=complete` |
-| wave-orch-phase5v | `phase_5_orchestrator_complete` with `status=complete` |
-| wave-orch-phase6 | `phase_5_v_orchestrator_complete` with `status=complete` |
+| wave-orch-phase6 | ALL 40 `phase_5_lane_complete` events present AND `phase_5_orchestrator_complete` |
+
+**Phase 5 gate is special**: Tier 1 advances to Phase 6 only after all 40 file-lanes log `phase_5_lane_complete`. The Phase 5 top-level orchestrator aggregates all lane completions then logs `phase_5_orchestrator_complete`.
 
 If the predecessor event is absent: **HALT**, report `DEPENDENCY_NOT_MET` to Tier 1. Do NOT spawn any workers.
 
 ---
 
-*Templates Version: V2.7 — Bob IDE V2 — 3-Tier Subagent Architecture*
-*Created: 2026-06-25*
-*V2.7 Change: spawn_subagent workers confirmed to HAVE full MCP access. Removed stale "execute directly" fallback. Orchestrators MUST always delegate to workers via spawn_subagent. HALT on MCP failure — never work around it.*
-*V2.6 Change: BATCH_SIZE cap permanently reduced from 50 to 40. Batch cadence: 1 pilot + 4x40 for 161-epic waves.*
+*Templates Version: V3.0 — Bob IDE V2 — Per-Ticket Execution + File-Lane Architecture*
+*Created: 2026-06-25 | Updated: 2026-06-29*
+*V3.0: Phase 5 is now the file-lane model. 40 file-lanes (grouped by 7 architectural clusters). Each ticket = its own start_subtask(v12-p5-ticket) + start_subtask(v12-p5-verify). Phase 6 runs per-epic after all tickets pass. Cluster domain context injected into every worker. Build retry protocol (15s wait, max 3 retries). Epic order within lane: CYC descending.*
+*V2.9: spawn_subagent confirmed 0 MCP tools. start_subtask confirmed full MCP. Sequential-only model permanent.*

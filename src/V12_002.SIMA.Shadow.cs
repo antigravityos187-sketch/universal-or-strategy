@@ -3,6 +3,7 @@
 // Shadow syncs by stop PRICE and auto-propagates leader flatten.
 using System;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using NinjaTrader.Cbi;
 
 namespace NinjaTrader.NinjaScript.Strategies
@@ -164,21 +165,30 @@ namespace NinjaTrader.NinjaScript.Strategies
             PositionInfo livePos;
             Order liveStop;
 
-            if (
-                !activePositions.TryGetValue(entryKey, out livePos)
-                || livePos == null
-                || livePos.IsFollower
-                || !livePos.EntryFilled
-                || livePos.RemainingContracts <= 0
-                || !stopOrders.TryGetValue(entryKey, out liveStop)
-                || liveStop == null
-                || liveStop.StopPrice <= 0
-            )
+            if (!ValidateCachedPosition(entryKey, activePositions, out livePos))
+            {
+                return false;
+            }
+            if (!stopOrders.TryGetValue(entryKey, out liveStop) || liveStop == null || liveStop.StopPrice <= 0)
             {
                 return false;
             }
 
             return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool ValidateCachedPosition(
+            string entryKey,
+            ConcurrentDictionary<string, PositionInfo> activePositions,
+            out PositionInfo livePos
+        )
+        {
+            return activePositions.TryGetValue(entryKey, out livePos)
+                && livePos != null
+                && !livePos.IsFollower
+                && livePos.EntryFilled
+                && livePos.RemainingContracts > 0;
         }
 
         /// <summary>
@@ -252,31 +262,59 @@ namespace NinjaTrader.NinjaScript.Strategies
             waitingOnFollower = false;
 
             FollowerBracketFSM fsm;
-            bool hasFsm = _followerBrackets.TryGetValue(followerEntryName, out fsm) && fsm != null;
+            bool hasFsm = _followerBrackets.TryGetValue(followerEntryName, out fsm);
             PositionInfo followerPos;
-            bool hasFollowerPos =
-                activePositions.TryGetValue(followerEntryName, out followerPos) && followerPos != null;
+            bool hasFollowerPos = activePositions.TryGetValue(followerEntryName, out followerPos);
 
-            if (!hasFsm && !hasFollowerPos)
+            if (IsFollowerUnknown(hasFsm, hasFollowerPos))
                 return false;
 
-            if (!hasFollowerPos || !followerPos.EntryFilled || !followerPos.BracketSubmitted)
+            if (IsFollowerPositionNotReady(hasFollowerPos, followerPos))
             {
                 waitingOnFollower = true;
                 return true;
             }
 
-            if (!hasFsm || fsm.State != FollowerBracketState.Active || fsm.StopOrder == null)
+            if (IsFsmNotReady(hasFsm, fsm))
             {
                 waitingOnFollower = true;
                 return true;
             }
 
-            // Skip if follower stop is already at the target price
-            if (Math.Abs(fsm.StopOrder.StopPrice - newStopPrice) < tickSize * 0.5)
+            if (IsStopPriceAtTarget(fsm.StopOrder, newStopPrice))
                 return true;
 
-            // Use existing stop update infrastructure (two-phase Replace FSM)
+            ExecuteFollowerStopPropagation(followerEntryName, followerPos, newStopPrice, fsm);
+            return true;
+        }
+
+        private bool IsFollowerUnknown(bool hasFsm, bool hasFollowerPos)
+        {
+            return !hasFsm && !hasFollowerPos;
+        }
+
+        private bool IsFollowerPositionNotReady(bool hasFollowerPos, PositionInfo followerPos)
+        {
+            return !hasFollowerPos || followerPos == null || !followerPos.EntryFilled || !followerPos.BracketSubmitted;
+        }
+
+        private bool IsFsmNotReady(bool hasFsm, FollowerBracketFSM fsm)
+        {
+            return !hasFsm || fsm == null || fsm.State != FollowerBracketState.Active || fsm.StopOrder == null;
+        }
+
+        private bool IsStopPriceAtTarget(Order stopOrder, double newStopPrice)
+        {
+            return Math.Abs(stopOrder.StopPrice - newStopPrice) < tickSize * 0.5;
+        }
+
+        private void ExecuteFollowerStopPropagation(
+            string followerEntryName,
+            PositionInfo followerPos,
+            double newStopPrice,
+            FollowerBracketFSM fsm
+        )
+        {
             Print(
                 string.Format(
                     "[SHADOW] Propagating stop {0:F2} -> {1} on {2}",
@@ -286,8 +324,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 )
             );
             UpdateStopOrder(followerEntryName, followerPos, newStopPrice, followerPos.CurrentTrailLevel);
-
-            return true;
         }
 
         /// <summary>

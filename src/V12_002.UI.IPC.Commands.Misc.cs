@@ -216,43 +216,54 @@ namespace NinjaTrader.NinjaScript.Strategies
             List<int> disconnectedClientIds = new List<int>();
 
             foreach (var kvp in connectedClients.ToArray())
+                TrySendToClient(kvp.Key, kvp.Value, responseBytes, disconnectedClientIds);
+
+            foreach (int clientId in disconnectedClientIds)
+                CleanupStaleClient(clientId);
+        }
+
+        // EPIC-W7-160-T1: Extracted from SendResponseToRemote send loop body
+        private void TrySendToClient(
+            int clientId,
+            IpcClientSession session,
+            byte[] responseBytes,
+            List<int> disconnectedClientIds
+        )
+        {
+            try
             {
-                int clientId = kvp.Key;
-                IpcClientSession session = kvp.Value;
-                try
+                if (session.Client.Connected && session.Stream.CanWrite)
                 {
-                    if (session.Client.Connected && session.Stream.CanWrite)
-                    {
-                        session.Stream.Write(responseBytes, 0, responseBytes.Length);
-                        session.Stream.Flush();
-                    }
-                    else
-                    {
-                        disconnectedClientIds.Add(clientId);
-                    }
+                    session.Stream.Write(responseBytes, 0, responseBytes.Length);
+                    session.Stream.Flush();
                 }
-                catch (Exception ex)
+                else
                 {
-                    Print($"V14 IPC: Send Error - {ex.Message}");
                     disconnectedClientIds.Add(clientId);
                 }
             }
-
-            foreach (int clientId in disconnectedClientIds)
+            catch (Exception ex)
             {
-                if (connectedClients.TryRemove(clientId, out var staleClient))
+                Print($"V14 IPC: Send Error - {ex.Message}");
+                disconnectedClientIds.Add(clientId);
+            }
+        }
+
+        // EPIC-W7-160-T2: Extracted from SendResponseToRemote cleanup loop body
+        private void CleanupStaleClient(int clientId)
+        {
+            if (connectedClients.TryRemove(clientId, out var staleClient))
+            {
+                // V12.EPIC-7-QUALITY-006: Explicit stale client cleanup
+                try
                 {
-                    // V12.EPIC-7-QUALITY-006: Explicit stale client cleanup
-                    try
-                    {
-                        staleClient.Client.Close();
-                    }
-                    catch (Exception ex)
-                    {
-                        Interlocked.Increment(ref _ipcCleanupFailures);
-                        Print($"[IPC_CLEANUP] Stale client close failed [id={clientId}]: {ex.Message}");
-                        // Continue cleanup - non-fatal
-                    }
+                    staleClient.Client.Close();
+                }
+                catch (Exception ex)
+                {
+                    Interlocked.Increment(ref _ipcCleanupFailures);
+                    Print($"[IPC_CLEANUP] Stale client close failed [id={clientId}]: {ex.Message}");
+                    // Continue cleanup - non-fatal
                 }
             }
         }

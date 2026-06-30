@@ -1,7 +1,11 @@
 {
   "epic_id": "EPIC-W7-063",
   "wave": 7,
-  "status": "in_progress",
+  "status": "complete",
+  "method": "DrainAllDispatchQueuesOnAbort",
+  "source_file": "src/V12_002.SIMA.Fleet.cs",
+  "cyc_before": 12,
+  "final_cyc": 1,
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -37,6 +41,57 @@
       "completed_at": "2026-06-29T00:00:00Z",
       "dna_verdict": "PASS",
       "violations": []
+    },
+    "phase_4": {
+      "name": "Ticket Generation",
+      "status": "completed",
+      "output": "04-tickets.md",
+      "output_path": "docs/brain/EPIC-W7-063/04-tickets.md",
+      "completed_at": "2026-06-29T00:00:00Z",
+      "ticket_count": 2,
+      "max_cyc_projected": 6,
+      "projected_parent_cyc_after_all": 1
+    },
+    "phase_4_5": {
+      "name": "Ticket Review (Jane Street Validation Gate)",
+      "status": "completed",
+      "output": "04-5-ticket-review.md",
+      "output_path": "docs/brain/EPIC-W7-063/04-5-ticket-review.md",
+      "completed_at": "2026-06-29T00:00:00Z",
+      "review_verdict": "PASS",
+      "failed_tickets": [],
+      "tickets_reviewed": 2,
+      "tickets_passed": 2
+    },
+    "phase_5_ticket_1": {
+      "status": "completed",
+      "timestamp": "2026-06-30T04:08:00Z",
+      "output": "docs/brain/EPIC-W7-063/ticket-T1-completion.md"
+    },
+    "phase_5_ticket_2": {
+      "status": "completed",
+      "timestamp": "2026-06-30T04:08:00Z",
+      "output": "docs/brain/EPIC-W7-063/ticket-T2-completion.md"
+    },
+    "phase_5": {
+      "status": "completed",
+      "timestamp": "2026-06-30T04:08:00Z",
+      "final_cyc": 1,
+      "wave_ready": true,
+      "build_passed": true,
+      "helpers_extracted": [
+        "DrainPhotonRingOnAbort",
+        "DrainLegacyDispatchQueueOnAbort"
+      ],
+      "helpers_cyc": [
+        10,
+        3
+      ]
+    },
+    "phase_6": {
+      "status": "completed"
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-01T00:00:00Z"
 }

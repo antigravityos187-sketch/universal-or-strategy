@@ -5,7 +5,8 @@
   "cyc_before": 14,
   "cyc_target": 8,
   "wave": 7,
-  "status": "in_progress",
+  "status": "complete",
+  "final_cyc": 8,
   "phases": {
     "phase_0": {
       "status": "completed",
@@ -33,20 +34,49 @@
       "violations": []
     },
     "phase_4": {
-      "status": "pending",
-      "output": null
+      "status": "completed",
+      "ticket_count": 2,
+      "projected_parent_cyc_after_all": 6,
+      "output": "04-tickets.md",
+      "completed_at": "2026-06-29T01:20:00Z"
+    },
+    "phase_4_5": {
+      "status": "completed",
+      "output": "04-5-ticket-review.md",
+      "review_verdict": "PASS",
+      "failed_tickets": [],
+      "completed_at": "2026-06-29T01:25:00Z"
+    },
+    "phase_5_ticket_1": {
+      "status": "completed",
+      "timestamp": "2026-06-30T03:16:46Z",
+      "output": "ticket-1-completion.md"
+    },
+    "phase_5_ticket_2": {
+      "status": "completed",
+      "timestamp": "2026-06-30T04:00:00Z",
+      "output": "ticket-2-completion.md",
+      "helper_name": "Dispatch_RollbackFleetAccountEntry",
+      "agent": "v12-phase6-review"
     },
     "phase_5": {
-      "status": "pending",
-      "output": null
+      "status": "completed",
+      "timestamp": "2026-06-30T03:18:14Z",
+      "final_cyc": 8,
+      "wave_ready": true,
+      "build_passed": true
     },
     "phase_5_V": {
-      "status": "pending",
-      "output": null
+      "status": "completed",
+      "output": "ticket-1-completion.md, ticket-2-completion.md"
     },
     "phase_6": {
-      "status": "pending",
-      "output": null
+      "status": "completed",
+      "timestamp": "2026-06-30T04:00:00Z",
+      "output": "05-completion-report.md",
+      "final_cyc": 8,
+      "jane_street_compliant": true,
+      "agent": "v12-phase6-review"
     }
   },
   "brain_dir": "docs/brain/EPIC-W7-093",

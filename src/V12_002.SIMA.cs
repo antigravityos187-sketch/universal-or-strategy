@@ -238,22 +238,31 @@ namespace NinjaTrader.NinjaScript.Strategies
             return fleet.OrderBy(a => a.DailyPL).ToList();
         }
 
+        // T1: Static readonly lookup table -- allocated once at class init, zero-alloc at call time (carl_cook)
+        private static readonly Dictionary<string, RmaAnchorType> RmaAnchorLookup = new Dictionary<
+            string,
+            RmaAnchorType
+        >
+        {
+            { "EMA30", RmaAnchorType.Ema30 },
+            { "EMA65", RmaAnchorType.Ema65 },
+            { "EMA200", RmaAnchorType.Ema200 },
+            { "OR_HIGH", RmaAnchorType.OrHigh },
+            { "OR_LOW", RmaAnchorType.OrLow },
+            { "MANUAL", RmaAnchorType.Manual },
+        };
+
+        // CYC=1: single expression, no branches (trading_billions: single responsibility)
+        private static bool TryParseRmaAnchorType(string key, out RmaAnchorType result) =>
+            RmaAnchorLookup.TryGetValue(key, out result);
+
+        // CYC=4: base(1) + if(1) + try(1) + catch(1)
         private void SetRmaAnchorFromIpc(string anchorStr)
         {
             try
             {
-                if (anchorStr == "EMA30")
-                    currentRmaAnchor = RmaAnchorType.Ema30;
-                else if (anchorStr == "EMA65")
-                    currentRmaAnchor = RmaAnchorType.Ema65;
-                else if (anchorStr == "EMA200")
-                    currentRmaAnchor = RmaAnchorType.Ema200;
-                else if (anchorStr == "OR_HIGH")
-                    currentRmaAnchor = RmaAnchorType.OrHigh;
-                else if (anchorStr == "OR_LOW")
-                    currentRmaAnchor = RmaAnchorType.OrLow;
-                else if (anchorStr == "MANUAL")
-                    currentRmaAnchor = RmaAnchorType.Manual;
+                if (TryParseRmaAnchorType(anchorStr, out RmaAnchorType anchor))
+                    currentRmaAnchor = anchor;
 
                 Print("IPC SET ANCHOR: " + anchorStr);
             }

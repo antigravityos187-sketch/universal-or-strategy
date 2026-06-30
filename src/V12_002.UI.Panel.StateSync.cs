@@ -1,5 +1,6 @@
 // Build 1105: V12_001 panel port -- live state sync from strategy fields
 using System;
+using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 using System.Windows.Media;
 using NinjaTrader.Cbi;
@@ -15,10 +16,23 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (rootContainer == null || _isTerminating)
                 return;
             UIStateSnapshot snapshot = GetUiSnapshot();
+            int count = Math.Max(1, Math.Min(5, snapshot.TargetCount));
 
-            double price = snapshot.LastPrice;
+            UpdatePanelState_PriceDisplay(snapshot);
+            UpdatePanelState_StateSync(snapshot, count);
+            UpdateHubStatusLed(snapshot);
+            UpdateTelemetryDisplay(snapshot);
+            UpdateComplianceDisplay(snapshot);
+            UpdateTrendIndicator(snapshot);
+            UpdatePanelState_LivePosition(snapshot, count);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void UpdatePanelState_PriceDisplay(UIStateSnapshot snapshot)
+        {
             if (lastPriceText != null)
             {
+                double price = snapshot.LastPrice;
                 lastPriceText.Text = price > 0 ? Instrument.MasterInstrument.FormatPrice(price) : "--";
 
                 MarketPosition mp = snapshot.MasterMarketPosition;
@@ -28,6 +42,16 @@ namespace NinjaTrader.NinjaScript.Strategies
                     : TextPrimary;
             }
 
+            UpdateRmaButtonVisual(snapshot.IsRmaModeActive);
+            if (trendRmaToggle != null)
+                trendRmaToggle.Opacity = snapshot.IsTrendRmaMode ? 1.0 : 0.5;
+            if (retestRmaToggle != null)
+                retestRmaToggle.Opacity = snapshot.IsRetestRmaMode ? 1.0 : 0.5;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void UpdatePanelState_StateSync(UIStateSnapshot snapshot, int count)
+        {
             string mode = string.IsNullOrEmpty(snapshot.Mode) ? "ORB" : snapshot.Mode;
 
             if (!string.Equals(_panelLastSyncedMode, mode, StringComparison.OrdinalIgnoreCase))
@@ -43,7 +67,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 _panelAppliedConfigRevision = snapshot.ConfigRevision;
             }
 
-            int count = Math.Max(1, Math.Min(5, snapshot.TargetCount));
             if (_panelLastSyncedTargetCount != count)
             {
                 long elapsedTicks = DateTime.UtcNow.Ticks - _panelChipClickTicks;
@@ -55,18 +78,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                     UpdateTargetVisibility(count);
                 }
             }
+        }
 
-            UpdateRmaButtonVisual(snapshot.IsRmaModeActive);
-            if (trendRmaToggle != null)
-                trendRmaToggle.Opacity = snapshot.IsTrendRmaMode ? 1.0 : 0.5;
-            if (retestRmaToggle != null)
-                retestRmaToggle.Opacity = snapshot.IsRetestRmaMode ? 1.0 : 0.5;
-
-            UpdateHubStatusLed(snapshot);
-            UpdateTelemetryDisplay(snapshot);
-            UpdateComplianceDisplay(snapshot);
-            UpdateTrendIndicator(snapshot);
-
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void UpdatePanelState_LivePosition(UIStateSnapshot snapshot, int count)
+        {
             UILivePositionSnapshot livePosition = snapshot.LivePosition;
             if (livePosition != null && livePosition.HasLivePosition)
             {
@@ -159,24 +175,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             for (int t = 1; t <= 5; t++)
             {
-                UILiveTargetSnapshot target = livePosition.Targets[t - 1];
-                bool active = target != null && target.IsVisible;
-                SetLiveTargetRowVisible(t, active);
-                if (!active || target == null)
-                    continue;
-
-                TextBox priceBox = GetLiveTargetPriceBox(t);
-                if (priceBox != null && !priceBox.IsFocused)
-                {
-                    priceBox.Text = target.Price > 0 ? Instrument.MasterInstrument.FormatPrice(target.Price) : "--";
-                }
-
-                TextBlock ctsBlock = GetLiveTargetCtsBlock(t);
-                if (ctsBlock != null)
-                {
-                    ctsBlock.Text = target.RemainingContracts + " cts";
-                    ctsBlock.Foreground = target.IsWorking ? GreenFg : TextMuted;
-                }
+                SyncSingleTargetRow(t, livePosition);
             }
 
             if (liveStopRow != null)
@@ -187,6 +186,29 @@ namespace NinjaTrader.NinjaScript.Strategies
                             ? Instrument.MasterInstrument.FormatPrice(livePosition.StopPrice)
                             : "--";
                 liveStopRow.Visibility = System.Windows.Visibility.Visible;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SyncSingleTargetRow(int targetIndex, UILivePositionSnapshot livePosition)
+        {
+            UILiveTargetSnapshot target = livePosition.Targets[targetIndex - 1];
+
+            bool active = target != null && target.IsVisible;
+            SetLiveTargetRowVisible(targetIndex, active);
+
+            if (!active || target == null)
+                return;
+
+            TextBox priceBox = GetLiveTargetPriceBox(targetIndex);
+            if (priceBox != null && !priceBox.IsFocused)
+                priceBox.Text = target.Price > 0 ? Instrument.MasterInstrument.FormatPrice(target.Price) : "--";
+
+            TextBlock ctsBlock = GetLiveTargetCtsBlock(targetIndex);
+            if (ctsBlock != null)
+            {
+                ctsBlock.Text = target.IsWorking ? target.RemainingContracts + " cts" : " cts";
+                ctsBlock.Foreground = target.IsWorking ? Brushes.White : Brushes.Transparent;
             }
         }
 
@@ -357,6 +379,19 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void SyncModeChipVisuals(string mode)
         {
+            ResetModeChipStyles();
+            Button activeButton = ResolveActiveModeButton(mode);
+            if (activeButton != null)
+            {
+                activeButton.Background = CyanBg;
+                activeButton.Foreground = CyanFg;
+                activeButton.BorderBrush = CyanBorder;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ResetModeChipStyles()
+        {
             foreach (
                 Button btn in new[]
                 {
@@ -375,35 +410,25 @@ namespace NinjaTrader.NinjaScript.Strategies
                 btn.Foreground = TextMuted;
                 btn.BorderBrush = BtnBorder;
             }
+        }
 
-            Button activeButton = null;
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private Button ResolveActiveModeButton(string mode)
+        {
             switch ((mode ?? "ORB").ToUpperInvariant())
             {
                 case "RMA":
-                    activeButton = modeRmaButton;
-                    break;
+                    return modeRmaButton;
                 case "RETEST":
-                    activeButton = modeRetestButton;
-                    break;
+                    return modeRetestButton;
                 case "MOMO":
-                    activeButton = modeMomoButton;
-                    break;
+                    return modeMomoButton;
                 case "FFMA":
-                    activeButton = modeFfmaButton;
-                    break;
+                    return modeFfmaButton;
                 case "TREND":
-                    activeButton = modeTrendButton;
-                    break;
+                    return modeTrendButton;
                 default:
-                    activeButton = modeOrbButton;
-                    break;
-            }
-
-            if (activeButton != null)
-            {
-                activeButton.Background = CyanBg;
-                activeButton.Foreground = CyanFg;
-                activeButton.BorderBrush = CyanBorder;
+                    return modeOrbButton;
             }
         }
 
@@ -457,9 +482,22 @@ namespace NinjaTrader.NinjaScript.Strategies
             return Instrument.MasterInstrument.FormatPrice(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SyncPanelConfigFromSnapshot(UIStateSnapshot snapshot)
         {
             UIConfigSnapshot config = snapshot.Config ?? new UIConfigSnapshot();
+            SyncTargetValueControls(config);
+            SyncTargetTypeControls(config);
+            SyncScalarControls(config, snapshot);
+            int count = Math.Max(1, Math.Min(5, snapshot.TargetCount));
+            _panelLastSyncedTargetCount = count;
+            SyncCountChipVisuals(count);
+            UpdateTargetVisibility(count);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SyncTargetValueControls(UIConfigSnapshot config)
+        {
             if (svT1Val != null)
                 svT1Val.Text = FormatPanelDouble(config.Target1Value);
             if (svT2Val != null)
@@ -470,7 +508,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 svT4Val.Text = FormatPanelDouble(config.Target4Value);
             if (svT5Val != null)
                 svT5Val.Text = FormatPanelDouble(config.Target5Value);
+        }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SyncTargetTypeControls(UIConfigSnapshot config)
+        {
             if (svT1Type != null)
                 SetComboSelection(svT1Type, GetPanelTargetModeText(config.Target1Type));
             if (svT2Type != null)
@@ -481,7 +523,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 SetComboSelection(svT4Type, GetPanelTargetModeText(config.Target4Type));
             if (svT5Type != null)
                 SetComboSelection(svT5Type, GetPanelTargetModeText(config.Target5Type));
+        }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SyncScalarControls(UIConfigSnapshot config, UIStateSnapshot snapshot)
+        {
             if (strVal != null)
             {
                 strVal.Text = FormatPanelDouble(config.StopValue);
@@ -504,11 +550,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string.Equals(snapshot.Mode, "ORB", StringComparison.OrdinalIgnoreCase) ? "OR" : "ATR"
                 );
             }
-
-            int count = Math.Max(1, Math.Min(5, snapshot.TargetCount));
-            _panelLastSyncedTargetCount = count;
-            SyncCountChipVisuals(count);
-            UpdateTargetVisibility(count);
         }
 
         #endregion
