@@ -704,12 +704,16 @@ namespace NinjaTrader.NinjaScript.Strategies
             PopulateDirectionCombo(upperMode);
         }
 
+        // [EPIC-W7-076] CYC 11->1: null-guard branches split into two helpers
         private void CollapseAllExecutionControls()
         {
-            if (execRetestRow != null)
-                execRetestRow.Visibility = Visibility.Collapsed;
-            if (execTrendRow != null)
-                execTrendRow.Visibility = Visibility.Collapsed;
+            CollapseAllExecutionControls_Buttons();
+            CollapseAllExecutionControls_Rows();
+        }
+
+        // [EPIC-W7-076] Extracted: collapse 6 mode buttons (CYC=7)
+        private void CollapseAllExecutionControls_Buttons()
+        {
             if (rmaButton != null)
                 rmaButton.Visibility = Visibility.Collapsed;
             if (momoButton != null)
@@ -722,6 +726,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                 mButton.Visibility = Visibility.Collapsed;
             if (orLongButton != null)
                 orLongButton.Visibility = Visibility.Collapsed;
+        }
+
+        // [EPIC-W7-076] Extracted: collapse row controls + show manual entry (CYC=5)
+        private void CollapseAllExecutionControls_Rows()
+        {
+            if (execRetestRow != null)
+                execRetestRow.Visibility = Visibility.Collapsed;
+            if (execTrendRow != null)
+                execTrendRow.Visibility = Visibility.Collapsed;
             if (orShortButton != null)
                 orShortButton.Visibility = Visibility.Collapsed;
             if (manualEntryRow != null)

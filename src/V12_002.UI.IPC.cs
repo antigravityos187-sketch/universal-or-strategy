@@ -94,38 +94,32 @@ namespace NinjaTrader.NinjaScript.Strategies
             return mode == TargetMode.Points ? "Points" : mode.ToString();
         }
 
+        private static readonly Dictionary<string, TargetMode> _targetModeMap =
+            new Dictionary<string, TargetMode>
+            {
+                { "ATR", TargetMode.ATR },
+                { "A", TargetMode.ATR },
+                { "TICKS", TargetMode.Ticks },
+                { "TICK", TargetMode.Ticks },
+                { "T", TargetMode.Ticks },
+                { "POINTS", TargetMode.Points },
+                { "POINT", TargetMode.Points },
+                { "PTS", TargetMode.Points },
+                { "P", TargetMode.Points },
+                { "RUNNER", TargetMode.Runner },
+                { "R", TargetMode.Runner },
+            };
+
+        // [EPIC-W7-068] CYC 13->3: Dictionary dispatch replaces switch
         private static bool TryParseTargetMode(string raw, out TargetMode mode)
         {
             mode = TargetMode.ATR;
             if (string.IsNullOrWhiteSpace(raw))
                 return false;
-
-            string normalized = raw.Trim().ToUpperInvariant();
-            switch (normalized)
-            {
-                case "ATR":
-                case "A":
-                    mode = TargetMode.ATR;
-                    return true;
-                case "TICKS":
-                case "TICK":
-                case "T":
-                    mode = TargetMode.Ticks;
-                    return true;
-                case "POINTS":
-                case "POINT":
-                case "PTS":
-                case "P":
-                    mode = TargetMode.Points;
-                    return true;
-                case "RUNNER":
-                case "R":
-                    mode = TargetMode.Runner;
-                    return true;
-                default:
-                    Print("TryParseTargetMode: unrecognized target mode value '" + raw + "'");
-                    return false;
-            }
+            if (_targetModeMap.TryGetValue(raw.Trim().ToUpperInvariant(), out mode))
+                return true;
+            Print("TryParseTargetMode: unrecognized target mode value '" + raw + "'");
+            return false;
         }
 
         // FIX-A [Build 1102Z]: IPC Multiplier Validation Gate.

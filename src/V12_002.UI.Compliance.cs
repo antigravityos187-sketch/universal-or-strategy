@@ -324,68 +324,74 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (!EnableComplianceHub)
                 return true;
-
             string acctName = accountName ?? Account?.Name;
             if (string.IsNullOrEmpty(acctName))
                 return true;
-
-            // Hard-block: trailing drawdown breached
-            if (accountEquityPeak.TryGetValue(acctName, out double peak) && peak > 0 && TrailingDrawdownLimit > 0)
-            {
-                double balance = 0;
-                Account currentAccount = this.Account;
-                if (currentAccount != null)
-                {
-                    try
-                    {
-                        balance = currentAccount.Get(
-                            NinjaTrader.Cbi.AccountItem.CashValue,
-                            NinjaTrader.Cbi.Currency.UsDollar
-                        );
-                    }
-                    catch (Exception ex)
-                    {
-                        // V12.EPIC-7-QUALITY-008: Log account balance retrieval errors
-                        Interlocked.Increment(ref _uiCallbackFailures);
-                        Print($"[UI_CALLBACK] Account balance retrieval failed: {ex.Message}");
-                        // Continue with balance=0 - compliance check will use cached value
-                    }
-                }
-                double buffer = balance - (peak - TrailingDrawdownLimit);
-                if (buffer <= 0)
-                {
-                    Print(
-                        string.Format(
-                            "[COMPLIANCE BLOCKED] Entry suppressed for {0}: Trailing drawdown breached. Buffer=${1:F2}",
-                            acctName,
-                            buffer
-                        )
-                    );
-                    return false;
-                }
-            }
-
-            // Hard-block: daily profit cap reached (for SIMA fleet accounts)
-            if (EnableSIMA && EnableConsistencyLock)
-            {
-                if (
-                    accountDailyProfit.TryGetValue(acctName, out double dp)
-                    && MaxDailyProfitCap > 0
-                    && dp >= MaxDailyProfitCap
-                )
-                {
-                    Print(
-                        string.Format(
-                            "[COMPLIANCE BLOCKED] Entry suppressed for {0}: Daily profit cap hit. DayPL=${1:F2}",
-                            acctName,
-                            dp
-                        )
-                    );
-                    return false;
-                }
-            }
-
+            if (IsOrderBlocked_TrailingDrawdown(acctName))
+                return false;
+            if (IsOrderBlocked_DailyProfitCap(acctName))
+                return false;
             return true;
+        }
+
+        // [EPIC-W7-003] Extracted: trailing drawdown hard-block (CYC=7)
+        private bool IsOrderBlocked_TrailingDrawdown(string acctName)
+        {
+            if (!accountEquityPeak.TryGetValue(acctName, out double peak) || peak <= 0 || TrailingDrawdownLimit <= 0)
+                return false;
+            double balance = 0;
+            Account currentAccount = this.Account;
+            if (currentAccount != null)
+            {
+                try
+                {
+                    balance = currentAccount.Get(
+                        NinjaTrader.Cbi.AccountItem.CashValue,
+                        NinjaTrader.Cbi.Currency.UsDollar
+                    );
+                }
+                catch (Exception ex)
+                {
+                    Interlocked.Increment(ref _uiCallbackFailures);
+                    Print($"[UI_CALLBACK] Account balance retrieval failed: {ex.Message}");
+                }
+            }
+            double buffer = balance - (peak - TrailingDrawdownLimit);
+            if (buffer <= 0)
+            {
+                Print(
+                    string.Format(
+                        "[COMPLIANCE BLOCKED] Entry suppressed for {0}: Trailing drawdown breached. Buffer=${1:F2}",
+                        acctName,
+                        buffer
+                    )
+                );
+                return true;
+            }
+            return false;
+        }
+
+        // [EPIC-W7-003] Extracted: daily profit cap hard-block (CYC=5)
+        private bool IsOrderBlocked_DailyProfitCap(string acctName)
+        {
+            if (!EnableSIMA || !EnableConsistencyLock)
+                return false;
+            if (
+                accountDailyProfit.TryGetValue(acctName, out double dp)
+                && MaxDailyProfitCap > 0
+                && dp >= MaxDailyProfitCap
+            )
+            {
+                Print(
+                    string.Format(
+                        "[COMPLIANCE BLOCKED] Entry suppressed for {0}: Daily profit cap hit. DayPL=${1:F2}",
+                        acctName,
+                        dp
+                    )
+                );
+                return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -621,6 +627,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        // [EPIC-W7-004] CYC reduced 15->4 by extracting post-fill log+cancel helpers
         private void HandleFleetTargetFill(QueuedAccountExecution item, Order ocoOrder, Account ocoAcct, string ocoName)
         {
             int tgtNum = ocoName[1] - '0';
@@ -629,7 +636,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             int tgtLastUnderscore = tgtEntryKey.LastIndexOf('_');
             if (tgtLastUnderscore > 0)
                 tgtEntryKey = tgtEntryKey.Substring(0, tgtLastUnderscore);
-
             PositionInfo tgtPos;
             if (
                 !string.IsNullOrEmpty(tgtEntryKey)
@@ -650,47 +656,44 @@ namespace NinjaTrader.NinjaScript.Strategies
                     out tgtApplied,
                     out tgtRemaining
                 );
-                if (tgtAlreadyProcessed)
+                HandleFleetTargetFill_LogAndCancelStop(item, ocoAcct, tgtNum, tgtEntryKey, tgtApplied, tgtRemaining, tgtAlreadyProcessed);
+            }
+        }
+
+        // [EPIC-W7-004] Extracted: log fill result and conditionally cancel OCO stop (CYC=3)
+        private void HandleFleetTargetFill_LogAndCancelStop(
+            QueuedAccountExecution item,
+            Account ocoAcct,
+            int tgtNum,
+            string tgtEntryKey,
+            int tgtApplied,
+            int tgtRemaining,
+            bool tgtAlreadyProcessed
+        )
+        {
+            if (tgtAlreadyProcessed)
+            {
+                Print(string.Format("[1104.1 GUARD] Fleet T{0} already processed for {1} -- skipping duplicate.", tgtNum, tgtEntryKey));
+                return;
+            }
+            Print(string.Format("[1104.1] Fleet TARGET {0} filled: {1} @ {2:F2}. Remaining: {3}", tgtNum, tgtApplied, item.EventArgs.Execution.Price, tgtRemaining));
+            if (tgtRemaining <= 0)
+                HandleFleetTargetFill_CancelOcoStop(ocoAcct);
+        }
+
+        // [EPIC-W7-004] Extracted: cancel OCO stop orders when all targets filled (CYC=8)
+        private void HandleFleetTargetFill_CancelOcoStop(Account ocoAcct)
+        {
+            foreach (Order o in ocoAcct.Orders.ToArray())
+            {
+                if (o == null || o.Instrument?.FullName != Instrument?.FullName)
+                    continue;
+                if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted)
+                    continue;
+                if (o.Name != null && o.Name.StartsWith("Stop_"))
                 {
-                    Print(
-                        string.Format(
-                            "[1104.1 GUARD] Fleet T{0} already processed for {1} -- skipping duplicate.",
-                            tgtNum,
-                            tgtEntryKey
-                        )
-                    );
-                }
-                else
-                {
-                    Print(
-                        string.Format(
-                            "[1104.1] Fleet TARGET {0} filled: {1} @ {2:F2}. Remaining: {3}",
-                            tgtNum,
-                            tgtApplied,
-                            item.EventArgs.Execution.Price,
-                            tgtRemaining
-                        )
-                    );
-                    if (tgtRemaining <= 0)
-                    {
-                        foreach (Order o in ocoAcct.Orders.ToArray())
-                        {
-                            if (o == null || o.Instrument?.FullName != Instrument?.FullName)
-                                continue;
-                            if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted)
-                                continue;
-                            if (o.Name != null && o.Name.StartsWith("Stop_"))
-                            {
-                                CancelOrderOnAccount(o, ocoAcct);
-                                Print(
-                                    string.Format(
-                                        "[1104.1 OCO] Fleet {0}: all targets filled -- cancelled stop.",
-                                        ocoAcct.Name
-                                    )
-                                );
-                            }
-                        }
-                    }
+                    CancelOrderOnAccount(o, ocoAcct);
+                    Print(string.Format("[1104.1 OCO] Fleet {0}: all targets filled -- cancelled stop.", ocoAcct.Name));
                 }
             }
         }
