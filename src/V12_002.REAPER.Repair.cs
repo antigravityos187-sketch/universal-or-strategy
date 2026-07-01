@@ -153,26 +153,71 @@ namespace NinjaTrader.NinjaScript.Strategies
             double stopPrice
         )
         {
-            // 3. Resolve account object
-            Account targetAcct = repairPos.ExecutingAccount;
-            if (targetAcct == null)
-            {
-                Print($"[REAPER REPAIR] [FAIL] ExecutingAccount is null for {accountName}");
+            if (!TryResolveRepairAccount(repairPos, accountName, out Account targetAcct))
                 return;
+            if (
+                !CreateRepairOrder(
+                    targetAcct,
+                    repairPos,
+                    orderType,
+                    limitPrice,
+                    stopPrice,
+                    repairEntryName,
+                    out Order repairEntry
+                )
+            )
+                return;
+            bool hasActiveFsm = HasActiveFsmForAccount(accountName);
+            if (!ResolveRepairAuthorization(accountName, hasActiveFsm))
+                return;
+            if (!MetadataGuardRepairAuthorized(accountName, "ExecuteReaperRepair"))
+                return;
+            PrepareAndRegisterRepairOrder(repairPos, repairEntryName, repairEntry);
+            targetAcct.Submit(new[] { repairEntry });
+            LogRepairOrderSubmitted(
+                accountName,
+                repairEntryName,
+                repairEntry.OrderAction,
+                repairEntry.Quantity,
+                orderType,
+                repairPos
+            );
+        }
+
+        // T-088-01: CYC=2. Resolves the executing account from repairPos.
+        // Returns false (with null out) if account is unresolvable.
+        private bool TryResolveRepairAccount(PositionInfo repairPos, string accountName, out Account targetAcct)
+        {
+            if (repairPos.ExecutingAccount == null)
+            {
+                Print("[REAPER REPAIR] [FAIL] ExecutingAccount is null for " + accountName);
+                targetAcct = null;
+                return false;
             }
 
-            // 4. In-flight was already set on the background thread before TriggerCustomEvent (A3-2)
-            // 5. Re-issue entry order using the SIMA acct.CreateOrder + acct.Submit pattern
-            OrderAction action = repairPos.Direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort;
-            int quantity = repairPos.TotalContracts;
-            string repairSignal = repairEntryName;
+            targetAcct = repairPos.ExecutingAccount;
+            return true;
+        }
 
-            Order repairEntry = targetAcct.CreateOrder(
+        // T-088-02: CYC=3. Creates the repair order via targetAcct.CreateOrder.
+        // Returns false (with null out) if CreateOrder returns null.
+        private bool CreateRepairOrder(
+            Account targetAcct,
+            PositionInfo repairPos,
+            OrderType orderType,
+            double limitPrice,
+            double stopPrice,
+            string repairSignal,
+            out Order repairEntry
+        )
+        {
+            OrderAction action = repairPos.Direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort;
+            repairEntry = targetAcct.CreateOrder(
                 Instrument,
                 action,
                 orderType,
                 TimeInForce.Gtc,
-                quantity,
+                repairPos.TotalContracts,
                 limitPrice,
                 stopPrice,
                 "",
@@ -182,11 +227,18 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             if (repairEntry == null)
             {
-                Print($"[REAPER REPAIR] [FAIL] CreateOrder returned null for {accountName}");
-                return;
+                Print("[REAPER REPAIR] [FAIL] CreateOrder returned null for " + targetAcct.Name);
+                return false;
             }
 
-            bool hasActiveFsm = _followerBrackets.Values.Any(f =>
+            return true;
+        }
+
+        // T-088-03: CYC=5. Returns true if any active FSM bracket belongs to accountName.
+        // Note: ConcurrentDictionary TOCTOU is pre-existing, out of scope per V12.23.
+        private bool HasActiveFsmForAccount(string accountName)
+        {
+            return _followerBrackets.Values.Any(f =>
                 f != null
                 && f.AccountName == accountName
                 && (
@@ -196,47 +248,73 @@ namespace NinjaTrader.NinjaScript.Strategies
                     || f.State == FollowerBracketState.Replacing
                 )
             );
+        }
 
-            if (!hasActiveFsm)
+        // T-088-04: CYC=5. Returns true when repair is authorized to proceed.
+        // If hasActiveFsm is true, immediately authorized. Otherwise checks dispatch reservation
+        // or active follower position as fallback. Prints guard messages.
+        // Note: TOCTOU risk on dispatch/position checks is pre-existing, out of scope per V12.23.
+        private bool ResolveRepairAuthorization(string accountName, bool hasActiveFsm)
+        {
+            if (hasActiveFsm)
+                return true;
+
+            bool dispatchPending = _dispatchSyncPendingExpKeys.ContainsKey(ExpKey(accountName));
+            bool hasActivePositionEntry = activePositions.Values.Any(p =>
+                p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName
+            );
+
+            if (!dispatchPending && !hasActivePositionEntry)
             {
-                // Build 1004: Replace expectedPositions fallback with dispatch-sync-pending check.
-                // During dispatch window, FSM does not yet exist but _dispatchSyncPendingExpKeys
-                // marks the account as reserved. If neither FSM nor dispatch reservation exists,
-                // abort repair -- no authorization source.
-                bool dispatchPending = _dispatchSyncPendingExpKeys.ContainsKey(ExpKey(accountName));
-                bool hasActivePositionEntry = activePositions.Values.Any(p =>
-                    p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName
-                );
-                if (!dispatchPending && !hasActivePositionEntry)
-                {
-                    Print(
-                        string.Format(
-                            "[FSM-RACE GUARD ABORT] {0}: no FSM, no dispatch reservation, no position -- aborted",
-                            accountName
-                        )
-                    );
-                    return;
-                }
                 Print(
-                    string.Format("[FSM-RACE GUARD] {0}: no FSM -- dispatch/position fallback authorized", accountName)
+                    string.Format(
+                        "[FSM-RACE GUARD ABORT] {0}: no FSM, no dispatch reservation, no position -- aborted",
+                        accountName
+                    )
                 );
+                return false;
             }
 
-            if (!MetadataGuardRepairAuthorized(accountName, "ExecuteReaperRepair"))
-                return;
+            Print(string.Format("[FSM-RACE GUARD] {0}: no FSM -- dispatch/position fallback authorized", accountName));
+            return true;
+        }
 
+        // T-088-05: CYC=1. Marks bracket as not yet submitted and registers the order in entryOrders.
+        // Note: stale entryOrders on Submit failure (H3) is pre-existing, out of scope per V12.23.
+        // BracketSubmitted thread-safety is pre-existing, out of scope per V12.23.
+        private void PrepareAndRegisterRepairOrder(PositionInfo repairPos, string repairEntryName, Order repairEntry)
+        {
             repairPos.BracketSubmitted = false;
-            // B966: background timer -- Enqueue not applicable (would drain on wrong thread).
-            // ConcurrentDictionary single-write is inherently thread-safe.
             entryOrders[repairEntryName] = repairEntry;
+        }
 
-            targetAcct.Submit(new[] { repairEntry });
-
+        // T-088-06: CYC=2. Logs a successful repair order submission.
+        // ASCII-only string literals throughout.
+        private void LogRepairOrderSubmitted(
+            string accountName,
+            string repairEntryName,
+            OrderAction action,
+            int quantity,
+            OrderType orderType,
+            PositionInfo repairPos
+        )
+        {
             Print(
-                $"[REAPER REPAIR] [OK] Repair order submitted for {accountName} under key={repairEntryName}: "
-                    + $"{action} {quantity} {orderType} "
-                    + $"{(orderType == OrderType.Market ? "@ Market" : "@ " + repairPos.EntryPrice.ToString("F2"))} "
-                    + $"(original entry={repairPos.EntryPrice:F2})"
+                "[REAPER REPAIR] [OK] Repair order submitted for "
+                    + accountName
+                    + " under key="
+                    + repairEntryName
+                    + ": "
+                    + action
+                    + " "
+                    + quantity
+                    + " "
+                    + orderType
+                    + " "
+                    + (orderType == OrderType.Market ? "@ Market" : "@ " + repairPos.EntryPrice.ToString("F2"))
+                    + " (original entry="
+                    + repairPos.EntryPrice.ToString("F2")
+                    + ")"
             );
         }
 

@@ -33,51 +33,59 @@ namespace NinjaTrader.NinjaScript.Strategies
             Print("[WATCHDOG] Stopped");
         }
 
-        private void OnWatchdogTimer(object state)
+        private bool WatchdogShouldSuppressEscalation()
         {
             if (_isTerminating || State != State.Realtime)
             {
                 Interlocked.Exchange(ref _watchdogStage, 0);
-                return;
+                return true;
             }
 
             long lastBeat = Interlocked.Read(ref _strategyHeartbeatTicks);
             if (lastBeat <= 0)
-                return;
+                return true;
 
             long heartbeatAge = DateTime.UtcNow.Ticks - lastBeat;
             if (heartbeatAge <= WatchdogTimeoutTicks)
             {
                 Interlocked.Exchange(ref _watchdogStage, 0);
-                return;
+                return true;
             }
 
             if (!HasWatchdogLeadAccountWorkingOrder())
             {
                 Interlocked.Exchange(ref _watchdogStage, 0);
-                return;
+                return true;
             }
 
-            int stage = Volatile.Read(ref _watchdogStage);
-            if (stage == 0)
+            return false;
+        }
+
+        private bool TryEscalateToStageOne(int stage)
+        {
+            if (stage != 0)
+                return false;
+
+            if (Interlocked.CompareExchange(ref _watchdogStage, 1, 0) == 0)
             {
-                if (Interlocked.CompareExchange(ref _watchdogStage, 1, 0) == 0)
+                try
                 {
-                    try
-                    {
-                        Print("[!] CRITICAL: DEADLOCK DETECTED (TIMEOUT > 5S)");
-                        Enqueue(ctx => ctx.ExecuteWatchdogLeadAccountFlatten());
-                        Print("[WATCHDOG] Enqueued lead account emergency flatten.");
-                    }
-                    catch (Exception ex)
-                    {
-                        Interlocked.Exchange(ref _watchdogStage, 0);
-                        Print("[WATCHDOG] Enqueue failed: " + ex.Message);
-                    }
+                    Print("[!] CRITICAL: DEADLOCK DETECTED (TIMEOUT > 5S)");
+                    Enqueue(ctx => ctx.ExecuteWatchdogLeadAccountFlatten());
+                    Print("[WATCHDOG] Enqueued lead account emergency flatten.");
                 }
-                return;
+                catch (Exception ex)
+                {
+                    Interlocked.Exchange(ref _watchdogStage, 0);
+                    Print("[WATCHDOG] Enqueue failed: " + ex.Message);
+                }
             }
 
+            return true;
+        }
+
+        private void TryEscalateToStageTwo(int stage)
+        {
             if (stage != 1)
                 return;
 
@@ -86,6 +94,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print("[WATCHDOG] Escalating to direct master close fallback.");
                 ExecuteWatchdogDirectFallback();
             }
+        }
+
+        private void OnWatchdogTimer(object state)
+        {
+            if (WatchdogShouldSuppressEscalation())
+                return;
+
+            int stage = Volatile.Read(ref _watchdogStage);
+            if (TryEscalateToStageOne(stage))
+                return;
+
+            TryEscalateToStageTwo(stage);
         }
 
         private bool HasWatchdogLeadAccountPosition()
@@ -137,31 +157,65 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void CancelWatchdogWorkingOrders(Account masterAccount, string instrumentName)
         {
-            List<Order> ordersToCancel = new List<Order>();
+            List<Order> ordersToCancel = CollectCancelableOrders(masterAccount, instrumentName);
+            foreach (Order orderToCancel in ordersToCancel)
+                CancelOrderOnAccount(orderToCancel, masterAccount);
+            if (ordersToCancel.Count > 0)
+                LogWatchdogCancelCount(ordersToCancel.Count);
+        }
 
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private static bool IsOrderCancelable(Order order)
+        {
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.ChangePending
+                || order.OrderState == OrderState.ChangeSubmitted;
+        }
+
+        private static List<Order> CollectCancelableOrders(Account masterAccount, string instrumentName)
+        {
+            List<Order> result = new List<Order>();
             foreach (Order order in masterAccount.Orders.ToArray())
             {
                 if (order == null || order.Instrument == null)
                     continue;
                 if (order.Instrument.FullName != instrumentName)
                     continue;
-                if (
-                    order.OrderState == OrderState.Working
-                    || order.OrderState == OrderState.Submitted
-                    || order.OrderState == OrderState.Accepted
-                    || order.OrderState == OrderState.ChangePending
-                    || order.OrderState == OrderState.ChangeSubmitted
-                )
-                {
-                    ordersToCancel.Add(order);
-                }
+                if (IsOrderCancelable(order))
+                    result.Add(order);
             }
+            return result;
+        }
 
-            foreach (Order orderToCancel in ordersToCancel)
-                CancelOrderOnAccount(orderToCancel, masterAccount);
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void LogWatchdogCancelCount(int count)
+        {
+            Print("[WATCHDOG] Cancelled " + count + " master order(s) on strategy thread.");
+        }
 
-            if (ordersToCancel.Count > 0)
-                Print("[WATCHDOG] Cancelled " + ordersToCancel.Count + " master order(s) on strategy thread.");
+        private static List<Order> CollectDirectFallbackOrders(Account masterAccount, string instrumentName)
+        {
+            List<Order> result = new List<Order>();
+            foreach (Order order in masterAccount.Orders.ToArray())
+            {
+                if (order == null || order.Instrument == null)
+                    continue;
+                if (order.Instrument.FullName != instrumentName)
+                    continue;
+                if (IsOrderCancelable(order))
+                    result.Add(order);
+            }
+            return result;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void LogDirectFallbackCancelCount(int count)
+        {
+            Print("[WATCHDOG] Direct fallback cancelled " + count + " master order(s).");
         }
 
         private void FlattenWatchdogPositions(Account masterAccount, string instrumentName)
@@ -267,30 +321,11 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void CancelDirectFallbackOrders(Account masterAccount, string instrumentName)
         {
-            List<Order> ordersToCancel = new List<Order>();
-
-            foreach (Order order in masterAccount.Orders.ToArray())
-            {
-                if (order == null || order.Instrument == null)
-                    continue;
-                if (order.Instrument.FullName != instrumentName)
-                    continue;
-                if (
-                    order.OrderState == OrderState.Working
-                    || order.OrderState == OrderState.Submitted
-                    || order.OrderState == OrderState.Accepted
-                    || order.OrderState == OrderState.ChangePending
-                    || order.OrderState == OrderState.ChangeSubmitted
-                )
-                {
-                    ordersToCancel.Add(order);
-                }
-            }
-
+            List<Order> ordersToCancel = CollectDirectFallbackOrders(masterAccount, instrumentName);
             if (ordersToCancel.Count > 0)
             {
                 masterAccount.Cancel(ordersToCancel.ToArray());
-                Print("[WATCHDOG] Direct fallback cancelled " + ordersToCancel.Count + " master order(s).");
+                LogDirectFallbackCancelCount(ordersToCancel.Count);
             }
         }
 

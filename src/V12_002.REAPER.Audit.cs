@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using NinjaTrader.Cbi;
 using NinjaTrader.NinjaScript.Strategies;
@@ -117,78 +118,119 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         // Build 935 [REAPER-B935-003]: Per-account audit logic extracted from AuditApexPositions.
         // Returns true if the account has non-zero state (for heartbeat counter).
-        // Build 935 [REAPER-B935-002]: Refactored dispatcher -- routes to extracted sub-methods.
+        // W7-082-T8: Refactored to final dispatcher (CYC=6). All complexity in extracted helpers.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool AuditSingleFleetAccount(Account acct, bool shouldLog)
         {
-            Position pos;
-            int actualQty;
-            int expectedQty;
-            string expectedKey;
-            bool syncPending;
-            bool inFillGrace;
-            bool hasState;
-            List<FollowerBracketFSM> accountFsms;
-
             AuditFleet_CalculateExpectedActual(
                 acct,
                 shouldLog,
-                out actualQty,
-                out expectedQty,
-                out expectedKey,
-                out syncPending,
-                out inFillGrace,
-                out hasState,
-                out accountFsms,
-                out pos
+                out int actualQty,
+                out int expectedQty,
+                out string expectedKey,
+                out bool syncPending,
+                out bool inFillGrace,
+                out bool hasState,
+                out List<FollowerBracketFSM> accountFsms,
+                out Position pos
             );
 
             if (expectedQty != actualQty)
+                return AuditFleet_HandleDesyncBranch(
+                    acct,
+                    shouldLog,
+                    expectedQty,
+                    actualQty,
+                    syncPending,
+                    inFillGrace,
+                    accountFsms,
+                    hasState
+                );
+
+            AuditFleet_ProcessOrphanFsmLoop(accountFsms, acct.Name, actualQty);
+
+            if (actualQty != 0)
+                AuditFleet_HandleNakedPosition(acct, pos, actualQty, expectedKey, shouldLog);
+
+            return hasState;
+        }
+
+        // W7-082-T2: Extract outer desync branch tree from AuditSingleFleetAccount. CYC=5.
+        private bool AuditFleet_HandleDesyncBranch(
+            Account acct,
+            bool shouldLog,
+            int expectedQty,
+            int actualQty,
+            bool syncPending,
+            bool inFillGrace,
+            List<FollowerBracketFSM> accountFsms,
+            bool hasState
+        )
+        {
+            if (actualQty == 0 && expectedQty != 0)
             {
-                if (actualQty == 0 && expectedQty != 0)
-                {
-                    return AuditFleet_HandleDesyncRepair(
-                        acct,
-                        shouldLog,
-                        expectedQty,
-                        actualQty,
-                        syncPending,
-                        inFillGrace,
-                        accountFsms,
-                        hasState
-                    );
-                }
-
-                bool isCriticalDesync =
-                    (actualQty != 0 && expectedQty == 0)
-                    || (Math.Sign(actualQty) != Math.Sign(expectedQty) && expectedQty != 0);
-
-                if (isCriticalDesync)
-                {
-                    bool shouldDefer = AuditFleet_CheckPositionPassGrace(acct, shouldLog, actualQty, expectedQty);
-                    if (shouldDefer)
-                    {
-                        return hasState;
-                    }
-                    AuditFleet_HandleCriticalDesyncFlatten(acct, shouldLog, expectedQty, actualQty);
-                }
-                else if (shouldLog)
-                {
-                    Print($"[REAPER] Minor Desync on {acct.Name}: Expected={expectedQty}, Actual={actualQty}");
-                }
+                return AuditFleet_HandleDesyncRepair(
+                    acct,
+                    shouldLog,
+                    expectedQty,
+                    actualQty,
+                    syncPending,
+                    inFillGrace,
+                    accountFsms,
+                    hasState
+                );
             }
 
+            AuditFleet_EvaluateCriticalDesync(acct, shouldLog, expectedQty, actualQty, hasState);
+            return hasState;
+        }
+
+        // W7-082-T3: Extract critical-desync evaluation and flatten dispatch. CYC=5.
+        // Single responsibility: evaluate isCriticalDesync, route to grace check or minor log.
+        private void AuditFleet_EvaluateCriticalDesync(
+            Account acct,
+            bool shouldLog,
+            int expectedQty,
+            int actualQty,
+            bool hasState
+        )
+        {
+            bool isCriticalDesync =
+                (actualQty != 0 && expectedQty == 0)
+                || (Math.Sign(actualQty) != Math.Sign(expectedQty) && expectedQty != 0);
+
+            if (isCriticalDesync)
+            {
+                bool shouldDefer = AuditFleet_CheckPositionPassGrace(acct, shouldLog, actualQty, expectedQty);
+                if (!shouldDefer)
+                    AuditFleet_HandleCriticalDesyncFlatten(acct, shouldLog, expectedQty, actualQty);
+            }
+            else if (shouldLog)
+            {
+                AuditFleet_LogMinorDesync(acct.Name, expectedQty, actualQty);
+            }
+        }
+
+        // W7-082-T4: Extract orphan FSM detection loop from AuditSingleFleetAccount. CYC=3.
+        // Single concern: iterate accountFsms and call DetectOrphanFSM for each.
+        private void AuditFleet_ProcessOrphanFsmLoop(
+            List<FollowerBracketFSM> accountFsms,
+            string acctName,
+            int actualQty
+        )
+        {
             // [BUILD 981 DIAGNOSTIC]: Detect orphaned FSM positions after grace period.
             foreach (var fsm in accountFsms)
             {
-                DetectOrphanFSM(fsm.EntryName, acct.Name, actualQty, activePositions);
+                DetectOrphanFSM(fsm.EntryName, acctName, actualQty, activePositions);
             }
+        }
 
-            if (actualQty != 0)
-            {
-                AuditFleet_HandleNakedPosition(acct, pos, actualQty, expectedKey, shouldLog);
-            }
-
-            return hasState;
+        // W7-082-T5: Cold-path minor desync log [NoInlining] to keep off hot instruction cache. CYC=2.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void AuditFleet_LogMinorDesync(string acctName, int expectedQty, int actualQty)
+        {
+            Print("[REAPER] Minor Desync on " + acctName + ": Expected=" + expectedQty + ", Actual=" + actualQty);
         }
 
         // Build 935 [REAPER-B935-003]: Extracted from AuditSingleFleetAccount -- Handle ghost position repair.
@@ -254,8 +296,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool AuditFleet_CheckPositionPassGrace(Account acct, bool shouldLog, int actualQty, int expectedQty)
         {
             // Build 999: Position Pass grace -- defer critical desync when account failed Phase 5 Position Pass.
-            // Applies only to the case where actualQty!=0 and expectedQty==0 (no FSM created on reconnect).
-            // Does NOT apply when sign mismatch (that is a genuine live desync -- fire immediately).
             if (actualQty != 0 && expectedQty == 0)
             {
                 DateTime ppFailedTime;
@@ -274,9 +314,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                                 )
                             );
                         }
-                        return true; // Defer -- check again next audit cycle
+                        return true;
                     }
-                    // Grace expired -- clear entry and fall through to critical desync
                     _positionPassFailedFirstSeen.TryRemove(acct.Name, out _);
                     Print(
                         string.Format(
@@ -287,11 +326,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     );
                 }
             }
-            return false; // No deferral
+            return false;
         }
 
         // Build 935 [REAPER-B935-005]: Extracted from AuditSingleFleetAccount -- Handle critical desync flatten.
-        // Critical desync = sign mismatch OR unexpected position (actualQty!=0 when expectedQty==0 after grace).
         private void AuditFleet_HandleCriticalDesyncFlatten(
             Account acct,
             bool shouldLog,
@@ -331,7 +369,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // Build 935 [REAPER-B935-006]: Extracted from AuditSingleFleetAccount -- Handle naked position audit.
-        // Naked position = position exists but no working stop order (protection missing).
         private void AuditFleet_HandleNakedPosition(
             Account acct,
             Position pos,
@@ -362,7 +399,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                     catch (Exception tcEx)
                     {
-                        ClearNakedStopInFlight(expectedKey); // NEW: Accessor method
+                        ClearNakedStopInFlight(expectedKey);
                         Print(
                             string.Format(
                                 "[REAPER][NAKED_STOP] TriggerCustomEvent failed for {0}: {1} -- in-flight cleared.",
@@ -375,10 +412,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else
             {
-                ClearNakedPositionGrace(acct.Name); // NEW: Accessor method
+                ClearNakedPositionGrace(acct.Name);
             }
         }
 
+        // W7-084-T6: Refactored parent AuditFleet_CalculateExpectedActual to orchestrate helpers. CYC=6.
         private void AuditFleet_CalculateExpectedActual(
             Account acct,
             bool shouldLog,
@@ -392,18 +430,58 @@ namespace NinjaTrader.NinjaScript.Strategies
             out Position pos
         )
         {
+            AuditFleet_ResolvePosition(acct, out actualQty, out pos);
+            AuditFleet_CollectFsmState(acct, out accountFsms, out int fsmExpectedQty);
+            AuditFleet_ReconcileStaleFsms(accountFsms, acct.Name, actualQty, ref fsmExpectedQty);
+            AuditFleet_ClearPositionPassState(acct.Name, fsmExpectedQty);
+            AuditFleet_AssembleOutputs(
+                acct.Name,
+                actualQty,
+                fsmExpectedQty,
+                out expectedKey,
+                out expectedQty,
+                out syncPending,
+                out inFillGrace,
+                out hasState
+            );
+            if (shouldLog && hasState)
+            {
+                Print($"[REAPER] {acct.Name}: Expected={expectedQty}, Actual={actualQty}");
+            }
+        }
+
+        // W7-084-T1: Resolve broker position quantity and position reference. CYC=3.
+        private void AuditFleet_ResolvePosition(Account acct, out int actualQty, out Position pos)
+        {
             pos = acct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
             actualQty = 0;
             if (pos != null && pos.MarketPosition != MarketPosition.Flat)
             {
                 actualQty = pos.MarketPosition == MarketPosition.Long ? pos.Quantity : -pos.Quantity;
             }
+        }
 
+        // W7-084-T2: Collect FSM list and expected quantity from FSM authority. CYC=2.
+        private void AuditFleet_CollectFsmState(
+            Account acct,
+            out List<FollowerBracketFSM> accountFsms,
+            out int fsmExpectedQty
+        )
+        {
             // Build 1105: FSM is the SOLE authority for follower expected position.
             accountFsms = _followerBrackets.Values.Where(f => f.AccountName == acct.Name).ToList();
-            int fsmExpectedQty = GetFsmExpectedPosition(acct.Name);
+            fsmExpectedQty = GetFsmExpectedPosition(acct.Name);
+        }
 
-            // Handle hydrated Active FSMs with no order reference (restart edge case)
+        // W7-084-T3: Reconcile stale/orphaned FSMs (cold error-recovery path). CYC=4.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void AuditFleet_ReconcileStaleFsms(
+            List<FollowerBracketFSM> accountFsms,
+            string accountName,
+            int actualQty,
+            ref int fsmExpectedQty
+        )
+        {
             foreach (var f in accountFsms)
             {
                 if (f.State == FollowerBracketState.Active && f.EntryOrder == null)
@@ -421,33 +499,42 @@ namespace NinjaTrader.NinjaScript.Strategies
                                 string.Format(
                                     "[REAPER-C7] Stale Active FSM for {0} on {1} (broker flat) -- auto-terminating",
                                     f.EntryName,
-                                    acct.Name
+                                    accountName
                                 )
                             );
                         }
                     }
                 }
             }
+        }
 
-            // Build 999: If Position Pass failed on reconnect but FSM has since been created (replace cycle completed), clear grace.
+        // W7-084-T4: Clear position-pass state when FSM has recovered to non-zero expected. CYC=2.
+        private void AuditFleet_ClearPositionPassState(string accountName, int fsmExpectedQty)
+        {
             if (fsmExpectedQty != 0)
             {
-                _positionPassFailedFirstSeen.TryRemove(acct.Name, out _);
+                _positionPassFailedFirstSeen.TryRemove(accountName, out _);
             }
+        }
 
+        // W7-084-T5: Assemble all output parameters for callers of AuditFleet_CalculateExpectedActual. CYC=3.
+        private void AuditFleet_AssembleOutputs(
+            string accountName,
+            int actualQty,
+            int fsmExpectedQty,
+            out string expectedKey,
+            out int expectedQty,
+            out bool syncPending,
+            out bool inFillGrace,
+            out bool hasState
+        )
+        {
             // AUTHORITY: Use FSM state from now on
-            expectedKey = ExpKey(acct.Name);
+            expectedKey = ExpKey(accountName);
             expectedQty = fsmExpectedQty;
-
             syncPending = _dispatchSyncPendingExpKeys.ContainsKey(expectedKey); // [B967-FIX-02]
-            // Build 935 [REAPER-B935-002]: Per-account grace prevents Account A fill blocking Account B repair.
             inFillGrace = IsReaperFillGraceActive(expectedKey);
-
             hasState = expectedQty != 0 || actualQty != 0;
-            if (shouldLog && hasState)
-            {
-                Print($"[REAPER] {acct.Name}: Expected={expectedQty}, Actual={actualQty}");
-            }
         }
 
         private bool EnqueueReaperRepairCandidate(
@@ -458,18 +545,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             out string repairKey
         )
         {
-            // H17-GUARD: Prevent new enqueues after shutdown initiated
             if (_isTerminating)
             {
                 repairKey = null;
                 return false;
             }
             repairKey = acct.Name + "_" + Instrument.FullName;
-            // H16-FIX: Atomic TryAdd check prevents TOCTOU race where two audit cycles both pass
-            // ContainsKey check before either calls TryAdd, causing duplicate repair submissions.
             if (!_repairInFlight.TryAdd(repairKey, 0))
             {
-                // Already in flight - skip
                 if (shouldLog)
                 {
                     Print($"[REAPER] {acct.Name} repair already in-flight -- skipping.");
@@ -477,7 +560,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
             }
 
-            // Phase 4: Use FSM to identify working entry (EXISTING LOGIC - not new)
             bool hasWorkingEntry = accountFsms.Any(f =>
                 f.State == FollowerBracketState.Submitted || f.State == FollowerBracketState.Accepted
             );
@@ -494,15 +576,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
             }
 
-            // Has working entry - clear in-flight flag since we're not enqueuing.
-            // CRITICAL: Without this TryRemove, the account would be permanently blocked.
             _repairInFlight.TryRemove(repairKey, out _);
             return false;
         }
 
         private bool EnqueueReaperFlattenCandidate(Account acct)
         {
-            // H17-GUARD: Prevent new enqueues after shutdown initiated
             if (_isTerminating)
                 return false;
             string flattenKey = acct.Name + "_" + Instrument.FullName;
@@ -514,16 +593,30 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        // W7-087-T1: Named stop-order predicate extracted from AuditFleet_CheckWorkingStop. CYC=5.
+        private bool IsWorkingStopOrderForInstrument(Order o)
+        {
+            return o.Instrument?.FullName == Instrument?.FullName
+                && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
+                && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
+                && (o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover);
+        }
+
+        // W7-141-T1: Working stop order predicate for instrument. CYC=7.
+        private bool IsWorkingStopOrder(Order o)
+        {
+            return o.Instrument?.FullName == Instrument?.FullName
+                && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
+                && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
+                && (o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover);
+        }
+
+        // W7-087 + W7-141 refactored parent: AuditFleet_CheckWorkingStop. CYC=1.
         private bool AuditFleet_CheckWorkingStop(Account acct)
         {
             // Build 1108.003 [D3]: Snapshot broker orders before iteration. orderSnapshot
             var orders = acct.Orders.ToArray();
-            return orders.Any(o =>
-                o.Instrument?.FullName == Instrument?.FullName
-                && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
-                && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
-                && (o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover)
-            );
+            return orders.Any(IsWorkingStopOrderForInstrument);
         }
 
         // Build 1111.007-reaper-t1: EnqueueReaperNakedStopCandidate extracted to V12_002.REAPER.NakedPosition.cs as DetectNakedPosition
@@ -547,7 +640,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // Build 935 [REAPER-B935-007]: Extracted from AuditMasterAccountIfNeeded -- Calculate master position state.
-        // Reads actual position from broker and expected position from expectedPositions dictionary.
         private void AuditMaster_CalculatePositionState(
             bool shouldLog,
             out Position masterPos,
@@ -567,7 +659,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             masterExpectedQty = 0;
             masterExpectedKey = ExpKey(Account.Name);
-            // Build 1102U [BUG-1]: Composite key + stateLock guard.
             expectedPositions.TryGetValue(masterExpectedKey, out masterExpectedQty);
 
             hasState = masterExpectedQty != 0 || masterActualQty != 0;
@@ -577,20 +668,15 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
-        // Build 935 [REAPER-B935-008]: Extracted from AuditMasterAccountIfNeeded -- Handle desync and flatten.
-        // Detects position mismatches and enqueues emergency flatten if AutoFlattenDesync enabled.
+        // Build 935 [REAPER-B935-008]: Handle desync and flatten.
+        // W7-085-T3: Refactored to delegate to helpers (CYC=5).
         private void AuditMaster_HandleDesyncFlatten(bool shouldLog, int masterActualQty, int masterExpectedQty)
         {
             if (masterExpectedQty != masterActualQty)
             {
                 if (masterActualQty == 0 && masterExpectedQty != 0)
                 {
-                    if (shouldLog)
-                    {
-                        Print(
-                            $"[REAPER] {Account.Name} (Master) is Flat (Target/Stop hit). Expected was {masterExpectedQty}."
-                        );
-                    }
+                    AuditMaster_HandleGhostFlatLog(shouldLog, masterActualQty, masterExpectedQty);
                 }
                 else if (AuditMaster_CheckExpectedActual(shouldLog, masterActualQty, masterExpectedQty))
                 {
@@ -600,75 +686,68 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                     if (EnqueueReaperMasterFlatten())
                     {
-                        try
-                        {
-                            TriggerCustomEvent(o => ProcessReaperFlattenQueue(), null);
-                        }
-                        catch (Exception _mFlatTriggerEx)
-                        {
-                            _reaperFlattenInFlight.TryRemove(Account.Name + "_" + Instrument.FullName, out _);
-                            Print(
-                                "[REAPER] TriggerCustomEvent failed for master flatten: "
-                                    + _mFlatTriggerEx.Message
-                                    + " -- in-flight cleared, will re-detect next cycle"
-                            );
-                        }
+                        string flattenKey = Account.Name + "_" + Instrument.FullName;
+                        AuditMaster_TriggerFlattenEvent(flattenKey);
                     }
                 }
             }
         }
 
-        // Build 935 [REAPER-B935-009]: Extracted from AuditMasterAccountIfNeeded -- Handle naked position detection.
-        // Build 998: Master naked-position audit -- mirrors AuditSingleFleetAccount lines 160-200.
-        // Detects positions without working stop orders and enqueues emergency stop after grace period.
+        // W7-085-T1: Safely dispatch flatten event to Actor queue. CYC=3.
+        private void AuditMaster_TriggerFlattenEvent(string flattenKey)
+        {
+            try
+            {
+                TriggerCustomEvent(o => ProcessReaperFlattenQueue(), null);
+            }
+            catch (Exception _mFlatTriggerEx)
+            {
+                _reaperFlattenInFlight.TryRemove(flattenKey, out _);
+                Print(
+                    "[REAPER] TriggerCustomEvent failed for master flatten: "
+                        + _mFlatTriggerEx.Message
+                        + " -- in-flight cleared, will re-detect next cycle"
+                );
+            }
+        }
+
+        // W7-085-T2: Cold-path ghost-flat detection and logging [NoInlining]. CYC=2.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void AuditMaster_HandleGhostFlatLog(bool shouldLog, int masterActualQty, int masterExpectedQty)
+        {
+            if (masterActualQty == 0 && masterExpectedQty != 0)
+            {
+                if (shouldLog)
+                {
+                    Print(
+                        $"[REAPER] {Account.Name} (Master) is Flat (Target/Stop hit). Expected was {masterExpectedQty}."
+                    );
+                }
+            }
+        }
+
+        // Build 935 [REAPER-B935-009]: Handle naked position detection.
+        // W7-081-T4: Refactored to call extracted helpers (CYC=3).
         private void AuditMaster_HandleNakedPosition(Position masterPos, int masterActualQty, string masterExpectedKey)
         {
             if (masterActualQty != 0)
             {
-                // H13-FIX: Snapshot broker orders before iteration to prevent InvalidOperationException
-                // when NinjaTrader updates Account.Orders collection from UI thread during audit.
-                var masterOrders = Account.Orders.ToArray();
-                bool masterHasWorkingStop = masterOrders.Any(o =>
-                    o.Instrument?.FullName == Instrument?.FullName
-                    && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
-                    && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
-                    && (o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover)
-                );
-                if (!masterHasWorkingStop)
+                if (!AuditMaster_HasWorkingStopOrder())
                 {
                     DateTime masterFirstSeen;
-                    int graceSeconds = (NakedPositionGraceSec >= 5) ? NakedPositionGraceSec : 5;
                     if (!_nakedPositionFirstSeen.TryGetValue(Account.Name, out masterFirstSeen))
                     {
-                        _nakedPositionFirstSeen[Account.Name] = DateTime.UtcNow;
-                        Print(
-                            string.Format(
-                                "[REAPER][NAKED_POSITION] {0} (Master): {1}ct naked -- starting {2}s grace window.",
-                                Account.Name,
-                                masterActualQty,
-                                graceSeconds
-                            )
-                        );
+                        int graceSeconds = (NakedPositionGraceSec >= 5) ? NakedPositionGraceSec : 5;
+                        AuditMaster_StartNakedGraceWindow(masterActualQty, graceSeconds);
                     }
-                    else if (
-                        EnqueueReaperMasterNakedStop(masterPos, masterActualQty, masterExpectedKey, masterFirstSeen)
-                    )
+                    else
                     {
-                        try
-                        {
-                            TriggerCustomEvent(e => ProcessReaperNakedStopQueue(), null);
-                        }
-                        catch (Exception tcEx)
-                        {
-                            _reaperNakedStopInFlight.TryRemove(masterExpectedKey, out _);
-                            Print(
-                                string.Format(
-                                    "[REAPER][NAKED_STOP] TriggerCustomEvent failed for {0} (Master): {1} -- in-flight cleared.",
-                                    Account.Name,
-                                    tcEx.Message
-                                )
-                            );
-                        }
+                        AuditMaster_TriggerNakedStopIfGraceExpired(
+                            masterPos,
+                            masterActualQty,
+                            masterExpectedKey,
+                            masterFirstSeen
+                        );
                     }
                 }
                 else
@@ -678,9 +757,122 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        // W7-031-T1: Stop-order detection predicate (parameterized, for use when orders array is pre-snapshotted). CYC=6.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private bool AuditMaster_HasWorkingStopOrder(Order[] masterOrders)
+        {
+            return masterOrders.Any(o =>
+                o.Instrument?.FullName == Instrument?.FullName
+                && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
+                && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
+                && (o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover)
+            );
+        }
+
+        // W7-081-T1: Hot-path stop-order predicate (parameterless) [AggressiveInlining]. CYC=1.
+        // H13-FIX: Snapshot to prevent InvalidOperationException from UI thread updates.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool AuditMaster_HasWorkingStopOrder()
+        {
+            var masterOrders = Account.Orders.ToArray();
+            return masterOrders.Any(o =>
+                o.Instrument?.FullName == Instrument?.FullName
+                && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
+                && (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
+                && (o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover)
+            );
+        }
+
+        // W7-031-T2: Grace-window initialization (cold path) [NoInlining]. CYC=1.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void AuditMaster_InitNakedPositionGrace(int masterActualQty, int graceSeconds)
+        {
+            _nakedPositionFirstSeen[Account.Name] = DateTime.UtcNow;
+            Print(
+                string.Format(
+                    "[REAPER][NAKED_POSITION] {0} (Master): {1}ct naked -- starting {2}s grace window.",
+                    Account.Name,
+                    masterActualQty,
+                    graceSeconds
+                )
+            );
+        }
+
+        // W7-081-T2: Cold-path grace-window initialiser [NoInlining]. CYC=1.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void AuditMaster_StartNakedGraceWindow(int masterActualQty, int graceSeconds)
+        {
+            _nakedPositionFirstSeen[Account.Name] = DateTime.UtcNow;
+            Print(
+                string.Format(
+                    "[REAPER][NAKED_POSITION] {0} (Master): {1}ct naked -- starting {2}s grace window.",
+                    Account.Name,
+                    masterActualQty,
+                    graceSeconds
+                )
+            );
+        }
+
+        // W7-031-T3: Naked stop dispatch (cold path) [NoInlining]. CYC=4.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void AuditMaster_DispatchNakedStop(
+            Position masterPos,
+            int masterActualQty,
+            string masterExpectedKey,
+            DateTime masterFirstSeen
+        )
+        {
+            if (EnqueueReaperMasterNakedStop(masterPos, masterActualQty, masterExpectedKey, masterFirstSeen))
+            {
+                try
+                {
+                    TriggerCustomEvent(e => ProcessReaperNakedStopQueue(), null);
+                }
+                catch (Exception tcEx)
+                {
+                    _reaperNakedStopInFlight.TryRemove(masterExpectedKey, out _);
+                    Print(
+                        string.Format(
+                            "[REAPER][NAKED_STOP] TriggerCustomEvent failed for {0} (Master): {1} -- in-flight cleared.",
+                            Account.Name,
+                            tcEx.Message
+                        )
+                    );
+                }
+            }
+        }
+
+        // W7-081-T3: Cold-path emergency stop trigger [NoInlining]. CYC=3. Max helper for W7-081.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void AuditMaster_TriggerNakedStopIfGraceExpired(
+            Position masterPos,
+            int masterActualQty,
+            string masterExpectedKey,
+            DateTime masterFirstSeen
+        )
+        {
+            int graceSeconds = (NakedPositionGraceSec >= 5) ? NakedPositionGraceSec : 5;
+            if (EnqueueReaperMasterNakedStop(masterPos, masterActualQty, masterExpectedKey, masterFirstSeen))
+            {
+                try
+                {
+                    TriggerCustomEvent(e => ProcessReaperNakedStopQueue(), null);
+                }
+                catch (Exception tcEx)
+                {
+                    _reaperNakedStopInFlight.TryRemove(masterExpectedKey, out _);
+                    Print(
+                        string.Format(
+                            "[REAPER][NAKED_STOP] TriggerCustomEvent failed for {0} (Master): {1} -- in-flight cleared.",
+                            Account.Name,
+                            tcEx.Message
+                        )
+                    );
+                }
+            }
+        }
+
         // Build 935 [REAPER-B935-004]: Audit the Master account when it isn't covered by AccountPrefix.
-        // Returns true if the master account has non-zero state.
-        // Build 935 [REAPER-B935-010]: Refactored dispatcher -- routes to extracted sub-methods.
         private bool AuditMasterAccountIfNeeded(bool shouldLog)
         {
             Position masterPos;
@@ -703,48 +895,66 @@ namespace NinjaTrader.NinjaScript.Strategies
             return hasState;
         }
 
+        // W7-083-T4: Refactored parent AuditMaster_CheckExpectedActual to delegate to helpers. CYC=4.
         private bool AuditMaster_CheckExpectedActual(bool shouldLog, int masterActualQty, int masterExpectedQty)
         {
-            // REAP-01: Suppress critical-desync within ReaperFillGraceTicks of a fresh reservation.
+            bool inFillGrace = AuditMaster_IsInFillGrace();
+            bool isCriticalDesync = !inFillGrace && AuditMaster_IsCriticalDesync(masterActualQty, masterExpectedQty);
+            if (shouldLog)
+            {
+                AuditMaster_LogDesyncState(isCriticalDesync, inFillGrace, masterExpectedQty, masterActualQty);
+            }
+            if (isCriticalDesync && AutoFlattenDesync)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        // W7-083-T1: Hot-path fill grace predicate [AggressiveInlining]. CYC=2.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool AuditMaster_IsInFillGrace()
+        {
             long stampTicks = Interlocked.Read(ref _lastExpectedPositionSetTicks);
-            bool inFillGrace = stampTicks > 0 && (DateTime.UtcNow.Ticks - stampTicks) < ReaperFillGraceTicks;
+            return stampTicks > 0 && (DateTime.UtcNow.Ticks - stampTicks) < ReaperFillGraceTicks;
+        }
 
-            bool isCriticalDesync =
-                !inFillGrace
-                && (
-                    (masterActualQty != 0 && masterExpectedQty == 0)
-                    || (Math.Sign(masterActualQty) != Math.Sign(masterExpectedQty) && masterExpectedQty != 0)
-                );
+        // W7-083-T2: Hot-path critical desync predicate [AggressiveInlining]. CYC=3.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool AuditMaster_IsCriticalDesync(int masterActualQty, int masterExpectedQty)
+        {
+            return (masterActualQty != 0 && masterExpectedQty == 0)
+                || (Math.Sign(masterActualQty) != Math.Sign(masterExpectedQty) && masterExpectedQty != 0);
+        }
 
-            if (inFillGrace && shouldLog)
+        // W7-083-T3: Cold-path desync logging sink [NoInlining]. CYC=3.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void AuditMaster_LogDesyncState(
+            bool isCriticalDesync,
+            bool inFillGrace,
+            int masterExpectedQty,
+            int masterActualQty
+        )
+        {
+            if (inFillGrace)
             {
                 Print($"[REAPER] {Account.Name} (Master): Fill grace active -- desync check suppressed.");
+                return;
             }
-
             if (isCriticalDesync)
             {
-                if (shouldLog)
-                    Print(
-                        $"[REAPER] CRITICAL DESYNC on {Account.Name} (Master): Expected={masterExpectedQty}, Actual={masterActualQty}"
-                    );
-                if (AutoFlattenDesync)
-                {
-                    return true;
-                }
-            }
-            else if (shouldLog)
-            {
                 Print(
-                    $"[REAPER] Minor Desync on {Account.Name} (Master): Expected={masterExpectedQty}, Actual={masterActualQty}"
+                    $"[REAPER] CRITICAL DESYNC on {Account.Name} (Master): Expected={masterExpectedQty}, Actual={masterActualQty}"
                 );
+                return;
             }
-
-            return false;
+            Print(
+                $"[REAPER] Minor Desync on {Account.Name} (Master): Expected={masterExpectedQty}, Actual={masterActualQty}"
+            );
         }
 
         private bool EnqueueReaperMasterFlatten()
         {
-            // H17-GUARD: Prevent new enqueues after shutdown initiated
             if (_isTerminating)
                 return false;
             string flattenKey = Account.Name + "_" + Instrument.FullName;
@@ -763,7 +973,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             DateTime masterFirstSeen
         )
         {
-            // H17-GUARD: Prevent new enqueues after shutdown initiated
             if (_isTerminating)
                 return false;
             if (
@@ -771,10 +980,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 >= ((NakedPositionGraceSec >= 5) ? NakedPositionGraceSec : 5)
             )
             {
-                // H16-FIX: Atomic TryAdd check prevents duplicate master naked stop submissions.
                 if (!_reaperNakedStopInFlight.TryAdd(masterExpectedKey, 0))
                 {
-                    // Already in flight - skip
                     return false;
                 }
                 Print(
@@ -794,8 +1001,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         /// <summary>
         /// V12.17 FIX: Processes queued flatten requests on the strategy thread.
-        /// Called via TriggerCustomEvent from the Reaper background thread.
-        /// This is the SAFE way to call Account.Flatten() -- same pattern as IPC.
         /// </summary>
         private void ProcessReaperFlattenQueue()
         {
@@ -831,7 +1036,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private Account ProcessReaperFlatten_FindAccount(string accountName)
         {
-            // Find the account by name
             Account targetAcct = null;
             foreach (Account acct in Account.All)
             {
@@ -842,52 +1046,59 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
             }
 
-            // Also check if it's the Master account
             if (targetAcct == null && Account.Name == accountName)
                 targetAcct = Account;
 
             return targetAcct;
         }
 
+        // W7-086: Refactored parent ProcessReaperFlatten_CancelWorkingOrders. CYC=2.
         private void ProcessReaperFlatten_CancelWorkingOrders(Account targetAcct, string accountName)
         {
-            // [V12.Phase9] REAPER FIX: Use manual unmanaged close instead of broken targetAcct.Flatten().
-            // 1. Cancel all working orders for this instrument
-            // H14-FIX: Snapshot broker orders before iteration to prevent collection-modified exception
-            // during emergency flatten when broker callbacks update order states concurrently.
-            List<Order> ordersToCancel = new List<Order>();
-            var accountOrders = targetAcct.Orders.ToArray();
-            foreach (Order order in accountOrders)
+            var ordersToCancel = BuildCancelOrderList(targetAcct);
+            ExecuteCancelOrders(ordersToCancel, targetAcct, accountName);
+        }
+
+        // W7-086-T1: Null guard + instrument check + 4-branch OrderState predicate. CYC=6.
+        private bool IsOrderCancellable(Order order)
+        {
+            if (order == null)
+                return false;
+            if (order.Instrument.FullName != Instrument.FullName)
+                return false;
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.ChangePending;
+        }
+
+        // W7-086-T2: Snapshot + iterate + filter into staging list. CYC=3.
+        private List<Order> BuildCancelOrderList(Account targetAcct)
+        {
+            // H14-FIX: Snapshot broker orders before iteration to prevent collection-modified exception.
+            var snapshot = targetAcct.Orders.ToArray();
+            var ordersToCancel = new List<Order>();
+            foreach (var order in snapshot)
             {
-                if (
-                    order != null
-                    && order.Instrument.FullName == Instrument.FullName
-                    && (
-                        order.OrderState == OrderState.Working
-                        || order.OrderState == OrderState.Submitted
-                        || order.OrderState == OrderState.Accepted
-                        || order.OrderState == OrderState.ChangePending
-                    )
-                )
-                {
+                if (IsOrderCancellable(order))
                     ordersToCancel.Add(order);
-                }
             }
+            return ordersToCancel;
+        }
+
+        // W7-086-T3: Count guard + dispatch loop + diagnostic print. CYC=4.
+        private void ExecuteCancelOrders(List<Order> ordersToCancel, Account targetAcct, string accountName)
+        {
             if (ordersToCancel.Count > 0)
             {
-                foreach (Order orderToCancel in ordersToCancel)
-                {
-                    CancelOrderOnAccount(orderToCancel, targetAcct);
-                }
-                Print($"[REAPER] Emergency Cancel: {ordersToCancel.Count} orders on {accountName}");
+                foreach (var order in ordersToCancel)
+                    CancelOrderOnAccount(order, targetAcct);
+                Print("[REAPER] Emergency Cancel: " + ordersToCancel.Count + " orders on " + accountName);
             }
         }
 
         private void ProcessReaperFlatten_ClosePositions(Account targetAcct, string accountName)
         {
-            // 2. Proactively close positions via unmanaged market orders
-            // H15-FIX: Snapshot broker positions before iteration to prevent collection-modified exception
-            // during emergency flatten when broker fill callbacks update positions concurrently.
             var accountPositions = targetAcct.Positions.ToArray();
             foreach (Position position in accountPositions)
             {
@@ -904,7 +1115,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 if (targetAcct == this.Account)
                 {
-                    // Master Account
                     if (position.MarketPosition == MarketPosition.Long)
                     {
                         SubmitOrderUnmanaged(0, OrderAction.Sell, OrderType.Market, qty, 0, 0, "", signalName);
@@ -916,7 +1126,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 else
                 {
-                    // Fleet Account
                     OrderAction closeAction =
                         position.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
                     Order closeOrder = targetAcct.CreateOrder(
@@ -939,8 +1148,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void ProcessReaperFlatten_TerminateFsms(string accountName)
         {
-            // Build 1004: SetExpectedPositionLocked(0) removed -- FSM termination is the sole teardown.
-            // expectedPositions write is vestigial once FSM is the authority source.
             TerminateFsmsForAccount(accountName);
         }
 
