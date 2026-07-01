@@ -42,69 +42,83 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void CheckFFMAConditions()
         {
-            if (!isFFMAModeArmed || !FFMAEnabled)
+            if (!CheckFFMAGuards())
                 return;
-            if (ema9 == null || rsiIndicator == null || currentATR <= 0)
-                return;
-            if (CurrentBar < 20)
-                return;
-
             try
             {
                 double ema9Value = ema9[0];
                 double rsiValue = rsiIndicator[0];
                 double currentPrice = Close[0];
                 double distanceFromEMA = currentPrice - ema9Value;
-
-                bool isGreenCandle = Close[0] > Open[0];
-                bool isRedCandle = Close[0] < Open[0];
-
-                // SHORT SETUP: RSI > 80 + Price far ABOVE EMA + RED reversal candle
-                if (rsiValue > FFMARSIOverbought && distanceFromEMA >= FFMAEMADistance && isRedCandle)
-                {
-                    Print(
-                        string.Format(
-                            "FFMA SHORT TRIGGERED: RSI={0:F1} > {1} | Distance={2:F2}pts > {3}pts | RED candle",
-                            rsiValue,
-                            FFMARSIOverbought,
-                            distanceFromEMA,
-                            FFMAEMADistance
-                        )
-                    );
-                    double stopPrice = High[0];
-                    double stopDistance = Math.Min(Math.Abs(currentPrice - stopPrice), MaximumStop);
-                    if (stopDistance < tickSize * 2)
-                        stopDistance = tickSize * 2;
-                    int contracts = CalculatePositionSize(stopDistance);
-                    ExecuteFFMAEntry(MarketPosition.Short, contracts);
+                if (TryExecuteFFMAShort(rsiValue, distanceFromEMA, currentPrice))
                     return;
-                }
-
-                // LONG SETUP: RSI < 20 + Price far BELOW EMA + GREEN reversal candle
-                if (rsiValue < FFMARSIOversold && distanceFromEMA <= -FFMAEMADistance && isGreenCandle)
-                {
-                    Print(
-                        string.Format(
-                            "FFMA LONG TRIGGERED: RSI={0:F1} < {1} | Distance={2:F2}pts (below by {3}pts) | GREEN candle",
-                            rsiValue,
-                            FFMARSIOversold,
-                            distanceFromEMA,
-                            FFMAEMADistance
-                        )
-                    );
-                    double stopPrice = Low[0];
-                    double stopDistance = Math.Min(Math.Abs(currentPrice - stopPrice), MaximumStop);
-                    if (stopDistance < tickSize * 2)
-                        stopDistance = tickSize * 2;
-                    int contracts = CalculatePositionSize(stopDistance);
-                    ExecuteFFMAEntry(MarketPosition.Long, contracts);
-                    return;
-                }
+                TryExecuteFFMALong(rsiValue, distanceFromEMA, currentPrice);
             }
             catch (Exception ex)
             {
                 Print("ERROR CheckFFMAConditions: " + ex.Message);
             }
+        }
+
+        // T1: Guard checks extracted from CheckFFMAConditions
+        private bool CheckFFMAGuards()
+        {
+            if (!isFFMAModeArmed || !FFMAEnabled)
+                return false;
+            if (ema9 == null || rsiIndicator == null || currentATR <= 0)
+                return false;
+            if (CurrentBar < 20)
+                return false;
+            return true;
+        }
+
+        // T2: Shared stop distance calculation for SHORT and LONG setups
+        private double ComputeFFMAStopDistance(double currentPrice, double candleExtreme)
+        {
+            double stopDistance = Math.Min(Math.Abs(currentPrice - candleExtreme), MaximumStop);
+            if (stopDistance < tickSize * 2)
+                stopDistance = tickSize * 2;
+            return stopDistance;
+        }
+
+        // T3: SHORT setup execution -- RSI > overbought + price far above EMA + RED candle
+        private bool TryExecuteFFMAShort(double rsiValue, double distanceFromEMA, double currentPrice)
+        {
+            if (!(rsiValue > FFMARSIOverbought && distanceFromEMA >= FFMAEMADistance && Close[0] < Open[0]))
+                return false;
+            Print(
+                string.Format(
+                    "FFMA SHORT TRIGGERED: RSI={0:F1} > {1} | Distance={2:F2}pts > {3}pts | RED candle",
+                    rsiValue,
+                    FFMARSIOverbought,
+                    distanceFromEMA,
+                    FFMAEMADistance
+                )
+            );
+            double stopDistance = ComputeFFMAStopDistance(currentPrice, High[0]);
+            int contracts = CalculatePositionSize(stopDistance);
+            ExecuteFFMAEntry(MarketPosition.Short, contracts);
+            return true;
+        }
+
+        // T4: LONG setup execution -- RSI < oversold + price far below EMA + GREEN candle
+        private bool TryExecuteFFMALong(double rsiValue, double distanceFromEMA, double currentPrice)
+        {
+            if (!(rsiValue < FFMARSIOversold && distanceFromEMA <= -FFMAEMADistance && Close[0] > Open[0]))
+                return false;
+            Print(
+                string.Format(
+                    "FFMA LONG TRIGGERED: RSI={0:F1} < {1} | Distance={2:F2}pts (below by {3}pts) | GREEN candle",
+                    rsiValue,
+                    FFMARSIOversold,
+                    distanceFromEMA,
+                    FFMAEMADistance
+                )
+            );
+            double stopDistance = ComputeFFMAStopDistance(currentPrice, Low[0]);
+            int contracts = CalculatePositionSize(stopDistance);
+            ExecuteFFMAEntry(MarketPosition.Long, contracts);
+            return true;
         }
 
         /// <summary>

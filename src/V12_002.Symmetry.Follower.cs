@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using NinjaTrader.Cbi;
 using NinjaTrader.NinjaScript;
 using NinjaTrader.NinjaScript.Strategies;
@@ -14,75 +15,100 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region Symmetry Follower
 
-        private bool SymmetryGuardOnFollowerFill(
+        // W7-127-T1: ValidateAndInitFollowerPos -- null/flag guard + RemainingContracts init
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool ValidateAndInitFollowerPos(PositionInfo followerPos)
+        {
+            if (followerPos == null || !followerPos.IsFollower)
+                return false;
+            followerPos.EntryFilled = true;
+            if (followerPos.RemainingContracts <= 0)
+                followerPos.RemainingContracts = Math.Max(1, followerPos.TotalContracts);
+            return true;
+        }
+
+        // W7-127-T2 / W7-042-T1: TryApplyPreCheckAnchorAndSubmit -- ANCHOR-01 double-map lookup + AnchorSnapshot + submit/defer
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void TryApplyPreCheckAnchorAndSubmit(string fleetEntryName, PositionInfo followerPos)
+        {
+            if (followerPos.BracketSubmitted)
+                return;
+
+            bool shouldSubmitImmediately = false;
+            // [ANCHOR-01] V12.Phase7.1: Pre-check master anchor before initial bracket submission.
+            if (
+                symmetryFleetEntryToDispatch.TryGetValue(fleetEntryName, out var preCheckId)
+                && symmetryDispatchById.TryGetValue(preCheckId, out var preCheckCtx)
+            )
+            {
+                // ADR-019: AnchorSnapshot is published atomically via Interlocked.CompareExchange.
+                // IsResolved and MasterAnchorPrice are read from a single immutable snapshot -- lock-free.
+                AnchorSnapshot preCheckSnapshot = preCheckCtx.Anchor;
+                bool anchorReady = preCheckSnapshot.IsResolved;
+                double preCheckAnchor = preCheckSnapshot.MasterAnchorPrice;
+                if (anchorReady && preCheckAnchor > 0)
+                {
+                    Print(
+                        string.Format(
+                            "[ANCHOR-01] Pre-applying master anchor {0:F2} for {1} -- bracket will use master fill price",
+                            preCheckAnchor,
+                            fleetEntryName
+                        )
+                    );
+                    SymmetryGuardApplyMasterAnchor(followerPos, preCheckAnchor);
+                    shouldSubmitImmediately = true;
+                }
+            }
+
+            if (shouldSubmitImmediately)
+            {
+                SymmetryGuardSubmitFollowerBracket(fleetEntryName, followerPos);
+            }
+            else
+            {
+                Print(
+                    string.Format(
+                        "[ANCHOR-GATE] Delaying follower bracket for {0} until master anchor resolves.",
+                        fleetEntryName
+                    )
+                );
+            }
+        }
+
+        // W7-127-T3 / W7-042-T2: EnqueueAndTryResolveFollower -- PendingFollowerFill enqueue + immediate try-resolve
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void EnqueueAndTryResolveFollower(
             string fleetEntryName,
             PositionInfo followerPos,
             double followerFillPrice
         )
         {
-            if (followerPos == null || !followerPos.IsFollower)
-                return false;
-
-            followerPos.EntryFilled = true;
-            if (followerPos.RemainingContracts <= 0)
-                followerPos.RemainingContracts = Math.Max(1, followerPos.TotalContracts);
-
-            if (!followerPos.BracketSubmitted)
-            {
-                bool shouldSubmitImmediately = false;
-                // [ANCHOR-01] V12.Phase7.1: Pre-check master anchor before initial bracket submission.
-                // If master already filled (anchor resolved), apply it now so the broker receives
-                // master-anchored prices on the FIRST submission -- eliminates the "wrong-prices-first
-                // + retarget" double round-trip that causes transient drift in volatile bursts.
-                if (
-                    symmetryFleetEntryToDispatch.TryGetValue(fleetEntryName, out var preCheckId)
-                    && symmetryDispatchById.TryGetValue(preCheckId, out var preCheckCtx)
-                )
-                {
-                    // ADR-019: AnchorSnapshot is published atomically via Interlocked.CompareExchange.
-                    // IsResolved and MasterAnchorPrice are read from a single immutable snapshot -- lock-free.
-                    AnchorSnapshot preCheckSnapshot = preCheckCtx.Anchor;
-                    bool anchorReady = preCheckSnapshot.IsResolved;
-                    double preCheckAnchor = preCheckSnapshot.MasterAnchorPrice;
-                    if (anchorReady && preCheckAnchor > 0)
-                    {
-                        Print(
-                            string.Format(
-                                "[ANCHOR-01] Pre-applying master anchor {0:F2} for {1} -- bracket will use master fill price",
-                                preCheckAnchor,
-                                fleetEntryName
-                            )
-                        );
-                        SymmetryGuardApplyMasterAnchor(followerPos, preCheckAnchor);
-                        shouldSubmitImmediately = true;
-                    }
-                }
-                if (shouldSubmitImmediately)
-                {
-                    SymmetryGuardSubmitFollowerBracket(fleetEntryName, followerPos);
-                }
-                else
-                {
-                    Print(
-                        string.Format(
-                            "[ANCHOR-GATE] Delaying follower bracket for {0} until master anchor resolves.",
-                            fleetEntryName
-                        )
-                    );
-                }
-            }
-
             var pending = new PendingFollowerFill
             {
                 FleetEntryName = fleetEntryName,
                 FleetFillPrice = followerFillPrice > 0 ? followerFillPrice : followerPos.EntryPrice,
                 QueuedUtc = DateTime.UtcNow,
             };
-
             symmetryPendingFollowerFills[fleetEntryName] = pending;
-
             if (SymmetryGuardTryResolveFollower(fleetEntryName, followerPos, pending, DateTime.UtcNow))
                 symmetryPendingFollowerFills.TryRemove(fleetEntryName, out _);
+        }
+
+        // W7-127 parent after T1+T2+T3: CYC=3
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool SymmetryGuardOnFollowerFill(
+            string fleetEntryName,
+            PositionInfo followerPos,
+            double followerFillPrice
+        )
+        {
+            if (!ValidateAndInitFollowerPos(followerPos))
+                return false;
+
+            if (!followerPos.BracketSubmitted)
+                TryApplyPreCheckAnchorAndSubmit(fleetEntryName, followerPos);
+
+            EnqueueAndTryResolveFollower(fleetEntryName, followerPos, followerFillPrice);
 
             return true;
         }
@@ -126,14 +152,16 @@ namespace NinjaTrader.NinjaScript.Strategies
             SymmetryGuardPruneDispatches();
         }
 
-        private bool SymmetryGuardTryResolveFollower(
+        // W7-057-T1: TryResolveDispatchContext -- tri-clause ConcurrentDictionary dispatch lookup guard
+        private bool TryResolveDispatchContext(
             string fleetEntryName,
             PositionInfo pos,
             PendingFollowerFill pending,
-            DateTime nowUtc
+            DateTime nowUtc,
+            out SymmetryDispatchContext ctx
         )
         {
-            SymmetryDispatchContext ctx = null;
+            ctx = null;
             if (
                 !symmetryFleetEntryToDispatch.TryGetValue(fleetEntryName, out var dispatchId)
                 || !symmetryDispatchById.TryGetValue(dispatchId, out ctx)
@@ -154,14 +182,24 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 return false;
             }
+            return true;
+        }
 
+        // W7-057-T2: TryResolveAnchorSnapshot -- anchor snapshot resolution + timeout guard
+        private bool TryResolveAnchorSnapshot(
+            string fleetEntryName,
+            PositionInfo pos,
+            PendingFollowerFill pending,
+            DateTime nowUtc,
+            SymmetryDispatchContext ctx,
+            out double masterAnchor
+        )
+        {
             // ADR-019: AnchorSnapshot is published atomically via Interlocked.CompareExchange.
             // IsResolved and MasterAnchorPrice are read from a single immutable snapshot -- lock-free.
             AnchorSnapshot snapshot = ctx.Anchor;
-            bool isResolved = snapshot.IsResolved;
-            double masterAnchor = snapshot.MasterAnchorPrice;
-
-            if (!isResolved)
+            masterAnchor = snapshot.MasterAnchorPrice;
+            if (!snapshot.IsResolved)
             {
                 if (nowUtc - pending.QueuedUtc >= SymmetryAnchorWait)
                 {
@@ -177,11 +215,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 return false;
             }
+            return true;
+        }
 
+        // W7-057-T3: IsSlippageWithinTolerance -- slippage arithmetic + compound breach check
+        private bool IsSlippageWithinTolerance(
+            string fleetEntryName,
+            PositionInfo pos,
+            PendingFollowerFill pending,
+            double masterAnchor
+        )
+        {
             double slippagePoints = Math.Abs(pending.FleetFillPrice - masterAnchor);
             double slippageTicks = tickSize > 0 ? slippagePoints / tickSize : 0.0;
             double slippageUsdPerContract = pointValue > 0 ? slippagePoints * pointValue : 0.0;
-
             bool breach =
                 slippageTicks > SymmetryMaxSlippageTicks || slippageUsdPerContract > SymmetryMaxSlippageUsdPerContract;
             if (breach)
@@ -194,16 +241,30 @@ namespace NinjaTrader.NinjaScript.Strategies
                     slippageUsdPerContract,
                     string.Format("Slippage Buffer breach vs Master {0:F2}", masterAnchor)
                 );
-                return true;
+                return false;
             }
+            return true;
+        }
 
-            // [ANCHOR-02] V12.Phase7.1: Capture entry price before anchor application to detect
-            // whether ANCHOR-01 already submitted the bracket with master-anchored prices.
-            // If priorEntryPrice ? masterAnchor (within 1 tick), the bracket is already correct
-            // and the retarget cancel+replace round-trip can be skipped.
-            double priorEntryPrice;
-            priorEntryPrice = pos.EntryPrice;
+        // W7-057/W7-129 parent after extractions: CYC=8
+        private bool SymmetryGuardTryResolveFollower(
+            string fleetEntryName,
+            PositionInfo pos,
+            PendingFollowerFill pending,
+            DateTime nowUtc
+        )
+        {
+            if (!TryResolveDispatchContext(fleetEntryName, pos, pending, nowUtc, out var ctx))
+                return false;
 
+            if (!TryResolveAnchorSnapshot(fleetEntryName, pos, pending, nowUtc, ctx, out var masterAnchor))
+                return false;
+
+            if (!IsSlippageWithinTolerance(fleetEntryName, pos, pending, masterAnchor))
+                return true;
+
+            // [ANCHOR-02] V12.Phase7.1: Capture entry price before anchor application.
+            double priorEntryPrice = pos.EntryPrice;
             SymmetryGuardApplyMasterAnchor(pos, masterAnchor);
 
             if (pos.BracketSubmitted)
@@ -230,14 +291,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                 SymmetryGuardSubmitFollowerBracket(fleetEntryName, pos);
             }
 
+            double slippagePoints2 = Math.Abs(pending.FleetFillPrice - masterAnchor);
+            double finalSlippageTicks = tickSize > 0 ? slippagePoints2 / tickSize : 0.0;
+            double finalSlippageUsd = pointValue > 0 ? slippagePoints2 * pointValue : 0.0;
             Print(
                 string.Format(
                     "[SYMMETRY_GUARD] ANCHORED | {0} | Master={1:F2} Fleet={2:F2} Slip={3:F1} ticks (${4:F2}/ct) | Scalp Anchor T1={5:F2} | Runner Targets=Trail",
                     fleetEntryName,
                     masterAnchor,
                     pending.FleetFillPrice,
-                    slippageTicks,
-                    slippageUsdPerContract,
+                    finalSlippageTicks,
+                    finalSlippageUsd,
                     pos.Target1Price
                 )
             );
@@ -282,27 +346,25 @@ namespace NinjaTrader.NinjaScript.Strategies
             pos.Target5Price = Instrument.MasterInstrument.RoundToTickSize(t5);
         }
 
-        private void SymmetryGuardSubmitFollowerBracket(string fleetEntryName, PositionInfo pos)
+        // W7-126-T1 / AggressiveInlining: ResolveOcoGroupId -- OCO group ID resolution ternary
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private string ResolveOcoGroupId(PositionInfo pos)
         {
-            if (pos.BracketSubmitted)
-                return;
-            Account acct = pos.ExecutingAccount;
-            if (acct == null)
-                return;
+            return !string.IsNullOrEmpty(pos.OcoGroupId) ? pos.OcoGroupId : ("SG_" + DateTime.UtcNow.Ticks.ToString());
+        }
 
-            OrderAction exitAction = pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
-            double validatedStop = ValidateStopPrice(pos.Direction, pos.CurrentStopPrice);
-            // Build 936 [FIX-2]: Use deterministic OcoGroupId from PositionInfo for broker-native OCO bracket protection.
-            // Previously "SG_" + ticks was non-deterministic -- changed on every NT8 restart, preventing broker re-linkage.
-            // pos.OcoGroupId = "V12_" + fleetEntryName hash, set at position creation in ExecuteSmartDispatchEntry.
-            string ocoId = !string.IsNullOrEmpty(pos.OcoGroupId)
-                ? pos.OcoGroupId
-                : ("SG_" + DateTime.UtcNow.Ticks.ToString());
-
-            var ordersToSubmit = new List<Order>();
-
+        // W7-043-T1: SymmetryGuardBuildStopOrder -- stop order construction
+        private Order SymmetryGuardBuildStopOrder(
+            PositionInfo pos,
+            Account acct,
+            OrderAction exitAction,
+            double validatedStop,
+            string ocoId,
+            string fleetEntryName
+        )
+        {
             string stopSig = SymmetryTrim("Stop_" + fleetEntryName, 40);
-            Order stop = acct.CreateOrder(
+            return acct.CreateOrder(
                 Instrument,
                 exitAction,
                 OrderType.StopMarket,
@@ -314,25 +376,34 @@ namespace NinjaTrader.NinjaScript.Strategies
                 stopSig,
                 null
             );
+        }
 
-            int nonRunnerLimitQty = 0;
-            int runnerQty = 0;
-
-            // Stage orders locally; commit atomically under stateLock.
-            var stagedTargets = new List<(int targetNum, Order order)>();
-
+        // W7-043-T2 / W7-126-T2: SymmetryGuardStageTargetOrders -- target slot iteration
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SymmetryGuardStageTargetOrders(
+            PositionInfo pos,
+            Account acct,
+            OrderAction exitAction,
+            string ocoId,
+            string fleetEntryName,
+            List<(int targetNum, Order order)> stagedTargets,
+            List<Order> ordersToSubmit,
+            out int nonRunnerLimitQty,
+            out int runnerQty
+        )
+        {
+            nonRunnerLimitQty = 0;
+            runnerQty = 0;
             for (int targetNum = 1; targetNum <= 5; targetNum++)
             {
                 int targetQty = GetTargetContracts(pos, targetNum);
                 if (targetQty <= 0)
                     continue;
-
                 if (IsRunnerTarget(targetNum))
                 {
                     runnerQty += targetQty;
                     continue;
                 }
-
                 double targetPrice = GetTargetPrice(pos, targetNum);
                 if (targetPrice <= 0)
                 {
@@ -347,10 +418,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     );
                     continue;
                 }
-
-                // [PARITY-01] V12.Phase7.1: Explicit tick rounding on limit price -- defensive guard
-                // against broker "Price Rejected" when target arithmetic crosses a tick boundary
-                // (e.g., MYM 1.0-tick or cross-instrument parity adjustments).
+                // [PARITY-01] V12.Phase7.1: Explicit tick rounding on limit price.
                 double roundedTargetPrice = Instrument.MasterInstrument.RoundToTickSize(targetPrice);
                 string targetSig = SymmetryTrim("T" + targetNum + "_" + fleetEntryName, 40);
                 Order target = acct.CreateOrder(
@@ -365,14 +433,23 @@ namespace NinjaTrader.NinjaScript.Strategies
                     targetSig,
                     null
                 );
-
                 stagedTargets.Add((targetNum, target));
                 ordersToSubmit.Add(target);
                 nonRunnerLimitQty += targetQty;
             }
+        }
 
-            // Atomic commit before broker submission prevents REAPER race.
-            // Phase 2 [Shadow Mode]: Initialize FollowerBracketFSM
+        // W7-043-T3: SymmetryGuardInitFollowerBracketFSM -- FSM factory
+        private FollowerBracketFSM SymmetryGuardInitFollowerBracketFSM(
+            Account acct,
+            string fleetEntryName,
+            string ocoId,
+            PositionInfo pos,
+            Order stop,
+            double validatedStop,
+            List<(int targetNum, Order order)> stagedTargets
+        )
+        {
             var fsm = new FollowerBracketFSM
             {
                 AccountName = acct.Name,
@@ -393,6 +470,49 @@ namespace NinjaTrader.NinjaScript.Strategies
                     fsm.ExpectedTargetPrices[tNum - 1] = tOrder.LimitPrice;
                 }
             }
+            return fsm;
+        }
+
+        // W7-126/W7-043 parent after extractions: CYC=6
+        private void SymmetryGuardSubmitFollowerBracket(string fleetEntryName, PositionInfo pos)
+        {
+            if (pos.BracketSubmitted)
+                return;
+            Account acct = pos.ExecutingAccount;
+            if (acct == null)
+                return;
+
+            OrderAction exitAction = pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
+            double validatedStop = ValidateStopPrice(pos.Direction, pos.CurrentStopPrice);
+            // Build 936 [FIX-2]: Use deterministic OcoGroupId from PositionInfo for broker-native OCO bracket protection.
+            string ocoId = ResolveOcoGroupId(pos);
+
+            var ordersToSubmit = new List<Order>();
+            var stagedTargets = new List<(int targetNum, Order order)>();
+
+            Order stop = SymmetryGuardBuildStopOrder(pos, acct, exitAction, validatedStop, ocoId, fleetEntryName);
+            SymmetryGuardStageTargetOrders(
+                pos,
+                acct,
+                exitAction,
+                ocoId,
+                fleetEntryName,
+                stagedTargets,
+                ordersToSubmit,
+                out int nonRunnerLimitQty,
+                out int runnerQty
+            );
+
+            // Atomic commit before broker submission prevents REAPER race.
+            FollowerBracketFSM fsm = SymmetryGuardInitFollowerBracketFSM(
+                acct,
+                fleetEntryName,
+                ocoId,
+                pos,
+                stop,
+                validatedStop,
+                stagedTargets
+            );
             _followerBrackets[fleetEntryName] = fsm;
 
             // B966: Enqueue stop write so it flows through actor pipeline (strategy thread, drains synchronously).

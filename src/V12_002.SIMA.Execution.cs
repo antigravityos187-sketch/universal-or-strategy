@@ -59,79 +59,143 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             foreach (Account acct in Account.All)
             {
-                if (IsFleetAccount(acct))
+                if (!IsFleetAccount(acct))
+                    continue;
+                if (ShouldSkipFleetAccountMarket(acct, out string skipReason))
                 {
-                    // V12.8: Fleet Active Check -- skip accounts NOT registered or disabled
-                    if (!activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) || !isActive)
-                    {
-                        dispatchLog.AppendLine(LogBuffer.Format("  SKIP | {0,-28} | Inactive", acct.Name));
-                        continue;
-                    }
-
-                    int reservedDelta = 0;
-                    try
-                    {
-                        // V12.1: Consistency Lock Check
-                        if (EnableConsistencyLock)
-                        {
-                            double dailyPL = acct.Get(AccountItem.RealizedProfitLoss, Currency.UsDollar);
-                            if (dailyPL >= MaxDailyProfitCap)
-                            {
-                                dispatchLog.AppendLine(
-                                    LogBuffer.Format("  SKIP | {0,-28} | ConsistencyLock ${1:F2}", acct.Name, dailyPL)
-                                );
-                                continue;
-                            }
-                        }
-
-                        Order order = acct.CreateOrder(
-                            Instrument,
-                            action,
-                            OrderType.Market,
-                            TimeInForce.Gtc,
-                            quantity,
-                            0,
-                            0,
-                            "",
-                            signalName,
-                            null
-                        );
-
-                        if (order != null)
-                        {
-                            // V12.Phase7 [C-02/H-07]: Reserve expectedPositions BEFORE Submit to eliminate
-                            // Reaper false-desync race. Rolled back in catch block on failure.
-                            reservedDelta =
-                                (action == OrderAction.Buy || action == OrderAction.BuyToCover) ? quantity : -quantity;
-                            AddExpectedPositionDeltaLocked(ExpKey(acct.Name), reservedDelta);
-                            acct.Submit(new[] { order });
-                        }
-
-                        successCount++;
-                        dispatchLog.AppendLine(
-                            LogBuffer.Format("    OK | {0,-28} | Market       | submitted", acct.Name)
-                        );
-                    }
-                    catch (Exception ex)
-                    {
-                        // V12.Phase7 [GAP-3]: Undo expectedPositions reservation if submission failed.
-                        // Delta may or may not have been applied (depends on where exception occurred),
-                        // so rollback is conditional on whether reserve completed.
-                        if (reservedDelta != 0)
-                            AddExpectedPositionDeltaLocked(ExpKey(acct.Name), -reservedDelta);
-                        failCount++;
-                        dispatchLog.AppendLine(LogBuffer.Format("  FAIL | {0,-28} | {1}", acct.Name, ex.Message));
-                    }
+                    dispatchLog.AppendLine(LogBuffer.Format("  SKIP | {0,-28} | {1}", acct.Name, skipReason));
+                    continue;
                 }
+                ExecuteMarketOrderForAccount(
+                    acct,
+                    action,
+                    quantity,
+                    signalName,
+                    ref successCount,
+                    ref failCount,
+                    ref dispatchLog
+                );
             }
 
             // [Phase 9 LATENCY] T_Final: Fleet loop complete -- stop clock, flush forensic report.
             sw.Stop();
             long tFinalTicks = sw.ElapsedTicks;
-            double totalMs = tFinalTicks * 1000.0 / Stopwatch.Frequency;
             double setupMs = (tLoopStartTicks - t0Ticks) * 1000.0 / Stopwatch.Frequency;
             double loopMs = (tFinalTicks - tLoopStartTicks) * 1000.0 / Stopwatch.Frequency;
 
+            Print(BuildMarketExecutionReport(action, quantity, successCount, failCount, setupMs, loopMs, dispatchLog));
+        }
+
+        /// <summary>
+        /// W7-094 T1: Pure account filter predicate for market dispatch.
+        /// Returns true (skip) when account is inactive or daily profit cap reached.
+        /// No side effects, no allocations. AggressiveInlining: hot-path per-account filter.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private bool ShouldSkipFleetAccountMarket(Account acct, out string reason)
+        {
+            // V12.8: Fleet Active Check -- ConcurrentDictionary.TryGetValue is lock-free
+            if (!activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) || !isActive)
+            {
+                reason = "Inactive";
+                return true;
+            }
+
+            // V12.1: Consistency Lock Check
+            if (EnableConsistencyLock)
+            {
+                double dailyPL = acct.Get(AccountItem.RealizedProfitLoss, Currency.UsDollar);
+                if (dailyPL >= MaxDailyProfitCap)
+                {
+                    reason = LogBuffer.Format("ConsistencyLock ${0:F2}", dailyPL);
+                    return true;
+                }
+            }
+
+            reason = string.Empty;
+            return false;
+        }
+
+        /// <summary>
+        /// W7-094 T2: Single-account market order submission with position-delta reservation
+        /// and deterministic catch-rollback. NoInlining: exception-handler-bearing method.
+        /// reservedDelta MUST be computed BEFORE CreateOrder (race-fix from Phase 7 C-02/H-07).
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void ExecuteMarketOrderForAccount(
+            Account acct,
+            OrderAction action,
+            int quantity,
+            string signalName,
+            ref int successCount,
+            ref int failCount,
+            ref StringBuilder reportBuilder
+        )
+        {
+            int reservedDelta = 0;
+            try
+            {
+                Order order = acct.CreateOrder(
+                    Instrument,
+                    action,
+                    OrderType.Market,
+                    TimeInForce.Gtc,
+                    quantity,
+                    0,
+                    0,
+                    "",
+                    signalName,
+                    null
+                );
+
+                if (order != null)
+                {
+                    // V12.Phase7 [C-02/H-07]: Reserve expectedPositions BEFORE Submit to eliminate
+                    // Reaper false-desync race. Rolled back in catch block on failure.
+                    reservedDelta =
+                        (action == OrderAction.Buy || action == OrderAction.BuyToCover) ? quantity : -quantity;
+                    AddExpectedPositionDeltaLocked(ExpKey(acct.Name), reservedDelta);
+                    acct.Submit(new[] { order });
+                    successCount++;
+                    reportBuilder.AppendLine(
+                        LogBuffer.Format("    OK | {0,-28} | Market       | submitted", acct.Name)
+                    );
+                }
+                else
+                {
+                    failCount++;
+                    reportBuilder.AppendLine(LogBuffer.Format("  FAIL | {0,-28} | CreateOrder null", acct.Name));
+                }
+            }
+            catch (Exception ex)
+            {
+                // V12.Phase7 [GAP-3]: Undo expectedPositions reservation if submission failed.
+                if (reservedDelta != 0)
+                    AddExpectedPositionDeltaLocked(ExpKey(acct.Name), -reservedDelta);
+                failCount++;
+                reportBuilder.AppendLine(LogBuffer.Format("  FAIL | {0,-28} | {1}", acct.Name, ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// W7-094 T3: Forensic report assembly for market fleet dispatch.
+        /// Cold post-loop path. NoInlining: string-allocating cold path; inlining bloats hot-path JIT frame.
+        /// No side effects on caller state.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private string BuildMarketExecutionReport(
+            OrderAction action,
+            int quantity,
+            int successCount,
+            int failCount,
+            double setupMs,
+            double loopMs,
+            StringBuilder dispatchLog
+        )
+        {
+            double totalMs = setupMs + loopMs;
             var report = new StringBuilder(1024);
             report.AppendLine("+==============================================================+");
             report.AppendLine("|       FORENSIC PULSE REPORT  Phase 9 MULTI-ACCOUNT MARKET    |");
@@ -153,7 +217,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 LogBuffer.Format("|  Total Elapsed: {0,8:F3} ms                                  |", totalMs)
             );
             report.AppendLine("+==============================================================+");
-            Print(report.ToString().TrimEnd());
+            return report.ToString().TrimEnd();
         }
 
         /// <summary>
@@ -187,114 +251,291 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             foreach (Account acct in Account.All)
             {
-                if (IsFleetAccount(acct))
+                if (!IsFleetAccount(acct))
+                    continue;
+
+                // TICKET-1: Account eligibility filter (includes bug fix: activeFleetAccounts guard)
+                if (ShouldSkipFleetAccountBracket(acct, dispatchLog, out string skipReason))
                 {
-                    int reservedDelta = 0;
-                    try
-                    {
-                        // V12.1: Consistency Lock Check
-                        if (EnableConsistencyLock)
-                        {
-                            double dailyPL = acct.Get(AccountItem.RealizedProfitLoss, Currency.UsDollar);
-                            if (dailyPL >= MaxDailyProfitCap)
-                            {
-                                dispatchLog.AppendLine(
-                                    LogBuffer.Format("  SKIP | {0,-28} | ConsistencyLock ${1:F2}", acct.Name, dailyPL)
-                                );
-                                continue;
-                            }
-                        }
-
-                        // 1. Calculate Prices
-                        double stopPrice =
-                            action == OrderAction.Buy ? currentPrice - stopPoints : currentPrice + stopPoints;
-                        double targetPrice =
-                            action == OrderAction.Buy ? currentPrice + targetPoints : currentPrice - targetPoints;
-
-                        // V12.Phase6 [TICK-01]: Standardized tick rounding via MasterInstrument API
-                        stopPrice = Instrument.MasterInstrument.RoundToTickSize(stopPrice);
-                        targetPrice = Instrument.MasterInstrument.RoundToTickSize(targetPrice);
-
-                        // 2. Create Bracket
-                        string ocoId = action.ToString() + "_" + DateTime.Now.Ticks;
-
-                        Order entry = acct.CreateOrder(
-                            Instrument,
-                            action,
-                            OrderType.Market,
-                            TimeInForce.Gtc,
-                            quantity,
-                            0,
-                            0,
-                            ocoId,
-                            signalName,
-                            null
-                        );
-
-                        Order stop = acct.CreateOrder(
-                            Instrument,
-                            action == OrderAction.Buy ? OrderAction.Sell : OrderAction.BuyToCover,
-                            OrderType.StopMarket,
-                            TimeInForce.Gtc,
-                            quantity,
-                            0,
-                            stopPrice,
-                            ocoId,
-                            "Stop_" + signalName,
-                            null
-                        );
-
-                        Order target = acct.CreateOrder(
-                            Instrument,
-                            action == OrderAction.Buy ? OrderAction.Sell : OrderAction.BuyToCover,
-                            OrderType.Limit,
-                            TimeInForce.Gtc,
-                            quantity,
-                            targetPrice,
-                            0,
-                            ocoId,
-                            "Target_" + signalName,
-                            null
-                        );
-
-                        // V12.Phase7 [C-02/GAP-2]: Reserve expectedPositions BEFORE Submit to eliminate
-                        // Reaper race window. Rolled back in catch block on failure.
-                        reservedDelta = (action == OrderAction.Buy) ? quantity : -quantity;
-                        AddExpectedPositionDeltaLocked(ExpKey(acct.Name), reservedDelta);
-
-                        // 3. Submit as Atomic Group (Broker OCO)
-                        acct.Submit(new[] { entry, stop, target });
-                        successCount++;
-                        dispatchLog.AppendLine(
-                            LogBuffer.Format("    OK | {0,-28} | Bracket(3)   | submitted", acct.Name)
-                        );
-                    }
-                    catch (Exception ex)
-                    {
-                        // V12.Phase7 [C-02/GAP-2]: Undo expectedPositions reservation if submission failed.
-                        if (reservedDelta != 0)
-                            AddExpectedPositionDeltaLocked(ExpKey(acct.Name), -reservedDelta);
-                        dispatchLog.AppendLine(LogBuffer.Format("  FAIL | {0,-28} | {1}", acct.Name, ex.Message));
-                    }
+                    dispatchLog.AppendLine(LogBuffer.Format("  SKIP | {0,-28} | {1}", acct.Name, skipReason));
+                    continue;
                 }
+
+                DispatchBracketForAccount(
+                    acct,
+                    action,
+                    quantity,
+                    currentPrice,
+                    stopPoints,
+                    targetPoints,
+                    signalName,
+                    ref successCount,
+                    dispatchLog
+                );
             }
 
             // [Phase 9 LATENCY] T_Final: Fleet loop complete -- stop clock, flush forensic report.
             sw.Stop();
             long tFinalTicks = sw.ElapsedTicks;
-            double totalMs = tFinalTicks * 1000.0 / Stopwatch.Frequency;
             double setupMs = (tLoopStartTicks - t0Ticks) * 1000.0 / Stopwatch.Frequency;
             double loopMs = (tFinalTicks - tLoopStartTicks) * 1000.0 / Stopwatch.Frequency;
 
+            // TICKET-4: Forensic timing report extracted
+            PrintFleetForensicReport(
+                "|       FORENSIC PULSE REPORT  Phase 9 MULTI-ACCOUNT BRACKET   |",
+                dispatchLog,
+                successCount,
+                setupMs,
+                loopMs
+            );
+        }
+
+        /// <summary>
+        /// EPIC-W7-096: Per-account dispatch wrapper (try/catch + success tracking).
+        /// Isolates exception handling from the fleet loop to reduce parent CYC.
+        /// </summary>
+        private void DispatchBracketForAccount(
+            Account acct,
+            OrderAction action,
+            int quantity,
+            double currentPrice,
+            double stopPoints,
+            double targetPoints,
+            string signalName,
+            ref int successCount,
+            StringBuilder dispatchLog
+        )
+        {
+            int reservedDelta = 0;
+            try
+            {
+                if (
+                    TryExecuteBracketForAccount(
+                        acct,
+                        action,
+                        quantity,
+                        currentPrice,
+                        stopPoints,
+                        targetPoints,
+                        signalName,
+                        out reservedDelta
+                    )
+                )
+                {
+                    successCount++;
+                    dispatchLog.AppendLine(LogBuffer.Format("    OK | {0,-28} | Bracket(3)   | submitted", acct.Name));
+                }
+            }
+            catch (Exception ex)
+            {
+                // V12.Phase7 [C-02/GAP-2]: Undo expectedPositions reservation if submission failed.
+                if (reservedDelta != 0)
+                    AddExpectedPositionDeltaLocked(ExpKey(acct.Name), -reservedDelta);
+                dispatchLog.AppendLine(LogBuffer.Format("  FAIL | {0,-28} | {1}", acct.Name, ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// EPIC-W7-096: Extracted try-body to reduce ExecuteMultiAccountBracket CYC.
+        /// Executes price calc, order factory, position reservation, and submit for one account.
+        /// Returns true if submit succeeded; false if CreateBracketOrders refused.
+        /// out reservedDelta is set before Submit so caller can roll back on exception.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private bool TryExecuteBracketForAccount(
+            Account acct,
+            OrderAction action,
+            int quantity,
+            double currentPrice,
+            double stopPoints,
+            double targetPoints,
+            string signalName,
+            out int reservedDelta
+        )
+        {
+            reservedDelta = 0;
+            var prices = CalculateBracketPrices(action, currentPrice, stopPoints, targetPoints);
+            string ocoId = action.ToString() + "_" + DateTime.Now.Ticks;
+            if (
+                !CreateBracketOrders(
+                    acct,
+                    action,
+                    quantity,
+                    0,
+                    prices.StopPrice,
+                    prices.TargetPrice,
+                    signalName,
+                    ocoId,
+                    out Order entry,
+                    out Order stop,
+                    out Order target
+                )
+            )
+                return false;
+            // V12.Phase7 [C-02/GAP-2]: Reserve before Submit to close Reaper race window.
+            reservedDelta = (action == OrderAction.Buy) ? quantity : -quantity;
+            AddExpectedPositionDeltaLocked(ExpKey(acct.Name), reservedDelta);
+            acct.Submit(new[] { entry, stop, target });
+            return true;
+        }
+
+        /// <summary>
+        /// TICKET-1: Account eligibility filter for bracket dispatch.
+        /// Returns true (skip) for: inactive account, daily profit cap reached.
+        /// BUG FIX: adds missing activeFleetAccounts guard (present in Market path, was absent here).
+        /// out skipReason is pre-populated for log; caller must still append it to dispatchLog.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private bool ShouldSkipFleetAccountBracket(Account acct, StringBuilder dispatchLog, out string skipReason)
+        {
+            // V12.8: Fleet Active Check -- skip accounts NOT registered or disabled
+            // ConcurrentDictionary.TryGetValue is lock-free (no lock() block needed)
+            if (!activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) || !isActive)
+            {
+                skipReason = "Inactive";
+                return true;
+            }
+
+            // V12.1: Consistency Lock Check
+            if (EnableConsistencyLock)
+            {
+                double dailyPL = acct.Get(AccountItem.RealizedProfitLoss, Currency.UsDollar);
+                if (dailyPL >= MaxDailyProfitCap)
+                {
+                    skipReason = LogBuffer.Format("ConsistencyLock ${0:F2}", dailyPL);
+                    return true;
+                }
+            }
+
+            skipReason = string.Empty;
+            return false;
+        }
+
+        /// <summary>
+        /// TICKET-2 support type: zero-alloc value type for bracket price results.
+        /// </summary>
+        private readonly struct BracketPriceResult
+        {
+            public readonly double StopPrice;
+            public readonly double TargetPrice;
+
+            public BracketPriceResult(double stopPrice, double targetPrice) =>
+                (StopPrice, TargetPrice) = (stopPrice, targetPrice);
+        }
+
+        /// <summary>
+        /// TICKET-2: Pure price math for bracket orders. Zero-alloc readonly struct return.
+        /// No side effects, no field reads, no logging.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private BracketPriceResult CalculateBracketPrices(
+            OrderAction action,
+            double currentPrice,
+            double stopPoints,
+            double targetPoints
+        )
+        {
+            double stopPrice = action == OrderAction.Buy ? currentPrice - stopPoints : currentPrice + stopPoints;
+            double targetPrice = action == OrderAction.Buy ? currentPrice + targetPoints : currentPrice - targetPoints;
+
+            // V12.Phase6 [TICK-01]: Standardized tick rounding via MasterInstrument API
+            stopPrice = Instrument.MasterInstrument.RoundToTickSize(stopPrice);
+            targetPrice = Instrument.MasterInstrument.RoundToTickSize(targetPrice);
+
+            return new BracketPriceResult(stopPrice, targetPrice);
+        }
+
+        /// <summary>
+        /// TICKET-3: Order factory for bracket orders. NEVER calls Submit -- OCO atomicity
+        /// is preserved by the caller (ExecuteMultiAccountBracket).
+        /// Returns false if any order is null; caller skips Submit on false.
+        /// </summary>
+        private bool CreateBracketOrders(
+            Account acct,
+            OrderAction action,
+            int qty,
+            double entryPrice,
+            double stopPrice,
+            double targetPrice,
+            string signalName,
+            string ocoId,
+            out Order entry,
+            out Order stop,
+            out Order target
+        )
+        {
+            entry = acct.CreateOrder(
+                Instrument,
+                action,
+                OrderType.Market,
+                TimeInForce.Gtc,
+                qty,
+                0,
+                0,
+                ocoId,
+                signalName,
+                null
+            );
+
+            stop = acct.CreateOrder(
+                Instrument,
+                action == OrderAction.Buy ? OrderAction.Sell : OrderAction.BuyToCover,
+                OrderType.StopMarket,
+                TimeInForce.Gtc,
+                qty,
+                0,
+                stopPrice,
+                ocoId,
+                "Stop_" + signalName,
+                null
+            );
+
+            target = acct.CreateOrder(
+                Instrument,
+                action == OrderAction.Buy ? OrderAction.Sell : OrderAction.BuyToCover,
+                OrderType.Limit,
+                TimeInForce.Gtc,
+                qty,
+                targetPrice,
+                0,
+                ocoId,
+                "Target_" + signalName,
+                null
+            );
+
+            return entry != null && stop != null && target != null;
+        }
+
+        /// <summary>
+        /// TICKET-4: Forensic timing report for bracket fleet dispatch.
+        /// [NoInlining]: cold logging path -- prevents JIT inlining into hot account iteration loop.
+        /// Read-only access to counts and timing values; no field mutations.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void PrintFleetForensicReport(
+            string header,
+            StringBuilder log,
+            int okCount,
+            double setupMs,
+            double loopMs
+        )
+        {
+            double totalMs = setupMs + loopMs;
             var report = new StringBuilder(1024);
             report.AppendLine("+==============================================================+");
-            report.AppendLine("|       FORENSIC PULSE REPORT  Phase 9 MULTI-ACCOUNT BRACKET   |");
+            report.AppendLine(header);
             report.AppendLine("+==============================================================+");
             report.AppendLine("|  TYPE | ACCOUNT                       | ORDER TYPE   | STATUS |");
             report.AppendLine("+==============================================================+");
-            report.Append(dispatchLog.ToString());
+            report.Append(log.ToString());
             report.AppendLine("+--------------------------------------------------------------+");
-            report.AppendLine(LogBuffer.Format("|  PATH B BROADCAST: {0} Brackets Submitted", successCount));
+            report.AppendLine(LogBuffer.Format("|  PATH B BROADCAST: {0} Brackets Submitted", okCount));
             report.AppendLine("+--------------------------------------------------------------+");
             report.AppendLine("|  TIMING SUMMARY                                              |");
             report.AppendLine("+--------------------------------------------------------------+");
@@ -520,25 +761,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             StringBuilder dispatchLog
         )
         {
-            // V12.8: Fleet Manager toggle -- skip if account NOT registered or explicitly disabled
-            if (!activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) || !isActive)
-            {
-                dispatchLog.AppendLine(LogBuffer.Format("  SKIP | {0,-28} | Inactive", acct.Name));
+            if (!IsAccountEligibleForRMADispatch(acct, dispatchLog))
                 return false;
-            }
-
-            // Consistency Lock
-            if (EnableConsistencyLock)
-            {
-                double dailyPL = acct.Get(AccountItem.RealizedProfitLoss, Currency.UsDollar);
-                if (dailyPL >= MaxDailyProfitCap)
-                {
-                    dispatchLog.AppendLine(
-                        LogBuffer.Format("  SKIP | {0,-28} | ConsistencyLock ${1:F2}", acct.Name, dailyPL)
-                    );
-                    return false;
-                }
-            }
 
             // [923B-FIX-B]: fleetKey declared outside try so catch can access it for dict rollback.
             string fleetKey = acct.Name + "_RMA_" + baseSignal;
@@ -615,33 +839,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                     // Build 936 [FIX-2]: Deterministic bracket OCO group ID for broker-native stop+target linking.
                     OcoGroupId = "V12_" + GetStableHash(fleetKey),
                 };
-                // B966: Enqueue NOT applied -- ordering invariant: dicts BEFORE expectedPositions (L1479).
-                activePositions[fleetKey] = fleetFollowerPos; // FIRST: dicts registered atomically
-                entryOrders[fleetKey] = fEntry; // REAPER hasWorkingEntry check reads these
-
-                MarkDispatchSyncPending(expectedKey);
-                syncPending = true;
-
-                // Phase 6 [FSM-P3]: Proactive FSM for RMA V2 fleet entries.
-                // Entry-only (brackets deferred until fill via SymmetryGuard).
-                // State = Submitted (direct submit, no pump queue).
-                if (!_followerBrackets.ContainsKey(fleetKey))
-                {
-                    var rmaFsm = new FollowerBracketFSM
-                    {
-                        AccountName = acct.Name,
-                        EntryName = fleetKey,
-                        State = FollowerBracketState.Submitted,
-                        RemainingContracts = qty,
-                        EntryOrder = fEntry,
-                        ExpectedEntryPrice = price,
-                        LastUpdateUtc = DateTime.UtcNow,
-                    };
-                    _followerBrackets.TryAdd(fleetKey, rmaFsm);
-                }
-
-                reservedDelta = (direction == MarketPosition.Long) ? qty : -qty;
-                AddExpectedPositionDeltaLocked(expectedKey, reservedDelta); // SECOND: expectedPositions
+                // [923B-FIX-B]: register dicts BEFORE expectedPositions (write ordering invariant).
+                RegisterFleetFollowerState(
+                    acct,
+                    fleetKey,
+                    expectedKey,
+                    fleetFollowerPos,
+                    fEntry,
+                    direction,
+                    qty,
+                    out syncPending,
+                    out reservedDelta
+                );
 
                 acct.Submit(new[] { fEntry }); // LAST -- stateLock not held here
 
@@ -658,23 +867,105 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             catch (Exception ex)
             {
-                if (syncPending)
-                {
-                    ClearDispatchSyncPending(expectedKey);
-                    syncPending = false;
-                }
-
-                // [923B-FIX-B]: Full rollback -- dicts were registered before expectedPositions,
-                // so both must be cleaned up on Submit failure (mirrors ExecuteSmartDispatchEntry catch).
-                if (reservedDelta != 0)
-                    AddExpectedPositionDeltaLocked(expectedKey, -reservedDelta);
-                activePositions.TryRemove(fleetKey, out _);
-                entryOrders.TryRemove(fleetKey, out _);
-                // Phase 6: Clean up proactive FSM on dispatch failure
-                _followerBrackets.TryRemove(fleetKey, out _);
-                dispatchLog.AppendLine(LogBuffer.Format("  FAIL | {0,-28} | {1}", acct.Name, ex.Message));
+                RollbackFleetFollowerState(fleetKey, expectedKey, syncPending, reservedDelta, dispatchLog, acct);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// V12 W7-095 T1: Eligibility guard for RMA fleet dispatch.
+        /// Checks inactive flag and ConsistencyLock. Hot-path filter.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private bool IsAccountEligibleForRMADispatch(Account acct, StringBuilder dispatchLog)
+        {
+            // V12.8: Fleet Manager toggle -- skip if account NOT registered or explicitly disabled
+            if (!activeFleetAccounts.TryGetValue(acct.Name, out bool isActive) || !isActive)
+            {
+                dispatchLog.AppendLine(LogBuffer.Format("  SKIP | {0,-28} | Inactive", acct.Name));
+                return false;
+            }
+
+            // Consistency Lock
+            if (EnableConsistencyLock)
+            {
+                double dailyPL = acct.Get(AccountItem.RealizedProfitLoss, Currency.UsDollar);
+                if (dailyPL >= MaxDailyProfitCap)
+                {
+                    dispatchLog.AppendLine(
+                        LogBuffer.Format("  SKIP | {0,-28} | ConsistencyLock ${1:F2}", acct.Name, dailyPL)
+                    );
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// V12 W7-095 T2: Register fleet follower state -- [923B-FIX-B] write ordering invariant.
+        /// dicts (activePositions + entryOrders) BEFORE expectedPositions (AddExpectedPositionDeltaLocked).
+        /// </summary>
+        private void RegisterFleetFollowerState(
+            Account acct,
+            string fleetKey,
+            string expectedKey,
+            PositionInfo fleetFollowerPos,
+            Order fEntry,
+            MarketPosition direction,
+            int qty,
+            out bool syncPending,
+            out int reservedDelta
+        )
+        {
+            // [923B-FIX-B] WRITE ORDERING INVARIANT: dicts BEFORE expectedPositions
+            activePositions[fleetKey] = fleetFollowerPos;
+            entryOrders[fleetKey] = fEntry;
+            MarkDispatchSyncPending(expectedKey);
+            syncPending = true;
+            if (!_followerBrackets.ContainsKey(fleetKey))
+            {
+                var rmaFsm = new FollowerBracketFSM
+                {
+                    AccountName = acct.Name,
+                    EntryName = fleetKey,
+                    State = FollowerBracketState.Submitted,
+                    RemainingContracts = qty,
+                    EntryOrder = fEntry,
+                    ExpectedEntryPrice = fleetFollowerPos.EntryPrice,
+                    LastUpdateUtc = DateTime.UtcNow,
+                };
+                _followerBrackets.TryAdd(fleetKey, rmaFsm);
+            }
+
+            reservedDelta = (direction == MarketPosition.Long) ? qty : -qty;
+            AddExpectedPositionDeltaLocked(expectedKey, reservedDelta);
+        }
+
+        /// <summary>
+        /// V12 W7-095 T3: Rollback fleet follower state on dispatch failure.
+        /// Cold path -- NoInlining to keep hot path lean.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void RollbackFleetFollowerState(
+            string fleetKey,
+            string expectedKey,
+            bool syncPending,
+            int reservedDelta,
+            StringBuilder dispatchLog,
+            Account acct
+        )
+        {
+            if (syncPending)
+                ClearDispatchSyncPending(expectedKey);
+            if (reservedDelta != 0)
+                AddExpectedPositionDeltaLocked(expectedKey, -reservedDelta);
+            activePositions.TryRemove(fleetKey, out _);
+            entryOrders.TryRemove(fleetKey, out _);
+            _followerBrackets.TryRemove(fleetKey, out _);
+            dispatchLog.AppendLine(LogBuffer.Format("  FAIL | {0,-28} | rollback", acct.Name));
         }
 
         /// <summary>
@@ -772,10 +1063,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 foreach (Account acct in Account.All)
                 {
-                    if (!IsFleetAccount(acct))
+                    if (!IsEligibleFleetAccount(acct))
                         continue;
-                    if (acct == this.Account)
-                        continue; // local already done
 
                     // Helper 4: Process single fleet account (ATOMIC: INV-4.3)
                     if (
@@ -808,39 +1097,59 @@ namespace NinjaTrader.NinjaScript.Strategies
                 double localMs = (tLoopStartTicks - tSetupDoneTicks) * 1000.0 / Stopwatch.Frequency;
                 double loopMs = (tFinalTicks - tLoopStartTicks) * 1000.0 / Stopwatch.Frequency;
 
-                var report = new StringBuilder(1024);
-                report.AppendLine("+==============================================================+");
-                report.AppendLine("|       FORENSIC PULSE REPORT  Phase 9 RMA ENTRY V2            |");
-                report.AppendLine("+==============================================================+");
-                report.AppendLine("|  TYPE | ACCOUNT                       | ORDER TYPE   | STATUS |");
-                report.AppendLine("+==============================================================+");
-                report.Append(dispatchLog.ToString());
-                report.AppendLine("+--------------------------------------------------------------+");
-                report.AppendLine(LogBuffer.Format("|  FLEET: {0} dispatched, {1} skipped", fleetOk, fleetSkip));
-                report.AppendLine("+--------------------------------------------------------------+");
-                report.AppendLine("|  TIMING SUMMARY (4-phase)                                    |");
-                report.AppendLine("+--------------------------------------------------------------+");
-                report.AppendLine(
-                    LogBuffer.Format(
-                        "|  Setup+Calc:   {0,8:F3} ms  |  Local Acct:  {1,8:F3} ms       |",
-                        setupMs,
-                        localMs
-                    )
-                );
-                report.AppendLine(
-                    LogBuffer.Format(
-                        "|  Fleet Loop:   {0,8:F3} ms  |  Total:       {1,8:F3} ms       |",
-                        loopMs,
-                        totalMs
-                    )
-                );
-                report.AppendLine("+==============================================================+");
-                Print(report.ToString().TrimEnd());
+                BuildRmaForensicPulseReport(dispatchLog, fleetOk, fleetSkip, setupMs, localMs, loopMs, totalMs);
             }
             catch (Exception ex)
             {
                 Print(LogBuffer.Format("[SIMA RMA V2] ERROR: {0}", ex.Message));
             }
+        }
+
+        /// <summary>
+        /// W7-097 T1: Cold-path forensic logging extraction.
+        /// NoInlining: carl_cook cold-path logging rule -- keeps cold logging frame out of hot-path JIT budget.
+        /// </summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void BuildRmaForensicPulseReport(
+            StringBuilder dispatchLog,
+            int fleetOk,
+            int fleetSkip,
+            double setupMs,
+            double localMs,
+            double loopMs,
+            double totalMs
+        )
+        {
+            var report = new StringBuilder(1024);
+            report.AppendLine("+==============================================================+");
+            report.AppendLine("|       FORENSIC PULSE REPORT  Phase 9 RMA ENTRY V2            |");
+            report.AppendLine("+==============================================================+");
+            report.AppendLine("|  TYPE | ACCOUNT                       | ORDER TYPE   | STATUS |");
+            report.AppendLine("+==============================================================+");
+            report.Append(dispatchLog.ToString());
+            report.AppendLine("+--------------------------------------------------------------+");
+            report.AppendLine(LogBuffer.Format("|  FLEET: {0} dispatched, {1} skipped", fleetOk, fleetSkip));
+            report.AppendLine("+--------------------------------------------------------------+");
+            report.AppendLine("|  TIMING SUMMARY (4-phase)                                    |");
+            report.AppendLine("+--------------------------------------------------------------+");
+            report.AppendLine(
+                LogBuffer.Format("|  Setup+Calc:   {0,8:F3} ms  |  Local Acct:  {1,8:F3} ms       |", setupMs, localMs)
+            );
+            report.AppendLine(
+                LogBuffer.Format("|  Fleet Loop:   {0,8:F3} ms  |  Total:       {1,8:F3} ms       |", loopMs, totalMs)
+            );
+            report.AppendLine("+==============================================================+");
+            Print(report.ToString().TrimEnd());
+        }
+
+        /// <summary>
+        /// W7-097 T2: Fleet account eligibility predicate for RMA dispatch.
+        /// Merges two inline guard conditions into a single predicate call (CYC -1 in orchestrator).
+        /// trading_billions single-responsibility rule.
+        /// </summary>
+        private bool IsEligibleFleetAccount(Account acct)
+        {
+            return IsFleetAccount(acct) && acct != this.Account;
         }
 
         #endregion

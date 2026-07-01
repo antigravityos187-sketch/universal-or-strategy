@@ -242,6 +242,33 @@ namespace NinjaTrader.NinjaScript.Strategies
             return state == OrderState.Cancelled || state == OrderState.Rejected || state == OrderState.Unknown;
         }
 
+        private void DispatchOrderState(
+            Order order,
+            double limitPrice,
+            double stopPrice,
+            int quantity,
+            int filled,
+            double averageFillPrice,
+            OrderState orderState,
+            DateTime time,
+            string nativeError
+        )
+        {
+            bool handled = false;
+
+            if (orderState == OrderState.Filled)
+                handled = HandleOrderState_Filled(order, quantity, filled, averageFillPrice, time);
+            else if (orderState == OrderState.Rejected || orderState == OrderState.Cancelled)
+                handled = HandleOrderState_Terminal(order, orderState, nativeError);
+            else if (orderState == OrderState.Accepted || orderState == OrderState.Working)
+                handled = HandleOrderState_Working(order, limitPrice, stopPrice, quantity);
+
+            if (!handled && IsTerminalState(orderState))
+            {
+                RemoveGhostOrderRef(order, orderState.ToString().ToUpper());
+            }
+        }
+
         private void ProcessOnOrderUpdate(
             Order order,
             double limitPrice,
@@ -261,25 +288,19 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 // Price propagation for working orders
                 if (ShouldPropagatePriceMove(order, orderState))
-                {
                     PropagateMasterPriceMove(order, limitPrice, stopPrice, quantity);
-                }
 
-                bool handled = false;
-
-                // State-specific processing
-                if (orderState == OrderState.Filled)
-                    handled = HandleOrderState_Filled(order, quantity, filled, averageFillPrice, time);
-                else if (orderState == OrderState.Rejected || orderState == OrderState.Cancelled)
-                    handled = HandleOrderState_Terminal(order, orderState, nativeError);
-                else if (orderState == OrderState.Accepted || orderState == OrderState.Working)
-                    handled = HandleOrderState_Working(order, limitPrice, stopPrice, quantity);
-
-                // Terminal catch-all for unhandled states
-                if (!handled && IsTerminalState(orderState))
-                {
-                    RemoveGhostOrderRef(order, orderState.ToString().ToUpper());
-                }
+                DispatchOrderState(
+                    order,
+                    limitPrice,
+                    stopPrice,
+                    quantity,
+                    filled,
+                    averageFillPrice,
+                    orderState,
+                    time,
+                    nativeError
+                );
             }
             catch (Exception ex)
             {
@@ -474,31 +495,23 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
-        /// Handles stop order fills with dictionary lookup and name-based fallback.
-        /// Extracted from HandleSecondaryOrderFilled.
-        /// Phase 7 NEW-1: Complexity reduction (CYC 17 -> 4).
-        /// CRITICAL: Mutation-safety guard prevents double-cleanup race condition.
-        /// If platform delivers callbacks from multiple threads OR another actor message
-        /// races between snapshot and cleanup, we must verify the key still exists.
+        /// Scans the position snapshot for a stop order matching the given order reference.
+        /// Applies mutation-safety guard before cleanup to prevent double-cleanup race conditions.
+        /// Extracted from HandleSecondaryOrderFilled_Stop.
         /// </summary>
-        /// <param name="order">The filled order.</param>
-        /// <param name="orderName">Order name for fallback matching.</param>
-        /// <param name="averageFillPrice">Average fill price.</param>
+        /// <param name="order">The filled stop order to match.</param>
         /// <param name="snapshot">Pre-allocated snapshot of active positions.</param>
-        /// <returns>True if order was a stop and was handled.</returns>
-        private bool HandleSecondaryOrderFilled_Stop(
+        /// <param name="averageFillPrice">Average fill price for logging.</param>
+        /// <returns>True if a matching stop was found and handled.</returns>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private bool TryCleanupStopByDictionaryLookup(
             Order order,
-            string orderName,
-            double averageFillPrice,
-            KeyValuePair<string, PositionInfo>[] snapshot
+            KeyValuePair<string, PositionInfo>[] snapshot,
+            double averageFillPrice
         )
         {
-            // Stop filled.
-            if (!orderName.StartsWith(StopOrderPrefix) && !orderName.StartsWith(StopOrderPrefixShort))
-            {
-                return false;
-            }
-
             foreach (var kvp in snapshot)
             {
                 // Single TryGetValue for mutation safety + lookup efficiency.
@@ -525,7 +538,25 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return true;
                 }
             }
-            // Fallback by name.
+            return false;
+        }
+
+        private bool HandleSecondaryOrderFilled_Stop(
+            Order order,
+            string orderName,
+            double averageFillPrice,
+            KeyValuePair<string, PositionInfo>[] snapshot
+        )
+        {
+            // 1. Prefix guard (1 branch)
+            if (!orderName.StartsWith(StopOrderPrefix) && !orderName.StartsWith(StopOrderPrefixShort))
+                return false;
+
+            // 2. Dictionary-lookup cleanup via extracted helper (1 branch)
+            if (TryCleanupStopByDictionaryLookup(order, snapshot, averageFillPrice))
+                return true;
+
+            // 3. Name-based fallback (1 branch)
             string entryName = ExtractEntryNameFromStop(orderName);
             if (activePositions.TryGetValue(entryName, out var pos))
             {

@@ -388,41 +388,61 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (!RmaIntelligenceEnabled)
                     return;
 
-                // P1-3: Cache Close[0] outside loop (JS-036: Zero-Allocation)
                 double currentClose = Close[0];
 
                 foreach (var kvp in entryOrders)
                 {
-                    // P0-5: Compute drawing tag once (JS-036: Zero-Allocation)
-                    string proximityTag = string.Format("Prox_{0}", kvp.Key);
-
-                    if (!ShouldMonitorOrder(kvp.Value, kvp.Key, out var pos))
-                    {
-                        continue;
-                    }
-
-                    double distTicks = UpdateProximityAndCalculateDistance(pos, currentClose);
-
-                    // P0-2 + P1-7: Restore hysteresis dead zone (JS-004: Exhaustive Matching)
-                    if (distTicks <= RmaProximityTicks)
-                    {
-                        HandleProximityEntry(kvp.Key, pos, distTicks, pos.EntryPrice, proximityTag);
-                    }
-                    else if (distTicks < RmaCancellationTicks)
-                    {
-                        // Dead zone: between proximity and cancellation thresholds
-                        // Prevents oscillation at boundary
-                    }
-                    else
-                    {
-                        HandleProximityExit(kvp.Key, kvp.Value, pos, proximityTag);
-                    }
+                    ProcessProximityOrder(kvp.Key, kvp.Value, currentClose);
                 }
             }
             finally
             {
                 probe = probe.Stop();
                 _histMonitorRmaProximity.Record(probe);
+            }
+        }
+
+        // [EPIC-W7-024] T1: Per-order proximity processing (CYC <= 4)
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private void ProcessProximityOrder(string orderId, Order order, double currentClose)
+        {
+            string proximityTag = string.Format("Prox_{0}", orderId);
+
+            if (!ShouldMonitorOrder(order, orderId, out var pos))
+            {
+                return;
+            }
+
+            double distTicks = UpdateProximityAndCalculateDistance(pos, currentClose);
+            DispatchProximityAction(orderId, order, pos, distTicks, proximityTag);
+        }
+
+        // [EPIC-W7-024] T2: Route proximity action based on distance thresholds (CYC <= 4)
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private void DispatchProximityAction(
+            string orderId,
+            Order order,
+            PositionInfo pos,
+            double distTicks,
+            string proximityTag
+        )
+        {
+            if (distTicks <= RmaProximityTicks)
+            {
+                HandleProximityEntry(orderId, pos, distTicks, pos.EntryPrice, proximityTag);
+            }
+            else if (distTicks < RmaCancellationTicks)
+            {
+                // Dead zone: between proximity and cancellation thresholds
+                // Prevents oscillation at boundary
+            }
+            else
+            {
+                HandleProximityExit(orderId, order, pos, proximityTag);
             }
         }
 

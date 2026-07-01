@@ -83,35 +83,36 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (order.OrderState == OrderState.Filled || order.OrderState == OrderState.PartFilled)
             {
                 if (order.Name.StartsWith("Stop_"))
-                {
-                    // Clear naked-position grace for master when stop fills/exists
-                    _nakedPositionFirstSeen.TryRemove(Account.Name, out _);
-
-                    var mExpKey = ExpKey(Account.Name);
-                    Enqueue(ctx => ctx.SetExpectedPositionLocked(mExpKey, 0));
-                }
+                    HandleMasterStopFill();
                 else if (order.Name.StartsWith("T") && order.Name.Contains("_"))
-                {
-                    int filledQty = order.Filled;
-                    var mExpKey = ExpKey(Account.Name);
-                    Enqueue(ctx =>
-                    {
-                        if (
-                            ctx.expectedPositions != null
-                            && ctx.expectedPositions.TryGetValue(mExpKey, out int currentExp)
-                        )
-                        {
-                            int newExp = 0;
-                            if (currentExp > 0)
-                                newExp = Math.Max(0, currentExp - filledQty);
-                            else if (currentExp < 0)
-                                newExp = Math.Min(0, currentExp + filledQty);
-
-                            ctx.SetExpectedPositionLocked(mExpKey, newExp);
-                        }
-                    });
-                }
+                    HandleMasterTargetFill(order);
             }
+        }
+
+        private void HandleMasterStopFill()
+        {
+            _nakedPositionFirstSeen.TryRemove(Account.Name, out _);
+            var mExpKey = ExpKey(Account.Name);
+            Enqueue(ctx => ctx.SetExpectedPositionLocked(mExpKey, 0));
+        }
+
+        private void HandleMasterTargetFill(Order order)
+        {
+            int filledQty = order.Filled;
+            var mExpKey = ExpKey(Account.Name);
+            Enqueue(ctx =>
+            {
+                if (ctx.expectedPositions != null && ctx.expectedPositions.TryGetValue(mExpKey, out int currentExp))
+                {
+                    int newExp = 0;
+                    if (currentExp > 0)
+                        newExp = Math.Max(0, currentExp - filledQty);
+                    else if (currentExp < 0)
+                        newExp = Math.Min(0, currentExp + filledQty);
+
+                    ctx.SetExpectedPositionLocked(mExpKey, newExp);
+                }
+            });
         }
 
         private void ProcessAccountOrder_UpdateFleetExpected(Order order, Account acct)
@@ -477,83 +478,99 @@ namespace NinjaTrader.NinjaScript.Strategies
             string reason
         )
         {
-            // H06: Top-level follower cancellation gate (state-agnostic, pre-branch).
-            // Processes all cancellation types before entry-order conditional logic.
             if (ProcessFollowerCancellationSafe(matchedEntry, matchedPos, order, acctName, reason))
                 return;
 
-            if (
-                entryOrders.TryGetValue(matchedEntry, out var entryOrder)
-                && (entryOrder == order || (entryOrder != null && entryOrder.OrderId == order.OrderId))
-                && !matchedPos.EntryFilled
-            )
+            if (IsEntryOrderMatch(matchedEntry, matchedPos, order, out _))
             {
                 entryOrders.TryRemove(matchedEntry, out _);
-                // Build 1004: Replace expectedPositions guard with FSM Active/Accepted state check.
-                bool acctFsmActive = _followerBrackets.Values.Any(f =>
-                    f != null
-                    && f.AccountName == acctName
-                    && (f.State == FollowerBracketState.Active || f.State == FollowerBracketState.Accepted)
-                );
-                if (!acctFsmActive)
+                if (!IsAnyFollowerBracketActive(acctName))
                 {
-                    // Build 973: FSM-Aware Guard for Meta-Purge Fix
-                    FollowerReplaceSpec fsmGuard;
-                    if (
-                        _followerReplaceSpecs.TryGetValue(matchedEntry, out fsmGuard)
-                        && fsmGuard.State == FollowerReplaceState.PendingCancel
-                        && fsmGuard.CancellingOrderId == order.OrderId
-                    )
-                    {
-                        Print(
-                            "[META-PURGE GUARD] Rescuing PendingCancel spec "
-                                + matchedEntry
-                                + " despite no active FSM. Delegating to resubmit path."
-                        );
-                        // DO NOT return, DO NOT destroy spec. Fall through.
-                    }
-                    else
-                    {
-                        // Build 947: clean up any in-flight FSM spec to avoid orphaned state
-                        _followerReplaceSpecs.TryRemove(matchedEntry, out _);
+                    if (!ShouldRescuePendingCancelSpec(matchedEntry, order))
                         return;
-                    }
                 }
-
-                HandleMatchedFollower_DeltaRollback(matchedEntry);
-                Print(
-                    string.Format(
-                        "[SIMA] Follower entry cancelled: {0} on {1}. Reaper monitoring.",
-                        matchedEntry,
-                        acctName
-                    )
-                );
-                Draw.TextFixed(
-                    this,
-                    "SIMA_DESYNC_" + acctName,
-                    "(!) FOLLOWER DESYNC: " + acctName,
-                    TextPosition.TopLeft,
-                    Brushes.Red,
-                    new SimpleFont("Arial", 11),
-                    Brushes.Transparent,
-                    Brushes.Transparent,
-                    50
-                );
+                HandleEntryNotFilledRollback(matchedEntry, acctName);
             }
             else
             {
-                // H06: Non-entry orders (stops, targets) already handled by top-level gate
-                Print(
-                    string.Format(
-                        "[SIMA] Follower order terminal: {0} on {1} ({2}) | Id={3}",
-                        order.Name,
-                        acctName,
-                        reason,
-                        order.OrderId
-                    )
-                );
-                RemoveGhostOrderRef(order, reason);
+                HandleTerminalFollowerOrder(order, acctName, reason);
             }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private bool IsEntryOrderMatch(string matchedEntry, PositionInfo matchedPos, Order order, out Order entryOrder)
+        {
+            return entryOrders.TryGetValue(matchedEntry, out entryOrder)
+                && (entryOrder == order || (entryOrder != null && entryOrder.OrderId == order.OrderId))
+                && !matchedPos.EntryFilled;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private bool IsAnyFollowerBracketActive(string acctName)
+        {
+            return _followerBrackets.Values.Any(f =>
+                f != null
+                && f.AccountName == acctName
+                && (f.State == FollowerBracketState.Active || f.State == FollowerBracketState.Accepted)
+            );
+        }
+
+        private bool ShouldRescuePendingCancelSpec(string matchedEntry, Order order)
+        {
+            if (
+                _followerReplaceSpecs.TryGetValue(matchedEntry, out var fsmGuard)
+                && fsmGuard.State == FollowerReplaceState.PendingCancel
+                && fsmGuard.CancellingOrderId == order.OrderId
+            )
+            {
+                Print(
+                    "[META-PURGE GUARD] Rescuing PendingCancel spec "
+                        + matchedEntry
+                        + " despite no active FSM. Delegating to resubmit path."
+                );
+                return true;
+            }
+            _followerReplaceSpecs.TryRemove(matchedEntry, out _);
+            return false;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void HandleEntryNotFilledRollback(string matchedEntry, string acctName)
+        {
+            HandleMatchedFollower_DeltaRollback(matchedEntry);
+            Print(
+                string.Format("[SIMA] Follower entry cancelled: {0} on {1}. Reaper monitoring.", matchedEntry, acctName)
+            );
+            Draw.TextFixed(
+                this,
+                "SIMA_DESYNC_" + acctName,
+                "(!) FOLLOWER DESYNC: " + acctName,
+                TextPosition.TopLeft,
+                Brushes.Red,
+                new SimpleFont("Arial", 11),
+                Brushes.Transparent,
+                Brushes.Transparent,
+                50
+            );
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void HandleTerminalFollowerOrder(Order order, string acctName, string reason)
+        {
+            Print(
+                string.Format(
+                    "[SIMA] Follower order terminal: {0} on {1} ({2}) | Id={3}",
+                    order.Name,
+                    acctName,
+                    reason,
+                    order.OrderId
+                )
+            );
+            RemoveGhostOrderRef(order, reason);
         }
 
         private bool HandleMatchedFollower_PendingCancelReplace(string matchedEntry, Order order, string acctName)
@@ -1053,12 +1070,10 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void ProcessQueuedAccountOrder(QueuedAccountOrderUpdate item)
         {
-            if (item.EventArgs == null || item.EventArgs.Order == null)
-                return;
-            Order order = item.EventArgs.Order;
-            if (order.Instrument != null && order.Instrument.FullName != Instrument.FullName)
+            if (!IsValidQueuedOrderForThisInstrument(item))
                 return;
 
+            Order order = item.EventArgs.Order;
             string reason = order.OrderState.ToString().ToUpper();
             string acctName = item.Account != null ? item.Account.Name : "UNKNOWN";
             Print(
@@ -1078,23 +1093,68 @@ namespace NinjaTrader.NinjaScript.Strategies
             // eliminating the second activePositions.ToArray() allocation in the cascade path.
             var snapshot = activePositions.ToArray();
 
-            string matchedEntry = null;
-            PositionInfo matchedPos = null;
+            TryMatchFollowerPositionInSnapshot(
+                item,
+                order,
+                snapshot,
+                out string matchedEntry,
+                out PositionInfo matchedPos
+            );
+            DispatchMatchedFollowerResult(matchedEntry, matchedPos, order, acctName, reason, snapshot);
+        }
+
+        private bool IsValidQueuedOrderForThisInstrument(QueuedAccountOrderUpdate item)
+        {
+            if (item?.EventArgs?.Order == null)
+                return false;
+            if (
+                !Instrument.MasterInstrument.Name.Equals(
+                    item.EventArgs.Order.Instrument.MasterInstrument.Name,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+                return false;
+            return true;
+        }
+
+        private bool TryMatchFollowerPositionInSnapshot(
+            QueuedAccountOrderUpdate item,
+            Order order,
+            KeyValuePair<string, PositionInfo>[] snapshot,
+            out string matchedEntry,
+            out PositionInfo matchedPos
+        )
+        {
+            matchedEntry = string.Empty;
+            matchedPos = null;
             foreach (var kvp in snapshot)
             {
-                if (!activePositions.ContainsKey(kvp.Key))
+                if (string.IsNullOrEmpty(kvp.Key))
                     continue;
                 PositionInfo pos = kvp.Value;
-                if (!pos.IsFollower || pos.ExecutingAccount == null || pos.ExecutingAccount != item.Account)
+                if (!IsFollowerPosition(pos) || pos == null || pos.Account?.Name != item.Account?.Name)
                     continue;
                 if (TryFindOrderInPosition(order, kvp.Key, out matchedEntry))
                 {
                     matchedPos = pos;
-                    break;
+                    return true;
                 }
             }
+            matchedEntry = string.Empty;
+            matchedPos = null;
+            return false;
+        }
 
-            if (!string.IsNullOrEmpty(matchedEntry) && matchedPos != null && activePositions.ContainsKey(matchedEntry))
+        private void DispatchMatchedFollowerResult(
+            string matchedEntry,
+            PositionInfo matchedPos,
+            Order order,
+            string acctName,
+            string reason,
+            KeyValuePair<string, PositionInfo>[] snapshot
+        )
+        {
+            if (!string.IsNullOrEmpty(matchedEntry) && matchedPos != null)
                 HandleMatchedFollowerOrder(matchedEntry, matchedPos, order, acctName, reason);
             else
                 ExecuteFollowerCascadeCleanup(EnableSIMA, order, reason, snapshot);

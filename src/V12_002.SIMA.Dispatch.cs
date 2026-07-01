@@ -223,13 +223,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     continue;
 
                 // [GREPTILE-P0]: Circuit breaker fast-exit BEFORE allocation.
-                // Prevents wasteful CreateOrder + PositionInfo heap allocations when breaker is tripped.
-                // Jane Street Alignment: Zero-tolerance for allocation-before-guard patterns.
-                if (Volatile.Read(ref _reaperCircuitBreakerTripped) == 1)
-                {
-                    dispatchLog.AppendLine($"[DISPATCH] CB tripped - skipping {acct.Name} (no allocation)");
+                if (ShouldSkipFleetIteration(acct, dispatchLog))
                     continue;
-                }
 
                 int reservedDelta = 0;
                 bool registeredForCleanup = false;
@@ -314,37 +309,78 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 catch (Exception ex)
                 {
-                    if (syncPending)
-                    {
-                        ClearDispatchSyncPending(expectedKey);
-                        syncPending = false;
-                    }
-
-                    if (reservedDelta != 0)
-                        AddExpectedPositionDeltaLocked(expectedKey, -reservedDelta);
-
-                    if (registeredForCleanup)
-                    {
-                        // V12.Phase8 [F-01]: Full tracking-dict cleanup on Submit failure.
-                        activePositions.TryRemove(fleetEntryName, out _);
-                        entryOrders.TryRemove(fleetEntryName, out _);
-                        stopOrders.TryRemove(fleetEntryName, out _);
-                        for (int tNum = 1; tNum <= 5; tNum++)
-                        {
-                            var targetDict = GetTargetOrdersDictionary(tNum);
-                            if (targetDict != null)
-                                targetDict.TryRemove(fleetEntryName, out _);
-                        }
-                    }
-                    // Phase 6: Clean up proactive FSM on dispatch failure (no-op if not yet created)
-                    if (!string.IsNullOrEmpty(fleetEntryName))
-                        _followerBrackets.TryRemove(fleetEntryName, out _);
-
-                    dispatchLog.AppendLine($"[DISPATCH] [X] FAILED on {acct.Name}: {ex.Message}");
+                    Dispatch_HandleFleetSlotException(
+                        ex,
+                        acct,
+                        fleetEntryName,
+                        expectedKey,
+                        ref syncPending,
+                        ref reservedDelta,
+                        registeredForCleanup,
+                        dispatchLog
+                    );
                 }
             }
 
             return rmaCount;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private bool ShouldSkipFleetIteration(Account acct, StringBuilder dispatchLog)
+        {
+            if (Volatile.Read(ref _reaperCircuitBreakerTripped) == 1)
+            {
+                dispatchLog.AppendLine($"[DISPATCH] CB tripped - skipping {acct.Name} (no allocation)");
+                return true;
+            }
+            return false;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void Dispatch_RollbackFleetSlot(string fleetEntryName)
+        {
+            // V12.Phase8 [F-01]: Full tracking-dict cleanup on Submit failure.
+            activePositions.TryRemove(fleetEntryName, out _);
+            entryOrders.TryRemove(fleetEntryName, out _);
+            stopOrders.TryRemove(fleetEntryName, out _);
+            for (int tNum = 1; tNum <= 5; tNum++)
+            {
+                var targetDict = GetTargetOrdersDictionary(tNum);
+                if (targetDict != null)
+                    targetDict.TryRemove(fleetEntryName, out _);
+            }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void Dispatch_HandleFleetSlotException(
+            Exception ex,
+            Account acct,
+            string fleetEntryName,
+            string expectedKey,
+            ref bool syncPending,
+            ref int reservedDelta,
+            bool registeredForCleanup,
+            StringBuilder dispatchLog
+        )
+        {
+            if (syncPending)
+            {
+                ClearDispatchSyncPending(expectedKey);
+                syncPending = false;
+            }
+
+            if (reservedDelta != 0)
+                AddExpectedPositionDeltaLocked(expectedKey, -reservedDelta);
+
+            if (registeredForCleanup)
+                Dispatch_RollbackFleetSlot(fleetEntryName);
+
+            if (!string.IsNullOrEmpty(fleetEntryName))
+                _followerBrackets.TryRemove(fleetEntryName, out _);
+
+            dispatchLog.AppendLine("[DISPATCH] [X] FAILED on " + acct.Name + ": " + ex.Message);
         }
 
         private void Dispatch_FinalizeAndReport(
@@ -692,6 +728,52 @@ namespace NinjaTrader.NinjaScript.Strategies
             reservedDelta = (action == OrderAction.Buy) ? followerQty : -followerQty;
             AddExpectedPositionDeltaLocked(expectedKey, reservedDelta);
 
+            Dispatch_CommitBracketToPhotonRing(
+                acct,
+                entry,
+                stop,
+                stagedTargets,
+                entryPrice,
+                stopPrice,
+                followerQty,
+                dispatchTargetCount,
+                action,
+                fleetEntryName,
+                expectedKey,
+                ordersToSubmit.Count,
+                fleetPos.TotalContracts,
+                nonRunnerLimitQty,
+                runnerQty,
+                dispatchLog,
+                ref syncPending,
+                ref reservedDelta,
+                ref registeredForCleanup
+            );
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void Dispatch_CommitBracketToPhotonRing(
+            Account acct,
+            Order entry,
+            Order stop,
+            List<StagedTarget> stagedTargets,
+            double entryPrice,
+            double stopPrice,
+            int followerQty,
+            int dispatchTargetCount,
+            OrderAction action,
+            string fleetEntryName,
+            string expectedKey,
+            int orderCount,
+            int totalContracts,
+            int nonRunnerLimitQty,
+            int runnerQty,
+            StringBuilder dispatchLog,
+            ref bool syncPending,
+            ref int reservedDelta,
+            ref bool registeredForCleanup
+        )
+        {
             // V14.2 [ADR-012]: Zero-allocation dispatch via PhotonPool + SPSC ring
             var (_proxyOrders, _poolSlotIndex) = ClaimPhotonPoolSlot();
 
@@ -744,9 +826,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             LogDispatchCompletion(
                 dispatchLog,
                 acct,
-                ordersToSubmit.Count,
+                orderCount,
                 fleetEntryName,
-                fleetPos.TotalContracts,
+                totalContracts,
                 nonRunnerLimitQty,
                 runnerQty
             );

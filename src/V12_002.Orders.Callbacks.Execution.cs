@@ -66,22 +66,26 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // Build 935 [CB-B935-001]: Flat-position cleanup extracted from OnPositionUpdate.
+        // EPIC-W7-023: Refactored -- orchestrator delegates to three single-concern helpers (CYC 19->2).
         private void HandleFlatPositionUpdate(string acctName) // [B967-FIX-01]
         {
-            // [H-14]: Sync expectedPositions on flat. Build 931: guard against spurious flat.
-            string flatAcctName = acctName;
-            if (!string.IsNullOrEmpty(flatAcctName))
-            {
-                string flatExpKey = ExpKey(flatAcctName);
-                bool hasSyncPending = IsDispatchSyncPending(flatExpKey);
-                bool hasPendingEntry = HasPendingEntryOrderForAccount(flatAcctName);
+            HandleFlatPosition_SyncExpected(acctName);
+            if (HandleFlatPosition_ReconcileOrphans())
+                return;
+            HandleFlatPosition_CleanupActivePositions();
+        }
 
+        // EPIC-W7-023-T1: Expected Position Sync Guard (CYC=7)
+        private void HandleFlatPosition_SyncExpected(string acctName)
+        {
+            if (!string.IsNullOrEmpty(acctName))
+            {
+                string flatExpKey = ExpKey(acctName);
+                bool hasSyncPending = IsDispatchSyncPending(flatExpKey);
+                bool hasPendingEntry = HasPendingEntryOrderForAccount(acctName);
                 bool hasActivePositionForAcct = false;
                 if (!hasPendingEntry)
-                {
-                    hasActivePositionForAcct = HasUnfilledPositionForAccount(flatAcctName);
-                }
-
+                    hasActivePositionForAcct = HasUnfilledPositionForAccount(acctName);
                 if (hasPendingEntry || hasActivePositionForAcct || hasSyncPending)
                 {
                     string skipReason = hasPendingEntry
@@ -97,15 +101,23 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Print($"[OnPositionUpdate] expectedPositions cleared for {flatExpKey} (position flat)");
                 }
             }
+        }
 
-            // V8.22: Scan for orphans even if activePositions is empty (strategy restart)
+        // EPIC-W7-023-T2: Orphan Reconciliation Early Return (CYC=2)
+        private bool HandleFlatPosition_ReconcileOrphans()
+        {
             if (activePositions.Count == 0)
             {
                 Print("EXTERNAL CLOSE/RESTART DETECTED - Scanning for orphaned bracket orders...");
                 ReconcileOrphanedOrders("Position went flat");
-                return;
+                return true;
             }
+            return false;
+        }
 
+        // EPIC-W7-023-T3: Active Position Cleanup (CYC=7)
+        private void HandleFlatPosition_CleanupActivePositions()
+        {
             List<string> positionsToCleanup = new List<string>();
             foreach (var kvp in activePositions.ToArray())
             {
@@ -119,10 +131,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     positionsToCleanup.Add(kvp.Key);
                 }
             }
-
             foreach (string key in positionsToCleanup)
                 CleanupPosition(key);
-
             if (positionsToCleanup.Count > 0)
                 Print("Cleanup complete - Strategy still running, ready for new entries.");
         }

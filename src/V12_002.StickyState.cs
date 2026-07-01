@@ -438,10 +438,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Deserializes a JSON snapshot string into a StateSnapshot struct.
+        /// </summary>
+        /// <param name="json">JSON string produced by SerializeSnapshot.</param>
+        /// <returns>Populated StateSnapshot on success; null on any parse or format failure.</returns>
         private StateSnapshot DeserializeSnapshot(string json)
         {
             StateSnapshot snapshot = new StateSnapshot();
-
             try
             {
                 snapshot.SnapshotTicks = ParseJsonLong(json, "SnapshotTicks");
@@ -450,55 +454,53 @@ namespace NinjaTrader.NinjaScript.Strategies
                 snapshot.EnableSIMA = ParseJsonBool(json, "EnableSIMA");
                 snapshot.EnableREAPER = ParseJsonBool(json, "EnableREAPER");
                 snapshot.ChecksumSHA256 = ParseJsonString(json, "ChecksumSHA256");
+                snapshot.AccountPositions = ParseAccountPositions(json);
+                return snapshot;
+            }
+            catch (Exception ex)
+            {
+                HandleDeserializationFailure("[STICKY_CORRUPT]", ex);
+                return null;
+            }
+        }
 
-                int accountPosStart = json.IndexOf("\"AccountPositions\"", StringComparison.Ordinal);
-                if (accountPosStart >= 0)
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private Dictionary<string, int> ParseAccountPositions(string json)
+        {
+            var result = new Dictionary<string, int>();
+            int accountPosStart = json.IndexOf("\"AccountPositions\"", StringComparison.Ordinal);
+            if (accountPosStart >= 0)
+            {
+                int objStart = json.IndexOf('{', accountPosStart);
+                int objEnd = json.IndexOf('}', objStart);
+                if (objStart >= 0 && objEnd > objStart)
                 {
-                    int objStart = json.IndexOf('{', accountPosStart);
-                    int objEnd = json.IndexOf('}', objStart);
-                    if (objStart >= 0 && objEnd > objStart)
+                    string accountsBlock = json.Substring(objStart + 1, objEnd - objStart - 1);
+                    string[] pairs = accountsBlock.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string pair in pairs)
                     {
-                        string accountsBlock = json.Substring(objStart + 1, objEnd - objStart - 1);
-                        string[] pairs = accountsBlock.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                        foreach (string pair in pairs)
+                        int colonIdx = pair.IndexOf(':');
+                        if (colonIdx > 0)
                         {
-                            int colonIdx = pair.IndexOf(':');
-                            if (colonIdx > 0)
+                            string key = pair.Substring(0, colonIdx).Trim().Trim('"');
+                            string valStr = pair.Substring(colonIdx + 1).Trim();
+                            if (int.TryParse(valStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int val))
                             {
-                                string key = pair.Substring(0, colonIdx).Trim().Trim('"');
-                                string valStr = pair.Substring(colonIdx + 1).Trim();
-                                if (
-                                    int.TryParse(
-                                        valStr,
-                                        NumberStyles.Integer,
-                                        CultureInfo.InvariantCulture,
-                                        out int val
-                                    )
-                                )
-                                {
-                                    snapshot.AccountPositions[key] = val;
-                                }
+                                result[key] = val;
                             }
                         }
                     }
                 }
+            }
 
-                return snapshot;
-            }
-            catch (FormatException ex)
-            {
-                // V12.EPIC-7-QUALITY-007: JSON parsing failure (corrupt data)
-                Interlocked.Increment(ref _stateCorruptionDetected);
-                Print(string.Format("[STICKY_CORRUPT] JSON parse failed (format): {0}", ex.Message));
-                return null;
-            }
-            catch (Exception ex)
-            {
-                // V12.EPIC-7-QUALITY-007: Unexpected deserialization failure
-                Interlocked.Increment(ref _stateCorruptionDetected);
-                Print(string.Format("[STICKY_CORRUPT] Deserialization failed: {0}", ex.Message));
-                return null;
-            }
+            return result;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void HandleDeserializationFailure(string logContext, Exception ex)
+        {
+            Interlocked.Increment(ref _stateCorruptionDetected);
+            Print(string.Format("{0} Deserialization failed: {1}", logContext, ex.Message));
         }
 
         private string EscapeJsonString(string input)

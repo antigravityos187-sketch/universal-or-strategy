@@ -84,47 +84,87 @@ namespace NinjaTrader.NinjaScript.Strategies
                     continue;
                 }
 
-                // Determine local vs follower
-                PositionInfo pos = null;
-                activePositions.TryGetValue(key, out pos);
-                bool isFollower = pos != null && pos.IsFollower && pos.ExecutingAccount != null;
-
-                try
+                if (!ProcessCitOrder(key, order, citOffset, ref _citBrokerBudget))
                 {
-                    double newLimitPrice = CalculateNudgedPrice(order.OrderAction, order.LimitPrice, citOffset);
-
-                    if (isFollower)
-                    {
-                        if (
-                            !ExecuteFollowerNudge(
-                                key,
-                                order,
-                                newLimitPrice,
-                                citOffset,
-                                pos.ExecutingAccount,
-                                ref _citBrokerBudget
-                            )
-                        )
-                        {
-                            return; // Budget exhausted - stop iteration (original behavior)
-                        }
-                    }
-                    else
-                    {
-                        ExecuteLocalNudge(key, order, newLimitPrice, citOffset);
-                    }
-                    _citNudgedKeys.TryAdd(key, true); // [BUILD 949] one-shot: mark as nudged
-                }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("ChangeOrder"))
-                {
-                    Print($"[CIT] WARNING chasing {key} (known quirk): {ex.Message}");
-                }
-                catch (Exception ex)
-                {
-                    Print($"[CIT] CRITICAL chasing {key}: {ex.ToString()}");
-                    // Do NOT rethrow - remaining fleet accounts still need flattening
+                    return; // Budget exhausted - stop iteration
                 }
             }
+        }
+
+        /// <summary>
+        /// Processes a single CIT order entry: resolves follower/local routing,
+        /// calculates nudge price, dispatches ExecuteFollowerNudge or ExecuteLocalNudge,
+        /// marks the one-shot nudge guard, and absorbs per-order exceptions.
+        /// Returns false when the broker budget is exhausted (caller stops iteration).
+        /// </summary>
+        private bool ProcessCitOrder(string key, Order order, double citOffset, ref int citBrokerBudget)
+        {
+            PositionInfo pos = null;
+            activePositions.TryGetValue(key, out pos);
+            bool isFollower = pos != null && pos.IsFollower && pos.ExecutingAccount != null;
+
+            return ExecuteCitNudgeWithFaultIsolation(key, order, citOffset, isFollower, ref citBrokerBudget);
+        }
+
+        /// <summary>
+        /// Fault-isolation wrapper: wraps TryNudgeOrder in try/catch blocks.
+        /// Returns false if budget exhausted to protect remaining fleet accounts.
+        /// </summary>
+        private bool ExecuteCitNudgeWithFaultIsolation(
+            string key,
+            Order order,
+            double citOffset,
+            bool isFollower,
+            ref int budget
+        )
+        {
+            try
+            {
+                if (!TryNudgeOrder(key, order, citOffset, isFollower, ref budget))
+                {
+                    return false;
+                }
+
+                _citNudgedKeys.TryAdd(key, true); // [BUILD 949] one-shot: mark as nudged
+                return true;
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("ChangeOrder"))
+            {
+                Print($"[CIT] WARNING chasing {key} (known quirk): {ex.Message}");
+                return true; // Non-fatal: continue iteration
+            }
+            catch (Exception ex)
+            {
+                Print($"[CIT] CRITICAL chasing {key}: {ex.ToString()}");
+                // Do NOT rethrow - remaining fleet accounts still need flattening
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Dispatch router: if isFollower routes to ExecuteFollowerNudge,
+        /// else routes to ExecuteLocalNudge + CalculateNudgedPrice.
+        /// Returns false if broker budget halted.
+        /// </summary>
+        private bool TryNudgeOrder(string key, Order order, double citOffset, bool isFollower, ref int budget)
+        {
+            double newLimitPrice = CalculateNudgedPrice(order.OrderAction, order.LimitPrice, citOffset);
+
+            if (isFollower)
+            {
+                PositionInfo pos = null;
+                activePositions.TryGetValue(key, out pos);
+                if (!ExecuteFollowerNudge(key, order, newLimitPrice, citOffset, pos.ExecutingAccount, ref budget))
+                {
+                    return false; // Budget exhausted
+                }
+            }
+            else
+            {
+                ExecuteLocalNudge(key, order, newLimitPrice, citOffset);
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -205,20 +245,23 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (_citNudgedKeys.ContainsKey(key))
                 return false; // [BUILD 949] one-shot: already nudged
 
-            // [BUILD 984 CIT FIX] Correct directional bar-price logic:
-            // - LONG entry (Buy): price must DROP DOWN to the limit -> compare Low[0] <= limitPrice
-            // - SHORT entry (Sell): price must RISE UP to the limit -> compare High[0] >= limitPrice
-            // Previous bug: Short used Low[0] <= limitPrice which is ALWAYS true when clicking
-            // far above the current market, causing instant market conversion on every click.
+            return IsPriceTouchingLimit(order);
+        }
+
+        /// <summary>
+        /// Pure directional price-touch predicate.
+        /// Buy: bar low touched or pierced the limit (Low[0] <= limitPrice).
+        /// Sell: bar high touched or pierced the limit (High[0] >= limitPrice).
+        /// [BUILD 984 CIT FIX] Correct directional bar-price logic.
+        /// </summary>
+        private bool IsPriceTouchingLimit(Order order)
+        {
             double currentPrice = (order.OrderAction == OrderAction.Buy) ? Low[0] : High[0];
             double limitPrice = order.LimitPrice;
 
-            bool triggerChase =
-                (order.OrderAction == OrderAction.Buy)
-                    ? (currentPrice <= limitPrice) // Long: bar low touched or pierced the limit
-                    : (currentPrice >= limitPrice); // Short: bar high touched or pierced the limit
-
-            return triggerChase;
+            return (order.OrderAction == OrderAction.Buy)
+                ? (currentPrice <= limitPrice) // Long: bar low touched or pierced the limit
+                : (currentPrice >= limitPrice); // Short: bar high touched or pierced the limit
         }
 
         /// <summary>
@@ -446,7 +489,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                     pos.Direction == MarketPosition.Long ? "LONG" : "SHORT"
                 )
             );
+            ClearPendingStopOrders(entryName);
+            CancelAllTargetOrders(entryName, pos);
+            int flattenQty = ResolveFlattenQuantity(pos);
+            SubmitFlattenMarketOrder(entryName, pos, flattenQty);
+        }
 
+        /// <summary>
+        /// Stop-state cleanup: lifecycle-safe stop cancellation and pending replacement removal.
+        /// </summary>
+        private void ClearPendingStopOrders(string entryName)
+        {
             // V12.1101E [PH5-COLLIDE-01]: Lifecycle-safe stop cancellation.
             // Keep stop dictionary refs until broker-confirmed terminal state.
             RequestStopCancelLifecycleSafe(entryName);
@@ -458,25 +511,41 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Interlocked.Decrement(ref pendingReplacementCount);
                 Print(string.Format("V8.31: Cleared pending stop replacement for {0}", entryName));
             }
+        }
 
-            // Cancel all target orders (T1-T5)
+        /// <summary>
+        /// T1-T5 target teardown: cancels all working/accepted/submitted target orders.
+        /// </summary>
+        private void CancelAllTargetOrders(string entryName, PositionInfo pos)
+        {
             for (int tNum = 1; tNum <= 5; tNum++)
             {
                 var tDict = GetTargetOrdersDictionary(tNum);
                 if (tDict != null && tDict.TryGetValue(entryName, out var tOrder))
                 {
-                    if (
-                        tOrder != null
-                        && (
-                            tOrder.OrderState == OrderState.Working
-                            || tOrder.OrderState == OrderState.Accepted
-                            || tOrder.OrderState == OrderState.Submitted
-                        )
-                    )
+                    if (tOrder != null && IsOrderCancellable(tOrder))
                         CancelOrderSafe(tOrder, pos);
                 }
             }
+        }
 
+        /// <summary>
+        /// Pure predicate: returns true if the order is in a cancellable state
+        /// (Working, Accepted, or Submitted).
+        /// </summary>
+        private bool IsOrderCancellable(Order order)
+        {
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.Submitted;
+        }
+
+        /// <summary>
+        /// Safe flatten quantity resolution: reads live Position.Quantity with null/Flat guards
+        /// and try/catch for broker latency. Returns cached RemainingContracts as authoritative value.
+        /// </summary>
+        private int ResolveFlattenQuantity(PositionInfo pos)
+        {
             // V8.28 FIX: Use LIVE position quantity instead of cached RemainingContracts
             int livePositionQty = 0;
             try
@@ -489,16 +558,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print("Flatten Error reading Position: " + pEx.Message);
             }
 
-            // Use the smaller of cached and live to avoid overselling
             // V10 DIAGNOSTIC: Print values
-            Print(
-                string.Format(
-                    "FLATTEN DIAGNOSTIC: Entry={0} Cached={1} Live={2}",
-                    entryName,
-                    pos.RemainingContracts,
-                    livePositionQty
-                )
-            );
+            // (entryName not available here; caller logs context before calling)
 
             // V10 FLATTEN FIX: Trust cached contracts if live is 0 (latency protection)
             // If cached says we have contracts, we close them.
@@ -506,54 +567,58 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             if (livePositionQty > 0)
             {
-                // If NinjaTrader agrees we have a position, use the smaller to act safe?
-                // No, if real position is smaller, we might be over-closing.
-                // But if real is larger, we under-close.
-                // Let's stick to closing what we know we opened.
+                // Stick to closing what we know we opened.
                 flattenQty = pos.RemainingContracts;
             }
 
-            // Submit market order to close position
-            if (flattenQty > 0)
-            {
-                Order flattenOrder =
-                    pos.Direction == MarketPosition.Long
-                        ? SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.Sell,
-                            OrderType.Market,
-                            flattenQty,
-                            0,
-                            0,
-                            "",
-                            "Flatten_" + entryName
-                        )
-                        : SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.BuyToCover,
-                            OrderType.Market,
-                            flattenQty,
-                            0,
-                            0,
-                            "",
-                            "Flatten_" + entryName
-                        );
+            return flattenQty;
+        }
 
-                if (flattenOrder == null)
-                    Print("FLATTEN ERROR: SubmitOrderUnmanaged returned NULL");
-                else
-                    Print(
-                        string.Format(
-                            "FLATTEN SENT: {0} {1} contracts",
-                            pos.Direction == MarketPosition.Long ? "SELL" : "BUY",
-                            flattenQty
-                        )
-                    );
-            }
-            else
+        /// <summary>
+        /// Single submission path: submits a market order to close the position.
+        /// Direction ternary selects Sell (Long) or BuyToCover (Short).
+        /// </summary>
+        private void SubmitFlattenMarketOrder(string entryName, PositionInfo pos, int flattenQty)
+        {
+            if (flattenQty <= 0)
             {
                 Print("FLATTEN SKIPPED: Qty is 0");
+                return;
             }
+
+            Order flattenOrder =
+                pos.Direction == MarketPosition.Long
+                    ? SubmitOrderUnmanaged(
+                        0,
+                        OrderAction.Sell,
+                        OrderType.Market,
+                        flattenQty,
+                        0,
+                        0,
+                        "",
+                        "Flatten_" + entryName
+                    )
+                    : SubmitOrderUnmanaged(
+                        0,
+                        OrderAction.BuyToCover,
+                        OrderType.Market,
+                        flattenQty,
+                        0,
+                        0,
+                        "",
+                        "Flatten_" + entryName
+                    );
+
+            if (flattenOrder == null)
+                Print("FLATTEN ERROR: SubmitOrderUnmanaged returned NULL");
+            else
+                Print(
+                    string.Format(
+                        "FLATTEN SENT: {0} {1} contracts",
+                        pos.Direction == MarketPosition.Long ? "SELL" : "BUY",
+                        flattenQty
+                    )
+                );
         }
 
         private void CancelUnfilledMasterEntries()

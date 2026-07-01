@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -98,7 +99,21 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             pos.CurrentStopPrice = validatedStopPrice;
+            AuditStopQuantityAndLog(entryName, pos, stopOrder, nonRunnerLimitQty, runnerQty);
+            BuildAndPrintBracketSummary(entryName, pos, validatedStopPrice, isFollowerSubmit);
+        }
 
+        // V12.Audit [W7-041 T-1]: Integrity audit helper -- stop quantity null guard, mismatch check,
+        // and target sum check. CYC=4. Extracted from AuditStopQuantityAndPrint (Segments A+D).
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void AuditStopQuantityAndLog(
+            string entryName,
+            PositionInfo pos,
+            Order stopOrder,
+            int nonRunnerLimitQty,
+            int runnerQty
+        )
+        {
             // Zero-trust stop audit: stop quantity must always cover full position.
             if (stopOrder != null && stopOrder.Quantity != pos.TotalContracts)
             {
@@ -124,6 +139,31 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
             }
 
+            // V12.Audit [D-007]: Verify target contract sum matches total position size.
+            int targetSum = nonRunnerLimitQty + runnerQty;
+            if (targetSum != pos.TotalContracts)
+            {
+                Print(
+                    string.Format(
+                        "[BRACKET_WARN] Target sum mismatch for {0}: targets={1} totalContracts={2}. Distribution may have lost contracts.",
+                        entryName,
+                        targetSum,
+                        pos.TotalContracts
+                    )
+                );
+            }
+        }
+
+        // V12.Audit [W7-041 T-2]: Print-format helper -- follower confirmation + bracket summary loop.
+        // CYC=5. Extracted from AuditStopQuantityAndPrint (Segments B+C).
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void BuildAndPrintBracketSummary(
+            string entryName,
+            PositionInfo pos,
+            double validatedStopPrice,
+            bool isFollowerSubmit
+        )
+        {
             // V12.Audit [S-003]: BracketSubmitted is set AFTER the stop quantity audit so that
             // a mismatch detected above does not leave the position flagged as fully protected.
             // [Task 5 Fix]: pos.BracketSubmitted = true moved to top of method
@@ -157,20 +197,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             Print(bracketMsg.ToString());
-
-            // V12.Audit [D-007]: Verify target contract sum matches total position size.
-            int _targetSum = nonRunnerLimitQty + runnerQty;
-            if (_targetSum != pos.TotalContracts)
-            {
-                Print(
-                    string.Format(
-                        "[BRACKET_WARN] Target sum mismatch for {0}: targets={1} totalContracts={2}. Distribution may have lost contracts.",
-                        entryName,
-                        _targetSum,
-                        pos.TotalContracts
-                    )
-                );
-            }
         }
 
         private void SubmitTargetOrdersLoop(
