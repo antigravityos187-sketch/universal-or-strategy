@@ -65,10 +65,25 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 1,
+      "method_name": "InitiateStopReplacement",
+      "source_file": "src/V12_002.Trailing.StopUpdate.cs",
+      "cyc_achieved": 1,
+      "build_passed": true,
+      "tickets_executed": 1,
+      "lane": "FL-21",
+      "agent": "lane-FL-21-orchestrator",
+      "completed_at": "2026-06-30T16:00:00Z",
       "wave_ready": true,
-      "build_passed": true
+      "final_cyc": 1
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-01T20:00:00Z",
+      "final_cyc": 1,
+      "wave_ready": true
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-01T20:00:00Z",
+  "status": "complete"
 }

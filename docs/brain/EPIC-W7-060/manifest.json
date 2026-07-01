@@ -1,7 +1,7 @@
 {
   "epic_id": "EPIC-W7-060",
   "wave": 7,
-  "status": "in_progress",
+  "status": "completed",
   "phases": {
     "phase_0": {
       "status": "completed",
@@ -52,10 +52,18 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 1,
+      "timestamp": "2026-07-01T00:00:00Z",
+      "final_cyc": 2,
       "wave_ready": true,
       "build_passed": true
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-01T20:00:00Z",
+      "final_cyc": 2,
+      "wave_ready": true
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-01T20:00:00Z"
 }

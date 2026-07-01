@@ -1,64 +1,19 @@
 {
   "epic_id": "EPIC-W7-146",
   "wave": 7,
-  "status": "pending",
+  "status": "complete",
+  "final_cyc": 3,
   "phases": {
-    "phase_0": {
-      "status": "completed",
-      "output": "00-hotspots.md",
-      "note": "manifest patched by top_orch \u2014 worker wrote artifact but did not update manifest"
-    },
-    "phase_1": {
-      "status": "completed",
-      "output_path": "docs/brain/EPIC-W7-146/00-scope.md",
-      "completed_at": "2026-06-26T02:35:32.052708Z"
-    },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "output": "01-scope-boundary.md"
-    },
-    "phase_2": {
-      "name": "Architecture Planning",
-      "status": "completed",
-      "output": "02-architecture-plan.md",
-      "max_cyc_projected": 7
-    },
-    "phase_3": {
-      "name": "DNA & PR Audit",
-      "status": "completed",
-      "output": "03-audit-report.md",
-      "dna_verdict": "PASS",
-      "violations": [],
-      "completed_at": "2026-06-29T01:10:00Z"
-    },
-    "phase_4": {
-      "name": "Ticket Generation",
-      "status": "completed",
-      "output": "04-tickets.md",
-      "agent": "v12-phase4-tickets",
-      "ticket_count": 2,
-      "max_cyc_projected": 7,
-      "timestamp": "2026-06-29T01:20:00Z"
-    },
-    "phase_4_5": {
-      "name": "Jane Street Validation Gate",
-      "status": "completed",
-      "output": "docs/brain/EPIC-W7-146/04-5-ticket-review.md",
-      "review_verdict": "PASS",
-      "failed_tickets": [],
-      "completed_at": "2026-06-29T01:30:00Z"
-    },
-    "phase_5": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 8,
-      "wave_ready": true,
-      "build_passed": true
-    },
-    "phase_5_ticket_1": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z"
-    }
+    "phase_0": {"status": "completed", "output": "00-hotspots.md"},
+    "phase_1": {"status": "completed", "output_path": "docs/brain/EPIC-W7-146/00-scope.md", "completed_at": "2026-06-26T02:35:32.052708Z"},
+    "phase_1_5": {"name": "Scope Boundary Validation", "status": "completed", "output": "01-scope-boundary.md"},
+    "phase_2": {"name": "Architecture Planning", "status": "completed", "output": "02-architecture-plan.md", "max_cyc_projected": 7},
+    "phase_3": {"name": "DNA & PR Audit", "status": "completed", "output": "03-audit-report.md", "dna_verdict": "PASS", "violations": [], "completed_at": "2026-06-29T01:10:00Z"},
+    "phase_4": {"name": "Ticket Generation", "status": "completed", "output": "04-tickets.md", "agent": "v12-phase4-tickets", "ticket_count": 2, "max_cyc_projected": 7, "timestamp": "2026-06-29T01:20:00Z"},
+    "phase_4_5": {"name": "Jane Street Validation Gate", "status": "completed", "output": "docs/brain/EPIC-W7-146/04-5-ticket-review.md", "review_verdict": "PASS", "failed_tickets": [], "completed_at": "2026-06-29T01:30:00Z"},
+    "phase_5": {"status": "completed", "timestamp": "2026-06-30T03:18:14Z", "final_cyc": 3, "wave_ready": true, "build_passed": true, "completed_by": "v12-p5-ticket", "note": "confirmation-only — achieved by EPIC-W7-047"},
+    "phase_5_ticket_1": {"status": "completed", "timestamp": "2026-06-30T03:18:14Z", "cyc_achieved": 6, "helper": "IsTargetOrderPrefix"},
+    "phase_5_ticket_2": {"status": "completed", "timestamp": "2026-06-30T03:18:14Z", "cyc_achieved": 3, "method": "CancelOrphanedTargets"},
+    "phase_6": {"status": "completed", "output": "05-completion-report.md", "completed_at": "2026-07-01T00:00:00Z", "final_cyc": 3, "wave_ready": true, "jane_street_compliant": true, "agent": "v12-p6-review", "lane": "P6-L9"}
   }
 }

@@ -1,37 +1,29 @@
-# Ticket 1 Completion -- EPIC-W7-140
-
-**epic_id:** EPIC-W7-140
-**ticket_id:** 1
-**helper_name:** COMPLIANCE_PASS
-**concern_extracted:** Method already CYC-compliant; no extraction required per Phase 4 ticket plan
-**source_file:** src/V12_002.Trailing.StopUpdate.cs
-**parent_method:** InitiateStopReplacement
-**cyc_parent_now:** 1
-**cyc_achieved:** 1
-**build_passed:** true
-**tests_written:** 0
-
-## Compliance Verification
-
-Method `InitiateStopReplacement` in `src/V12_002.Trailing.StopUpdate.cs` is CYC=0 which is within CYC<=8 target.
-No structural code changes performed. Phase 4.5 review_verdict: PASS.
-
-DNA checks:
-- Zero lock() blocks in target method: PASS
-- ASCII-only string literals: PASS
-- UTF-8 source encoding: PASS
-- cyc_achieved=1 <= 8: PASS
-- build_passed: true (no source changes)
-
-## Agent Tracking
+# EPIC-W7-140 Ticket 1 — TrySnapshotReplacementTargets / TryEnqueuePendingReplacement: Completion
 
 | Field | Value |
 |---|---|
-| Agent Name | wave7-phase5-worker |
-| Wave | 7 |
-| Epic ID | EPIC-W7-140 |
-| Ticket ID | 1 |
-| Phase | 5 |
-| Executed | 2026-06-30T03:16:46Z |
-| cyc_achieved | 1 |
-| build_passed | true |
+| **ticket_id** | 1 |
+| **helper_name** | `TryEnqueuePendingReplacement` + `BuildReplacementSnapshot` |
+| **concern** | Snapshot target orders + enqueue pending replacement record with circuit-breaker |
+| **cyc_achieved** | 4 |
+| **build_passed** | true |
+| **status** | COMPLETE |
+
+## Implementation
+
+`BuildReplacementSnapshot(string entryName)` — CYC=7:
+- Iterates _tB=1..5, applies 4-clause compound guard, accumulates TargetSnapshot list
+- Returns array or null
+
+`TryEnqueuePendingReplacement(...)` — CYC=4:
+- Calls BuildReplacementSnapshot, builds PendingStopReplacement record
+- TryAdd to pendingStopReplacements (Actor/Enqueue pattern)
+- Interlocked.Increment + circuit-breaker threshold check
+- Returns bool — duplicate-key path now explicit instead of silently swallowed
+
+## DNA Checks
+
+- [x] Zero lock() blocks (ConcurrentDictionary.TryAdd + Interlocked.Increment)
+- [x] ASCII-only
+- [x] CYC = 4 (base + TryAdd + threshold + circuitBreakerActive)
+- [x] Build passes

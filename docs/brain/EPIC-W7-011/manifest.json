@@ -4,6 +4,9 @@
   "method": "DestroyPanel",
   "source": "src/V12_002.UI.Panel.Construction.cs",
   "cyc": 8,
+  "final_cyc": 5,
+  "status": "complete",
+  "wave_ready": true,
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -14,6 +17,11 @@
       "name": "Decomposition Planning",
       "status": "completed",
       "output": "00-scope.md"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
     },
     "phase_2": {
       "name": "Architecture Planning",
@@ -28,11 +36,6 @@
       "completed_at": "2026-06-29T01:30:00Z",
       "dna_verdict": "PASS",
       "violations": []
-    },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "output": "01-scope-boundary.md"
     },
     "phase_4": {
       "name": "Ticket Generation",
@@ -80,18 +83,29 @@
     },
     "phase_6": {
       "status": "completed",
+      "agent": "v12-phase6-review",
       "output": "05-completion-report.md",
-      "completed_at": "2026-06-30T04:00:00Z",
+      "completed_at": "2026-07-03T00:00:00Z",
       "final_cyc": 5,
       "wave_ready": true,
-      "method_name": "BuildHubPanel",
-      "source_file": "src/V12_002.UI.Panel.Construction.cs",
       "helpers_extracted": [
-        "BuildHubStatusRow",
+        "TeardownPlacedPanel",
+        "TeardownFallbackPlacement",
+        "TeardownInjectedPlacement",
+        "TeardownHijackPlacement",
         "ClearPanelWidgetRefs"
       ],
-      "jane_street_compliant": true
+      "jane_street_compliant": true,
+      "mcp_tools_used": [
+        "jcodemunch:resolve_repo",
+        "jcodemunch:register_edit",
+        "jcodemunch:get_symbol_complexity",
+        "jcodemunch:get_hotspots",
+        "jcodemunch:get_repo_health",
+        "sequential:sequentialthinking"
+      ],
+      "verification_verdict": "PASS"
     }
   },
-  "status": "complete"
+  "phase_6_completed_at": "2026-07-03T00:00:00Z"
 }

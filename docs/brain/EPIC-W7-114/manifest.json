@@ -1,9 +1,10 @@
 {
   "epic_id": "EPIC-W7-114",
   "wave": 7,
-  "status": "in_progress",
+  "status": "complete",
   "method": "ProcessShutdownSIMA",
   "source_file": "src/V12_002.SIMA.Lifecycle.cs",
+  "final_cyc": 1,
   "cyc_reported": 0,
   "cyc_observed": 8,
   "phases": {
@@ -66,10 +67,21 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
+      "timestamp": "2026-07-01T00:00:00Z",
       "final_cyc": 1,
       "wave_ready": true,
       "build_passed": true
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-01T20:00:00Z",
+      "final_cyc": 1,
+      "wave_ready": true,
+      "agent": "v12-phase6-review",
+      "mode": "v12-phase6-review"
     }
-  }
+  },
+  "wave_ready": true,
+  "final_cyc": 1,
+  "phase_6_completed_at": "2026-07-01T20:00:00Z"
 }

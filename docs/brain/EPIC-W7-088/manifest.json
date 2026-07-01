@@ -4,6 +4,8 @@
   "method": "SubmitRepairOrderWithAuthorization",
   "source": "src/V12_002.REAPER.Repair.cs",
   "cyc_confirmed": 34,
+  "final_cyc": 5,
+  "status": "complete",
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -58,14 +60,34 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 8,
+      "timestamp": "2026-06-30",
+      "original_cyc": 34,
+      "final_cyc": 5,
+      "helpers_extracted": 6,
+      "tickets_completed": 7,
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "lock_violations": 0
     },
-    "phase_5_ticket_1": {
+    "phase_6": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z"
+      "completed_at": "2026-07-02T00:00:00Z",
+      "final_cyc": 5,
+      "wave_ready": true,
+      "agent": "v12-phase6-review",
+      "mcp_evidence": true,
+      "lane": "P6-REDO-B",
+      "tools_used": [
+        "jcodemunch resolve_repo",
+        "jcodemunch register_edit",
+        "jcodemunch get_symbol_complexity",
+        "jcodemunch search_symbols",
+        "jcodemunch get_hotspots",
+        "jcodemunch get_repo_health",
+        "sequential-thinking sequentialthinking"
+      ]
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

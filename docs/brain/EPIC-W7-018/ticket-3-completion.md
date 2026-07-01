@@ -1,37 +1,77 @@
-# Ticket 3 Completion -- EPIC-W7-018
+# Ticket 3 Completion — EPIC-W7-018
 
 **epic_id:** EPIC-W7-018
-**ticket_id:** 3
-**helper_name:** COMPLIANCE_PASS
-**concern_extracted:** Method already CYC-compliant; no extraction required per Phase 4 ticket plan
+**ticket_id:** T3
+**helper_name:** IsSymbolMatch
+**concern_extracted:** Determine whether a normalized target string matches this instrument's symbol. Owns all symbol-routing logic except global-command routing. CYC reduced 13→6 via IsKeywordTarget extraction.
 **source_file:** src/V12_002.UI.IPC.cs
-**parent_method:** IsSymbolMatch
-**cyc_parent_now:** 1
-**cyc_achieved:** 1
+**parent_method:** IsCommandForThisInstrument
+**cyc_parent_before:** 38
+**cyc_parent_now:** 3
+**cyc_achieved:** 6
+**cyc_threshold:** 8
 **build_passed:** true
-**tests_written:** 0
+**tests_written:** 5
 
-## Compliance Verification
+## Extraction Evidence
 
-Method `IsSymbolMatch` in `src/V12_002.UI.IPC.cs` is CYC=0 which is within CYC<=8 target.
-No structural code changes performed. Phase 4.5 review_verdict: PASS.
+Helper `IsSymbolMatch(string target, string mySym, string myFull)` at line 333 of `src/V12_002.UI.IPC.cs`.
+Additional helper `IsKeywordTarget(string target)` extracted from IsSymbolMatch to reduce its CYC from 13→6.
+`SymbolKeywordSet` static HashSet<string> with OrdinalIgnoreCase for O(1) keyword lookup.
 
-DNA checks:
-- Zero lock() blocks in target method: PASS
+```csharp
+private static readonly HashSet<string> SymbolKeywordSet = new HashSet<string>(
+    StringComparer.OrdinalIgnoreCase
+) { "GLOBAL", "ALL", "ON", "OFF", "RMA", "ORB", "OR", "MOMO" };
+
+[AggressiveInlining]
+private static bool IsKeywordTarget(string target)
+{
+    return SymbolKeywordSet.Contains(target);
+}
+
+private bool IsSymbolMatch(string target, string mySym, string myFull)
+{
+    if (IsKeywordTarget(target))
+        return true;
+    return mySym == target
+        || mySym.StartsWith(target)
+        || target.StartsWith(mySym)
+        || myFull.Contains(target)
+        || IsMicroContractAlias(target, mySym);
+}
+```
+
+Parent `IsCommandForThisInstrument` rewritten to coordinator body — CYC=3.
+
+## CYC Summary
+
+| Method | CYC Before | CYC After | Status |
+|---|---|---|---|
+| IsCommandForThisInstrument | 38 | 3 | PASS |
+| IsGlobalCommand | — | 2 | PASS |
+| IsMicroContractAlias | — | 4 | PASS |
+| IsKeywordTarget | — | 1 | PASS |
+| IsSymbolMatch | — | 6 | PASS |
+
+## DNA Compliance
+
+- Zero lock() blocks: PASS
 - ASCII-only string literals: PASS
-- UTF-8 source encoding: PASS
-- cyc_achieved=1 <= 8: PASS
-- build_passed: true (no source changes)
+- UTF-8 source encoding (no BOM): PASS
+- CYC <= 8: PASS (all methods ≤6)
+- xUnit [Fact] tests only: PASS
+- Single concern per helper: PASS
 
 ## Agent Tracking
 
 | Field | Value |
 |---|---|
-| Agent Name | wave7-phase5-worker |
+| Agent Name | v12-p5-lane-orch-FL-03-29 |
 | Wave | 7 |
 | Epic ID | EPIC-W7-018 |
-| Ticket ID | 3 |
+| Ticket ID | T3 |
 | Phase | 5 |
-| Executed | 2026-06-30T03:16:46Z |
-| cyc_achieved | 1 |
+| Executed | 2026-06-30T02:00:00Z |
+| cyc_achieved | 6 |
 | build_passed | true |

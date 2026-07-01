@@ -1,37 +1,41 @@
-# Ticket 1 Completion -- EPIC-W7-076
+# Ticket 1 Completion — EPIC-W7-076
 
 **epic_id:** EPIC-W7-076
 **ticket_id:** 1
-**helper_name:** COMPLIANCE_PASS
-**concern_extracted:** Method already CYC-compliant; no extraction required per Phase 4 ticket plan
+**helper_name:** CollapseControlIfPresent
+**concern_extracted:** 9 inline if-null-collapse guards replaced with helper calls — CYC 11→2
 **source_file:** src/V12_002.UI.Panel.Handlers.cs
 **parent_method:** CollapseAllExecutionControls
-**cyc_parent_now:** 1
-**cyc_achieved:** 1
+**cyc_parent_before:** 11
+**cyc_parent_now:** 2
+**cyc_achieved:** 2
 **build_passed:** true
 **tests_written:** 0
+**agent_name:** v12-p5-ticket
+**verification_only:** false
+**no_src_changes:** false
 
-## Compliance Verification
+## Summary
+Replaced 9 inline `if (x != null) x.Visibility = Visibility.Collapsed` checks with calls to
+`CollapseControlIfPresent(x)`. Each inline `if` added +1 CYC; moving them into the helper
+reduces the parent from CYC=11 to CYC=2 (1 remaining if for manualEntryRow + base=1).
 
-Method `CollapseAllExecutionControls` in `src/V12_002.UI.Panel.Handlers.cs` is CYC=0 which is within CYC<=8 target.
-No structural code changes performed. Phase 4.5 review_verdict: PASS.
+The helper `CollapseControlIfPresent(System.Windows.UIElement control)` is declared `private static`
+and uses the minimal common base type (`UIElement`) that exposes the `.Visibility` property,
+shared by both `Grid` (execRetestRow, execTrendRow, manualEntryRow) and `Button` (rmaButton,
+momoButton, ffmaButton, ffmaManualButton, mButton, orLongButton, orShortButton).
 
-DNA checks:
-- Zero lock() blocks in target method: PASS
-- ASCII-only string literals: PASS
-- UTF-8 source encoding: PASS
-- cyc_achieved=1 <= 8: PASS
-- build_passed: true (no source changes)
+The `manualEntryRow` assignment (`Visibility.Visible`) intentionally remains inline in the parent
+because it sets Visible (not Collapsed) — semantically distinct and correctly excluded from the helper.
 
-## Agent Tracking
+## Complexity Audit Results
+| Method                        | LOC | CYC | Status |
+|-------------------------------|-----|-----|--------|
+| CollapseAllExecutionControls  |  12 |   2 | OK     |
+| CollapseControlIfPresent      |   3 |   2 | OK     |
 
-| Field | Value |
-|---|---|
-| Agent Name | wave7-phase5-worker |
-| Wave | 7 |
-| Epic ID | EPIC-W7-076 |
-| Ticket ID | 1 |
-| Phase | 5 |
-| Executed | 2026-06-30T03:16:46Z |
-| cyc_achieved | 1 |
-| build_passed | true |
+## DNA Checks
+- Zero lock() blocks: PASS
+- ASCII-only identifiers: PASS
+- UTF-8 no BOM: PASS
+- xUnit tests: N/A (pure UI visibility helper)

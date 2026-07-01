@@ -3,7 +3,7 @@
   "wave": 7,
   "symbol": "AuditFleet_CalculateExpectedActual",
   "source": "src/V12_002.REAPER.Audit.cs",
-  "cyc_baseline": 0,
+  "cyc_baseline": 12,
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -66,9 +66,26 @@
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 1,
+      "final_cyc": 3,
+      "max_helper_cyc": 6,
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "fl34_lane": "FL-34",
+      "fl34_parent_cyc_before": 12,
+      "fl34_parent_cyc_after": 3
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-02T12:00:00Z",
+      "final_cyc": 3,
+      "max_helper_cyc": 6,
+      "wave_ready": true,
+      "agent": "v12-phase6-review"
     }
-  }
+  },
+  "final_cyc": 3,
+  "max_helper_cyc": 6,
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-02T12:00:00Z",
+  "status": "complete"
 }

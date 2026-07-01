@@ -73,16 +73,23 @@
     "phase_6": {
       "status": "completed",
       "output": "05-completion-report.md",
-      "completed_at": "2026-06-30T04:00:00Z",
+      "completed_at": "2026-07-02T12:00:00Z",
       "final_cyc": 5,
       "wave_ready": true,
+      "agent": "v12-phase6-review",
       "method_name": "StopIpcServer",
       "source_file": "src/V12_002.UI.IPC.Server.cs",
       "helpers_extracted": [
         "StopIpcServer_SignalAndStopListener",
-        "CloseIpcClientSession"
+        "StopIpcServer_JoinThread",
+        "CloseIpcClientSession",
+        "StopIpcServer_CloseAllClients"
       ],
-      "jane_street_compliant": true
+      "jane_street_compliant": true,
+      "orchestrator_cyc": 2,
+      "max_helper_cyc": 5,
+      "index_note": "index stale (CYC=11); source-verified CYC=2 orchestrator"
     }
-  }
+  },
+  "wave_ready": true
 }

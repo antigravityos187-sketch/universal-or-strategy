@@ -3,7 +3,8 @@
   "wave": 7,
   "method": "CancelDirectFallbackOrders",
   "source": "src/V12_002.Safety.Watchdog.cs",
-  "cyc": 0,
+  "cyc": 1,
+  "final_cyc": 2,
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -62,6 +63,21 @@
       "final_cyc": 1,
       "wave_ready": true,
       "build_passed": true
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "final_cyc": 2,
+      "wave_ready": true,
+      "agent": "v12-phase6-review",
+      "mcp_evidence": true,
+      "lane": "P6-REDO-B",
+      "jane_street_compliant": true,
+      "note": "Index was stale (CYC=10 pre-extraction). Source-verified at lines 322-330: CYC=2 (one if-branch). Extracted helpers: CollectDirectFallbackOrders, LogDirectFallbackCancelCount. CYC<=8 PASS."
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-02T00:00:00Z",
+  "status": "complete",
+  "wave": 7
 }

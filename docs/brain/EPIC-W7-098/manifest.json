@@ -76,12 +76,17 @@
       "status": "completed",
       "output": "05-completion-report.md",
       "output_path": "docs/brain/EPIC-W7-098/05-completion-report.md",
-      "completed_at": "2026-06-30T00:00:00Z",
+      "completed_at": "2026-07-01T00:00:00Z",
       "final_cyc": 8,
       "jane_street_compliant": true,
-      "agent": "v12-phase6-review"
+      "agent": "v12-phase6-review",
+      "wave_ready": true,
+      "mcp_evidence": true,
+      "lane": "P6-REDO-B"
     }
   },
   "status": "complete",
-  "final_cyc": 8
+  "final_cyc": 8,
+  "wave": 7,
+  "wave_ready": true
 }

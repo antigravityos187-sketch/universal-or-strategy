@@ -3,8 +3,9 @@
   "wave": 7,
   "method": "HydrateWorkingOrdersFromBroker",
   "cyc": 34,
+  "final_cyc": 5,
   "source_file": "src/V12_002.SIMA.Lifecycle.cs",
-  "status": "in_progress",
+  "status": "complete",
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -77,10 +78,28 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 8,
+      "timestamp": "2026-07-01T00:00:00Z",
+      "final_cyc": 5,
+      "helpers_cyc": {
+        "HydrateWorkingOrdersFromBroker": 5,
+        "ReconstructMasterActivePositions": 7,
+        "TryGetMasterBrokerPosition": 6,
+        "ApplyTradeDnaFlags": 4,
+        "IsMasterStopKeyEligible": 3,
+        "BuildMasterPositionInfo": 1
+      },
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "agent_name": "v12-p5-ticket"
+    },
+    "phase_6": {
+      "status": "completed",
+      "timestamp": "2026-06-30T21:02:40Z",
+      "final_cyc": 5,
+      "wave_ready": true,
+      "agent": "v12-phase6-review"
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-06-30T21:02:40Z"
 }

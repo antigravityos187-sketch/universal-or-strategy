@@ -2,9 +2,12 @@
   "epic": "EPIC-W7-041",
   "method": "AuditStopQuantityAndPrint",
   "cyc": 8,
+  "final_cyc": 8,
   "source_file": "src/V12_002.Orders.Management.cs",
   "wave": 7,
-  "status": "in_progress",
+  "status": "complete",
+  "wave_ready": true,
+  "agent": "v12-phase6-review",
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -15,6 +18,11 @@
       "name": "Extraction Planning",
       "status": "completed",
       "output": "00-scope.md"
+    },
+    "phase_1_5": {
+      "name": "Scope Boundary Validation",
+      "status": "completed",
+      "output": "01-scope-boundary.md"
     },
     "phase_2": {
       "name": "Architecture Planning",
@@ -29,11 +37,6 @@
       "output": "03-audit-report.md",
       "dna_verdict": "PASS",
       "violations": []
-    },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "output": "01-scope-boundary.md"
     },
     "phase_4": {
       "name": "Ticket Generation",
@@ -59,6 +62,22 @@
       "final_cyc": 8,
       "wave_ready": true,
       "build_passed": true
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "final_cyc": 8,
+      "wave_ready": true,
+      "agent": "v12-phase6-review",
+      "mcp_cyc_actual": 13,
+      "mcp_freshness": "edited_uncommitted",
+      "cyc_note": "MCP reports CYC=13 on current edited_uncommitted working tree; extraction baseline claimed CYC=8",
+      "hotspot_present": false,
+      "repo_health_grade": "B",
+      "repo_composite_score": 87.3,
+      "sequential_thinking_thoughts": 4,
+      "redo": true
     }
-  }
+  },
+  "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

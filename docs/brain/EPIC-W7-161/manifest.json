@@ -65,7 +65,7 @@
     "phase_6": {
       "status": "completed",
       "output": "05-completion-report.md",
-      "completed_at": "2026-06-30T04:00:00Z",
+      "completed_at": "2026-06-30T23:45:00Z",
       "final_cyc": 5,
       "wave_ready": true,
       "method_name": "SyncLiveTargetRows",
@@ -73,7 +73,11 @@
       "helpers_extracted": [
         "SyncSingleTargetRow"
       ],
-      "jane_street_compliant": true
+      "jane_street_compliant": true,
+      "agent": "v12-phase6-review",
+      "redo": true,
+      "mcp_evidence": true
     }
-  }
+  },
+  "wave_ready": true
 }
