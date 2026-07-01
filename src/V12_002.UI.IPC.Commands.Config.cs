@@ -34,115 +34,111 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region IPC Commands Config
 
+        // W7-153 T2: Constructs "Trim_" + signalName, truncated to 50 chars. CYC=2.
+        private string BuildTrimSignalName(string signalName)
+        {
+            string trimSig = "Trim_" + signalName;
+            if (trimSig.Length > 50)
+                trimSig = trimSig.Substring(0, 50);
+            return trimSig;
+        }
+
+        // W7-153 T3: SIMA fleet follower order path. CYC=1.
+        private void SubmitSimaTrimOrder(PositionInfo pos, OrderAction trimAction, int rawQty, double percent)
+        {
+            string trimSig = BuildTrimSignalName(pos.SignalName);
+            Order trimOrder = pos.ExecutingAccount.CreateOrder(
+                Instrument,
+                trimAction,
+                OrderType.Market,
+                TimeInForce.Gtc,
+                rawQty,
+                0,
+                0,
+                "",
+                trimSig,
+                null
+            );
+            pos.ExecutingAccount.Submit(new[] { trimOrder });
+            Print(
+                string.Format(
+                    "[SIMA] TRIM {0}%: Follower {1} -> {2} closing {3} contracts",
+                    (int)(percent * 100),
+                    pos.SignalName,
+                    pos.ExecutingAccount.Name,
+                    rawQty
+                )
+            );
+        }
+
+        // W7-153 T4: NinjaTrader unmanaged order path. CYC=1.
+        private void SubmitUnmanagedTrimOrder(PositionInfo pos, OrderAction trimAction, int rawQty, double percent)
+        {
+            Print(
+                string.Format(
+                    "IPC Trim: Closing {0} of {1} contracts for {2} ({3:P0})",
+                    rawQty,
+                    pos.RemainingContracts,
+                    pos.SignalName,
+                    percent
+                )
+            );
+            SubmitOrderUnmanaged(0, trimAction, OrderType.Market, rawQty, 0, 0, "", "Trim_" + pos.SignalName);
+        }
+
+        // W7-153 T1: Safe trim quantity. Returns -1 when trim is impossible. CYC=3.
+        private int ComputeSafeTrimQty(int remaining, double percent)
+        {
+            // V10.3.1 FIX: Math.Max(1, ...) ensures we always trim at least 1 contract.
+            int rawQty = Math.Max(1, (int)Math.Floor(remaining * percent));
+            if (remaining - rawQty < 1)
+                rawQty = remaining - 1;
+            if (rawQty >= 1 && (remaining - rawQty) >= 1)
+                return rawQty;
+            return -1;
+        }
+
+        // W7-153 T5: Per-position trim orchestration. CYC=6.
+        private void TrimSinglePosition(PositionInfo pos, double percent)
+        {
+            if (pos.RemainingContracts <= 1)
+            {
+                Print(
+                    string.Format("IPC Trim SKIPPED: {0} has only 1 contract - use FLATTEN to close", pos.SignalName)
+                );
+                return;
+            }
+
+            int rawQty = ComputeSafeTrimQty(pos.RemainingContracts, percent);
+            if (rawQty == -1)
+            {
+                Print(
+                    string.Format(
+                        "IPC Trim SKIPPED: {0} contracts for {1} - cannot satisfy {2:P0} trim with 1+ remaining",
+                        pos.RemainingContracts,
+                        pos.SignalName,
+                        percent
+                    )
+                );
+                return;
+            }
+
+            OrderAction trimAction = pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
+
+            // [1102Z-F]: Route to fleet follower account when applicable
+            if (EnableSIMA && pos.IsFollower && pos.ExecutingAccount != null)
+                SubmitSimaTrimOrder(pos, trimAction, rawQty, percent);
+            else
+                SubmitUnmanagedTrimOrder(pos, trimAction, rawQty, percent);
+        }
+
         private void HandleTrimCommand(string action, string[] parts)
         {
             double percent = action == "TRIM_50" ? 0.5 : 0.25;
             // V12.1101E [A-3/SK-02]: Snapshot .Values before iterating.
             // [1102Z-F]: TRIM now routes to pos.ExecutingAccount for fleet followers.
             foreach (var pos in activePositions.Values.ToArray())
-            {
-                if (pos.RemainingContracts > 1)
-                {
-                    // V10.3.1 FIX: Math.Max(1, ...) ensures we always trim at least 1 contract.
-                    int rawQty = Math.Max(1, (int)Math.Floor(pos.RemainingContracts * percent));
-                    int remainingAfterTrim = pos.RemainingContracts - rawQty;
-
-                    // Safety: never flatten via trim
-                    if (remainingAfterTrim < 1)
-                        rawQty = pos.RemainingContracts - 1;
-
-                    if (rawQty >= 1 && (pos.RemainingContracts - rawQty) >= 1)
-                    {
-                        OrderAction trimAction =
-                            pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
-
-                        // [1102Z-F]: Route to fleet follower account when applicable
-                        if (EnableSIMA && pos.IsFollower && pos.ExecutingAccount != null)
-                        {
-                            string trimSig = "Trim_" + pos.SignalName;
-                            if (trimSig.Length > 50)
-                                trimSig = trimSig.Substring(0, 50);
-                            Order trimOrder = pos.ExecutingAccount.CreateOrder(
-                                Instrument,
-                                trimAction,
-                                OrderType.Market,
-                                TimeInForce.Gtc,
-                                rawQty,
-                                0,
-                                0,
-                                "",
-                                trimSig,
-                                null
-                            );
-                            pos.ExecutingAccount.Submit(new[] { trimOrder });
-                            Print(
-                                string.Format(
-                                    "[SIMA] TRIM {0}%: Follower {1} -> {2} closing {3} contracts",
-                                    (int)(percent * 100),
-                                    pos.SignalName,
-                                    pos.ExecutingAccount.Name,
-                                    rawQty
-                                )
-                            );
-                        }
-                        else
-                        {
-                            Print(
-                                string.Format(
-                                    "IPC Trim: Closing {0} of {1} contracts for {2} ({3:P0})",
-                                    rawQty,
-                                    pos.RemainingContracts,
-                                    pos.SignalName,
-                                    percent
-                                )
-                            );
-
-                            if (pos.Direction == MarketPosition.Long)
-                                SubmitOrderUnmanaged(
-                                    0,
-                                    OrderAction.Sell,
-                                    OrderType.Market,
-                                    rawQty,
-                                    0,
-                                    0,
-                                    "",
-                                    "Trim_" + pos.SignalName
-                                );
-                            else
-                                SubmitOrderUnmanaged(
-                                    0,
-                                    OrderAction.BuyToCover,
-                                    OrderType.Market,
-                                    rawQty,
-                                    0,
-                                    0,
-                                    "",
-                                    "Trim_" + pos.SignalName
-                                );
-                        }
-                    }
-                    else
-                    {
-                        Print(
-                            string.Format(
-                                "IPC Trim SKIPPED: {0} contracts for {1} - cannot satisfy {2:P0} trim with 1+ remaining",
-                                pos.RemainingContracts,
-                                pos.SignalName,
-                                percent
-                            )
-                        );
-                    }
-                }
-                else
-                {
-                    Print(
-                        string.Format(
-                            "IPC Trim SKIPPED: {0} has only 1 contract - use FLATTEN to close",
-                            pos.SignalName
-                        )
-                    );
-                }
-            }
+                TrimSinglePosition(pos, percent);
         }
 
         /// <summary>
@@ -206,94 +202,108 @@ namespace NinjaTrader.NinjaScript.Strategies
             return TryApplyConfigTarget_Count(key, val);
         }
 
-        private bool TryApplyConfigTarget_Value(string key, string val)
+        // W7-017 T1: Map key string "T1"-"T5" to slot index. CYC=6.
+        private bool TryResolveTargetKeyIndex(string key, out int index)
         {
             if (key == "T1")
             {
-                if (double.TryParse(val, out double v))
-                {
-                    string vmReason;
-                    if (!ValidateIpcMultiplier(v, out vmReason))
-                    {
-                        Print($"[IPC REJECT] T1 value {v} rejected: {vmReason}");
-                    }
-                    else
-                    {
-                        Target1Value = v;
-                    }
-                }
+                index = 1;
                 return true;
             }
+            if (key == "T2")
+            {
+                index = 2;
+                return true;
+            }
+            if (key == "T3")
+            {
+                index = 3;
+                return true;
+            }
+            if (key == "T4")
+            {
+                index = 4;
+                return true;
+            }
+            if (key == "T5")
+            {
+                index = 5;
+                return true;
+            }
+            index = -1;
+            return false;
+        }
+
+        // W7-017 T2 / W7-152 T1 core: Parse val as double, validate multiplier. CYC=3.
+        private bool TryParseAndValidateTargetValue(string val, out double parsed, out string rejectReason)
+        {
+            rejectReason = null;
+            if (!double.TryParse(val, out parsed))
+                return false;
+            if (!ValidateIpcMultiplier(parsed, out rejectReason))
+                return false;
+            return true;
+        }
+
+        // W7-017 T3: Dispatch by index to correct TargetNValue property. CYC=6.
+        private void ApplyTargetValueByIndex(int index, double value)
+        {
+            switch (index)
+            {
+                case 1:
+                    Target1Value = value;
+                    break;
+                case 2:
+                    Target2Value = value;
+                    break;
+                case 3:
+                    Target3Value = value;
+                    break;
+                case 4:
+                    Target4Value = value;
+                    break;
+                case 5:
+                    Target5Value = value;
+                    break;
+            }
+        }
+
+        // W7-152 T1: Validated target value application via index. CYC=3.
+        private void ApplyValidatedTargetValue(int index, string val, string key)
+        {
+            if (!TryParseAndValidateTargetValue(val, out double parsed, out string rejectReason))
+            {
+                if (rejectReason != null)
+                    Print($"[IPC REJECT] {key} value rejected: {rejectReason}");
+                return;
+            }
+            ApplyTargetValueByIndex(index, parsed);
+        }
+
+        // W7-017 parent after all extractions. CYC=5.
+        private bool TryApplyConfigTarget_Value(string key, string val)
+        {
             if (key == "CIT")
             {
                 ChaseIfTouchPoints = val;
                 return true;
             }
-            if (key == "T2")
+
+            if (!TryResolveTargetKeyIndex(key, out int index))
+                return false;
+
+            if (!double.TryParse(val, out double v))
+                return true;
+
+            string vmReason;
+            if (!ValidateIpcMultiplier(v, out vmReason))
             {
-                if (double.TryParse(val, out double v))
-                {
-                    string vmReason;
-                    if (!ValidateIpcMultiplier(v, out vmReason))
-                    {
-                        Print($"[IPC REJECT] T2 value {v} rejected: {vmReason}");
-                    }
-                    else
-                    {
-                        Target2Value = v;
-                    }
-                }
+                Print($"[IPC REJECT] {key} value {v} rejected: {vmReason}");
                 return true;
             }
-            if (key == "T3")
-            {
-                if (double.TryParse(val, out double v))
-                {
-                    string vmReason;
-                    if (!ValidateIpcMultiplier(v, out vmReason))
-                    {
-                        Print($"[IPC REJECT] T3 value {v} rejected: {vmReason}");
-                    }
-                    else
-                    {
-                        Target3Value = v;
-                    }
-                }
-                return true;
-            }
-            if (key == "T4")
-            {
-                if (double.TryParse(val, out double v))
-                {
-                    string vmReason;
-                    if (!ValidateIpcMultiplier(v, out vmReason))
-                    {
-                        Print($"[IPC REJECT] T4 value {v} rejected: {vmReason}");
-                    }
-                    else
-                    {
-                        Target4Value = v;
-                    }
-                }
-                return true;
-            }
-            if (key == "T5")
-            {
-                if (double.TryParse(val, out double v))
-                {
-                    string vmReason;
-                    if (!ValidateIpcMultiplier(v, out vmReason))
-                    {
-                        Print($"[IPC REJECT] T5 value {v} rejected: {vmReason}");
-                    }
-                    else
-                    {
-                        Target5Value = v;
-                    }
-                }
-                return true;
-            }
-            return false;
+
+            ApplyTargetValueByIndex(index, v);
+            return true;
         }
 
         private bool TryApplyConfigTarget_Type(string key, string val)

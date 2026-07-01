@@ -188,33 +188,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (connectedClients != null)
                     connectedClients.TryRemove(session.ClientId, out _);
                 Print($"V12 IPC: Client Disconnected [id={session.ClientId}]");
-
-                // V12.EPIC-7-QUALITY-006: Explicit cleanup with zombie detection
-                if (session.Client != null)
-                {
-                    try
-                    {
-                        if (session.Client.Connected)
-                        {
-                            try
-                            {
-                                session.Client.Client?.Shutdown(SocketShutdown.Both);
-                            }
-                            catch (Exception shutdownEx)
-                            {
-                                Interlocked.Increment(ref _ipcZombieConnections);
-                                Print($"[IPC_ZOMBIE] Connection stuck [id={session.ClientId}]: {shutdownEx.Message}");
-                            }
-                        }
-                        session.Client.Close();
-                    }
-                    catch (Exception ex)
-                    {
-                        Interlocked.Increment(ref _ipcCleanupFailures);
-                        Print($"[IPC_CLEANUP] Client close failed [id={session.ClientId}]: {ex.Message}");
-                        // Continue cleanup - non-fatal
-                    }
-                }
+                CloseIpcClientSession(session, session.ClientId.ToString(CultureInfo.InvariantCulture));
             }
         }
 
@@ -297,11 +271,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             disconnectClient = false;
 
-            if (lineBuffer.Length > IpcMaxBufferedChars)
+            if (ProcessClientStream_CheckBufferOverflow(clientId, lineBuffer, "payload"))
             {
-                Print(
-                    $"V12 IPC: Client {clientId} exceeded max buffered payload ({IpcMaxBufferedChars}); disconnecting."
-                );
                 disconnectClient = true;
                 return null;
             }
@@ -314,19 +285,25 @@ namespace NinjaTrader.NinjaScript.Strategies
             string completeLines = accumulated.Substring(0, lastNewline);
             lineBuffer.Clear();
             if (lastNewline + 1 < accumulated.Length)
-            {
                 lineBuffer.Append(accumulated.Substring(lastNewline + 1));
-                if (lineBuffer.Length > IpcMaxBufferedChars)
-                {
-                    Print(
-                        $"V12 IPC: Client {clientId} residue exceeded max buffered payload ({IpcMaxBufferedChars}); disconnecting."
-                    );
-                    disconnectClient = true;
-                    return null;
-                }
+
+            if (ProcessClientStream_CheckBufferOverflow(clientId, lineBuffer, "residue"))
+            {
+                disconnectClient = true;
+                return null;
             }
 
             return completeLines.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        private bool ProcessClientStream_CheckBufferOverflow(int clientId, StringBuilder lineBuffer, string label)
+        {
+            if (lineBuffer.Length <= IpcMaxBufferedChars)
+                return false;
+            Print(
+                $"V12 IPC: Client {clientId} {label} exceeded max buffered payload ({IpcMaxBufferedChars}); disconnecting."
+            );
+            return true;
         }
 
         private void ProcessClientStream_DispatchLine(IpcClientSession session, string line)
@@ -452,61 +429,71 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             try
             {
-                isIpcRunning = false;
-                if (ipcListener != null)
-                {
-                    ipcListener.Stop();
-                    ipcListener = null;
-                }
-                if (ipcThread != null && ipcThread.IsAlive)
-                {
-                    ipcThread.Join(500);
-                }
-
-                if (connectedClients != null)
-                {
-                    foreach (var kvp in connectedClients.ToArray())
-                    {
-                        // V12.EPIC-7-QUALITY-006: Explicit client cleanup with zombie detection
-                        try
-                        {
-                            if (kvp.Value.Client != null)
-                            {
-                                if (kvp.Value.Client.Connected)
-                                {
-                                    try
-                                    {
-                                        kvp.Value.Client.Client?.Shutdown(SocketShutdown.Both);
-                                    }
-                                    catch (Exception shutdownEx)
-                                    {
-                                        Interlocked.Increment(ref _ipcZombieConnections);
-                                        Print(
-                                            $"[IPC_ZOMBIE] Connection stuck during shutdown [id={kvp.Key}]: {shutdownEx.Message}"
-                                        );
-                                    }
-                                }
-                                kvp.Value.Client.Close();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Interlocked.Increment(ref _ipcCleanupFailures);
-                            Print($"[IPC_CLEANUP] Client close failed during shutdown [id={kvp.Key}]: {ex.Message}");
-                            // Continue cleanup - non-fatal
-                        }
-                    }
-                    connectedClients.Clear();
-                }
-                Interlocked.Exchange(ref ipcQueuedCommandCount, 0);
+                StopIpcServer_SignalAndStopListener();
+                StopIpcServer_JoinThread();
+                StopIpcServer_CloseAllClients();
             }
             catch (Exception ex)
             {
-                // V12.EPIC-7-QUALITY-006: Log server shutdown errors
                 Interlocked.Increment(ref _ipcCleanupFailures);
                 Print($"[IPC_CLEANUP] Server shutdown failed: {ex.Message}");
-                // Continue - best-effort cleanup
             }
+        }
+
+        private void StopIpcServer_SignalAndStopListener()
+        {
+            isIpcRunning = false;
+            if (ipcListener == null)
+                return;
+            ipcListener.Stop();
+            ipcListener = null;
+        }
+
+        private void StopIpcServer_JoinThread()
+        {
+            if (ipcThread == null)
+                return;
+            if (ipcThread.IsAlive)
+                ipcThread.Join(500);
+        }
+
+        private void CloseIpcClientSession(IpcClientSession session, string clientId)
+        {
+            if (session == null)
+                return;
+            try
+            {
+                if (session.Client != null)
+                {
+                    if (session.Client.Connected)
+                    {
+                        try
+                        {
+                            session.Client.Client?.Shutdown(SocketShutdown.Both);
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            Interlocked.Increment(ref _ipcZombieConnections);
+                        }
+                    }
+                    session.Client.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                Interlocked.Increment(ref _ipcCleanupFailures);
+                Print($"[IPC_CLEANUP] Client close failed [id={clientId}]: {ex.Message}");
+            }
+        }
+
+        private void StopIpcServer_CloseAllClients()
+        {
+            if (connectedClients == null)
+                return;
+            foreach (var kvp in connectedClients.ToArray())
+                CloseIpcClientSession(kvp.Value, kvp.Key.ToString(CultureInfo.InvariantCulture));
+            connectedClients.Clear();
+            Interlocked.Exchange(ref ipcQueuedCommandCount, 0);
         }
 
         #endregion

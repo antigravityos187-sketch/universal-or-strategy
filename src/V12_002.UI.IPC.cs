@@ -94,37 +94,32 @@ namespace NinjaTrader.NinjaScript.Strategies
             return mode == TargetMode.Points ? "Points" : mode.ToString();
         }
 
+        private static readonly Dictionary<string, TargetMode> _targetModeMap =
+            new Dictionary<string, TargetMode>
+            {
+                { "ATR", TargetMode.ATR },
+                { "A", TargetMode.ATR },
+                { "TICKS", TargetMode.Ticks },
+                { "TICK", TargetMode.Ticks },
+                { "T", TargetMode.Ticks },
+                { "POINTS", TargetMode.Points },
+                { "POINT", TargetMode.Points },
+                { "PTS", TargetMode.Points },
+                { "P", TargetMode.Points },
+                { "RUNNER", TargetMode.Runner },
+                { "R", TargetMode.Runner },
+            };
+
+        // [EPIC-W7-068] CYC 13->3: Dictionary dispatch replaces switch
         private static bool TryParseTargetMode(string raw, out TargetMode mode)
         {
             mode = TargetMode.ATR;
             if (string.IsNullOrWhiteSpace(raw))
                 return false;
-
-            string normalized = raw.Trim().ToUpperInvariant();
-            switch (normalized)
-            {
-                case "ATR":
-                case "A":
-                    mode = TargetMode.ATR;
-                    return true;
-                case "TICKS":
-                case "TICK":
-                case "T":
-                    mode = TargetMode.Ticks;
-                    return true;
-                case "POINTS":
-                case "POINT":
-                case "PTS":
-                case "P":
-                    mode = TargetMode.Points;
-                    return true;
-                case "RUNNER":
-                case "R":
-                    mode = TargetMode.Runner;
-                    return true;
-                default:
-                    return false;
-            }
+            if (_targetModeMap.TryGetValue(raw.Trim().ToUpperInvariant(), out mode))
+                return true;
+            Print("TryParseTargetMode: unrecognized target mode value '" + raw + "'");
+            return false;
         }
 
         // FIX-A [Build 1102Z]: IPC Multiplier Validation Gate.
@@ -291,52 +286,66 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
-        private bool IsCommandForThisInstrument(string action, string targetSymbol)
+        private static readonly HashSet<string> GlobalCommandsSet = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase
+        )
         {
-            // V12.9: Global commands bypass symbol filter entirely
-            bool isGlobalCommand =
-                action == "TOGGLE_ACCOUNT"
-                || action == "SET_SIMA"
-                || action == "GET_FLEET"
-                || action == "DIAG_FLEET"
-                || action == "CANCEL_ALL"
-                || action == "FLATTEN"
-                || action == "SYNC_ALL"
-                || action == "MKT_SYNC"
-                || action == "REQUEST_FLEET_STATE"
-                || action == "RESET_MEMORY"
-                || action == "DIAG_IPC"
-                || action.StartsWith("MOVE_TARGET")
-                || action == "LOCK_50"
-                || action == "SET_TARGETS"
-                || action == "SET_TRAIL"
-                || action == "SET_CIT"
-                || action == "BE_CUSTOM";
+            "TOGGLE_ACCOUNT",
+            "SET_SIMA",
+            "GET_FLEET",
+            "DIAG_FLEET",
+            "CANCEL_ALL",
+            "FLATTEN",
+            "SYNC_ALL",
+            "MKT_SYNC",
+            "REQUEST_FLEET_STATE",
+            "RESET_MEMORY",
+            "DIAG_IPC",
+            "LOCK_50",
+            "SET_TARGETS",
+            "SET_TRAIL",
+            "SET_CIT",
+            "BE_CUSTOM",
+        };
 
-            // V10.3: Robust Symbol Matching
-            string mySym = Instrument.MasterInstrument.Name.ToUpperInvariant();
-            string myFull = Instrument.FullName.ToUpperInvariant();
-            string target = targetSymbol.Trim().ToUpperInvariant();
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private static bool IsGlobalCommand(string action)
+        {
+            return GlobalCommandsSet.Contains(action)
+                || action.StartsWith("MOVE_TARGET", StringComparison.OrdinalIgnoreCase);
+        }
 
-            bool isForMe =
-                isGlobalCommand
-                || target == "GLOBAL"
-                || target == "ALL"
-                || target == "ON"
-                || target == "OFF"
-                || target == "RMA"
-                || target == "ORB"
-                || target == "OR"
-                || target == "MOMO"
-                || mySym == target
+        private static bool IsMicroContractAlias(string target, string mySym)
+        {
+            return (target == "MES" && mySym.Contains("ES"))
+                || (target == "MYM" && mySym.Contains("YM"))
+                || (target == "MGC" && mySym.Contains("GC"));
+        }
+
+        private bool IsSymbolMatch(string target, string mySym, string myFull)
+        {
+            if (target == "GLOBAL" || target == "ALL" || target == "ON" || target == "OFF")
+                return true;
+            if (target == "RMA" || target == "ORB" || target == "OR" || target == "MOMO")
+                return true;
+            return mySym == target
                 || mySym.StartsWith(target)
                 || target.StartsWith(mySym)
                 || myFull.Contains(target)
-                || (target == "MES" && mySym.Contains("ES"))
-                || (target == "MYM" && mySym.Contains("YM"))
-                || (target == "MGC" && mySym.Contains("GC"));
+                || IsMicroContractAlias(target, mySym);
+        }
 
-            // V12.2: Global IPC Diagnostic Log
+        private bool IsCommandForThisInstrument(string action, string targetSymbol)
+        {
+            bool isGlobalCommand = IsGlobalCommand(action);
+            string mySym = Instrument.MasterInstrument.Name.ToUpperInvariant();
+            string myFull = Instrument.FullName.ToUpperInvariant();
+            string target = targetSymbol.Trim().ToUpperInvariant();
+            bool isForMe = isGlobalCommand || IsSymbolMatch(target, mySym, myFull);
+
+            // Cold-path diagnostic logging -- out-of-line per carl_cook
             Print(
                 string.Format(
                     "V12 IPC: Received '{0}' for '{1}'. For Me? {2} (My Symbol: {3}){4}",
@@ -347,7 +356,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                     isGlobalCommand ? " [GLOBAL CMD]" : ""
                 )
             );
-
             return isForMe;
         }
 

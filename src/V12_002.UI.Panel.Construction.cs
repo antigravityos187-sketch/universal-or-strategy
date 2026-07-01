@@ -13,6 +13,9 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region Panel Fields
 
+        // Panel column width constant (shared between PlacePanel inject path and DestroyPanel heuristic)
+        private const double PanelColumnWidth = 210;
+
         // Layout architecture
         private Grid rootContainer;
         private Border contentBody;
@@ -243,51 +246,67 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             _chartTraderElement = FindChartTrader();
 
-            if (_chartTraderElement != null && _chartTraderElement.Parent is Grid traderGrid)
-            {
-                int col = Grid.GetColumn(_chartTraderElement);
-                int row = Grid.GetRow(_chartTraderElement);
-                int rSpan = Grid.GetRowSpan(_chartTraderElement);
-                int cSpan = Grid.GetColumnSpan(_chartTraderElement);
-
-                Grid.SetColumn(rootContainer, col);
-                Grid.SetRow(rootContainer, row);
-                if (rSpan > 1)
-                    Grid.SetRowSpan(rootContainer, rSpan);
-                if (cSpan > 1)
-                    Grid.SetColumnSpan(rootContainer, cSpan);
-
-                traderGrid.Children.Add(rootContainer);
-                _placementGrid = traderGrid;
-                _chartTraderElement.Visibility = Visibility.Collapsed;
-                contentBody.Visibility = Visibility.Visible;
-                _placementMode = PanelPlacement.Hijack;
-                Print("V12 PANEL: Hijacked Chart Trader slot (Col=" + col + ", Row=" + row + ")");
+            if (TryHijackChartTrader())
                 return;
-            }
 
             _chartTraderElement = null;
-            _placementGrid = FindChartTabGrid(ChartControl);
-            if (_placementGrid != null)
-            {
-                _placementGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(210) });
-                int panelCol = _placementGrid.ColumnDefinitions.Count - 1;
-
-                Grid.SetColumn(rootContainer, panelCol);
-                Grid.SetRow(rootContainer, 0);
-                if (_placementGrid.RowDefinitions.Count > 1)
-                    Grid.SetRowSpan(rootContainer, _placementGrid.RowDefinitions.Count);
-
-                rootContainer.HorizontalAlignment = HorizontalAlignment.Stretch;
-                rootContainer.Width = double.NaN;
-
-                _placementGrid.Children.Add(rootContainer);
-                _placementMode = PanelPlacement.Injected;
-                Print("V12 PANEL: Injected at column " + panelCol);
+            if (TryInjectIntoChartTabGrid())
                 return;
-            }
 
-            // Discovery failed -- retry up to 3 times before accepting fallback
+            SchedulePlacementRetry();
+        }
+
+        private bool TryHijackChartTrader()
+        {
+            if (_chartTraderElement == null || !(_chartTraderElement.Parent is Grid traderGrid))
+                return false;
+
+            int col = Grid.GetColumn(_chartTraderElement);
+            int row = Grid.GetRow(_chartTraderElement);
+            int rSpan = Grid.GetRowSpan(_chartTraderElement);
+            int cSpan = Grid.GetColumnSpan(_chartTraderElement);
+
+            Grid.SetColumn(rootContainer, col);
+            Grid.SetRow(rootContainer, row);
+            if (rSpan > 1)
+                Grid.SetRowSpan(rootContainer, rSpan);
+            if (cSpan > 1)
+                Grid.SetColumnSpan(rootContainer, cSpan);
+
+            traderGrid.Children.Add(rootContainer);
+            _placementGrid = traderGrid;
+            _chartTraderElement.Visibility = Visibility.Collapsed;
+            contentBody.Visibility = Visibility.Visible;
+            _placementMode = PanelPlacement.Hijack;
+            Print("V12 PANEL: Hijacked Chart Trader slot (Col=" + col + ", Row=" + row + ")");
+            return true;
+        }
+
+        private bool TryInjectIntoChartTabGrid()
+        {
+            _placementGrid = FindChartTabGrid(ChartControl);
+            if (_placementGrid == null)
+                return false;
+
+            _placementGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(PanelColumnWidth) });
+            int panelCol = _placementGrid.ColumnDefinitions.Count - 1;
+
+            Grid.SetColumn(rootContainer, panelCol);
+            Grid.SetRow(rootContainer, 0);
+            if (_placementGrid.RowDefinitions.Count > 1)
+                Grid.SetRowSpan(rootContainer, _placementGrid.RowDefinitions.Count);
+
+            rootContainer.HorizontalAlignment = HorizontalAlignment.Stretch;
+            rootContainer.Width = double.NaN;
+
+            _placementGrid.Children.Add(rootContainer);
+            _placementMode = PanelPlacement.Injected;
+            Print("V12 PANEL: Injected at column " + panelCol);
+            return true;
+        }
+
+        private void SchedulePlacementRetry()
+        {
             if (_placementRetryCount < 3)
             {
                 _placementRetryCount++;
@@ -329,58 +348,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             DetachPanelHandlers();
 
-            try
-            {
-                if (_chartTraderElement != null)
-                    _chartTraderElement.Visibility = Visibility.Visible;
-
-                switch (_placementMode)
-                {
-                    case PanelPlacement.Fallback:
-                        try
-                        {
-                            UserControlCollection.Remove(rootContainer);
-                        }
-                        catch (Exception ex)
-                        {
-                            // V12.EPIC-7-QUALITY-006: Log UI panel removal errors
-                            Print($"[IPC_CLEANUP] Panel removal failed: {ex.Message}");
-                            // Continue - non-fatal UI cleanup
-                        }
-                        break;
-
-                    case PanelPlacement.Injected:
-                        if (_placementGrid != null)
-                        {
-                            if (_placementGrid.Children.Contains(rootContainer))
-                                _placementGrid.Children.Remove(rootContainer);
-                            if (_placementGrid.ColumnDefinitions.Count > 0)
-                            {
-                                var lastCol = _placementGrid.ColumnDefinitions[
-                                    _placementGrid.ColumnDefinitions.Count - 1
-                                ];
-                                if (lastCol.Width.IsAbsolute && Math.Abs(lastCol.Width.Value - 210) < 1)
-                                    _placementGrid.ColumnDefinitions.RemoveAt(
-                                        _placementGrid.ColumnDefinitions.Count - 1
-                                    );
-                            }
-                        }
-                        break;
-
-                    case PanelPlacement.Hijack:
-                        if (_placementGrid != null && _placementGrid.Children.Contains(rootContainer))
-                            _placementGrid.Children.Remove(rootContainer);
-                        break;
-
-                    default:
-                        // Unknown placement mode - no cleanup action
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                Print("V12 PANEL: Removal error -- " + ex.Message);
-            }
+            TeardownPlacedPanel();
 
             rootContainer = null;
             contentBody = null;
@@ -397,6 +365,81 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             _placementRetryCount = 0;
 
+            ClearPanelWidgetRefs();
+        }
+
+        private void TeardownPlacedPanel()
+        {
+            try
+            {
+                if (_chartTraderElement != null)
+                    _chartTraderElement.Visibility = Visibility.Visible;
+
+                switch (_placementMode)
+                {
+                    case PanelPlacement.Fallback:
+                        TeardownFallbackPlacement();
+                        break;
+
+                    case PanelPlacement.Injected:
+                        TeardownInjectedPlacement();
+                        break;
+
+                    case PanelPlacement.Hijack:
+                        TeardownHijackPlacement();
+                        break;
+
+                    default:
+                        // Unknown placement mode - no cleanup action
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Print("V12 PANEL: Removal error -- " + ex.Message);
+            }
+        }
+
+        private void TeardownFallbackPlacement()
+        {
+            try
+            {
+                UserControlCollection.Remove(rootContainer);
+            }
+            catch (Exception ex)
+            {
+                // V12.EPIC-7-QUALITY-006: Log UI panel removal errors
+                Print("[IPC_CLEANUP] Panel removal failed: " + ex.Message);
+                // Continue - non-fatal UI cleanup
+            }
+        }
+
+        private void TeardownInjectedPlacement()
+        {
+            if (_placementGrid == null)
+                return;
+
+            if (_placementGrid.Children.Contains(rootContainer))
+                _placementGrid.Children.Remove(rootContainer);
+
+            if (_placementGrid.ColumnDefinitions.Count > 0)
+            {
+                var lastCol = _placementGrid.ColumnDefinitions[_placementGrid.ColumnDefinitions.Count - 1];
+                if (lastCol.Width.IsAbsolute && Math.Abs(lastCol.Width.Value - PanelColumnWidth) < 1)
+                    _placementGrid.ColumnDefinitions.RemoveAt(_placementGrid.ColumnDefinitions.Count - 1);
+            }
+        }
+
+        private void TeardownHijackPlacement()
+        {
+            if (_placementGrid == null)
+                return;
+            if (_placementGrid.Children.Contains(rootContainer))
+                _placementGrid.Children.Remove(rootContainer);
+        }
+
+        private void ClearPanelWidgetRefs()
+        {
             hubStatusLed = null;
             leaderAccountCombo = null;
             fleetSelectButton = null;
@@ -516,13 +559,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Margin = new Thickness(2, 2, 2, 1),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
-
             stack.Children.Add(CreateSectionHeader("SECTION 0: IDENTITY"));
+            stack.Children.Add(BuildHubStatusRow());
+            stack.Children.Add(BuildFleetPopupRow());
+            stack.Children.Add(BuildManualEntryRow());
+            section.Child = stack;
+            return section;
+        }
 
-            Grid row1 = new Grid { Margin = new Thickness(0, 1, 0, 1) };
-            row1.HorizontalAlignment = HorizontalAlignment.Stretch;
-            row1.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row1.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        private Grid BuildHubStatusRow()
+        {
+            Grid row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
+            row.HorizontalAlignment = HorizontalAlignment.Stretch;
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             hubStatusLed = new Border
             {
@@ -534,7 +584,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 ToolTip = "Strategy Status",
             };
             Grid.SetColumn(hubStatusLed, 0);
-            row1.Children.Add(hubStatusLed);
+            row.Children.Add(hubStatusLed);
 
             string leaderDisplay = "LEADER: " + (Account != null ? Account.Name : "--");
             leaderAccountCombo = CreateCombo(0, leaderDisplay);
@@ -542,9 +592,13 @@ namespace NinjaTrader.NinjaScript.Strategies
             leaderAccountCombo.IsHitTestVisible = false;
             leaderAccountCombo.Focusable = false;
             Grid.SetColumn(leaderAccountCombo, 1);
-            row1.Children.Add(leaderAccountCombo);
-            stack.Children.Add(row1);
+            row.Children.Add(leaderAccountCombo);
 
+            return row;
+        }
+
+        private Grid BuildFleetPopupRow()
+        {
             Grid fleetRow = new Grid { Margin = new Thickness(0, 1, 0, 1) };
             fleetRow.HorizontalAlignment = HorizontalAlignment.Stretch;
             fleetRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -586,6 +640,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             StackPanel popupStack = new StackPanel();
 
+            // Fix H-3: snapshot activeFleetAccounts before any iteration (thread-safe)
+            BuildFleetCheckboxPanel();
+
             CheckBox selectAllCheck = new CheckBox
             {
                 Content = "Select ALL Accounts",
@@ -594,6 +651,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 FontWeight = FontWeights.Bold,
                 Margin = new Thickness(0, 0, 0, 4),
             };
+            // Fix H-2: fleetCheckboxPanel assigned above before these handlers are registered
             selectAllCheck.Checked += (s, e) =>
             {
                 if (fleetCheckboxPanel == null)
@@ -625,15 +683,34 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Margin = new Thickness(0, 2, 0, 4),
                 }
             );
+            popupStack.Children.Add(fleetCheckboxPanel);
+            popupBorder.Child = popupStack;
+            fleetPopup.Child = popupBorder;
+            UpdateFleetButtonText();
 
+            return fleetRow;
+        }
+
+        private void BuildFleetCheckboxPanel()
+        {
             fleetCheckboxPanel = new StackPanel();
             selectedFleetAccounts.Clear();
 
+            // Fix H-3: snapshot before foreach to avoid ConcurrentDictionary enumeration race
             var fleetAccounts = GetFleetAccountsSnapshot();
+            var activeSnapshot = activeFleetAccounts.ToArray();
+
             foreach (var acct in fleetAccounts)
             {
                 bool isActive = false;
-                activeFleetAccounts.TryGetValue(acct.Name, out isActive);
+                foreach (var kv in activeSnapshot)
+                {
+                    if (kv.Key == acct.Name)
+                    {
+                        isActive = kv.Value;
+                        break;
+                    }
+                }
                 if (isActive && !selectedFleetAccounts.Contains(acct.Name))
                     selectedFleetAccounts.Add(acct.Name);
 
@@ -668,40 +745,34 @@ namespace NinjaTrader.NinjaScript.Strategies
                 };
                 fleetCheckboxPanel.Children.Add(cb);
             }
-            popupStack.Children.Add(fleetCheckboxPanel);
-            popupBorder.Child = popupStack;
-            fleetPopup.Child = popupBorder;
-            UpdateFleetButtonText();
+        }
 
-            stack.Children.Add(fleetRow);
-
-            Grid row3 = new Grid { Margin = new Thickness(0, 1, 0, 1) };
-            manualEntryRow = row3;
-            row3.HorizontalAlignment = HorizontalAlignment.Stretch;
-            row3.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row3.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row3.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        private Grid BuildManualEntryRow()
+        {
+            Grid row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
+            manualEntryRow = row;
+            row.HorizontalAlignment = HorizontalAlignment.Stretch;
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             directionCombo = CreateCombo(0, "OR LONG", "OR SHORT");
             directionCombo.HorizontalAlignment = HorizontalAlignment.Stretch;
             Grid.SetColumn(directionCombo, 0);
-            row3.Children.Add(directionCombo);
+            row.Children.Add(directionCombo);
 
             string priceDefault = lastKnownPrice > 0 ? Instrument.MasterInstrument.FormatPrice(lastKnownPrice) : "0.00";
             priceInput = CreateTextBox(priceDefault, 0);
             priceInput.Margin = new Thickness(4, 0, 4, 0);
             Grid.SetColumn(priceInput, 1);
-            row3.Children.Add(priceInput);
+            row.Children.Add(priceInput);
 
             submitButton = CreateButton("SUBMIT", 60, GreenBg, GreenFg, GreenBorder);
             submitButton.Height = 22;
             Grid.SetColumn(submitButton, 2);
-            row3.Children.Add(submitButton);
+            row.Children.Add(submitButton);
 
-            stack.Children.Add(row3);
-
-            section.Child = stack;
-            return section;
+            return row;
         }
 
         private Border CreateSection1_Execution()
