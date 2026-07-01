@@ -193,7 +193,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             List<Order> ordersToCancel = new List<Order>();
             foreach (Order order in acct.Orders.ToArray())
             {
-                if (order == null || order.Instrument == null)
+                if (IsOrderNullOrBadInstrument(order))
                     continue;
                 if (order.Instrument.FullName != Instrument.FullName)
                     continue;
@@ -604,6 +604,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || state == OrderState.CancelSubmitted
                 || state == OrderState.Filled
                 || state == OrderState.Rejected;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private static bool IsOrderNullOrBadInstrument(Order order)
+        {
+            return order == null || order.Instrument == null;
         }
 
         [System.Runtime.CompilerServices.MethodImpl(

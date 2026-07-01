@@ -95,45 +95,58 @@ namespace NinjaTrader.NinjaScript.Strategies
             Print("[SIMA LIFECYCLE] SIMA ENABLED -- fleet enumerated, Reaper started");
         }
 
-        private void ProcessShutdownSIMA()
+        private void TeardownFleetConnections()
         {
-            CancelAllV12GtcOrders(false); // [BUILD 948] GTC sweep before teardown -- skip accounts with open positions
+            CancelAllV12GtcOrders(false);
             StopReaperAudit();
             UnsubscribeFromFleetAccounts();
-            // v28.0 shutdown drain: sideband-aware, XorShadow-free (we do not verify on shutdown;
-            // we just need to release pool + roll back delta). Sideband entries are zeroed after.
+        }
+
+        private void ProcessPhotonRingSlot(FleetDispatchSlot ringSlot)
+        {
+            int sbIdx = ringSlot.PoolSlotIndex;
+            string expectedKey =
+                (sbIdx >= 0 && sbIdx < _photonSideband.Length) ? _photonSideband[sbIdx].ExpectedKey : null;
+            if (ringSlot.ReservedDelta != 0 && expectedKey != null)
+                AddExpectedPositionDelta(expectedKey, -ringSlot.ReservedDelta);
+            if (expectedKey != null)
+                ClearDispatchSyncPending(expectedKey);
+            if (sbIdx >= 0)
             {
-                FleetDispatchSlot ringSlot;
-                while (_photonDispatchRing != null && _photonDispatchRing.TryDequeue(out ringSlot))
-                {
-                    int _sbIdx = ringSlot.PoolSlotIndex;
-                    string _expectedKey =
-                        (_sbIdx >= 0 && _sbIdx < _photonSideband.Length) ? _photonSideband[_sbIdx].ExpectedKey : null;
-                    if (ringSlot.ReservedDelta != 0 && _expectedKey != null)
-                        AddExpectedPositionDelta(_expectedKey, -ringSlot.ReservedDelta);
-                    if (_expectedKey != null)
-                        ClearDispatchSyncPending(_expectedKey);
-                    if (_sbIdx >= 0)
-                    {
-                        _photonPool.ReleaseByIndex(_sbIdx);
-                        if (_sbIdx < _photonSideband.Length)
-                            _photonSideband[_sbIdx] = default(FleetDispatchSideband);
-                    }
-                }
-                Print("[SIMA] Photon ring cleared on shutdown with delta rollback.");
+                _photonPool.ReleaseByIndex(sbIdx);
+                if (sbIdx < _photonSideband.Length)
+                    _photonSideband[sbIdx] = default(FleetDispatchSideband);
             }
-            // A3-1: Drain ghost dispatch queue on SIMA disable (Build 960 audit fix)
+        }
+
+        private void DrainPhotonRingWithRollback()
+        {
+            FleetDispatchSlot ringSlot;
+            while (_photonDispatchRing != null && _photonDispatchRing.TryDequeue(out ringSlot))
+                ProcessPhotonRingSlot(ringSlot);
+            Print("[SIMA] Photon ring cleared on shutdown with delta rollback.");
+        }
+
+        private void DrainPendingDispatchesWithRollback()
+        {
+            FleetDispatchRequest ignored;
+            while (_pendingFleetDispatches.TryDequeue(out ignored))
+            {
+                if (ignored.ReservedDelta != 0)
+                    AddExpectedPositionDelta(ignored.ExpectedKey, -ignored.ReservedDelta);
+                ClearDispatchSyncPending(ignored.ExpectedKey);
+            }
+            Print("[SIMA] Dispatch queue cleared on shutdown with delta rollback.");
+        }
+
+        private void ProcessShutdownSIMA()
+        {
+            TeardownFleetConnections();
+            // v28.0 shutdown drain: sideband-aware, XorShadow-free.
+            DrainPhotonRingWithRollback();
+            // A3-1: Drain ghost dispatch queue on SIMA disable (Build 960 audit fix).
             // B957/F2: Rollback ReservedDelta and clear dispatch-sync barrier for each discarded request.
-            {
-                FleetDispatchRequest ignored;
-                while (_pendingFleetDispatches.TryDequeue(out ignored))
-                {
-                    if (ignored.ReservedDelta != 0)
-                        AddExpectedPositionDelta(ignored.ExpectedKey, -ignored.ReservedDelta);
-                    ClearDispatchSyncPending(ignored.ExpectedKey);
-                }
-                Print("[SIMA] Dispatch queue cleared on shutdown with delta rollback.");
-            }
+            DrainPendingDispatchesWithRollback();
             Print("[SIMA LIFECYCLE] SIMA DISABLED -- Reaper stopped, handlers unsubscribed");
         }
 
@@ -200,11 +213,70 @@ namespace NinjaTrader.NinjaScript.Strategies
             EnrichTrailStateFromSticky();
         }
 
+        private bool IsMatchingOpenPosition(Position pos)
+        {
+            if (pos == null)
+                return false;
+            if (pos.Instrument == null)
+                return false;
+            if (pos.Instrument.FullName != Instrument.FullName)
+                return false;
+            if (pos.MarketPosition == MarketPosition.Flat)
+                return false;
+            return true;
+        }
+
+        private bool SeedExpectedPositionFromBroker(Account acct, Position[] positions)
+        {
+            foreach (Position pos in positions)
+            {
+                if (!IsMatchingOpenPosition(pos))
+                    continue;
+                int qty = pos.MarketPosition == MarketPosition.Long ? pos.Quantity : -pos.Quantity;
+                var capturedAcct = acct.Name;
+                var capturedQty = qty;
+                Enqueue(ctx => ctx.AddOrUpdateExpectedPosition(ExpKey(capturedAcct), capturedQty, v => capturedQty));
+                Print(
+                    string.Format(
+                        "[SIMA HYDRATE] {0}: Seeded expected={1} from broker ({2} {3})",
+                        acct.Name,
+                        qty,
+                        pos.MarketPosition,
+                        pos.Quantity
+                    )
+                );
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// V12.Phase6 [HYDRATE]: Reads actual broker positions for each fleet account and seeds
         /// expectedPositions accordingly. Prevents false Reaper CRITICAL DESYNC alerts when the
         /// strategy restarts while accounts hold open positions.
         /// </summary>
+        private void HydrateMasterExpectedPosition(ref int hydratedCount)
+        {
+            // Build 993: IsFleetAccount excludes master -- must be handled separately.
+            if (IsFleetAccount(Account))
+                return;
+            try
+            {
+                if (SeedExpectedPositionFromBroker(Account, Account.Positions.ToArray()))
+                    hydratedCount++;
+            }
+            catch (Exception ex)
+            {
+                Print(
+                    string.Format(
+                        "[SIMA HYDRATE] WARNING: Could not read positions for {0} (Master): {1}",
+                        Account.Name,
+                        ex.Message
+                    )
+                );
+            }
+        }
+
         private void HydrateExpectedPositionsFromBroker()
         {
             int hydratedCount = 0;
@@ -212,91 +284,27 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 if (!IsFleetAccount(acct))
                     continue;
-
                 try
                 {
-                    // [939-P0]: Snapshot Positions to prevent broker-thread mutation during iteration.
-                    foreach (Position pos in acct.Positions.ToArray())
-                    {
-                        if (
-                            pos != null
-                            && pos.Instrument != null
-                            && pos.Instrument.FullName == Instrument.FullName
-                            && pos.MarketPosition != MarketPosition.Flat
-                        )
-                        {
-                            int qty = pos.MarketPosition == MarketPosition.Long ? pos.Quantity : -pos.Quantity;
-                            // Build 980 [Nexus]: Route expected position seed through the Actor queue
-                            var capturedAcct = acct.Name;
-                            var capturedQty = qty;
-                            Enqueue(ctx =>
-                                ctx.AddOrUpdateExpectedPosition(ExpKey(capturedAcct), capturedQty, v => capturedQty)
-                            );
-                            Print(
-                                $"[SIMA HYDRATE] {acct.Name}: Seeded expected={qty} from broker ({pos.MarketPosition} {pos.Quantity})"
-                            );
-                            hydratedCount++;
-                            break;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Print($"[SIMA HYDRATE] WARNING: Could not read positions for {acct.Name}: {ex.Message}");
-                }
-            }
-            if (hydratedCount > 0)
-                Print($"[SIMA HYDRATE] Hydrated {hydratedCount} account(s) with live broker positions");
-
-            // Build 993: Hydrate master account (mirrors AuditMasterAccountIfNeeded pattern).
-            // IsFleetAccount excludes master -- must be handled separately, same as REAPER audit.
-            bool masterIsFleet993 = IsFleetAccount(Account);
-            if (!masterIsFleet993)
-            {
-                try
-                {
-                    foreach (Position pos in Account.Positions.ToArray())
-                    {
-                        if (
-                            pos != null
-                            && pos.Instrument?.FullName == Instrument.FullName
-                            && pos.MarketPosition != MarketPosition.Flat
-                        )
-                        {
-                            int qty = pos.MarketPosition == MarketPosition.Long ? pos.Quantity : -pos.Quantity;
-                            var capturedQty993 = qty;
-                            Enqueue(ctx =>
-                                ctx.AddOrUpdateExpectedPosition(
-                                    ExpKey(Account.Name),
-                                    capturedQty993,
-                                    v => capturedQty993
-                                )
-                            );
-                            Print(
-                                string.Format(
-                                    "[SIMA HYDRATE] {0} (Master): Seeded expected={1} from broker ({2} {3})",
-                                    Account.Name,
-                                    qty,
-                                    pos.MarketPosition,
-                                    pos.Quantity
-                                )
-                            );
-                            hydratedCount++;
-                            break;
-                        }
-                    }
+                    if (SeedExpectedPositionFromBroker(acct, acct.Positions.ToArray()))
+                        hydratedCount++;
                 }
                 catch (Exception ex)
                 {
                     Print(
                         string.Format(
-                            "[SIMA HYDRATE] WARNING: Could not read positions for {0} (Master): {1}",
-                            Account.Name,
+                            "[SIMA HYDRATE] WARNING: Could not read positions for {0}: {1}",
+                            acct.Name,
                             ex.Message
                         )
                     );
                 }
             }
+            if (hydratedCount > 0)
+                Print(
+                    string.Format("[SIMA HYDRATE] Hydrated {0} account(s) with live broker positions", hydratedCount)
+                );
+            HydrateMasterExpectedPosition(ref hydratedCount);
         }
 
         /// <summary>
@@ -334,112 +342,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Build 1108.003 [D2-A]: Reconstruct master activePositions from adopted bracket orders + broker.
             // Filled master positions have bracket orders but no working entry order to hydrate from.
             if (!masterIsFleetForOrders993)
-            {
-                try
-                {
-                    MarketPosition masterMP = MarketPosition.Flat;
-                    int masterQty = 0;
-                    double masterAvgPrice = 0;
-                    foreach (Position brokerPos in Account.Positions.ToArray())
-                    {
-                        if (
-                            brokerPos != null
-                            && brokerPos.Instrument != null
-                            && brokerPos.Instrument.FullName == Instrument.FullName
-                            && brokerPos.MarketPosition != MarketPosition.Flat
-                        )
-                        {
-                            masterMP = brokerPos.MarketPosition;
-                            masterQty = brokerPos.Quantity;
-                            masterAvgPrice = brokerPos.AveragePrice;
-                            break;
-                        }
-                    }
-
-                    if (masterMP != MarketPosition.Flat && masterQty > 0)
-                    {
-                        foreach (var stopKvp in stopOrders.ToArray())
-                        {
-                            string key = stopKvp.Key;
-                            if (key.StartsWith("Fleet_", StringComparison.OrdinalIgnoreCase))
-                                continue;
-                            if (activePositions.ContainsKey(key))
-                                continue;
-
-                            Order adoptedStop = stopKvp.Value;
-                            double stopPrice = adoptedStop != null ? adoptedStop.StopPrice : 0;
-
-                            int t1Qty,
-                                t2Qty,
-                                t3Qty,
-                                t4Qty,
-                                t5Qty;
-                            GetTargetDistribution(masterQty, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
-
-                            bool trendMnlMatch = key.StartsWith("TrendMnl", StringComparison.OrdinalIgnoreCase);
-                            Print(
-                                string.Format(
-                                    "[SIMA HYDRATE] Master stop key audit for {0}: TrendMnlStartsWith={1}",
-                                    key,
-                                    trendMnlMatch
-                                )
-                            );
-
-                            var pos = new PositionInfo
-                            {
-                                SignalName = key,
-                                Direction = masterMP,
-                                TotalContracts = masterQty,
-                                RemainingContracts = masterQty,
-                                EntryPrice = masterAvgPrice,
-                                InitialStopPrice = stopPrice,
-                                CurrentStopPrice = stopPrice,
-                                EntryOrderType = OrderType.Market,
-                                EntryFilled = true,
-                                IsFollower = false,
-                                ExecutingAccount = null,
-                                BracketSubmitted = true,
-                                ExtremePriceSinceEntry = masterAvgPrice,
-                                CurrentTrailLevel = 0,
-                                OcoGroupId = "V12_" + GetStableHash(key),
-                                T1Contracts = t1Qty,
-                                T2Contracts = t2Qty,
-                                T3Contracts = t3Qty,
-                                T4Contracts = t4Qty,
-                                T5Contracts = t5Qty,
-                            };
-
-                            pos.IsMOMOTrade = key.StartsWith("MOMO", StringComparison.OrdinalIgnoreCase);
-                            pos.IsTRENDTrade =
-                                trendMnlMatch || key.StartsWith("TRMA_", StringComparison.OrdinalIgnoreCase);
-                            pos.IsRetestTrade = key.StartsWith("Retest", StringComparison.OrdinalIgnoreCase);
-                            pos.IsRMATrade =
-                                key.StartsWith("TRMA_", StringComparison.OrdinalIgnoreCase) || pos.IsRetestTrade;
-                            pos.IsFFMATrade = key.StartsWith("FFMA", StringComparison.OrdinalIgnoreCase);
-                            if (pos.IsMOMOTrade)
-                                pos.IsRMATrade = false;
-
-                            activePositions[key] = pos;
-                            Print(
-                                string.Format(
-                                    "[SIMA HYDRATE] Reconstructed master position for {0} | Dir={1} Qty={2} AvgPx={3} StopPx={4}",
-                                    key,
-                                    masterMP,
-                                    masterQty,
-                                    masterAvgPrice,
-                                    stopPrice
-                                )
-                            );
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Print(
-                        string.Format("[SIMA HYDRATE] WARNING: Master position reconstruction failed: {0}", ex.Message)
-                    );
-                }
-            }
+                ReconstructMasterActivePositions();
 
             // Phase 5: Rebuild FSMs from adopted orders before enabling REAPER
             HydrateFSMsFromWorkingOrders();
@@ -454,6 +357,143 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
             else
                 Print("[SIMA HYDRATE] No working orders to adopt -- adoption complete.");
+        }
+
+        // T1: Pure broker-position lookup -- zero side effects.
+        private bool TryGetMasterBrokerPosition(
+            out MarketPosition masterMP,
+            out int masterQty,
+            out double masterAvgPrice
+        )
+        {
+            masterMP = MarketPosition.Flat;
+            masterQty = 0;
+            masterAvgPrice = 0;
+            foreach (Position brokerPos in Account.Positions.ToArray())
+            {
+                if (
+                    brokerPos != null
+                    && brokerPos.Instrument != null
+                    && brokerPos.Instrument.FullName == Instrument.FullName
+                    && brokerPos.MarketPosition != MarketPosition.Flat
+                )
+                {
+                    masterMP = brokerPos.MarketPosition;
+                    masterQty = brokerPos.Quantity;
+                    masterAvgPrice = brokerPos.AveragePrice;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // T2: Key eligibility guard -- pure predicate.
+        private bool IsMasterStopKeyEligible(string key)
+        {
+            if (key.StartsWith("Fleet_", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (activePositions.ContainsKey(key))
+                return false;
+            return true;
+        }
+
+        // T3: PositionInfo factory -- pure construction, no state mutation.
+        private PositionInfo BuildMasterPositionInfo(
+            string key,
+            MarketPosition direction,
+            int qty,
+            double avgPrice,
+            double stopPrice
+        )
+        {
+            GetTargetDistribution(qty, out int t1Qty, out int t2Qty, out int t3Qty, out int t4Qty, out int t5Qty);
+            return new PositionInfo
+            {
+                SignalName = key,
+                Direction = direction,
+                TotalContracts = qty,
+                RemainingContracts = qty,
+                EntryPrice = avgPrice,
+                InitialStopPrice = stopPrice,
+                CurrentStopPrice = stopPrice,
+                EntryOrderType = OrderType.Market,
+                EntryFilled = true,
+                IsFollower = false,
+                ExecutingAccount = null,
+                BracketSubmitted = true,
+                ExtremePriceSinceEntry = avgPrice,
+                CurrentTrailLevel = 0,
+                OcoGroupId = "V12_" + GetStableHash(key),
+                T1Contracts = t1Qty,
+                T2Contracts = t2Qty,
+                T3Contracts = t3Qty,
+                T4Contracts = t4Qty,
+                T5Contracts = t5Qty,
+            };
+        }
+
+        // T4: DNA flag stamper -- mutates only the pos argument.
+        private void ApplyTradeDnaFlags(PositionInfo pos, string key)
+        {
+            bool trendMnlMatch = key.StartsWith("TrendMnl", StringComparison.OrdinalIgnoreCase);
+            pos.IsMOMOTrade = key.StartsWith("MOMO", StringComparison.OrdinalIgnoreCase);
+            pos.IsTRENDTrade = trendMnlMatch || key.StartsWith("TRMA_", StringComparison.OrdinalIgnoreCase);
+            pos.IsRetestTrade = key.StartsWith("Retest", StringComparison.OrdinalIgnoreCase);
+            pos.IsRMATrade = key.StartsWith("TRMA_", StringComparison.OrdinalIgnoreCase) || pos.IsRetestTrade;
+            pos.IsFFMATrade = key.StartsWith("FFMA", StringComparison.OrdinalIgnoreCase);
+            if (pos.IsMOMOTrade)
+                pos.IsRMATrade = false;
+        }
+
+        // T5: Orchestrates T1-T4 -- reconstructs master activePositions from broker + adopted stops.
+        private void ReconstructMasterActivePositions()
+        {
+            try
+            {
+                if (
+                    !TryGetMasterBrokerPosition(
+                        out MarketPosition masterMP,
+                        out int masterQty,
+                        out double masterAvgPrice
+                    )
+                )
+                    return;
+                if (masterMP == MarketPosition.Flat || masterQty <= 0)
+                    return;
+                foreach (var stopKvp in stopOrders.ToArray())
+                {
+                    string key = stopKvp.Key;
+                    if (!IsMasterStopKeyEligible(key))
+                        continue;
+                    Order adoptedStop = stopKvp.Value;
+                    double stopPrice = adoptedStop != null ? adoptedStop.StopPrice : 0;
+                    bool trendMnlMatch = key.StartsWith("TrendMnl", StringComparison.OrdinalIgnoreCase);
+                    Print(
+                        string.Format(
+                            "[SIMA HYDRATE] Master stop key audit for {0}: TrendMnlStartsWith={1}",
+                            key,
+                            trendMnlMatch
+                        )
+                    );
+                    var pos = BuildMasterPositionInfo(key, masterMP, masterQty, masterAvgPrice, stopPrice);
+                    ApplyTradeDnaFlags(pos, key);
+                    activePositions[key] = pos;
+                    Print(
+                        string.Format(
+                            "[SIMA HYDRATE] Reconstructed master position for {0} | Dir={1} Qty={2} AvgPx={3} StopPx={4}",
+                            key,
+                            masterMP,
+                            masterQty,
+                            masterAvgPrice,
+                            stopPrice
+                        )
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Print(string.Format("[SIMA HYDRATE] WARNING: Master position reconstruction failed: {0}", ex.Message));
+            }
         }
 
         /// <summary>
@@ -634,43 +674,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 if (!IsFleetAccount(acct))
                     continue;
-
-                // Do we already have an FSM for this account?
-                if (
-                    _followerBrackets.Values.Any(f =>
-                        string.Equals(f.AccountName, acct.Name, StringComparison.OrdinalIgnoreCase)
-                    )
-                )
+                if (HasExistingFsmForAccount(acct))
                     continue;
-
-                // Is there an open position for this instrument in this account?
-                Position acctPos = acct.Positions.FirstOrDefault(p =>
-                    p.Instrument.FullName == Instrument.FullName && p.MarketPosition != MarketPosition.Flat
-                );
-                if (acctPos == null)
+                if (!TryGetAccountOpenPosition(acct, out Position acctPos))
                     continue;
-
-                // Scan stopOrders for any entryKey belonging to this account
-                string recoveredKey = null;
-                Order recoveredStop = null;
-                foreach (var stopKvp in stopOrders.ToArray())
-                {
-                    Order stopCand = stopKvp.Value;
-                    if (stopCand == null)
-                        continue;
-                    if (stopCand.Account == null)
-                        continue;
-
-                    // If the stop order's original account matches our current iteration account
-                    if (string.Equals(stopCand.Account.Name, acct.Name, StringComparison.OrdinalIgnoreCase))
-                    {
-                        recoveredKey = stopKvp.Key;
-                        recoveredStop = stopCand;
-                        break;
-                    }
-                }
-
-                if (recoveredKey == null)
+                if (!TryRecoverStopOrder(acct, stopOrders, out string recoveredKey, out Order recoveredStop))
                 {
                     Print(
                         string.Format(
@@ -679,90 +687,26 @@ namespace NinjaTrader.NinjaScript.Strategies
                         )
                     );
                     // Build 999: Mark account for REAPER grace window -- defer critical desync up to 10s.
-                    // CancelPending stop (stop-replace mid-flight at disable) causes this warning.
-                    // The replace cycle resolves within seconds; grace prevents premature flatten cascade.
                     _positionPassFailedFirstSeen[acct.Name] = DateTime.UtcNow;
                     continue;
                 }
-
-                // Idempotent guard
                 if (_followerBrackets.ContainsKey(recoveredKey))
                     continue;
-
-                var fsm = new FollowerBracketFSM
-                {
-                    AccountName = acct.Name,
-                    EntryName = recoveredKey,
-                    State = FollowerBracketState.Active,
-                    RemainingContracts = Math.Abs(acctPos.Quantity),
-                    LastUpdateUtc = DateTime.UtcNow,
-                    EntryOrder = null, // Terminal entry order
-                };
-
-                // Link stop order
-                if (recoveredStop != null)
-                {
-                    fsm.StopOrder = recoveredStop;
-                    if (!string.IsNullOrEmpty(recoveredStop.OrderId))
-                    {
-                        _orderIdToFsmKey[recoveredStop.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-
-                // Link target orders
-                Order targetOrd;
-                if (target1Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[0] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target2Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[1] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target3Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[2] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target4Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[3] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-                if (target5Orders.TryGetValue(recoveredKey, out targetOrd) && targetOrd != null)
-                {
-                    fsm.Targets[4] = targetOrd;
-                    if (!string.IsNullOrEmpty(targetOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[targetOrd.OrderId] = recoveredKey;
-                        ordersIndexed++;
-                    }
-                }
-
+                var fsm = BuildPositionRecoveryFSM(acct, recoveredKey, acctPos);
+                LinkStopOrderToFsmIndex(fsm, recoveredStop, recoveredKey, ref ordersIndexed);
+                LinkTargetOrdersToFsm(
+                    fsm,
+                    recoveredKey,
+                    target1Orders,
+                    target2Orders,
+                    target3Orders,
+                    target4Orders,
+                    target5Orders,
+                    ref ordersIndexed
+                );
                 _followerBrackets.TryAdd(recoveredKey, fsm);
-
                 positionFsmCreated++;
                 fsmCreated++;
-
                 Print(
                     string.Format(
                         "[SIMA] Phase 5 Position Pass: Created FSM for {0} (key={1})",
@@ -771,8 +715,181 @@ namespace NinjaTrader.NinjaScript.Strategies
                     )
                 );
             }
-
             return positionFsmCreated;
+        }
+
+        // T1: Pure query -- does any FSM already own this account?
+        private bool HasExistingFsmForAccount(Account acct)
+        {
+            return _followerBrackets.Values.Any(f =>
+                string.Equals(f.AccountName, acct.Name, StringComparison.OrdinalIgnoreCase)
+            );
+        }
+
+        // T2: Pure query -- is there a non-flat position on this instrument for the account?
+        private bool TryGetAccountOpenPosition(Account acct, out Position pos)
+        {
+            pos = acct.Positions.FirstOrDefault(p =>
+                p.Instrument.FullName == Instrument.FullName && p.MarketPosition != MarketPosition.Flat
+            );
+            return pos != null;
+        }
+
+        // T3: Scan stopOrders for a key belonging to the given account.
+        private bool TryRecoverStopOrder(
+            Account acct,
+            ConcurrentDictionary<string, Order> stopOrders,
+            out string recoveredKey,
+            out Order recoveredStop
+        )
+        {
+            recoveredKey = null;
+            recoveredStop = null;
+            foreach (var stopKvp in stopOrders.ToArray())
+            {
+                Order stopCand = stopKvp.Value;
+                if (stopCand == null)
+                    continue;
+                if (stopCand.Account == null)
+                    continue;
+                if (string.Equals(stopCand.Account.Name, acct.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    recoveredKey = stopKvp.Key;
+                    recoveredStop = stopCand;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // T4: Construct a recovery FSM from position state. Pure factory, no side effects.
+        private FollowerBracketFSM BuildPositionRecoveryFSM(Account acct, string recoveredKey, Position acctPos)
+        {
+            return new FollowerBracketFSM
+            {
+                AccountName = acct.Name,
+                EntryName = recoveredKey,
+                State = FollowerBracketState.Active,
+                RemainingContracts = Math.Abs(acctPos.Quantity),
+                LastUpdateUtc = DateTime.UtcNow,
+                EntryOrder = null,
+            };
+        }
+
+        // T5: Link the recovered stop order into the FSM index.
+        private void LinkStopOrderToFsmIndex(
+            FollowerBracketFSM fsm,
+            Order recoveredStop,
+            string recoveredKey,
+            ref int ordersIndexed
+        )
+        {
+            if (recoveredStop == null)
+                return;
+            fsm.StopOrder = recoveredStop;
+            if (!string.IsNullOrEmpty(recoveredStop.OrderId))
+            {
+                _orderIdToFsmKey[recoveredStop.OrderId] = recoveredKey;
+                ordersIndexed++;
+            }
+        }
+
+        // T6: Link all five target-order slots into the FSM index.
+        private void LinkTargetOrdersToFsm(
+            FollowerBracketFSM fsm,
+            string recoveredKey,
+            ConcurrentDictionary<string, Order> target1Orders,
+            ConcurrentDictionary<string, Order> target2Orders,
+            ConcurrentDictionary<string, Order> target3Orders,
+            ConcurrentDictionary<string, Order> target4Orders,
+            ConcurrentDictionary<string, Order> target5Orders,
+            ref int ordersIndexed
+        )
+        {
+            LinkSingleTargetOrder(fsm, 0, recoveredKey, target1Orders, ref ordersIndexed);
+            LinkSingleTargetOrder(fsm, 1, recoveredKey, target2Orders, ref ordersIndexed);
+            LinkSingleTargetOrder(fsm, 2, recoveredKey, target3Orders, ref ordersIndexed);
+            LinkSingleTargetOrder(fsm, 3, recoveredKey, target4Orders, ref ordersIndexed);
+            LinkSingleTargetOrder(fsm, 4, recoveredKey, target5Orders, ref ordersIndexed);
+        }
+
+        private void LinkSingleTargetOrder(
+            FollowerBracketFSM fsm,
+            int targetIndex,
+            string key,
+            ConcurrentDictionary<string, Order> targetDict,
+            ref int ordersIndexed
+        )
+        {
+            if (targetDict.TryGetValue(key, out Order targetOrd) && targetOrd != null)
+            {
+                fsm.Targets[targetIndex] = targetOrd;
+                if (!string.IsNullOrEmpty(targetOrd.OrderId))
+                {
+                    _orderIdToFsmKey[targetOrd.OrderId] = key;
+                    ordersIndexed++;
+                }
+            }
+        }
+
+        // Extract the stop-order link block from HydrateFSMsFromWorkingOrders foreach body.
+        private void LinkStopOrderToFSM(FollowerBracketFSM fsm, string entryKey, ref int ordersIndexed)
+        {
+            Order stopOrd;
+            if (stopOrders.TryGetValue(entryKey, out stopOrd) && stopOrd != null)
+            {
+                fsm.StopOrder = stopOrd;
+                if (!string.IsNullOrEmpty(stopOrd.OrderId))
+                {
+                    _orderIdToFsmKey[stopOrd.OrderId] = entryKey;
+                    ordersIndexed++;
+                }
+            }
+        }
+
+        private void BuildAndRegisterHydrationFSM(
+            string entryKey,
+            PositionInfo pi,
+            Order entryOrder,
+            FollowerBracketState state,
+            ref int ordersIndexed,
+            ref int fsmCreated
+        )
+        {
+            Position livePosition = null;
+            if (state == FollowerBracketState.Active)
+                livePosition = FindLivePosition(pi);
+            int remainingContracts = ResolveRemainingContracts(state, entryOrder.Quantity, livePosition?.Quantity);
+            var fsm = BuildFSM(entryKey, pi.ExecutingAccount.Name, entryOrder, state, remainingContracts);
+            LinkStopOrderToFSM(fsm, entryKey, ref ordersIndexed);
+            LinkTargetOrderToFSM(ref fsm, entryKey, 0, target1Orders, ref ordersIndexed);
+            LinkTargetOrderToFSM(ref fsm, entryKey, 1, target2Orders, ref ordersIndexed);
+            LinkTargetOrderToFSM(ref fsm, entryKey, 2, target3Orders, ref ordersIndexed);
+            LinkTargetOrderToFSM(ref fsm, entryKey, 3, target4Orders, ref ordersIndexed);
+            LinkTargetOrderToFSM(ref fsm, entryKey, 4, target5Orders, ref ordersIndexed);
+            RegisterFSM(entryKey, fsm, entryOrder, ref ordersIndexed, ref fsmCreated);
+        }
+
+        private void ProcessEntryOrderForHydration(
+            string entryKey,
+            Order entryOrder,
+            ref int ordersIndexed,
+            ref int fsmCreated
+        )
+        {
+            if (entryOrder == null)
+                return;
+            PositionInfo pi;
+            if (!activePositions.TryGetValue(entryKey, out pi) || !pi.IsFollower)
+                return;
+            if (pi.ExecutingAccount == null)
+                return;
+            if (_followerBrackets.ContainsKey(entryKey))
+                return;
+            FollowerBracketState? state = MapOrderStateToFSMState(entryOrder.OrderState);
+            if (state == null)
+                return;
+            BuildAndRegisterHydrationFSM(entryKey, pi, entryOrder, state.Value, ref ordersIndexed, ref fsmCreated);
         }
 
         /// <summary>
@@ -784,72 +901,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             int fsmCreated = 0;
             int ordersIndexed = 0;
-
             Print("[SIMA] Phase 5 FSM Hydration: Starting entry order pass...");
-
-            // Entry Order Pass
             foreach (var kvp in entryOrders.ToArray())
-            {
-                string entryKey = kvp.Key;
-                Order entryOrder = kvp.Value;
-                if (entryOrder == null)
-                    continue;
-
-                // Skip master account entries
-                PositionInfo pi;
-                if (!activePositions.TryGetValue(entryKey, out pi) || !pi.IsFollower)
-                    continue;
-                if (pi.ExecutingAccount == null)
-                    continue;
-
-                // Idempotent guard
-                if (_followerBrackets.ContainsKey(entryKey))
-                    continue;
-
-                // Map state
-                FollowerBracketState? state = MapOrderStateToFSMState(entryOrder.OrderState);
-                if (state == null)
-                    continue; // Terminal state - skip FSM creation
-
-                // Resolve contracts
-                Position livePosition = null;
-                if (state.Value == FollowerBracketState.Active)
-                {
-                    livePosition = FindLivePosition(pi);
-                }
-
-                int remainingContracts = ResolveRemainingContracts(
-                    state.Value,
-                    entryOrder.Quantity,
-                    livePosition?.Quantity
-                );
-
-                // Build FSM
-                var fsm = BuildFSM(entryKey, pi.ExecutingAccount.Name, entryOrder, state.Value, remainingContracts);
-
-                // Link stop order
-                Order stopOrd;
-                if (stopOrders.TryGetValue(entryKey, out stopOrd) && stopOrd != null)
-                {
-                    fsm.StopOrder = stopOrd;
-                    if (!string.IsNullOrEmpty(stopOrd.OrderId))
-                    {
-                        _orderIdToFsmKey[stopOrd.OrderId] = entryKey;
-                        ordersIndexed++;
-                    }
-                }
-
-                // Link target orders
-                LinkTargetOrderToFSM(ref fsm, entryKey, 0, target1Orders, ref ordersIndexed);
-                LinkTargetOrderToFSM(ref fsm, entryKey, 1, target2Orders, ref ordersIndexed);
-                LinkTargetOrderToFSM(ref fsm, entryKey, 2, target3Orders, ref ordersIndexed);
-                LinkTargetOrderToFSM(ref fsm, entryKey, 3, target4Orders, ref ordersIndexed);
-                LinkTargetOrderToFSM(ref fsm, entryKey, 4, target5Orders, ref ordersIndexed);
-
-                // Register FSM
-                RegisterFSM(entryKey, fsm, entryOrder, ref ordersIndexed, ref fsmCreated);
-            }
-
+                ProcessEntryOrderForHydration(kvp.Key, kvp.Value, ref ordersIndexed, ref fsmCreated);
             Print(
                 string.Format(
                     "[SIMA] Phase 5 FSM Hydration (Entry Pass): {0} FSMs created, {1} order IDs indexed.",
@@ -857,8 +911,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                     ordersIndexed
                 )
             );
-
-            // Position Pass
             int positionFsmCreated = HydrateFromOpenPositions(
                 stopOrders,
                 target1Orders,
@@ -869,14 +921,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 ref ordersIndexed,
                 ref fsmCreated
             );
-
             Print(
                 string.Format(
                     "[SIMA] Phase 5 FSM Hydration (Position Pass): {0} Active FSMs created from open positions.",
                     positionFsmCreated
                 )
             );
-
             Print(
                 string.Format(
                     "[SIMA] Phase 5 FSM Hydration: {0} FSMs created, {1} order IDs indexed.",
@@ -1191,94 +1241,101 @@ namespace NinjaTrader.NinjaScript.Strategies
         private int AdoptMasterOrders()
         {
             int adoptedCount = 0;
-
-            // Single account loop (master account only)
             foreach (Order ord in Account.Orders.ToArray())
             {
                 if (ord.Instrument?.FullName != Instrument?.FullName)
                     continue;
-
-                // State guard (includes master unknown state)
-                // Build 994: Also accept Unknown -- NT8 Sim marks previous-session orders as Unknown.
-                if (
-                    ord.OrderState != OrderState.Working
-                    && ord.OrderState != OrderState.Accepted
-                    && ord.OrderState != OrderState.Submitted
-                    && ord.OrderState != OrderState.ChangePending
-                    && ord.OrderState != OrderState.ChangeSubmitted
-                    && ord.OrderState != OrderState.Unknown
-                )
+                if (!IsValidMasterOrderState(ord))
                     continue;
-
-                // Use shared classification helper (eliminates duplication)
                 string name = ord.Name ?? string.Empty;
                 string classification = ClassifyOrderByPrefix(name);
                 if (classification == null || classification == "entry")
-                    continue; // Skip unrecognized orders and Fleet_ entries (master has no Fleet_ orders)
-
-                // Build dictionary key
-                string key = name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase)
-                    ? name.Substring(5)
-                    : name.Substring(2);
-
-                // Route to appropriate dictionary based on classification
-                switch (classification)
-                {
-                    case "stop":
-                        stopOrders[key] = ord;
-                        break;
-                    case "target1":
-                        target1Orders[key] = ord;
-                        break;
-                    case "target2":
-                        target2Orders[key] = ord;
-                        break;
-                    case "target3":
-                        target3Orders[key] = ord;
-                        break;
-                    case "target4":
-                        target4Orders[key] = ord;
-                        break;
-                    case "target5":
-                        target5Orders[key] = ord;
-                        break;
-                }
+                    continue;
+                string key = DeriveMasterOrderKey(name);
+                RouteOrderToMasterDict(classification, key, ord);
                 adoptedCount++;
             }
-
             return adoptedCount;
         }
 
-        /// <summary>
-        /// Classifies an order by its name prefix to determine target dictionary.
-        /// Pure function - no state mutations, no concurrency concerns.
-        /// </summary>
-        /// <param name="orderName">Order name (e.g., "Stop_AAPL_123", "T1_AAPL_456")</param>
-        /// <returns>Dictionary key: "stop", "target1"-"target5", "entry", or null if unrecognized</returns>
+        // Build 994: True for all order states the SIMA master-account hydration path should adopt.
+        // Intentionally includes Unknown -- NT8 Sim marks previous-session orders as Unknown on reconnect.
+        private static bool IsValidMasterOrderState(Order ord)
+        {
+            return ord.OrderState == OrderState.Working
+                || ord.OrderState == OrderState.Accepted
+                || ord.OrderState == OrderState.Submitted
+                || ord.OrderState == OrderState.ChangePending
+                || ord.OrderState == OrderState.ChangeSubmitted
+                || ord.OrderState == OrderState.Unknown;
+        }
+
+        // Derives ConcurrentDictionary key from master order name.
+        // Stop_ prefix: Substring(5). T1_-T5_ prefixes: Substring(3). All others: Substring(2).
+        private static string DeriveMasterOrderKey(string name)
+        {
+            if (name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase))
+                return name.Substring(5);
+            if (name.Length >= 3 && name[1] >= '1' && name[1] <= '5' && name[2] == '_')
+                return name.Substring(3);
+            return name.Substring(2);
+        }
+
+        // Routes an adopted master order to the appropriate ConcurrentDictionary.
+        // Called on the strategy actor thread -- single-writer, lock-free.
+        private void RouteOrderToMasterDict(string classification, string key, Order ord)
+        {
+            switch (classification)
+            {
+                case "stop":
+                    stopOrders[key] = ord;
+                    break;
+                case "target1":
+                    target1Orders[key] = ord;
+                    break;
+                case "target2":
+                    target2Orders[key] = ord;
+                    break;
+                case "target3":
+                    target3Orders[key] = ord;
+                    break;
+                case "target4":
+                    target4Orders[key] = ord;
+                    break;
+                case "target5":
+                    target5Orders[key] = ord;
+                    break;
+            }
+        }
+
+        private static readonly (string Prefix, string Token)[] _orderPrefixMap =
+        {
+            ("Stop_", "stop"),
+            ("S_", "stop"),
+            ("T1_", "target1"),
+            ("T2_", "target2"),
+            ("T3_", "target3"),
+            ("T4_", "target4"),
+            ("T5_", "target5"),
+            ("Fleet_", "entry"),
+        };
+
+        // Data-driven prefix lookup -- O(n) scan but n=8, zero allocation, no heap alloc.
+        private static string GetTokenForOrderName(string orderName)
+        {
+            foreach ((string prefix, string token) in _orderPrefixMap)
+            {
+                if (orderName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    return token;
+            }
+            return null;
+        }
+
         private string ClassifyOrderByPrefix(string orderName)
         {
             if (string.IsNullOrEmpty(orderName))
                 return null;
-
-            // 8-way prefix classification (preserve exact logic from original if/else chains)
-            if (orderName.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase))
-                return "stop";
-            else if (orderName.StartsWith("S_", StringComparison.OrdinalIgnoreCase))
-                return "stop";
-            else if (orderName.StartsWith("T1_", StringComparison.OrdinalIgnoreCase))
-                return "target1";
-            else if (orderName.StartsWith("T2_", StringComparison.OrdinalIgnoreCase))
-                return "target2";
-            else if (orderName.StartsWith("T3_", StringComparison.OrdinalIgnoreCase))
-                return "target3";
-            else if (orderName.StartsWith("T4_", StringComparison.OrdinalIgnoreCase))
-                return "target4";
-            else if (orderName.StartsWith("T5_", StringComparison.OrdinalIgnoreCase))
-                return "target5";
-            else if (orderName.StartsWith("Fleet_", StringComparison.OrdinalIgnoreCase))
-                return "entry";
-            else
-                return null; // Unrecognized prefix
+            return GetTokenForOrderName(orderName);
         }
 
         /// <summary>
@@ -1300,13 +1357,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             );
         }
 
-        /// <summary>Phase 1: cancel orders held in strategy tracking dictionaries.</summary>
-        private int SweepTrackedOrders(bool force)
+        private ConcurrentDictionary<string, Order>[] BuildTrackedDictList(bool force)
         {
-            // Build 990: Semantic separation -- force=false (SIMA disable) cancels only entry orders.
-            // Bracket orders (stop/target) are GTC with the broker and must remain to protect live positions.
-            // force=true (strategy terminate) cancels all tracked orders.
-            var trackedDicts = force
+            return force
                 ? new ConcurrentDictionary<string, Order>[]
                 {
                     entryOrders,
@@ -1318,47 +1371,55 @@ namespace NinjaTrader.NinjaScript.Strategies
                     target5Orders,
                 }
                 : new ConcurrentDictionary<string, Order>[] { entryOrders };
+        }
 
+        private static bool IsActiveCancellableState(Order ord)
+        {
+            return ord.OrderState == OrderState.Working
+                || ord.OrderState == OrderState.Accepted
+                || ord.OrderState == OrderState.Submitted
+                || ord.OrderState == OrderState.ChangePending
+                || ord.OrderState == OrderState.ChangeSubmitted;
+        }
+
+        private int SweepSingleDict(ConcurrentDictionary<string, Order> dict)
+        {
+            if (dict == null)
+                return 0;
+            int count = 0;
+            foreach (var kvp in dict.ToArray())
+            {
+                Order ord = kvp.Value;
+                if (ord == null)
+                    continue;
+                if (!IsActiveCancellableState(ord))
+                    continue;
+                try
+                {
+                    CancelOrderOnAccount(ord, ord.Account);
+                    count++;
+                }
+                catch { }
+            }
+            return count;
+        }
+
+        /// <summary>Phase 1: cancel orders held in strategy tracking dictionaries.</summary>
+        private int SweepTrackedOrders(bool force)
+        {
+            var trackedDicts = BuildTrackedDictList(force);
             int trackedCancels = 0;
             foreach (var dict in trackedDicts)
-            {
-                if (dict == null)
-                    continue;
-                foreach (var kvp in dict.ToArray())
-                {
-                    Order ord = kvp.Value;
-                    if (ord == null)
-                        continue;
-                    if (
-                        ord.OrderState != OrderState.Working
-                        && ord.OrderState != OrderState.Accepted
-                        && ord.OrderState != OrderState.Submitted
-                        && ord.OrderState != OrderState.ChangePending
-                        && ord.OrderState != OrderState.ChangeSubmitted
-                    )
-                        continue;
-                    try
-                    {
-                        CancelOrderOnAccount(ord, ord.Account);
-                        trackedCancels++;
-                    }
-                    catch { }
-                }
-            }
+                trackedCancels += SweepSingleDict(dict);
             return trackedCancels;
         }
 
-        /// <summary>
-        /// Phase 2: broker-level scan to catch V12 orders not held in tracking dicts.
-        /// Build 990: Semantic separation -- force=false only targets entry-signal prefixes.
-        /// Bracket prefixes (Stop_, S_, T1_-T5_) are excluded on soft disable to protect live positions.
-        /// </summary>
-        private int SweepBrokerOrders(bool force)
+        // T1: Builds the prefix list for SweepBrokerOrders based on force flag.
+        // force=true includes bracket prefixes (full hard-cancel sweep).
+        // force=false excludes bracket prefixes to protect live positions on SIMA disable.
+        private static string[] BuildSweepPrefixes(bool force)
         {
-            int brokerCancels = 0;
-            // Build 990: Semantic separation -- force=false (SIMA disable) only targets entry-signal prefixes.
-            // Bracket prefixes (Stop_, S_, T1_-T5_) are excluded on soft disable to protect live positions.
-            var v12Prefixes = force
+            return force
                 ? new[]
                 {
                     "Stop_",
@@ -1377,7 +1438,97 @@ namespace NinjaTrader.NinjaScript.Strategies
                     "FFMA",
                 }
                 : new[] { "Fleet_", "RMA", "Trend", "MOMO", "OR", "RETEST", "FFMA" };
+        }
 
+        // T6: Returns true if ordName starts with any prefix in the provided list.
+        private static bool HasMatchingV12Prefix(string ordName, string[] prefixes)
+        {
+            for (int pi = 0; pi < prefixes.Length; pi++)
+            {
+                if (ordName.StartsWith(prefixes[pi], StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+
+        // T2: Returns true if the order is in a state that can be cancelled.
+        private static bool IsCancellableOrderState(Order ord)
+        {
+            return ord.OrderState == OrderState.Working
+                || ord.OrderState == OrderState.Accepted
+                || ord.OrderState == OrderState.Submitted
+                || ord.OrderState == OrderState.ChangePending
+                || ord.OrderState == OrderState.ChangeSubmitted;
+        }
+
+        // T3: Returns true if the order name starts with a stop-side bracket prefix.
+        private static bool IsStopSideProtectedPrefix(string ordName)
+        {
+            return ordName.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase)
+                || ordName.StartsWith("S_", StringComparison.OrdinalIgnoreCase)
+                || ordName.StartsWith("Target_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // T4: Returns true if the order name starts with a take-profit bracket prefix.
+        private static bool IsTakeProfitProtectedPrefix(string ordName)
+        {
+            return ordName.StartsWith("T1_", StringComparison.OrdinalIgnoreCase)
+                || ordName.StartsWith("T2_", StringComparison.OrdinalIgnoreCase)
+                || ordName.StartsWith("T3_", StringComparison.OrdinalIgnoreCase)
+                || ordName.StartsWith("T4_", StringComparison.OrdinalIgnoreCase)
+                || ordName.StartsWith("T5_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // T5: [FIX-FF]: Explicit bracket exclusion on soft disable.
+        // Bracket orders protect live positions -- never cancel them during SIMA disable.
+        private static bool IsProtectedBracketOrder(string ordName)
+        {
+            return IsStopSideProtectedPrefix(ordName) || IsTakeProfitProtectedPrefix(ordName);
+        }
+
+        // T7: Validates, filters, and cancels a single broker order.
+        // Returns true if cancel was issued successfully.
+        private static bool TryCancelV12Order(
+            Account acct,
+            Order ord,
+            bool force,
+            string[] prefixes,
+            string instrumentFullName
+        )
+        {
+            if (ord.Instrument?.FullName != instrumentFullName)
+                return false;
+            if (!IsCancellableOrderState(ord))
+                return false;
+            string ordName = ord.Name ?? string.Empty;
+            if (!HasMatchingV12Prefix(ordName, prefixes))
+                return false;
+            if (!force && IsProtectedBracketOrder(ordName))
+            {
+                Print(string.Format("[FIX-FF] Protected bracket order from sweep: {0} on {1}", ordName, acct.Name));
+                return false;
+            }
+            try
+            {
+                acct.Cancel(new[] { ord });
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Phase 2: broker-level scan to catch V12 orders not held in tracking dicts.
+        /// Build 990: Semantic separation -- force=false only targets entry-signal prefixes.
+        /// Bracket prefixes (Stop_, S_, T1_-T5_) are excluded on soft disable to protect live positions.
+        /// </summary>
+        private int SweepBrokerOrders(bool force)
+        {
+            int brokerCancels = 0;
+            string[] prefixes = BuildSweepPrefixes(force);
+            string instrumentFullName = Instrument?.FullName ?? string.Empty;
             foreach (Account acct in Account.All)
             {
                 if (!IsFleetAccount(acct))
@@ -1386,62 +1537,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     foreach (Order ord in acct.Orders.ToArray())
                     {
-                        if (ord.Instrument?.FullName != Instrument?.FullName)
-                            continue;
-                        if (
-                            ord.OrderState != OrderState.Working
-                            && ord.OrderState != OrderState.Accepted
-                            && ord.OrderState != OrderState.Submitted
-                            && ord.OrderState != OrderState.ChangePending
-                            && ord.OrderState != OrderState.ChangeSubmitted
-                        )
-                            continue;
-                        string ordName = ord.Name ?? string.Empty;
-                        bool isV12 = false;
-                        for (int pi = 0; pi < v12Prefixes.Length; pi++)
-                        {
-                            if (ordName.StartsWith(v12Prefixes[pi], StringComparison.OrdinalIgnoreCase))
-                            {
-                                isV12 = true;
-                                break;
-                            }
-                        }
-                        if (!isV12)
-                            continue;
-
-                        // [FIX-FF]: Explicit bracket exclusion on soft disable.
-                        // Bracket orders protect live positions -- never cancel them during
-                        // SIMA disable or soft terminate. Defensive guard against naming drift.
-                        if (!force)
-                        {
-                            bool isBracketOrder =
-                                ordName.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase)
-                                || ordName.StartsWith("S_", StringComparison.OrdinalIgnoreCase)
-                                || ordName.StartsWith("T1_", StringComparison.OrdinalIgnoreCase)
-                                || ordName.StartsWith("T2_", StringComparison.OrdinalIgnoreCase)
-                                || ordName.StartsWith("T3_", StringComparison.OrdinalIgnoreCase)
-                                || ordName.StartsWith("T4_", StringComparison.OrdinalIgnoreCase)
-                                || ordName.StartsWith("T5_", StringComparison.OrdinalIgnoreCase)
-                                || ordName.StartsWith("Target_", StringComparison.OrdinalIgnoreCase);
-                            if (isBracketOrder)
-                            {
-                                Print(
-                                    string.Format(
-                                        "[FIX-FF] Protected bracket order from sweep: {0} on {1}",
-                                        ordName,
-                                        acct.Name
-                                    )
-                                );
-                                continue;
-                            }
-                        }
-
-                        try
-                        {
-                            acct.Cancel(new[] { ord });
+                        if (TryCancelV12Order(acct, ord, force, prefixes, instrumentFullName))
                             brokerCancels++;
-                        }
-                        catch { }
                     }
                 }
                 catch { }
