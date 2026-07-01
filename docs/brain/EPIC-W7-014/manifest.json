@@ -103,6 +103,23 @@
       "wave_ready": true,
       "redo": true,
       "mcp_evidence": "get_symbol_complexity confirmed CYC=7"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "cyc_verified": true,
+      "verdict": "PASS",
+      "cyc_measurements": {
+        "TryHandleFleetCommand": 5,
+        "TryHandleFleetCommand_CoreActions": 8,
+        "TryHandleFleetCommand_EntryActions": 8,
+        "TryHandleFleetCommand_StateActions": 5
+      },
+      "all_cyc_le_8": true,
+      "lock_violations": 0,
+      "behavior_unchanged": true,
+      "scope_creep": false,
+      "sequential_thinking_steps": 6,
+      "verified_by": "v12-phase5-v-verify"
     }
   },
   "phase_5_v": {
@@ -116,9 +133,13 @@
       "TryHandleFleetCommand_EntryActions": 8,
       "TryHandleFleetCommand_StateActions": 5
     },
+    "all_cyc_le_8": true,
     "lock_violations": 0,
+    "dispatch_calls_confirmed": 18,
     "scope_creep": false,
-    "output": "ticket-1-verification.md"
+    "sequential_thinking_steps": 6,
+    "output": "ticket-1-verification.md",
+    "verified_by": "V12 Verifier Phase 5.V (independent session)"
   },
   "mcp_tools_used": [
     "resolve_repo",
