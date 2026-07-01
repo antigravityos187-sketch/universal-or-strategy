@@ -95,6 +95,24 @@
         "ManageTrail_UpdateExtremeAndPointTrail"
       ]
     },
+    "phase_5_v": {
+      "name": "Per-Ticket Verification",
+      "status": "completed",
+      "completed_at": "2026-07-02T19:00:00Z",
+      "output": "ticket-1-verification.md",
+      "cyc_verified": true,
+      "cyc_results": {
+        "ManageTrailingStops": 4,
+        "ManageTrail_ProcessSinglePosition": 6,
+        "ManageTrail_UpdateExtremeAndPointTrail": 6
+      },
+      "lock_violations": 0,
+      "behavior_unchanged": true,
+      "scope_creep": false,
+      "verdict": "PASS",
+      "sequential_thoughts": 4,
+      "verifier": "V12 Verifier (Phase 5.V)"
+    },
     "phase_6": {
       "status": "completed",
       "completed_at": "2026-07-02T12:00:00Z",

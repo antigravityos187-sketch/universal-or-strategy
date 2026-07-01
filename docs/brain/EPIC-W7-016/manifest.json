@@ -14,10 +14,14 @@
     "phase_5": {
       "status": "completed",
       "final_cyc": 4,
+      "max_helper_cyc": 7,
       "build_passed": true,
       "wave_ready": true,
       "helpers_extracted": ["CancelAll_ProcessMasterNonSima"],
       "helpers_reused": ["CancelAll_IsOrderCancellable", "CancelAll_IsBracketOrder"],
+      "xunit_tests_passed": 10,
+      "redo_pass": true,
+      "redo_note": "REDO verified: refactoring was already complete in live file; manifest stale CYC corrected 10->4",
       "artifact": "docs/brain/EPIC-W7-016/ticket-1-completion.md"
     },
     "phase_5_v": {
@@ -31,7 +35,13 @@
       "xunit_tests_passed": true,
       "test_count": 10,
       "test_location": "xunit-tests/W7-016/",
-      "artifact": "docs/brain/EPIC-W7-016/ticket-1-verification.md"
+      "artifact": "docs/brain/EPIC-W7-016/ticket-1-verification.md",
+      "verified_by": "v12-phase5-v-verify",
+      "verified_at": "2026-07-01",
+      "sequential_thinking_thoughts": 4,
+      "evidence": ["live_file_read", "complexity_audit_py", "grep_lock_scan", "xunit_test_files"],
+      "index_staleness_noted": true,
+      "final_verdict": "PASS"
     }
   }
 }
