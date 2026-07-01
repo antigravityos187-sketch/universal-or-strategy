@@ -23,6 +23,16 @@
         "CollapseAllExecutionControls_Buttons": 7,
         "CollapseAllExecutionControls_Rows": 5
       }
+    },
+    "phase_6": {
+      "status": "completed",
+      "final_cyc": 1,
+      "wave_ready": true,
+      "verdict": "PASS",
+      "tickets_total": 1,
+      "tickets_passed": 1,
+      "tickets_failed": 0,
+      "completed_at": "2026-07-01"
     }
   }
 }

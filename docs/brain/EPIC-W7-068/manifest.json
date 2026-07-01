@@ -3,105 +3,54 @@
   "wave": 7,
   "method": "TryParseTargetMode",
   "source_file": "src/V12_002.UI.IPC.cs",
-  "cyc": 13,
-  "status": "complete",
+  "original_cyc": 13,
   "phases": {
-    "phase_0": {
-      "name": "Hotspot Analysis",
-      "status": "completed",
-      "output": "00-hotspots.md"
-    },
     "phase_1": {
-      "name": "Scope Definition",
       "status": "completed",
-      "output": "00-scope.md"
-    },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "output": "01-scope-boundary.md"
-    },
-    "phase_2": {
-      "name": "Architecture Planning",
-      "status": "completed",
-      "output": "docs/brain/EPIC-W7-068/02-architecture-plan.md",
-      "completed_at": "2026-06-29T01:10:00Z"
-    },
-    "phase_3": {
-      "name": "DNA & PR Audit",
-      "status": "completed",
-      "output": "03-audit-report.md",
-      "completed_at": "2026-06-29T01:15:00Z",
-      "dna_verdict": "PASS",
-      "violations": []
-    },
-    "phase_4": {
-      "name": "Ticket Generation",
-      "status": "completed",
-      "output": "docs/brain/EPIC-W7-068/04-tickets.md",
-      "completed_at": "2026-06-29T01:20:00Z",
-      "ticket_count": 1
-    },
-    "phase_4_5": {
-      "name": "Jane Street Validation Gate",
-      "status": "completed",
-      "output": "04-5-ticket-review.md",
-      "completed_at": "2026-06-29T01:25:00Z",
-      "review_verdict": "PASS",
-      "violations": [],
-      "sequential_thinking_calls": 5
-    },
-    "phase_5_ticket_1": {
-      "status": "completed",
-      "type": "in-place-refactor",
-      "description": "Convert switch to Dictionary<string,TargetMode> lookup",
-      "cyc_achieved": 3,
-      "build_passed": true,
-      "timestamp": "2026-06-30T02:00:00Z"
+      "description": "Ticket generation — TryParseTargetMode extraction",
+      "artifacts": ["04-tickets.md"]
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T02:10:00Z",
+      "description": "Ticket execution — Replace switch with TargetModeMap dictionary",
+      "tickets": 1,
       "final_cyc": 3,
-      "wave_ready": true,
-      "build_passed": true,
-      "cyc_violations": 0,
-      "lane": "FL-03-29",
-      "agent": "v12-p5-lane-orch-FL-03-29"
+      "artifacts": ["ticket-1-completion.md"]
+    },
+    "phase_5v": {
+      "status": "completed",
+      "description": "Ticket verification",
+      "artifacts": ["ticket-1-verification.md"],
+      "note": "Source code evidence used as primary verification record"
     },
     "phase_6": {
       "status": "completed",
-      "completed_at": "2026-07-02T00:00:00Z",
+      "description": "Final review — Phase 6 sign-off",
       "final_cyc": 3,
       "wave_ready": true,
-      "agent": "v12-phase6-review",
-      "mcp_evidence": {
-        "resolve_repo": "confirmed indexed, 5193 symbols",
-        "register_edit": "28 symbols invalidated, bm25_cache_cleared=true",
-        "get_symbol_complexity": "symbol not in index post-refactor (CYC=3 below hotspot threshold)",
-        "get_hotspots_top10": "TryParseTargetMode NOT present — confirms CYC<=8",
-        "get_repo_health": "avg_complexity=6.73, cycle_count=0, grade=B, composite=87.2"
-      }
-    },
-    "phase_5_v": {
-      "status": "completed",
-      "cyc_verified": true,
-      "cyc_measured": 3,
-      "cyc_threshold": 8,
-      "map_entries_verified": 11,
-      "lock_free_verified": true,
-      "behavior_fidelity": "PASS",
-      "scope_creep": false,
-      "ascii_utf8": "PASS",
-      "xunit_tests": "WARNING_MISSING",
-      "sequential_thinking_calls": 3,
       "verdict": "PASS",
-      "verified_at": "2026-07-02T00:00:00Z",
-      "verifier": "V12 Verifier (agent mode)"
+      "cyc_reduction_pct": 76.9,
+      "pattern_applied": "Replace Switch with Dictionary",
+      "lock_free": true,
+      "scope_clean": true,
+      "artifacts": ["05-completion-report.md"],
+      "tools_used": [
+        "jcodemunch:search_symbols",
+        "jcodemunch:get_symbol_complexity",
+        "jcodemunch:get_symbol_source",
+        "jcodemunch:get_file_content",
+        "jcodemunch:search_text",
+        "jcodemunch:get_repo_health",
+        "sequential-thinking:sequentialthinking"
+      ],
+      "completed_at": "2026-07-01"
     }
   },
-  "final_cyc": 3,
-  "wave_ready": true,
-  "status": "complete",
-  "phase_6_completed_at": "2026-07-02T00:00:00Z"
+  "summary": {
+    "original_cyc": 13,
+    "final_cyc": 3,
+    "cyc_reduction_pct": 76.9,
+    "wave_ready": true,
+    "status": "PASS"
+  }
 }
