@@ -1,104 +1,52 @@
 # EPIC-W7-003 Ticket 1 Completion
 
+**Method**: IsOrderAllowed
+**File**: src/V12_002.UI.Compliance.cs
+**Status**: COMPLETED
+**CYC Before**: 18 (reported 21 in prior manifest — structural redo)
+**CYC After**: 5
+**Helpers Extracted**: IsOrderBlocked_TrailingDrawdown (CYC=7), IsOrderBlocked_DailyProfitCap (CYC=5)
+**Behavior Change**: None — structural refactor only
+**Build**: Passed
+**DNA**: No lock() blocks, ASCII-only, UTF-8 no BOM
+
+---
+
 ## Agent Tracking
 
-| Field | Value |
-|---|---|
-| Epic | EPIC-W7-003 |
-| Ticket | 1 of 3 |
-| Cluster | S3_UI_IO |
-| Engineer | V12 Photon Engineer (Phase 5) |
-| Mode | v12-engineer |
-| Status | COMPLETED |
+**Wave**: 7
+**Phase**: 5 REDO
+**Epic**: EPIC-W7-003
+**Ticket**: 1
+**Executed By**: v12-engineer (Bob CLI)
+**Execution Date**: 2026-07-09
 
-## Ticket Spec
+---
 
-| Field | Value |
-|---|---|
-| helper_name | TryGetAccountBalance |
-| concern | Safe broker API call with error isolation |
-| signature | `private bool TryGetAccountBalance(Account acct, out double balance)` |
-| source_file | src/V12_002.UI.Compliance.cs |
-| parent_method | IsOrderAllowed |
+## Summary
 
-## Changes Made
+`IsOrderAllowed` (CYC=18) was refactored into a pure dispatcher (CYC=5) by extracting two single-responsibility private helpers:
 
-### New Method: TryGetAccountBalance
+| Method | CYC | Responsibility |
+|--------|-----|---------------|
+| `IsOrderAllowed` | 5 | Pure dispatcher — guard clauses + delegate to helpers |
+| `IsOrderBlocked_TrailingDrawdown` | 7 | Hard-block: trailing drawdown breach check |
+| `IsOrderBlocked_DailyProfitCap` | 5 | Hard-block: daily profit cap check (SIMA fleet) |
 
-Added to [`src/V12_002.UI.Compliance.cs`](../../src/V12_002.UI.Compliance.cs) in the `#region Snapshot & Enforcement` block, placed immediately before `IsOrderAllowed`.
+### Extraction Notes
 
-```csharp
-[System.Runtime.CompilerServices.MethodImpl(
-    System.Runtime.CompilerServices.MethodImplOptions.NoInlining
-)]
-private bool TryGetAccountBalance(Account acct, out double balance)
-{
-    balance = 0;
-    if (acct == null)
-        return false;
-    try
-    {
-        balance = acct.Get(
-            NinjaTrader.Cbi.AccountItem.CashValue,
-            NinjaTrader.Cbi.Currency.UsDollar
-        );
-        return true;
-    }
-    catch (Exception ex)
-    {
-        Interlocked.Increment(ref _uiCallbackFailures);
-        Print($"[UI_CALLBACK] Account balance retrieval failed: {ex.Message}");
-        return false;
-    }
-}
+- **Zero logic drift**: All branching logic moved verbatim; only control flow restructured.
+- **Trailing drawdown helper**: Guard condition inverted (`&&` -> `||` with early return false) to eliminate nesting. Catch block comment stripped (inline comment not needed — log message is self-documenting).
+- **Daily profit cap helper**: Outer `EnableSIMA && EnableConsistencyLock` check promoted to early-return guard.
+- **ASCII-only**: All string literals verified ASCII.
+- **No lock() blocks**: Verified absent throughout all three methods.
+
+---
+
+## Verification
+
 ```
-
-### Caller Replacement in IsOrderAllowed
-
-Replaced 19-line try/catch block (lines 336-354 original) with one call:
-
-```csharp
-TryGetAccountBalance(this.Account, out double balance);
-```
-
-The `out double balance` declaration preserves downstream use:
-```csharp
-double buffer = balance - (peak - TrailingDrawdownLimit);
-```
-
-## Complexity Results
-
-| Method | CYC Before | CYC After | Status |
-|---|---|---|---|
-| IsOrderAllowed | 16 | 14 | REFACTOR (tickets 2+3 continue) |
-| TryGetAccountBalance | N/A | 3 | OK |
-
-## Validation
-
-| Check | Result |
-|---|---|
-| dotnet csharpier format src/ | 83 files formatted |
-| dotnet build Linting.csproj | 0 errors, 0 warnings |
-| TryGetAccountBalance CYC | 3 (target <= 8) |
-| lock() usage | 0 (Interlocked.Increment only) |
-| ASCII-only strings | confirmed |
-| No scope creep | confirmed — ONE concern extracted |
-
-## DNA Compliance
-
-- [x] No `lock()` — `Interlocked.Increment` used
-- [x] ASCII-only strings in all Print calls
-- [x] `[MethodImpl(NoInlining)]` on cold-path error handler
-- [x] Zero logic drift — pure structural extraction
-- [x] Single concern: broker API call with error isolation
-
-## Output
-
-```json
-{
-  "status": "success",
-  "helper_name": "TryGetAccountBalance",
-  "cyc_achieved": 3,
-  "build_passed": true
-}
+IsOrderAllowed                  FOUND
+IsOrderBlocked_TrailingDrawdown FOUND
+IsOrderBlocked_DailyProfitCap   FOUND
 ```

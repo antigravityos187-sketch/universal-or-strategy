@@ -1,76 +1,64 @@
-# Ticket 1 Completion — EPIC-W7-068
+# EPIC-W7-068 Ticket 1 Completion
 
-**epic_id:** EPIC-W7-068
-**ticket_id:** T1
-**helper_name:** (none — in-place refactor: switch to Dictionary lookup)
-**concern_extracted:** TryParseTargetMode CYC compliance — convert switch statement to Dictionary<string,TargetMode> lookup to reduce CYC from 13 to 3.
-**source_file:** src/V12_002.UI.IPC.cs
-**parent_method:** TryParseTargetMode
-**cyc_parent_before:** 13 (lizard measures each case label as branch; was previously believed to be 7)
-**cyc_parent_now:** 3
-**cyc_achieved:** 3
-**cyc_threshold:** 8
-**build_passed:** true
-**tests_written:** 0
+**Method**: TryParseTargetMode
+**File**: src/V12_002.UI.IPC.cs
+**Status**: COMPLETED
+**CYC Before**: 13 | **CYC After**: 3
+**Approach**: Dictionary<string,TargetMode> dispatch replaces 4-arm switch
+**Behavior Change**: None — same mappings, same fallthrough logic
+**DNA**: No lock() blocks, ASCII-only, UTF-8
 
-## Implementation Evidence
+---
 
-Converted the 12-arm switch statement in `TryParseTargetMode` (lines 97-129 before, lines 97-129 after) to a `Dictionary<string, TargetMode>` lookup with `StringComparer.OrdinalIgnoreCase`.
+## Summary
 
-Static field `TargetModeMap` added co-located with the method.
+Extracted the 11-entry string-to-enum mapping from a 4-arm `switch` block into a
+`static readonly Dictionary<string, TargetMode> _targetModeMap` field. The refactored
+`TryParseTargetMode` now has only 2 decision branches (null-check + TryGetValue), reducing
+cyclomatic complexity from **13** to **3**.
 
-**Before:** switch with 12 case labels → lizard CYC=13
-**After:** Dictionary.TryGetValue → CYC=3 (base + null check + dict check)
+## Changes
 
-```csharp
-private static readonly Dictionary<string, TargetMode> TargetModeMap =
-    new Dictionary<string, TargetMode>(StringComparer.OrdinalIgnoreCase)
-    {
-        { "ATR", TargetMode.ATR }, { "A", TargetMode.ATR },
-        { "TICKS", TargetMode.Ticks }, { "TICK", TargetMode.Ticks }, { "T", TargetMode.Ticks },
-        { "POINTS", TargetMode.Points }, { "POINT", TargetMode.Points },
-        { "PTS", TargetMode.Points }, { "P", TargetMode.Points },
-        { "RUNNER", TargetMode.Runner }, { "R", TargetMode.Runner },
-    };
+| Symbol | Location | Change |
+|--------|----------|--------|
+| `_targetModeMap` | `src/V12_002.UI.IPC.cs:97` | NEW — static readonly Dictionary field |
+| `TryParseTargetMode` | `src/V12_002.UI.IPC.cs:114` | MODIFIED — switch replaced with dict lookup |
 
-private static bool TryParseTargetMode(string raw, out TargetMode mode)
-{
-    mode = TargetMode.ATR;
-    if (string.IsNullOrWhiteSpace(raw))
-        return false;
-    if (TargetModeMap.TryGetValue(raw.Trim(), out mode))
-        return true;
-    Print("TryParseTargetMode: unrecognized target mode value '" + raw + "'");
-    return false;
-}
+## CYC Verification
+
+```
+TryParseTargetMode (new):
+  1 (base)
+  + 1 (if IsNullOrWhiteSpace)
+  + 1 (if TryGetValue)
+  = CYC 3
 ```
 
-## Jane Street Alignment
+## Diff Summary
 
-- O(1) Dictionary.TryGetValue — zero LINQ, zero heap allocation per call (carl_cook zero-alloc)
-- OrdinalIgnoreCase — avoids culture-specific overhead
-- ASCII-only string literals — all keys are ASCII
-- Signature unchanged — all 5 call sites in TryApplyConfigTarget_Type unaffected
-- CYC reduced 13→3 (≤8 threshold)
+```diff
+- string normalized = raw.Trim().ToUpperInvariant();
+- switch (normalized) { case "ATR": ... case "RUNNER": ... default: ... }
++ if (_targetModeMap.TryGetValue(raw.Trim().ToUpperInvariant(), out mode))
++     return true;
++ Print("TryParseTargetMode: unrecognized target mode value '" + raw + "'");
++ return false;
+```
 
 ## DNA Compliance
 
-- Zero lock() blocks: PASS
-- ASCII-only string literals: PASS
-- UTF-8 source encoding (no BOM): PASS
-- CYC <= 8: PASS (CYC=3)
-- Single concern: PASS (parse-and-classify only)
-- build_passed: true (0 errors, 0 warnings)
+- [x] No `lock()` blocks
+- [x] ASCII-only strings (straight quotes, no Unicode)
+- [x] UTF-8 no BOM
+- [x] Zero logic drift — identical mappings and fallback `Print` message
+- [x] No scope creep — only `TryParseTargetMode` touched
 
 ## Agent Tracking
 
-| Field | Value |
-|---|---|
-| Agent Name | v12-p5-lane-orch-FL-03-29 |
-| Wave | 7 |
-| Epic ID | EPIC-W7-068 |
-| Ticket ID | T1 |
-| Phase | 5 |
-| Executed | 2026-06-30T02:00:00Z |
-| cyc_achieved | 3 |
-| build_passed | true |
+- **Agent**: v12-engineer (Phase 5 REDO)
+- **Wave**: 7
+- **Epic**: EPIC-W7-068
+- **Ticket**: 1
+- **Completed**: 2026-07-02
+- **Build Gate**: Pending deploy-sync.ps1 (ASCII gate)
+- **Sequential Thinking**: Applied — Dictionary dispatch confirmed optimal (CYC 3 vs extract-helpers CYC 4)

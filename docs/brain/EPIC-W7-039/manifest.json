@@ -55,10 +55,18 @@
     },
     "phase_5_ticket_1": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
+      "timestamp": "2026-07-02T18:00:00Z",
       "output": "ticket-1-completion.md",
-      "helper": "ShouldSkipPosition",
-      "helper_cyc": 4
+      "redo": true,
+      "helpers_extracted": [
+        "ManageTrail_ProcessSinglePosition",
+        "ManageTrail_UpdateExtremeAndPointTrail"
+      ],
+      "cyc_results": {
+        "ManageTrailingStops": 4,
+        "ManageTrail_ProcessSinglePosition": 6,
+        "ManageTrail_UpdateExtremeAndPointTrail": 5
+      }
     },
     "phase_5_ticket_2": {
       "status": "completed",
@@ -76,15 +84,15 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 5,
+      "timestamp": "2026-07-02T18:00:00Z",
+      "final_cyc": 4,
       "wave_ready": true,
       "build_passed": true,
       "lock_violations": 0,
+      "redo_completed": true,
       "helpers_extracted": [
-        "ShouldSkipPosition",
-        "UpdatePositionMetrics",
-        "ExecutePositionTrail"
+        "ManageTrail_ProcessSinglePosition",
+        "ManageTrail_UpdateExtremeAndPointTrail"
       ]
     },
     "phase_6": {

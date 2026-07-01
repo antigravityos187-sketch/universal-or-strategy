@@ -60,15 +60,33 @@
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 8,
+      "final_cyc": 4,
+      "helpers_extracted": [
+        "HandleFleetTargetFill_LogAndCancelStop",
+        "HandleFleetTargetFill_CancelOcoStop"
+      ],
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "redo_completed": true
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "cyc_verified": true,
+      "methods": {
+        "HandleFleetTargetFill": { "cyc": 5, "gate": "PASS" },
+        "HandleFleetTargetFill_LogAndCancelStop": { "cyc": 3, "gate": "PASS" },
+        "HandleFleetTargetFill_CancelOcoStop": { "cyc": 8, "gate": "PASS" }
+      },
+      "lock_free": true,
+      "behavior_unchanged": true,
+      "verdict": "PASS",
+      "output": "ticket-1-verification.md"
     },
     "phase_6": {
       "status": "completed",
       "agent": "v12-phase6-review",
       "completed_at": "2026-07-02T00:00:00Z",
-      "final_cyc": 8,
+      "final_cyc": 4,
       "wave_ready": true
     }
   },

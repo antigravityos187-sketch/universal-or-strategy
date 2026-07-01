@@ -1,41 +1,38 @@
-# Ticket 1 Completion — EPIC-W7-076
+# EPIC-W7-076 Ticket 1 Completion
 
-**epic_id:** EPIC-W7-076
-**ticket_id:** 1
-**helper_name:** CollapseControlIfPresent
-**concern_extracted:** 9 inline if-null-collapse guards replaced with helper calls — CYC 11→2
-**source_file:** src/V12_002.UI.Panel.Handlers.cs
-**parent_method:** CollapseAllExecutionControls
-**cyc_parent_before:** 11
-**cyc_parent_now:** 2
-**cyc_achieved:** 2
-**build_passed:** true
-**tests_written:** 0
-**agent_name:** v12-p5-ticket
-**verification_only:** false
-**no_src_changes:** false
+**Method**: CollapseAllExecutionControls
+**File**: src/V12_002.UI.Panel.Handlers.cs
+**Status**: COMPLETED
+**CYC Before**: 11 | **CYC After**: 1
+**Helpers Extracted**: CollapseAllExecutionControls_Buttons (CYC=7), CollapseAllExecutionControls_Rows (CYC=5)
+**Behavior Change**: None — same 10 visibility assignments
+**DNA**: No lock() blocks, ASCII-only, UTF-8
 
-## Summary
-Replaced 9 inline `if (x != null) x.Visibility = Visibility.Collapsed` checks with calls to
-`CollapseControlIfPresent(x)`. Each inline `if` added +1 CYC; moving them into the helper
-reduces the parent from CYC=11 to CYC=2 (1 remaining if for manualEntryRow + base=1).
+## Agent Tracking
 
-The helper `CollapseControlIfPresent(System.Windows.UIElement control)` is declared `private static`
-and uses the minimal common base type (`UIElement`) that exposes the `.Visibility` property,
-shared by both `Grid` (execRetestRow, execTrendRow, manualEntryRow) and `Button` (rmaButton,
-momoButton, ffmaButton, ffmaManualButton, mButton, orLongButton, orShortButton).
+| Field | Value |
+|---|---|
+| Epic | EPIC-W7-076 |
+| Ticket | 1 |
+| Phase | 5 (Execution) |
+| Agent | V12 Photon Engineer |
+| Mode | v12-engineer (YOLO) |
 
-The `manualEntryRow` assignment (`Visibility.Visible`) intentionally remains inline in the parent
-because it sets Visible (not Collapsed) — semantically distinct and correctly excluded from the helper.
+## Change Summary
 
-## Complexity Audit Results
-| Method                        | LOC | CYC | Status |
-|-------------------------------|-----|-----|--------|
-| CollapseAllExecutionControls  |  12 |   2 | OK     |
-| CollapseControlIfPresent      |   3 |   2 | OK     |
+Original `CollapseAllExecutionControls` (lines 707-729) had CYC=11 due to 10 sequential null-guard
+if-branches in a single method body. Extracted into two helpers:
 
-## DNA Checks
-- Zero lock() blocks: PASS
-- ASCII-only identifiers: PASS
-- UTF-8 no BOM: PASS
-- xUnit tests: N/A (pure UI visibility helper)
+| Helper | Responsibility | CYC |
+|---|---|---|
+| `CollapseAllExecutionControls_Buttons` | Collapse 6 mode buttons (rma, momo, ffma, ffmaManual, m, orLong) | 7 |
+| `CollapseAllExecutionControls_Rows` | Collapse row controls + show manualEntryRow (execRetest, execTrend, orShort, manualEntry) | 5 |
+
+Orchestrating method now delegates with 2 calls — CYC=1.
+
+## Validation
+
+- Zero logic drift: all 10 `Visibility` assignments preserved verbatim
+- No lock() introduced
+- ASCII-only identifiers and comments
+- UTF-8 no BOM

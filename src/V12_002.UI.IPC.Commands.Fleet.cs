@@ -34,6 +34,7 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region IPC Commands Fleet
 
+        // [EPIC-W7-014] CYC reduced 20->5 -- split 18 dispatch calls into 3 grouped helpers
         private bool TryHandleFleetCommand(string action, string[] parts, long senderTicks)
         {
             string cmdId =
@@ -41,6 +42,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                     ? action + "|" + senderTicks.ToString()
                     : action + "|" + (DateTime.UtcNow.Ticks / TimeSpan.TicksPerMinute).ToString();
 
+            if (TryHandleFleetCommand_CoreActions(action, parts, cmdId))
+                return true;
+            if (TryHandleFleetCommand_EntryActions(action, parts, cmdId))
+                return true;
+            if (TryHandleFleetCommand_StateActions(action, parts))
+                return true;
+            return false;
+        }
+
+        // [EPIC-W7-014] Extracted: core fleet actions -- trim, lock, flatten, cancel, reset, long/short (CYC=8)
+        private bool TryHandleFleetCommand_CoreActions(string action, string[] parts, string cmdId)
+        {
             if (TryHandleFleet_Trim(action, parts))
                 return true;
             if (TryHandleFleet_Lock50(action))
@@ -55,6 +68,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
             if (TryHandleFleet_LongShort(action, cmdId))
                 return true;
+            return false;
+        }
+
+        // [EPIC-W7-014] Extracted: OR/manual-limit entry actions (CYC=8)
+        private bool TryHandleFleetCommand_EntryActions(string action, string[] parts, string cmdId)
+        {
             if (TryHandleFleet_OrLong(action, cmdId))
                 return true;
             if (TryHandleFleet_OrShort(action, cmdId))
@@ -69,6 +88,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
             if (TryHandleFleet_CloseTarget(action))
                 return true;
+            return false;
+        }
+
+        // [EPIC-W7-014] Extracted: move/state/toggle/shadow actions (CYC=5)
+        private bool TryHandleFleetCommand_StateActions(string action, string[] parts)
+        {
             if (TryHandleFleet_MoveTarget(action, parts))
                 return true;
             if (TryHandleFleet_FleetState(action, parts))
@@ -174,6 +199,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        // [EPIC-W7-016] CYC 19->4: extracted non-SIMA else-branch
         private bool TryHandleFleet_CancelAll(string action, string cmdId)
         {
             if (action != "CANCEL_ALL")
@@ -194,41 +220,27 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else
             {
-                int cancelled = 0;
-                foreach (Order order in Account.Orders)
-                {
-                    if (
-                        order != null
-                        && order.Instrument.FullName == Instrument.FullName
-                        && (
-                            order.OrderState == OrderState.Working
-                            || order.OrderState == OrderState.Accepted
-                            || order.OrderState == OrderState.Submitted
-                            || order.OrderState == OrderState.ChangePending
-                            || order.OrderState == OrderState.ChangeSubmitted
-                        )
-                    )
-                    {
-                        string oName = order.Name;
-                        if (
-                            oName.StartsWith("Stop_")
-                            || oName.StartsWith("S_")
-                            || oName.StartsWith("T1_")
-                            || oName.StartsWith("T2_")
-                            || oName.StartsWith("T3_")
-                            || oName.StartsWith("T4_")
-                            || oName.StartsWith("T5_")
-                        )
-                            continue;
-
-                        CancelOrderOnAccount(order, order.Account);
-                        cancelled++;
-                    }
-                }
+                int cancelled = CancelAll_ProcessMasterNonSima();
                 Print($"[V12] CANCEL_ALL -> Cancelled {cancelled} pending entry orders");
             }
 
             return true;
+        }
+
+        // [EPIC-W7-016] Extracted: non-SIMA master cancel loop -- reuses W7-015 predicates (CYC=4)
+        private int CancelAll_ProcessMasterNonSima()
+        {
+            int cancelled = 0;
+            foreach (Order order in Account.Orders)
+            {
+                if (!CancelAll_IsOrderCancellable(order))
+                    continue;
+                if (CancelAll_IsBracketOrder(order.Name))
+                    continue;
+                CancelOrderOnAccount(order, order.Account);
+                cancelled++;
+            }
+            return cancelled;
         }
 
         private int CancelAll_ProcessMasterAccount()
@@ -297,49 +309,55 @@ namespace NinjaTrader.NinjaScript.Strategies
             return cancelled;
         }
 
+        // [EPIC-W7-015] CYC reduced 19->6 -- extract order-state and bracket-name predicates
         private int CancelAll_ProcessSingleFleetAccount(Account acct, bool masterHasPosition)
         {
             int cancelled = 0;
-            var acctFsms = _followerBrackets.Values.Where(f => f.AccountName == acct.Name).ToList();
-            bool acctHasActiveFsm = acctFsms.Any(f => f.State == FollowerBracketState.Active);
+            bool acctHasActiveFsm = _followerBrackets.Values.Any(f =>
+                f.AccountName == acct.Name && f.State == FollowerBracketState.Active
+            );
 
             foreach (Order order in acct.Orders)
             {
-                if (
-                    order != null
-                    && order.Instrument.FullName == Instrument.FullName
-                    && (
-                        order.OrderState == OrderState.Working
-                        || order.OrderState == OrderState.Accepted
-                        || order.OrderState == OrderState.Submitted
-                        || order.OrderState == OrderState.ChangePending
-                        || order.OrderState == OrderState.ChangeSubmitted
-                    )
-                )
-                {
-                    string oName = order.Name;
-                    if (
-                        oName.StartsWith("Stop_")
-                        || oName.StartsWith("S_")
-                        || oName.StartsWith("T1_")
-                        || oName.StartsWith("T2_")
-                        || oName.StartsWith("T3_")
-                        || oName.StartsWith("T4_")
-                        || oName.StartsWith("T5_")
-                    )
-                    {
-                        // Build 1104.1: Preserve brackets ONLY if FSM is active AND Master has position.
-                        // If Master is FLAT, orphaned follower brackets MUST be swept regardless of FSM state.
-                        if (acctHasActiveFsm && masterHasPosition)
-                            continue;
-                    }
+                if (!CancelAll_IsOrderCancellable(order))
+                    continue;
 
-                    CancelOrderOnAccount(order, acct);
-                    cancelled++;
-                }
+                // Build 1104.1: Preserve brackets ONLY if FSM is active AND Master has position.
+                // If Master is FLAT, orphaned follower brackets MUST be swept regardless of FSM state.
+                if (CancelAll_IsBracketOrder(order.Name) && acctHasActiveFsm && masterHasPosition)
+                    continue;
+
+                CancelOrderOnAccount(order, acct);
+                cancelled++;
             }
 
             return cancelled;
+        }
+
+        // [EPIC-W7-015] Extracted: true if order is in a cancellable state for the correct instrument (CYC=7)
+        private bool CancelAll_IsOrderCancellable(Order order)
+        {
+            if (order == null)
+                return false;
+            if (order.Instrument.FullName != Instrument.FullName)
+                return false;
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.ChangePending
+                || order.OrderState == OrderState.ChangeSubmitted;
+        }
+
+        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=7)
+        private static bool CancelAll_IsBracketOrder(string oName)
+        {
+            return oName.StartsWith("Stop_")
+                || oName.StartsWith("S_")
+                || oName.StartsWith("T1_")
+                || oName.StartsWith("T2_")
+                || oName.StartsWith("T3_")
+                || oName.StartsWith("T4_")
+                || oName.StartsWith("T5_");
         }
 
         private void CancelAll_CleanupUnfilledPositions()

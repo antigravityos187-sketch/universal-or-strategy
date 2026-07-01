@@ -76,16 +76,24 @@
     },
     "phase_5_ticket_1": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:16:46Z"
+      "timestamp": "2026-07-04T00:00:00Z",
+      "redo": true,
+      "redo_reason": "Previous run falsely reported COMPLIANCE_PASS without writing any code"
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 6,
+      "timestamp": "2026-07-04T00:00:00Z",
+      "final_cyc": 5,
       "wave_ready": true,
       "build_passed": true,
       "lock_violations": 0,
-      "cyc_achieved": 6
+      "cyc_achieved": 5,
+      "redo": true,
+      "helpers_extracted": [
+        "TryHandleFleetCommand_CoreActions",
+        "TryHandleFleetCommand_EntryActions",
+        "TryHandleFleetCommand_StateActions"
+      ]
     },
     "phase_6": {
       "status": "completed",
@@ -96,6 +104,21 @@
       "redo": true,
       "mcp_evidence": "get_symbol_complexity confirmed CYC=7"
     }
+  },
+  "phase_5_v": {
+    "status": "completed",
+    "cyc_verified": true,
+    "timestamp": "2026-07-04T00:00:00Z",
+    "verdict": "PASS",
+    "cyc_measured": {
+      "TryHandleFleetCommand": 5,
+      "TryHandleFleetCommand_CoreActions": 8,
+      "TryHandleFleetCommand_EntryActions": 8,
+      "TryHandleFleetCommand_StateActions": 5
+    },
+    "lock_violations": 0,
+    "scope_creep": false,
+    "output": "ticket-1-verification.md"
   },
   "mcp_tools_used": [
     "resolve_repo",
@@ -109,5 +132,7 @@
   "wave_ready": true,
   "phase_6_completed_at": "2026-07-03T00:00:00Z",
   "status": "complete",
-  "final_cyc": 7
+  "final_cyc": 5,
+  "redo_phase_5": true,
+  "redo_completed_at": "2026-07-04T00:00:00Z"
 }

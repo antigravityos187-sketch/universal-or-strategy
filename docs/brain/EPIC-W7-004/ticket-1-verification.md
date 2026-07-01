@@ -1,88 +1,117 @@
-# Ticket 1 Verification Report — EPIC-W7-004
+# EPIC-W7-004 Ticket 1 Verification
+
+## Verification Summary
+
+**Ticket**: 1 of 1  
+**EPIC**: EPIC-W7-004  
+**Method**: `HandleFleetTargetFill` (`src/V12_002.UI.Compliance.cs`)  
+**Phase**: 5.V (Per-Ticket Verification)  
+**Verdict**: ✅ **PASS**
+
+---
 
 ## Agent Tracking
 
 | Field | Value |
 |-------|-------|
-| Epic | EPIC-W7-004 |
-| Ticket | 1 |
-| Phase | 5.1.V (Verification) |
-| Method Verified | `ResolveFleetTargetEntryKey` |
-| Source File | `src/V12_002.UI.Compliance.cs` |
-| Verification Date | 2026-06-29 |
-| Verifier Mode | v12-engineer |
+| Mode | agent (V12 Verifier) |
+| Phase | 5.V |
+| Wave | 7 |
+| Status | COMPLETED |
+| Tool: jCodemunch | get_changed_symbols (structural) |
+| Tool: Sequential Thinking | 5 thoughts — PASS |
 
 ---
 
-## Verification Verdict
+## CYC Measurements (Independent Count)
+
+Formula: `CYC = 1 + count of: if, while, for, foreach, catch, case, ?, &&, ||`
+
+### [`HandleFleetTargetFill`](src/V12_002.UI.Compliance.cs:631) (parent dispatcher)
+
+| Token | Line | Count |
+|-------|------|-------|
+| base  | —    | 1 |
+| `if`  | 637  | +1 |
+| `if`  | 640  | +1 |
+| `&&`  | 642  | +1 |
+| `&&`  | 643  | +1 |
+| **CYC** | | **5** |
+
+> Completion report claimed CYC=4 (counted outer `if`+2`&&` as 3, not 4). Independent count = 5. Both satisfy ≤ 8. ✓
+
+### [`HandleFleetTargetFill_LogAndCancelStop`](src/V12_002.UI.Compliance.cs:664) (extracted helper)
+
+| Token | Line | Count |
+|-------|------|-------|
+| base  | —    | 1 |
+| `if`  | 674  | +1 |
+| `if`  | 680  | +1 |
+| **CYC** | | **3** |
+
+Matches completion report exactly. ✓
+
+### [`HandleFleetTargetFill_CancelOcoStop`](src/V12_002.UI.Compliance.cs:685) (extracted helper)
+
+| Token | Line | Count |
+|-------|------|-------|
+| base    | —   | 1 |
+| `foreach` | 687 | +1 |
+| `if`    | 689 | +1 |
+| `\|\|`  | 689 | +1 |
+| `if`    | 691 | +1 |
+| `&&`    | 691 | +1 |
+| `if`    | 693 | +1 |
+| `&&`    | 693 | +1 |
+| **CYC** | | **8** |
+
+Note: `?.` (null-conditional) on line 689 is NOT counted per V12 formula (formula specifies ternary `?`, not null-conditional `?.`). ✓
+
+---
+
+## Gate Checks
+
+| Gate | Result | Evidence |
+|------|--------|----------|
+| CYC ≤ 8 — HandleFleetTargetFill | ✅ PASS (CYC=5) | lines 631-661 |
+| CYC ≤ 8 — LogAndCancelStop | ✅ PASS (CYC=3) | lines 664-682 |
+| CYC ≤ 8 — CancelOcoStop | ✅ PASS (CYC=8) | lines 685-699 |
+| Zero `lock()` blocks | ✅ PASS | grep lines 631-699: 0 matches |
+| Only target method modified | ✅ PASS | surrounding method line 701 unchanged |
+| Behavior unchanged (structural only) | ✅ PASS | all original conditions preserved in order |
+| No scope creep | ✅ PASS | no new abstractions, no unrelated changes |
+| ASCII-only literals | ✅ PASS | `--` not Unicode dash; all chars ASCII |
+| UTF-8 compliance | ✅ PASS | no BOM marker observed |
+
+---
+
+## Sequential Thinking Validation
+
+5-thought chain completed (MCP sequential-thinking):
+
+1. **Thought 1** — Counted HandleFleetTargetFill: CYC=5 (≤8 ✓)
+2. **Thought 2** — Counted LogAndCancelStop: CYC=3 (≤8 ✓)
+3. **Thought 3** — Counted CancelOcoStop: CYC=8 (≤8 ✓; null-conditional excluded)
+4. **Thought 4** — Verified all 4 gates (CYC, lock, behavior, scope creep) → PASS
+5. **Thought 5** — Final verdict: **PASS**
+
+---
+
+## Result
 
 ```json
 {
-  "verification_verdict": "PASS",
-  "cyc_measured": 2
+  "status": "PASS",
+  "epic": "EPIC-W7-004",
+  "ticket": 1,
+  "cyc_verified": true,
+  "methods": {
+    "HandleFleetTargetFill": { "cyc": 5, "gate": "PASS" },
+    "HandleFleetTargetFill_LogAndCancelStop": { "cyc": 3, "gate": "PASS" },
+    "HandleFleetTargetFill_CancelOcoStop": { "cyc": 8, "gate": "PASS" }
+  },
+  "lock_free": true,
+  "behavior_unchanged": true,
+  "no_scope_creep": true
 }
-```
-
----
-
-## Check Results
-
-| # | Check | Expected | Actual | Result |
-|---|-------|----------|--------|--------|
-| 1 | Symbol exists in codebase | Present | Line 626, `src/V12_002.UI.Compliance.cs` | ✅ PASS |
-| 2 | CYC complexity | ≤8 (target=2) | 2 | ✅ PASS |
-| 3 | `lock()` violations | 0 | 0 | ✅ PASS |
-| 4 | Build: `dotnet build Linting.csproj` | 0 errors | 0 errors, 0 warnings | ✅ PASS |
-| 5 | ASCII-only compliance | Zero non-ASCII | Clean | ✅ PASS |
-| 6 | Zero logic drift | Pure structural extraction | Confirmed | ✅ PASS |
-
----
-
-## Symbol Details
-
-**File**: [`src/V12_002.UI.Compliance.cs`](../../src/V12_002.UI.Compliance.cs:626)  
-**Lines**: 625–635  
-**Signature**:
-```csharp
-[MethodImpl(MethodImplOptions.AggressiveInlining)]
-private static string ResolveFleetTargetEntryKey(string ocoName)
-```
-
-**CYC Breakdown**:
-- Base path: 1
-- Branch: `if (tgtLastUnderscore > 0)` → +1
-- **Total CYC = 2**
-
-**Caller**: [`HandleFleetTargetFill`](../../src/V12_002.UI.Compliance.cs:637) at line 640 — delegates correctly.
-
----
-
-## Sequential Thinking Verdict
-
-All 6 checks green. The extraction of `ResolveFleetTargetEntryKey` from `HandleFleetTargetFill` is structurally correct:
-- The method computes the fleet target entry key from an OCO order name using pure string operations
-- Decorated with `[MethodImpl(MethodImplOptions.AggressiveInlining)]` for zero call overhead
-- `HandleFleetTargetFill` calls it on line 640 and removes the duplicated 4-line inline computation
-- No lock statements introduced, no logic altered, no non-ASCII characters
-
-**VERDICT: PASS**
-
----
-
-## Build Evidence
-
-```
-Build succeeded.
-    0 Warning(s)
-    0 Error(s)
-Time Elapsed 00:00:04.42
-```
-
----
-
-## Lock Scan Evidence
-
-```bash
-$ grep -n "lock(" src/V12_002.UI.Compliance.cs | wc -l
-0
 ```
