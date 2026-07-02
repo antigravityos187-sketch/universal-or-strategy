@@ -19,7 +19,7 @@ You are the VM Sync Orchestrator. You automate the 3-step backup workflow.
 
 ### Step 1: Create Backup Archive
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```
@@ -39,7 +39,7 @@ PROTOCOL:
 
 ### Step 2: Verify Archive Contents
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```
@@ -59,7 +59,7 @@ PROTOCOL:
 
 ### Step 3: Generate Local Integration Prompt
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```
@@ -238,17 +238,3 @@ Step 3: Generating local integration prompt...
 
 *Command created: 2026-06-23*  
 *Version: 1.0*
----
-
-## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
-
-**STARTUP** (run this as your FIRST action before any exploration):
-```bash
-graphify update . --no-cluster --no-description
-```
-Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
-
-**SHUTDOWN** (run this as your LAST action after any file edits):
-```bash
-graphify update . --no-cluster --no-description
-```

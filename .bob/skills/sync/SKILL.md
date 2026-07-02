@@ -23,7 +23,7 @@ No parameters needed. The command automatically:
 
 ## Protocol
 
-You are the VM Sync Coordinator. You automate the 3-step backup workflow.
+You are the VM Sync Orchestrator. You automate the 3-step backup workflow.
 
 ### Step 1: Create Backup Archive
 
@@ -93,7 +93,7 @@ PROTOCOL:
 
 ### Step 4: Display Prompt
 
-**Mode:** agent (you generate this output)
+**Mode:** Orchestrator (you generate this output)
 
 Output:
 ```

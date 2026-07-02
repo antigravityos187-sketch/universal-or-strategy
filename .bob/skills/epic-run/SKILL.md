@@ -9,6 +9,10 @@ metadata:
   argument-hint: <epic-slug> <target-description>
 ---
 
+description: "[DEPRECATED] Full YOLO-mode Epic Run. Use new manifest-based workflow instead. See docs/workflow/EPIC_WORKFLOW_MIGRATION_GUIDE.md"
+argument-hint: <epic-slug> <target-description>
+---
+
 # ⚠️ DEPRECATION NOTICE
 
 **This command is DEPRECATED as of 2026-06-09 (V12.25)**
@@ -114,11 +118,11 @@ If you need help migrating, see:
 **Epic Slug:** $1
 **Target:** $2
 **Mode:** Orchestrator (YOLO-parity)
-**Protocol:** V12 Photon Kernel -- Traycer YOLO Equivalent
+**Protocol:** V12 Photon Kernel — Manifest-Based Workflow Replacement
 
 You are the V12 Epic Orchestrator. You coordinate the entire refactoring lifecycle for
 epic $1 by delegating each phase to the correct specialized mode. You do NOT read files,
-run commands, or edit files directly -- you have no tool access. You ONLY decide what
+run commands, or edit files directly — you have no tool access. You ONLY decide what
 mode to switch to next and instruct that mode with a precise, self-contained task.
 
 You have TWO responsibilities:
@@ -132,14 +136,14 @@ You have TWO responsibilities:
 
 - You STOP at every gate and wait for Director input before switching modes.
 - You never skip a gate, even if you think the output is correct.
-- You NEVER run commands yourself -- delegate ALL shell execution to v12-engineer or agent mode.
+- You NEVER run commands yourself — delegate ALL shell execution to v12-engineer or agent mode.
 - The ONLY manual Director action is pressing F5 in NinjaTrader and typing "F5 done".
 - If any mode reports a verification FAIL, HALT. Do not advance to the next ticket.
 - Surface unexpected outputs (e.g. higher CYC than planned) to the Director before continuing.
 
 ---
 
-## PHASE 0: HOTSPOT ANALYSIS (CodeScene Integration)
+## PHASE 0: HOTSPOT ANALYSIS
 
 **Switch to: agent mode**
 
@@ -328,24 +332,27 @@ When v12-engineer outputs [TICKET-GATE] (the written plan), present the plan sum
 - APPROVED: switch back to v12-engineer and instruct it to execute the plan
 - FLAG: relay adjustment, switch to v12-engineer to re-plan
 
-**Step C -- Switch to: agent mode (verification + Jane Street audit)**
+**Step C -- Switch to: agent mode (verification + OKF audit)**
 
 After v12-engineer confirms execution complete, switch to agent mode and hand off:
 ```
 VERIFICATION TASK for epic $1, ticket-XX
-Run the FULL pre-push validation suite with Jane Street audit:
+Run the FULL pre-push validation suite with OKF audit:
 
 1. powershell -File .\scripts\pre_push_validation.ps1
-   (Includes CodeScene Delta Analysis as Check #14)
+   (13 checks: ASCII, Build, Tests, Lint, Formatting, Security,
+    Markdown Links, PR Hygiene, Complexity <=8, Dead Code,
+    Codacy Preview, Semgrep, CodeRabbit AI)
 
-2. JANE STREET AUDIT (MANDATORY):
-   - Read: docs/standards/JANE_STREET_DEVIATIONS.md
-   - Verify no new violations of documented Jane Street principles:
+2. OKF AUDIT (MANDATORY):
+   - Read: docs/intel/jane-street/index.md
+   - Query: python scripts/query_kb.py "<relevant pattern>"
+   - Verify no new violations of Jane Street OKF principles:
      * Zero locks (grep -r "lock(" src/)
      * ASCII-only (already checked in validation)
      * FSM/Actor pattern (no new stateful classes without Enqueue)
-     * Complexity ≤15 (already checked in validation)
-   - If new Jane Street conflicts detected: HALT and report
+     * Complexity <=8 (Jane Street strict — already checked in validation)
+   - If new OKF conflicts detected: HALT and report
 
 Report results as:
   ASCII Gate         : PASS / FAIL
@@ -356,13 +363,12 @@ Report results as:
   Security           : PASS / FAIL (warnings OK)
   Markdown Links     : PASS / FAIL (warnings OK)
   PR Hygiene         : PASS / FAIL
-  Complexity (≤15)   : PASS / FAIL
+  Complexity (<=8)   : PASS / FAIL
   Dead Code          : PASS / FAIL (warnings OK)
   Codacy Preview     : PASS / FAIL (warnings OK)
   Semgrep            : PASS / FAIL (warnings OK)
   CodeRabbit AI      : PASS / FAIL (warnings OK)
-  CodeScene Delta    : PASS / FAIL (Check #14)
-  Jane Street DNA    : PASS / FAIL
+  OKF DNA            : PASS / FAIL
 
 If ANY blocking check fails: HALT and report to orchestrator.
 ```
@@ -393,7 +399,7 @@ Run: git commit -m "[$1] ticket-XX: [short description] -- CYC [before]->[after]
 Report the commit hash and current branch name.
 ```
 
-**Step F -- Run: /pr-loop**
+**Step F -- Switch to: Orchestrator mode (/pr-loop)**
 
 After the commit, immediately trigger the autonomous perfection gate:
 ```
@@ -430,7 +436,7 @@ PROTOCOL:
 
 When agent mode outputs [PR-SUBMITTED] PR #<PR_NUMBER>:
 
-**Run: /pr-loop**
+**Switch to: Orchestrator mode**
 
 Hand off this exact task:
 ```
@@ -457,25 +463,10 @@ DNA Audit
   deploy-sync : ALL PASS
   lock() audit: ALL CLEAN
   Unicode audit: ALL CLEAN
-  CYC floor   : ALL targets below 20
+  CYC floor   : ALL targets <=8 (Jane Street strict)
 
 Commits: [list of hashes with BUILD_TAGs]
 PHS     : 100/100 (PERFECT)
 ============================================================
 Branch ready for merge.
-```
-
----
-
-## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
-
-**STARTUP** (run this as your FIRST action before any exploration):
-```bash
-graphify update . --no-cluster --no-description
-```
-Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
-
-**SHUTDOWN** (run this as your LAST action after any file edits):
-```bash
-graphify update . --no-cluster --no-description
 ```
