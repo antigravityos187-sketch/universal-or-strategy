@@ -194,7 +194,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void ProcessClientStream(IpcClientSession session)
         {
-            int clientId = session.ClientId;
             TcpClient client = session.Client;
             NetworkStream stream = session.Stream;
             StringBuilder lineBuffer = new StringBuilder();
@@ -204,28 +203,49 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             while (isIpcRunning && client.Connected)
             {
-                int bytesRead = ProcessClientStream_ReadChunk(stream, buffer);
-                if (bytesRead < 0)
-                    continue;
-                if (bytesRead == 0)
+                if (!ProcessClientStream_ExecuteIteration(session, stream, buffer, utf8Decoder, charBuf, lineBuffer))
                     break;
-
-                if (
-                    !ProcessClientStream_DecodeUtf8(clientId, utf8Decoder, buffer, bytesRead, charBuf, out string chunk)
-                )
-                    break;
-                lineBuffer.Append(chunk);
-
-                string[] lines = ProcessClientStream_ExtractLines(clientId, lineBuffer, out bool disconnectClient);
-                if (disconnectClient)
-                    break;
-                if (lines == null)
-                    continue;
-                foreach (string line in lines)
-                {
-                    ProcessClientStream_DispatchLine(session, line);
-                }
             }
+        }
+
+        private bool ProcessClientStream_ExecuteIteration(
+            IpcClientSession session,
+            NetworkStream stream,
+            byte[] buffer,
+            Decoder utf8Decoder,
+            char[] charBuf,
+            StringBuilder lineBuffer
+        )
+        {
+            int bytesRead = ProcessClientStream_ReadChunk(stream, buffer);
+            if (bytesRead < 0)
+                return true;
+            if (bytesRead == 0)
+                return false;
+
+            if (
+                !ProcessClientStream_DecodeUtf8(
+                    session.ClientId,
+                    utf8Decoder,
+                    buffer,
+                    bytesRead,
+                    charBuf,
+                    out string chunk
+                )
+            )
+                return false;
+            lineBuffer.Append(chunk);
+
+            string[] lines = ProcessClientStream_ExtractLines(session.ClientId, lineBuffer, out bool disconnectClient);
+            if (disconnectClient)
+                return false;
+            if (lines == null)
+                return true;
+            foreach (string line in lines)
+            {
+                ProcessClientStream_DispatchLine(session, line);
+            }
+            return true;
         }
 
         private int ProcessClientStream_ReadChunk(NetworkStream stream, byte[] buffer)

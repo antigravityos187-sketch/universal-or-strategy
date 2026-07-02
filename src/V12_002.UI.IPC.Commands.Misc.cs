@@ -272,6 +272,13 @@ namespace NinjaTrader.NinjaScript.Strategies
         // causing infinite flood loops. All callers now use SendResponseToRemote() or direct client stream writes.
         // V12.44: MoveStopsToBreakevenPlusOne() removed -- dead code, replaced by MoveStopsToBreakevenWithOffset()
 
+        private bool FlattenSpecificTarget_IsPositionReady(string entryName, PositionInfo pos)
+        {
+            if (!activePositions.ContainsKey(entryName))
+                return false;
+            return pos.EntryFilled && pos.RemainingContracts > 0;
+        }
+
         /// <summary>
         /// V10.3: Close a specific target (T1..T5) at market for all active positions
         /// Cancels working limit order and submits market order to close
@@ -282,12 +289,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 foreach (var kvp in activePositions.ToArray())
                 {
-                    if (!activePositions.ContainsKey(kvp.Key))
-                        continue;
                     PositionInfo pos = kvp.Value;
                     string entryName = kvp.Key;
 
-                    if (!pos.EntryFilled || pos.RemainingContracts <= 0)
+                    if (!FlattenSpecificTarget_IsPositionReady(entryName, pos))
                         continue;
 
                     if (
