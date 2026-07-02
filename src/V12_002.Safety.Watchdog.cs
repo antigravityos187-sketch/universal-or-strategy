@@ -39,7 +39,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
             long lastBeat = Interlocked.Read(ref _strategyHeartbeatTicks);
             if (lastBeat <= 0)
-                return true;
+                return false;
             long heartbeatAge = DateTime.UtcNow.Ticks - lastBeat;
             if (heartbeatAge <= WatchdogTimeoutTicks)
                 return true;
