@@ -760,7 +760,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (pendingStopReplacements.TryGetValue(entryName, out var pendingForLatency))
             {
-                double ocoLatencyMs = (DateTime.Now - pendingForLatency.CreatedTime).TotalMilliseconds;
+                double ocoLatencyMs = (DateTime.UtcNow - pendingForLatency.CreatedTime).TotalMilliseconds;
                 Print(
                     string.Format(
                         "[LATENCY_AUDIT] Target Fill -> Stop Cancel Delta: {0:F1}ms (Entry: {1})",
