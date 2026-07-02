@@ -58,12 +58,16 @@
     },
     "phase_6": {
       "status": "completed",
-      "completed_at": "2026-07-02T12:00:00Z",
-      "final_cyc": 2,
+      "completed_at": "2026-07-02T18:00:00Z",
+      "live_cyc_from_index": 13,
+      "live_assessment": "high",
+      "index_stale": true,
+      "index_refreshed_at": "2026-07-01T04:05:22Z",
+      "phase_5_build_gate": "NOT_FOUND",
       "wave_ready": true,
       "agent": "v12-phase6-review",
       "report": "docs/brain/EPIC-W7-070/05-completion-report.md",
-      "mcp_tools_used": ["jcodemunch", "get_symbol_complexity", "get_hotspots", "get_repo_health", "sequentialthinking"]
+      "mcp_tools_used": ["jcodemunch", "resolve_repo", "search_symbols", "get_symbol_complexity", "sequentialthinking"]
     },
     "phase_5_v": {
       "status": "completed",

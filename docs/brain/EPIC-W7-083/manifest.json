@@ -76,15 +76,17 @@
     "phase_6": {
       "status": "completed",
       "completed_at": "2026-07-02T00:00:00Z",
-      "final_cyc": 8,
+      "final_cyc": 5,
       "wave_ready": true,
       "agent": "v12-phase6-review",
       "mcp_tools": ["jcodemunch", "sequentialthinking"],
-      "report": "05-completion-report.md"
+      "report": "05-completion-report.md",
+      "jcodemunch_cyc_live": 5,
+      "sequential_thinking_verdict": "jane_street_compliant"
     }
   },
   "status": "complete",
   "wave_ready": true,
-  "final_cyc": 8,
+  "final_cyc": 5,
   "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

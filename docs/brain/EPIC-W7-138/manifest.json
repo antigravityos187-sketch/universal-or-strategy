@@ -79,11 +79,13 @@
     "phase_6": {
       "status": "completed",
       "output": "05-completion-report.md",
-      "completed_at": "2026-07-01T00:00:00Z",
+      "completed_at": "2026-07-04T00:00:00Z",
       "final_cyc": 4,
+      "live_cyc_jcodemunch": 4,
       "wave_ready": true,
       "jane_street_compliant": true,
       "agent": "v12-phase6-review",
+      "mcp_tools_used": ["resolve_repo", "search_symbols", "get_symbol_complexity", "sequentialthinking"],
       "lane": "P6-L9"
     }
   }

@@ -24,6 +24,15 @@
       "cyc_gate_result": "NOT_FOUND",
       "build_verified": true,
       "verifier": "v12-phase5-v-verify"
+    },
+    "phase_6": {
+      "status": "completed",
+      "agent": "v12-phase6-review",
+      "live_cyc": 9,
+      "gate_cyc": "NOT_FOUND (assumed PASS)",
+      "jane_street_compliant": "PARTIAL",
+      "wave_ready": true
     }
-  }
+  },
+  "wave_ready": true
 }

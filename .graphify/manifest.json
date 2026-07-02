@@ -2132,8 +2132,8 @@
     "hash": "c022a261e4d69915fdc44798968d0e9b"
   },
   "src/V12_002.IPC.Hardening.cs": {
-    "mtime": 1781649892874.224,
-    "hash": "343500f703d6933ecc5aad7358a700f9"
+    "mtime": 1783020334480.2776,
+    "hash": "fbd882b8768441ee426e6b52d5355f00"
   },
   "src/V12_002.Lifecycle.cs": {
     "mtime": 1783009593704.1985,
@@ -2328,28 +2328,28 @@
     "hash": "e4c04e8906404fae0b26fc3f24d2eafb"
   },
   "src/V12_002.UI.IPC.Commands.Config.cs": {
-    "mtime": 1782942648300.102,
-    "hash": "d2fa18ff1e6263fe5cf05d6cfb0039d1"
+    "mtime": 1783020506487.335,
+    "hash": "3ded024120e3cb039f30c49c73dd6de7"
   },
   "src/V12_002.UI.IPC.Commands.Fleet.cs": {
     "mtime": 1782953102032.238,
     "hash": "7eeac0e8d6dff935876f062055bd0aab"
   },
   "src/V12_002.UI.IPC.Commands.Misc.cs": {
-    "mtime": 1782942648301.102,
-    "hash": "61470d92fc3b30b6af41fe1ae2e6269c"
+    "mtime": 1783021275772.5613,
+    "hash": "2936ace63abc41f14a79e02dc2ba8ff7"
   },
   "src/V12_002.UI.IPC.Commands.Mode.cs": {
-    "mtime": 1782953385917.5547,
-    "hash": "12e11eaa783c1f6b1e92c3d8ead1e84b"
+    "mtime": 1783021095683.506,
+    "hash": "b71cd54b7738af3417b5fd7bab3862bf"
   },
   "src/V12_002.UI.IPC.Server.cs": {
     "mtime": 1782948828698.3147,
     "hash": "c115fca3b96ac4611727c7d193114161"
   },
   "src/V12_002.UI.IPC.cs": {
-    "mtime": 1782952823851.9878,
-    "hash": "dd69e989f92f85222a0a8425d65cc020"
+    "mtime": 1783020856229.4373,
+    "hash": "c783abec4a7f5bb72f37be8ee0a8aa7f"
   },
   "src/V12_002.UI.Panel.Brushes.cs": {
     "mtime": 1781246379966.4724,
@@ -2616,108 +2616,108 @@
     "hash": "816a9e6071ded86fa0a7ebd066cbf660"
   },
   ".bob/commands/autonomous-refactor.md": {
-    "mtime": 1782941171160.8438,
-    "hash": "d5b7cfa1ca8b09b1e3b54f6f938912fa"
+    "mtime": 1783016235300.0789,
+    "hash": "7a95b6bbd772204d6716be891a133b67"
   },
   ".bob/commands/continue.md": {
-    "mtime": 1782083416621.1345,
-    "hash": "5ff08e79992f3b20e6a53071492729ad"
+    "mtime": 1783016235301.0789,
+    "hash": "d4ff1a7c4ddedaff38d015d86ee7e9cc"
   },
   ".bob/commands/epic-intake.md": {
-    "mtime": 1781649892720.2222,
-    "hash": "a608e6ac7772ff13177220bf92f3d8cc"
+    "mtime": 1783016235301.0789,
+    "hash": "a6dda77e2a4cc734126162e31fd58719"
   },
   ".bob/commands/epic-loop.md": {
-    "mtime": 1781649892720.2222,
-    "hash": "9979d2d7969215d9f5d1514af26744f5"
+    "mtime": 1783016235301.0789,
+    "hash": "9208a6dd81f73037b906807efa93ff2e"
   },
   ".bob/commands/epic-orchestrate.md": {
-    "mtime": 1781649892720.2222,
-    "hash": "c3b95955eaa620427026c97ffd85f2c4"
+    "mtime": 1783016235301.0789,
+    "hash": "4a1adc783156d2a3d7733ec311a848af"
   },
   ".bob/commands/epic-plan.md": {
-    "mtime": 1781649892720.2222,
-    "hash": "da3d3af503a51b7b596b1deaf0ff7e73"
+    "mtime": 1783016235301.0789,
+    "hash": "a84959d21c44ac736bdb3da840b31139"
   },
   ".bob/commands/epic-review-final.md": {
-    "mtime": 1782083416621.1345,
-    "hash": "61eee06e3b8d11ef92d73ad1e90f33cb"
+    "mtime": 1783016235301.0789,
+    "hash": "9c9821121c9f5c9d595d7c4def2edaff"
   },
   ".bob/commands/epic-review-tickets.md": {
-    "mtime": 1782083416621.1345,
-    "hash": "fdff39a98b03960a350ce44b8401b302"
+    "mtime": 1783016235301.0789,
+    "hash": "fbfbdd347343d1e9d02c92ccdd71b22c"
   },
   ".bob/commands/epic-run.md": {
-    "mtime": 1782083416621.1345,
-    "hash": "d3def741a703207eeb566e6a68e1839f"
+    "mtime": 1783016235301.0789,
+    "hash": "a5790cdd129b0b2a660665b24b866ff0"
   },
   ".bob/commands/epic-scan.md": {
-    "mtime": 1782083416621.1345,
-    "hash": "8edc47831d514433439c90dda85a8c6c"
+    "mtime": 1783016235301.0789,
+    "hash": "9b40782f23a1da52b1effb3b593852f0"
   },
   ".bob/commands/epic-scope-boundary.md": {
-    "mtime": 1781649892720.2222,
-    "hash": "6e84864a3ce60edf16932ee68813dc26"
+    "mtime": 1783016235301.0789,
+    "hash": "3d93543b91335750ed6a6147263e10a9"
   },
   ".bob/commands/epic-tdd.md": {
-    "mtime": 1782083416621.1345,
-    "hash": "d22776f9c2881a117b419b75856cfa4b"
+    "mtime": 1783016235301.0789,
+    "hash": "91ed8cdb862e5cca70d8f93531e774ad"
   },
   ".bob/commands/epic-tickets.md": {
-    "mtime": 1781649892721.2222,
-    "hash": "b998fa7132eaf52232430c6e22bb138a"
+    "mtime": 1783016235301.0789,
+    "hash": "741e1091b46fa669bc3078a9d20a0bd3"
   },
   ".bob/commands/epic-validate.md": {
-    "mtime": 1781649892721.2222,
-    "hash": "086132389234049efc4a2fc6fffcf077"
+    "mtime": 1783016235301.0789,
+    "hash": "9f4234b7911c74aece3f752d43c6c2b1"
   },
   ".bob/commands/epic-verify-ticket.md": {
-    "mtime": 1781649892721.2222,
-    "hash": "05e947e53775e36a27efb091e2a25902"
+    "mtime": 1783016235301.0789,
+    "hash": "4aae1ec45f6f0af69dc6642281bba6e3"
   },
   ".bob/commands/extract.md": {
-    "mtime": 1781246379858.4646,
-    "hash": "183dc25c1fe5b2e26cae1966bf6d6a9c"
+    "mtime": 1783016235301.0789,
+    "hash": "bc9410c17819680af5860f187040f62d"
   },
   ".bob/commands/local-loop.md": {
-    "mtime": 1782083416621.1345,
-    "hash": "e491d30ef2f04faa366bb6916ef4e1a2"
+    "mtime": 1783016235301.0789,
+    "hash": "2132d54cda50fbfb2f2f5fae1186bb78"
   },
   ".bob/commands/mcp-loop.md": {
-    "mtime": 1782083416621.1345,
-    "hash": "d972f1aeb1988cb35745ee7a1ce8ece8"
+    "mtime": 1783016235302.0789,
+    "hash": "a099662b2659c3ef9b61e36d7ccd322a"
   },
   ".bob/commands/optimize.md": {
-    "mtime": 1781246379858.4646,
-    "hash": "3801feb9ef8cd3dd3595ad52cd9c2e48"
+    "mtime": 1783016235302.0789,
+    "hash": "ef11204161608145c27dff37dd93ac7b"
   },
   ".bob/commands/phase7.md": {
-    "mtime": 1781246379858.4646,
-    "hash": "1ef1d803a49ad650de7f6dba50a99c1e"
+    "mtime": 1783016235302.0789,
+    "hash": "7ff6e1845d4fab3fb6b20aa1c1e77702"
   },
   ".bob/commands/pr-loop.md": {
-    "mtime": 1781649892721.2222,
-    "hash": "d3f139a477bb41f662561cdf8f21d749"
+    "mtime": 1783016235302.0789,
+    "hash": "8041f0cccd0dbff6218f37640669200c"
   },
   ".bob/commands/pre-push.md": {
-    "mtime": 1782083416621.1345,
-    "hash": "ad3ba8a67eeaf39e474ddfba5054e2f6"
+    "mtime": 1783016235302.0789,
+    "hash": "80262ae886255b6419c5f67c4e566704"
   },
   ".bob/commands/sync.md": {
-    "mtime": 1782346129106.203,
-    "hash": "4b69fc2002c0d55fc2b6d961abf2e930"
+    "mtime": 1783016235302.0789,
+    "hash": "d8fe8dbbeb70fc457b723123533e8535"
   },
   ".bob/commands/ticket.md": {
-    "mtime": 1781246379858.4646,
-    "hash": "18d9324496a8c66f34bd047b6a90c1ba"
+    "mtime": 1783016235302.0789,
+    "hash": "0b6458fcc836a7266b4818586f7313f1"
   },
   ".bob/context/bootstrap.md": {
-    "mtime": 1781246379858.4646,
-    "hash": "b46d2fa4ead1d268a7e20ac178a19de8"
+    "mtime": 1783018192422.6418,
+    "hash": "90430edd06602ce02ad8c7891d063268"
   },
   ".bob/custom_modes.yaml": {
-    "mtime": 1782944162099.7876,
-    "hash": "10a8d6055342302a153f62cc74c06f16"
+    "mtime": 1783021602039.6611,
+    "hash": "4715e2c64fd391e70f3fb11a51280e3e"
   },
   ".bob/custom_modes_backup_20260617_230739.yaml": {
     "mtime": 1782083416622.1345,
@@ -2768,8 +2768,8 @@
     "hash": "9cfa5de949f7ac11459e1fff35a1b3e6"
   },
   ".bob/skills/autonomous-refactor/SKILL.md": {
-    "mtime": 1782941171161.8438,
-    "hash": "93ecee39b32da5c95bae64601d5b3644"
+    "mtime": 1783016235518.0789,
+    "hash": "73d07461713bacb48dabf3d4ad1ca669"
   },
   ".bob/skills/continue/SKILL.md": {
     "mtime": 1782346129107.2031,
@@ -2800,8 +2800,8 @@
     "hash": "53c576663c48ae3235b684d6ef30d714"
   },
   ".bob/skills/epic-run/SKILL.md": {
-    "mtime": 1782945370754.9111,
-    "hash": "abbd4e9d22749f046c444a57a17019ca"
+    "mtime": 1783016235519.0789,
+    "hash": "d0d0593194c8faea949fbf2abebb56c6"
   },
   ".bob/skills/epic-scan/SKILL.md": {
     "mtime": 1782346129108.2031,
@@ -2812,8 +2812,8 @@
     "hash": "ab3534a5ff32bb662c7fa9eb6d08109e"
   },
   ".bob/skills/epic-tdd/SKILL.md": {
-    "mtime": 1782945329504.4292,
-    "hash": "4432a7b412ba78e4b0765d9e19d1546b"
+    "mtime": 1783016235518.0789,
+    "hash": "b1c1cea405e9efe533b86400bc81333c"
   },
   ".bob/skills/epic-tickets/SKILL.md": {
     "mtime": 1782346129109.2034,
@@ -2828,8 +2828,8 @@
     "hash": "a5b06f6c35e20652dcc173cd21833ec0"
   },
   ".bob/skills/extract/SKILL.md": {
-    "mtime": 1782346129109.2034,
-    "hash": "86527be224701c6cae20eb3e7ed502be"
+    "mtime": 1783016235518.0789,
+    "hash": "146f8a8c9120196e59c5eeb54a7edf05"
   },
   ".bob/skills/gcp-vm-wave-execution/WAVE3_PHASE3_UPDATE.md": {
     "mtime": 1781649892722.2222,
@@ -2880,8 +2880,8 @@
     "hash": "72987291fe55c281087c91d21aa73f66"
   },
   ".bob/skills/phase7/SKILL.md": {
-    "mtime": 1782346129110.2034,
-    "hash": "9c20958d6d86bb2b93112e324a7f0f02"
+    "mtime": 1783016235518.0789,
+    "hash": "e2cc59b89244debd8b8f6a81a27a181e"
   },
   ".bob/skills/pr-loop/SKILL.md": {
     "mtime": 1782945329503.4292,
@@ -3068,16 +3068,16 @@
     "hash": "21f33c2c5d934c426abe6ebbafa79d6a"
   },
   "AGENTS.md": {
-    "mtime": 1782946405248.9993,
-    "hash": "3ecd2311802b8d16e8549694e4ca4aeb"
+    "mtime": 1783015690001.9233,
+    "hash": "e025a3182dab167251d7ede8c171598c"
   },
   "API_KEY_CLEANUP_REPORT.md": {
     "mtime": 1782346129112.2036,
     "hash": "2aea351ec8af6e8054a8a2ffba214496"
   },
   "BOB.md": {
-    "mtime": 1782946419197.1624,
-    "hash": "bc509fe116d509e6bcda453fd8b0ba79"
+    "mtime": 1783015759791.9434,
+    "hash": "7d9e071ba37ba6ad540c7a7963bffcce"
   },
   "BOBCOIN_ISOLATION_EXPLANATION.md": {
     "mtime": 1781649892724.2224,
@@ -3092,8 +3092,8 @@
     "hash": "2b88f6d09e72bb745ee8bb42f4b7ecc5"
   },
   "CLAUDE.md": {
-    "mtime": 1781246379863.4648,
-    "hash": "96d9f8e0992f7c367411863fce828f76"
+    "mtime": 1783017912589.5613,
+    "hash": "f22124ee177583d0c49c9aa3e3c36097"
   },
   "CODEX.md": {
     "mtime": 1781246379863.4648,
@@ -4168,12 +4168,12 @@
     "hash": "4d7d4b82c3e45ea63eebb42918ea8995"
   },
   "conductor/workflow.md": {
-    "mtime": 1781246379868.4653,
-    "hash": "fa944933a3b0e6fec9864b52f60412bf"
+    "mtime": 1783018013493.5903,
+    "hash": "35124ea99a25df78dc7facb6b1400ad3"
   },
   "docs/AGENTS.md": {
-    "mtime": 1781649892746.2227,
-    "hash": "991152c7762762f81979a77042cc4c9c"
+    "mtime": 1783018096819.6145,
+    "hash": "9432a8eaf255024e70d3b9490c0ff272"
   },
   "docs/BUILD_LOG.txt": {
     "mtime": 1781246379872.4656,
@@ -6772,8 +6772,8 @@
     "hash": "126234cfa29b1ad9b57ebce749aa9787"
   },
   "docs/brain/EPIC-W7-016/05-completion-report.md": {
-    "mtime": 1782943673314.0762,
-    "hash": "024769be97fc21d61d821f71778076c0"
+    "mtime": 1783022043122.8613,
+    "hash": "b3c46d196df2f84cdca7bd171080a6fd"
   },
   "docs/brain/EPIC-W7-016/ticket-1-completion.md": {
     "mtime": 1782943673314.0762,
@@ -6864,8 +6864,8 @@
     "hash": "a5d24180ca0bcea2fd336f6cc1365750"
   },
   "docs/brain/EPIC-W7-018/05-completion-report.md": {
-    "mtime": 1782948658621.3276,
-    "hash": "00949244ea1be5f11e02762bb19f9a42"
+    "mtime": 1783022127794.886,
+    "hash": "1a5e877ffd96af56fa4d9f2d83c373f1"
   },
   "docs/brain/EPIC-W7-018/ticket-1-completion.md": {
     "mtime": 1782943673314.0762,
@@ -6908,8 +6908,8 @@
     "hash": "39fe21dfe2b417fd2c71a00e6233205d"
   },
   "docs/brain/EPIC-W7-019/05-completion-report.md": {
-    "mtime": 1782948591492.5435,
-    "hash": "f8649f8de9926d1e37933562967df95b"
+    "mtime": 1783022204390.9148,
+    "hash": "f80655d85bb4f5f4f331eb76423ec00d"
   },
   "docs/brain/EPIC-W7-019/ticket-1-completion.md": {
     "mtime": 1782943673315.0762,
@@ -7256,8 +7256,8 @@
     "hash": "35e12b5660b2020e3ffac32e507c9a4b"
   },
   "docs/brain/EPIC-W7-028/05-completion-report.md": {
-    "mtime": 1782948665703.4104,
-    "hash": "4f265063ec546b8467b4fb80b7f1c037"
+    "mtime": 1783022544483.0305,
+    "hash": "7eb67271327e2071aa05ce974bf62906"
   },
   "docs/brain/EPIC-W7-028/ticket-1-completion.md": {
     "mtime": 1782943673316.0762,
@@ -7368,8 +7368,8 @@
     "hash": "230969e5eabd1445bd254c20b7bad812"
   },
   "docs/brain/EPIC-W7-031/05-completion-report.md": {
-    "mtime": 1782947792223.205,
-    "hash": "4affc190efb4f98b06a026ba25becb37"
+    "mtime": 1783022737371.09,
+    "hash": "93f90c4c9af3d189e9b5d6f0f15f1492"
   },
   "docs/brain/EPIC-W7-031/ticket-1-completion.md": {
     "mtime": 1782943673316.0762,
@@ -8020,8 +8020,8 @@
     "hash": "5c432831fd088a5352449ced0a62a8bf"
   },
   "docs/brain/EPIC-W7-047/05-completion-report.md": {
-    "mtime": 1782947879400.2236,
-    "hash": "25693082ddde18b93a63738183eb041a"
+    "mtime": 1783022737372.09,
+    "hash": "1f5f10848231e2c56dadb99233cffc66"
   },
   "docs/brain/EPIC-W7-047/ticket-1-completion.md": {
     "mtime": 1782943673319.0762,
@@ -8104,8 +8104,8 @@
     "hash": "647343c13eeee204afeacd840986c4d8"
   },
   "docs/brain/EPIC-W7-049/05-completion-report.md": {
-    "mtime": 1782947754521.7646,
-    "hash": "9c7ad6fc54f10cd7e91e2038190b6788"
+    "mtime": 1783022737372.09,
+    "hash": "6ad7afd3df0fb9b006e7b1660aa5caf9"
   },
   "docs/brain/EPIC-W7-049/ticket-1-completion.md": {
     "mtime": 1782943673319.0762,
@@ -8148,8 +8148,8 @@
     "hash": "7b99636b09e4693b14b30b1d922cf06b"
   },
   "docs/brain/EPIC-W7-050/05-completion-report.md": {
-    "mtime": 1782948471544.142,
-    "hash": "cda8040695e30a765f6ee44465715b6f"
+    "mtime": 1783022737372.09,
+    "hash": "3acb177e5845898e233ea6ad3e0da5e3"
   },
   "docs/brain/EPIC-W7-050/ticket-1-completion.md": {
     "mtime": 1782943673319.0762,
@@ -8196,8 +8196,8 @@
     "hash": "6569403b1b49d68ad1711e3c2e5f566f"
   },
   "docs/brain/EPIC-W7-051/05-completion-report.md": {
-    "mtime": 1782947794725.2344,
-    "hash": "2e0ac36a1ef1563681b1d97fb28d547a"
+    "mtime": 1783022737372.09,
+    "hash": "b437cee9e18c8c196705dfdee095f17b"
   },
   "docs/brain/EPIC-W7-051/ticket-1-completion.md": {
     "mtime": 1782941171191.8442,
@@ -8236,8 +8236,8 @@
     "hash": "a8cb183984c0445e892a3e3cd30c1334"
   },
   "docs/brain/EPIC-W7-052/05-completion-report.md": {
-    "mtime": 1782948515107.651,
-    "hash": "5fdb895be93431c9130c4ac73ec1a53e"
+    "mtime": 1783022737372.09,
+    "hash": "7194b7cbc65e09a13635ab46b4961a3f"
   },
   "docs/brain/EPIC-W7-052/ticket-1-completion.md": {
     "mtime": 1782943673319.0762,
@@ -8280,8 +8280,8 @@
     "hash": "36a46a9e03cffe68a1a826663ecace0d"
   },
   "docs/brain/EPIC-W7-053/05-completion-report.md": {
-    "mtime": 1782948788861.8494,
-    "hash": "da7f1e21707a3e65a4efdc547d7dcbc0"
+    "mtime": 1783022737380.09,
+    "hash": "534af88c2b6fa4d0a474bae6b14d18fc"
   },
   "docs/brain/EPIC-W7-053/ticket-1-completion.md": {
     "mtime": 1782941171192.8442,
@@ -8316,8 +8316,8 @@
     "hash": "7ba32efed6527a3c152f172469063604"
   },
   "docs/brain/EPIC-W7-054/05-completion-report.md": {
-    "mtime": 1782947819556.5244,
-    "hash": "e8f92dff13c8b5784492dc19ca453dbd"
+    "mtime": 1783022737380.09,
+    "hash": "c930babf3ccbde10173f4c7de5a00519"
   },
   "docs/brain/EPIC-W7-055/00-hotspots.md": {
     "mtime": 1782941171192.8442,
@@ -8384,8 +8384,8 @@
     "hash": "a5cc95d9a152b111eac7eb03ab24203d"
   },
   "docs/brain/EPIC-W7-056/05-completion-report.md": {
-    "mtime": 1782948627838.968,
-    "hash": "039c64da21b23efb8d112c4437c1ca77"
+    "mtime": 1783022737380.09,
+    "hash": "2cf5b023cecfe2055a48b0f7748aac66"
   },
   "docs/brain/EPIC-W7-056/ticket-1-completion.md": {
     "mtime": 1782943673320.0762,
@@ -8564,8 +8564,8 @@
     "hash": "5aeaea1077e79858994fbf33be6114a0"
   },
   "docs/brain/EPIC-W7-060/05-completion-report.md": {
-    "mtime": 1782950726216.4817,
-    "hash": "e91f2a248ad2795c336c2118b6534913"
+    "mtime": 1783022052484.8643,
+    "hash": "15c49129357ec5c0b473c8b93c4fc1f6"
   },
   "docs/brain/EPIC-W7-060/ticket-1-completion.md": {
     "mtime": 1782941171196.8442,
@@ -8844,8 +8844,8 @@
     "hash": "cd8e26138e092d64a961f2e991385c1d"
   },
   "docs/brain/EPIC-W7-067/05-completion-report.md": {
-    "mtime": 1782948899311.1396,
-    "hash": "49b8ec5784444332da9e9569aba7d22f"
+    "mtime": 1783022190998.9097,
+    "hash": "ccb6d24d1e2e5ff16f7bd4df522fd286"
   },
   "docs/brain/EPIC-W7-067/lane-FL-19-completion.md": {
     "mtime": 1782941171199.8442,
@@ -8960,8 +8960,8 @@
     "hash": "a6c0e8986a75e5d5293f1c9a779f0fca"
   },
   "docs/brain/EPIC-W7-070/05-completion-report.md": {
-    "mtime": 1782950152708.7825,
-    "hash": "2a41bd16c9a433b84c1cfd11e02d88d0"
+    "mtime": 1783022612901.0508,
+    "hash": "6777918b47010116af43b31fb2c921e0"
   },
   "docs/brain/EPIC-W7-070/ticket-1-completion.md": {
     "mtime": 1782941171201.8442,
@@ -9176,8 +9176,8 @@
     "hash": "4502c0b10e465a061fa1490642baf2d2"
   },
   "docs/brain/EPIC-W7-076/05-completion-report.md": {
-    "mtime": 1782943673322.0762,
-    "hash": "1d80d13ceecdf28147e846da89c588e4"
+    "mtime": 1783022734879.0894,
+    "hash": "c05ed2abaf5c3ddd700ae8f1b3e4db4c"
   },
   "docs/brain/EPIC-W7-076/ticket-1-completion.md": {
     "mtime": 1782943673322.0762,
@@ -9216,8 +9216,8 @@
     "hash": "46deae826cdd99405fbb56c13886afd9"
   },
   "docs/brain/EPIC-W7-077/05-completion-report.md": {
-    "mtime": 1782948863826.725,
-    "hash": "610a1eed608935ee8882e69ec2091177"
+    "mtime": 1783022840501.123,
+    "hash": "5acc3c53187e50e7da5f018dc0abeb40"
   },
   "docs/brain/EPIC-W7-077/ticket-1-completion.md": {
     "mtime": 1782943673323.0762,
@@ -9376,8 +9376,8 @@
     "hash": "ad4f298b6600ecd06364c4a4cdb9ac09"
   },
   "docs/brain/EPIC-W7-081/05-completion-report.md": {
-    "mtime": 1782947942111.9563,
-    "hash": "f6fd2af40c8bc3a10e5cabc2e912f04d"
+    "mtime": 1783022954414.1597,
+    "hash": "ab110b85aaa64d0c028cbce5ff71681d"
   },
   "docs/brain/EPIC-W7-081/ticket-1-completion.md": {
     "mtime": 1782943673323.0762,
@@ -9432,8 +9432,8 @@
     "hash": "afa8331ffe23ef4ecf792e370bea11e8"
   },
   "docs/brain/EPIC-W7-082/05-completion-report.md": {
-    "mtime": 1782948578072.3865,
-    "hash": "912ff0bc615b67d28a378c5321565d7c"
+    "mtime": 1783023469783.3394,
+    "hash": "63e3ac318d9ee162317d41661ada0041"
   },
   "docs/brain/EPIC-W7-082/ticket-1-completion.md": {
     "mtime": 1782943673323.0762,
@@ -9508,8 +9508,8 @@
     "hash": "35fcbd0c221f9af60518c732338c2805"
   },
   "docs/brain/EPIC-W7-083/05-completion-report.md": {
-    "mtime": 1782948804583.033,
-    "hash": "c3ec51576c6b9f543bd56909cb6a2a3e"
+    "mtime": 1783023594144.379,
+    "hash": "4551d66f8e501398be62235df16f3da4"
   },
   "docs/brain/EPIC-W7-083/ticket-1-completion.md": {
     "mtime": 1782943673324.0762,
@@ -9564,8 +9564,8 @@
     "hash": "4545a242d6ac8e2e5c6cd7bafb4296af"
   },
   "docs/brain/EPIC-W7-084/05-completion-report.md": {
-    "mtime": 1782949046271.8567,
-    "hash": "476bc332fc4b74b32b1d9a673df1a8b7"
+    "mtime": 1783023698615.412,
+    "hash": "7a8856f2e36191cde1745ecb62594520"
   },
   "docs/brain/EPIC-W7-084/ticket-1-completion.md": {
     "mtime": 1782943673324.0762,
@@ -9632,8 +9632,8 @@
     "hash": "aa67a1e26fe6e7bab770ce22d63839ff"
   },
   "docs/brain/EPIC-W7-085/05-completion-report.md": {
-    "mtime": 1782949353842.45,
-    "hash": "a3a84cf93fce782da244c6a9324a1575"
+    "mtime": 1783023812694.4485,
+    "hash": "eb304a549d650151ef2d39a3c765fcf1"
   },
   "docs/brain/EPIC-W7-085/ticket-1-completion.md": {
     "mtime": 1782943673324.0762,
@@ -9684,8 +9684,8 @@
     "hash": "cbc41e512d56c62c8b9a64343e78c5a6"
   },
   "docs/brain/EPIC-W7-086/05-completion-report.md": {
-    "mtime": 1782949711554.6292,
-    "hash": "ae610a41fe79aec8e0d31e0bb05ba014"
+    "mtime": 1783023916143.4812,
+    "hash": "290be537852d6aab6f65b90e9b46b067"
   },
   "docs/brain/EPIC-W7-086/ticket-1-completion.md": {
     "mtime": 1782943673324.0762,
@@ -9728,8 +9728,8 @@
     "hash": "d2a843820a8fa7aa3c54c4de928fb7b2"
   },
   "docs/brain/EPIC-W7-087/05-completion-report.md": {
-    "mtime": 1782949957878.5066,
-    "hash": "e38af4b08b7084706c422d63af4b5c75"
+    "mtime": 1783024304679.6045,
+    "hash": "b6ebe8d38f6b064ad3d4c30b6d8cbbdf"
   },
   "docs/brain/EPIC-W7-087/ticket-1-completion.md": {
     "mtime": 1782943673324.0762,
@@ -9768,8 +9768,8 @@
     "hash": "681ed9d5a20d2525eb0cec22d2e68576"
   },
   "docs/brain/EPIC-W7-088/05-completion-report.md": {
-    "mtime": 1782948688746.6797,
-    "hash": "7be12d2e1fea7e654ba112e1bdc8546c"
+    "mtime": 1783024437154.6462,
+    "hash": "15177e53b2444dc35a4d9d4e34645b0a"
   },
   "docs/brain/EPIC-W7-088/ticket-1-completion.md": {
     "mtime": 1782943673325.0762,
@@ -9828,8 +9828,8 @@
     "hash": "325bcee7700f64ca1a40d1a7f0529594"
   },
   "docs/brain/EPIC-W7-089/05-completion-report.md": {
-    "mtime": 1782948884123.9622,
-    "hash": "e0d6b09ca888145e4fd72eb93072a6b2"
+    "mtime": 1783022132360.8877,
+    "hash": "dfd766650bac75743e6a7eaa1fb2e426"
   },
   "docs/brain/EPIC-W7-089/ticket-1-completion.md": {
     "mtime": 1782943673325.0762,
@@ -9872,8 +9872,8 @@
     "hash": "27d17196e37fd7b3917425cf21dabd27"
   },
   "docs/brain/EPIC-W7-090/05-completion-report.md": {
-    "mtime": 1782949084504.3032,
-    "hash": "eabee2cd54f3fd579b6b2b5e965f0533"
+    "mtime": 1783022194457.911,
+    "hash": "ae4d3bc1993ff5709b4d470e51b74d1d"
   },
   "docs/brain/EPIC-W7-090/ticket-1-completion.md": {
     "mtime": 1782943673325.0762,
@@ -9916,8 +9916,8 @@
     "hash": "b2fd0d14a2919056cec8a494ed4f2971"
   },
   "docs/brain/EPIC-W7-091/05-completion-report.md": {
-    "mtime": 1782949084504.3032,
-    "hash": "74dd7c5f9c87b6408da5a83633e6bdb4"
+    "mtime": 1783023443227.3308,
+    "hash": "d3f7eb9fe65a98d0f724dbc284c07536"
   },
   "docs/brain/EPIC-W7-091/ticket-1-completion.md": {
     "mtime": 1782943673325.0762,
@@ -10196,8 +10196,8 @@
     "hash": "924e678739d38fb195eedd4bb8834cad"
   },
   "docs/brain/EPIC-W7-098/05-completion-report.md": {
-    "mtime": 1782948705164.8713,
-    "hash": "0e150be31f9140f7688dcdc111e9fbf8"
+    "mtime": 1783022607812.0493,
+    "hash": "f0a48046140cb56720099ca2eb0936cf"
   },
   "docs/brain/EPIC-W7-098/ticket-1-completion.md": {
     "mtime": 1782943673326.0762,
@@ -10584,8 +10584,8 @@
     "hash": "12afb3085fb3f171c868b513c9d722f1"
   },
   "docs/brain/EPIC-W7-107/05-completion-report.md": {
-    "mtime": 1782947952145.0737,
-    "hash": "46e3d78aedf5eb196a56d3349e6e35e6"
+    "mtime": 1783022662134.066,
+    "hash": "856a541308834713dfd37a1ff6a613e8"
   },
   "docs/brain/EPIC-W7-107/ticket-1-completion.md": {
     "mtime": 1782943673327.0762,
@@ -10688,8 +10688,8 @@
     "hash": "5f8fa8182540f21a365fa5931ae8174f"
   },
   "docs/brain/EPIC-W7-109/05-completion-report.md": {
-    "mtime": 1782948962799.8813,
-    "hash": "d12cc3c16d25fa11e29c25cbc1be86d5"
+    "mtime": 1783022736289.0896,
+    "hash": "ee8aae5bb9ea1a9f595b63ad3a159221"
   },
   "docs/brain/EPIC-W7-109/ticket-1-completion.md": {
     "mtime": 1782943673328.0762,
@@ -10744,8 +10744,8 @@
     "hash": "b09e589a21b393ec8fe6b7701ff5bd2e"
   },
   "docs/brain/EPIC-W7-110/05-completion-report.md": {
-    "mtime": 1782949259856.352,
-    "hash": "dd4732edf1fd2d4dc61854e662a5bfc7"
+    "mtime": 1783022803864.1113,
+    "hash": "ad886fc4e66895a467aa11be4d392306"
   },
   "docs/brain/EPIC-W7-110/ticket-1-completion.md": {
     "mtime": 1782941171221.8445,
@@ -10792,8 +10792,8 @@
     "hash": "47c0c80e3b0bc117f6148b937ad62737"
   },
   "docs/brain/EPIC-W7-111/05-completion-report.md": {
-    "mtime": 1782949503011.1929,
-    "hash": "3a35abf12751f6e5df5a71daa923345a"
+    "mtime": 1783022856356.1282,
+    "hash": "b56a45957b6fcfa0a14825bc19272d6c"
   },
   "docs/brain/EPIC-W7-111/ticket-1-completion.md": {
     "mtime": 1782941171221.8445,
@@ -10832,8 +10832,8 @@
     "hash": "a36f467497f40d1757e75d2093ddf011"
   },
   "docs/brain/EPIC-W7-112/05-completion-report.md": {
-    "mtime": 1782949779851.4272,
-    "hash": "f8a52a5451fc0f3d93afa048fa24518f"
+    "mtime": 1783022916136.1475,
+    "hash": "5500e00ff7b0183baf594b4b1374106c"
   },
   "docs/brain/EPIC-W7-113/00-hotspots.md": {
     "mtime": 1782941171222.8445,
@@ -10864,8 +10864,8 @@
     "hash": "829432c802630d7d32dec14ea6e3e476"
   },
   "docs/brain/EPIC-W7-113/05-completion-report.md": {
-    "mtime": 1782950358328.1843,
-    "hash": "dd62a188fb5cfb84848f01c268676e9e"
+    "mtime": 1783022978567.1675,
+    "hash": "ed86be4d5722288f05e241e9ca834f7b"
   },
   "docs/brain/EPIC-W7-113/ticket-1-completion.md": {
     "mtime": 1782941171222.8445,
@@ -10908,8 +10908,8 @@
     "hash": "c406786f509513ec6328c16b4841f33c"
   },
   "docs/brain/EPIC-W7-114/05-completion-report.md": {
-    "mtime": 1782950460284.3752,
-    "hash": "7ca4f59b6e4371916065d2ac91dec72f"
+    "mtime": 1783023502177.3496,
+    "hash": "77f41c36a36a6a57c1ebff85401780a0"
   },
   "docs/brain/EPIC-W7-114/ticket-1-completion.md": {
     "mtime": 1782941171222.8445,
@@ -10952,8 +10952,8 @@
     "hash": "4389e2f706a23b94e443ed3dc6247814"
   },
   "docs/brain/EPIC-W7-115/05-completion-report.md": {
-    "mtime": 1782951322148.4443,
-    "hash": "d46c93d186c6972178e5170b2938454f"
+    "mtime": 1783023582423.3752,
+    "hash": "30a2f671694aaa0ab1aa315c78b480d3"
   },
   "docs/brain/EPIC-W7-116/00-hotspots.md": {
     "mtime": 1782941171223.8445,
@@ -10984,8 +10984,8 @@
     "hash": "9febb99635ca63141b0bc5d0d28941a6"
   },
   "docs/brain/EPIC-W7-116/05-completion-report.md": {
-    "mtime": 1782949218093.864,
-    "hash": "89bf906c6560f4874305545910b6d39f"
+    "mtime": 1783023661394.4004,
+    "hash": "83195a6aefc391d411dbf5399c8583fd"
   },
   "docs/brain/EPIC-W7-117/00-hotspots.md": {
     "mtime": 1782941171223.8445,
@@ -11296,8 +11296,8 @@
     "hash": "55bcd111aaf1dd20cae317b0a407bfe2"
   },
   "docs/brain/EPIC-W7-124/05-completion-report.md": {
-    "mtime": 1782948947523.703,
-    "hash": "e37db4b8cbb72cbd38853861221531b0"
+    "mtime": 1783022095987.8767,
+    "hash": "d74f57917e6863a8487732ab075d2181"
   },
   "docs/brain/EPIC-W7-124/ticket-1-completion.md": {
     "mtime": 1782943673330.0762,
@@ -11828,8 +11828,8 @@
     "hash": "5bceace54500625d1e91dc8d3917d3b3"
   },
   "docs/brain/EPIC-W7-137/05-completion-report.md": {
-    "mtime": 1782948601968.6658,
-    "hash": "194b108ba0aa43ecda57294ab6ff5558"
+    "mtime": 1783022229054.9238,
+    "hash": "412881887f6f4e9412319a55381fe860"
   },
   "docs/brain/EPIC-W7-137/ticket-1-completion.md": {
     "mtime": 1782943673332.0762,
@@ -11872,8 +11872,8 @@
     "hash": "4fc8d1a165559da90cef78c6aea234ef"
   },
   "docs/brain/EPIC-W7-138/05-completion-report.md": {
-    "mtime": 1782947911992.6045,
-    "hash": "d586484e51166f3f8c7ae4ba63578f96"
+    "mtime": 1783022587555.0432,
+    "hash": "a347673330a6935114cb82f9b5d5717a"
   },
   "docs/brain/EPIC-W7-138/ticket-1-completion.md": {
     "mtime": 1782943673332.0762,
@@ -11908,8 +11908,8 @@
     "hash": "d5d95efb7867390ab6b0a96264ad8e95"
   },
   "docs/brain/EPIC-W7-139/05-completion-report.md": {
-    "mtime": 1782947903311.5032,
-    "hash": "c799d08cb1a49ce89f519270e234c003"
+    "mtime": 1783022672551.0693,
+    "hash": "22e6d79fcb6bb52dd2e025e237675d01"
   },
   "docs/brain/EPIC-W7-139/ticket-1-completion.md": {
     "mtime": 1782943673332.0762,
@@ -11944,8 +11944,8 @@
     "hash": "6854242653fbfd83bec9a21e59d70ec2"
   },
   "docs/brain/EPIC-W7-140/05-completion-report.md": {
-    "mtime": 1782948894481.0833,
-    "hash": "431ade7746de2b0aec4359afab01db4a"
+    "mtime": 1783022775253.1023,
+    "hash": "5c52079f1fb0b7800a796cd9f74f4463"
   },
   "docs/brain/EPIC-W7-140/ticket-1-completion.md": {
     "mtime": 1782943673332.0762,
@@ -11988,8 +11988,8 @@
     "hash": "481e9598dc9f3499719ae57c7560b6ee"
   },
   "docs/brain/EPIC-W7-141/05-completion-report.md": {
-    "mtime": 1782950148412.7324,
-    "hash": "1234edfda9b51d5d0d31e223e8442433"
+    "mtime": 1783022874635.134,
+    "hash": "4b9d24045345a43ce66a7a1599f77785"
   },
   "docs/brain/EPIC-W7-141/ticket-1-completion.md": {
     "mtime": 1782943673332.0762,
@@ -12212,8 +12212,8 @@
     "hash": "ffac5461370eb4155fdc23f825bf0fdb"
   },
   "docs/brain/EPIC-W7-146/05-completion-report.md": {
-    "mtime": 1782947937438.9019,
-    "hash": "ff3c651e2227969f717eb6d685dbc616"
+    "mtime": 1783022971588.1653,
+    "hash": "8902c920960f420ea70fa38c5207333b"
   },
   "docs/brain/EPIC-W7-146/ticket-1-completion.md": {
     "mtime": 1782943673333.0762,
@@ -12252,8 +12252,8 @@
     "hash": "d2aae602e0b36ab2d394ee5f6ea1eb0c"
   },
   "docs/brain/EPIC-W7-147/05-completion-report.md": {
-    "mtime": 1782948601184.6565,
-    "hash": "31d0084aa5e38fe3fbe7a86322e9519b"
+    "mtime": 1783023487530.345,
+    "hash": "14a7ab5d020eae0aa624cd81ee038e69"
   },
   "docs/brain/EPIC-W7-147/ticket-1-completion.md": {
     "mtime": 1782943673333.0762,
@@ -12344,8 +12344,8 @@
     "hash": "fa083315c95e4d88b4883cff690605dd"
   },
   "docs/brain/EPIC-W7-149/05-completion-report.md": {
-    "mtime": 1782948821264.2278,
-    "hash": "e96b48903c701dae8d86a0151c97d89a"
+    "mtime": 1783023597646.3801,
+    "hash": "b4941ea55a1f70b2f2bd6f0ba731840c"
   },
   "docs/brain/EPIC-W7-149/ticket-1-completion.md": {
     "mtime": 1782943673334.0762,
@@ -12388,8 +12388,8 @@
     "hash": "a52adc6ae5a0cd9be2957c3ab22abad2"
   },
   "docs/brain/EPIC-W7-150/05-completion-report.md": {
-    "mtime": 1782949061518.0347,
-    "hash": "f22713810d27cee97e28434f47a3314d"
+    "mtime": 1783023719843.419,
+    "hash": "dbe480dfe1e4d01a78b972fd9939753c"
   },
   "docs/brain/EPIC-W7-150/ticket-1-completion.md": {
     "mtime": 1782943673334.0762,
@@ -12564,8 +12564,8 @@
     "hash": "1f3949e62a392c620a29111f707abb0c"
   },
   "docs/brain/EPIC-W7-154/05-completion-report.md": {
-    "mtime": 1782948996779.2783,
-    "hash": "ce8ac808fb1623d437d29c4de6bf6b6b"
+    "mtime": 1783023825272.4524,
+    "hash": "81ee86563d08bc2cbbec38e4391e6b7b"
   },
   "docs/brain/EPIC-W7-154/ticket-1-completion.md": {
     "mtime": 1782943673335.0764,
@@ -12704,8 +12704,8 @@
     "hash": "9614985dd91483fc8434d8b5308ffe65"
   },
   "docs/brain/EPIC-W7-157/05-completion-report.md": {
-    "mtime": 1782948591492.5435,
-    "hash": "f08014e3ebed9505dd864f7d4c33b24c"
+    "mtime": 1783023921030.483,
+    "hash": "822352822f45e0fbeeed509897a7772d"
   },
   "docs/brain/EPIC-W7-157/ticket-1-completion.md": {
     "mtime": 1782943673335.0764,
@@ -12788,8 +12788,8 @@
     "hash": "3e2e7f4a5185a5c4911708065d138943"
   },
   "docs/brain/EPIC-W7-159/05-completion-report.md": {
-    "mtime": 1782949026108.621,
-    "hash": "f42b126392c6ab71486d4658c1a55032"
+    "mtime": 1783024027821.5166,
+    "hash": "7ec90c7cd5bd2b37089eb8d13e0d393b"
   },
   "docs/brain/EPIC-W7-159/ticket-1-completion.md": {
     "mtime": 1782943673335.0764,
@@ -15256,8 +15256,8 @@
     "hash": "ac98fe0a5cc1c5b3c99f3375d28ef52d"
   },
   "docs/workflow/MCP_UPDATE_PROTOCOL.md": {
-    "mtime": 1781649892817.2234,
-    "hash": "74efa7bf201c44e042b849389f9ae973"
+    "mtime": 1783015759828.9434,
+    "hash": "5f4550eaed9869a8966929641dc1a7ee"
   },
   "docs/workflow/MISE_INTEGRATION_GUIDE.md": {
     "mtime": 1781649892817.2234,
@@ -15316,8 +15316,8 @@
     "hash": "8f6ef3eb270a6f7f4faf7ad5ddd40817"
   },
   "docs/workflow/PHASE_ORCHESTRATOR_TEMPLATES.md": {
-    "mtime": 1782941171247.8447,
-    "hash": "e732540690caf1edf0006706383e8ce1"
+    "mtime": 1783016312233.1008,
+    "hash": "bf464276099cb3c2a01e96a545462834"
   },
   "docs/workflow/PR5_ORCHESTRATION_WORKFLOW.md": {
     "mtime": 1781649892818.2234,
@@ -15936,8 +15936,8 @@
     "hash": "7557d5e364e7fff293fb1ad117701be1"
   },
   "src/AGENTS.md": {
-    "mtime": 1781649892873.224,
-    "hash": "30f6efeb4dd2e080867c645372c0ba5d"
+    "mtime": 1783018096803.6145,
+    "hash": "263c9ece1a89ee6ac95d49afe66ecb0b"
   },
   "sub_orchestrator_worker_1.yaml": {
     "mtime": 1781649892879.224,
@@ -15968,8 +15968,8 @@
     "hash": "2936321d1d9b708a081d240f41f980ae"
   },
   "tests/AGENTS.md": {
-    "mtime": 1781649892879.224,
-    "hash": "e7f5a1e6e71e2deed3b8b0856d65c6a9"
+    "mtime": 1783018119051.6208,
+    "hash": "d492b3ac263e6a8b35184a972f46a442"
   },
   "tests/V12_Performance.Tests/README.md": {
     "mtime": 1781649892880.224,
@@ -16014,5 +16014,813 @@
   "docs/screenshot3.jpg": {
     "mtime": 1781246379951.4714,
     "hash": "d0f1cca640aeba98d87af1da9f42250b"
+  },
+  ".bob/hooks/pre_task_graphify_staleness.py": {
+    "mtime": 1783017995872.5854,
+    "hash": "2329c01620ce09582541249b6cb06818"
+  },
+  "scripts/wave7_cyc_gate.py": {
+    "mtime": 1782944060744.6033,
+    "hash": "aff913977148b414bec98555fc396ea4"
+  },
+  "scripts/wave7_prepush_gate.py": {
+    "mtime": 1782944086521.9045,
+    "hash": "3b389be366871b98b974d4e167b574fd"
+  },
+  "xunit-tests/W7-047/W7_047.Tests.csproj": {
+    "mtime": 1782947838105.7412,
+    "hash": "e288c3d0eeafe87088ac8a722302f7aa"
+  },
+  "xunit-tests/W7-047/W7_047_CancelOrphanedTargetsTests.cs": {
+    "mtime": 1782947838105.7412,
+    "hash": "ff8f8b75c94af021a1d2adade3190dd4"
+  },
+  "xunit-tests/W7-147/W7_147_HandleFleetOCOTests.cs": {
+    "mtime": 1782948580096.4102,
+    "hash": "629b3424ece1f5b5a1fef0fce7d128dc"
+  },
+  "xunit-tests/W7-149/W7_149_LogApexPerformanceTests.cs": {
+    "mtime": 1782948821264.2278,
+    "hash": "516266816a627d0206779d0174fd1d35"
+  },
+  "xunit-tests/W7-150/W7_150_HandleFleetBracketsTests.cs": {
+    "mtime": 1782949041834.8047,
+    "hash": "c8b46bfff98f19071e7adc86b2c524ab"
+  },
+  ".bob/rules/03-graphify-protocol.md": {
+    "mtime": 1783018160890.6328,
+    "hash": "2d39bd026d71650440e49a5b478d027e"
+  },
+  ".bob/rules/04-okf-knowledge-protocol.md": {
+    "mtime": 1783018160890.6328,
+    "hash": "29269c7dd27b13dc81f3eba9e4cbaa70"
+  },
+  ".graphify/GRAPH_REPORT.md": {
+    "mtime": 1783024509487.6692,
+    "hash": "9adf63893741736a8048fb8a78102eeb"
+  },
+  ".graphify/description-instructions/batch-000.md": {
+    "mtime": 1783015304064.8132,
+    "hash": "97ffc68e1ed80f5ecb9d66855f856421"
+  },
+  ".graphify/description-instructions/batch-001.md": {
+    "mtime": 1783015304065.8132,
+    "hash": "b5c372f3c19e2429125162c4f2418324"
+  },
+  ".graphify/description-instructions/batch-002.md": {
+    "mtime": 1783015304065.8132,
+    "hash": "a951b7f195c1af016138b623926b07ca"
+  },
+  ".graphify/description-instructions/batch-003.md": {
+    "mtime": 1783015304065.8132,
+    "hash": "6f4eb91a64cff38412a38a5e6fe12246"
+  },
+  ".graphify/description-instructions/batch-004.md": {
+    "mtime": 1783015304066.8132,
+    "hash": "b562eb7006d1883f1974837699241c21"
+  },
+  ".graphify/description-instructions/batch-005.md": {
+    "mtime": 1783015304066.8132,
+    "hash": "fa55aa143884fb4acee33325874112a7"
+  },
+  ".graphify/description-instructions/batch-006.md": {
+    "mtime": 1783015304066.8132,
+    "hash": "d4d61781b8004467fba821d0fe0b06f4"
+  },
+  ".graphify/description-instructions/batch-007.md": {
+    "mtime": 1783015304067.8132,
+    "hash": "9f44d24c281a4132c73984cdbbd69a4c"
+  },
+  ".graphify/description-instructions/batch-008.md": {
+    "mtime": 1783015304067.8132,
+    "hash": "74761df55ecdaed37aa5f242a85f3d23"
+  },
+  ".graphify/description-instructions/batch-009.md": {
+    "mtime": 1783015304067.8132,
+    "hash": "3798b3f3b27adfb3fe1207e9b06ea249"
+  },
+  ".graphify/description-instructions/batch-010.md": {
+    "mtime": 1783015304068.8132,
+    "hash": "e02a2b2eb660961acd335837cee84bf2"
+  },
+  ".graphify/description-instructions/batch-011.md": {
+    "mtime": 1783015304068.8132,
+    "hash": "ad2f1a67ac65683800af577c3efdadc9"
+  },
+  ".graphify/description-instructions/batch-012.md": {
+    "mtime": 1783015304068.8132,
+    "hash": "27c6b2500e393d08083fbe47a49eca00"
+  },
+  ".graphify/description-instructions/batch-013.md": {
+    "mtime": 1783015304069.8132,
+    "hash": "0caf7bc0e88134f93cb1dae84eb99d21"
+  },
+  ".graphify/description-instructions/batch-014.md": {
+    "mtime": 1783015304069.8132,
+    "hash": "576a2d5758b4e39f39151f099e0ec449"
+  },
+  ".graphify/description-instructions/batch-015.md": {
+    "mtime": 1783015304069.8132,
+    "hash": "496a81e36477fa2f3a6c253496a9e5ba"
+  },
+  ".graphify/description-instructions/batch-016.md": {
+    "mtime": 1783015304070.8132,
+    "hash": "a39836b4ba1dd191f013c81cbabcd023"
+  },
+  ".graphify/description-instructions/batch-017.md": {
+    "mtime": 1783015304070.8132,
+    "hash": "ae44107d11e95801350fe8a68b43a9cc"
+  },
+  ".graphify/description-instructions/batch-018.md": {
+    "mtime": 1783015304070.8132,
+    "hash": "0d77883adec8bdf420529500f6a0f628"
+  },
+  ".graphify/description-instructions/batch-019.md": {
+    "mtime": 1783015304070.8132,
+    "hash": "7da94f7451cd432ed9462b26c0e972cd"
+  },
+  ".graphify/description-instructions/batch-020.md": {
+    "mtime": 1783015304071.8132,
+    "hash": "e6773d40c37b934288dd32e1efee0b2a"
+  },
+  ".graphify/description-instructions/batch-021.md": {
+    "mtime": 1783015304071.8132,
+    "hash": "cb24f28b3d55a8da5750e886a306209f"
+  },
+  ".graphify/description-instructions/batch-022.md": {
+    "mtime": 1783015304071.8132,
+    "hash": "80c47dabc6e12a9c9b54b5cbba194390"
+  },
+  ".graphify/description-instructions/batch-023.md": {
+    "mtime": 1783015304071.8132,
+    "hash": "aec22558b1cba3cb4e24746db5d0024d"
+  },
+  ".graphify/description-instructions/batch-024.md": {
+    "mtime": 1783015304072.8132,
+    "hash": "6257c97f864998a0cd138a4ea8bcc428"
+  },
+  ".graphify/description-instructions/batch-025.md": {
+    "mtime": 1783015304072.8132,
+    "hash": "ce80c4c7de3e8c2bcd1a6654af667bec"
+  },
+  ".graphify/description-instructions/batch-026.md": {
+    "mtime": 1783015304072.8132,
+    "hash": "d6bf14ce6943024340ccb6ae3243471b"
+  },
+  ".graphify/description-instructions/batch-027.md": {
+    "mtime": 1783015304072.8132,
+    "hash": "8b99ad26ea7c1e55fa2dd6b2b8afd80a"
+  },
+  ".graphify/description-instructions/batch-028.md": {
+    "mtime": 1783015304073.8132,
+    "hash": "adc36499c2d060dca7e4727b4b9323a4"
+  },
+  ".graphify/description-instructions/batch-029.md": {
+    "mtime": 1783015304073.8132,
+    "hash": "e83b44c97e79f6e7a308b7276ac7d49f"
+  },
+  ".graphify/description-instructions/batch-030.md": {
+    "mtime": 1783015304073.8132,
+    "hash": "3e089820644d71091ef160c56bee755c"
+  },
+  ".graphify/description-instructions/batch-031.md": {
+    "mtime": 1783015304073.8132,
+    "hash": "73527ca69b7074dee4c83a08417a3acf"
+  },
+  ".graphify/description-instructions/batch-032.md": {
+    "mtime": 1783015304074.8132,
+    "hash": "5ae7d0d68a2a1fe4d5ce129bdf5ceb44"
+  },
+  ".graphify/description-instructions/batch-033.md": {
+    "mtime": 1783015304074.8132,
+    "hash": "24241d76b99c39df0f0f328d222bf133"
+  },
+  ".graphify/description-instructions/batch-034.md": {
+    "mtime": 1783015304074.8132,
+    "hash": "3c6624be8b89bda3ef22b332e9fc9c4e"
+  },
+  ".graphify/description-instructions/batch-035.md": {
+    "mtime": 1783015304074.8132,
+    "hash": "0886fb08b9c383cceecef36c0bcd1e1a"
+  },
+  ".graphify/description-instructions/batch-036.md": {
+    "mtime": 1783015304075.8132,
+    "hash": "0c0751ecf09b751509f35b6b4ba5dedb"
+  },
+  ".graphify/description-instructions/batch-037.md": {
+    "mtime": 1783015304075.8132,
+    "hash": "511f3984c70898c2a34c7b42eabc29f3"
+  },
+  ".graphify/description-instructions/batch-038.md": {
+    "mtime": 1783015304075.8132,
+    "hash": "176949b429e70a6f74793745a030f825"
+  },
+  ".graphify/description-instructions/batch-039.md": {
+    "mtime": 1783015304075.8132,
+    "hash": "038f82b46874c864335a4f861c276882"
+  },
+  ".graphify/description-instructions/batch-040.md": {
+    "mtime": 1783015304075.8132,
+    "hash": "f9da82af6758a7477a9c74b56b2b4bef"
+  },
+  ".graphify/description-instructions/batch-041.md": {
+    "mtime": 1783015304076.8132,
+    "hash": "f0f88a15519abae89cd5bc08c0f43454"
+  },
+  ".graphify/description-instructions/batch-042.md": {
+    "mtime": 1783015304076.8132,
+    "hash": "69b24a03e7bca7dfad15b5455dc192cc"
+  },
+  ".graphify/description-instructions/batch-043.md": {
+    "mtime": 1783015304076.8132,
+    "hash": "f25cce18b7711e6ff1d1e03116dec721"
+  },
+  ".graphify/description-instructions/batch-044.md": {
+    "mtime": 1783015304076.8132,
+    "hash": "981a9fa786bf05b1bca3507946b3d87d"
+  },
+  ".graphify/description-instructions/batch-045.md": {
+    "mtime": 1783015304077.8132,
+    "hash": "b3a86998c251d240654d5383b55c6c56"
+  },
+  ".graphify/description-instructions/batch-046.md": {
+    "mtime": 1783015304077.8132,
+    "hash": "6c65d5204f7002850e7f8db314082df4"
+  },
+  ".graphify/description-instructions/batch-047.md": {
+    "mtime": 1783015304077.8132,
+    "hash": "dde19ad60bcaf72177c5a30774440382"
+  },
+  ".graphify/description-instructions/batch-048.md": {
+    "mtime": 1783015304077.8132,
+    "hash": "3cc3a45999717e0d74c931eb15641137"
+  },
+  ".graphify/description-instructions/batch-049.md": {
+    "mtime": 1783015304077.8132,
+    "hash": "47e0936cc8f7828d29467227ccef8098"
+  },
+  ".graphify/description-instructions/batch-050.md": {
+    "mtime": 1783015304078.8132,
+    "hash": "29e5ebfa4aaa633dcc282bad01fe2a8f"
+  },
+  ".graphify/description-instructions/batch-051.md": {
+    "mtime": 1783015304078.8132,
+    "hash": "8bdffea918d9ae80e7131227c9add66b"
+  },
+  ".graphify/description-instructions/batch-052.md": {
+    "mtime": 1783015304078.8132,
+    "hash": "5701129f8da76710fd7ef26233d3a140"
+  },
+  ".graphify/description-instructions/batch-053.md": {
+    "mtime": 1783015304078.8132,
+    "hash": "c328e8334966fa493cd00e8bffc3f472"
+  },
+  ".graphify/description-instructions/batch-054.md": {
+    "mtime": 1783015304078.8132,
+    "hash": "255ac7b904190b317c10bb99587ec9f1"
+  },
+  ".graphify/description-instructions/batch-055.md": {
+    "mtime": 1783015304079.8132,
+    "hash": "9156deb0572b8402373eee24f0f57f6a"
+  },
+  ".graphify/description-instructions/batch-056.md": {
+    "mtime": 1783015304079.8132,
+    "hash": "0951ca0622bb015eab640b66fd6dc09f"
+  },
+  ".graphify/description-instructions/batch-057.md": {
+    "mtime": 1783015304079.8132,
+    "hash": "3563d6490f11ee3e86dec44d98b848c1"
+  },
+  ".graphify/description-instructions/batch-058.md": {
+    "mtime": 1783015304079.8132,
+    "hash": "ddcaf394b676a9efc48319de6240773c"
+  },
+  ".graphify/description-instructions/batch-059.md": {
+    "mtime": 1783015304080.8132,
+    "hash": "e5eab56eb18fb3315348e4224423eb22"
+  },
+  ".graphify/description-instructions/batch-060.md": {
+    "mtime": 1783015304080.8132,
+    "hash": "d5d426e61062ba9c812df02f8272a0b2"
+  },
+  ".graphify/label-instructions/communities.md": {
+    "mtime": 1783014803325.6704,
+    "hash": "b8a144d51527815e7bd7866804497d57"
+  },
+  "docs/brain/EPIC-W7-018/ticket-1-verification.md": {
+    "mtime": 1782948710757.9368,
+    "hash": "813fda479008738cc4dcfec19b0b3da0"
+  },
+  "docs/brain/EPIC-W7-019/ticket-1-verification.md": {
+    "mtime": 1782948673427.5007,
+    "hash": "1c8fd471420ea0df87060043d40f167f"
+  },
+  "docs/brain/EPIC-W7-028/ticket-1-verification.md": {
+    "mtime": 1782948767447.599,
+    "hash": "6f6ae50f236cbe8f21be1eaa74f3fab6"
+  },
+  "docs/brain/EPIC-W7-031/ticket-1-verification.md": {
+    "mtime": 1782947886020.301,
+    "hash": "911e404697836d7e03eb06b78f04bdc0"
+  },
+  "docs/brain/EPIC-W7-032/ticket-1-completion.md": {
+    "mtime": 1782954736124.3284,
+    "hash": "2fb749457c6b84946360052e8c22038e"
+  },
+  "docs/brain/EPIC-W7-032/ticket-1-verification.md": {
+    "mtime": 1782954819128.2979,
+    "hash": "3a170bca5d8dd51e24db74ce04d1af2a"
+  },
+  "docs/brain/EPIC-W7-032/ticket-2-completion.md": {
+    "mtime": 1782954941134.7231,
+    "hash": "50660c135187de618f821d9d3b463ab1"
+  },
+  "docs/brain/EPIC-W7-032/ticket-2-verification.md": {
+    "mtime": 1782955014035.5747,
+    "hash": "409f27e54ca7339b1b7cab87e57626b3"
+  },
+  "docs/brain/EPIC-W7-032/ticket-3-completion.md": {
+    "mtime": 1783009801141.2583,
+    "hash": "fb56724c75bb3f5daeb886b7a9ca7a7d"
+  },
+  "docs/brain/EPIC-W7-032/ticket-3-verification.md": {
+    "mtime": 1783009882672.281,
+    "hash": "451c379edc06056e8e9e16ac986bab57"
+  },
+  "docs/brain/EPIC-W7-032/ticket-4-completion.md": {
+    "mtime": 1783010000289.3137,
+    "hash": "6ae26414b4aec4238219eda3a17a5410"
+  },
+  "docs/brain/EPIC-W7-032/ticket-4-verification.md": {
+    "mtime": 1783010122198.3484,
+    "hash": "22ff2afac51a8f99cd88dd0ddf704ed8"
+  },
+  "docs/brain/EPIC-W7-035/ticket-1-verification.md": {
+    "mtime": 1783010317872.4045,
+    "hash": "c4f746215dd8f7ab60300a789d62c9f3"
+  },
+  "docs/brain/EPIC-W7-035/ticket-2-verification.md": {
+    "mtime": 1783010527112.4653,
+    "hash": "6a25ac750ba36d9f9af4093cb23c5a14"
+  },
+  "docs/brain/EPIC-W7-035/ticket-3-verification.md": {
+    "mtime": 1783010720746.5215,
+    "hash": "c18f420a25ba852bed85c3f09f9ba3c0"
+  },
+  "docs/brain/EPIC-W7-047/ticket-1-verification.md": {
+    "mtime": 1782948402649.3372,
+    "hash": "8a0ee4157b52ec456dae0aa1c7371e68"
+  },
+  "docs/brain/EPIC-W7-049/ticket-1-verification.md": {
+    "mtime": 1782947836067.7175,
+    "hash": "5d9408af977f6424839f0b1b4cc6a6cc"
+  },
+  "docs/brain/EPIC-W7-050/ticket-1-verification.md": {
+    "mtime": 1782948550055.0593,
+    "hash": "38a0e2d9367e3250e39f0677a0638d47"
+  },
+  "docs/brain/EPIC-W7-051/ticket-1-verification.md": {
+    "mtime": 1782947856383.9548,
+    "hash": "85c26457b5c53c42537d247e762a8fa6"
+  },
+  "docs/brain/EPIC-W7-052/ticket-1-verification.md": {
+    "mtime": 1782948604674.6973,
+    "hash": "b9bea28b58053fb9d1dc1e071a48c55d"
+  },
+  "docs/brain/EPIC-W7-053/ticket-1-verification.md": {
+    "mtime": 1782948857950.6565,
+    "hash": "e092fa3aa724368cdf7d6e2b1d9ed118"
+  },
+  "docs/brain/EPIC-W7-054/ticket-1-verification.md": {
+    "mtime": 1782947886068.3015,
+    "hash": "ec37d6654397d866eb578e3d30a5b0df"
+  },
+  "docs/brain/EPIC-W7-056/ticket-1-verification.md": {
+    "mtime": 1782948728793.1475,
+    "hash": "98cbe65033565ccb0f5a1aa94da8f4fd"
+  },
+  "docs/brain/EPIC-W7-060/ticket-1-verification.md": {
+    "mtime": 1782951258534.7012,
+    "hash": "b42ec10d29431412054ed6493fe5971f"
+  },
+  "docs/brain/EPIC-W7-067/ticket-1-verification.md": {
+    "mtime": 1782949259418.347,
+    "hash": "d805650b92cf110f23ec01a3c0680e4b"
+  },
+  "docs/brain/EPIC-W7-070/ticket-1-verification.md": {
+    "mtime": 1782950292642.417,
+    "hash": "339fa97b5433d7a141f29761a6e35d8a"
+  },
+  "docs/brain/EPIC-W7-077/ticket-1-verification.md": {
+    "mtime": 1782948954651.7861,
+    "hash": "62a67143ac9ca039a1ddd5f8cfde81ae"
+  },
+  "docs/brain/EPIC-W7-081/ticket-1-verification.md": {
+    "mtime": 1782947942107.9563,
+    "hash": "f3db4d7c9f307b2a1194ff92eb6b388a"
+  },
+  "docs/brain/EPIC-W7-082/ticket-1-verification.md": {
+    "mtime": 1782948658091.3215,
+    "hash": "b13aadda68149d612fcdb0ff2eb9a327"
+  },
+  "docs/brain/EPIC-W7-083/ticket-1-verification.md": {
+    "mtime": 1782948892045.0547,
+    "hash": "1c78d205a13afa63c714b0cb343bf12d"
+  },
+  "docs/brain/EPIC-W7-084/ticket-1-verification.md": {
+    "mtime": 1782949149677.0647,
+    "hash": "1d2d73019e8723a86219413dc7462543"
+  },
+  "docs/brain/EPIC-W7-085/ticket-1-verification.md": {
+    "mtime": 1782949442268.4832,
+    "hash": "c18f93bc7565b42df1f07d33ba5eb759"
+  },
+  "docs/brain/EPIC-W7-086/ticket-1-verification.md": {
+    "mtime": 1782949790024.546,
+    "hash": "622548d3d411bf04c88735b9b11fe23d"
+  },
+  "docs/brain/EPIC-W7-087/ticket-1-verification.md": {
+    "mtime": 1782950058380.6807,
+    "hash": "c9321be16b57f307c79333352c7c3bec"
+  },
+  "docs/brain/EPIC-W7-088/ticket-1-verification.md": {
+    "mtime": 1782948742105.303,
+    "hash": "0b243b50da276a33bd00a934b5d9f7cd"
+  },
+  "docs/brain/EPIC-W7-089/ticket-1-verification.md": {
+    "mtime": 1782949234868.06,
+    "hash": "b0204296675346bd01bd37a0d8968e15"
+  },
+  "docs/brain/EPIC-W7-090/ticket-1-verification.md": {
+    "mtime": 1782949093473.4082,
+    "hash": "27e5a03edc0f59ac535bcf9ab97bf429"
+  },
+  "docs/brain/EPIC-W7-091/ticket-1-verification.md": {
+    "mtime": 1782949093473.4082,
+    "hash": "35f16fd122eb519474e41401433b0a53"
+  },
+  "docs/brain/EPIC-W7-098/ticket-1-verification.md": {
+    "mtime": 1782948768458.6108,
+    "hash": "2bd84494a7aea08ad5f87e2679322ae1"
+  },
+  "docs/brain/EPIC-W7-107/ticket-1-verification.md": {
+    "mtime": 1782947952150.0737,
+    "hash": "69b4f9d42e7a3408a6537019de1abbef"
+  },
+  "docs/brain/EPIC-W7-109/ticket-1-verification.md": {
+    "mtime": 1782949035131.7266,
+    "hash": "349fe59320b6dac33d484e962107faad"
+  },
+  "docs/brain/EPIC-W7-110/ticket-1-verification.md": {
+    "mtime": 1782949340536.2947,
+    "hash": "ce8cfe440daed422dc267955562c0ee2"
+  },
+  "docs/brain/EPIC-W7-111/ticket-1-verification.md": {
+    "mtime": 1782949608112.4207,
+    "hash": "28756be979f48852fb69ce019dbfc490"
+  },
+  "docs/brain/EPIC-W7-112/ticket-1-verification.md": {
+    "mtime": 1782949876431.5554,
+    "hash": "45e5975a7463fce9ae63aa864f642224"
+  },
+  "docs/brain/EPIC-W7-113/ticket-1-verification.md": {
+    "mtime": 1782950358330.1843,
+    "hash": "a3945efab010f5cbc19a80248b69f464"
+  },
+  "docs/brain/EPIC-W7-114/ticket-1-verification.md": {
+    "mtime": 1782950559142.53,
+    "hash": "e39f040a4b8c3afe181172c39ad2459a"
+  },
+  "docs/brain/EPIC-W7-115/ticket-1-verification.md": {
+    "mtime": 1782951322150.4443,
+    "hash": "051559759371c766db58bb058c002de5"
+  },
+  "docs/brain/EPIC-W7-116/ticket-1-verification.md": {
+    "mtime": 1782949218093.864,
+    "hash": "ae0ca72c23209b3c926beb9cc329f28c"
+  },
+  "docs/brain/EPIC-W7-124/ticket-1-verification.md": {
+    "mtime": 1782949259418.347,
+    "hash": "863215062db973f23c0981721db28952"
+  },
+  "docs/brain/EPIC-W7-137/ticket-1-verification.md": {
+    "mtime": 1782948648682.2114,
+    "hash": "f473068c527b78bae811e801327664a7"
+  },
+  "docs/brain/EPIC-W7-139/ticket-1-verification.md": {
+    "mtime": 1782947903313.5032,
+    "hash": "9edffc8b5ee3ea7f83854e5a32b00ab4"
+  },
+  "docs/brain/EPIC-W7-140/ticket-1-verification.md": {
+    "mtime": 1782948894483.0833,
+    "hash": "9b0c98916673b3d75eb3d2fe4341ef0d"
+  },
+  "docs/brain/EPIC-W7-141/ticket-1-verification.md": {
+    "mtime": 1782950148411.7324,
+    "hash": "72498105d656593fdcc2dfbb68bad141"
+  },
+  "docs/brain/EPIC-W7-147/ticket-1-verification.md": {
+    "mtime": 1782948664601.3975,
+    "hash": "8ca56df261d25c97f26af6a2be058cd2"
+  },
+  "docs/brain/EPIC-W7-149/ticket-1-verification.md": {
+    "mtime": 1782948898910.135,
+    "hash": "fc97d8578dfcc15460db0631dc3c7b35"
+  },
+  "docs/brain/EPIC-W7-150/ticket-1-verification.md": {
+    "mtime": 1782949161108.1982,
+    "hash": "9933f65d81479a6eb309631aa977e615"
+  },
+  "docs/brain/EPIC-W7-154/ticket-1-verification.md": {
+    "mtime": 1782949140813.9612,
+    "hash": "44a826b82ea0e4da318a22bae0c785c6"
+  },
+  "docs/brain/EPIC-W7-157/ticket-1-verification.md": {
+    "mtime": 1782948673426.5007,
+    "hash": "f7ffefb159ef28f603b93aa23ec1de86"
+  },
+  "docs/brain/EPIC-W7-159/ticket-1-verification.md": {
+    "mtime": 1782949140812.9612,
+    "hash": "90099d5991595566a37acdfeb4ff8c2e"
+  },
+  "docs/brain/wave7-overrun/BroadcastSyncTargetState-completion.md": {
+    "mtime": 1783014784792.665,
+    "hash": "60806d19bff13f899a59c32f759b49cf"
+  },
+  "docs/brain/wave7-overrun/BroadcastSyncTargetState-verification.md": {
+    "mtime": 1783014902258.6985,
+    "hash": "1b63d6e7b3a95e4552c0e13dab9c8156"
+  },
+  "docs/brain/wave7-overrun/CancelOrphanedOrdersForPosition-completion.md": {
+    "mtime": 1783012984345.1624,
+    "hash": "b12dcdadae61faf84fa58c6a51a9d5ef"
+  },
+  "docs/brain/wave7-overrun/CancelOrphanedOrdersForPosition-verification.md": {
+    "mtime": 1783013036042.177,
+    "hash": "f8a9361d950a3c9713e1d04efa1b675a"
+  },
+  "docs/brain/wave7-overrun/DispatchOrderState-completion.md": {
+    "mtime": 1783011757296.818,
+    "hash": "0d9bce45967d0972ddc683ce76bb33a7"
+  },
+  "docs/brain/wave7-overrun/DispatchOrderState-verification.md": {
+    "mtime": 1783011815255.8342,
+    "hash": "d1b7ef4b2550d285b0cffaf180e371f4"
+  },
+  "docs/brain/wave7-overrun/EnterORPosition-completion.md": {
+    "mtime": 1783015225337.7908,
+    "hash": "199150996e44e2fc0ad6dfd3c7f44a71"
+  },
+  "docs/brain/wave7-overrun/EnterORPosition-verification.md": {
+    "mtime": 1783015383290.836,
+    "hash": "21da455f0fd3b9e46b3babe0d21e89a8"
+  },
+  "docs/brain/wave7-overrun/ExecuteFFMALimitEntry-completion.md": {
+    "mtime": 1783018983657.8696,
+    "hash": "5b43828bba04c4e1f651d4c1e8f58327"
+  },
+  "docs/brain/wave7-overrun/ExecuteFFMALimitEntry-verification.md": {
+    "mtime": 1783019067684.894,
+    "hash": "2eb91c7a87b53a3c6e1394a3ea7a0743"
+  },
+  "docs/brain/wave7-overrun/ExecuteFFMAManualMarketEntry-completion.md": {
+    "mtime": 1783011621872.779,
+    "hash": "42032eef7abde136ae5fc8cd8be58b49"
+  },
+  "docs/brain/wave7-overrun/ExecuteFFMAManualMarketEntry-verification.md": {
+    "mtime": 1783011682293.7964,
+    "hash": "82c71bc6093015e570615fcd779c3f41"
+  },
+  "docs/brain/wave7-overrun/ExecuteFollowerCascadeCleanup-completion.md": {
+    "mtime": 1783014706809.6428,
+    "hash": "ba7b133ad67acb04eb50d434b5442d0b"
+  },
+  "docs/brain/wave7-overrun/ExecuteFollowerCascadeCleanup-verification.md": {
+    "mtime": 1783014754489.6565,
+    "hash": "d761853d20a6e584bb038e70651d23b6"
+  },
+  "docs/brain/wave7-overrun/ExecuteMOMOEntry-completion.md": {
+    "mtime": 1783018716536.7927,
+    "hash": "84749802686b1004fcb80cde18bf6180"
+  },
+  "docs/brain/wave7-overrun/ExecuteMOMOEntry-verification.md": {
+    "mtime": 1783018869772.837,
+    "hash": "58b9acdfad44105cf1900ddd821b5e02"
+  },
+  "docs/brain/wave7-overrun/ExecuteRetestEntry-completion.md": {
+    "mtime": 1783011421231.7214,
+    "hash": "a7fa48414a9b8c10d315b09f69b990a3"
+  },
+  "docs/brain/wave7-overrun/ExecuteRetestEntry-verification.md": {
+    "mtime": 1783011486614.7402,
+    "hash": "518dee3eb26eae51fc491522565f5ea9"
+  },
+  "docs/brain/wave7-overrun/ExecuteTREND_Preflight-completion.md": {
+    "mtime": 1783019175310.9263,
+    "hash": "a3ee225f02868aa5627feaf97ccf1f27"
+  },
+  "docs/brain/wave7-overrun/ExecuteTREND_Preflight-verification.md": {
+    "mtime": 1783019274693.9558,
+    "hash": "faba6f7c134b9f369f0ff4b7dddb5c0d"
+  },
+  "docs/brain/wave7-overrun/FlattenSpecificTarget-completion.md": {
+    "mtime": 1783021309694.5715,
+    "hash": "b1be53385653b3ffd8c0e79e881405e5"
+  },
+  "docs/brain/wave7-overrun/FlattenSpecificTarget-verification.md": {
+    "mtime": 1783021378358.5925,
+    "hash": "5b1e2657ec9af7c375cf83b754bb25d4"
+  },
+  "docs/brain/wave7-overrun/FormatInternal-completion.md": {
+    "mtime": 1783011162060.6472,
+    "hash": "c0d04ba315293cf9909b6be8e4730535"
+  },
+  "docs/brain/wave7-overrun/FormatInternal-verification.md": {
+    "mtime": 1783011232078.6672,
+    "hash": "49694d3fbc1e18744e608e909ccb7f03"
+  },
+  "docs/brain/wave7-overrun/HandleMatchedFollower_PendingCancelReplace-completion.md": {
+    "mtime": 1783013672326.3596,
+    "hash": "4fd198eb5cd37d0a10735f60369fe57c"
+  },
+  "docs/brain/wave7-overrun/HandleMatchedFollower_PendingCancelReplace-verification.md": {
+    "mtime": 1783014484558.5796,
+    "hash": "9add6028b036854bb048575f29d81ad4"
+  },
+  "docs/brain/wave7-overrun/HandleMatchedFollower_PendingCleanupPurge-completion.md": {
+    "mtime": 1783015129642.7634,
+    "hash": "a09067150bd2ceb3a1a681e97ad4ec8f"
+  },
+  "docs/brain/wave7-overrun/HandleMatchedFollower_PendingCleanupPurge-verification.md": {
+    "mtime": 1783015190430.7808,
+    "hash": "dbf04f7a12384f274a10496aba67dee8"
+  },
+  "docs/brain/wave7-overrun/HandleMatchedFollower_StopReplacement-completion.md": {
+    "mtime": 1783012278228.9595,
+    "hash": "f06c63d3d6caaa433b26df7acf3d21ba"
+  },
+  "docs/brain/wave7-overrun/HandleMatchedFollower_StopReplacement-verification.md": {
+    "mtime": 1783012334600.9758,
+    "hash": "36eb33e19d7c3e2847d773a5854e03ce"
+  },
+  "docs/brain/wave7-overrun/HandleOrderCancelled_ProcessStopReplacement-completion.md": {
+    "mtime": 1783011633387.7825,
+    "hash": "cc405d3bedee88a7e799ab9afa21beee"
+  },
+  "docs/brain/wave7-overrun/HandleOrderCancelled_ProcessStopReplacement-verification.md": {
+    "mtime": 1783011681397.7961,
+    "hash": "e8aef5c6f9ebca81dad126ceff56ed40"
+  },
+  "docs/brain/wave7-overrun/HandleOrderCancelled_RollbackUnfilledEntry-completion.md": {
+    "mtime": 1783011900261.8562,
+    "hash": "b28542087e25f0ef43293c6c63310f96"
+  },
+  "docs/brain/wave7-overrun/HandleOrderCancelled_RollbackUnfilledEntry-verification.md": {
+    "mtime": 1783011962872.8723,
+    "hash": "fde56996d02fdc97bed16f6e73eafc0f"
+  },
+  "docs/brain/wave7-overrun/IsAllowedIpcAction-completion.md": {
+    "mtime": 1783020904593.4512,
+    "hash": "7b9acddcc480fb0d43209a34ecff7724"
+  },
+  "docs/brain/wave7-overrun/IsAllowedIpcAction-verification.md": {
+    "mtime": 1783020968614.4695,
+    "hash": "e39aab3d0b52af8f9130c7db74490c36"
+  },
+  "docs/brain/wave7-overrun/IsAllowlistBypassAttempt-completion.md": {
+    "mtime": 1783020378856.2925,
+    "hash": "509cba344c82212a60adb85d18a3cd52"
+  },
+  "docs/brain/wave7-overrun/IsAllowlistBypassAttempt-verification.md": {
+    "mtime": 1783020436265.3115,
+    "hash": "cbd1068a82a1261fddab3d9ccbdecb75"
+  },
+  "docs/brain/wave7-overrun/IsMasterReplaceCascadeCancellation-completion.md": {
+    "mtime": 1783012961761.1558,
+    "hash": "9bd2815a81e0769483f2508aa08b1203"
+  },
+  "docs/brain/wave7-overrun/IsMasterReplaceCascadeCancellation-verification.md": {
+    "mtime": 1783013015618.1711,
+    "hash": "7dffe3d78e03f26306f0867f838f781c"
+  },
+  "docs/brain/wave7-overrun/OnAccountOrderUpdate-completion.md": {
+    "mtime": 1783011957155.8708,
+    "hash": "cba32bed2c9d7f76cbbce65fd2f079d2"
+  },
+  "docs/brain/wave7-overrun/OnAccountOrderUpdate-verification.md": {
+    "mtime": 1783012049888.8948,
+    "hash": "8391edc35806fe22442904a84961df5d"
+  },
+  "docs/brain/wave7-overrun/OnBarUpdate-completion.md": {
+    "mtime": 1783016266014.0876,
+    "hash": "434701cb9bb2a05e006db5e747092f87"
+  },
+  "docs/brain/wave7-overrun/OnBarUpdate-verification.md": {
+    "mtime": 1783018541315.7424,
+    "hash": "2c55df58d4ccf23ecf39c55a5c1f1206"
+  },
+  "docs/brain/wave7-overrun/ProcessAccountOrderQueue-completion.md": {
+    "mtime": 1783012765090.0994,
+    "hash": "615f0d7a3920ac0558f38b4ccd48d38d"
+  },
+  "docs/brain/wave7-overrun/ProcessAccountOrderQueue-verification.md": {
+    "mtime": 1783012813740.1133,
+    "hash": "b2b8b3cb64e30f24d867838fcfded42f"
+  },
+  "docs/brain/wave7-overrun/ProcessAccountOrder_UpdateFleetExpected-completion.md": {
+    "mtime": 1783013404375.2827,
+    "hash": "199bae74b35eedf0779894b9dac127ec"
+  },
+  "docs/brain/wave7-overrun/ProcessAccountOrder_UpdateFleetExpected-verification.md": {
+    "mtime": 1783013465425.3003,
+    "hash": "8270b25575908a58d0828ee56724279e"
+  },
+  "docs/brain/wave7-overrun/ProcessFollowerCancellationSafe-completion.md": {
+    "mtime": 1783012514315.0273,
+    "hash": "6f188275cdda169c2401b751ec5b3eb4"
+  },
+  "docs/brain/wave7-overrun/ProcessFollowerCancellationSafe-verification.md": {
+    "mtime": 1783012594684.0505,
+    "hash": "6f403e1d3b6b1d2774f072d07e078f10"
+  },
+  "docs/brain/wave7-overrun/ProcessFollowerCancellationUnconditional-completion.md": {
+    "mtime": 1783013156066.2114,
+    "hash": "b15fc6a674c9091ab95e57c97c646256"
+  },
+  "docs/brain/wave7-overrun/ProcessFollowerCancellationUnconditional-verification.md": {
+    "mtime": 1783013222487.2305,
+    "hash": "6fffbc9a39405f639b0ca133ee0d526f"
+  },
+  "docs/brain/wave7-overrun/ProcessSessionReset-completion.md": {
+    "mtime": 1783015672609.9185,
+    "hash": "babdc5c9e8ac4b8ccfcc667bc15bab8d"
+  },
+  "docs/brain/wave7-overrun/ProcessSessionReset-verification.md": {
+    "mtime": 1783015819559.9604,
+    "hash": "9337c47950b8c20784c178dc8e43ece6"
+  },
+  "docs/brain/wave7-overrun/PropagateMasterTargetMove-completion.md": {
+    "mtime": 1783014533627.5935,
+    "hash": "49302ef37d760c8435ba182e48f6c03a"
+  },
+  "docs/brain/wave7-overrun/PropagateMasterTargetMove-verification.md": {
+    "mtime": 1783014642375.6245,
+    "hash": "e1d2f61c436735829f2532879609cc51"
+  },
+  "docs/brain/wave7-overrun/PropagateMaster_ApplyFollowerMove-completion.md": {
+    "mtime": 1783012811897.1128,
+    "hash": "4c0f98ee7b9a8db29dec1354596137fe"
+  },
+  "docs/brain/wave7-overrun/PropagateMaster_ApplyFollowerMove-verification.md": {
+    "mtime": 1783012869984.1294,
+    "hash": "509fc561fc88159f5ddcbf5b688966fa"
+  },
+  "docs/brain/wave7-overrun/ResolveFollowersViaScan_ProcessEntry-completion.md": {
+    "mtime": 1783012128748.9167,
+    "hash": "5e0dbaf9a738ec6dd347c584a3a24333"
+  },
+  "docs/brain/wave7-overrun/ResolveFollowersViaScan_ProcessEntry-verification.md": {
+    "mtime": 1783012415318.999,
+    "hash": "8e5cdc814a2007d658d01d10cab3a6db"
+  },
+  "docs/brain/wave7-overrun/ResolveMasterTradeType-completion.md": {
+    "mtime": 1783012516724.028,
+    "hash": "242ae6d2d34f9f78ab4876e6563a5c8a"
+  },
+  "docs/brain/wave7-overrun/ResolveMasterTradeType-verification.md": {
+    "mtime": 1783012603850.053,
+    "hash": "de8e36f05952e123ecd7c3c130b16ed6"
+  },
+  "docs/brain/wave7-overrun/SetMode_ActivateModeFlags-completion.md": {
+    "mtime": 1783021141589.52,
+    "hash": "bd36f60113d1888972dcfbcb69b0d0df"
+  },
+  "docs/brain/wave7-overrun/SetMode_ActivateModeFlags-verification.md": {
+    "mtime": 1783021196786.537,
+    "hash": "930b172b221644d6cff20003738d86b0"
+  },
+  "docs/brain/wave7-overrun/TryApplyConfigTarget_Type-completion.md": {
+    "mtime": 1783020805180.4226,
+    "hash": "9e235ab426a7f61675658a7b200ec113"
+  },
+  "docs/brain/wave7-overrun/TryApplyConfigTarget_Type-verification.md": {
+    "mtime": 1783020811931.4246,
+    "hash": "dcc279d48d64d65150803931124fc301"
+  },
+  "docs/brain/wave7-overrun/TryMatchFollowerPositionInSnapshot-completion.md": {
+    "mtime": 1783014895509.6965,
+    "hash": "55b2ed892cb3bdef4410012f60bc6d14"
+  },
+  "docs/brain/wave7-overrun/TryMatchFollowerPositionInSnapshot-verification.md": {
+    "mtime": 1783015006925.7285,
+    "hash": "84944c8361de5657ee611b00ccda8781"
+  },
+  "docs/workflow/WAVE7_EPIC_LIST_INTEGRITY_AUDIT.md": {
+    "mtime": 1782945227839.2412,
+    "hash": "22ea39b6dc6bcd0caef9799cd3a860f8"
+  },
+  "docs/workflow/WAVE7_PHASE5_CYC_GATE_PROTOCOL.md": {
+    "mtime": 1782944223202.5017,
+    "hash": "b794d5d3139025b805181c4ae4884a09"
   }
 }

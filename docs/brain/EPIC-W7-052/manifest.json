@@ -17,6 +17,12 @@
       "verification_verdict": "PASS",
       "cyc_gate_run": "CYC_GATE: NOT_FOUND  EPIC-W7-052  CleanupStalePendingReplacements  CYC=N/A",
       "build_verified": true
+    },
+    "phase_6": {
+      "status": "completed",
+      "agent": "v12-phase6-review",
+      "final_cyc": 4
     }
-  }
+  },
+  "wave_ready": true
 }

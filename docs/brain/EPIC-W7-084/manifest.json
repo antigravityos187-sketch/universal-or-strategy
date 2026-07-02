@@ -5,6 +5,16 @@
   "cyc_before": 12,
   "wave_ready": true,
   "phases": {
+    "phase_6": {
+      "status": "completed",
+      "agent": "v12-phase6-review",
+      "final_cyc_live": 3,
+      "jcodemunch_assessment": "low",
+      "cyc_gate_passed": true,
+      "build_passed": true,
+      "jane_street_compliant": true,
+      "artifact": "05-completion-report.md"
+    },
     "phase_5": {
       "status": "completed",
       "final_cyc": 8,

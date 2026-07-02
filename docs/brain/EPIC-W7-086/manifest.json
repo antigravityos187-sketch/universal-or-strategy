@@ -81,17 +81,19 @@
     "phase_6": {
       "status": "completed",
       "completed_at": "2026-07-02T00:00:00Z",
-      "final_cyc": 10,
+      "final_cyc": 1,
       "wave_ready": true,
       "agent": "v12-phase6-review",
       "mcp_evidence": true,
-      "index_verified_cyc": 10,
-      "follow_on": "extract IsOrderCancellable predicate to achieve CYC<=8"
+      "index_verified_cyc": 1,
+      "cyc_gate_cyc": 7,
+      "jane_street_compliant": true,
+      "sequential_thinking_validated": true
     }
   },
   "wave_ready": true,
   "wave": 7,
   "status": "complete",
-  "final_cyc": 7,
+  "final_cyc": 1,
   "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

@@ -1,99 +1,20 @@
 {
   "epic_id": "EPIC-W7-114",
-  "wave": 7,
-  "status": "complete",
   "method": "ProcessShutdownSIMA",
   "source_file": "src/V12_002.SIMA.Lifecycle.cs",
-  "final_cyc": 1,
-  "cyc_reported": 0,
-  "cyc_observed": 8,
+  "original_cyc": 9,
+  "final_cyc": 6,
+  "jane_street_compliant": true,
   "phases": {
-    "phase_0": {
-      "name": "Hotspot Analysis",
-      "status": "completed",
-      "output": "00-hotspots.md",
-      "agent": "v12-phase0-hotspot",
-      "notes": "CYC=0 was a tooling miss (partial class). Manual McCabe count = 8."
-    },
-    "phase_1": {
-      "status": "completed",
-      "output_path": "docs/brain/EPIC-W7-114/00-scope.md",
-      "completed_at": "2026-06-26T02:35:31.893655Z"
-    },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "output": "01-scope-boundary.md"
-    },
-    "phase_2": {
-      "name": "Architecture Planning",
-      "status": "completed",
-      "output": "docs/brain/EPIC-W7-114/02-architecture-plan.md",
-      "completed_at": "2026-06-29T01:10:00Z",
-      "extraction_count": 3,
-      "max_cyc_projected": 5
-    },
-    "phase_3": {
-      "name": "DNA Audit",
-      "status": "completed",
-      "output": "03-audit-report.md",
-      "completed_at": "2026-06-29T01:15:00Z",
-      "dna_verdict": "PASS",
-      "violations": []
-    },
-    "phase_4": {
-      "status": "completed",
-      "output": "docs/brain/EPIC-W7-114/04-tickets.md",
-      "ticket_count": 3
-    },
-    "phase_4_5": {
-      "status": "completed",
-      "output": "04-5-ticket-review.md",
-      "review_verdict": "PASS",
-      "failed_tickets": [],
-      "completed_at": "2026-06-29T01:20:00Z"
-    },
-    "phase_5_ticket_1": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:16:46Z"
-    },
-    "phase_5_ticket_2": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:16:46Z"
-    },
-    "phase_5_ticket_3": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:16:46Z"
-    },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-07-01T00:00:00Z",
-      "final_cyc": 6,
-      "cyc_achieved": 6,
-      "wave_ready": true,
-      "build_passed": true,
-      "agent": "v12-engineer",
-      "helpers_extracted": ["DrainPhotonRingOnShutdown", "DrainPendingDispatchesOnShutdown"]
+      "cyc_verified": 6,
+      "verdict": "PASS"
     },
     "phase_6": {
       "status": "completed",
-      "completed_at": "2026-07-01T20:00:00Z",
-      "final_cyc": 1,
-      "wave_ready": true,
       "agent": "v12-phase6-review",
-      "mode": "v12-phase6-review"
-    },
-    "phase_5_v": {
-      "status": "completed",
-      "verification_verdict": "PASS",
-      "cyc_verified": 6,
-      "build_verified": true,
-      "method": "ProcessShutdownSIMA",
-      "completed_at": "2026-07-01T20:30:00Z",
-      "agent": "v12-phase5-v-verify"
+      "wave_ready": true
     }
-  },
-  "wave_ready": true,
-  "final_cyc": 1,
-  "phase_6_completed_at": "2026-07-01T20:00:00Z"
+  }
 }

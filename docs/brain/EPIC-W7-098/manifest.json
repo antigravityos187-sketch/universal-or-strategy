@@ -15,6 +15,11 @@
       "agent": "v12-engineer",
       "helpers_extracted": ["IsOrderRelevantToInstrument"],
       "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-098  ProcessFlattenWorkItem_CancelOrders  CYC=7"
+    },
+    "phase_6": {
+      "status": "completed",
+      "agent": "v12-phase6-review",
+      "wave_ready": true
     }
   },
   "phase_5_v": {

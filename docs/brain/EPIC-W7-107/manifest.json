@@ -84,7 +84,11 @@
       "timestamp": "2026-06-30T20:56:52Z",
       "final_cyc": 7,
       "wave_ready": true,
-      "agent": "v12-phase6-review"
+      "agent": "v12-phase6-review",
+      "mcp_evidence": {
+        "jcodemunch": "stale-index (symbol not found; cyc=7 from ticket-1-verification.md)",
+        "sequential_thinking": "thoughtNumber=1, nextThoughtNeeded=false, branches=[]"
+      }
     },
     "phase_5_v": {
       "status": "completed",

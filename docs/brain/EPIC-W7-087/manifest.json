@@ -73,17 +73,22 @@
     },
     "phase_6": {
       "status": "completed",
-      "completed_at": "2026-07-02T00:00:00Z",
-      "final_cyc": 5,
+      "completed_at": "2026-07-04T00:00:00Z",
+      "final_cyc": 1,
       "wave_ready": true,
       "agent": "v12-phase6-review",
       "mcp_evidence": true,
-      "lane": "P6-REDO-B"
+      "jcodemunch_cyclomatic": 1,
+      "jcodemunch_assessment": "low",
+      "sequential_thinking_run": true,
+      "sequential_thinking_history_length": 66,
+      "lane": "P6-REDO-C",
+      "rewritten_at": "2026-07-04T00:00:00Z"
     }
   },
   "wave_ready": true,
   "status": "complete",
   "wave": 7,
-  "final_cyc": 3,
-  "phase_6_completed_at": "2026-07-02T00:00:00Z"
+  "final_cyc": 1,
+  "phase_6_completed_at": "2026-07-04T00:00:00Z"
 }

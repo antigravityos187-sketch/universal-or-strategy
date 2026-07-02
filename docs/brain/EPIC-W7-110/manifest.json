@@ -92,7 +92,8 @@
       "timestamp": "2026-07-01T20:09:00Z",
       "final_cyc": 8,
       "wave_ready": true,
-      "agent": "v12-phase6-review"
+      "agent": "v12-phase6-review",
+      "output": "docs/brain/EPIC-W7-110/05-completion-report.md"
     }
   },
   "phase_6_completed_at": "2026-07-01T20:09:00Z"

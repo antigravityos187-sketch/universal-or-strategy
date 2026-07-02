@@ -2,13 +2,14 @@
   "epic_id": "EPIC-W7-157",
   "method": "TryHandleFleet_MoveTarget",
   "file": "src/V12_002.UI.IPC.Commands.Fleet.cs",
-  "cyc_before": 15,
+  "cyc_before": 17,
   "free_ride_source": "EPIC-W7-019",
+  "wave_ready": true,
   "phases": {
     "phase_5": {
       "status": "completed",
       "agent": "v12-engineer",
-      "final_cyc": 5,
+      "final_cyc": 6,
       "wave_ready": true,
       "build_passed": true,
       "helpers_added": [
@@ -26,6 +27,16 @@
       "cyc_gate_exit_code": 0,
       "build_verified": true,
       "helpers_confirmed": ["TryParseTargetId", "HandleSetTargetPriceAbsolute", "HandleMoveTargetRelative"]
+    },
+    "phase_6": {
+      "status": "completed",
+      "agent": "v12-phase6-review",
+      "final_cyc": 6,
+      "wave_ready": true,
+      "jane_street_compliant": true,
+      "mcp_verified": true,
+      "jcodemunch_cyc": 6,
+      "sequential_thinking_validated": true
     }
   }
 }

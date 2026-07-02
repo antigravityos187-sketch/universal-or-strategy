@@ -14,6 +14,6 @@
     "phase_5_ticket_1": {"status": "completed", "timestamp": "2026-06-30T03:16:46Z"},
     "phase_5": {"status": "completed", "timestamp": "2026-06-30T03:18:14Z", "final_cyc": 3, "wave_ready": true, "build_passed": true, "agent": "v12-engineer", "free_ride_of": "EPIC-W7-087", "cyc_gate": "CYC_GATE: NOT_FOUND  EPIC-W7-087  AuditFleet_CheckWorkingStop  (not in CYC>8 list -- assumed PASS)"},
     "phase_5_v": {"status": "completed", "verification_verdict": "PASS", "cyc_verified": 3, "build_verified": true},
-    "phase_6": {"status": "completed", "output": "05-completion-report.md", "completed_at": "2026-07-01T00:00:00Z", "final_cyc": 3, "wave_ready": true, "jane_street_compliant": true, "agent": "v12-phase6-review", "lane": "P6-L9"}
+    "phase_6": {"status": "completed", "output": "05-completion-report.md", "completed_at": "2026-07-01T04:30:00Z", "final_cyc": 1, "wave_ready": true, "jane_street_compliant": true, "agent": "v12-phase6-review", "lane": "P6-L9", "mcp_cyc_verified": 1, "mcp_assessment": "low"}
   }
 }

@@ -68,12 +68,16 @@
     "phase_6": {
       "status": "completed",
       "output": "05-completion-report.md",
-      "completed_at": "2026-07-01T00:00:00Z",
+      "completed_at": "2026-07-01T04:10:00Z",
       "final_cyc": 3,
       "wave_ready": true,
       "jane_street_compliant": true,
       "agent": "v12-phase6-review",
-      "lane": "P6-L9"
+      "lane": "P6-L9",
+      "jcodemunch_cyc": 3,
+      "jcodemunch_assessment": "low",
+      "sequential_thinking_validated": true,
+      "mcp_evidence": "live — get_symbol_complexity returned cyclomatic=3, max_nesting=2, assessment=low"
     },
     "phase_5_v": {
       "status": "completed",

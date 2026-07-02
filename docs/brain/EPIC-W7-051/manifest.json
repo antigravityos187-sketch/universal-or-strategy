@@ -18,6 +18,12 @@
       "cyc_verified": 7,
       "build_verified": true,
       "agent": "v12-phase5-v-verify"
+    },
+    "phase_6": {
+      "status": "completed",
+      "agent": "v12-phase6-review",
+      "final_cyc": 7
     }
-  }
+  },
+  "wave_ready": true
 }

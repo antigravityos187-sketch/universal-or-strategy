@@ -45,6 +45,7 @@
     },
     "phase_6": {
       "status": "completed",
+      "agent": "v12-phase6-review",
       "final_cyc": 4,
       "wave_ready": true,
       "all_gates_passed": true,
@@ -56,8 +57,11 @@
       "artifact": "docs/brain/EPIC-W7-016/05-completion-report.md",
       "reviewed_by": "v12-phase6-review",
       "reviewed_at": "2026-07-01",
-      "sequential_thinking_thoughts": 4,
+      "sequential_thinking_thoughts": 1,
+      "jcodemunch_cyclomatic": 5,
+      "jcodemunch_note": "index cyclomatic=5; manual analysis confirms CYC=4; both below threshold=8",
       "final_verdict": "PASS"
     }
-  }
+  },
+  "wave_ready": true
 }

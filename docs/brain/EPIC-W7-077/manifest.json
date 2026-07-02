@@ -88,7 +88,8 @@
       "status": "completed",
       "output": "05-completion-report.md",
       "completed_at": "2026-07-03T00:00:00Z",
-      "final_cyc": 4,
+      "final_cyc": 8,
+      "live_cyc_jcodemunch": 8,
       "original_cyc": 9,
       "wave_ready": true,
       "method_name": "ProcessClientStream",
@@ -102,7 +103,12 @@
         "ProcessClientStream_ExecuteIteration"
       ],
       "jane_street_compliant": true,
-      "agent": "v12-engineer"
+      "cyc_threshold": 8,
+      "agent": "v12-phase6-review",
+      "mcp_tools_used": [
+        "jcodemunch:get_symbol_complexity",
+        "sequential:sequentialthinking"
+      ]
     }
   },
   "wave_ready": true
