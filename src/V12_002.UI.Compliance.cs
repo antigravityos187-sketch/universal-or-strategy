@@ -343,7 +343,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (!accountEquityPeak.TryGetValue(acctName, out double peak) || peak <= 0 || TrailingDrawdownLimit <= 0)
                 return false;
             double balance = 0;
-            Account currentAccount = this.Account;
+            Account currentAccount = Account.All.FirstOrDefault(a => a.Name == acctName) ?? this.Account;
             if (currentAccount != null)
             {
                 try
