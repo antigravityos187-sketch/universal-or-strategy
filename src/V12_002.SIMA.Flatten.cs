@@ -411,7 +411,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             try
             {
-                EmergencyFlatten_ExecuteBody(acct);
+                EmergencyFlattenExecuteBody(acct);
             }
             catch (InvalidOperationException ex)
                 when (ex.Message.Contains("Cancel")
@@ -435,13 +435,13 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// then close any open position, then reset expected position.
         /// Extracted to reduce cyclomatic complexity of the parent caller.
         /// </summary>
-        private void EmergencyFlatten_ExecuteBody(Account acct)
+        private void EmergencyFlattenExecuteBody(Account acct)
         {
             // [938-EF-GUARD] Confirm bracket cancellation precedes market close.
             Print(string.Format("[938-EF-GUARD] EF cancelling bracket first: {0}", acct.Name));
 
             // Step 1: Cancel ALL working orders on this instrument for this account.
-            List<Order> ordersToCancel = EmergencyFlatten_CollectWorkingOrders(acct);
+            List<Order> ordersToCancel = EmergencyFlattenCollectWorkingOrders(acct);
             if (ordersToCancel.Count > 0)
             {
                 acct.Cancel(ordersToCancel);
@@ -455,7 +455,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // Step 2: Close any live position with a Market order.
-            EmergencyFlatten_CloseOpenPosition(acct);
+            EmergencyFlattenCloseOpenPosition(acct);
 
             // Phase 5.5: Direct call -- strategy thread (TriggerCustomEvent).
             SetExpectedPositionLocked(ExpKey(acct.Name), 0);
@@ -465,7 +465,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Collects all working orders on the current instrument for the given account.
         /// Filters to active (non-terminal) states only.
         /// </summary>
-        private List<Order> EmergencyFlatten_CollectWorkingOrders(Account acct)
+        private List<Order> EmergencyFlattenCollectWorkingOrders(Account acct)
         {
             var ordersToCancel = new List<Order>();
             foreach (Order o in acct.Orders)
@@ -492,7 +492,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Closes the open position (if any) on the current instrument for the given account.
         /// Submits a Market order (Day TIF) to close long or short positions.
         /// </summary>
-        private void EmergencyFlatten_CloseOpenPosition(Account acct)
+        private void EmergencyFlattenCloseOpenPosition(Account acct)
         {
             Position pos = acct.Positions.FirstOrDefault(p =>
                 p.Instrument.FullName == Instrument.FullName && p.MarketPosition != MarketPosition.Flat

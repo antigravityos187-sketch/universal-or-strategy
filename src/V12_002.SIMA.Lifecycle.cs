@@ -112,20 +112,20 @@ namespace NinjaTrader.NinjaScript.Strategies
             FleetDispatchSlot ringSlot;
             while (_photonDispatchRing != null && _photonDispatchRing.TryDequeue(out ringSlot))
             {
-                int _sbIdx = ringSlot.PoolSlotIndex;
-                string _expectedKey =
-                    (_sbIdx >= 0 && _sbIdx < _photonSideband.Length) ? _photonSideband[_sbIdx].ExpectedKey : null;
-                if (_expectedKey != null)
+                int sbIdx = ringSlot.PoolSlotIndex;
+                string expectedKey =
+                    (sbIdx >= 0 && sbIdx < _photonSideband.Length) ? _photonSideband[sbIdx].ExpectedKey : null;
+                if (expectedKey != null)
                 {
                     if (ringSlot.ReservedDelta != 0)
-                        AddExpectedPositionDelta(_expectedKey, -ringSlot.ReservedDelta);
-                    ClearDispatchSyncPending(_expectedKey);
+                        AddExpectedPositionDelta(expectedKey, -ringSlot.ReservedDelta);
+                    ClearDispatchSyncPending(expectedKey);
                 }
-                if (_sbIdx >= 0)
+                if (sbIdx >= 0)
                 {
-                    _photonPool.ReleaseByIndex(_sbIdx);
-                    if (_sbIdx < _photonSideband.Length)
-                        _photonSideband[_sbIdx] = default(FleetDispatchSideband);
+                    _photonPool.ReleaseByIndex(sbIdx);
+                    if (sbIdx < _photonSideband.Length)
+                        _photonSideband[sbIdx] = default(FleetDispatchSideband);
                 }
             }
             Print("[SIMA] Photon ring cleared on shutdown with delta rollback.");
