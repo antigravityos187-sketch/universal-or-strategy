@@ -452,17 +452,17 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             string action = parts[0].Trim().ToUpperInvariant();
 
-            // EPIC-4 Ticket 03: IPC Hardening validation (rate limiting, circuit breakers, anomaly detection)
-            ValidationResult validationResult = ValidateIpcCommand(action, parts);
-            if (HandleValidationFailure(validationResult, action))
-                return;
-
             if (!IsAllowedIpcAction(action))
             {
                 Interlocked.Increment(ref _ipcAllowlistRejectCount);
                 Print("V12 IPC REJECT: action '" + action + "' is not allowed");
                 return;
             }
+
+            // EPIC-4 Ticket 03: IPC Hardening validation (rate limiting, circuit breakers, anomaly detection)
+            ValidationResult validationResult = ValidateIpcCommand(action, parts);
+            if (HandleValidationFailure(validationResult, action))
+                return;
             string targetSymbol = parts.Length > 1 ? parts[1] : "Global";
 
             if (!IsCommandForThisInstrument(action, targetSymbol))
