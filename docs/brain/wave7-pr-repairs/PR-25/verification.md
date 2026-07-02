@@ -155,3 +155,114 @@ All logic is correct. Once the ASCII violation is fixed and the commit amended/s
 | Build command | `dotnet build Linting.csproj 2>&1 \| tail -5` |
 | Commit verified | `ac17b8b1` |
 | Files inspected | `src/V12_002.Perf.LogBuffer.cs` lines 88–113; `src/V12_002.DrawingHelpers.cs` lines 74–91 |
+
+---
+
+## REVISION — Re-Verification after ASCII Fix
+
+**Date**: 2026-07-02 (re-run)  
+**Trigger**: Previous run blocked on U+2014 em dash in `src/V12_002.Perf.LogBuffer.cs` line 100. ASCII fix applied — re-verifying all checks.
+
+### Check 1 — Build
+
+```
+0 Error(s)
+Time Elapsed 00:00:03.37
+```
+
+**Result**: ✅ PASS
+
+---
+
+### Check 2 — LogBuffer `TryExpandPlaceholder` logic + CYC
+
+Inspected `src/V12_002.Perf.LogBuffer.cs` lines 92–113.
+
+| Sub-check | Status | Evidence |
+|-----------|--------|---------|
+| False branch writes `_buffer[bufferPos++] = OpenBrace` before `return 1` | ✅ PASS | Lines 103–104 confirmed |
+| Overflow guard fires BEFORE write | ✅ PASS | Line 101 guard; line 103 write |
+| ASCII comment at line 100 | ✅ PASS | `// Literal brace -- write it to buffer before advancing past it.` (ASCII `--`, no em dash) |
+| CYC ≤ 8 | ✅ PASS | CYC 5 (base + HasFormatSpecifier + TryGetSingleDigitArg + false-branch overflow guard + argStr overflow guard) |
+
+**Result**: ✅ PASS (CYC 5)
+
+---
+
+### Check 3 — DrawingHelpers `ResolveTimeZone` logic + CYC
+
+Inspected `src/V12_002.DrawingHelpers.cs` lines 74–91.
+
+| Sub-check | Status | Evidence |
+|-----------|--------|---------|
+| `case "UTC": return TimeZoneInfo.Utc;` present | ✅ PASS | Lines 86–87 |
+| UTC case before `default:` | ✅ PASS | `default:` at line 88 |
+| All other cases intact | ✅ PASS | Eastern (78), Central (80), Mountain (82), Pacific (84) unchanged |
+| CYC ≤ 8 | ✅ PASS | CYC 6 (base + 5 cases) |
+
+**Result**: ✅ PASS (CYC 6)
+
+---
+
+### Check 4 — DNA: lock-free
+
+```
+grep -r "lock(" src/V12_002.Perf.LogBuffer.cs src/V12_002.DrawingHelpers.cs
+exit:1 (no matches)
+```
+
+**Result**: ✅ PASS — zero `lock(` matches
+
+---
+
+### Check 5 — DNA: ASCII — `src/V12_002.Perf.LogBuffer.cs`
+
+```
+python3 -c "data=open('src/V12_002.Perf.LogBuffer.cs').read(); bad=[hex(ord(c)) for c in data if ord(c)>127]; print('CLEAN' if not bad else bad)"
+CLEAN
+```
+
+**Result**: ✅ PASS — U+2014 em dash removed; file is fully ASCII-clean
+
+---
+
+### Check 6 — DNA: ASCII — `src/V12_002.DrawingHelpers.cs`
+
+```
+python3 -c "data=open('src/V12_002.DrawingHelpers.cs').read(); bad=[hex(ord(c)) for c in data if ord(c)>127]; print('CLEAN' if not bad else bad)"
+CLEAN
+```
+
+**Result**: ✅ PASS
+
+---
+
+### Revision Summary Table
+
+| Check | Previous | Revision | Notes |
+|-------|----------|----------|-------|
+| 1. Build | ✅ PASS | ✅ PASS | Zero errors |
+| 2. LogBuffer fix logic | ✅ PASS | ✅ PASS | CYC 5, overflow guard correct |
+| 3. DrawingHelpers fix logic | ✅ PASS | ✅ PASS | CYC 6, UTC before default |
+| 4a. No lock() | ✅ PASS | ✅ PASS | Zero matches |
+| 4b. ASCII — LogBuffer | ❌ FAIL | ✅ PASS | U+2014 replaced with `--` |
+| 4c. ASCII — DrawingHelpers | ✅ PASS | ✅ PASS | Clean |
+| 5. Scope | ✅ PASS | (not re-checked — scope unchanged) | |
+
+---
+
+## Overall Verdict (Revised): ✅ VERIFIED
+
+All 6 checks pass. The sole blocker from the previous run (U+2014 EM DASH in [`src/V12_002.Perf.LogBuffer.cs`](../../../../src/V12_002.Perf.LogBuffer.cs:100) line 100) has been resolved. REPAIR-01 is **VERIFIED** and ready to merge.
+
+---
+
+### Agent Tracking (Revision)
+
+| Field | Value |
+|-------|-------|
+| Re-verification date | 2026-07-02 |
+| Agent | V12 Verifier |
+| Sequential Thinking | Used (1 thought) — all 6 checks validated |
+| ASCII fix confirmed | `--` (ASCII) at line 100 of LogBuffer.cs |
+| Commit inspected | HEAD on `wave7/pr6-s6-kernel-infra` post-ASCII-fix |
