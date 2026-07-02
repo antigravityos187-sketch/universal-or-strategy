@@ -72,18 +72,26 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 4,
+      "timestamp": "2026-07-02T00:00:00Z",
+      "final_cyc": 7,
       "wave_ready": true,
       "build_passed": true,
       "agent": "v12-engineer",
       "helpers_extracted": [
-        "IsTRENDEntry1EMACandidate",
-        "IsTRENDEntry2EMACandidate",
-        "IsRetestEMACandidate"
+        "IsTRENDEntry1EMACandidate"
       ],
       "lock_violations": 0,
-      "ascii_violations": 0
+      "ascii_violations": 0,
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-049  ManageTrail_RunPerTradeBranches  CYC=7"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_gate_run": "CYC_GATE: PASS  EPIC-W7-049  ManageTrail_RunPerTradeBranches  CYC=7",
+      "cyc_verified": 7,
+      "build_verified": true,
+      "completed_at": "2026-07-02T00:00:00Z",
+      "agent": "v12-phase5-v-verify"
     },
     "phase_6": {
       "status": "completed",
@@ -93,7 +101,7 @@
       "agent": "v12-phase6-review"
     }
   },
-  "final_cyc": 4,
+  "final_cyc": 7,
   "wave_ready": true,
   "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

@@ -124,7 +124,7 @@ mode to switch to next and instruct that mode with a precise, self-contained tas
 You have TWO responsibilities:
 1. PLANNING PIPELINE (Phases 1-4): Switch to v12-epic-planner mode for each phase.
 2. EXECUTION PIPELINE (Phase 5+): Switch to v12-engineer mode for execution, then
-   switch to Advanced mode for verification. Coordinate the Director's F5 gate.
+   switch to agent mode for verification. Coordinate the Director's F5 gate.
 
 ---
 
@@ -132,7 +132,7 @@ You have TWO responsibilities:
 
 - You STOP at every gate and wait for Director input before switching modes.
 - You never skip a gate, even if you think the output is correct.
-- You NEVER run commands yourself -- delegate ALL shell execution to v12-engineer or Advanced mode.
+- You NEVER run commands yourself -- delegate ALL shell execution to v12-engineer or agent mode.
 - The ONLY manual Director action is pressing F5 in NinjaTrader and typing "F5 done".
 - If any mode reports a verification FAIL, HALT. Do not advance to the next ticket.
 - Surface unexpected outputs (e.g. higher CYC than planned) to the Director before continuing.
@@ -141,7 +141,7 @@ You have TWO responsibilities:
 
 ## PHASE 0: HOTSPOT ANALYSIS (CodeScene Integration)
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off this exact task:
 ```
@@ -328,9 +328,9 @@ When v12-engineer outputs [TICKET-GATE] (the written plan), present the plan sum
 - APPROVED: switch back to v12-engineer and instruct it to execute the plan
 - FLAG: relay adjustment, switch to v12-engineer to re-plan
 
-**Step C -- Switch to: Advanced mode (verification + Jane Street audit)**
+**Step C -- Switch to: agent mode (verification + Jane Street audit)**
 
-After v12-engineer confirms execution complete, switch to Advanced mode and hand off:
+After v12-engineer confirms execution complete, switch to agent mode and hand off:
 ```
 VERIFICATION TASK for epic $1, ticket-XX
 Run the FULL pre-push validation suite with Jane Street audit:
@@ -367,7 +367,7 @@ Report results as:
 If ANY blocking check fails: HALT and report to orchestrator.
 ```
 
-If Advanced mode reports any FAIL: HALT. Report to Director. Do not continue.
+If agent mode reports any FAIL: HALT. Report to Director. Do not continue.
 
 **Step D -- F5 Gate (Director's only manual action):**
 Output:
@@ -383,9 +383,9 @@ When you see the BUILD_TAG banner, type: F5 done [BUILD_TAG]
 
 Wait for Director input.
 
-**Step E -- Switch to: Advanced mode (auto-commit)**
+**Step E -- Switch to: agent mode (auto-commit)**
 
-After Director types "F5 done [BUILD_TAG]", switch to Advanced mode:
+After Director types "F5 done [BUILD_TAG]", switch to agent mode:
 ```
 COMMIT TASK:
 Run: git add -A
@@ -393,7 +393,7 @@ Run: git commit -m "[$1] ticket-XX: [short description] -- CYC [before]->[after]
 Report the commit hash and current branch name.
 ```
 
-**Step F -- Switch to: Orchestrator mode (/pr-loop)**
+**Step F -- Run: /pr-loop**
 
 After the commit, immediately trigger the autonomous perfection gate:
 ```
@@ -415,7 +415,7 @@ If all complete: advance to PHASE 6: PR SUBMISSION & PERFECTION.
 
 ## PHASE 6: PR SUBMISSION & PERFECTION
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off this exact task:
 ```
@@ -428,9 +428,9 @@ PROTOCOL:
   4. Emit: [PR-SUBMITTED] PR #<PR_NUMBER>
 ```
 
-When Advanced mode outputs [PR-SUBMITTED] PR #<PR_NUMBER>:
+When agent mode outputs [PR-SUBMITTED] PR #<PR_NUMBER>:
 
-**Switch to: Orchestrator mode**
+**Run: /pr-loop**
 
 Hand off this exact task:
 ```
@@ -463,4 +463,19 @@ Commits: [list of hashes with BUILD_TAGs]
 PHS     : 100/100 (PERFECT)
 ============================================================
 Branch ready for merge.
+```
+
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
 ```

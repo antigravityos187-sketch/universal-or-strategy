@@ -57,15 +57,26 @@
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z"
     },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_verified": 7,
+      "build_verified": true,
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-086  ProcessReaperFlatten_CancelWorkingOrders  CYC=7",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "agent": "v12-phase5-v-verify"
+    },
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 6,
+      "final_cyc": 7,
       "wave_ready": true,
       "build_passed": true,
+      "agent": "v12-engineer",
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-086  ProcessReaperFlatten_CancelWorkingOrders  CYC=7",
       "fl34_lane": "FL-34",
       "fl34_parent_cyc_before": 10,
-      "fl34_parent_cyc_after": 1
+      "fl34_parent_cyc_after": 7
     },
     "phase_6": {
       "status": "completed",
@@ -81,6 +92,6 @@
   "wave_ready": true,
   "wave": 7,
   "status": "complete",
-  "final_cyc": 10,
+  "final_cyc": 7,
   "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

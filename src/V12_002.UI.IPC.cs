@@ -94,21 +94,20 @@ namespace NinjaTrader.NinjaScript.Strategies
             return mode == TargetMode.Points ? "Points" : mode.ToString();
         }
 
-        private static readonly Dictionary<string, TargetMode> _targetModeMap =
-            new Dictionary<string, TargetMode>
-            {
-                { "ATR", TargetMode.ATR },
-                { "A", TargetMode.ATR },
-                { "TICKS", TargetMode.Ticks },
-                { "TICK", TargetMode.Ticks },
-                { "T", TargetMode.Ticks },
-                { "POINTS", TargetMode.Points },
-                { "POINT", TargetMode.Points },
-                { "PTS", TargetMode.Points },
-                { "P", TargetMode.Points },
-                { "RUNNER", TargetMode.Runner },
-                { "R", TargetMode.Runner },
-            };
+        private static readonly Dictionary<string, TargetMode> _targetModeMap = new Dictionary<string, TargetMode>
+        {
+            { "ATR", TargetMode.ATR },
+            { "A", TargetMode.ATR },
+            { "TICKS", TargetMode.Ticks },
+            { "TICK", TargetMode.Ticks },
+            { "T", TargetMode.Ticks },
+            { "POINTS", TargetMode.Points },
+            { "POINT", TargetMode.Points },
+            { "PTS", TargetMode.Points },
+            { "P", TargetMode.Points },
+            { "RUNNER", TargetMode.Runner },
+            { "R", TargetMode.Runner },
+        };
 
         // [EPIC-W7-068] CYC 13->3: Dictionary dispatch replaces switch
         private static bool TryParseTargetMode(string raw, out TargetMode mode)
@@ -184,11 +183,20 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (AllowedIpcActions.Contains(action))
                 return true;
 
+            return IsAllowedIpcPrefix_A(action) || IsAllowedIpcPrefix_B(action);
+        }
+
+        private bool IsAllowedIpcPrefix_A(string action)
+        {
             return action.StartsWith("MOVE_TARGET", StringComparison.OrdinalIgnoreCase)
                 || action.StartsWith("CLOSE_T", StringComparison.OrdinalIgnoreCase)
                 || action.StartsWith("GET_FLEET", StringComparison.OrdinalIgnoreCase)
-                || action.StartsWith("SET_MAX_RISK", StringComparison.OrdinalIgnoreCase)
-                || action.StartsWith("TOGGLE_ACCOUNT", StringComparison.OrdinalIgnoreCase)
+                || action.StartsWith("SET_MAX_RISK", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsAllowedIpcPrefix_B(string action)
+        {
+            return action.StartsWith("TOGGLE_ACCOUNT", StringComparison.OrdinalIgnoreCase)
                 || action.StartsWith("SET_ANCHOR", StringComparison.OrdinalIgnoreCase)
                 || action.StartsWith("MODE_", StringComparison.OrdinalIgnoreCase)
                 || action.StartsWith("EXEC_", StringComparison.OrdinalIgnoreCase);
@@ -324,11 +332,21 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || (target == "MGC" && mySym.Contains("GC"));
         }
 
+        private static bool IsRoutingAlias(string target)
+        {
+            return target == "GLOBAL" || target == "ALL" || target == "ON" || target == "OFF";
+        }
+
+        private static bool IsStrategyKeyword(string target)
+        {
+            return target == "RMA" || target == "ORB" || target == "OR" || target == "MOMO";
+        }
+
         private bool IsSymbolMatch(string target, string mySym, string myFull)
         {
-            if (target == "GLOBAL" || target == "ALL" || target == "ON" || target == "OFF")
+            if (IsRoutingAlias(target))
                 return true;
-            if (target == "RMA" || target == "ORB" || target == "OR" || target == "MOMO")
+            if (IsStrategyKeyword(target))
                 return true;
             return mySym == target
                 || mySym.StartsWith(target)
@@ -396,48 +414,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (ipcCommandQueue == null || ipcCommandQueue.IsEmpty)
                 return;
 
-            int drainedCount = 0;
-            while (drainedCount < IpcMaxCommandsPerDrain && ipcCommandQueue.TryDequeue(out string command))
-            {
-                if (Interlocked.Decrement(ref ipcQueuedCommandCount) < 0)
-                    Interlocked.Exchange(ref ipcQueuedCommandCount, 0);
-                drainedCount++;
-                try
-                {
-                    if (!ValidateCommandFormat(command, out string[] parts, out long senderTicks))
-                        continue;
-
-                    string action = parts[0].Trim().ToUpperInvariant();
-
-                    // EPIC-4 Ticket 03: IPC Hardening validation (rate limiting, circuit breakers, anomaly detection)
-                    ValidationResult validationResult = ValidateIpcCommand(action, parts);
-                    if (HandleValidationFailure(validationResult, action))
-                        continue;
-
-                    if (!IsAllowedIpcAction(action))
-                    {
-                        Interlocked.Increment(ref _ipcAllowlistRejectCount);
-                        Print($"V12 IPC REJECT: action '{action}' is not allowed");
-                        continue;
-                    }
-                    string targetSymbol = parts.Length > 1 ? parts[1] : "Global";
-
-                    if (!IsCommandForThisInstrument(action, targetSymbol))
-                    {
-                        // Quiet ignore if it's clearly for another instrument
-                        continue;
-                    }
-
-                    string queuedAction = action;
-                    string[] queuedParts = parts;
-                    long queuedSenderTicks = senderTicks;
-                    Enqueue(ctx => ctx.ProcessIpcCommandCore(queuedAction, queuedParts, queuedSenderTicks));
-                }
-                catch (Exception ex)
-                {
-                    Print("Error ProcessIpcCommands: " + ex.Message);
-                }
-            }
+            DrainIpcQueueLoop();
 
             if (!ipcCommandQueue.IsEmpty)
             {
@@ -447,6 +424,54 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 catch { }
             }
+        }
+
+        private void DrainIpcQueueLoop()
+        {
+            int drainedCount = 0;
+            while (drainedCount < IpcMaxCommandsPerDrain && ipcCommandQueue.TryDequeue(out string command))
+            {
+                if (Interlocked.Decrement(ref ipcQueuedCommandCount) < 0)
+                    Interlocked.Exchange(ref ipcQueuedCommandCount, 0);
+                drainedCount++;
+                try
+                {
+                    TrySingleIpcCommand(command);
+                }
+                catch (Exception ex)
+                {
+                    Print("Error ProcessIpcCommands: " + ex.Message);
+                }
+            }
+        }
+
+        private void TrySingleIpcCommand(string command)
+        {
+            if (!ValidateCommandFormat(command, out string[] parts, out long senderTicks))
+                return;
+
+            string action = parts[0].Trim().ToUpperInvariant();
+
+            // EPIC-4 Ticket 03: IPC Hardening validation (rate limiting, circuit breakers, anomaly detection)
+            ValidationResult validationResult = ValidateIpcCommand(action, parts);
+            if (HandleValidationFailure(validationResult, action))
+                return;
+
+            if (!IsAllowedIpcAction(action))
+            {
+                Interlocked.Increment(ref _ipcAllowlistRejectCount);
+                Print("V12 IPC REJECT: action '" + action + "' is not allowed");
+                return;
+            }
+            string targetSymbol = parts.Length > 1 ? parts[1] : "Global";
+
+            if (!IsCommandForThisInstrument(action, targetSymbol))
+                return;
+
+            string queuedAction = action;
+            string[] queuedParts = parts;
+            long queuedSenderTicks = senderTicks;
+            Enqueue(ctx => ctx.ProcessIpcCommandCore(queuedAction, queuedParts, queuedSenderTicks));
         }
 
         private void ProcessIpcCommandCore(string action, string[] parts, long senderTicks)

@@ -143,16 +143,41 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <summary>
         /// In-place update of UILivePositionSnapshot.
         /// DIRECTOR FIX: TBD resolved - reuses 5-element UILiveTargetSnapshot array.
+        /// Extracted helpers: ClearTargetSlots, UpdateSingleTargetSlot, UpdateStopSnapshot.
         /// </summary>
         private void UpdateLivePositionSnapshot(UILivePositionSnapshot target)
         {
-            // Reset state
+            // Reset header fields and clear all target slots
             target.HasLivePosition = false;
             target.EntryName = null;
             target.Direction = MarketPosition.Flat;
             target.StopPrice = 0;
+            ClearTargetSlots(target);
 
-            // Clear all target slots (reuse existing array instances)
+            // Find master position - early return if none
+            PositionInfo masterPos;
+            string entryName;
+            if (!FindMasterPosition(out masterPos, out entryName))
+                return;
+
+            // Update live position header fields
+            target.HasLivePosition = true;
+            target.EntryName = entryName;
+            target.Direction = masterPos.Direction;
+
+            // Update each target slot in-place
+            for (int targetNum = 1; targetNum <= 5; targetNum++)
+                UpdateSingleTargetSlot(target, masterPos, entryName, targetNum);
+
+            // Update stop price from live stop order
+            UpdateStopSnapshot(target, masterPos, entryName);
+        }
+
+        /// <summary>
+        /// Zero-out all 5 reusable UILiveTargetSnapshot slots.
+        /// </summary>
+        private void ClearTargetSlots(UILivePositionSnapshot target)
+        {
             for (int i = 0; i < 5; i++)
             {
                 target.Targets[i].IsVisible = false;
@@ -160,48 +185,49 @@ namespace NinjaTrader.NinjaScript.Strategies
                 target.Targets[i].RemainingContracts = 0;
                 target.Targets[i].IsWorking = false;
             }
+        }
 
-            // Find master position
-            PositionInfo masterPos;
-            string entryName;
-            if (!FindMasterPosition(out masterPos, out entryName))
+        /// <summary>
+        /// Populate one target slot from live order and position data.
+        /// </summary>
+        private void UpdateSingleTargetSlot(
+            UILivePositionSnapshot target,
+            PositionInfo masterPos,
+            string entryName,
+            int targetNum
+        )
+        {
+            UILiveTargetSnapshot targetSlot = target.Targets[targetNum - 1];
+            bool isVisible = targetNum <= masterPos.InitialTargetCount && !IsTargetFilled(masterPos, targetNum);
+            targetSlot.IsVisible = isVisible;
+
+            if (!isVisible)
                 return;
 
-            // Update live position fields
-            target.HasLivePosition = true;
-            target.EntryName = entryName;
-            target.Direction = masterPos.Direction;
+            var targetDict = GetTargetOrdersDictionary(targetNum);
+            Order targetOrder = null;
+            if (targetDict != null)
+                targetDict.TryGetValue(entryName, out targetOrder);
 
-            // Update target snapshots (in-place, reusing array elements)
-            for (int targetNum = 1; targetNum <= 5; targetNum++)
-            {
-                UILiveTargetSnapshot targetSlot = target.Targets[targetNum - 1];
-                bool isVisible = targetNum <= masterPos.InitialTargetCount && !IsTargetFilled(masterPos, targetNum);
-                targetSlot.IsVisible = isVisible;
+            double price = GetTargetPrice(masterPos, targetNum);
+            if (targetOrder != null && targetOrder.LimitPrice > 0)
+                price = targetOrder.LimitPrice;
 
-                if (!isVisible)
-                    continue;
+            int contracts = GetTargetContracts(masterPos, targetNum);
+            int filled = GetTargetFilledQuantity(masterPos, targetNum);
 
-                var targetDict = GetTargetOrdersDictionary(targetNum);
-                Order targetOrder = null;
-                if (targetDict != null)
-                    targetDict.TryGetValue(entryName, out targetOrder);
+            targetSlot.Price = price;
+            targetSlot.RemainingContracts = Math.Max(0, contracts - filled);
+            targetSlot.IsWorking =
+                targetOrder != null
+                && (targetOrder.OrderState == OrderState.Working || targetOrder.OrderState == OrderState.Accepted);
+        }
 
-                double price = GetTargetPrice(masterPos, targetNum);
-                if (targetOrder != null && targetOrder.LimitPrice > 0)
-                    price = targetOrder.LimitPrice;
-
-                int contracts = GetTargetContracts(masterPos, targetNum);
-                int filled = GetTargetFilledQuantity(masterPos, targetNum);
-
-                targetSlot.Price = price;
-                targetSlot.RemainingContracts = Math.Max(0, contracts - filled);
-                targetSlot.IsWorking =
-                    targetOrder != null
-                    && (targetOrder.OrderState == OrderState.Working || targetOrder.OrderState == OrderState.Accepted);
-            }
-
-            // Update stop snapshot
+        /// <summary>
+        /// Update stop price on target snapshot from live stop order.
+        /// </summary>
+        private void UpdateStopSnapshot(UILivePositionSnapshot target, PositionInfo masterPos, string entryName)
+        {
             Order stopOrder = null;
             if (stopOrders != null)
                 stopOrders.TryGetValue(entryName, out stopOrder);

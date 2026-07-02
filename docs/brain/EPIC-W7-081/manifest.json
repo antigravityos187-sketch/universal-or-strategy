@@ -64,12 +64,18 @@
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 4,
+      "final_cyc": 6,
       "wave_ready": true,
       "build_passed": true,
-      "fl34_lane": "FL-34",
-      "fl34_parent_cyc_before": 15,
-      "fl34_parent_cyc_after": 4
+      "agent": "v12-engineer",
+      "free_ride_of": "EPIC-W7-031",
+      "cyc_gate": "CYC_GATE: PASS  EPIC-W7-031  AuditMaster_HandleNakedPosition  CYC=6"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_verified": 6,
+      "build_verified": true
     },
     "phase_6": {
       "status": "completed",

@@ -1,7 +1,7 @@
 {
   "epic_id": "EPIC-W7-107",
   "wave": 7,
-  "status": "completed",
+  "status": "complete",
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -45,14 +45,11 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
       "final_cyc": 7,
+      "agent": "v12-engineer",
       "wave_ready": true,
       "build_passed": true,
-      "agent_name": "v12-p5-ticket",
-      "method": "HydrateFromOpenPositions",
-      "original_cyc": 31,
-      "helpers_extracted": 7
+      "note": "FREE-RIDE: HydrateFromOpenPositions CYC=31->7 (same code change as EPIC-W7-054)"
     },
     "phase_5_ticket_1": {
       "status": "completed",
@@ -88,9 +85,14 @@
       "final_cyc": 7,
       "wave_ready": true,
       "agent": "v12-phase6-review"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_verified": 7,
+      "build_verified": true
     }
   },
-  "status": "complete",
   "final_cyc": 7,
   "wave_ready": true,
   "phase_6_completed_at": "2026-06-30T20:56:52Z"

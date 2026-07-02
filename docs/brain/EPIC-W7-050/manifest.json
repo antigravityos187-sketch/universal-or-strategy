@@ -51,11 +51,14 @@
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 5,
+      "final_cyc": 8,
+      "cyc_achieved": 8,
       "wave_ready": true,
       "build_passed": true,
       "lock_violations": 0,
-      "helpers_added": 4,
+      "helpers_added": 6,
+      "agent": "v12-engineer",
+      "cyc_gate": "CYC_GATE: PASS  EPIC-W7-050  FleetSync_SyncFollowersToLevel  CYC=8",
       "output": "docs/brain/EPIC-W7-050/05-completion-report.md"
     },
     "phase_5_ticket_1": {
@@ -86,6 +89,17 @@
       "method": "FleetSync_SyncSingleFollower",
       "cyc": 3
     },
+    "phase_5_v": {
+      "name": "Per-Ticket Verification",
+      "status": "completed",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "output": "docs/brain/EPIC-W7-050/ticket-1-verification.md",
+      "verification_verdict": "PASS",
+      "cyc_gate": "CYC_GATE: PASS  EPIC-W7-050  FleetSync_SyncFollowersToLevel  CYC=8",
+      "cyc_verified": 8,
+      "build_verified": true,
+      "agent": "v12-phase5-v-verify"
+    },
     "phase_6": {
       "status": "completed",
       "completed_at": "2026-07-02T00:00:00Z",
@@ -100,8 +114,8 @@
   },
   "status": "complete",
   "wave": 7,
-  "final_cyc": 5,
+  "final_cyc": 8,
   "wave_ready": true,
-  "agent": "v12-phase6-review",
+  "agent": "v12-engineer",
   "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

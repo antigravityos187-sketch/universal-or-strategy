@@ -69,12 +69,23 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:30:00Z",
-      "final_cyc": 5,
+      "timestamp": "2026-07-02T00:00:00Z",
+      "final_cyc": 8,
       "wave_ready": true,
       "build_passed": true,
-      "note": "CYC=5 achieved via sibling EPIC-W7-050",
-      "lock_violations": 0
+      "agent": "v12-engineer",
+      "note": "Free-ride via EPIC-W7-050. Helpers FleetSync_IsFollowerReady + FleetSync_GetTargetLevel extracted. CYC=8.",
+      "lock_violations": 0,
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-137  FleetSync_SyncFollowersToLevel  CYC=8"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_gate_run": "CYC_GATE: PASS  EPIC-W7-137  FleetSync_SyncFollowersToLevel  CYC=8",
+      "cyc_verified": 8,
+      "build_verified": true,
+      "completed_at": "2026-07-02T00:00:00Z",
+      "agent": "v12-phase5-v-verify"
     },
     "phase_6": {
       "status": "completed",

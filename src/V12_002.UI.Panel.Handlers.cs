@@ -861,6 +861,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 svT4Val.IsEnabled = count >= 4;
             if (svT4Type != null)
                 svT4Type.IsEnabled = count >= 4;
+            SetTier5ControlsEnabled(count);
+        }
+
+        // [EPIC-W7-OVERRUN] Extracted from UpdateConfigControlsEnabled (CYC 9 -> 7)
+        private void SetTier5ControlsEnabled(int count)
+        {
             if (svT5Val != null)
                 svT5Val.IsEnabled = count >= 5;
             if (svT5Type != null)

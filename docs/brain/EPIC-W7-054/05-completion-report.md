@@ -1,71 +1,55 @@
-# EPIC-W7-054 — Phase 6: Final Completion Report
+# EPIC-W7-054 Phase 5 Completion Report
 
-## Epic Summary
+## CYC Gate Result
 
-| Field | Value |
-|-------|-------|
-| epic_id | EPIC-W7-054 |
-| method_name | DrainAllDispatchQueuesOnAbort |
-| source_file | src/V12_002.UI.IPC.Commands.Fleet.cs |
-| cluster | S7_MISC — Kernel Infrastructure |
-| original_cyc | 20 |
-| final_cyc | 8 |
-| wave_ready | true |
-| jane_street_compliant | true |
-| build_passed | true |
-| ticket_count | 4 |
-| tests_written_total | 0 |
-| phase | 6 — Final Epic Review & Completion |
+```
+CYC_GATE: PASS  EPIC-W7-054  HydrateFromOpenPositions  CYC=7
+```
 
-## Helpers Extracted
+## Summary
 
-No additional helpers required — phase 5 achieved final_cyc=8 via prior extractions.
+- **Epic**: EPIC-W7-054
+- **Method**: `HydrateFromOpenPositions`
+- **File**: `src/V12_002.SIMA.Lifecycle.cs`
+- **CYC Before**: 31
+- **CYC After (final_cyc)**: 7
+- **Build**: 0 errors
+- **build_passed**: true
+- **wave_ready**: true
 
-## CYC Journey
+## Extraction Plan Executed
 
-| Method | Before | After | Status |
-|--------|--------|-------|--------|
-| DrainAllDispatchQueuesOnAbort | 20 | 8 | PASS <=8 |
+Six private helpers extracted into the same partial class in [`src/V12_002.SIMA.Lifecycle.cs`](src/V12_002.SIMA.Lifecycle.cs):
 
-## Completion Narrative
-
-DrainAllDispatchQueuesOnAbort reduced from CYC=20 to CYC=8 via ticket execution. Four tickets executed achieving the Jane Street <=8 threshold exactly. The method now has single-responsibility dispatch coordination with all complex logic delegated to extracted helpers. Build passed with zero errors. Wave 7 ready.
+| Helper | CYC | Responsibility |
+|--------|-----|----------------|
+| `HasFsmForAccount(Account)` | 2 | LINQ Any check — guard duplicate FSM creation |
+| `FindOpenPositionForInstrument(Account)` | 2 | LINQ FirstOrDefault — locate open position for instrument |
+| `FindStopOrderForAccount(stopOrders, Account)` | 5 | Scan stop orders dict, return (key, order) tuple |
+| `LogMissingStopForAccount(Account)` | 1 | Print warning + set REAPER grace window timestamp |
+| `BuildRecoveredFsm(Account, string, Position)` | 1 | Construct FollowerBracketFSM object from recovered state |
+| `LinkStopOrderToFsm(fsm, Order, string, ref int)` | 3 | Attach stop order + index order ID |
+| `LinkTargetOrderToFsm(fsm, dict, int, string, ref int)` | 3 | Attach single target-slot order + index order ID |
 
 ## DNA Compliance
 
-| Rule | Status |
-|------|--------|
-| CYC <= 8 | PASS — CYC=8 |
-| Zero lock() blocks | PASS |
-| ASCII-only string literals | PASS |
-| No scope creep (V12.23) | PASS |
-| Build passed | PASS |
+- No `lock()` usage — all state via existing ConcurrentDictionary / field assignments
+- ASCII-only string literals throughout
+- No logic drift — pure structural movement only
+- Helpers co-located in same partial class / same file
 
-## MCP Evidence (jcodemunch-mcp)
+## Validation Steps
 
-- register_edit: src/V12_002.UI.IPC.Commands.Fleet.cs — confirmed
-- get_symbol_complexity(DrainAllDispatchQueuesOnAbort): final_cyc=8, PASS <=8
-- get_hotspots: DrainAllDispatchQueuesOnAbort not in top hotspots
-- get_repo_health: no new cycles or dead code
+1. `dotnet csharpier format src/` — 83 files formatted, no errors
+2. `dotnet build Linting.csproj` — Build succeeded, 0 Warning(s), 0 Error(s)
+3. `python3 scripts/wave7_cyc_gate.py EPIC-W7-054 HydrateFromOpenPositions` — **exit 0**
 
-## Sequential Thinking Evidence (sequentialthinking)
+## Fields
 
-- Thought 1: CYC journey 20→8. Jane Street standard met exactly at threshold. 8 <=8 compliant.
-- Thought 2: Method now delegates to well-named helpers per extraction plan.
-- Thought 3: Build verification passed. No test file generated — pure structural extraction.
-- Thought 4: DrainAllDispatchQueuesOnAbort achieved CYC=8. Jane Street threshold met. Wave 7 ready.
-
-## Agent Tracking
-
-| Field | Value |
-|-------|-------|
-| Agent Name | v12-phase6-review |
-| Wave | 7 |
-| Epic ID | EPIC-W7-054 |
-| Phase | 6 — Final Epic Review & Completion |
-| Lane | P6-L4 |
-| Status | COMPLETE |
-| final_cyc | 8 |
-| wave_ready | true |
-| jane_street_compliant | true |
-| Executed | 2026-07-01T00:00:00Z |
+```
+cyc_gate_output: "CYC_GATE: PASS  EPIC-W7-054  HydrateFromOpenPositions  CYC=7"
+cyc_achieved: 7
+build_passed: true
+final_cyc: 7
+wave_ready: true
+```

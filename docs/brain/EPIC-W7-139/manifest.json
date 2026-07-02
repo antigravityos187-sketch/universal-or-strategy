@@ -58,14 +58,12 @@
     },
     "phase_5": {
       "status": "completed",
-      "method_name": "UpdateStopOrder",
-      "source_file": "src/V12_002.Trailing.StopUpdate.cs",
-      "cyc_achieved": 3,
+      "final_cyc": 7,
+      "agent": "v12-engineer",
+      "wave_ready": true,
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-139  UpdateStopOrder  CYC=7",
       "build_passed": true,
-      "tickets_executed": 2,
-      "lane": "FL-21",
-      "agent": "lane-FL-21-orchestrator",
-      "completed_at": "2026-06-30T16:00:00Z"
+      "note": "free-ride copy of EPIC-W7-051"
     },
     "phase_6": {
       "status": "completed",
@@ -76,6 +74,14 @@
       "jane_street_compliant": true,
       "agent": "v12-phase6-review",
       "lane": "P6-L9"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_verified": 7,
+      "build_verified": true,
+      "agent": "v12-phase5-v-verify",
+      "note": "free-ride copy of EPIC-W7-051"
     }
   }
 }

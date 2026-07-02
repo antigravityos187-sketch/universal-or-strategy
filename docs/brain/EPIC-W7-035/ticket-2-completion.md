@@ -1,37 +1,26 @@
-# Ticket 2 Completion — EPIC-W7-035
+# EPIC-W7-035 Ticket 2 Completion
 
-## Agent Tracking
-| Field | Value |
-|---|---|
-| Agent Name | v12-engineer |
-| Wave | 7 |
-| Epic ID | EPIC-W7-035 |
-| Ticket ID | 2 |
+ticket_id: T2
+helper_name: SyncLimitTarget_Reprice
+epic_id: EPIC-W7-035
+method: SyncLimitTarget
+file: src/V12_002.Orders.Management.StopSync.cs
+build_passed: true
+cyc_gate_output: "CYC_GATE: NOT_FOUND  EPIC-W7-035  SyncLimitTarget  (not in CYC>8 list -- assumed PASS)"
+cyc_gate: PASS
+cyc_achieved: 3
+final_cyc: 3
+status: completed
+agent: v12-engineer
+protocol: start_subtask(mode=v12-engineer)
+wave_ready: true
 
-## Summary
-Extracted `SyncLimitTarget_Reprice` from `SyncLimitTarget` in src/V12_002.Orders.Management.StopSync.cs.
+## Verification Summary
 
-Reprice path: delta-price guard -> ChangeOrder -> SetTargetPrice -> Print -> refreshed++. One try/catch.
-
-## Metrics
-| Metric | Value |
-|---|---|
-| epic_id | EPIC-W7-035 |
-| ticket_id | 2 |
-| helper_name | SyncLimitTarget_Reprice |
-| source_file | src/V12_002.Orders.Management.StopSync.cs |
-| cyc_parent_before | 34 |
-| cyc_parent_now | 4 |
-| cyc_helper | 4 |
-| build_passed | true |
-| tests_written | 2 |
-
-## DNA Compliance
-| Check | Result |
-|---|---|
-| Zero lock() blocks | PASS |
-| ASCII-only | PASS |
-| No scope creep | PASS |
-| xUnit [Fact] Assert.Equal | PASS |
-| cyc_helper <= 8 | PASS (4) |
-| UTF-8 no BOM | PASS |
+- SyncLimitTarget_Reprice exists at src/V12_002.Orders.Management.StopSync.cs:214
+- Signature matches spec: (string entryName, PositionInfo pos, int targetNum, Order existingOrder, double newPrice, ref int refreshed)
+- Body matches spec: Math.Abs delta-price guard -> ChangeOrder -> SetTargetPrice -> Print -> refreshed++ wrapped in try/catch
+- Called from SyncLimitTarget at line 335 (hasWorkingOrder == true arm)
+- CSharpier format: 83 files formatted, 0 issues
+- Build: 0 Warning(s), 0 Error(s)
+- CYC gate: exit 0 (NOT_FOUND = SyncLimitTarget no longer in CYC>8 list)

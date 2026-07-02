@@ -72,14 +72,24 @@
       "final_cyc": 8,
       "wave_ready": true,
       "build_passed": true,
-      "fl34_lane": "FL-34",
-      "fl34_parent_cyc_before": 13,
-      "fl34_parent_cyc_after": 3
+      "agent": "v12-engineer",
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-082  AuditSingleFleetAccount  CYC=8",
+      "helpers_added": ["AuditFleet_HandleNonZeroDesync"]
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "verification_verdict": "PASS",
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-082  AuditSingleFleetAccount  CYC=8",
+      "cyc_verified": 8,
+      "build_verified": true,
+      "agent": "v12-phase5-v-verify",
+      "output": "docs/brain/EPIC-W7-082/ticket-1-verification.md"
     },
     "phase_6": {
       "status": "completed",
       "completed_at": "2026-07-02T00:00:00Z",
-      "final_cyc": 3,
+      "final_cyc": 8,
       "wave_ready": true,
       "agent": "v12-phase6-review"
     }
@@ -87,5 +97,5 @@
   "wave_ready": true,
   "phase_6_completed_at": "2026-07-02T00:00:00Z",
   "status": "complete",
-  "final_cyc": 3
+  "final_cyc": 8
 }

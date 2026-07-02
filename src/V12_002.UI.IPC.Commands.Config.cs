@@ -308,47 +308,27 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private bool TryApplyConfigTarget_Type(string key, string val)
         {
+            var setter = GetTargetTypeSetter(key);
+            if (setter == null)
+                return false;
+            if (TryParseTargetMode(val, out var parsed))
+                setter(parsed);
+            return true;
+        }
+
+        private Action<TargetMode> GetTargetTypeSetter(string key)
+        {
             if (key == "T1TYPE")
-            {
-                if (TryParseTargetMode(val, out var parsed))
-                {
-                    T1Type = parsed;
-                }
-                return true;
-            }
+                return v => T1Type = v;
             if (key == "T2TYPE")
-            {
-                if (TryParseTargetMode(val, out var parsed))
-                {
-                    T2Type = parsed;
-                }
-                return true;
-            }
+                return v => T2Type = v;
             if (key == "T3TYPE")
-            {
-                if (TryParseTargetMode(val, out var parsed))
-                {
-                    T3Type = parsed;
-                }
-                return true;
-            }
+                return v => T3Type = v;
             if (key == "T4TYPE")
-            {
-                if (TryParseTargetMode(val, out var parsed))
-                {
-                    T4Type = parsed;
-                }
-                return true;
-            }
+                return v => T4Type = v;
             if (key == "T5TYPE")
-            {
-                if (TryParseTargetMode(val, out var parsed))
-                {
-                    T5Type = parsed;
-                }
-                return true;
-            }
-            return false;
+                return v => T5Type = v;
+            return null;
         }
 
         private bool TryApplyConfigTarget_Count(string key, string val)

@@ -188,14 +188,19 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Cancel working orders for the flatten work item.
         /// Handles ZombieSweepOnly filtering for ClosePositionsOnly mode.
         /// </summary>
+        private bool IsOrderRelevantToInstrument(Order order)
+        {
+            if (order == null || order.Instrument == null)
+                return false;
+            return order.Instrument.FullName == Instrument.FullName;
+        }
+
         private void ProcessFlattenWorkItem_CancelOrders(FlattenWorkItem item, Account acct)
         {
             List<Order> ordersToCancel = new List<Order>();
             foreach (Order order in acct.Orders.ToArray())
             {
-                if (order == null || order.Instrument == null)
-                    continue;
-                if (order.Instrument.FullName != Instrument.FullName)
+                if (!IsOrderRelevantToInstrument(order))
                     continue;
 
                 bool isTerminal = IsTerminalOrderState(order.OrderState);
@@ -406,84 +411,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             try
             {
-                // [938-EF-GUARD] Confirm bracket cancellation precedes market close.
-                Print(string.Format("[938-EF-GUARD] EF cancelling bracket first: {0}", acct.Name));
-
-                // Step 1: Cancel ALL working orders on this instrument for this account.
-                var ordersToCancel = new List<Order>();
-                foreach (Order o in acct.Orders)
-                {
-                    if (
-                        o.Instrument.FullName == Instrument.FullName
-                        && (
-                            o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Submitted
-                            || o.OrderState == OrderState.Accepted
-                            || o.OrderState == OrderState.ChangePending
-                            || o.OrderState == OrderState.ChangeSubmitted
-                        )
-                    )
-                    {
-                        ordersToCancel.Add(o);
-                    }
-                }
-                if (ordersToCancel.Count > 0)
-                {
-                    acct.Cancel(ordersToCancel);
-                    Print(
-                        string.Format(
-                            "[DEAD-01] EmergencyFlatten: Cancelled {0} working order(s) on {1}.",
-                            ordersToCancel.Count,
-                            acct.Name
-                        )
-                    );
-                }
-
-                // Step 2: Close any live position with a Market order.
-                Position pos = acct.Positions.FirstOrDefault(p =>
-                    p.Instrument.FullName == Instrument.FullName && p.MarketPosition != MarketPosition.Flat
-                );
-                if (pos != null)
-                {
-                    OrderAction closeAction =
-                        pos.MarketPosition == MarketPosition.Long
-                            ? OrderAction.Sell // Close long
-                            : OrderAction.BuyToCover; // Close short
-
-                    Order closeOrder = acct.CreateOrder(
-                        Instrument,
-                        closeAction,
-                        OrderType.Market,
-                        TimeInForce.Day,
-                        pos.Quantity,
-                        0,
-                        0,
-                        string.Empty,
-                        "Emergency_Flatten_DEAD01",
-                        null
-                    );
-                    acct.Submit(new[] { closeOrder });
-                    Print(
-                        string.Format(
-                            "[DEAD-01] EmergencyFlatten: Market {0} {1} submitted on {2}.",
-                            closeAction,
-                            pos.Quantity,
-                            acct.Name
-                        )
-                    );
-                }
-                else
-                {
-                    Print(
-                        string.Format(
-                            "[DEAD-01] EmergencyFlatten: {0} already flat -- no close order needed.",
-                            acct.Name
-                        )
-                    );
-                }
-
-                // Phase 5.5: Direct call -- strategy thread (TriggerCustomEvent).
-                SetExpectedPositionLocked(ExpKey(acct.Name), 0);
+                EmergencyFlatten_ExecuteBody(acct);
             }
             catch (InvalidOperationException ex)
                 when (ex.Message.Contains("Cancel")
@@ -500,6 +428,109 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print(string.Format("[DEAD-01] EmergencyFlatten CRITICAL ERROR on {0}: {1}", acct.Name, ex.ToString()));
                 // Do NOT rethrow - remaining fleet accounts still need flattening
             }
+        }
+
+        /// <summary>
+        /// Executes the core body of EmergencyFlattenSingleFleetAccount: cancel working orders,
+        /// then close any open position, then reset expected position.
+        /// Extracted to reduce cyclomatic complexity of the parent caller.
+        /// </summary>
+        private void EmergencyFlatten_ExecuteBody(Account acct)
+        {
+            // [938-EF-GUARD] Confirm bracket cancellation precedes market close.
+            Print(string.Format("[938-EF-GUARD] EF cancelling bracket first: {0}", acct.Name));
+
+            // Step 1: Cancel ALL working orders on this instrument for this account.
+            List<Order> ordersToCancel = EmergencyFlatten_CollectWorkingOrders(acct);
+            if (ordersToCancel.Count > 0)
+            {
+                acct.Cancel(ordersToCancel);
+                Print(
+                    string.Format(
+                        "[DEAD-01] EmergencyFlatten: Cancelled {0} working order(s) on {1}.",
+                        ordersToCancel.Count,
+                        acct.Name
+                    )
+                );
+            }
+
+            // Step 2: Close any live position with a Market order.
+            EmergencyFlatten_CloseOpenPosition(acct);
+
+            // Phase 5.5: Direct call -- strategy thread (TriggerCustomEvent).
+            SetExpectedPositionLocked(ExpKey(acct.Name), 0);
+        }
+
+        /// <summary>
+        /// Collects all working orders on the current instrument for the given account.
+        /// Filters to active (non-terminal) states only.
+        /// </summary>
+        private List<Order> EmergencyFlatten_CollectWorkingOrders(Account acct)
+        {
+            var ordersToCancel = new List<Order>();
+            foreach (Order o in acct.Orders)
+            {
+                if (
+                    o.Instrument.FullName == Instrument.FullName
+                    && (
+                        o.OrderState == OrderState.Working
+                        || o.OrderState == OrderState.Submitted
+                        || o.OrderState == OrderState.Accepted
+                        || o.OrderState == OrderState.ChangePending
+                        || o.OrderState == OrderState.ChangeSubmitted
+                    )
+                )
+                {
+                    ordersToCancel.Add(o);
+                }
+            }
+
+            return ordersToCancel;
+        }
+
+        /// <summary>
+        /// Closes the open position (if any) on the current instrument for the given account.
+        /// Submits a Market order (Day TIF) to close long or short positions.
+        /// </summary>
+        private void EmergencyFlatten_CloseOpenPosition(Account acct)
+        {
+            Position pos = acct.Positions.FirstOrDefault(p =>
+                p.Instrument.FullName == Instrument.FullName && p.MarketPosition != MarketPosition.Flat
+            );
+            if (pos == null)
+            {
+                Print(
+                    string.Format("[DEAD-01] EmergencyFlatten: {0} already flat -- no close order needed.", acct.Name)
+                );
+                return;
+            }
+
+            OrderAction closeAction =
+                pos.MarketPosition == MarketPosition.Long
+                    ? OrderAction.Sell // Close long
+                    : OrderAction.BuyToCover; // Close short
+
+            Order closeOrder = acct.CreateOrder(
+                Instrument,
+                closeAction,
+                OrderType.Market,
+                TimeInForce.Day,
+                pos.Quantity,
+                0,
+                0,
+                string.Empty,
+                "Emergency_Flatten_DEAD01",
+                null
+            );
+            acct.Submit(new[] { closeOrder });
+            Print(
+                string.Format(
+                    "[DEAD-01] EmergencyFlatten: Market {0} {1} submitted on {2}.",
+                    closeAction,
+                    pos.Quantity,
+                    acct.Name
+                )
+            );
         }
 
         private void ClosePositionsOnlyApexAccounts()

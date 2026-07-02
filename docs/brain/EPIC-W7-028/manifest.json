@@ -67,13 +67,14 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T02:10:00Z",
-      "final_cyc": 8,
+      "timestamp": "2026-07-02T00:00:00Z",
+      "final_cyc": 7,
       "wave_ready": true,
       "build_passed": true,
       "cyc_violations": 0,
-      "lane": "FL-03-29",
-      "agent": "v12-p5-lane-orch-FL-03-29"
+      "agent": "v12-engineer",
+      "helpers_extracted": ["IsOrderRelevantToInstrument"],
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-028  ProcessFlattenWorkItem_CancelOrders  CYC=7"
     },
     "phase_6": {
       "status": "completed",
@@ -97,8 +98,15 @@
       "override_note": "Worker MCP showed stale CYC=17. complexity_audit.py ground-truth (scripts/complexity_audit.py) confirms CYC=8 — PASS. Helpers IsTerminalOrderState (CYC=5) and IsZombieTargetOrder (CYC=6) confirmed present in src/V12_002.SIMA.Flatten.cs."
     }
   },
-  "status": "complete",
-  "final_cyc": 8,
+  "phase_5_v": {
+    "status": "completed",
+    "verification_verdict": "PASS",
+    "cyc_verified": 7,
+    "build_verified": true,
+    "timestamp": "2026-07-02T00:00:00Z"
+  },
+  "status": "completed",
+  "final_cyc": 7,
   "wave_ready": true,
   "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

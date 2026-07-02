@@ -412,16 +412,25 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         public static string GetSubscriberCounts()
         {
-            int tradeSignalCount = OnTradeSignal?.GetInvocationList().Length ?? 0;
-            int trailUpdateCount = OnTrailUpdate?.GetInvocationList().Length ?? 0;
-            int targetActionCount = OnTargetAction?.GetInvocationList().Length ?? 0;
-            int flattenCount = OnFlattenAll?.GetInvocationList().Length ?? 0;
-            int breakevenCount = OnBreakevenRequest?.GetInvocationList().Length ?? 0;
-            int stopUpdateCount = OnStopUpdate?.GetInvocationList().Length ?? 0;
-            int entryUpdateCount = OnEntryUpdate?.GetInvocationList().Length ?? 0;
-            int orderCancelCount = OnOrderCancel?.GetInvocationList().Length ?? 0;
+            int tradeSignalCount = GetHandlerCount(OnTradeSignal);
+            int trailUpdateCount = GetHandlerCount(OnTrailUpdate);
+            int targetActionCount = GetHandlerCount(OnTargetAction);
+            int flattenCount = GetHandlerCount(OnFlattenAll);
+            int breakevenCount = GetHandlerCount(OnBreakevenRequest);
+            int stopUpdateCount = GetHandlerCount(OnStopUpdate);
+            int entryUpdateCount = GetHandlerCount(OnEntryUpdate);
+            int orderCancelCount = GetHandlerCount(OnOrderCancel);
 
             return $"Subscribers: Trade={tradeSignalCount}, Stop={stopUpdateCount}, Entry={entryUpdateCount}, Cancel={orderCancelCount}";
+        }
+
+        /// <summary>
+        /// Returns the invocation list length for the given handler, or 0 if null.
+        /// Extracted to reduce cyclomatic complexity of GetSubscriberCounts.
+        /// </summary>
+        private static int GetHandlerCount<T>(Action<T> handler)
+        {
+            return handler?.GetInvocationList().Length ?? 0;
         }
 
         /// <summary>

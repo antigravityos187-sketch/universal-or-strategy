@@ -2,91 +2,30 @@
   "epic": "EPIC-W7-098",
   "wave": 7,
   "method": "ProcessFlattenWorkItem_CancelOrders",
-  "source": "src/V12_002.SIMA.Flatten.cs",
-  "cyc_reported": 17,
-  "cyc_confirmed": 17,
-  "note": "Same method as EPIC-W7-028 (CYC=9 block-level). CYC=17 reflects compound-condition counting convention.",
-  "cross_reference": "docs/brain/EPIC-W7-028/manifest.json",
+  "source_file": "src/V12_002.SIMA.Flatten.cs",
+  "free_ride_of": "EPIC-W7-028",
   "phases": {
-    "phase_0": {
-      "name": "Hotspot Analysis",
-      "status": "completed",
-      "output": "00-hotspots.md"
-    },
-    "phase_1": {
-      "name": "Extraction Plan",
-      "status": "completed",
-      "output": null,
-      "output_path": "docs/brain/EPIC-W7-098/00-scope.md",
-      "completed_at": "2026-06-26T02:35:31.815363Z"
-    },
-    "phase_2": {
-      "name": "Architecture Planning",
-      "status": "completed",
-      "output": "02-architecture-plan.md",
-      "completed_at": "2026-06-29T00:00:00Z"
-    },
-    "phase_3": {
-      "name": "Validation & Sign-off",
-      "status": "completed",
-      "output": "03-audit-report.md",
-      "completed_at": "2026-06-29T00:00:00Z",
-      "dna_verdict": "PASS",
-      "violations": []
-    },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "output": "01-scope-boundary.md"
-    },
-    "phase_4": {
-      "name": "Ticket Generation",
-      "status": "completed",
-      "output": "04-tickets.md",
-      "output_path": "docs/brain/EPIC-W7-098/04-tickets.md",
-      "completed_at": "2026-06-29T22:40:00Z",
-      "ticket_count": 2
-    },
-    "phase_4_5": {
-      "name": "Jane Street Validation Gate",
-      "status": "completed",
-      "output": "04-5-ticket-review.md",
-      "output_path": "docs/brain/EPIC-W7-098/04-5-ticket-review.md",
-      "completed_at": "2026-06-29T22:45:00Z",
-      "review_verdict": "PASS",
-      "failed_tickets": []
-    },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 8,
+      "timestamp": "2026-07-02T00:00:00Z",
+      "final_cyc": 7,
       "wave_ready": true,
-      "build_passed": true
-    },
-    "phase_5_ticket_1": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z"
-    },
-    "phase_5_ticket_2": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z"
-    },
-    "phase_6": {
-      "name": "Final Review",
-      "status": "completed",
-      "output": "05-completion-report.md",
-      "output_path": "docs/brain/EPIC-W7-098/05-completion-report.md",
-      "completed_at": "2026-07-01T00:00:00Z",
-      "final_cyc": 8,
-      "jane_street_compliant": true,
-      "agent": "v12-phase6-review",
-      "wave_ready": true,
-      "mcp_evidence": true,
-      "lane": "P6-REDO-B"
+      "build_passed": true,
+      "cyc_violations": 0,
+      "agent": "v12-engineer",
+      "helpers_extracted": ["IsOrderRelevantToInstrument"],
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-098  ProcessFlattenWorkItem_CancelOrders  CYC=7"
     }
   },
-  "status": "complete",
-  "final_cyc": 8,
-  "wave": 7,
+  "phase_5_v": {
+    "status": "completed",
+    "verification_verdict": "PASS",
+    "cyc_verified": 7,
+    "build_verified": true,
+    "free_ride_of": "EPIC-W7-028",
+    "timestamp": "2026-07-02T00:00:00Z"
+  },
+  "status": "completed",
+  "final_cyc": 7,
   "wave_ready": true
 }

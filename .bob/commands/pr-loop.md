@@ -273,3 +273,18 @@ Branch ready for merge. Awaiting F5 verification.
 ## Reference Documentation
 
 Full V2 workflow documentation: `docs/protocol/PR_LOOP_V2.md`
+
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

@@ -105,3 +105,17 @@ python scripts/continue_session.py complete "Pilot test passed" docs/brain/EPIC-
 - Specification: `docs/protocol/CONTINUE_COMMAND_SPECIFICATION.md`
 - State Management: `scripts/continue_session.py`
 - Building-Blocks Method: `docs/workflow/WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md`
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

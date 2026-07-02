@@ -50,12 +50,23 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:30:00Z",
-      "final_cyc": 4,
+      "timestamp": "2026-07-02T00:00:00Z",
+      "final_cyc": 7,
       "wave_ready": true,
       "build_passed": true,
-      "note": "CYC=4 achieved via sibling EPIC-W7-049.",
-      "lock_violations": 0
+      "agent": "v12-engineer",
+      "note": "Free-ride via EPIC-W7-049. Helper IsTRENDEntry1EMACandidate extracted. CYC=7.",
+      "lock_violations": 0,
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-138  ManageTrail_RunPerTradeBranches  CYC=7"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_gate_run": "CYC_GATE: PASS  EPIC-W7-138  ManageTrail_RunPerTradeBranches  CYC=7",
+      "cyc_verified": 7,
+      "build_verified": true,
+      "completed_at": "2026-07-02T00:00:00Z",
+      "agent": "v12-phase5-v-verify"
     },
     "phase_5_ticket_1": {
       "status": "completed",

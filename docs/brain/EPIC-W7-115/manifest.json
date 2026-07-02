@@ -76,10 +76,11 @@
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 8,
+      "final_cyc": 6,
+      "agent": "v12-engineer",
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "note": "FREE-RIDE: SweepTrackedOrders CYC=10->6 (same code change as EPIC-W7-060)"
     },
     "phase_6": {
       "status": "completed",
@@ -87,6 +88,12 @@
       "final_cyc": 8,
       "wave_ready": true,
       "agent": "v12-phase6-review"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_verified": 6,
+      "build_verified": true
     }
   },
   "phase_6_completed_at": "2026-07-01T20:00:00Z"

@@ -266,6 +266,34 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (masterPos == null || masterPos.IsFollower || averageFillPrice <= 0 || fillQty <= 0)
                 return;
 
+            SymmetryDispatchContext ctx = SymmetryGuardResolveCtx(entryName, masterPos, fillTimeUtc);
+            if (ctx == null)
+                return;
+
+            AnchorSnapshot resolvedSnap = SymmetryGuardPublishAnchor(ctx, averageFillPrice, fillQty);
+            if (resolvedSnap != null)
+            {
+                Print(
+                    string.Format(
+                        "[SYMMETRY_GUARD] MASTER ANCHOR LOCKED | Trade={0} | Anchor={1:F2} | FillQty={2}",
+                        ctx.TradeType,
+                        resolvedSnap.MasterAnchorPrice,
+                        resolvedSnap.MasterFilledQuantity
+                    )
+                );
+
+                SymmetryGuardTryResolveFollowersForDispatch(ctx.DispatchId, DateTime.UtcNow);
+            }
+        }
+
+        // Resolves the dispatch context for a master fill, first by entry-name lookup then by
+        // trade-type inference. Returns null if no matching context is found.
+        private SymmetryDispatchContext SymmetryGuardResolveCtx(
+            string entryName,
+            PositionInfo masterPos,
+            DateTime fillTimeUtc
+        )
+        {
             SymmetryDispatchContext ctx = null;
 
             if (
@@ -283,11 +311,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                 ctx = SymmetryFindDispatchForMasterFill(tradeType, masterPos.Direction, fillTimeUtc);
             }
 
-            if (ctx == null)
-                return;
+            return ctx;
+        }
 
-            // ADR-019: CAS loop over AnchorSnapshot. First writer to publish IsResolved=true wins.
-            // Losing CAS retries; on retry the IsResolved guard short-circuits (idempotent).
+        // ADR-019: CAS loop over AnchorSnapshot. First writer to publish IsResolved=true wins.
+        // Losing CAS retries; on retry the IsResolved guard short-circuits (idempotent).
+        private AnchorSnapshot SymmetryGuardPublishAnchor(
+            SymmetryDispatchContext ctx,
+            double averageFillPrice,
+            int fillQty
+        )
+        {
             AnchorSnapshot resolvedSnap = null;
             while (true)
             {
@@ -308,19 +342,23 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
             }
 
-            if (resolvedSnap != null)
-            {
-                Print(
-                    string.Format(
-                        "[SYMMETRY_GUARD] MASTER ANCHOR LOCKED | Trade={0} | Anchor={1:F2} | FillQty={2}",
-                        ctx.TradeType,
-                        resolvedSnap.MasterAnchorPrice,
-                        resolvedSnap.MasterFilledQuantity
-                    )
-                );
+            return resolvedSnap;
+        }
 
-                SymmetryGuardTryResolveFollowersForDispatch(ctx.DispatchId, DateTime.UtcNow);
-            }
+        private bool SymmetryDispatchContextIsCandidate(
+            SymmetryDispatchContext ctx,
+            MarketPosition direction,
+            string normTradeType,
+            DateTime fillTimeUtc
+        )
+        {
+            if (ctx == null || ctx.Anchor.IsResolved)
+                return false;
+            if (ctx.Direction != direction)
+                return false;
+            if (!string.Equals(ctx.TradeType, normTradeType, StringComparison.Ordinal))
+                return false;
+            return fillTimeUtc - ctx.CreatedUtc <= SymmetryDispatchTtl;
         }
 
         private SymmetryDispatchContext SymmetryFindDispatchForMasterFill(
@@ -335,13 +373,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             foreach (var kvp in symmetryDispatchById.ToArray())
             {
                 SymmetryDispatchContext ctx = kvp.Value;
-                if (ctx == null || ctx.Anchor.IsResolved)
-                    continue;
-                if (ctx.Direction != direction)
-                    continue;
-                if (!string.Equals(ctx.TradeType, norm, StringComparison.Ordinal))
-                    continue;
-                if (fillTimeUtc - ctx.CreatedUtc > SymmetryDispatchTtl)
+                if (!SymmetryDispatchContextIsCandidate(ctx, direction, norm, fillTimeUtc))
                     continue;
 
                 if (best == null || ctx.CreatedUtc < best.CreatedUtc)

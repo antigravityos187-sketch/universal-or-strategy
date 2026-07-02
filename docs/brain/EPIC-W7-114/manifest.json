@@ -68,9 +68,12 @@
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-07-01T00:00:00Z",
-      "final_cyc": 1,
+      "final_cyc": 6,
+      "cyc_achieved": 6,
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "agent": "v12-engineer",
+      "helpers_extracted": ["DrainPhotonRingOnShutdown", "DrainPendingDispatchesOnShutdown"]
     },
     "phase_6": {
       "status": "completed",
@@ -79,6 +82,15 @@
       "wave_ready": true,
       "agent": "v12-phase6-review",
       "mode": "v12-phase6-review"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_verified": 6,
+      "build_verified": true,
+      "method": "ProcessShutdownSIMA",
+      "completed_at": "2026-07-01T20:30:00Z",
+      "agent": "v12-phase5-v-verify"
     }
   },
   "wave_ready": true,

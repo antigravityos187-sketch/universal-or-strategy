@@ -40,7 +40,7 @@ You are the V12 Perfection Orchestrator. You MUST NOT STOP until PHS is 100/100.
 
 ### Step -1: PR Existence Check (GITBUTLER-AWARE)
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```
@@ -76,7 +76,7 @@ CRITICAL: NEVER run 'git checkout <branch>'. Stay on gitbutler/workspace permane
 
 ### Step 0: Pre-Flight Hygiene (GITBUTLER-AWARE)
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```
@@ -109,7 +109,7 @@ CRITICAL: NEVER run 'git checkout -b', 'git rebase', or 'git reset'. All work ha
 
 ### Step 1: Bot Forensics + Jane Street Audit (MANDATORY - NEW IN V2)
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```
@@ -184,7 +184,7 @@ PROTOCOL:
 
 ### Step 3: Global Push & Monitor
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```
@@ -209,7 +209,7 @@ PROTOCOL:
 
 ### Step 4: Manual Override Gate (NEW IN V2)
 
-**Mode:** Orchestrator  
+**Mode:** agent
 **Trigger:** PHS < 100 after 3+ iterations
 
 **Protocol:**
@@ -229,7 +229,7 @@ PROTOCOL:
 
 ### Step 5: Final F5 Verification
 
-**Mode:** Orchestrator  
+**Mode:** agent
 **Action:** Director presses F5 in NinjaTrader
 
 Output:

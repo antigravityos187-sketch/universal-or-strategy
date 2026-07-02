@@ -214,3 +214,17 @@ Ask the Director:
 **Do NOT proceed to /epic-plan until the Director explicitly types: APPROVED**
 
 Output: "[SCOPE-GATE] Boundary analysis complete. Awaiting Director approval."
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

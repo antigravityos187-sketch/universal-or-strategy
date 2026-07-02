@@ -1,7 +1,7 @@
 # MCP Update Protocol
 
-**Version**: 1.0
-**Date**: 2026-06-10
+**Version**: 2.0
+**Date**: 2026-07-02
 **Purpose**: Define when to update jcodemunch index and graphify knowledge graph
 
 ## Critical MCPs
@@ -84,22 +84,26 @@ use_mcp_tool(
 
 | Trigger | Command | When to Use |
 |---------|---------|-------------|
-| **Every Task** | `graphify update .` | ❌ Too frequent - slow (30-60s) |
-| **Every Commit** | `graphify update .` | ⚠️ Still frequent - use for major changes |
-| **Every Epic** | `graphify update .` | ✅ **RECOMMENDED** - Balanced |
-| **Every PR** | `graphify update .` | ✅ Good for final validation |
+| **Every Task START** | `graphify update . --no-cluster --no-description` | ✅ **MANDATORY** — ~19s, AST-only |
+| **Every Task END** | `graphify update . --no-cluster --no-description` | ✅ **MANDATORY** — keeps graph fresh for next agent |
+| **Every Commit** | `graphify update .` | ⚠️ Full rebuild — use for wave-level review only |
+| **Every PR** | `graphify update .` | ✅ Good for final wave validation |
 
-**Best Practice**: Update graphify after completing an epic
+**Best Practice (V2.0)**: Every task, fast mode
 ```bash
-# After EPIC-CCN-21 completes
-graphify update .
+# START of every task (FIRST action)
+graphify update . --no-cluster --no-description
+
+# END of every task (LAST action, after any file edits)
+graphify update . --no-cluster --no-description
 ```
 
-**Why Not Every Edit?**
-- Graphify is slow (30-60 seconds)
-- Generates static files (no real-time queries)
-- Most useful for architectural overview
-- Overkill for single-file changes
+**Why Every Task?**
+- `--no-cluster --no-description` is only ~19 seconds
+- All agents benefit from a fresh graph view
+- Reduces 71x token cost of raw file reading
+- God nodes and community structure guide every extraction decision
+- Next agent inherits an up-to-date graph without needing to rebuild
 
 ## Comparison Table
 

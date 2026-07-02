@@ -206,27 +206,30 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Master boolean flags ARE accurate (master positions set IsTRENDTrade, IsRMATrade etc. correctly).
             // Only FOLLOWER flags are contaminated (IsRMATrade=true on ALL followers for trailing behavior).
             // Follower type discrimination uses SignalName parsing instead -- see ResolveFollowersViaScan.
-            string masterTradeType = null;
             if (activePositions.TryGetValue(masterEntryName, out var masterPosForType))
-            {
-                // [BUILD 928 -- Codex P2 Fix]: IsRetestTrade MUST be checked before IsRMATrade.
-                // RETEST positions set both IsRetestTrade=true AND IsRMATrade=true (uses RMA trailing).
-                // Old order checked IsRMATrade first -> RETEST master classified as "RMA" -> fallback
-                // propagation targets RMA followers and silently skips RETEST followers.
-                if (masterPosForType.IsTRENDTrade)
-                    masterTradeType = "TREND";
-                else if (masterPosForType.IsRetestTrade)
-                    masterTradeType = "RETEST"; // <- before RMA
-                else if (masterPosForType.IsRMATrade)
-                    masterTradeType = "RMA";
-                else if (masterPosForType.IsMOMOTrade)
-                    masterTradeType = "MOMO";
-                else if (masterPosForType.IsFFMATrade)
-                    masterTradeType = "FFMA";
-                else
-                    masterTradeType = "OR";
-            }
-            return masterTradeType;
+                return ClassifyMasterPositionType(masterPosForType);
+            return null;
+        }
+
+        /// <summary>
+        /// Classify a master PositionInfo into its trade-type string.
+        /// [BUILD 928]: IsRetestTrade MUST be checked before IsRMATrade.
+        /// RETEST positions set both IsRetestTrade=true AND IsRMATrade=true (uses RMA trailing).
+        /// Extracted from ResolveMasterTradeType to reduce cyclomatic complexity.
+        /// </summary>
+        private string ClassifyMasterPositionType(PositionInfo p)
+        {
+            if (p.IsTRENDTrade)
+                return "TREND";
+            if (p.IsRetestTrade)
+                return "RETEST"; // <- before RMA
+            if (p.IsRMATrade)
+                return "RMA";
+            if (p.IsMOMOTrade)
+                return "MOMO";
+            if (p.IsFFMATrade)
+                return "FFMA";
+            return "OR";
         }
 
         /// <summary>
@@ -263,61 +266,51 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private bool ResolveFollowersViaScan_ProcessEntry(PositionInfo pos, string entryKey, string masterTradeType)
         {
-            // [BUILD 926 -- Codex P1 Fix]: Fallback type match now uses SignalName parsing.
-            //
-            // ROOT CAUSE: IsRMATrade=true is stamped on ALL fleet followers (ExecuteSmartDispatchEntry
-            // line 434) to enforce point-based trailing. Using IsRMATrade as a type discriminator
-            // caused OR followers to fail the !IsRMATrade predicate and be excluded from OR
-            // propagation, and incorrectly included in RMA propagation.
-            //
-            // FIX: Fleet entry names are stamped with the trade type at dispatch time:
-            //   Format: "Fleet_<AccountName>_<TRADETYPE>_<Index>"
-            //   Example: "Fleet_PA-APEX-422136-05_OR_0", "Fleet_APEX-09_RMA_1"
-            //
-            // [BUILD 927 -- Codex P2 Fix]: Do NOT use Contains("_TYPE_") -- if an account name
-            // itself contains a trade-type substring (e.g. _RMA_, _OR_), Contains() misclassifies
-            // the follower by matching the account name token instead of the TRADETYPE segment.
-            //
-            // SAFE APPROACH: Extract TRADETYPE by segment position.
-            // TRADETYPE is always the second-to-last underscore-delimited segment:
-            //   lastUnderscore      = before the numeric Index
-            //   secondLastUnderscore = before the TRADETYPE token
-            // Example: "Fleet_SimApexSim_02_OR_0"
-            //   lastUs  -> before "0"    -> remaining = "Fleet_SimApexSim_02_OR"
-            //   typeUs  -> before "OR"   -> extracted = "OR"
-
-            // --- Segment-position extraction ---
+            // [BUILD 926/927/930]: Type extracted by segment position; boolean-flag fallback.
             string sig = pos.SignalName ?? entryKey;
-            string followerType = null;
-            int lastUs = sig.LastIndexOf('_');
-            if (lastUs > 0)
-            {
-                int typeUs = sig.LastIndexOf('_', lastUs - 1);
-                if (typeUs >= 0)
-                {
-                    string extracted = sig.Substring(typeUs + 1, lastUs - typeUs - 1);
-                    // Validate against known set -- rejects garbage from unusual account names
-                    if (IsValidTradeTypeToken(extracted))
-                        followerType = extracted.Split('_')[0]; // normalize to base type
-                }
-            }
-
-            // Fallback: segment parsing failed -- use boolean flags (RMA/OR ambiguity defaults to RMA)
+            string followerType = ExtractFollowerTypeFromSignal(sig);
             if (followerType == null)
-            {
-                if (pos.IsTRENDTrade)
-                    followerType = "TREND";
-                else if (pos.IsRetestTrade)
-                    followerType = "RETEST";
-                else if (pos.IsMOMOTrade)
-                    followerType = "MOMO";
-                else if (pos.IsFFMATrade)
-                    followerType = "FFMA";
-                else
-                    followerType = "RMA";
-            }
-
+                followerType = ResolveFollowerTypeFallback(pos);
             return followerType == masterTradeType;
+        }
+
+        /// <summary>
+        /// Extracts the TRADETYPE token from a fleet entry signal name using segment-position
+        /// parsing. Returns null when the signal name does not match the expected format.
+        /// TRADETYPE is always the second-to-last underscore-delimited segment:
+        ///   "Fleet_SimApexSim_02_OR_0" -> "OR"
+        /// </summary>
+        private string ExtractFollowerTypeFromSignal(string sig)
+        {
+            // [BUILD 927]: Use segment position, not Contains(), to avoid account-name collisions.
+            int lastUs = sig.LastIndexOf('_');
+            if (lastUs <= 0)
+                return null;
+            int typeUs = sig.LastIndexOf('_', lastUs - 1);
+            if (typeUs < 0)
+                return null;
+            string extracted = sig.Substring(typeUs + 1, lastUs - typeUs - 1);
+            // Validate against known set -- rejects garbage from unusual account names
+            if (!IsValidTradeTypeToken(extracted))
+                return null;
+            return extracted.Split('_')[0]; // normalize to base type
+        }
+
+        /// <summary>
+        /// Fallback follower-type resolution via boolean flags when signal-name parsing fails.
+        /// RMA/OR ambiguity defaults to RMA (IsRMATrade is stamped on all fleet followers).
+        /// </summary>
+        private string ResolveFollowerTypeFallback(PositionInfo pos)
+        {
+            if (pos.IsTRENDTrade)
+                return "TREND";
+            if (pos.IsRetestTrade)
+                return "RETEST";
+            if (pos.IsMOMOTrade)
+                return "MOMO";
+            if (pos.IsFFMATrade)
+                return "FFMA";
+            return "RMA";
         }
 
         /// <summary>
@@ -326,7 +319,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private bool IsValidTradeTypeToken(string token)
         {
-            // Base types
+            return IsBaseTradeType(token) || IsTradeTypeSuffixMarker(token);
+        }
+
+        private bool IsBaseTradeType(string token)
+        {
             if (
                 token == "OR"
                 || token == "RMA"
@@ -336,7 +333,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || token == "FFMA"
             )
                 return true;
+            return false;
+        }
 
+        private bool IsTradeTypeSuffixMarker(string token)
+        {
             // Build 930 Fix P2: Suffix-marker support
             if (
                 token.StartsWith("FFMA_")
@@ -347,7 +348,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || token.StartsWith("RETEST_")
             )
                 return true;
-
             return false;
         }
 
@@ -367,24 +367,58 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 if (!activePositions.TryGetValue(fleetEntryName, out var pos))
                     continue;
-                if (!pos.IsFollower || pos.ExecutingAccount == null)
-                    continue;
-
-                if (isEntryMove)
-                {
-                    // [FIX-PM-02]: For StopMarket/StopLimit entries limitPrice=0 always; price lives in stopPrice.
-                    // Passing newLimit=0 to PropagateMasterEntryMove caused the tick guard to silently no-op
-                    // on every user-drag, and historically resubmitted Limit followers at price 0.
-                    double effectiveEntryPrice = newLimit > 0 ? newLimit : newStop;
-                    if (effectiveEntryPrice <= 0)
-                        continue; // both zero -- NT8 callback race, skip safely
-                    PropagateMasterEntryMove(fleetEntryName, pos, effectiveEntryPrice, newMasterQty);
-                }
-                else if (isStopMove)
-                    PropagateMasterStopMove(fleetEntryName, pos, newStop);
-                else if (isTargetMove)
-                    PropagateMasterTargetMove(fleetEntryName, pos, masterTargetNum, newLimit);
+                ApplyFollowerMoveDispatch(
+                    fleetEntryName,
+                    pos,
+                    isEntryMove,
+                    isStopMove,
+                    isTargetMove,
+                    masterTargetNum,
+                    newLimit,
+                    newStop,
+                    newMasterQty
+                );
             }
+        }
+
+        private void ApplyFollowerMoveDispatch(
+            string fleetEntryName,
+            PositionInfo pos,
+            bool isEntryMove,
+            bool isStopMove,
+            bool isTargetMove,
+            int masterTargetNum,
+            double newLimit,
+            double newStop,
+            int newMasterQty
+        )
+        {
+            if (!pos.IsFollower || pos.ExecutingAccount == null)
+                return;
+
+            if (isEntryMove)
+                ApplyFollowerEntryMove(fleetEntryName, pos, newLimit, newStop, newMasterQty);
+            else if (isStopMove)
+                PropagateMasterStopMove(fleetEntryName, pos, newStop);
+            else if (isTargetMove)
+                PropagateMasterTargetMove(fleetEntryName, pos, masterTargetNum, newLimit);
+        }
+
+        private void ApplyFollowerEntryMove(
+            string fleetEntryName,
+            PositionInfo pos,
+            double newLimit,
+            double newStop,
+            int newMasterQty
+        )
+        {
+            // [FIX-PM-02]: For StopMarket/StopLimit entries limitPrice=0 always; price lives in stopPrice.
+            // Passing newLimit=0 to PropagateMasterEntryMove caused the tick guard to silently no-op
+            // on every user-drag, and historically resubmitted Limit followers at price 0.
+            double effectiveEntryPrice = newLimit > 0 ? newLimit : newStop;
+            if (effectiveEntryPrice <= 0)
+                return; // both zero -- NT8 callback race, skip safely
+            PropagateMasterEntryMove(fleetEntryName, pos, effectiveEntryPrice, newMasterQty);
         }
 
         /// <summary>
@@ -450,6 +484,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                 )
             );
 
+            ResubmitTargetOrder(pos, targetDict, fleetEntryName, targetNum, tOrder, roundedLimit);
+        }
+
+        private void ResubmitTargetOrder(
+            PositionInfo pos,
+            Dictionary<string, Order> targetDict,
+            string fleetEntryName,
+            int targetNum,
+            Order tOrder,
+            double roundedLimit
+        )
+        {
             var orderArray = _orderArrayPool.Rent();
             try
             {
@@ -526,29 +572,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             bool isStopTypeEntry = fEntry.OrderType == OrderType.StopMarket || fEntry.OrderType == OrderType.StopLimit;
             double fEffectivePrice = isStopTypeEntry ? fEntry.StopPrice : fEntry.LimitPrice;
 
-            // [QTY-SYNC]: Scale master quantity for this follower.
-            // Fallback to fEntry.Quantity if no quantity signal (pure price-change callback, or qty=0 noise).
-            // [923A-P2a-OVF]: checked{} forces explicit OverflowException vs silent int truncation on extreme parity ratios
-            // (e.g., 1 NQ -> 10 MES with very high master qty). Clamps to maxContracts on overflow.
-            int scaledQty;
-            try
-            {
-                scaledQty =
-                    (newMasterQty > 0 && FleetParityMultiplier > 0)
-                        ? checked((int)Math.Max(1L, (long)newMasterQty * FleetParityMultiplier)) // [922Z-OVF+923A]: long cast + checked int
-                        : fEntry.Quantity;
-            }
-            catch (OverflowException)
-            {
-                Print(
-                    string.Format(
-                        "[923A-OVF] Parity scalar overflow for {0} -- clamping to maxContracts ({1})",
-                        fleetEntryName,
-                        maxContracts
-                    )
-                );
-                scaledQty = maxContracts;
-            }
+            // [QTY-SYNC]: Scale master quantity for this follower. Extracted to ComputeScaledQty.
+            int scaledQty = ComputeScaledQty(fleetEntryName, newMasterQty, fEntry.Quantity);
 
             bool priceChanged = Math.Abs(fEffectivePrice - roundedLimit) > tickSize / 2;
             bool quantityChanged = scaledQty != fEntry.Quantity;
@@ -570,16 +595,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             StampReaperMoveGrace();
 
             // Build 947 FSM: derive master signal name for fill-during-gap detection.
-            // Uses same key-contains pattern as cascade cleanup to find the master activePositions entry.
-            string masterSignalName = string.Empty;
-            foreach (var kvp in activePositions)
-            {
-                if (!kvp.Value.IsFollower && (fleetEntryName.Contains(kvp.Key) || kvp.Key.Contains(fleetEntryName)))
-                {
-                    masterSignalName = kvp.Key;
-                    break;
-                }
-            }
+            string masterSignalName = FindMasterSignalName(fleetEntryName);
 
             // Build 947 FSM: two-phase replace -- wait for broker cancel confirmation before resubmit.
             // [GHOST-FIX-1 Build 922Z]: identity chain (fleetEntryName = signal name) preserved in FSM.
@@ -597,6 +613,43 @@ namespace NinjaTrader.NinjaScript.Strategies
                 fEntry.OrderType,
                 isStopTypeEntry
             );
+        }
+
+        // [QTY-SYNC extracted]: Scale newMasterQty by FleetParityMultiplier.
+        // [923A-P2a-OVF]: checked{} forces OverflowException vs silent int truncation on extreme parity ratios.
+        // Clamps to maxContracts on overflow. Returns fallbackQty when no valid quantity signal.
+        private int ComputeScaledQty(string fleetEntryName, int newMasterQty, int fallbackQty)
+        {
+            if (newMasterQty <= 0 || FleetParityMultiplier <= 0)
+                return fallbackQty;
+            try
+            {
+                // [922Z-OVF+923A]: long cast + checked int
+                return checked((int)Math.Max(1L, (long)newMasterQty * FleetParityMultiplier));
+            }
+            catch (OverflowException)
+            {
+                Print(
+                    string.Format(
+                        "[923A-OVF] Parity scalar overflow for {0} -- clamping to maxContracts ({1})",
+                        fleetEntryName,
+                        maxContracts
+                    )
+                );
+                return maxContracts;
+            }
+        }
+
+        // [FSM extracted]: Derive master signal name for fill-during-gap detection.
+        // Uses same key-contains pattern as cascade cleanup (Build 947).
+        private string FindMasterSignalName(string fleetEntryName)
+        {
+            foreach (var kvp in activePositions)
+            {
+                if (!kvp.Value.IsFollower && (fleetEntryName.Contains(kvp.Key) || kvp.Key.Contains(fleetEntryName)))
+                    return kvp.Key;
+            }
+            return string.Empty;
         }
 
         // Build 947: PropagateFollowerEntryReplace -- FSM entry point for two-phase cancel+resubmit.

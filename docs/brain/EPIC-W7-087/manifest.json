@@ -54,12 +54,22 @@
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 5,
+      "final_cyc": 3,
       "wave_ready": true,
       "build_passed": true,
+      "agent": "v12-engineer",
+      "cyc_gate_output": "CYC_GATE: NOT_FOUND  EPIC-W7-087  AuditFleet_CheckWorkingStop  (not in CYC>8 list — assumed PASS)",
       "fl34_lane": "FL-34",
       "fl34_parent_cyc_before": 9,
-      "fl34_parent_cyc_after": 1
+      "fl34_parent_cyc_after": 3
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "verification_verdict": "PASS",
+      "cyc_gate_result": "NOT_FOUND",
+      "build_verified": true,
+      "output": "docs/brain/EPIC-W7-087/ticket-1-verification.md"
     },
     "phase_6": {
       "status": "completed",
@@ -74,6 +84,6 @@
   "wave_ready": true,
   "status": "complete",
   "wave": 7,
-  "final_cyc": 5,
+  "final_cyc": 3,
   "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

@@ -1,83 +1,18 @@
 {
-  "epic": "EPIC-W7-091",
-  "wave": 7,
+  "epic_id": "EPIC-W7-091",
   "method": "CancelDirectFallbackOrders",
-  "source": "src/V12_002.Safety.Watchdog.cs",
-  "cyc": 1,
-  "final_cyc": 2,
+  "file": "src/V12_002.Safety.Watchdog.cs",
+  "cyc_before": 11,
   "phases": {
-    "phase_0": {
-      "name": "Hotspot Analysis",
-      "status": "completed",
-      "output": "00-hotspots.md"
-    },
-    "phase_1": {
-      "name": "Refactor Planning",
-      "status": "completed",
-      "output": null,
-      "output_path": "docs/brain/EPIC-W7-091/00-scope.md",
-      "completed_at": "2026-06-26T02:35:31.781465Z"
-    },
-    "phase_2": {
-      "name": "Architecture Planning",
-      "status": "completed",
-      "output": "02-architecture-plan.md",
-      "completed_at": "2026-06-29T02:30:00Z"
-    },
-    "phase_3": {
-      "name": "Validation",
-      "status": "completed",
-      "output": "03-audit-report.md",
-      "completed_at": "2026-06-29T02:45:00Z"
-    },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "output": "01-scope-boundary.md"
-    },
-    "phase_4": {
-      "name": "Ticket Generation",
-      "status": "completed",
-      "ticket_count": 1,
-      "projected_parent_cyc_after_all": 0,
-      "output": "04-tickets.md",
-      "output_path": "docs/brain/EPIC-W7-091/04-tickets.md",
-      "completed_at": "2026-06-29T03:00:00Z"
-    },
-    "phase_4_5": {
-      "name": "Jane Street Validation Gate",
-      "status": "completed",
-      "review_verdict": "PASS",
-      "failed_tickets": [],
-      "output": "04-5-ticket-review.md",
-      "output_path": "docs/brain/EPIC-W7-091/04-5-ticket-review.md",
-      "completed_at": "2026-06-29T03:15:00Z"
-    },
-    "phase_5_ticket_1": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:16:46Z"
-    },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 1,
-      "wave_ready": true,
-      "build_passed": true
+      "agent": "v12-engineer",
+      "final_cyc": 3,
+      "wave_ready": true
     },
-    "phase_6": {
+    "phase_5_v": {
       "status": "completed",
-      "completed_at": "2026-07-02T00:00:00Z",
-      "final_cyc": 2,
-      "wave_ready": true,
-      "agent": "v12-phase6-review",
-      "mcp_evidence": true,
-      "lane": "P6-REDO-B",
-      "jane_street_compliant": true,
-      "note": "Index was stale (CYC=10 pre-extraction). Source-verified at lines 322-330: CYC=2 (one if-branch). Extracted helpers: CollectDirectFallbackOrders, LogDirectFallbackCancelCount. CYC<=8 PASS."
+      "verification_verdict": "PASS"
     }
-  },
-  "wave_ready": true,
-  "phase_6_completed_at": "2026-07-02T00:00:00Z",
-  "status": "complete",
-  "wave": 7
+  }
 }

@@ -49,9 +49,12 @@
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-07-01T00:00:00Z",
-      "final_cyc": 2,
+      "final_cyc": 8,
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "agent": "v12-engineer",
+      "cyc_gate": "NOT_FOUND",
+      "helpers_extracted": ["HydrateEntryOrderFSM", "LinkStopOrderToFSM"]
     },
     "phase_6": {
       "status": "completed",
@@ -61,6 +64,15 @@
       "agent": "v12-phase6-review",
       "report": "docs/brain/EPIC-W7-070/05-completion-report.md",
       "mcp_tools_used": ["jcodemunch", "get_symbol_complexity", "get_hotspots", "get_repo_health", "sequentialthinking"]
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_gate": "NOT_FOUND",
+      "cyc_verified": "<=8",
+      "build_verified": true,
+      "completed_at": "2026-07-02T12:30:00Z",
+      "output": "docs/brain/EPIC-W7-070/ticket-1-verification.md"
     }
   },
   "status": "complete",
