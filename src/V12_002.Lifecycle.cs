@@ -43,25 +43,23 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void ProcessOnStateChange(State state)
         {
-            if (state == State.SetDefaults)
+            switch (state)
             {
-                HandleSetDefaults();
-            }
-            else if (state == State.Configure)
-            {
-                HandleConfigure();
-            }
-            else if (state == State.DataLoaded)
-            {
-                HandleDataLoaded();
-            }
-            else if (state == State.Realtime)
-            {
-                HandleRealtime();
-            }
-            else if (state == State.Terminated)
-            {
-                HandleTerminated();
+                case State.SetDefaults:
+                    HandleSetDefaults();
+                    break;
+                case State.Configure:
+                    HandleConfigure();
+                    break;
+                case State.DataLoaded:
+                    HandleDataLoaded();
+                    break;
+                case State.Realtime:
+                    HandleRealtime();
+                    break;
+                case State.Terminated:
+                    HandleTerminated();
+                    break;
             }
         }
 
@@ -199,16 +197,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             Interlocked.Exchange(ref _startupReadinessLogEmitted, 0);
 
             StopPanelRefresh();
-
-            if (ChartControl != null)
-            {
-                ChartControl.Dispatcher.InvokeAsync(() =>
-                {
-                    DetachHotkeys();
-                    DetachChartClickHandler();
-                    DestroyPanel();
-                });
-            }
+            TeardownChartUI();
 
             // [BUILD 948] GTC Cancel Sweep -- cancel all tracked/broker V12 orders before teardown.
             // Must run while dicts are still populated and accounts still subscribed.
@@ -229,16 +218,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // to handle cases where flag was toggled OFF mid-session while handlers were still subscribed.
             UnsubscribeFromFleetAccounts();
 
-            // v28.0 MMIO mirror teardown
-            if (_photonMmioMirror != null)
-            {
-                try
-                {
-                    _photonMmioMirror.Dispose();
-                }
-                catch { }
-                _photonMmioMirror = null;
-            }
+            TeardownMmioMirror();
 
             // V12.Phase7 [C-08]: Clear ALL static SignalBroadcaster event handlers on termination.
             // Static events survive instance disposal -- without this, dead instance handlers accumulate
@@ -249,24 +229,76 @@ namespace NinjaTrader.NinjaScript.Strategies
             _simaToggleSem?.Dispose();
 
             // Clear references
+            ClearPositionOrders();
+            ClearTargetOrders();
+            DrainAccountMailbox();
+            ClearAccountProfitTracking();
+            ClearAccountRiskTracking();
+        }
+
+        private void TeardownChartUI()
+        {
+            if (ChartControl != null)
+            {
+                ChartControl.Dispatcher.InvokeAsync(() =>
+                {
+                    DetachHotkeys();
+                    DetachChartClickHandler();
+                    DestroyPanel();
+                });
+            }
+        }
+
+        private void TeardownMmioMirror()
+        {
+            // v28.0 MMIO mirror teardown
+            if (_photonMmioMirror != null)
+            {
+                try
+                {
+                    _photonMmioMirror.Dispose();
+                }
+                catch { }
+                _photonMmioMirror = null;
+            }
+        }
+
+        private void ClearPositionOrders()
+        {
             activePositions?.Clear();
             entryOrders?.Clear();
             stopOrders?.Clear();
             target1Orders?.Clear();
             target2Orders?.Clear();
+        }
+
+        private void ClearTargetOrders()
+        {
             target3Orders?.Clear(); // v5.13
             target4Orders?.Clear();
             target5Orders?.Clear();
             _followerBrackets?.Clear();
+        }
+
+        private void DrainAccountMailbox()
+        {
             if (_accountMailbox != null)
             {
                 while (_accountMailbox.TryDequeue(out var _))
                     ;
             }
+        }
+
+        private void ClearAccountProfitTracking()
+        {
             accountDailyProfit?.Clear();
             accountTotalProfit?.Clear();
             accountTradeCount?.Clear();
             accountDailyTradeCount?.Clear();
+        }
+
+        private void ClearAccountRiskTracking()
+        {
             accountEquityPeak?.Clear();
             accountMaxDrawdown?.Clear();
             accountTradingDays?.Clear();

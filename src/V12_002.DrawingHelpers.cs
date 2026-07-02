@@ -42,98 +42,81 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             try
             {
-                int areaOpacity = BoxOpacity;
-
                 DateTime orStartInZone = ConvertToSelectedTimeZone(orStartDateTime);
-                TimeSpan sessionStartTime = SessionStart.TimeOfDay;
-                TimeSpan sessionEndTime = SessionEnd.TimeOfDay;
-
-                // Detect overnight session (e.g., 21:00 to 16:00)
-                bool sessionCrossesMidnight = sessionEndTime < sessionStartTime;
-
-                // Calculate session end date
-                DateTime sessionEndInZone;
-                if (sessionCrossesMidnight)
-                {
-                    // Overnight session: end time is NEXT day
-                    sessionEndInZone = new DateTime(
-                        orStartInZone.Year,
-                        orStartInZone.Month,
-                        orStartInZone.Day,
-                        sessionEndTime.Hours,
-                        sessionEndTime.Minutes,
-                        sessionEndTime.Seconds,
-                        DateTimeKind.Unspecified
-                    ).AddDays(1); // ADD ONE DAY for overnight sessions!
-                }
-                else
-                {
-                    // Same-day session: end time is same day
-                    sessionEndInZone = new DateTime(
-                        orStartInZone.Year,
-                        orStartInZone.Month,
-                        orStartInZone.Day,
-                        sessionEndTime.Hours,
-                        sessionEndTime.Minutes,
-                        sessionEndTime.Seconds,
-                        DateTimeKind.Unspecified
-                    );
-                }
-
-                TimeZoneInfo targetZone;
-                switch (SelectedTimeZone)
-                {
-                    case "Eastern":
-                        targetZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
-                        break;
-                    case "Central":
-                        targetZone = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
-                        break;
-                    case "Mountain":
-                        targetZone = TimeZoneInfo.FindSystemTimeZoneById("Mountain Standard Time");
-                        break;
-                    case "Pacific":
-                        targetZone = TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
-                        break;
-                    default:
-                        targetZone = TimeZoneInfo.Local;
-                        break;
-                }
-
+                DateTime sessionEndInZone = GetSessionEndInZone(orStartInZone);
+                TimeZoneInfo targetZone = ResolveTimeZone(SelectedTimeZone);
                 DateTime boxEndTime = TimeZoneInfo.ConvertTime(sessionEndInZone, targetZone, TimeZoneInfo.Local);
-
-                Draw.Rectangle(
-                    this,
-                    "ORBox",
-                    false,
-                    orStartDateTime,
-                    sessionHigh,
-                    boxEndTime,
-                    sessionLow,
-                    Brushes.DodgerBlue,
-                    Brushes.DodgerBlue,
-                    areaOpacity
-                );
-
-                if (ShowMidLine)
-                {
-                    Draw.Line(
-                        this,
-                        "ORMid",
-                        false,
-                        orStartDateTime,
-                        sessionMid,
-                        boxEndTime,
-                        sessionMid,
-                        Brushes.Yellow,
-                        DashStyleHelper.Dash,
-                        1
-                    );
-                }
+                DrawBoxWithOptionalMidLine(boxEndTime);
             }
             catch (Exception ex)
             {
                 Print("ERROR DrawORBox: " + ex.Message);
+            }
+        }
+
+        private DateTime GetSessionEndInZone(DateTime orStartInZone)
+        {
+            TimeSpan sessionStartTime = SessionStart.TimeOfDay;
+            TimeSpan sessionEndTime = SessionEnd.TimeOfDay;
+            bool sessionCrossesMidnight = sessionEndTime < sessionStartTime;
+            DateTime baseEnd = new DateTime(
+                orStartInZone.Year,
+                orStartInZone.Month,
+                orStartInZone.Day,
+                sessionEndTime.Hours,
+                sessionEndTime.Minutes,
+                sessionEndTime.Seconds,
+                DateTimeKind.Unspecified
+            );
+            return sessionCrossesMidnight ? baseEnd.AddDays(1) : baseEnd;
+        }
+
+        private static TimeZoneInfo ResolveTimeZone(string selectedTimeZone)
+        {
+            switch (selectedTimeZone)
+            {
+                case "Eastern":
+                    return TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+                case "Central":
+                    return TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
+                case "Mountain":
+                    return TimeZoneInfo.FindSystemTimeZoneById("Mountain Standard Time");
+                case "Pacific":
+                    return TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
+                default:
+                    return TimeZoneInfo.Local;
+            }
+        }
+
+        private void DrawBoxWithOptionalMidLine(DateTime boxEndTime)
+        {
+            Draw.Rectangle(
+                this,
+                "ORBox",
+                false,
+                orStartDateTime,
+                sessionHigh,
+                boxEndTime,
+                sessionLow,
+                Brushes.DodgerBlue,
+                Brushes.DodgerBlue,
+                BoxOpacity
+            );
+
+            if (ShowMidLine)
+            {
+                Draw.Line(
+                    this,
+                    "ORMid",
+                    false,
+                    orStartDateTime,
+                    sessionMid,
+                    boxEndTime,
+                    sessionMid,
+                    Brushes.Yellow,
+                    DashStyleHelper.Dash,
+                    1
+                );
             }
         }
 
