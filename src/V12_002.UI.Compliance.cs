@@ -928,7 +928,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
 
             // Throttle logging to once per 5 seconds to prevent disk thrashing during heavy fills
-            if ((DateTime.Now - lastComplianceLog).TotalSeconds < 5)
+            if ((DateTime.UtcNow - lastComplianceLog).TotalSeconds < 5)
                 return true;
 
             return false;
