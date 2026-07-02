@@ -87,7 +87,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         /// <summary>
         /// Attempts to expand a placeholder starting at formatPos.
-        /// Returns 3 if arg was written, 1 to treat brace as literal, -1 on overflow or specifier.
+        /// Returns 3 if arg was written, 1 to treat brace as literal (writes the { char),
+        /// -1 on overflow or format specifier.
         /// </summary>
         private static int TryExpandPlaceholder(string format, int formatPos, object[] args, ref int bufferPos)
         {
@@ -96,7 +97,13 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             string argStr;
             if (!TryGetSingleDigitArg(format, formatPos, args, out argStr))
+            {
+                // Literal brace: write the { char before advancing past it
+                if (bufferPos >= _buffer.Length)
+                    return -1;
+                _buffer[bufferPos++] = OpenBrace;
                 return 1;
+            }
 
             if (bufferPos + argStr.Length >= _buffer.Length)
                 return -1;
