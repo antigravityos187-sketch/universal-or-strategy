@@ -66,9 +66,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Build 950: Also restore bracket targets after V8.30 emergency stop.
                 if (pending.BracketRestorationNeeded && pending.CapturedTargets != null)
                 {
-                    TargetSnapshot[] _tSnap = pending.CapturedTargets;
-                    string _tKey = key;
-                    TriggerCustomEvent(o => RestoreCascadedTargets(_tKey, _tSnap), null);
+                    TargetSnapshot[] tSnap = pending.CapturedTargets;
+                    string tKey = key;
+                    TriggerCustomEvent(o => RestoreCascadedTargets(tKey, tSnap), null);
                 }
             }
         }
@@ -164,7 +164,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             // Build 955: Snapshot targets BEFORE TryAdd so any callback sees a fully-initialized record
-            var _b955TargetsA = CaptureTargetSnapshot(entryName);
+            var b955TargetsA = CaptureTargetSnapshot(entryName);
 
             var newPending = new PendingStopReplacement
             {
@@ -174,8 +174,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Direction = pos.Direction,
                 OldOrder = currentStop,
                 CreatedTime = DateTime.Now,
-                CapturedTargets = _b955TargetsA,
-                BracketRestorationNeeded = _b955TargetsA != null && _b955TargetsA.Length > 0,
+                CapturedTargets = b955TargetsA,
+                BracketRestorationNeeded = b955TargetsA != null && b955TargetsA.Length > 0,
             };
 
             // V8.30: Thread-safe add or update
@@ -245,7 +245,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private TargetSnapshot[] CaptureTargetSnapshot(string entryName)
         {
-            var _b955TargetsA = new System.Collections.Generic.List<TargetSnapshot>();
+            var b955TargetsA = new System.Collections.Generic.List<TargetSnapshot>();
             for (int _tA = 1; _tA <= 5; _tA++)
             {
                 var _tDA = GetTargetOrdersDictionary(_tA);
@@ -256,7 +256,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     && _tOA != null
                     && (_tOA.OrderState == OrderState.Working || _tOA.OrderState == OrderState.Accepted)
                 )
-                    _b955TargetsA.Add(
+                    b955TargetsA.Add(
                         new TargetSnapshot
                         {
                             TargetNum = _tA,
@@ -266,7 +266,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                         }
                     );
             }
-            return _b955TargetsA.Count > 0 ? _b955TargetsA.ToArray() : null;
+            return b955TargetsA.Count > 0 ? b955TargetsA.ToArray() : null;
         }
 
         private TargetSnapshot[] RefreshTargetSnapshot(string entryName)
@@ -304,7 +304,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             // Build 955: Snapshot targets BEFORE TryAdd so any callback sees a fully-initialized record
-            TargetSnapshot[] _b955Targets = CaptureTargetSnapshot(entryName);
+            TargetSnapshot[] b955Targets = CaptureTargetSnapshot(entryName);
 
             var newPending = new PendingStopReplacement
             {
@@ -314,8 +314,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Direction = pos.Direction,
                 OldOrder = currentStop,
                 CreatedTime = DateTime.Now,
-                CapturedTargets = _b955Targets,
-                BracketRestorationNeeded = _b955Targets != null,
+                CapturedTargets = b955Targets,
+                BracketRestorationNeeded = b955Targets != null,
             };
 
             // V8.30: Thread-safe add

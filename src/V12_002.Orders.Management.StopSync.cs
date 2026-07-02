@@ -704,11 +704,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // A1-1: B966 -- Enqueue actor pipeline (was naked stateLock write)
-                var _en966 = entryName;
-                var _ns966 = newStop;
+                var en966 = entryName;
+                var ns966 = newStop;
                 Enqueue(ctx =>
                 {
-                    ctx.stopOrders[_en966] = _ns966;
+                    ctx.stopOrders[en966] = ns966;
                 });
 
                 CreateNewStopOrder_LogLatencyAndSuccess(entryName, quantity, stopPrice, newStop);

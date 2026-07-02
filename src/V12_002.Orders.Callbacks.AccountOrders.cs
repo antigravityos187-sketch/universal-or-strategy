@@ -795,17 +795,17 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void ExecuteStopReplacementIfActive(string key, PendingStopReplacement psrValue)
         {
             // Build 955: Move guard inside lock -- check and use same atomic snapshot.
-            PositionInfo _rPos;
-            if (activePositions.TryGetValue(key, out _rPos))
+            PositionInfo rPos;
+            if (activePositions.TryGetValue(key, out rPos))
             {
-                int _rQty = _rPos.RemainingContracts;
-                if (_rQty > 0)
+                int rQty = rPos.RemainingContracts;
+                if (rQty > 0)
                 {
-                    CreateNewStopOrder(key, _rQty, psrValue.StopPrice, psrValue.Direction);
+                    CreateNewStopOrder(key, rQty, psrValue.StopPrice, psrValue.Direction);
                     if (psrValue.BracketRestorationNeeded && psrValue.CapturedTargets != null)
                     {
-                        TargetSnapshot[] _snap = psrValue.CapturedTargets;
-                        TriggerCustomEvent(o => RestoreCascadedTargets(key, _snap), null);
+                        TargetSnapshot[] snap = psrValue.CapturedTargets;
+                        TriggerCustomEvent(o => RestoreCascadedTargets(key, snap), null);
                     }
                 }
             }
@@ -825,12 +825,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 if (_sc.Value == order)
                 {
-                    PositionInfo _scPos;
+                    PositionInfo scPos;
                     if (
-                        activePositions.TryGetValue(_sc.Key, out _scPos)
-                        && _scPos != null
-                        && _scPos.PendingCleanup
-                        && _scPos.RemainingContracts <= 0
+                        activePositions.TryGetValue(_sc.Key, out scPos)
+                        && scPos != null
+                        && scPos.PendingCleanup
+                        && scPos.RemainingContracts <= 0
                     )
                     {
                         stopOrders.TryRemove(_sc.Key, out _);
@@ -904,15 +904,15 @@ namespace NinjaTrader.NinjaScript.Strategies
             // A chart-drag cancel on the master reaches this path. Destroying the follower here zeroes
             // expectedPositions mid-replace; the replacement fill then triggers REAPER Critical Desync
             // (actualQty != 0, expectedQty == 0) -> Emergency Flatten.
-            FollowerReplaceSpec _b948FsmSpec;
-            if (_followerReplaceSpecs.TryGetValue(followerKey, out _b948FsmSpec))
+            FollowerReplaceSpec b948FsmSpec;
+            if (_followerReplaceSpecs.TryGetValue(followerKey, out b948FsmSpec))
             {
                 Print(
                     string.Format(
                         "[FSM-GUARD] SKIP cascade teardown for {0} on {1}: in-flight Replace FSM (state={2}). Chart-drag suppressed.",
                         followerKey,
                         cascadeAcctName,
-                        _b948FsmSpec.State
+                        b948FsmSpec.State
                     )
                 );
                 return;
