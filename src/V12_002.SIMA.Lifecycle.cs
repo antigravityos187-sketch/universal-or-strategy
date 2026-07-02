@@ -1251,7 +1251,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     continue; // Skip unrecognized orders and Fleet_ entries (master has no Fleet_ orders)
 
                 // Build dictionary key and route to appropriate dictionary
-                string key = GetAdoptionDictionaryKey(name);
+                string key = GetAdoptionDictionaryKey(name, classification);
                 AssignOrderToAdoptionDictionary(classification, key, ord);
                 adoptedCount++;
             }
@@ -1275,11 +1275,13 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         /// <summary>
         /// Derives the dictionary key from an order name by stripping the type prefix.
-        /// Stop_ prefix is 5 chars; all other prefixes (T1_, T2_, etc.) are 2 chars.
+        /// Stop_/S_ prefixes: 5 or 2 chars. Target prefixes T1_-T5_: 3 chars.
         /// </summary>
-        private static string GetAdoptionDictionaryKey(string name)
+        private static string GetAdoptionDictionaryKey(string name, string classification)
         {
-            return name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase) ? name.Substring(5) : name.Substring(2);
+            if (classification == "stop")
+                return name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase) ? name.Substring(5) : name.Substring(2);
+            return name.Substring(3);
         }
 
         /// <summary>
