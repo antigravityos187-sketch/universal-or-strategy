@@ -83,6 +83,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return TimeZoneInfo.FindSystemTimeZoneById("Mountain Standard Time");
                 case "Pacific":
                     return TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
+                case "UTC":
+                    return TimeZoneInfo.Utc;
                 default:
                     return TimeZoneInfo.Local;
             }
