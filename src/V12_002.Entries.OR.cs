@@ -344,7 +344,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private string BuildOREntryName(MarketPosition direction)
         {
             string signalName = direction == MarketPosition.Long ? "ORLong" : "ORShort";
-            string timestamp = DateTime.Now.ToString("HHmmssffff");
+            string timestamp = DateTime.UtcNow.ToString("HHmmssffff");
             return signalName + "_" + timestamp;
         }
 
@@ -367,9 +367,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Encapsulates the Enqueue/ExpKey boilerplate for Order Ledger updates.
         private void EnqueueORExpectedDelta(int delta)
         {
-            var _aek966 = ExpKey(Account.Name);
-            var _aed966 = delta;
-            Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
+            var aek966 = ExpKey(Account.Name);
+            var aed966 = delta;
+            Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(aek966, aed966));
         }
 
         // Extracted helper: handles null-order rollback path (Build 960 / MS-03).
