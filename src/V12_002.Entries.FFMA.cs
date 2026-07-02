@@ -318,6 +318,33 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// V12.27: FFMA manual entry using Limit Order at user-specified price.
         /// Uses ATR-based stop (same as standard FFMA but with Limit instead of Market).
         /// </summary>
+        // T5: Stop distance validation for FFMA_LIMIT -- clamps to 2-tick minimum, rejects zero.
+        // Returns false when caller must abort; writes validated values back via out params.
+        private bool ValidateAndAdjustFFMALimitStop(
+            MarketPosition direction,
+            double entryPrice,
+            ref double stopDistance,
+            ref double stopPrice
+        )
+        {
+            if (stopDistance < tickSize * 2)
+            {
+                Print(
+                    string.Format("V12.27 FFMA_LIMIT: Stop too tight ({0:F2}pts) - using 2 tick minimum", stopDistance)
+                );
+                stopPrice = Instrument.MasterInstrument.RoundToTickSize(
+                    direction == MarketPosition.Long ? entryPrice - (tickSize * 2) : entryPrice + (tickSize * 2)
+                );
+                stopDistance = tickSize * 2;
+            }
+            if (stopDistance <= 0)
+            {
+                Print("[FFMA_LIMIT REJECT] Stop distance is zero after ATR calc. Aborting entry.");
+                return false;
+            }
+            return true;
+        }
+
         private void ExecuteFFMALimitEntry(double manualPrice, MarketPosition direction, int contracts)
         {
             // V12.Phase7 [C-09]: Compliance enforcement gate.
@@ -343,26 +370,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     direction == MarketPosition.Long ? entryPrice - stopDistance : entryPrice + stopDistance
                 );
 
-                if (stopDistance < tickSize * 2)
-                {
-                    Print(
-                        string.Format(
-                            "V12.27 FFMA_LIMIT: Stop too tight ({0:F2}pts) - using 2 tick minimum",
-                            stopDistance
-                        )
-                    );
-                    stopPrice = Instrument.MasterInstrument.RoundToTickSize(
-                        direction == MarketPosition.Long ? entryPrice - (tickSize * 2) : entryPrice + (tickSize * 2)
-                    );
-                    stopDistance = tickSize * 2;
-                }
-
-                // V12.44: Final stop-distance guard -- prevent CalculatePositionSize(0) -> ? contracts
-                if (stopDistance <= 0)
-                {
-                    Print("[FFMA_LIMIT REJECT] Stop distance is zero after ATR calc. Aborting entry.");
+                if (!ValidateAndAdjustFFMALimitStop(direction, entryPrice, ref stopDistance, ref stopPrice))
                     return;
-                }
 
                 // Universal Ladder: T(n)Type dropdown drives all target pricing.
                 double target1Price = CalculateTargetPrice(direction, entryPrice, 1);
@@ -513,58 +522,63 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// V12.27: FFMA Manual Market entry -- instant market order, direction toward 9 EMA.
         /// Stop at entry candle high/low (same as Auto FFMA).
         /// </summary>
-        private void ExecuteFFMAManualMarketEntry(int contracts)
+        private bool ValidateFFMAManualMarketPreconditions()
         {
             // V12.Phase7 [C-09]: Compliance enforcement gate.
             if (!IsOrderAllowed())
-                return;
+                return false;
             // V12.Phase6 [FLATTEN-GUARD]: Prevent order submission during active flatten
             if (isFlattenRunning)
-                return;
-
+                return false;
             if (currentATR <= 0)
             {
                 Print("V12.27 FFMA_MANUAL_MARKET: Ignored - ATR not available");
-                return;
+                return false;
             }
-
             if (ema9 == null)
             {
                 Print("V12.27 FFMA_MANUAL_MARKET: Ignored - EMA9 not initialized");
-                return;
+                return false;
             }
+            return true;
+        }
+
+        private MarketPosition DetermineFFMAManualMarketDirection(double currentPrice, double ema9Value)
+        {
+            // V12.27: Direction always toward 9 EMA
+            // Price below EMA9 = LONG (price moving up toward EMA)
+            // Price above EMA9 = SHORT (price moving down toward EMA)
+            if (currentPrice < ema9Value)
+            {
+                Print(
+                    string.Format(
+                        "V12.27 FFMA_MANUAL_MARKET: Price below EMA9 ({0:F2} < {1:F2}) = LONG toward EMA",
+                        currentPrice,
+                        ema9Value
+                    )
+                );
+                return MarketPosition.Long;
+            }
+            Print(
+                string.Format(
+                    "V12.27 FFMA_MANUAL_MARKET: Price above EMA9 ({0:F2} > {1:F2}) = SHORT toward EMA",
+                    currentPrice,
+                    ema9Value
+                )
+            );
+            return MarketPosition.Short;
+        }
+
+        private void ExecuteFFMAManualMarketEntry(int contracts)
+        {
+            if (!ValidateFFMAManualMarketPreconditions())
+                return;
 
             try
             {
                 double currentPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
                 double ema9Value = ema9[0];
-
-                // V12.27: Direction always toward 9 EMA
-                // Price below EMA9 = LONG (price moving up toward EMA)
-                // Price above EMA9 = SHORT (price moving down toward EMA)
-                MarketPosition direction;
-                if (currentPrice < ema9Value)
-                {
-                    direction = MarketPosition.Long;
-                    Print(
-                        string.Format(
-                            "V12.27 FFMA_MANUAL_MARKET: Price below EMA9 ({0:F2} < {1:F2}) = LONG toward EMA",
-                            currentPrice,
-                            ema9Value
-                        )
-                    );
-                }
-                else
-                {
-                    direction = MarketPosition.Short;
-                    Print(
-                        string.Format(
-                            "V12.27 FFMA_MANUAL_MARKET: Price above EMA9 ({0:F2} > {1:F2}) = SHORT toward EMA",
-                            currentPrice,
-                            ema9Value
-                        )
-                    );
-                }
+                MarketPosition direction = DetermineFFMAManualMarketDirection(currentPrice, ema9Value);
 
                 double entryPrice = currentPrice; // Market order
 
