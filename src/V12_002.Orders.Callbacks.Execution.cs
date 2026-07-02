@@ -174,9 +174,15 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // EPIC-CCN-18 Ticket 2: Cancellation helper method (CYC 23->13, -10 points)
+        // EPIC-W7-OVERRUN: Extracted stop and target helpers to reduce CYC to <=8
         private void CancelOrphanedOrdersForPosition(string posKey, PositionInfo pos)
         {
-            // Cancel stop order if active
+            CancelStopIfActive(posKey, pos);
+            CancelTargetsIfActive(posKey, pos);
+        }
+
+        private void CancelStopIfActive(string posKey, PositionInfo pos)
+        {
             if (stopOrders.TryGetValue(posKey, out var stopOrder))
             {
                 if (
@@ -187,8 +193,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     CancelOrderSafe(stopOrder, pos);
                 }
             }
+        }
 
-            // Cancel all 5 target orders if active
+        private void CancelTargetsIfActive(string posKey, PositionInfo pos)
+        {
             for (int tNum = 1; tNum <= 5; tNum++)
             {
                 var tDict = GetTargetOrdersDictionary(tNum);
@@ -215,18 +223,20 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Build 1102Y-V2 [U-04]: Use live InitialTargetCount when in trade; fallback to dashboard count when flat.
             int syncCount = activeTargetCount;
             if (Position != null && Position.MarketPosition != MarketPosition.Flat)
-            {
-                foreach (var kvp in activePositions.ToArray())
-                {
-                    PositionInfo p = kvp.Value;
-                    if (!p.IsFollower && p.EntryFilled && p.RemainingContracts > 0 && p.InitialTargetCount > 0)
-                    {
-                        syncCount = p.InitialTargetCount;
-                        break;
-                    }
-                }
-            }
+                syncCount = ResolveInitialTargetCount(activeTargetCount);
             SendResponseToRemote($"SYNC_TARGET_STATE|{syncCount}");
+        }
+
+        // Extracted: scan activePositions for master position's InitialTargetCount.
+        private int ResolveInitialTargetCount(int fallback)
+        {
+            foreach (var kvp in activePositions.ToArray())
+            {
+                PositionInfo p = kvp.Value;
+                if (!p.IsFollower && p.EntryFilled && p.RemainingContracts > 0 && p.InitialTargetCount > 0)
+                    return p.InitialTargetCount;
+            }
+            return fallback;
         }
 
         // V12.962 INLINE ACTOR: Thin-shell for OnExecutionUpdate.

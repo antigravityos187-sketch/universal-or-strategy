@@ -300,27 +300,23 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void MarkTargetFilled(PositionInfo pos, int targetNumber)
         {
-            if (targetNumber < 1 || targetNumber > 5)
-                return;
-            if (targetNumber == 1)
+            switch (targetNumber)
             {
-                pos.T1Filled = true;
-            }
-            else if (targetNumber == 2)
-            {
-                pos.T2Filled = true;
-            }
-            else if (targetNumber == 3)
-            {
-                pos.T3Filled = true;
-            }
-            else if (targetNumber == 4)
-            {
-                pos.T4Filled = true;
-            }
-            else if (targetNumber == 5)
-            {
-                pos.T5Filled = true;
+                case 1:
+                    pos.T1Filled = true;
+                    break;
+                case 2:
+                    pos.T2Filled = true;
+                    break;
+                case 3:
+                    pos.T3Filled = true;
+                    break;
+                case 4:
+                    pos.T4Filled = true;
+                    break;
+                case 5:
+                    pos.T5Filled = true;
+                    break;
             }
         }
 
@@ -334,28 +330,24 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void SetTargetFilledQuantity(PositionInfo pos, int targetNumber, int filledQuantity)
         {
-            if (targetNumber < 1 || targetNumber > 5)
-                return;
             int safeQty = Math.Max(0, filledQuantity);
-            if (targetNumber == 1)
+            switch (targetNumber)
             {
-                pos.T1FilledQuantity = safeQty;
-            }
-            else if (targetNumber == 2)
-            {
-                pos.T2FilledQuantity = safeQty;
-            }
-            else if (targetNumber == 3)
-            {
-                pos.T3FilledQuantity = safeQty;
-            }
-            else if (targetNumber == 4)
-            {
-                pos.T4FilledQuantity = safeQty;
-            }
-            else if (targetNumber == 5)
-            {
-                pos.T5FilledQuantity = safeQty;
+                case 1:
+                    pos.T1FilledQuantity = safeQty;
+                    break;
+                case 2:
+                    pos.T2FilledQuantity = safeQty;
+                    break;
+                case 3:
+                    pos.T3FilledQuantity = safeQty;
+                    break;
+                case 4:
+                    pos.T4FilledQuantity = safeQty;
+                    break;
+                case 5:
+                    pos.T5FilledQuantity = safeQty;
+                    break;
             }
         }
 

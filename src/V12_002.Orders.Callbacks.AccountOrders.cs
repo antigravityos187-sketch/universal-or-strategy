@@ -44,8 +44,19 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (acct == null)
                 return;
 
-            // Phase 2: Enqueue into Actor Mailbox for FSM processing (Shadow Mode)
-            // Only process if it's a fleet account and matches our instrument
+            EnqueueFleetMailboxIfApplicable(acct, order);
+
+            if (!IsOrderForThisInstrument(order))
+                return;
+
+            DispatchAccountOrderExpectedUpdate(acct, order);
+            ProcessAccountOrder_EnqueueTerminalUpdate(sender, e, order);
+        }
+
+        // Phase 2: Enqueue into Actor Mailbox for FSM processing (Shadow Mode).
+        // Only runs for fleet accounts whose order matches this strategy's instrument.
+        private void EnqueueFleetMailboxIfApplicable(Account acct, Order order)
+        {
             if (IsFleetAccount(acct) && order.Instrument != null && order.Instrument.FullName == Instrument.FullName)
             {
                 _accountMailbox.Enqueue(
@@ -62,20 +73,26 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                 );
             }
+        }
 
-            if (order.Instrument != null && order.Instrument.FullName != Instrument.FullName)
-                return;
+        // Returns true if order belongs to this strategy's instrument (or instrument is null).
+        // Returning false signals the caller to skip further processing.
+        private bool IsOrderForThisInstrument(Order order)
+        {
+            return order.Instrument == null || order.Instrument.FullName == Instrument.FullName;
+        }
 
-            // Build 1000: Master account managed order tracking
+        // Build 1000 / Build 1104.1: Route expectedPositions update to master or fleet handler.
+        // Called only after IsOrderForThisInstrument returns true.
+        private void DispatchAccountOrderExpectedUpdate(Account acct, Order order)
+        {
             if (acct == this.Account && order.Instrument != null && order.Instrument.FullName == Instrument.FullName)
                 ProcessAccountOrder_UpdateMasterExpected(order);
-            // Build 1104.1: Fleet account expectedPositions tracking (symmetric with Master at line 65)
+            // Build 1104.1: Fleet account expectedPositions tracking (symmetric with Master).
             // Without this, expectedPositions stays stale after fleet stop/target fills,
             // causing REAPER to see Expected != Actual and trigger false flattens.
             else if (IsFleetAccount(acct))
                 ProcessAccountOrder_UpdateFleetExpected(order, acct);
-
-            ProcessAccountOrder_EnqueueTerminalUpdate(sender, e, order);
         }
 
         private void ProcessAccountOrder_UpdateMasterExpected(Order order)
@@ -120,36 +137,41 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (order.OrderState == OrderState.Filled || order.OrderState == OrderState.PartFilled)
             {
                 if (order.Name.StartsWith("Stop_"))
-                {
-                    // Fleet stop filled: position closing. Zero expectedPositions.
-                    _nakedPositionFirstSeen.TryRemove(acct.Name, out _);
-                    var fExpKey = ExpKey(acct.Name);
-                    Enqueue(ctx => ctx.SetExpectedPositionLocked(fExpKey, 0));
-                }
+                    HandleFleetStopFill(acct);
                 else if (order.Name.StartsWith("T") && order.Name.Contains("_"))
-                {
-                    // Fleet target filled: delta-decrement expectedPositions.
-                    int fFilledQty = order.Filled;
-                    var fExpKey = ExpKey(acct.Name);
-                    Enqueue(ctx =>
-                    {
-                        if (
-                            ctx.expectedPositions != null
-                            && ctx.expectedPositions.TryGetValue(fExpKey, out int fCurrentExp)
-                        )
-                        {
-                            int fNewExp;
-                            if (fCurrentExp > 0)
-                                fNewExp = Math.Max(0, fCurrentExp - fFilledQty);
-                            else if (fCurrentExp < 0)
-                                fNewExp = Math.Min(0, fCurrentExp + fFilledQty);
-                            else
-                                fNewExp = 0;
-                            ctx.SetExpectedPositionLocked(fExpKey, fNewExp);
-                        }
-                    });
-                }
+                    HandleFleetTargetFill(order, acct);
             }
+        }
+
+        // Build 971 [CYC-REDUCE]: Extracted from ProcessAccountOrder_UpdateFleetExpected.
+        // Fleet stop filled: position closing. Zero expectedPositions.
+        private void HandleFleetStopFill(Account acct)
+        {
+            _nakedPositionFirstSeen.TryRemove(acct.Name, out _);
+            var fExpKey = ExpKey(acct.Name);
+            Enqueue(ctx => ctx.SetExpectedPositionLocked(fExpKey, 0));
+        }
+
+        // Build 971 [CYC-REDUCE]: Extracted from ProcessAccountOrder_UpdateFleetExpected.
+        // Fleet target filled: delta-decrement expectedPositions.
+        private void HandleFleetTargetFill(Order order, Account acct)
+        {
+            int fFilledQty = order.Filled;
+            var fExpKey = ExpKey(acct.Name);
+            Enqueue(ctx =>
+            {
+                if (ctx.expectedPositions != null && ctx.expectedPositions.TryGetValue(fExpKey, out int fCurrentExp))
+                {
+                    int fNewExp;
+                    if (fCurrentExp > 0)
+                        fNewExp = Math.Max(0, fCurrentExp - fFilledQty);
+                    else if (fCurrentExp < 0)
+                        fNewExp = Math.Min(0, fCurrentExp + fFilledQty);
+                    else
+                        fNewExp = 0;
+                    ctx.SetExpectedPositionLocked(fExpKey, fNewExp);
+                }
+            });
         }
 
         private void ProcessAccountOrder_EnqueueTerminalUpdate(object sender, OrderEventArgs e, Order order)
@@ -180,6 +202,21 @@ namespace NinjaTrader.NinjaScript.Strategies
         // under high-velocity broker event bursts. Mirrors IpcMaxCommandsPerDrain pattern.
         private const int MaxAccountOrdersPerDrain = 8;
 
+        // Build 971 [CYC-REDUCE]: Extracted from ProcessAccountOrderQueue to remove 3 duplicate
+        // try/catch/if-_diagFleet patterns (6 CYC). Schedules a reprocess on the strategy thread.
+        private void TriggerQueueReprocessSafe(string errorTag)
+        {
+            try
+            {
+                TriggerCustomEvent(o => ProcessAccountOrderQueue(), null);
+            }
+            catch (Exception ex)
+            {
+                if (_diagFleet)
+                    Print("[FLEET_CATCH] " + errorTag + ": " + ex.Message);
+            }
+        }
+
         private void ProcessAccountOrderQueue()
         {
             // Build 1109 [FREEZE-PROOF]: Queue depth warning
@@ -189,15 +226,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // V12.Phase7 [THREAD-01a]: Buffer-and-wait during flatten (symmetric with ProcessAccountExecutionQueue).
             if (isFlattenRunning)
             {
-                try
-                {
-                    TriggerCustomEvent(o => ProcessAccountOrderQueue(), null);
-                }
-                catch (Exception ex)
-                {
-                    if (_diagFleet)
-                        Print("[FLEET_CATCH] ProcessAccountOrderQueue flatten gate failed: " + ex.Message);
-                }
+                TriggerQueueReprocessSafe("ProcessAccountOrderQueue flatten gate failed");
                 return;
             }
 
@@ -208,15 +237,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (isFlattenRunning)
                 {
                     _accountOrderQueue.Enqueue(item);
-                    try
-                    {
-                        TriggerCustomEvent(o => ProcessAccountOrderQueue(), null);
-                    }
-                    catch (Exception ex)
-                    {
-                        if (_diagFleet)
-                            Print("[FLEET_CATCH] ProcessAccountOrderQueue drain loop failed: " + ex.Message);
-                    }
+                    TriggerQueueReprocessSafe("ProcessAccountOrderQueue drain loop failed");
                     return;
                 }
                 drainedCount++;
@@ -224,15 +245,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             // If items remain after budget exhausted, reschedule for next strategy-thread slice.
             if (!_accountOrderQueue.IsEmpty)
-                try
-                {
-                    TriggerCustomEvent(o => ProcessAccountOrderQueue(), null);
-                }
-                catch (Exception ex)
-                {
-                    if (_diagFleet)
-                        Print("[FLEET_CATCH] ProcessAccountOrderQueue reschedule failed: " + ex.Message);
-                }
+                TriggerQueueReprocessSafe("ProcessAccountOrderQueue reschedule failed");
         }
 
         // Build 1111.007-phase7-tW2 [T-W2]: Helper for Entry/Stop/T1 predicate (ref-equality short-circuit).
@@ -379,25 +392,31 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             foreach (string followerEntry in dispatchFollowers)
             {
-                FollowerReplaceSpec spec;
-                if (!_followerReplaceSpecs.TryGetValue(followerEntry, out spec) || spec == null)
-                    continue;
-
-                if (spec.State != FollowerReplaceState.PendingCancel && spec.State != FollowerReplaceState.Submitting)
-                {
-                    continue;
-                }
-
-                if (!string.Equals(spec.MasterSignalName, masterEntryName, StringComparison.Ordinal))
-                    continue;
-
-                if (!string.Equals(spec.SignalName, followerEntry, StringComparison.Ordinal))
-                    continue;
-
-                return true;
+                if (IsFollowerSpecMatchForMasterReplace(followerEntry, masterEntryName))
+                    return true;
             }
 
             return false;
+        }
+
+        // Helper: checks if the follower replace spec in _followerReplaceSpecs matches
+        // the given follower/master pair and is in an active replace state.
+        private bool IsFollowerSpecMatchForMasterReplace(string followerEntry, string masterEntryName)
+        {
+            FollowerReplaceSpec spec;
+            if (!_followerReplaceSpecs.TryGetValue(followerEntry, out spec) || spec == null)
+                return false;
+
+            if (spec.State != FollowerReplaceState.PendingCancel && spec.State != FollowerReplaceState.Submitting)
+                return false;
+
+            if (!string.Equals(spec.MasterSignalName, masterEntryName, StringComparison.Ordinal))
+                return false;
+
+            if (!string.Equals(spec.SignalName, followerEntry, StringComparison.Ordinal))
+                return false;
+
+            return true;
         }
 
         // H06: Top-level follower cancellation processor (state-agnostic).
@@ -418,28 +437,14 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // Check 1: PendingCancel entry replacement FSM
             FollowerReplaceSpec fsm;
-            if (
-                _followerReplaceSpecs.TryGetValue(matchedEntry, out fsm)
-                && fsm.State == FollowerReplaceState.PendingCancel
-                && fsm.CancellingOrderId == order.OrderId
-            )
+            if (IsPendingCancelFsmMatch(matchedEntry, order, out fsm))
             {
                 return HandleMatchedFollower_PendingCancelReplace(matchedEntry, order, acctName);
             }
 
             // Check 2: Target replacement FSM
-            FollowerTargetReplaceSpec tSpec = null;
-            string tFsmMatchKey = null;
-            foreach (var tKvp in _followerTargetReplaceSpecs.ToArray())
-            {
-                if (tKvp.Value.CancellingOrderId == order.OrderId)
-                {
-                    tSpec = tKvp.Value;
-                    tFsmMatchKey = tKvp.Key;
-                    break;
-                }
-            }
-            if (tSpec != null && tFsmMatchKey != null)
+            string tFsmMatchKey;
+            if (TryFindTargetReplaceSpec(order, out tFsmMatchKey))
             {
                 return HandleMatchedFollower_TargetReplaceCancel(order);
             }
@@ -465,6 +470,29 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
             }
 
+            return false;
+        }
+
+        // H06a: Returns true when the compound PendingCancel FSM condition is satisfied.
+        private bool IsPendingCancelFsmMatch(string matchedEntry, Order order, out FollowerReplaceSpec fsm)
+        {
+            return _followerReplaceSpecs.TryGetValue(matchedEntry, out fsm)
+                && fsm.State == FollowerReplaceState.PendingCancel
+                && fsm.CancellingOrderId == order.OrderId;
+        }
+
+        // H06b: Scans _followerTargetReplaceSpecs for an entry whose CancellingOrderId matches order.
+        private bool TryFindTargetReplaceSpec(Order order, out string matchKey)
+        {
+            foreach (var tKvp in _followerTargetReplaceSpecs.ToArray())
+            {
+                if (tKvp.Value.CancellingOrderId == order.OrderId)
+                {
+                    matchKey = tKvp.Key;
+                    return true;
+                }
+            }
+            matchKey = null;
             return false;
         }
 
@@ -584,9 +612,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             )
             {
                 // Fill-during-gap guard: if master already has a live filled position, let REAPER handle
-                PositionInfo masterPos = null;
-                bool masterFilled = false;
-
                 // Phase 10 [B960-AUDIT]: synchronization wrapper removed. Both this path
                 // via ProcessQueuedAccountOrder via TriggerCustomEvent and PropagateFollowerEntryReplace
                 // are serialized on the NinjaTrader strategy thread. No concurrent field access is possible.
@@ -596,12 +621,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 string sigName = fsm.SignalName;
                 FollowerReplaceSpec fsmCapture = fsm;
 
-                masterFilled =
-                    !string.IsNullOrEmpty(fsm.MasterSignalName)
-                    && activePositions.TryGetValue(fsm.MasterSignalName, out masterPos)
-                    && masterPos != null
-                    && masterPos.EntryFilled
-                    && masterPos.RemainingContracts > 0;
+                bool masterFilled = IsMasterFilledDuringWait(fsm);
 
                 if (!masterFilled)
                 {
@@ -614,19 +634,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 if (masterFilled)
-                {
-                    Print(
-                        "[FSM] Master filled during cancel wait -- routing "
-                            + fsm.SignalName
-                            + " to repair instead of replace."
-                    );
-                    _followerReplaceSpecs.TryRemove(fsm.SignalName, out _);
-                    string masterFilledExpKey = ExpKey(acctName);
-                    ClearDispatchSyncPending(masterFilledExpKey);
-                    _reaperRepairQueue.Enqueue(acctName);
-                    ProcessReaperRepairQueue();
-                    return true;
-                }
+                    return RouteMasterFilledToRepair(fsm, acctName);
 
                 bool replacementScheduled = false;
                 try
@@ -660,6 +668,29 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             return false;
+        }
+
+        private bool IsMasterFilledDuringWait(FollowerReplaceSpec fsm)
+        {
+            PositionInfo masterPos = null;
+            return !string.IsNullOrEmpty(fsm.MasterSignalName)
+                && activePositions.TryGetValue(fsm.MasterSignalName, out masterPos)
+                && masterPos != null
+                && masterPos.EntryFilled
+                && masterPos.RemainingContracts > 0;
+        }
+
+        private bool RouteMasterFilledToRepair(FollowerReplaceSpec fsm, string acctName)
+        {
+            Print(
+                "[FSM] Master filled during cancel wait -- routing " + fsm.SignalName + " to repair instead of replace."
+            );
+            _followerReplaceSpecs.TryRemove(fsm.SignalName, out _);
+            string masterFilledExpKey = ExpKey(acctName);
+            ClearDispatchSyncPending(masterFilledExpKey);
+            _reaperRepairQueue.Enqueue(acctName);
+            ProcessReaperRepairQueue();
+            return true;
         }
 
         private bool HandleMatchedFollower_TargetReplaceCancel(Order order)
@@ -740,67 +771,74 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Build 950: Follower stop replacement -- mirrors HandleOrderCancelled master path.
             // Follower stop cancels arrive via OnAccountOrderUpdate (not OnOrderUpdate), so
             // HandleOrderCancelled never fires for them. Match pendingStopReplacements here.
-            // This block is in the else branch because stop orders are not in entryOrders.
             if (order.Name.StartsWith("Stop_") || order.Name.StartsWith("S_"))
             {
                 foreach (var _psr in pendingStopReplacements.ToArray())
                 {
-                    if (
-                        _psr.Value.OldOrder == order
-                        || (_psr.Value.OldOrder != null && _psr.Value.OldOrder.OrderId == order.OrderId)
-                    )
+                    if (IsMatchingStopReplacement(_psr.Value.OldOrder, order))
                     {
-                        PositionInfo _rPos;
-                        // Build 955: Move guard inside lock -- check and use same atomic snapshot.
-                        if (activePositions.TryGetValue(_psr.Key, out _rPos))
-                        {
-                            int _rQty;
-                            _rQty = _rPos.RemainingContracts;
-                            if (_rQty > 0)
-                            {
-                                CreateNewStopOrder(_psr.Key, _rQty, _psr.Value.StopPrice, _psr.Value.Direction);
-                                if (_psr.Value.BracketRestorationNeeded && _psr.Value.CapturedTargets != null)
-                                {
-                                    TargetSnapshot[] _snap = _psr.Value.CapturedTargets;
-                                    string _rKey = _psr.Key;
-                                    TriggerCustomEvent(o => RestoreCascadedTargets(_rKey, _snap), null);
-                                }
-                            } // if (_rQty > 0)
-                        } // if (activePositions.TryGetValue)
+                        ExecuteStopReplacementIfActive(_psr.Key, _psr.Value);
                         if (pendingStopReplacements.TryRemove(_psr.Key, out _))
                             Interlocked.Decrement(ref pendingReplacementCount);
                         return true;
                     }
                 }
             }
-
             return false;
+        }
+
+        private bool IsMatchingStopReplacement(Order psrOldOrder, Order order)
+        {
+            return psrOldOrder == order || (psrOldOrder != null && psrOldOrder.OrderId == order.OrderId);
+        }
+
+        private void ExecuteStopReplacementIfActive(string key, PendingStopReplacement psrValue)
+        {
+            // Build 955: Move guard inside lock -- check and use same atomic snapshot.
+            PositionInfo _rPos;
+            if (activePositions.TryGetValue(key, out _rPos))
+            {
+                int _rQty = _rPos.RemainingContracts;
+                if (_rQty > 0)
+                {
+                    CreateNewStopOrder(key, _rQty, psrValue.StopPrice, psrValue.Direction);
+                    if (psrValue.BracketRestorationNeeded && psrValue.CapturedTargets != null)
+                    {
+                        TargetSnapshot[] _snap = psrValue.CapturedTargets;
+                        TriggerCustomEvent(o => RestoreCascadedTargets(key, _snap), null);
+                    }
+                }
+            }
         }
 
         private void HandleMatchedFollower_PendingCleanupPurge(Order order)
         {
             // A2-2: Deferred PendingCleanup purge -- follower stop terminal (Build 960 audit fix).
             if (order.Name.StartsWith("Stop_") || order.Name.StartsWith("S_"))
+                PurgeFollowerStop_ScanStopOrders(order);
+        }
+
+        // A2-2 helper: scans stopOrders for a matching order and purges if PendingCleanup complete.
+        private void PurgeFollowerStop_ScanStopOrders(Order order)
+        {
+            foreach (var _sc in stopOrders.ToArray())
             {
-                foreach (var _sc in stopOrders.ToArray())
+                if (_sc.Value == order)
                 {
-                    if (_sc.Value == order)
+                    PositionInfo _scPos;
+                    if (
+                        activePositions.TryGetValue(_sc.Key, out _scPos)
+                        && _scPos != null
+                        && _scPos.PendingCleanup
+                        && _scPos.RemainingContracts <= 0
+                    )
                     {
-                        PositionInfo _scPos;
-                        if (
-                            activePositions.TryGetValue(_sc.Key, out _scPos)
-                            && _scPos != null
-                            && _scPos.PendingCleanup
-                            && _scPos.RemainingContracts <= 0
-                        )
-                        {
-                            stopOrders.TryRemove(_sc.Key, out _);
-                            activePositions.TryRemove(_sc.Key, out _);
-                            SymmetryGuardForgetEntry(_sc.Key);
-                            Print("[A2-2] Deferred PendingCleanup purge (follower stop terminal): " + _sc.Key);
-                        }
-                        break;
+                        stopOrders.TryRemove(_sc.Key, out _);
+                        activePositions.TryRemove(_sc.Key, out _);
+                        SymmetryGuardForgetEntry(_sc.Key);
+                        Print("[A2-2] Deferred PendingCleanup purge (follower stop terminal): " + _sc.Key);
                     }
+                    break;
                 }
             }
         }
@@ -844,48 +882,46 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
 
                 foreach (string followerKey in followerKeys)
-                {
-                    PositionInfo cascadePos;
-                    if (
-                        !snapshotByKey.TryGetValue(followerKey, out cascadePos)
-                        || cascadePos == null
-                        || !cascadePos.IsFollower
-                    )
-                        continue;
-
-                    string cascadeAcctName =
-                        cascadePos.ExecutingAccount != null ? cascadePos.ExecutingAccount.Name : "NULL";
-
-                    // [BUILD 984] [FIX-A]: Skip cascade teardown if this follower has an in-flight Replace FSM.
-                    // A chart-drag cancel on the master reaches this path. Destroying the follower here zeroes
-                    // expectedPositions mid-replace; the replacement fill then triggers REAPER Critical Desync
-                    // (actualQty != 0, expectedQty == 0) -> Emergency Flatten.
-                    FollowerReplaceSpec _b948FsmSpec;
-                    if (_followerReplaceSpecs.TryGetValue(followerKey, out _b948FsmSpec))
-                    {
-                        Print(
-                            string.Format(
-                                "[FSM-GUARD] SKIP cascade teardown for {0} on {1}: in-flight Replace FSM (state={2}). Chart-drag suppressed.",
-                                followerKey,
-                                cascadeAcctName,
-                                _b948FsmSpec.State
-                            )
-                        );
-                        continue;
-                    }
-
-                    if (!cascadePos.EntryFilled)
-                        ExecuteFollowerCascade_CleanupUnfilled(masterEntryName, orderSignal, followerKey, cascadePos);
-                    else
-                        ExecuteFollowerCascade_EmergencyFlattenFilled(
-                            masterEntryName,
-                            orderSignal,
-                            followerKey,
-                            cascadePos
-                        );
-                }
+                    ExecuteFollowerCascade_ProcessFollower(followerKey, snapshotByKey, masterEntryName, orderSignal);
             }
             RemoveGhostOrderRef(order, reason);
+        }
+
+        private void ExecuteFollowerCascade_ProcessFollower(
+            string followerKey,
+            Dictionary<string, PositionInfo> snapshotByKey,
+            string masterEntryName,
+            string orderSignal
+        )
+        {
+            PositionInfo cascadePos;
+            if (!snapshotByKey.TryGetValue(followerKey, out cascadePos) || cascadePos == null || !cascadePos.IsFollower)
+                return;
+
+            string cascadeAcctName = cascadePos.ExecutingAccount != null ? cascadePos.ExecutingAccount.Name : "NULL";
+
+            // [BUILD 984] [FIX-A]: Skip cascade teardown if this follower has an in-flight Replace FSM.
+            // A chart-drag cancel on the master reaches this path. Destroying the follower here zeroes
+            // expectedPositions mid-replace; the replacement fill then triggers REAPER Critical Desync
+            // (actualQty != 0, expectedQty == 0) -> Emergency Flatten.
+            FollowerReplaceSpec _b948FsmSpec;
+            if (_followerReplaceSpecs.TryGetValue(followerKey, out _b948FsmSpec))
+            {
+                Print(
+                    string.Format(
+                        "[FSM-GUARD] SKIP cascade teardown for {0} on {1}: in-flight Replace FSM (state={2}). Chart-drag suppressed.",
+                        followerKey,
+                        cascadeAcctName,
+                        _b948FsmSpec.State
+                    )
+                );
+                return;
+            }
+
+            if (!cascadePos.EntryFilled)
+                ExecuteFollowerCascade_CleanupUnfilled(masterEntryName, orderSignal, followerKey, cascadePos);
+            else
+                ExecuteFollowerCascade_EmergencyFlattenFilled(masterEntryName, orderSignal, followerKey, cascadePos);
         }
 
         private bool ExecuteFollowerCascade_SuppressMasterReplace(
@@ -1021,7 +1057,18 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (order == null || order.OrderState != OrderState.Cancelled)
                 return false;
 
-            // Check 1: PendingCancel entry replacement FSM
+            if (TryHandleReplaceSpecCancellation(order, acctName))
+                return true;
+
+            if (TryHandleTargetReplaceCancellation(order))
+                return true;
+
+            return HandleStopOrderCancellation(order, acctName, reason);
+        }
+
+        // Extracted: Check 1 — PendingCancel entry replacement FSM loop
+        private bool TryHandleReplaceSpecCancellation(Order order, string acctName)
+        {
             var replaceSpecsSnapshot = _followerReplaceSpecs.ToArray();
             foreach (var kvp in replaceSpecsSnapshot)
             {
@@ -1032,40 +1079,43 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return HandleMatchedFollower_PendingCancelReplace(matchedEntry, order, acctName);
                 }
             }
+            return false;
+        }
 
-            // Check 2: Target replacement FSM
+        // Extracted: Check 2 — Target replacement FSM loop
+        private bool TryHandleTargetReplaceCancellation(Order order)
+        {
             var targetReplaceSpecsSnapshot = _followerTargetReplaceSpecs.ToArray();
             foreach (var tKvp in targetReplaceSpecsSnapshot)
             {
                 if (tKvp.Value.CancellingOrderId == order.OrderId)
-                {
                     return HandleMatchedFollower_TargetReplaceCancel(order);
-                }
             }
-
-            // Check 3: Stop replacement (follower stops arrive via OnAccountOrderUpdate)
-            // P2-FIX (Iteration 4): Add null guard before order.Name access
-            if (order.Name != null && (order.Name.StartsWith("Stop_") || order.Name.StartsWith("S_")))
-            {
-                if (HandleMatchedFollower_StopReplacement(order))
-                    return true;
-
-                // Check 4: PendingCleanup purge for terminal stops
-                HandleMatchedFollower_PendingCleanupPurge(order);
-                Print(
-                    string.Format(
-                        "[SIMA] Follower order terminal: {0} on {1} ({2}) | Id={3}",
-                        order.Name,
-                        acctName,
-                        reason,
-                        order.OrderId
-                    )
-                );
-                RemoveGhostOrderRef(order, reason);
-                return true;
-            }
-
             return false;
+        }
+
+        // Extracted: Check 3+4 — Stop replacement and terminal cleanup
+        // P2-FIX (Iteration 4): null guard preserved before order.Name access
+        private bool HandleStopOrderCancellation(Order order, string acctName, string reason)
+        {
+            if (order.Name == null || (!order.Name.StartsWith("Stop_") && !order.Name.StartsWith("S_")))
+                return false;
+
+            if (HandleMatchedFollower_StopReplacement(order))
+                return true;
+
+            HandleMatchedFollower_PendingCleanupPurge(order);
+            Print(
+                string.Format(
+                    "[SIMA] Follower order terminal: {0} on {1} ({2}) | Id={3}",
+                    order.Name,
+                    acctName,
+                    reason,
+                    order.OrderId
+                )
+            );
+            RemoveGhostOrderRef(order, reason);
+            return true;
         }
 
         private void ProcessQueuedAccountOrder(QueuedAccountOrderUpdate item)
@@ -1132,7 +1182,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (string.IsNullOrEmpty(kvp.Key))
                     continue;
                 PositionInfo pos = kvp.Value;
-                if (!IsFollowerPosition(pos) || pos == null || pos.Account?.Name != item.Account?.Name)
+                if (ShouldSkipSnapshotEntry(pos, item))
                     continue;
                 if (TryFindOrderInPosition(order, kvp.Key, out matchedEntry))
                 {
@@ -1143,6 +1193,13 @@ namespace NinjaTrader.NinjaScript.Strategies
             matchedEntry = string.Empty;
             matchedPos = null;
             return false;
+        }
+
+        private bool ShouldSkipSnapshotEntry(PositionInfo pos, QueuedAccountOrderUpdate item)
+        {
+            if (pos == null || !IsFollowerPosition(pos))
+                return true;
+            return pos.Account?.Name != item.Account?.Name;
         }
 
         private void DispatchMatchedFollowerResult(
