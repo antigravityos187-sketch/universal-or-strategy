@@ -850,6 +850,55 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 02-architecture-plan.md
 
+      ═══════════════════════════════════════════════════════
+      PHASE 7 PR REPAIR MODE (when invoked by wave-orch-phase7-lane)
+      ═══════════════════════════════════════════════════════
+        When your start_subtask message contains "PR#" and "FINDING" fields,
+        you are in PR repair planning mode -- not epic architecture mode.
+
+        MANDATORY PRE-READ (based on finding classification passed by lane):
+
+          | Finding type                           | Read before planning                                             |
+          |----------------------------------------|------------------------------------------------------------------|
+          | VALID-LOGIC-BUG (timezone/clock)       | docs/intel/jane-street/how-to-build-an-exchange.md              |
+          |                                        |   sections: determinism, one_in_flight                           |
+          | VALID-LOGIC-BUG (wrong key/index)      | docs/intel/jane-street/how-to-build-an-exchange.md              |
+          |                                        |   sections: correctness_by_construction, one_in_flight           |
+          | VALID-LOGIC-BUG (account/fleet proxy)  | docs/intel/jane-street/production-engineering-billions.md       |
+          |                                        |   sections: independent_tracking, rate_limiting                  |
+          | VALID-LOGIC-BUG (ordering/security)    | docs/intel/jane-street/production-engineering-billions.md       |
+          |                                        | + docs/intel/jane-street/how-to-build-an-exchange.md            |
+          |                                        |   sections: rate_limiting, sidecar_lifecycle                     |
+          | VALID-LOGIC-BUG (dropped char/output)  | docs/intel/jane-street/microsecond-eternity.md                  |
+          |                                        |   sections: zero_alloc (fix must not allocate on hot path)       |
+          | VALID-DNA (DateTime.Now)               | docs/intel/jane-street/how-to-build-an-exchange.md              |
+          |                                        |   section: determinism                                           |
+          | VALID-DNA (lock())                     | HALT -- do NOT plan. Emit PLANNER_BLOCKED lock_found.            |
+          |                                        |   lock() is never auto-fixed -- escalate to Director.            |
+          | VALID-DNA (Unicode / _locals / method) | No doc read needed -- mechanical rule. Plan is trivial.          |
+          | VALID-MECHANICAL (perf, redundancy)    | docs/intel/jane-street/production-engineering-billions.md       |
+          |                                        |   section: rate_limiting (relevant to O(N) guard removal)        |
+
+        PLAN OUTPUT FORMAT (mandatory for PR repair mode):
+          ```PLAN
+          file: src/V12_002.FileName.cs
+          old_text: |
+            <exact lines to replace, copied verbatim from source>
+          new_text: |
+            <replacement lines>
+          rationale: <one sentence referencing the OKF pattern: "per how-to-build-an-exchange.md determinism: ...">
+          build_impact: none | minor | needs_review
+          okf_doc_read: <which doc was read, section name>
+          ```
+
+        RULES for PR repair plans:
+          - Minimal change: touch ONLY the reported lines.
+          - No scope creep: do not fix adjacent pre-existing issues in the same plan.
+          - old_text must be an EXACT copy from source (read_file the file first).
+          - new_text must not introduce: lock(), DateTime.Now, non-ASCII, underscore locals,
+            new allocations on hot-path methods, NUnit/MSTest attributes.
+          - If the fix requires reading callers/callees: use jCodemunch get_call_hierarchy.
+          - Use sequential_thinking (min 3 thoughts) before finalizing the plan.
 
       GRAPHIFY PROTOCOL (MANDATORY - Every Task):
         STARTUP: Run `graphify update . --no-cluster --no-description` as your FIRST action, then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure before any exploration.
@@ -5583,12 +5632,40 @@ customModes:
         Read docs/brain/wave7-pr-repairs/PR-{PR_NUMBER}/fix_queue.md
         (pre-loaded fix queue from previous session — use as baseline)
 
+        CS-ONLY GATE (run before anything else):
+          python3 scripts/wave7_prepush_gate.py --base origin/main
+          If Check 0 reports non-.cs files: immediately remove them from {BRANCH}
+          via git rm --cached <file> + git commit before proceeding.
+          Non-.cs files on a wave7 branch consume Sourcery's 150k-char budget and
+          cause it to skip the entire PR. They MUST be removed first.
+
       ═══════════════════════════════════════════════════════
-      STEP 1 — LIVE BOT FORENSICS (fetch ALL PR signals via Greptile MCP)
+      STEP 1 — LIVE BOT FORENSICS (ALL bots via poll_all_bots.py + Greptile MCP)
       ═══════════════════════════════════════════════════════
-        Fetch EVERY signal the PR has produced using the Greptile MCP tools
-        (mcp__greptile__*). These tools require no gh CLI and no GitHub API
-        token — they work directly via the configured MCP server.
+        Run the full-spectrum bot triage script FIRST to get all 8 bots' verdicts:
+
+          python3 scripts/poll_all_bots.py {PR_NUMBER} --repo antigravityos187-sketch/universal-or-strategy
+
+        This returns structured triage for:
+          coderabbitai, gemini-code-assist, greptile-apps, cubic-dev-ai,
+          sourcery-ai, codeant-ai, qodo-code-review, amazon-q-developer
+        Outputs: BLOCKS_MERGE / ACTION_REQUIRED / INFORMATIONAL / CLEAN per bot.
+        OKF override: comments matching nullable/lock/NUnit patterns are auto-classified
+          INFORMATIONAL by the script — do not add them to the triage.
+
+        Key blockers to note from the script output:
+          - coderabbitai CHANGES_REQUESTED on EVERY PR (known) — must address or
+            bot comments will block merge in repo settings. After fixes, push and
+            CodeRabbit re-reviews automatically on the new commit.
+          - CodeFactor fail: informational (V12 uses Codacy as gate, not CodeFactor).
+          - SonarCloud fail: informational (advisory only, not a merge gate).
+          - gitleaks fail: check if real secret or false positive. If false positive:
+            add an allowlist entry to .gitleaks.toml and commit to main separately
+            (not to the PR branch).
+          - Sourcery skipping: caused by diff > 150k chars OR non-.cs files present.
+            Fix: remove non-.cs contamination from branch (STEP 0 CS-only gate).
+
+        Then fetch Greptile-specific signals via MCP:
 
         REPO: antigravityos187-sketch/universal-or-strategy
         REMOTE: github
@@ -5796,39 +5873,81 @@ customModes:
         Repeat Step 2 triplet for each remaining actionable finding.
 
       ═══════════════════════════════════════════════════════
-      STEP 3 — PUSH ALL COMMITS
+      STEP 3 — PUSH ALL COMMITS + CS-ONLY VERIFY
       ═══════════════════════════════════════════════════════
         git checkout {BRANCH}
+
+        CS-ONLY FINAL CHECK (mandatory before push):
+          python3 scripts/wave7_prepush_gate.py --base origin/main
+          Check 0 must show [PASS] CS-only. If [FAIL]: abort push, fix contamination.
+          Check the exact list of non-.cs files reported and remove each with:
+            git rm --cached <non-cs-file>
+            git commit -m "chore(wave7): remove non-cs contamination from PR branch"
+
         git push origin {BRANCH}
         Verify exit 0. If push fails: HALT, report PUSH_FAILED to Director.
 
       ═══════════════════════════════════════════════════════
-      STEP 4 — BOT POLL (via Greptile MCP — no gh CLI needed)
+      STEP 4 — FULL BOT POLL + REPAIR LOOP (repeat until all bots green)
       ═══════════════════════════════════════════════════════
-        Poll every 4 minutes (cost-optimized — wait between calls):
+        TARGET: All key bots must be CLEAN or INFORMATIONAL before LANE_COMPLETE.
+        Key bots (5): coderabbitai, gemini-code-assist, greptile-apps (if active),
+                      cubic-dev-ai, sourcery-ai.
+        Exclusions (do NOT count against target):
+          - Greptile trial ended (treated as INFORMATIONAL).
+          - CodeFactor, SonarCloud — informational in this repo, not merge gates.
+          - Comments matching OKF-override patterns (nullable, lock suggestion,
+            NUnit, #nullable enable) — classified INFORMATIONAL by poll_all_bots.py.
+          - Deferred findings explicitly marked in fix_queue.md as DEFERRED.
+          - HALLUCINATION-classified findings (contradicted by source read_file).
 
-        POLL: mcp__greptile__get_merge_request(
+        POLL SEQUENCE (after each push, repeat until target met or max 3 rounds):
+
+          4a. Run poll_all_bots.py for comprehensive verdict:
+              python3 scripts/poll_all_bots.py {PR_NUMBER} --repo antigravityos187-sketch/universal-or-strategy
+              Note verdict per bot. Any BLOCKS_MERGE or ACTION_REQUIRED = unresolved findings.
+
+          4b. Fetch Greptile MCP for inline comment details:
+              POLL: mcp__greptile__get_merge_request(
+                      name="antigravityos187-sketch/universal-or-strategy",
+                      remote="github", defaultBranch="main",
+                      prNumber={PR_NUMBER}
+                    )
+              Check reviewAnalysis.unaddressedComments.
+              Check reviewAnalysis.hasNewCommitsSinceReview:
+                - true  → bots have not re-reviewed new commits yet — wait 4 min, re-poll.
+                - false → bot review is current — unaddressedComments is final verdict.
+
+          4c. Also list all unaddressed comments:
+              mcp__greptile__list_merge_request_comments(
                 name="antigravityos187-sketch/universal-or-strategy",
                 remote="github", defaultBranch="main",
-                prNumber={PR_NUMBER}
+                prNumber={PR_NUMBER},
+                addressed=false
               )
-        Check reviewAnalysis.unaddressedComments — if empty: all green.
-        Check reviewAnalysis.hasNewCommitsSinceReview:
-          - true  → bots haven't re-reviewed the new commits yet — wait and re-poll.
-          - false → bot review is current — use unaddressedComments as final verdict.
 
-        Also poll for any new comments since last fetch:
-          mcp__greptile__list_merge_request_comments(
-            name="antigravityos187-sketch/universal-or-strategy",
-            remote="github", defaultBranch="main",
-            prNumber={PR_NUMBER},
-            addressed=false
-          )
+          4d. EVALUATE: After each poll, apply this decision tree:
+              - unaddressedComments empty AND poll_all_bots verdict = CLEAN
+                → proceed to STEP 5 (done).
+              - New VALID findings appear (not in previous triage, not OKF-overridden)
+                → loop back to STEP 2 (new finding triplet), then push, then re-poll.
+              - Same finding persists after confirmed fix (engineer commit present)
+                → verify fix is actually in source (read_file); if yes: HALLUCINATION,
+                  proceed. If no: engineer failed to apply — re-run engineer.
+              - coderabbitai still shows CHANGES_REQUESTED after fixes
+                → CodeRabbit auto-re-reviews on new push. Wait one more poll cycle.
+                  If it persists with the exact same comments after 2 cycles:
+                  classify as HALLUCINATION (CodeRabbit has known false-positive rate).
 
-        Wait up to 20 minutes (5 polls at 4-minute intervals).
-        If unaddressedComments is empty: all green, proceed to STEP 5.
-        If new VALID findings appear: loop back to STEP 1 (max 3 total rounds).
-        If same findings repeat after confirmed fix: classify as HALLUCINATION, proceed.
+          Wait 4 minutes between poll attempts (cost-optimized).
+          Max: 5 polls (20 minutes). Max repair rounds: 3 total.
+
+        BOT SATISFACTION SCORE (track this):
+          After each poll, compute: N/5 bots CLEAN (excluding Greptile trial-ended).
+          Target: 5/5 CLEAN (or APPROVED).
+          CodeRabbit APPROVED = full green from all bots. This is the ideal end state.
+          Acceptable: 4/5 CLEAN + Greptile trial-ended (mark INFORMATIONAL).
+          Write bot_satisfaction_score to completion.md.
 
       ═══════════════════════════════════════════════════════
       STEP 5 — ARTIFACTS TO MAIN
