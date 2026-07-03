@@ -60,11 +60,60 @@ start_subtask(
 - Each phase orchestrator hands off via start_subtask to the next
 - Phase 6 Orchestrator returns WAVE_COMPLETE to you
 
-### Step 5: On WAVE_COMPLETE
+### Step 5: On WAVE_COMPLETE — Verify CYC
 ```
-- Log wave_7_complete to .lamport/wave7/event_log.jsonl
+- Log wave_epic_complete to .lamport/wave7/event_log.jsonl
 - Verify: python scripts/complexity_audit.py | grep "REFACTOR" | wc -l → should be 0
-- Report: "Wave 7 complete — 161/161 methods now CYC ≤ 8"
+- Report: "Wave 7 epics complete — 161/161 methods now CYC ≤ 8"
+```
+
+### Step 5b: Launch Phase 7 (PR Review & Merge Loop)
+
+Phase 7 handles all cluster PRs created after the CYC reduction wave.
+It runs AFTER Phase 6 confirms all epics complete (CYC ≤ 8 verified).
+
+```
+start_subtask(
+  mode: "wave-orch-phase7",
+  title: "Wave 7 — Phase 7 PR Review & Merge Loop",
+  message: |
+    You are the Phase 7 (PR Review & Merge Loop) Coordinator for Wave 7.
+
+    LAMPORT GATE: Verify phase_6_orchestrator_complete in
+      .lamport/wave7/event_log.jsonl before proceeding.
+
+    MANIFEST: docs/brain/wave7-pr-repairs/manifest.json
+      Contains 6 cluster PRs (lanes L1–L6).
+
+    YOUR JOB:
+      1. Read manifest, verify all 6 PR branches exist on remote.
+      2. Produce 6 lane prompts (start_subtask blocks) for the Director.
+         Director will open 6 Bob IDE tabs and paste one prompt per tab.
+         Each lane runs mode="wave-orch-phase7-lane" on one PR.
+      3. Collect LANE_COMPLETE / LANE_HARD_FAILURE from Director as lanes finish.
+      4. When all 6 lanes complete: log MERGE_COMPLETE, report back here.
+
+    ARCHITECTURE (Option B — Director-pasted lanes):
+      - Tier 2 (you): produce prompts, collect results, log
+      - Tier 3 (wave-orch-phase7-lane): one per PR, sequential inside, parallel across tabs
+      - Workers inside each lane: v12-phase2-architecture (logic planner) + v12-engineer (fixer)
+
+    BRANCH HYGIENE (enforce in every lane message):
+      - src/ edits → PR branch only
+      - docs/ artifacts → main only
+      - NEVER mix in one commit
+
+    Report back: MERGE_COMPLETE wave=7 prs_merged=N prs_needs_director=M
+)
+```
+
+### Step 6: On MERGE_COMPLETE
+```
+- Log wave_7_complete to .lamport/wave7/event_log.jsonl:
+  {"lamport_clock": N, "epic_id":"WAVE-7", "phase":"final",
+   "event_type":"wave_7_complete", "status":"complete",
+   "epics": 161, "prs_merged": 6}
+- Report: "Wave 7 complete — 161/161 CYC ≤ 8, 6/6 PRs merged"
 ```
 
 ---
@@ -94,6 +143,11 @@ If any phase reports `HARD_FAILURE`:
 | 5 | `wave-orch-phase5` | `v12-engineer` | `wave-orch-phase5v` |
 | 5.V | `wave-orch-phase5v` | `v12-phase5-v-verify` | `wave-orch-phase6` |
 | 6 | `wave-orch-phase6` | `v12-phase6-review` | → WAVE_COMPLETE to Tier 1 |
+| 7 | `wave-orch-phase7` | `wave-orch-phase7-lane` (×6) | → MERGE_COMPLETE to Tier 1 |
+
+**Phase 7 Note:** 6 lanes run in parallel across Director-pasted tabs.
+Each lane uses `start_subtask(mode="wave-orch-phase7-lane")` internally.
+Workers inside each lane: `v12-phase2-architecture` (logic planner) + `v12-engineer` (fixer).
 
 ---
 
