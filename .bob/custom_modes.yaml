@@ -5584,12 +5584,35 @@ customModes:
         (pre-loaded fix queue from previous session — use as baseline)
 
       ═══════════════════════════════════════════════════════
-      STEP 1 — LIVE BOT FORENSICS
+      STEP 1 — LIVE BOT FORENSICS (fetch ALL PR signals)
       ═══════════════════════════════════════════════════════
-        Fetch current bot findings from GitHub:
+        Fetch EVERY signal the PR has produced — four separate sources:
+
+        SOURCE 1 — Review bodies + issue-level comments (top-level text):
           gh pr view {PR_NUMBER} --json reviews,comments \
             --jq '[.reviews[].body, .comments[].body] | .[]' \
             > /tmp/pr{PR_NUMBER}_bot_raw.txt
+
+        SOURCE 2 — Inline review comments (line-level, where bots annotate code):
+          gh api repos/:owner/:repo/pulls/{PR_NUMBER}/comments \
+            --jq '.[] | "FILE: \(.path):\(.line // .original_line // 0)\nBOT: \(.user.login)\n\(.body)\n---"' \
+            >> /tmp/pr{PR_NUMBER}_bot_raw.txt
+
+        SOURCE 3 — All review threads including CHANGES_REQUESTED state:
+          gh pr view {PR_NUMBER} --json reviews \
+            --jq '.reviews[] | "REVIEWER: \(.author.login) STATE: \(.state)\n\(.body)\n---"' \
+            >> /tmp/pr{PR_NUMBER}_bot_raw.txt
+
+        SOURCE 4 — CI check run names and URLs (surface failing checks by name):
+          gh pr checks {PR_NUMBER} \
+            >> /tmp/pr{PR_NUMBER}_bot_raw.txt
+
+        Now /tmp/pr{PR_NUMBER}_bot_raw.txt contains ALL of:
+          - Top-level review summaries (CodeRabbit summary, Gemini review, etc.)
+          - Every inline code annotation with file + line context
+          - Review state flags (CHANGES_REQUESTED = bot wants action)
+          - CI check pass/fail (gate status for each tool)
+
         Read /tmp/pr{PR_NUMBER}_bot_raw.txt AND fix_queue.md.
         Merge both sources. For EACH finding classify as ONE of:
           VALID-LOGIC-BUG   — behavior change, wrong output, data corruption,
