@@ -1066,7 +1066,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             return HandleStopOrderCancellation(order, acctName, reason);
         }
 
-        // Extracted: Check 1 — PendingCancel entry replacement FSM loop
+        // Extracted: Check 1  -- PendingCancel entry replacement FSM loop
         private bool TryHandleReplaceSpecCancellation(Order order, string acctName)
         {
             var replaceSpecsSnapshot = _followerReplaceSpecs.ToArray();
@@ -1082,7 +1082,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             return false;
         }
 
-        // Extracted: Check 2 — Target replacement FSM loop
+        // Extracted: Check 2  -- Target replacement FSM loop
         private bool TryHandleTargetReplaceCancellation(Order order)
         {
             var targetReplaceSpecsSnapshot = _followerTargetReplaceSpecs.ToArray();
@@ -1094,7 +1094,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             return false;
         }
 
-        // Extracted: Check 3+4 — Stop replacement and terminal cleanup
+        // Extracted: Check 3+4  -- Stop replacement and terminal cleanup
         // P2-FIX (Iteration 4): null guard preserved before order.Name access
         private bool HandleStopOrderCancellation(Order order, string acctName, string reason)
         {
