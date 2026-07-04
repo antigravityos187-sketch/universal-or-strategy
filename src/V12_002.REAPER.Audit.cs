@@ -565,7 +565,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool IsWorkingStopOrderForInstrument(Order o)
         {
             if (o == null)
+            {
                 return false;
+            }
             bool stateMatch = o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted;
             bool typeMatch = o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
             bool actionMatch = o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover;
@@ -751,7 +753,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool AuditMaster_IsWorkingStopOrder(Order o, string instrName)
         {
             if (o == null || o.Instrument?.FullName != instrName)
+            {
                 return false;
+            }
             bool isActive = o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted;
             bool isStop = o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
             bool isProtective = o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover;
