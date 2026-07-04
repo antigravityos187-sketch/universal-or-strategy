@@ -92,8 +92,12 @@
     "L4": {
       "pr": 23,
       "branch": "wave7/pr4-s4-reaper-defense",
-      "status": "pending",
-      "worktree": "/tmp/wt-pr23"
+      "status": "complete",
+      "worktree": "/tmp/wt-pr23",
+      "completed": "2026-07-04",
+      "cr_state": "CHANGES_REQUESTED_STALE",
+      "fixed_findings": 8,
+      "gate_status": "PASS"
     },
     "L5": {
       "pr": 24,
