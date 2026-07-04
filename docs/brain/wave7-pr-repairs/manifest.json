@@ -80,14 +80,27 @@
     "L2": {
       "pr": 21,
       "branch": "wave7/pr2-s3-ui-ipc",
-      "status": "pending",
-      "worktree": "/tmp/wt-pr21"
+      "status": "complete",
+      "worktree": "/tmp/wt-pr21",
+      "completed": "2026-07-04",
+      "cr_state": "CHANGES_REQUESTED_STALE",
+      "fixed_findings": 2,
+      "sa1204_fixes": ["68ce2559 CancelAll_IsBracketOrder", "69fdad80 IsLongOrShort"],
+      "gate_status": "PASS",
+      "deferred_debt": ["DD-014", "DD-015", "DD-016", "DD-017", "DD-018", "DD-019"]
     },
     "L3": {
       "pr": 22,
       "branch": "wave7/pr3-s1-sima-core",
-      "status": "pending",
-      "worktree": "/tmp/wt-pr22"
+      "status": "complete",
+      "worktree": "/tmp/wt-pr22",
+      "completed": "2026-07-04",
+      "cr_state": "CHANGES_REQUESTED_STALE_status_context_SUCCESS",
+      "fixed_findings": 2,
+      "total_fixed_all_sessions": 9,
+      "deferred_findings": 5,
+      "gate_status": "PASS",
+      "commit": "4e2e211e"
     },
     "L4": {
       "pr": 23,
