@@ -34,6 +34,33 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region IPC Commands Fleet
 
+        // [SA1204] Static helpers -- must precede non-static members per StyleCop SA1204
+        // [EPIC-W7-OVERRUN] Extracted: terminal order state predicate (CYC=6)
+        private static bool CancelAll_IsOrderTerminal(OrderState state)
+        {
+            return state == OrderState.Cancelled
+                || state == OrderState.CancelPending
+                || state == OrderState.CancelSubmitted
+                || state == OrderState.Filled
+                || state == OrderState.Rejected;
+        }
+
+        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=8)
+        private static bool CancelAll_IsBracketOrder(string oName)
+        {
+            if (string.IsNullOrEmpty(oName))
+                return false;
+            return oName.StartsWith("Stop_", StringComparison.Ordinal)
+                || oName.StartsWith("S_", StringComparison.Ordinal)
+                || oName.StartsWith("T1_", StringComparison.Ordinal)
+                || oName.StartsWith("T2_", StringComparison.Ordinal)
+                || oName.StartsWith("T3_", StringComparison.Ordinal)
+                || oName.StartsWith("T4_", StringComparison.Ordinal)
+                || oName.StartsWith("T5_", StringComparison.Ordinal);
+        }
+
+        private static bool IsLongOrShort(string action) => action == "LONG" || action == "SHORT";
+
         // [EPIC-W7-014] CYC reduced 20->5 -- split 18 dispatch calls into 3 grouped helpers
         private bool TryHandleFleetCommand(string action, string[] parts, long senderTicks)
         {
@@ -284,32 +311,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
             return !masterHasPosition;
         }
-
-        // [EPIC-W7-OVERRUN] Extracted: terminal order state predicate (CYC=6)
-        private static bool CancelAll_IsOrderTerminal(OrderState state)
-        {
-            return state == OrderState.Cancelled
-                || state == OrderState.CancelPending
-                || state == OrderState.CancelSubmitted
-                || state == OrderState.Filled
-                || state == OrderState.Rejected;
-        }
-
-        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=8)
-        private static bool CancelAll_IsBracketOrder(string oName)
-        {
-            if (string.IsNullOrEmpty(oName))
-                return false;
-            return oName.StartsWith("Stop_", StringComparison.Ordinal)
-                || oName.StartsWith("S_", StringComparison.Ordinal)
-                || oName.StartsWith("T1_", StringComparison.Ordinal)
-                || oName.StartsWith("T2_", StringComparison.Ordinal)
-                || oName.StartsWith("T3_", StringComparison.Ordinal)
-                || oName.StartsWith("T4_", StringComparison.Ordinal)
-                || oName.StartsWith("T5_", StringComparison.Ordinal);
-        }
-
-        private static bool IsLongOrShort(string action) => action == "LONG" || action == "SHORT";
 
         private int CancelAll_ProcessFleetAccounts()
         {
