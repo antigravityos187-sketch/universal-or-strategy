@@ -248,7 +248,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void UpdateATRFromFiveMinBars()
         {
-            if (BarsArray[1] != null && BarsArray[1].Count > RMAATRPeriod)
+            if (CurrentBars[1] >= RMAATRPeriod)
             {
                 currentATR = atrIndicator[0];
             }

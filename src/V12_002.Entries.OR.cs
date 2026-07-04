@@ -331,7 +331,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
 
                 // V12 SIMA: Dispatch to fleet (replaces legacy slave broadcast)
-                DispatchSIMAEntry(direction, contracts, entryPrice);
+                DispatchSIMAEntry(direction, contracts, entryPrice, entryName);
             }
             catch (Exception ex)
             {
@@ -392,12 +392,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         // marketable on Apex/Tradovate (fills at current ask). StopMarket activates only
         // when price actually reaches/breaks the OR High/Low -- matching master behavior.
         // Removes the if(EnableSIMA) branch and its internal ternary from EnterORPosition.
-        private void DispatchSIMAEntry(MarketPosition direction, int contracts, double entryPrice)
+        private void DispatchSIMAEntry(MarketPosition direction, int contracts, double entryPrice, string entryName)
         {
             if (!EnableSIMA)
                 return;
             OrderAction action = direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort;
-            ExecuteSmartDispatchEntry("OR", action, contracts, entryPrice, OrderType.StopMarket);
+            ExecuteSmartDispatchEntry("OR", action, contracts, entryPrice, OrderType.StopMarket, entryName);
         }
 
         private double CalculateORStopDistance()
