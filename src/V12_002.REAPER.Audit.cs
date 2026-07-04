@@ -568,10 +568,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 return false;
             }
-            bool stateMatch = o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted;
-            bool typeMatch = o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
-            bool actionMatch = o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover;
-            return IsMatchingInstrument(o) && stateMatch && typeMatch && actionMatch;
+            return IsMatchingInstrument(o) && IsWorkingOrderState(o) && IsStopOrderType(o) && IsProtectiveAction(o);
         }
 
         // Build 1111.007-reaper-t1: EnqueueReaperNakedStopCandidate extracted to V12_002.REAPER.NakedPosition.cs as DetectNakedPosition
@@ -756,11 +753,17 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 return false;
             }
-            bool isActive = o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted;
-            bool isStop = o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
-            bool isProtective = o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover;
-            return isActive && isStop && isProtective;
+            return IsWorkingOrderState(o) && IsStopOrderType(o) && IsProtectiveAction(o);
         }
+
+        private static bool IsWorkingOrderState(Order o) =>
+            o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted;
+
+        private static bool IsStopOrderType(Order o) =>
+            o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
+
+        private static bool IsProtectiveAction(Order o) =>
+            o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover;
 
         // Build 935 [REAPER-B935-004]: Audit the Master account when it isn't covered by AccountPrefix.
         // Returns true if the master account has non-zero state.
