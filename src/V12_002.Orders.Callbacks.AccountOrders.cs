@@ -79,7 +79,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Returning false signals the caller to skip further processing.
         private bool IsOrderForThisInstrument(Order order)
         {
-            return order.Instrument == null || order.Instrument.FullName == Instrument.FullName;
+            return order.Instrument != null && order.Instrument.FullName == Instrument.FullName;
         }
 
         // Build 1000 / Build 1104.1: Route expectedPositions update to master or fleet handler.
@@ -477,6 +477,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool IsPendingCancelFsmMatch(string matchedEntry, Order order, out FollowerReplaceSpec fsm)
         {
             return _followerReplaceSpecs.TryGetValue(matchedEntry, out fsm)
+                && fsm != null
                 && fsm.State == FollowerReplaceState.PendingCancel
                 && fsm.CancellingOrderId == order.OrderId;
         }
@@ -794,7 +795,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void ExecuteStopReplacementIfActive(string key, PendingStopReplacement psrValue)
         {
-            // Build 955: Move guard inside lock -- check and use same atomic snapshot.
             PositionInfo rPos;
             if (activePositions.TryGetValue(key, out rPos))
             {
@@ -1073,6 +1073,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             foreach (var kvp in replaceSpecsSnapshot)
             {
                 FollowerReplaceSpec fsm = kvp.Value;
+                if (fsm == null)
+                    continue;
                 if (fsm.State == FollowerReplaceState.PendingCancel && fsm.CancellingOrderId == order.OrderId)
                 {
                     string matchedEntry = kvp.Key;
