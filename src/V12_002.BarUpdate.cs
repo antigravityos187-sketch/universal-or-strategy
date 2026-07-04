@@ -107,7 +107,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             DateTime barTimeInZone,
             TimeSpan currentTime,
             TimeSpan sessionStartTime,
-            TimeSpan sessionEndTime,
             bool sessionCrossesMidnight
         )
         {
@@ -249,7 +248,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void UpdateATRFromFiveMinBars()
         {
-            if (BarsArray[1] != null && BarsArray[1].Count > RMAATRPeriod)
+            if (CurrentBars[1] >= RMAATRPeriod)
             {
                 currentATR = atrIndicator[0];
             }
@@ -318,13 +317,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 DrawMNLAnchorIfActive();
 
                 // Process session reset with compliance
-                ProcessSessionReset(
-                    barTimeInZone,
-                    currentTime,
-                    sessionStartTime,
-                    sessionEndTime,
-                    sessionCrossesMidnight
-                );
+                ProcessSessionReset(barTimeInZone, currentTime, sessionStartTime, sessionCrossesMidnight);
 
                 // Build OR during window
                 ProcessORWindowBuilding(barTimeInZone, currentTime, sessionStartTime, orEndTime);

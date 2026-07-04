@@ -59,7 +59,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     isLongArmed = true;
                     isShortArmed = false; // Mutually exclusive for simplicity
-                    lastArmedTime = DateTime.Now;
+                    lastArmedTime = DateTime.UtcNow;
                     Print("[SYNC] LONG ENTRY ARMED. Waiting for ToS handshake signal...");
                     return;
                 }
@@ -103,7 +103,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     isShortArmed = true;
                     isLongArmed = false; // Mutually exclusive
-                    lastArmedTime = DateTime.Now;
+                    lastArmedTime = DateTime.UtcNow;
                     Print("[SYNC] SHORT ENTRY ARMED. Waiting for ToS handshake signal...");
                     return;
                 }
@@ -331,7 +331,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
 
                 // V12 SIMA: Dispatch to fleet (replaces legacy slave broadcast)
-                DispatchSIMAEntry(direction, contracts, entryPrice);
+                DispatchSIMAEntry(direction, contracts, entryPrice, entryName);
             }
             catch (Exception ex)
             {
@@ -344,7 +344,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private string BuildOREntryName(MarketPosition direction)
         {
             string signalName = direction == MarketPosition.Long ? "ORLong" : "ORShort";
-            string timestamp = DateTime.Now.ToString("HHmmssffff");
+            string timestamp = DateTime.UtcNow.ToString("HHmmssffff");
             return signalName + "_" + timestamp;
         }
 
@@ -367,9 +367,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Encapsulates the Enqueue/ExpKey boilerplate for Order Ledger updates.
         private void EnqueueORExpectedDelta(int delta)
         {
-            var _aek966 = ExpKey(Account.Name);
-            var _aed966 = delta;
-            Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
+            var aek966 = ExpKey(Account.Name);
+            var aed966 = delta;
+            Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(aek966, aed966));
         }
 
         // Extracted helper: handles null-order rollback path (Build 960 / MS-03).
@@ -392,12 +392,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         // marketable on Apex/Tradovate (fills at current ask). StopMarket activates only
         // when price actually reaches/breaks the OR High/Low -- matching master behavior.
         // Removes the if(EnableSIMA) branch and its internal ternary from EnterORPosition.
-        private void DispatchSIMAEntry(MarketPosition direction, int contracts, double entryPrice)
+        private void DispatchSIMAEntry(MarketPosition direction, int contracts, double entryPrice, string entryName)
         {
             if (!EnableSIMA)
                 return;
             OrderAction action = direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort;
-            ExecuteSmartDispatchEntry("OR", action, contracts, entryPrice, OrderType.StopMarket);
+            ExecuteSmartDispatchEntry("OR", action, contracts, entryPrice, OrderType.StopMarket, entryName);
         }
 
         private double CalculateORStopDistance()

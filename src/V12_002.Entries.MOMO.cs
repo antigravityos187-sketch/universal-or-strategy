@@ -67,7 +67,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     t5Qty;
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
 
-                string timestamp = DateTime.Now.ToString("HHmmssffff");
+                string timestamp = DateTime.UtcNow.ToString("HHmmssffff");
                 PositionInfo pos = BuildMOMOPositionInfo(
                     direction,
                     contracts,
@@ -81,8 +81,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     timestamp
                 );
                 string entryName = pos.SignalName;
-                // signalName is the prefix stored before the '_' in pos.SignalName (no ternary needed)
-                string signalName = entryName.Substring(0, entryName.IndexOf('_'));
+                string signalName = direction == MarketPosition.Long ? "MOMOLong" : "MOMOShort";
                 ApplyTargetLadderGuard(pos);
 
                 // Build 1102Y-V3 [MS-06]: Register Master expected BEFORE StopMarket entry.

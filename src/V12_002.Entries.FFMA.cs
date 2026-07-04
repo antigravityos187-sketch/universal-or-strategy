@@ -319,7 +319,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Uses ATR-based stop (same as standard FFMA but with Limit instead of Market).
         /// </summary>
         // T5: Stop distance validation for FFMA_LIMIT -- clamps to 2-tick minimum, rejects zero.
-        // Returns false when caller must abort; writes validated values back via out params.
+        // Returns false when caller must abort; writes validated values back via ref params.
         private bool ValidateAndAdjustFFMALimitStop(
             MarketPosition direction,
             double entryPrice,
