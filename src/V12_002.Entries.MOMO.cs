@@ -67,7 +67,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     t5Qty;
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
 
-                string timestamp = DateTime.Now.ToString("HHmmssffff");
+                string timestamp = DateTime.UtcNow.ToString("HHmmssffff");
                 PositionInfo pos = BuildMOMOPositionInfo(
                     direction,
                     contracts,

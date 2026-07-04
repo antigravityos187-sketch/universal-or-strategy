@@ -59,7 +59,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     isLongArmed = true;
                     isShortArmed = false; // Mutually exclusive for simplicity
-                    lastArmedTime = DateTime.Now;
+                    lastArmedTime = DateTime.UtcNow;
                     Print("[SYNC] LONG ENTRY ARMED. Waiting for ToS handshake signal...");
                     return;
                 }
@@ -103,7 +103,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     isShortArmed = true;
                     isLongArmed = false; // Mutually exclusive
-                    lastArmedTime = DateTime.Now;
+                    lastArmedTime = DateTime.UtcNow;
                     Print("[SYNC] SHORT ENTRY ARMED. Waiting for ToS handshake signal...");
                     return;
                 }
