@@ -5,15 +5,13 @@
     },
     "hooks": {
       "pre_task": [
+        "python .bob/hooks/pre_task_graphify_staleness.py",
         "python .bob/hooks/pre_task_jane_street_kb.py"
       ],
       "after_task": [
         "python .bob/hooks/after_task_complete.py"
       ]
     }
-  },
-  "hooks": {
-    "after_task": ".bob/hooks/after_task.py"
   },
   "shell": {
     "env": {

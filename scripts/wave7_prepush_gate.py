@@ -3,6 +3,7 @@
 wave7_prepush_gate.py -- Wave 7 pre-push quality gate
 
 Checks performed (all BLOCKING unless marked WARNING):
+  0. [BLOCKING]  CS-only: no non-.cs files in the diff (wave7/* branches only)
   1. [BLOCKING]  ASCII-only in all modified src/ files
   2. [BLOCKING]  No DateTime.Now in modified src/ files (must use UtcNow)
   3. [BLOCKING]  No lock() in modified src/ files
@@ -10,10 +11,19 @@ Checks performed (all BLOCKING unless marked WARNING):
   5. [BLOCKING]  Diff char count vs origin/main stays under SOURCERY_CHAR_LIMIT
   6. [WARNING]   Diff char count approaching limit (>= WARN_CHAR_LIMIT)
 
+Check 0 rationale:
+  wave7/* PRs are CYC-reduction PRs -- they MUST contain only .cs source changes.
+  Non-.cs files in the diff:
+    - Consume Sourcery's 150k-char limit (causing it to skip the entire review)
+    - Pollute bot reviewers with irrelevant context
+    - Violate the one-concern-per-PR mandate (V12.23)
+  Fix: commit non-.cs changes to a separate docs/* or chore/* branch.
+
 Usage:
     python scripts/wave7_prepush_gate.py
     python scripts/wave7_prepush_gate.py --base origin/main
     python scripts/wave7_prepush_gate.py --files src/Foo.cs src/Bar.cs  # explicit file list
+    python scripts/wave7_prepush_gate.py --skip-cs-only  # bypass check 0 (non-wave7 branches)
 
 Exit codes:
     0 = all blocking checks pass
@@ -36,6 +46,36 @@ WARN_CHAR_LIMIT = 120_000       # Early warning at 80% of limit
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def get_current_branch() -> str:
+    """Return the current git branch name."""
+    result = run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def check_cs_only(base: str) -> list[str]:
+    """Return violations for non-.cs files introduced in this diff.
+
+    Only enforced on wave7/* branches. Non-.cs files are a hard block because:
+    - They pollute bot reviewers scoped to .cs diffs.
+    - They consume Sourcery's 150k-char review budget.
+    - wave7/* = CYC reduction in .cs files only (V12.23 one-concern mandate).
+
+    Returns list of violation message strings (empty = pass).
+    """
+    result = run(["git", "diff", "--name-only", f"{base}...HEAD"])
+    if result.returncode != 0:
+        return []
+    violations = []
+    for fname in result.stdout.splitlines():
+        fname = fname.strip()
+        if fname and not fname.endswith(".cs"):
+            violations.append(
+                f"  {fname} -- non-.cs file in diff"
+                f" (move to a separate docs/* or chore/* PR)"
+            )
+    return violations
 
 
 def get_modified_src_files(base: str) -> list[str]:
@@ -200,20 +240,51 @@ def check_diff_char_count(base: str) -> tuple[int, int, list[str], list[str]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Wave 7 pre-push quality gate")
     parser.add_argument("--base", default="origin/main", help="Base ref to diff against")
-    parser.add_argument("--files", nargs="*", help="Explicit file list (skips git diff for file detection)")
+    parser.add_argument("--files", nargs="*",
+                        help="Explicit file list (skips git diff for file detection)")
+    parser.add_argument("--skip-cs-only", action="store_true",
+                        help="Skip check 0 (CS-only gate) -- use on non-wave7 branches")
     args = parser.parse_args()
 
     base = args.base
+    branch = get_current_branch()
+    is_wave7_branch = branch.startswith("wave7/")
+
     files = args.files if args.files else get_modified_src_files(base)
 
-    if not files:
+    if not files and not is_wave7_branch:
         print("wave7_prepush_gate: no src/ changes detected vs " + base)
         return 0
 
-    print(f"wave7_prepush_gate: checking {len(files)} modified src/ file(s) vs {base}\n")
+    print(f"wave7_prepush_gate: branch={branch} checking {len(files)} modified src/ file(s) vs {base}\n")
 
     all_blocking: list[str] = []
     all_warnings: list[str] = []
+
+    # -- Check 0: CS-only (wave7/* branches only) --
+    if is_wave7_branch and not args.skip_cs_only:
+        v = check_cs_only(base)
+        if v:
+            print("[FAIL] Check 0 -- CS-only (non-.cs files in diff):")
+            all_blocking.extend(v)
+            for msg in v:
+                print(msg)
+            # Print early advisory but continue checking remaining items
+            print()
+            print("  ACTION: Remove non-.cs files from this branch.")
+            print("  Move docs/scripts/configs to a separate chore/* PR.")
+            print()
+        else:
+            print("[PASS] Check 0 -- CS-only (all changed files are .cs)")
+    else:
+        print("[SKIP] Check 0 -- CS-only (not a wave7/* branch)")
+
+    if not files:
+        print("wave7_prepush_gate: no src/ .cs changes detected vs " + base)
+        if all_blocking:
+            print(f"\nGATE FAILED -- {len(all_blocking)} blocking violation(s). Fix before pushing.")
+            return 1
+        return 0
 
     # -- Check 1: ASCII only --
     v = check_ascii_only(files)

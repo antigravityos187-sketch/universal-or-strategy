@@ -155,37 +155,54 @@ namespace NinjaTrader.NinjaScript.Strategies
                 };
 
                 for (int i = 0; i < orderCount; i++)
-                {
-                    var ord = orders[i];
-                    if (ord == null || string.IsNullOrEmpty(ord.Name))
-                        continue;
+                    ClassifyOrderIntoFsm(newFsm, orders[i], fleetEntryName);
 
-                    if (ord.Name == fleetEntryName)
-                    {
-                        newFsm.EntryOrder = ord;
-                        newFsm.ExpectedEntryPrice = ord.LimitPrice > 0 ? ord.LimitPrice : 0;
-                    }
-                    else if (ord.Name.StartsWith("Stop_") || ord.Name.StartsWith("S_"))
-                    {
-                        newFsm.StopOrder = ord;
-                        newFsm.ExpectedStopPrice = ord.StopPrice;
-                        newFsm.OcoGroupId = ord.Oco;
-                    }
-                    else if (ord.Name.StartsWith("T"))
-                    {
-                        for (int tIdx = 1; tIdx <= 5; tIdx++)
-                        {
-                            if (ord.Name.StartsWith("T" + tIdx + "_"))
-                            {
-                                newFsm.Targets[tIdx - 1] = ord;
-                                newFsm.ExpectedTargetPrices[tIdx - 1] = ord.LimitPrice;
-                                newFsm.OcoGroupId = ord.Oco;
-                                break;
-                            }
-                        }
-                    }
-                }
                 _followerBrackets.TryAdd(fleetEntryName, newFsm);
+            }
+        }
+
+        private void ClassifyOrderIntoFsm(FollowerBracketFSM newFsm, Order ord, string fleetEntryName)
+        {
+            if (ord == null || string.IsNullOrEmpty(ord.Name))
+                return;
+
+            if (ord.Name == fleetEntryName)
+                AssignEntryOrder(newFsm, ord);
+            else if (IsStopOrder(ord.Name))
+                AssignStopOrder(newFsm, ord);
+            else if (ord.Name.StartsWith("T"))
+                AssignTargetOrder(newFsm, ord);
+        }
+
+        private static bool IsStopOrder(string ordName)
+        {
+            return ordName.StartsWith("Stop_") || ordName.StartsWith("S_");
+        }
+
+        private void AssignStopOrder(FollowerBracketFSM newFsm, Order ord)
+        {
+            newFsm.StopOrder = ord;
+            newFsm.ExpectedStopPrice = ord.StopPrice;
+            newFsm.OcoGroupId = ord.Oco;
+        }
+
+        private void AssignEntryOrder(FollowerBracketFSM newFsm, Order ord)
+        {
+            newFsm.EntryOrder = ord;
+            newFsm.ExpectedEntryPrice = ord.LimitPrice > 0 ? ord.LimitPrice : 0;
+        }
+
+        private void AssignTargetOrder(FollowerBracketFSM newFsm, Order ord)
+        {
+            for (int tIdx = 1; tIdx <= 5; tIdx++)
+            {
+                if (ord.Name.StartsWith("T" + tIdx + "_"))
+                {
+                    newFsm.Targets[tIdx - 1] = ord;
+                    newFsm.ExpectedTargetPrices[tIdx - 1] = ord.LimitPrice;
+                    newFsm.OcoGroupId = ord.Oco;
+                    break;
+                }
             }
         }
 

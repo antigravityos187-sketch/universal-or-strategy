@@ -34,6 +34,7 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region IPC Commands Fleet
 
+        // [EPIC-W7-014] CYC reduced 20->5 -- split 18 dispatch calls into 3 grouped helpers
         private bool TryHandleFleetCommand(string action, string[] parts, long senderTicks)
         {
             string cmdId =
@@ -41,6 +42,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                     ? action + "|" + senderTicks.ToString()
                     : action + "|" + (DateTime.UtcNow.Ticks / TimeSpan.TicksPerMinute).ToString();
 
+            if (TryHandleFleetCommand_CoreActions(action, parts, cmdId))
+                return true;
+            if (TryHandleFleetCommand_EntryActions(action, parts, cmdId))
+                return true;
+            if (TryHandleFleetCommand_StateActions(action, parts))
+                return true;
+            return false;
+        }
+
+        // [EPIC-W7-014] Extracted: core fleet actions -- trim, lock, flatten, cancel, reset, long/short (CYC=8)
+        private bool TryHandleFleetCommand_CoreActions(string action, string[] parts, string cmdId)
+        {
             if (TryHandleFleet_Trim(action, parts))
                 return true;
             if (TryHandleFleet_Lock50(action))
@@ -55,6 +68,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
             if (TryHandleFleet_LongShort(action, cmdId))
                 return true;
+            return false;
+        }
+
+        // [EPIC-W7-014] Extracted: OR/manual-limit entry actions (CYC=8)
+        private bool TryHandleFleetCommand_EntryActions(string action, string[] parts, string cmdId)
+        {
             if (TryHandleFleet_OrLong(action, cmdId))
                 return true;
             if (TryHandleFleet_OrShort(action, cmdId))
@@ -69,6 +88,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
             if (TryHandleFleet_CloseTarget(action))
                 return true;
+            return false;
+        }
+
+        // [EPIC-W7-014] Extracted: move/state/toggle/shadow actions (CYC=5)
+        private bool TryHandleFleetCommand_StateActions(string action, string[] parts)
+        {
             if (TryHandleFleet_MoveTarget(action, parts))
                 return true;
             if (TryHandleFleet_FleetState(action, parts))
@@ -174,6 +199,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        // [EPIC-W7-016] CYC 19->4: extracted non-SIMA else-branch
         private bool TryHandleFleet_CancelAll(string action, string cmdId)
         {
             if (action != "CANCEL_ALL")
@@ -194,75 +220,79 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
             else
             {
-                int cancelled = 0;
-                foreach (Order order in Account.Orders)
-                {
-                    if (
-                        order != null
-                        && order.Instrument.FullName == Instrument.FullName
-                        && (
-                            order.OrderState == OrderState.Working
-                            || order.OrderState == OrderState.Accepted
-                            || order.OrderState == OrderState.Submitted
-                            || order.OrderState == OrderState.ChangePending
-                            || order.OrderState == OrderState.ChangeSubmitted
-                        )
-                    )
-                    {
-                        string oName = order.Name;
-                        if (
-                            oName.StartsWith("Stop_")
-                            || oName.StartsWith("S_")
-                            || oName.StartsWith("T1_")
-                            || oName.StartsWith("T2_")
-                            || oName.StartsWith("T3_")
-                            || oName.StartsWith("T4_")
-                            || oName.StartsWith("T5_")
-                        )
-                            continue;
-
-                        CancelOrderOnAccount(order, order.Account);
-                        cancelled++;
-                    }
-                }
+                int cancelled = CancelAll_ProcessMasterNonSima();
                 Print($"[V12] CANCEL_ALL -> Cancelled {cancelled} pending entry orders");
             }
 
             return true;
         }
 
+        // [EPIC-W7-016] Extracted: non-SIMA master cancel loop -- reuses W7-015 predicates (CYC=4)
+        private int CancelAll_ProcessMasterNonSima()
+        {
+            int cancelled = 0;
+            foreach (Order order in Account.Orders)
+            {
+                if (!CancelAll_IsOrderCancellable(order))
+                    continue;
+                if (CancelAll_IsBracketOrder(order.Name))
+                    continue;
+                CancelOrderOnAccount(order, order.Account);
+                cancelled++;
+            }
+            return cancelled;
+        }
+
+        // [EPIC-W7-OVERRUN] CYC 14->4: extracted position-check and terminal-state predicates
         private int CancelAll_ProcessMasterAccount()
         {
             int cancelled = 0;
-
-            // Build 1001: Use broker truth (Account.Positions) for master -- expectedPositions[master]
-            // is not updated on entry fill, making it stale as a liveness gate. Broker truth is authoritative.
-            bool masterHasPosition = Account.Positions.Any(p =>
-                p.Instrument != null
-                && p.Instrument.FullName == Instrument.FullName
-                && p.MarketPosition != MarketPosition.Flat
-            );
-
+            // Build 1001: broker truth is authoritative for master position state
+            bool masterHasPosition = CancelAll_MasterHasPosition();
             Account masterBroker996c = Account;
             foreach (Order order in masterBroker996c.Orders.ToArray())
             {
-                if (order == null || order.Instrument?.FullName != Instrument?.FullName)
+                if (!CancelAll_IsMasterOrderCancellable(order, masterHasPosition))
                     continue;
-                if (
-                    order.OrderState == OrderState.Cancelled
-                    || order.OrderState == OrderState.CancelPending
-                    || order.OrderState == OrderState.CancelSubmitted
-                    || order.OrderState == OrderState.Filled
-                    || order.OrderState == OrderState.Rejected
-                )
-                    continue;
-                if (masterHasPosition)
-                    continue; // Master has live position: preserve all.
                 CancelOrderOnAccount(order, masterBroker996c);
                 cancelled++;
             }
-
             return cancelled;
+        }
+
+        // [EPIC-W7-OVERRUN] Extracted: broker-truth position check for master account (CYC=4)
+        private bool CancelAll_MasterHasPosition()
+        {
+            foreach (Position p in Account.Positions)
+            {
+                if (
+                    p.Instrument != null
+                    && p.Instrument.FullName == Instrument.FullName
+                    && p.MarketPosition != MarketPosition.Flat
+                )
+                    return true;
+            }
+            return false;
+        }
+
+        // [EPIC-W7-OVERRUN] Extracted: null+instrument+terminal+position gate (CYC=4)
+        private bool CancelAll_IsMasterOrderCancellable(Order order, bool masterHasPosition)
+        {
+            if (order == null || order.Instrument?.FullName != Instrument?.FullName)
+                return false;
+            if (CancelAll_IsOrderTerminal(order.OrderState))
+                return false;
+            return !masterHasPosition;
+        }
+
+        // [EPIC-W7-OVERRUN] Extracted: terminal order state predicate (CYC=6)
+        private static bool CancelAll_IsOrderTerminal(OrderState state)
+        {
+            return state == OrderState.Cancelled
+                || state == OrderState.CancelPending
+                || state == OrderState.CancelSubmitted
+                || state == OrderState.Filled
+                || state == OrderState.Rejected;
         }
 
         private int CancelAll_ProcessFleetAccounts()
@@ -297,49 +327,55 @@ namespace NinjaTrader.NinjaScript.Strategies
             return cancelled;
         }
 
+        // [EPIC-W7-015] CYC reduced 19->6 -- extract order-state and bracket-name predicates
         private int CancelAll_ProcessSingleFleetAccount(Account acct, bool masterHasPosition)
         {
             int cancelled = 0;
-            var acctFsms = _followerBrackets.Values.Where(f => f.AccountName == acct.Name).ToList();
-            bool acctHasActiveFsm = acctFsms.Any(f => f.State == FollowerBracketState.Active);
+            bool acctHasActiveFsm = _followerBrackets.Values.Any(f =>
+                f.AccountName == acct.Name && f.State == FollowerBracketState.Active
+            );
 
             foreach (Order order in acct.Orders)
             {
-                if (
-                    order != null
-                    && order.Instrument.FullName == Instrument.FullName
-                    && (
-                        order.OrderState == OrderState.Working
-                        || order.OrderState == OrderState.Accepted
-                        || order.OrderState == OrderState.Submitted
-                        || order.OrderState == OrderState.ChangePending
-                        || order.OrderState == OrderState.ChangeSubmitted
-                    )
-                )
-                {
-                    string oName = order.Name;
-                    if (
-                        oName.StartsWith("Stop_")
-                        || oName.StartsWith("S_")
-                        || oName.StartsWith("T1_")
-                        || oName.StartsWith("T2_")
-                        || oName.StartsWith("T3_")
-                        || oName.StartsWith("T4_")
-                        || oName.StartsWith("T5_")
-                    )
-                    {
-                        // Build 1104.1: Preserve brackets ONLY if FSM is active AND Master has position.
-                        // If Master is FLAT, orphaned follower brackets MUST be swept regardless of FSM state.
-                        if (acctHasActiveFsm && masterHasPosition)
-                            continue;
-                    }
+                if (!CancelAll_IsOrderCancellable(order))
+                    continue;
 
-                    CancelOrderOnAccount(order, acct);
-                    cancelled++;
-                }
+                // Build 1104.1: Preserve brackets ONLY if FSM is active AND Master has position.
+                // If Master is FLAT, orphaned follower brackets MUST be swept regardless of FSM state.
+                if (CancelAll_IsBracketOrder(order.Name) && acctHasActiveFsm && masterHasPosition)
+                    continue;
+
+                CancelOrderOnAccount(order, acct);
+                cancelled++;
             }
 
             return cancelled;
+        }
+
+        // [EPIC-W7-015] Extracted: true if order is in a cancellable state for the correct instrument (CYC=7)
+        private bool CancelAll_IsOrderCancellable(Order order)
+        {
+            if (order == null)
+                return false;
+            if (order.Instrument.FullName != Instrument.FullName)
+                return false;
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.ChangePending
+                || order.OrderState == OrderState.ChangeSubmitted;
+        }
+
+        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=7)
+        private static bool CancelAll_IsBracketOrder(string oName)
+        {
+            return oName.StartsWith("Stop_")
+                || oName.StartsWith("S_")
+                || oName.StartsWith("T1_")
+                || oName.StartsWith("T2_")
+                || oName.StartsWith("T3_")
+                || oName.StartsWith("T4_")
+                || oName.StartsWith("T5_");
         }
 
         private void CancelAll_CleanupUnfilledPositions()
@@ -380,80 +416,93 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        private static bool IsLongOrShort(string action) => action == "LONG" || action == "SHORT";
+
         private bool TryHandleFleet_LongShort(string action, string cmdId)
         {
-            if (action != "LONG" && action != "SHORT")
+            if (!IsLongOrShort(action))
                 return false;
 
             if (!MetadataGuardDuplicate(cmdId, action))
                 return true;
 
-            if (isTosSyncMode)
-            {
-                bool armed = (action == "LONG") ? isLongArmed : isShortArmed;
-                if (!armed)
-                {
-                    Print($"[SYNC] ToS Signal IGNORED: {action} received but {action} is not ARMED locally.");
-                    return true;
-                }
-                else
-                {
-                    Print($"[SYNC] ToS Handshake Received -> Executing {action} Fleet Entry");
-                    if (action == "LONG")
-                        isLongArmed = false;
-                    else
-                        isShortArmed = false;
-                }
-            }
+            if (isTosSyncMode && !HandleTosSyncArming(action))
+                return true;
 
             if (EnableSIMA)
-            {
-                OrderAction orderAction = action == "LONG" ? OrderAction.Buy : OrderAction.SellShort;
-                int qty;
-                try
-                {
-                    double stopDist = CalculateATRStopDistance(RMAStopATRMultiplier);
-                    if (stopDist <= 0)
-                    {
-                        stopDist = MinimumStop;
-                        Print($"[IPC SIZING] ATR latency detected. Falling back to MinimumStop={MinimumStop:F4}");
-                    }
-                    qty = stopDist > 0 ? CalculatePositionSize(stopDist) : Math.Max(1, minContracts);
-                    Print($"[IPC SIZING] Calculation: StopDist={stopDist:F4}, Risk={MaxRiskAmount}, TargetQty={qty}");
-                }
-                catch
-                {
-                    qty = Math.Max(1, minContracts);
-                }
-                qty = Math.Max(1, qty);
+                ExecuteSimaEntry(action);
+            else if (!TryExecuteRmaEntry(action))
+                return true;
 
-                if (EnablePathB)
+            return true;
+        }
+
+        private bool HandleTosSyncArming(string action)
+        {
+            bool armed = (action == "LONG") ? isLongArmed : isShortArmed;
+            if (!armed)
+            {
+                Print($"[SYNC] ToS Signal IGNORED: {action} received but {action} is not ARMED locally.");
+                return false;
+            }
+            Print($"[SYNC] ToS Handshake Received -> Executing {action} Fleet Entry");
+            if (action == "LONG")
+                isLongArmed = false;
+            else
+                isShortArmed = false;
+            return true;
+        }
+
+        private int CalculateIpcEntryQty()
+        {
+            try
+            {
+                double stopDist = CalculateATRStopDistance(RMAStopATRMultiplier);
+                if (stopDist <= 0)
                 {
-                    Print(
-                        $"[SIMA] PATH B {action} -> Broadcasting {qty} contracts with FIXED BRACKETS to all Apex accounts"
-                    );
-                    ExecuteMultiAccountBracket(orderAction, qty, "PATHB_" + action, PathBStopPoints, PathBTargetPoints);
+                    stopDist = MinimumStop;
+                    Print($"[IPC SIZING] ATR latency detected. Falling back to MinimumStop={MinimumStop:F4}");
                 }
-                else
-                {
-                    Print($"[SIMA] IPC {action} -> Broadcasting {qty} contracts to all Apex accounts");
-                    ExecuteMultiAccountMarket(orderAction, qty, "SIMA_" + action);
-                }
+                int qty = stopDist > 0 ? CalculatePositionSize(stopDist) : Math.Max(1, minContracts);
+                Print($"[IPC SIZING] Calculation: StopDist={stopDist:F4}, Risk={MaxRiskAmount}, TargetQty={qty}");
+                return Math.Max(1, qty);
+            }
+            catch
+            {
+                return Math.Max(1, minContracts);
+            }
+        }
+
+        private void ExecuteSimaEntry(string action)
+        {
+            OrderAction orderAction = action == "LONG" ? OrderAction.Buy : OrderAction.SellShort;
+            int qty = CalculateIpcEntryQty();
+            if (EnablePathB)
+            {
+                Print(
+                    $"[SIMA] PATH B {action} -> Broadcasting {qty} contracts with FIXED BRACKETS to all Apex accounts"
+                );
+                ExecuteMultiAccountBracket(orderAction, qty, "PATHB_" + action, PathBStopPoints, PathBTargetPoints);
             }
             else
             {
-                MarketPosition direction = action == "LONG" ? MarketPosition.Long : MarketPosition.Short;
-                double currentPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
-                if (currentPrice <= 0)
-                {
-                    Print("[IPC] ABORT RMA dispatch: currentPrice=0. Skipping command.");
-                    return true;
-                }
-                double stopDist = CalculateATRStopDistance(RMAStopATRMultiplier);
-                int contracts = CalculatePositionSize(stopDist);
-                Enqueue(ctx => ctx.ExecuteRMAEntryV2(currentPrice, direction, contracts));
+                Print($"[SIMA] IPC {action} -> Broadcasting {qty} contracts to all Apex accounts");
+                ExecuteMultiAccountMarket(orderAction, qty, "SIMA_" + action);
             }
+        }
 
+        private bool TryExecuteRmaEntry(string action)
+        {
+            MarketPosition direction = action == "LONG" ? MarketPosition.Long : MarketPosition.Short;
+            double currentPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
+            if (currentPrice <= 0)
+            {
+                Print("[IPC] ABORT RMA dispatch: currentPrice=0. Skipping command.");
+                return false;
+            }
+            double stopDist = CalculateATRStopDistance(RMAStopATRMultiplier);
+            int contracts = CalculatePositionSize(stopDist);
+            Enqueue(ctx => ctx.ExecuteRMAEntryV2(currentPrice, direction, contracts));
             return true;
         }
 
@@ -647,48 +696,56 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (!action.StartsWith("MOVE_TARGET") && action != "SET_TARGET_PRICE")
                 return false;
 
-            if (parts.Length >= 3)
-            {
-                string targetId = parts[1].Trim().ToUpperInvariant();
-                string priceStr = parts[2].Trim();
-                int targetNum = 0;
-                if (
-                    targetId.Length >= 2
-                    && targetId.StartsWith("T")
-                    && int.TryParse(targetId.Substring(1), out targetNum)
-                    && targetNum >= 1
-                    && targetNum <= 5
-                )
-                {
-                    if (action == "SET_TARGET_PRICE")
-                    {
-                        // Build 1107: Absolute price move (from live control center)
-                        double absPrice;
-                        if (
-                            double.TryParse(priceStr, NumberStyles.Float, CultureInfo.InvariantCulture, out absPrice)
-                            && absPrice > 0
-                        )
-                        {
-                            absPrice = Instrument.MasterInstrument.RoundToTickSize(absPrice);
-                            MoveSpecificTargetAbsolute(targetNum, absPrice);
-                        }
-                    }
-                    else
-                    {
-                        // Relative offset move (from context menu)
-                        string distance = priceStr.ToLowerInvariant();
-                        double profitPoints = 0;
-                        if (distance == "1pt")
-                            profitPoints = 1.0;
-                        else if (distance == "2pt")
-                            profitPoints = 2.0;
-                        else
-                            return true;
-                        MoveSpecificTarget(targetNum, profitPoints);
-                    }
-                }
-            }
+            if (!TryParseTargetId(parts, out int targetNum, out string priceStr))
+                return true;
 
+            if (action == "SET_TARGET_PRICE")
+                HandleSetTargetPriceAbsolute(targetNum, priceStr);
+            else
+                return HandleMoveTargetRelative(targetNum, priceStr);
+
+            return true;
+        }
+
+        private bool TryParseTargetId(string[] parts, out int targetNum, out string priceStr)
+        {
+            targetNum = 0;
+            priceStr = string.Empty;
+            if (parts.Length < 3)
+                return false;
+            string targetId = parts[1].Trim().ToUpperInvariant();
+            priceStr = parts[2].Trim();
+            return targetId.Length >= 2
+                && targetId.StartsWith("T")
+                && int.TryParse(targetId.Substring(1), out targetNum)
+                && targetNum >= 1
+                && targetNum <= 5;
+        }
+
+        private void HandleSetTargetPriceAbsolute(int targetNum, string priceStr)
+        {
+            double absPrice;
+            if (
+                double.TryParse(priceStr, NumberStyles.Float, CultureInfo.InvariantCulture, out absPrice)
+                && absPrice > 0
+            )
+            {
+                absPrice = Instrument.MasterInstrument.RoundToTickSize(absPrice);
+                MoveSpecificTargetAbsolute(targetNum, absPrice);
+            }
+        }
+
+        private bool HandleMoveTargetRelative(int targetNum, string priceStr)
+        {
+            string distance = priceStr.ToLowerInvariant();
+            double profitPoints;
+            if (distance == "1pt")
+                profitPoints = 1.0;
+            else if (distance == "2pt")
+                profitPoints = 2.0;
+            else
+                return true;
+            MoveSpecificTarget(targetNum, profitPoints);
             return true;
         }
 

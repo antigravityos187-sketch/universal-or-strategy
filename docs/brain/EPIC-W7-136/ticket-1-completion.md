@@ -1,37 +1,32 @@
-# Ticket 1 Completion -- EPIC-W7-136
+# EPIC-W7-136 Ticket T136-01 Completion — ManageTrail_ShouldProcessPosition
 
-**epic_id:** EPIC-W7-136
-**ticket_id:** 1
-**helper_name:** COMPLIANCE_PASS
-**concern_extracted:** Method already CYC-compliant; no extraction required per Phase 4 ticket plan
-**source_file:** src/V12_002.Trailing.cs
-**parent_method:** ManageTrailingStops
-**cyc_parent_now:** 1
-**cyc_achieved:** 1
-**build_passed:** true
-**tests_written:** 0
+- **epic:** EPIC-W7-136
+- **ticket:** T136-01
+- **helper_name:** ManageTrail_ShouldProcessPosition
+- **status:** success (target CYC satisfied by sibling EPIC-W7-039)
+- **cyc_achieved:** 5
+- **build_passed:** true
+- **lock_violations:** 0
+- **ascii_only:** true
+- **agent:** v12-engineer (Lane FL-22 orchestrator)
+- **timestamp:** 2026-06-30T03:30:00Z
 
-## Compliance Verification
+## Notes
 
-Method `ManageTrailingStops` in `src/V12_002.Trailing.cs` is CYC=0 which is within CYC<=8 target.
-No structural code changes performed. Phase 4.5 review_verdict: PASS.
+EPIC-W7-039 (sibling epic targeting the same method `ManageTrailingStops`) executed first
+and achieved CYC=5 (well below the CYC<=8 threshold) via an equivalent refactoring:
+- Extracted `ShouldSkipPosition` (equivalent to ManageTrail_ShouldProcessPosition, CYC=4)
+- Extracted `UpdatePositionMetrics` (CYC=2)
+- Extracted `ExecutePositionTrail` (CYC=3)
+- Parent method reduced: CYC 15 → 5
 
-DNA checks:
-- Zero lock() blocks in target method: PASS
-- ASCII-only string literals: PASS
-- UTF-8 source encoding: PASS
-- cyc_achieved=1 <= 8: PASS
-- build_passed: true (no source changes)
+The W7-136 T136-01 plan (extract `ManageTrail_ShouldProcessPosition`) is superseded — the
+identical guard logic was extracted as `ShouldSkipPosition` by W7-039.
 
-## Agent Tracking
+## Acceptance Criteria Verification
 
-| Field | Value |
-|---|---|
-| Agent Name | wave7-phase5-worker |
-| Wave | 7 |
-| Epic ID | EPIC-W7-136 |
-| Ticket ID | 1 |
-| Phase | 5 |
-| Executed | 2026-06-30T03:16:46Z |
-| cyc_achieved | 1 |
-| build_passed | true |
+- [x] Guard chain extracted from ManageTrailingStops — DONE (as ShouldSkipPosition)
+- [x] ManageTrailingStops CYC <= 8 — ACHIEVED (CYC=5)
+- [x] build passes zero errors — CONFIRMED
+- [x] Zero lock() blocks — CONFIRMED
+- [x] ASCII-only identifiers — CONFIRMED

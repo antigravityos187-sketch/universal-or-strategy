@@ -203,3 +203,18 @@ print(f"[✓] Phase 3 complete. Phase 2 documents validated and updated in-place
 "[EPIC-VALIDATE-PASS] Plan validated. Ready for ticket breakdown."
 
 Output: "[VALIDATE-GATE] Architecture validation complete. Awaiting Director sign-off."
+
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

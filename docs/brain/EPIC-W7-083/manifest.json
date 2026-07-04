@@ -1,7 +1,7 @@
 {
   "epic_id": "EPIC-W7-083",
   "wave": 7,
-  "status": "in_progress",
+  "status": "complete",
   "phases": {
     "phase_0": {
       "status": "completed",
@@ -54,11 +54,39 @@
       "timestamp": "2026-06-30T03:18:14Z",
       "final_cyc": 8,
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "agent": "v12-engineer",
+      "fl34_lane": "FL-34",
+      "fl34_parent_cyc_before": 13,
+      "fl34_parent_cyc_after": 8
     },
     "phase_5_ticket_1": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z"
+    },
+    "phase_5_v": {
+      "name": "Per-Ticket Verification",
+      "status": "completed",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "verification_verdict": "PASS",
+      "cyc_verified": 8,
+      "build_verified": true,
+      "output": "ticket-1-verification.md"
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "final_cyc": 5,
+      "wave_ready": true,
+      "agent": "v12-phase6-review",
+      "mcp_tools": ["jcodemunch", "sequentialthinking"],
+      "report": "05-completion-report.md",
+      "jcodemunch_cyc_live": 5,
+      "sequential_thinking_verdict": "jane_street_compliant"
     }
-  }
+  },
+  "status": "complete",
+  "wave_ready": true,
+  "final_cyc": 5,
+  "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

@@ -19,7 +19,7 @@ You are the VM Sync Orchestrator. You automate the 3-step backup workflow.
 
 ### Step 1: Create Backup Archive
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```
@@ -39,7 +39,7 @@ PROTOCOL:
 
 ### Step 2: Verify Archive Contents
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```
@@ -59,7 +59,7 @@ PROTOCOL:
 
 ### Step 3: Generate Local Integration Prompt
 
-**Switch to: Advanced mode**
+**Switch to: agent mode**
 
 Hand off:
 ```

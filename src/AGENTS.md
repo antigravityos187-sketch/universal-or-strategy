@@ -1,165 +1,154 @@
 # src/ - C# Source Code Rules
 
-**Last Updated**: 2026-06-08T22:44:00Z
+**Last Updated**: 2026-07-02
 **Scope**: V12 Photon Kernel trading strategy source code
 
 ---
 
-## Recent Major Refactors
+## Recent Major Refactors (Wave 7)
 
-| Date | Epic | File | Change | CYC Before | CYC After |
-|------|------|------|--------|------------|-----------|
-| 2026-05-11 | EPIC-CCN-1 | V12_002.SIMA.Lifecycle.cs | Extracted `LinkTargetOrderToFSM()` | 71 | 41 |
+| Epic | File | Method | CYC Before | CYC After | Date |
+|------|------|--------|------------|-----------|------|
+| EPIC-W7-018 | V12_002.Orders.Callbacks.cs | (see completion report) | >8 | <=8 | 2026-07 |
+| EPIC-W7-019 | V12_002.Orders.Callbacks.Execution.cs | (see completion report) | >8 | <=8 | 2026-07 |
+| EPIC-W7-028 | V12_002.Orders.Management.cs | (see completion report) | >8 | <=8 | 2026-07 |
+| EPIC-W7-031 | V12_002.BarUpdate.cs | (see completion report) | >8 | <=8 | 2026-07 |
+| EPIC-W7-035 | V12_002.Entries.OR.cs | (see completion report) | >8 | <=8 | 2026-07 |
 
-**CRITICAL**: Always check this table before targeting methods for refactoring. Stale analysis causes wasted work.
+> Full wave 7 history: `docs/brain/EPIC-W7-*/05-completion-report.md`
+> Full epic roadmap: `epic_roadmap.json`
+
+**CRITICAL**: Always check this table and `epic_roadmap.json` before targeting methods for
+refactoring. Stale analysis causes duplicated or conflicting work.
 
 ---
 
 ## V12 DNA Mandates (PLATINUM STANDARD)
 
 ### 1. Lock-Free Actor Pattern
-- **BANNED**: `lock(stateLock)` blocks
+- **BANNED**: `lock(stateLock)` blocks in any form
 - **REQUIRED**: FSM/Actor `Enqueue` model or atomic primitives
-- **Audit**: `grep -r "lock(" src/` must return zero matches
+- **Scan**: `grep -r "lock(" src/` must return zero matches at all times
 
 ### 2. ASCII-Only Compliance
 - **BANNED**: Unicode, emoji, curly quotes in C# string literals
-- **REQUIRED**: Plain ASCII characters only
-- **Audit**: `python scripts/ascii_audit.py src/`
+- **Scan**: `python scripts/ascii_audit.py src/`
 
-### 3. Cyclomatic Complexity ≤ 8 (Jane Street GODMODE)
-- **THRESHOLD**: CYC ≤ 8 per method
-- **RATIONALE**: Microsecond-latency reasoning, exhaustive testing, race condition auditing
-- **AUDIT**: `python scripts/complexity_audit.py --threshold 8`
+### 3. Cyclomatic Complexity <= 8 (Jane Street GODMODE)
+- **Threshold**: CYC <= 8 per method (Jane Street strict standard)
+- **Why**: Microsecond-latency reasoning, exhaustive testing, race condition auditing,
+  and DSB micro-op cache fit (methods >8 overflow the CPU instruction cache)
+- **Scan**: `python scripts/complexity_audit.py --threshold 8`
 
 ### 4. Correctness by Construction
-- **PRINCIPLE**: "Make illegal states unrepresentable"
-- **IMPLEMENTATION**: Structure types/enums so compiler prevents invalid states
-- **AVOID**: Runtime if/else guards for edge cases
+- "Make illegal states unrepresentable"
+- Structure types/enums so the compiler prevents invalid states
+- Avoid runtime if/else guards for edge cases
 
 ---
 
-## File-Specific Rules
+## File-Specific Notes
 
 ### V12_002.cs (Main Strategy)
-- **Size**: 3,000+ lines (God-file - active refactoring target)
-- **Current Hotspots**: 
-  - `ProcessIpcCommands` (CYC 61) - EPIC-CCN-2 target
-  - `ProcessOnStateChange` (CYC 48) - EPIC-CCN-3 target
-  - `ProcessOnExecutionUpdate` (CYC 48) - EPIC-CCN-4 target
-- **Pattern**: Extract to `V12_002.*.cs` partial classes
+- God-file — active Wave 7 refactoring target
+- All extracted methods go to `V12_002.*.cs` partial classes
+- Pattern: one partial class per concern (`BarUpdate`, `Entries.*`, `Orders.*`, etc.)
 
-### V12_002.SIMA.Lifecycle.cs
-- **Purpose**: FSM lifecycle management
-- **Last Refactor**: 2026-05-11 (EPIC-CCN-1)
-- **Key Method**: `LinkTargetOrderToFSM()` (CYC 3)
-- **Pattern**: Single-responsibility methods, CYC ≤ 8
-
-### V12_002.Atm.cs
-- **Purpose**: ATM (Automated Trade Management) logic
-- **Hotspot**: `MonitorRmaProximity` (CYC 32) - EPIC-CCN-6 target
-- **Pattern**: Extract proximity checks to helper methods
+### Partial Class Naming
+- `V12_002.BarUpdate.cs` — bar processing
+- `V12_002.Entries.*.cs` — entry signal families (OR, FFMA, MOMO, Retest, Trend)
+- `V12_002.Orders.*.cs` — order lifecycle (Callbacks, Management, etc.)
+- `V12_002.UI.*.cs` — panel, IPC, sizing, snapshot
+- `V12_002.SIMA.*.cs` — SIMA FSM lifecycle and fleet
+- `V12_002.REAPER.*.cs` — audit and repair
+- `V12_002.Safety.*.cs` — watchdog and compliance
 
 ---
 
 ## Coding Standards
 
 ### Naming Conventions
-- **Classes**: PascalCase (e.g., `V12_002`, `SIMALifecycle`)
-- **Methods**: PascalCase (e.g., `LinkTargetOrderToFSM`)
-- **Private Fields**: camelCase with underscore (e.g., `_stateLock`)
-- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_RETRY_COUNT`)
+- **Classes**: PascalCase (`V12_002`, `SIMALifecycle`)
+- **Methods**: PascalCase (`LinkTargetOrderToFSM`)
+- **Private fields**: camelCase with underscore prefix (`_stateLock`)
+- **Constants**: UPPER_SNAKE_CASE (`MAX_RETRY_COUNT`)
+- **Build Tags**: Increment in `V12_002.Properties.cs` for every production delivery
+- **Prefixes**: `V12_001` (Panel), `V12_002` (Strategy)
 
 ### Method Structure
 ```csharp
-// GOOD: Single responsibility, CYC ≤ 8
+// GOOD: single responsibility, CYC <= 8, early returns
 private void LinkTargetOrderToFSM(Order targetOrder, SIMA_FSM fsm)
 {
     if (targetOrder == null || fsm == null) return;
-    
     fsm.TargetOrder = targetOrder;
     fsm.TargetOrderId = targetOrder.OrderId;
-    
     LogDebug($"Linked target order {targetOrder.OrderId} to FSM {fsm.Id}");
 }
 
-// BAD: Multiple responsibilities, CYC > 8
-private void ProcessOrder(Order order)
-{
-    // 50 lines of nested if/else/switch
-    // CYC 25+
-}
+// BAD: multiple responsibilities, CYC > 8, nested conditions
 ```
 
 ### Error Handling
-- **Prefer**: Early returns over nested if/else
-- **Log**: All error conditions with context
-- **Avoid**: Silent failures
+- Prefer early returns over nested if/else
+- Log all error conditions with ASCII-only context strings
+- No silent failures
 
 ---
 
 ## Build & Deployment
 
-### Hard Link Synchronization
-**MANDATORY**: After ANY src/ modification:
+### Hard Link Synchronization (MANDATORY after ANY src/ edit)
 ```powershell
 powershell -File .\deploy-sync.ps1
 ```
-
-**Purpose**: Synchronizes 83 hard-linked files to NinjaTrader directory
-
-**Verification**: F5 in NinjaTrader IDE → Check BUILD_TAG in output
+Synchronizes 83 hard-linked files to NinjaTrader Strategies directory.
+Verification: F5 in NinjaTrader IDE → check BUILD_TAG in output.
 
 ---
 
 ## Testing Requirements
 
-### Unit Tests
+- **Framework**: xUnit ONLY — never NUnit or MSTest
 - **Location**: `tests/V12_Performance.Tests/`
-- **Coverage**: All extracted methods must have tests
-- **Pattern**: Arrange-Act-Assert
-
-### Integration Tests
-- **Method**: F5 in NinjaTrader IDE
-- **Verification**: BUILD_TAG appears in output
-- **Success**: No compilation errors, strategy loads
+- **Pattern**: Arrange-Act-Assert with `[Fact]` attribute
+- **Coverage**: All Wave 7 extracted methods must have xUnit tests
+- **Reference**: `docs/intel/jane-street/testing-strategies.md`
 
 ---
 
-## Refactoring Workflow
+## Refactoring Workflow (Wave 7)
 
 ### Before Refactoring
 1. Check "Recent Major Refactors" table above
-2. Run: `python scripts/verify_index_freshness.py`
-3. If stale: Run `graphify update .` and `jcodemunch index_folder`
+2. Check `epic_roadmap.json` for the target method's epic assignment
+3. Verify jCodemunch index is current: `mcp__jcodemunch-mcp__resolve_repo`
 
 ### During Refactoring
-1. Extract method with CYC ≤ 8
-2. Add unit test
+1. Extract method with CYC <= 8
+2. Write xUnit `[Fact]` test for the extracted method
 3. Run: `dotnet build`
 4. Run: `powershell -File .\deploy-sync.ps1`
 
 ### After Refactoring
-1. F5 in NinjaTrader IDE
-2. Verify BUILD_TAG
-3. Update "Recent Major Refactors" table in this file
-4. Commit with message: `[EPIC-X] ticket-Y: description -- CYC before->after [BUILD_TAG]`
+1. F5 in NinjaTrader IDE — verify BUILD_TAG
+2. Update "Recent Major Refactors" table in this file
+3. Commit: `[EPIC-W7-NNN] ticket-N: extract MethodName CYC before->after [BUILD_TAG]`
 
 ---
 
 ## Common Pitfalls
 
-### ❌ Targeting Obsolete Code
-**Problem**: Refactoring code that was already refactored
-**Solution**: Always check "Recent Major Refactors" table first
+### Targeting already-refactored code
+Check `epic_roadmap.json` and completion reports first.
 
-### ❌ Forgetting deploy-sync.ps1
-**Problem**: Changes don't appear in NinjaTrader
-**Solution**: Add to muscle memory - every src/ change requires sync
+### Forgetting deploy-sync.ps1
+File-edit tools create new inodes, silently breaking hard links.
+Every `src/` change requires sync — no exceptions.
 
-### ❌ Exceeding CYC Threshold
-**Problem**: Extracted method still has CYC > 8
-**Solution**: Extract further until all methods ≤ 8
+### Exceeding CYC threshold after extraction
+If the extracted method still exceeds CYC 8, extract further.
+One method, one responsibility.
 
 ---
 
@@ -167,6 +156,6 @@ powershell -File .\deploy-sync.ps1
 
 **Parent**: [`../AGENTS.md`](../AGENTS.md) (root)
 **Children**: None (leaf node)
-**Related**: 
-- [`../docs/standards/jane-street/RULES_CATALOG.md`](../docs/standards/jane-street/RULES_CATALOG.md) - Jane Street patterns
-- [`../tests/AGENTS.md`](../tests/AGENTS.md) - Testing rules
+**Related**:
+- [`../docs/intel/jane-street/complexity-reduction.md`](../docs/intel/jane-street/complexity-reduction.md)
+- [`../tests/AGENTS.md`](../tests/AGENTS.md) — Testing rules
