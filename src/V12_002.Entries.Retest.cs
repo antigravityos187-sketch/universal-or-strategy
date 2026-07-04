@@ -300,7 +300,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 signalName = "RetestShort";
                 Print(
                     string.Format(
-                        "RETEST: Price below OR Mid ({0:F2} < {1:F2}) = SHORT at OR Low {2:F2}",
+                        "RETEST: Price below OR Mid ({0:F2} <= {1:F2}) = SHORT at OR Low {2:F2}",
                         currentPrice,
                         sessionMid,
                         entryPrice
