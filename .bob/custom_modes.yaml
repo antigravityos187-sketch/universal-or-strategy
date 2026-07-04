@@ -5624,18 +5624,28 @@ customModes:
         - One commit rule: src/ changes on PR branch, docs/ on main, never mixed
 
       ═══════════════════════════════════════════════════════
+      WORKTREE MODEL (CRITICAL — NO BRANCH SWITCHING)
+      ═══════════════════════════════════════════════════════
+        Each PR branch lives in a pre-created git worktree at {WORKTREE_PATH}.
+        The main workspace (/home/malhitticrypto/universal-or-strategy) stays on main.
+        NEVER run "git checkout {BRANCH}" — it would switch ALL tabs' context.
+        INSTEAD: use git -C {WORKTREE_PATH} for all branch operations.
+        INSTEAD: use read_file / apply_diff / write_file with path={WORKTREE_PATH}/src/...
+        INSTEAD: use execute_command with cwd={WORKTREE_PATH} for build/gate commands.
+        All sub-agents (engineer, verifier) receive WORKTREE_PATH and use the same model.
+
+      ═══════════════════════════════════════════════════════
       STEP 0 — SETUP
       ═══════════════════════════════════════════════════════
-        git fetch origin
-        git checkout {BRANCH}
-        HEAD_SHA=$(git rev-parse HEAD)   # record for rollback
+        git -C {WORKTREE_PATH} fetch origin
+        HEAD_SHA=$(git -C {WORKTREE_PATH} rev-parse HEAD)   # record for rollback
         Read docs/brain/wave7-pr-repairs/PR-{PR_NUMBER}/fix_queue.md
         (pre-loaded fix queue from previous session — use as baseline)
 
-        CS-ONLY GATE (run before anything else):
+        CS-ONLY GATE (run before anything else, cwd={WORKTREE_PATH}):
           python3 scripts/wave7_prepush_gate.py --base origin/main
           If Check 0 reports non-.cs files: immediately remove them from {BRANCH}
-          via git rm --cached <file> + git commit before proceeding.
+          via git -C {WORKTREE_PATH} rm --cached <file> + git -C {WORKTREE_PATH} commit before proceeding.
           Non-.cs files on a wave7 branch consume Sourcery's 150k-char budget and
           cause it to skip the entire PR. They MUST be removed first.
 
@@ -5806,21 +5816,22 @@ customModes:
               You are the fix engineer for a Wave 7 PR repair.
               PR: #{PR_NUMBER}  Branch: {BRANCH}  Cluster: {CLUSTER}
 
-              MANDATORY: git checkout {BRANCH} before touching any file.
+              WORKTREE MODEL: Do NOT run "git checkout". The branch is already checked
+              out at WORKTREE_PATH={WORKTREE_PATH}. All file edits and commands use that path.
 
               PLAN TO APPLY:
               {plan_from_2a}
 
               RULES:
-                - Edit ONLY the file(s) listed in the plan (src/ only)
+                - Edit ONLY the file(s) listed in the plan (use path {WORKTREE_PATH}/src/...)
                 - NEVER touch docs/, .bob/, scripts/, .graphify/
-                - After edit: dotnet csharpier format src/
-                - After format: dotnet build Linting.csproj (must be 0 errors)
-                - After build: python3 scripts/wave7_prepush_gate.py --base origin/main
+                - After edit: dotnet csharpier format {WORKTREE_PATH}/src/ (cwd={WORKTREE_PATH})
+                - After format: dotnet build Linting.csproj (cwd={WORKTREE_PATH}, must be 0 errors)
+                - After build: python3 scripts/wave7_prepush_gate.py --base origin/main (cwd={WORKTREE_PATH})
                   (must show GATE PASSED)
-                - Commit on {BRANCH}:
-                    git add src/
-                    git commit -m "fix(wave7/pr{PR_NUMBER}): {finding_id} -- {short_description}"
+                - Commit on {BRANCH} (cwd={WORKTREE_PATH}):
+                    git -C {WORKTREE_PATH} add src/
+                    git -C {WORKTREE_PATH} commit -m "fix(wave7/pr{PR_NUMBER}): {finding_id} -- {short_description}"
                 - Do NOT push — lane orchestrator pushes after all findings are fixed
 
               Report back:
@@ -5873,18 +5884,18 @@ customModes:
         Repeat Step 2 triplet for each remaining actionable finding.
 
       ═══════════════════════════════════════════════════════
-      STEP 3 — PUSH ALL COMMITS + CS-ONLY VERIFY
+      STEP 3 — PUSH ALL COMMITS + CS-ONLY VERIFY (from worktree)
       ═══════════════════════════════════════════════════════
-        git checkout {BRANCH}
+        # No git checkout — worktree at {WORKTREE_PATH} is already on {BRANCH}
 
-        CS-ONLY FINAL CHECK (mandatory before push):
+        CS-ONLY FINAL CHECK (cwd={WORKTREE_PATH}):
           python3 scripts/wave7_prepush_gate.py --base origin/main
           Check 0 must show [PASS] CS-only. If [FAIL]: abort push, fix contamination.
           Check the exact list of non-.cs files reported and remove each with:
-            git rm --cached <non-cs-file>
-            git commit -m "chore(wave7): remove non-cs contamination from PR branch"
+            git -C {WORKTREE_PATH} rm --cached <non-cs-file>
+            git -C {WORKTREE_PATH} commit -m "chore(wave7): remove non-cs contamination from PR branch"
 
-        git push origin {BRANCH}
+        git -C {WORKTREE_PATH} push origin {BRANCH}
         Verify exit 0. If push fails: HALT, report PUSH_FAILED to Director.
 
       ═══════════════════════════════════════════════════════
@@ -5950,9 +5961,16 @@ customModes:
           Write bot_satisfaction_score to completion.md.
 
       ═══════════════════════════════════════════════════════
+      STEP 3 — PUSH FROM WORKTREE
+      ═══════════════════════════════════════════════════════
+        git -C {WORKTREE_PATH} push origin {BRANCH}
+        Verify exit 0. If push fails: HALT, report PUSH_FAILED to Director.
+
+      ═══════════════════════════════════════════════════════
       STEP 5 — ARTIFACTS TO MAIN
       ═══════════════════════════════════════════════════════
-        git checkout main
+        # Main workspace is already on main — no checkout needed.
+        # Just pull to sync any remote changes:
         git pull origin main
         Write docs/brain/wave7-pr-repairs/PR-{PR_NUMBER}/triage.md  (already drafted)
         Write docs/brain/wave7-pr-repairs/PR-{PR_NUMBER}/repair-log.md:
@@ -6292,10 +6310,11 @@ customModes:
       MANDATORY VERIFICATION SEQUENCE
       ═══════════════════════════════════════════════════════
 
-      STEP 1 — CHECKOUT:
-        git fetch origin
-        git checkout {BRANCH}
-        Confirm HEAD matches or is ahead of {COMMIT_SHA}.
+      STEP 1 — WORKTREE SETUP (no checkout):
+        WORKTREE_PATH is provided in your task message.
+        git -C {WORKTREE_PATH} fetch origin
+        Confirm git -C {WORKTREE_PATH} rev-parse HEAD matches or is ahead of {COMMIT_SHA}.
+        All file reads use path {WORKTREE_PATH}/src/... (not the main workspace src/).
 
       STEP 2 — SOURCE TRUTH CHECK:
         Read the fixed file using read_file at the relevant lines.
