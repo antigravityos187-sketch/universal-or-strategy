@@ -2740,7 +2740,7 @@ customModes:
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 0 Orchestrator V3.0 - spawns up to 20 parallel general workers
       per turn
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V3.0 PARALLEL ARCHITECTURE: Use spawn_subagent('general') with rich
       description payloads. Spawn up to 20 per turn (they run in parallel).
       After each batch audit with wave7_batch_audit.py. Retry failures up to 2x.
@@ -2967,7 +2967,7 @@ customModes:
         STARTUP: Run `graphify update . --no-cluster --no-description` as your FIRST action, then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure before any exploration.
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 1 Orchestrator - spawns 161 scope workers, enforces 100% completion
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V2.7 PROTOCOL. LAMPORT GATE: Verify phase_0_orchestrator_complete
       status=complete in .lamport/wave7/event_log.jsonl - HALT if absent, report
       DEPENDENCY_NOT_MET. SPAWN MODEL (V2.7): spawn_subagent workers HAVE full
@@ -3204,7 +3204,7 @@ customModes:
         STARTUP: Run `graphify update . --no-cluster --no-description` as your FIRST action, then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure before any exploration.
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 1.5 Orchestrator - spawns 161 boundary workers, blocks scope creep
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V2.7 PROTOCOL. LAMPORT GATE: Verify phase_1_orchestrator_complete
       status=complete in .lamport/wave7/event_log.jsonl - HALT if absent, report
       DEPENDENCY_NOT_MET. SPAWN MODEL (V2.7): spawn_subagent workers HAVE full
@@ -3452,7 +3452,7 @@ customModes:
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 2 Orchestrator - sequential start_subtask workers (V3.0),
       mandatory KB queries
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V3.0 PROTOCOL. EXECUTION: start_subtask(mode='v12-phase2-architecture') -
       sequential, one at a time, full MCP. NEVER use spawn_subagent for Phase 2
       workers (0 MCP tools). LAMPORT GATE: Verify
@@ -3695,7 +3695,7 @@ customModes:
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 3 Orchestrator lane - sequential start_subtask DNA audit
       workers (V3.0)
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V3.0 PROTOCOL. NO PRs - PRs are deferred until after Phase 10; do not push
       branches or create pull requests. EXECUTION:
       start_subtask(mode='v12-phase3-audit') - sequential, one at a time, full
@@ -3925,7 +3925,7 @@ customModes:
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 4 Orchestrator - spawns 161 ticket generation workers,
       validates ticket counts
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V2.7 PROTOCOL. LAMPORT GATE: Verify phase_3_orchestrator_complete
       status=complete in .lamport/wave7/event_log.jsonl - HALT if absent, report
       DEPENDENCY_NOT_MET. SPAWN MODEL (V2.7): spawn_subagent workers HAVE full
@@ -4186,7 +4186,7 @@ customModes:
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 4.5 Lane Orchestrator - sequential start_subtask ticket review
       workers (V3.0), mandatory KB queries
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V3.0 PROTOCOL. LAMPORT GATE: Verify phase_4_ALL_LANES_VERIFIED_COMPLETE in
       .lamport/wave7/event_log.jsonl - HALT if absent. KB query MANDATORY before
       spawning (complexity reduction). EXECUTION:
@@ -4433,7 +4433,7 @@ customModes:
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 5 Orchestrator - spawns 161 code-writing workers, enforces
       CYC<=8 + build pass
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V2.7 PROTOCOL. LAMPORT GATE: Verify phase_4_5_orchestrator_complete
       status=complete in .lamport/wave7/event_log.jsonl - HALT if absent, report
       DEPENDENCY_NOT_MET. KB query MANDATORY after gate (FSM extraction, xUnit
@@ -4684,7 +4684,7 @@ customModes:
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 5.V Orchestrator - independent verification, re-triggers Phase
       5 on failures
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V2.7 PROTOCOL. LAMPORT GATE: Verify phase_5_orchestrator_complete
       status=complete in .lamport/wave7/event_log.jsonl - HALT if absent, report
       DEPENDENCY_NOT_MET. KB query MANDATORY after gate (lock-free verification,
@@ -4931,7 +4931,7 @@ customModes:
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Phase 6 Orchestrator - final review, wave-level complexity scan,
       WAVE_COMPLETE report
-    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed.
+    customInstructions: "YOLO MODE: All tools pre-approved, no confirmations needed. NEVER call ask_followup_question. NEVER ask for approval. Make decisions autonomously.
       V2.7 PROTOCOL. LAMPORT GATE: Verify phase_5_v_orchestrator_complete
       status=complete in .lamport/wave7/event_log.jsonl - HALT if absent, report
       DEPENDENCY_NOT_MET. KB query MANDATORY after gate (testing coverage, final
@@ -6029,10 +6029,37 @@ customModes:
           the lane completion doc and skip the register commit.
 
       ═══════════════════════════════════════════════════════
+      STEP 5b — NEEDS_DIRECTOR REGISTER (MANDATORY)
+      ═══════════════════════════════════════════════════════
+        Any finding you classified as NEEDS_DIRECTOR during triage MUST be logged.
+        This is separate from deferred debt (STEP 5a). NEEDS_DIRECTOR items are
+        architectural decisions, not pre-existing violations.
+
+        REGISTER FILE: docs/brain/debt/needs-director-register.md
+
+        WHEN TO WRITE A ROW:
+          - Triage classifies a bot finding as NEEDS_DIRECTOR (architectural trade-off,
+            unclear design intent, non-trivial refactor with position risk, etc.)
+          - A finding requires a design decision before any code change can be made.
+
+        ROW FORMAT:
+          | ND-{NNN} | {wave} | PR-{PR_NUMBER} | {file} | {method} | {finding} | {rationale} | {P0-P3} |
+
+        HOW TO GET THE NEXT ND-NNN:
+          Read needs-director-register.md, find the highest existing ND-NNN, increment by 1.
+
+        COMMIT TO MAIN (combine with STEP 5a commit if both have entries):
+          git add docs/brain/debt/needs-director-register.md
+          git commit -m "docs(phase7/pr{PR_NUMBER}): needs-director-register -- {N} entries added"
+          git push origin main
+
+        IF NO NEEDS_DIRECTOR FINDINGS: write "needs_director: none" in lane completion doc.
+
+      ═══════════════════════════════════════════════════════
       STEP 6 — REPORT
       ═══════════════════════════════════════════════════════
         Emit:
-          LANE_COMPLETE L{LANE} PR#{PR_NUMBER} status=MERGED_READY findings={N}_fixed deferred={M}
+          LANE_COMPLETE L{LANE} PR#{PR_NUMBER} status=MERGED_READY findings={N}_fixed deferred={M} needs_director={K}
 
       ═══════════════════════════════════════════════════════
       HARD_FAILURE CONDITIONS (emit LANE_HARD_FAILURE, halt)
@@ -6049,6 +6076,9 @@ customModes:
       start_subtask for each finding sequentially. Use one instance per PR.
     customInstructions: |
       YOLO MODE: All tools pre-approved. Execute autonomously. No confirmations.
+      NEVER call ask_followup_question. NEVER ask the Director for approval.
+      NEVER pause and say "shall I proceed?". Make the decision yourself and act.
+      If genuinely blocked (build fails 3x, push rejected): emit LANE_HARD_FAILURE, stop.
       BRANCH HYGIENE IS ABSOLUTE:
         src/ commits go on PR branch (via v12-engineer start_subtask).
         docs/ artifacts committed to main only — never to PR branch.

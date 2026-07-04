@@ -15,7 +15,7 @@
   },
   "shell": {
     "env": {
-      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/malhitticrypto/.local/bin:/home/malhitticrypto/.npm-global/bin"
     },
     "preferredEditor": "code",
     "approvalMode": "yolo",
@@ -38,7 +38,7 @@
       "update_todo_list",
       "switch_mode",
       "use_skill",
-      "ask_followup_question",
+      "ask_followup_question_DISABLED_USE_YOLO",
       "GetSymbolsOverview",
       "FindSymbol",
       "FindReferencingSymbols",
