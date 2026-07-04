@@ -40,6 +40,10 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         #region Compliance Tracking
 
+        // [SA1204] Static helper -- must precede non-static members per StyleCop SA1204
+        private static bool IsValidTradeExecution(Account acct, Execution execution) =>
+            acct != null && execution != null && execution.Order != null;
+
         private DateTime GetComplianceNow()
         {
             return ConvertToSelectedTimeZone(DateTime.Now);
@@ -63,9 +67,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             accountTradingDays.TryAdd(accountName, new ConcurrentDictionary<int, byte>());
             accountLastSummaryDate.TryAdd(accountName, nowInZone.Date);
         }
-
-        private static bool IsValidTradeExecution(Account acct, Execution execution) =>
-            acct != null && execution != null && execution.Order != null;
 
         private void TrackTradeEntry(Account acct, Execution execution)
         {
@@ -343,7 +344,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (!accountEquityPeak.TryGetValue(acctName, out double peak) || peak <= 0 || TrailingDrawdownLimit <= 0)
                 return false;
             double balance = 0;
-            Account currentAccount = this.Account;
+            Account currentAccount = Account.All.FirstOrDefault(a => a.Name == acctName) ?? this.Account;
             if (currentAccount != null)
             {
                 try
@@ -587,11 +588,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         )]
         private bool IsTargetOrderPrefix(string name)
         {
-            return name.StartsWith("T1_")
-                || name.StartsWith("T2_")
-                || name.StartsWith("T3_")
-                || name.StartsWith("T4_")
-                || name.StartsWith("T5_");
+            return name.StartsWith("T1_", StringComparison.Ordinal)
+                || name.StartsWith("T2_", StringComparison.Ordinal)
+                || name.StartsWith("T3_", StringComparison.Ordinal)
+                || name.StartsWith("T4_", StringComparison.Ordinal)
+                || name.StartsWith("T5_", StringComparison.Ordinal);
         }
 
         private bool IsOrphanedTarget(Order o)
@@ -835,7 +836,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         // [EPIC-W7-OVERRUN] Extracted: broker position flat-clear logic (CYC=4)
         private void TryClearFlatExpectedPosition(Account fleetAcct)
         {
-            var brokerPos = fleetAcct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
+            var brokerPos = fleetAcct.Positions.FirstOrDefault(p =>
+                p.Instrument != null && p.Instrument.FullName == Instrument.FullName
+            );
             bool nowFlat = (brokerPos == null || brokerPos.MarketPosition == MarketPosition.Flat);
             if (nowFlat && !IsDispatchSyncPending(ExpKey(fleetAcct.Name)))
             {
@@ -844,9 +847,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string.Format(
                         "[ProcessQueuedExecution] Fleet {0} is Flat -- expectedPositions cleared for {1}",
                         fleetAcct.Name,
-                        Instrument.FullName
-                    )
-                );
+                        Instrument.FullName));
             }
         }
 
@@ -904,7 +905,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     if (count > 0)
                         sbCompliance.Append(",\n");
 
-                    sbCompliance.Append(BuildAccountJsonEntry(acct, count));
+                    sbCompliance.Append(BuildAccountJsonEntry(acct));
                     count++;
                 }
 
@@ -912,7 +913,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 sbCompliance.AppendLine("}");
 
                 string jsonPayload = sbCompliance.ToString();
-                lastComplianceLog = DateTime.Now;
+                lastComplianceLog = DateTime.UtcNow;
                 WriteComplianceJsonAsync(jsonPayload);
             }
             catch (Exception ex)
@@ -928,14 +929,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
 
             // Throttle logging to once per 5 seconds to prevent disk thrashing during heavy fills
-            if ((DateTime.Now - lastComplianceLog).TotalSeconds < 5)
+            if ((DateTime.UtcNow - lastComplianceLog).TotalSeconds < 5)
                 return true;
 
             return false;
         }
 
         // EPIC-W7-149: per-account JSON fragment extracted from LogApexPerformance
-        private string BuildAccountJsonEntry(Account acct, int count)
+        private string BuildAccountJsonEntry(Account acct)
         {
             UpdateAccountMetricsFromAccount(acct);
 
@@ -946,7 +947,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             int uniqueDays = GetUniqueTradingDays(acct.Name);
             double maxDrawdown = accountMaxDrawdown.TryGetValue(acct.Name, out var dd) ? dd : 0;
 
-            var brokerPos = acct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
+            var brokerPos = acct.Positions.FirstOrDefault(p =>
+                p.Instrument != null && p.Instrument.FullName == Instrument.FullName);
             int actualQty =
                 (brokerPos != null && brokerPos.MarketPosition != MarketPosition.Flat)
                     ? (brokerPos.MarketPosition == MarketPosition.Long ? brokerPos.Quantity : -brokerPos.Quantity)

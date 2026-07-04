@@ -462,6 +462,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private bool IsTrackedOrderPattern(string name)
         {
+            if (string.IsNullOrEmpty(name))
+                return false;
             return name.Contains("RMA")
                 || name.Contains("OR")
                 || name.Contains("MOMO")

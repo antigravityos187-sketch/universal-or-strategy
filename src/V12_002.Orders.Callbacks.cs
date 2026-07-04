@@ -665,10 +665,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             // T04: Single snapshot for both stop and entry rejection paths
             var snapshot = activePositions.ToArray();
 
-            if (stopOrders.Values.Contains(order) && TryHandleRejectedStop(order, snapshot))
+            if (TryHandleRejectedStop(order, snapshot))
                 return true;
 
-            if (entryOrders.Values.Contains(order) && TryHandleRejectedEntry(order, snapshot, orderName))
+            if (TryHandleRejectedEntry(order, snapshot, orderName))
                 return true;
 
             RemoveGhostOrderRef(order, "REJECTED");

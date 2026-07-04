@@ -365,7 +365,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             foreach (string pattern in SqlInjectionPatterns)
             {
                 if (action.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    Print(string.Format("[IPC][HARDENING] SQL injection attempt detected in action: {0}", pattern));
                     return true;
+                }
             }
             return false;
         }

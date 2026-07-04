@@ -129,15 +129,25 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Build 1106 Phase 1: Snapshot outgoing mode's config before switching
             string outgoingMode = GetCurrentConfigMode();
             _modeProfiles[outgoingMode] = SnapshotCurrentConfig();
-            SetMode_ActivateModeFlags(newMode);
+            if (!SetMode_ActivateModeFlags(newMode))
+                return true;
             SetMode_HydrateAndPublish(newMode, outgoingMode);
             return true;
         }
 
-        // [EPIC-W7-OVERRUN] Extracted: ATOMIC clear-all + set the incoming mode flag (CYC=6)
-        private void SetMode_ActivateModeFlags(string newMode)
+        // [EPIC-W7-OVERRUN] Extracted: ATOMIC clear-all + set the incoming mode flag (CYC=7)
+        private bool SetMode_ActivateModeFlags(string newMode)
         {
-            // ATOMIC mode transition: clear all flags first
+            // OKF sidecar_lifecycle: reject unknown modes BEFORE any state mutation
+            bool isKnownMode =
+                newMode == "RMA" || newMode == "RETEST" || newMode == "TREND" || newMode == "MOMO" || newMode == "FFMA";
+            if (!isKnownMode)
+            {
+                Print($"[V12 IPC REJECT] SET_MODE rejected: unknown mode '{newMode}'");
+                return false;
+            }
+
+            // ATOMIC mode transition: clear all flags, then set the new mode
             isRMAModeActive = false;
             isRMAButtonClicked = false;
             isRetestModeActive = false;
@@ -163,6 +173,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     isFFMAModeArmed = true;
                     break;
             }
+            return true;
         }
 
         // [EPIC-W7-OVERRUN] Extracted: profile hydration, logging, UI bump, and publish (CYC=3)
@@ -192,6 +203,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     )
                 );
             }
+
             BumpUiConfigRevision();
             ClearClickTraderBorderIfInactive();
             Print(
@@ -240,7 +252,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (TryHandleRisk_SetTargets(action, parts))
                 return true;
             if (TryHandleRisk_SetManualPrice(action, parts))
+            {
                 return true;
+            }
+
             return false;
         }
 
@@ -347,6 +362,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 BreakEvenOffsetTicks = customTicks; // V12.23: Sync auto-trail + fleet symmetry
                 return customTicks * tickSize;
             }
+
             if (action == "BE" || action == "BE_PLUS_2")
                 return BreakEvenOffsetTicks * tickSize;
             return 1 * tickSize; // Legacy BE_PLUS_1

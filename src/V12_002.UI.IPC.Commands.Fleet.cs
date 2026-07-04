@@ -34,6 +34,33 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region IPC Commands Fleet
 
+        // [SA1204] Static helpers -- must precede non-static members per StyleCop SA1204
+        // [EPIC-W7-OVERRUN] Extracted: terminal order state predicate (CYC=6)
+        private static bool CancelAll_IsOrderTerminal(OrderState state)
+        {
+            return state == OrderState.Cancelled
+                || state == OrderState.CancelPending
+                || state == OrderState.CancelSubmitted
+                || state == OrderState.Filled
+                || state == OrderState.Rejected;
+        }
+
+        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=8)
+        private static bool CancelAll_IsBracketOrder(string oName)
+        {
+            if (string.IsNullOrEmpty(oName))
+                return false;
+            return oName.StartsWith("Stop_", StringComparison.Ordinal)
+                || oName.StartsWith("S_", StringComparison.Ordinal)
+                || oName.StartsWith("T1_", StringComparison.Ordinal)
+                || oName.StartsWith("T2_", StringComparison.Ordinal)
+                || oName.StartsWith("T3_", StringComparison.Ordinal)
+                || oName.StartsWith("T4_", StringComparison.Ordinal)
+                || oName.StartsWith("T5_", StringComparison.Ordinal);
+        }
+
+        private static bool IsLongOrShort(string action) => action == "LONG" || action == "SHORT";
+
         // [EPIC-W7-014] CYC reduced 20->5 -- split 18 dispatch calls into 3 grouped helpers
         private bool TryHandleFleetCommand(string action, string[] parts, long senderTicks)
         {
@@ -285,16 +312,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             return !masterHasPosition;
         }
 
-        // [EPIC-W7-OVERRUN] Extracted: terminal order state predicate (CYC=6)
-        private static bool CancelAll_IsOrderTerminal(OrderState state)
-        {
-            return state == OrderState.Cancelled
-                || state == OrderState.CancelPending
-                || state == OrderState.CancelSubmitted
-                || state == OrderState.Filled
-                || state == OrderState.Rejected;
-        }
-
         private int CancelAll_ProcessFleetAccounts()
         {
             int fleetCancelled = CancelAll_ProcessFleetOrders();
@@ -366,18 +383,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || order.OrderState == OrderState.ChangeSubmitted;
         }
 
-        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=7)
-        private static bool CancelAll_IsBracketOrder(string oName)
-        {
-            return oName.StartsWith("Stop_")
-                || oName.StartsWith("S_")
-                || oName.StartsWith("T1_")
-                || oName.StartsWith("T2_")
-                || oName.StartsWith("T3_")
-                || oName.StartsWith("T4_")
-                || oName.StartsWith("T5_");
-        }
-
         private void CancelAll_CleanupUnfilledPositions()
         {
             // V1102Z-HARDEN: Ghost Memory Teardown removed (V2 Forensic Fix)
@@ -415,8 +420,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             SendResponseToRemote("MSG|Memory Reset Complete");
             return true;
         }
-
-        private static bool IsLongOrShort(string action) => action == "LONG" || action == "SHORT";
 
         private bool TryHandleFleet_LongShort(string action, string cmdId)
         {
@@ -501,7 +504,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
             }
             double stopDist = CalculateATRStopDistance(RMAStopATRMultiplier);
-            int contracts = CalculatePositionSize(stopDist);
+            if (stopDist <= 0)
+            {
+                stopDist = MinimumStop;
+                Print($"[IPC] RMA ATR latency detected. Falling back to MinimumStop={MinimumStop:F4}");
+            }
+
+            int contracts = stopDist > 0 ? CalculatePositionSize(stopDist) : Math.Max(1, minContracts);
             Enqueue(ctx => ctx.ExecuteRMAEntryV2(currentPrice, direction, contracts));
             return true;
         }
@@ -777,7 +786,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool TryHandleFleet_SetShadow(string action, string[] parts)
         {
             if (action != "SET_SHADOW")
+            {
                 return false;
+            }
 
             if (parts.Length >= 2)
             {
