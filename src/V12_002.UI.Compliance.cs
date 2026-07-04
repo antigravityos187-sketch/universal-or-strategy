@@ -835,7 +835,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         // [EPIC-W7-OVERRUN] Extracted: broker position flat-clear logic (CYC=4)
         private void TryClearFlatExpectedPosition(Account fleetAcct)
         {
-            var brokerPos = fleetAcct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
+            var brokerPos = fleetAcct.Positions.FirstOrDefault(p =>
+                p.Instrument != null && p.Instrument.FullName == Instrument.FullName
+            );
             bool nowFlat = (brokerPos == null || brokerPos.MarketPosition == MarketPosition.Flat);
             if (nowFlat && !IsDispatchSyncPending(ExpKey(fleetAcct.Name)))
             {
@@ -946,7 +948,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             int uniqueDays = GetUniqueTradingDays(acct.Name);
             double maxDrawdown = accountMaxDrawdown.TryGetValue(acct.Name, out var dd) ? dd : 0;
 
-            var brokerPos = acct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
+            var brokerPos = acct.Positions.FirstOrDefault(p =>
+                p.Instrument != null && p.Instrument.FullName == Instrument.FullName
+            );
             int actualQty =
                 (brokerPos != null && brokerPos.MarketPosition != MarketPosition.Flat)
                     ? (brokerPos.MarketPosition == MarketPosition.Long ? brokerPos.Quantity : -brokerPos.Quantity)

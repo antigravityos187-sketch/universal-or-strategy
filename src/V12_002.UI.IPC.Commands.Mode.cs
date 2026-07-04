@@ -129,13 +129,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Build 1106 Phase 1: Snapshot outgoing mode's config before switching
             string outgoingMode = GetCurrentConfigMode();
             _modeProfiles[outgoingMode] = SnapshotCurrentConfig();
-            SetMode_ActivateModeFlags(newMode);
+            if (!SetMode_ActivateModeFlags(newMode))
+                return true;
             SetMode_HydrateAndPublish(newMode, outgoingMode);
             return true;
         }
 
-        // [EPIC-W7-OVERRUN] Extracted: ATOMIC clear-all + set the incoming mode flag (CYC=6)
-        private void SetMode_ActivateModeFlags(string newMode)
+        // [EPIC-W7-OVERRUN] Extracted: ATOMIC clear-all + set the incoming mode flag (CYC=7)
+        private bool SetMode_ActivateModeFlags(string newMode)
         {
             // ATOMIC mode transition: clear all flags first
             isRMAModeActive = false;
@@ -162,7 +163,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 case "FFMA":
                     isFFMAModeArmed = true;
                     break;
+                default:
+                    Print($"[IPC] SET_MODE rejected: unknown mode '{newMode}'");
+                    return false;
             }
+            return true;
         }
 
         // [EPIC-W7-OVERRUN] Extracted: profile hydration, logging, UI bump, and publish (CYC=3)
