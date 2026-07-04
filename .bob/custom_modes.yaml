@@ -5986,10 +5986,53 @@ customModes:
         git push origin main
 
       ═══════════════════════════════════════════════════════
+      STEP 5a — DEFERRED DEBT REGISTER (MANDATORY)
+      ═══════════════════════════════════════════════════════
+        During triage and verification you will encounter pre-existing OKF violations
+        in files you were NOT permitted to touch (out-of-scope). These must NOT be
+        silently discarded. Capture every one in the shared register.
+
+        REGISTER FILE: docs/brain/wave7-pr-repairs/deferred-debt-register.md
+
+        WHEN TO WRITE A ROW:
+          - A verifier's grep reveals DateTime.Now / lock() / missing null guard /
+            missing .ToArray() in lines NOT introduced by this PR's diff.
+          - Triage classifies a finding as INFRA-NOISE or NEEDS_DIRECTOR because the
+            violation is pre-existing (not in the PR diff) but is a real OKF rule breach.
+          - A bot flags a real OKF violation on a line that pre-dates this branch.
+          Do NOT write a row for: HALLUCINATION findings, style preferences (non-OKF),
+          script/ findings, docs/ findings.
+
+        ROW FORMAT (append to the Register table):
+          | DD-{NNN} | PR-{PR_NUMBER} | {file path} | {lines} | {violation description} | Rule {N} -- {rule name} | {source verify doc} | {P0|P1|P2|P3|P4} |
+
+        PRIORITY ASSIGNMENT:
+          P0 -- lock() call in src/
+          P1 -- DateTime.Now in production logic
+          P2 -- Missing .ToArray() on Account.All / Orders / Positions enumeration
+          P3 -- Null dereference without guard (p.Instrument, o.Name, fsm.State, etc.)
+          P4 -- SA1503 braces, SA1204 ordering, stale comment, naming violation
+
+        HOW TO GET THE NEXT DD-NNN:
+          Read deferred-debt-register.md, find the highest existing DD-NNN, increment by 1.
+          If register is empty, start at DD-001.
+
+        COMMIT THE REGISTER UPDATE TO MAIN:
+          git pull origin main   (sync first)
+          git add docs/brain/wave7-pr-repairs/deferred-debt-register.md
+          git commit -m "docs(phase7/pr{PR_NUMBER}): deferred-debt-register -- {N} entries added"
+          git push origin main
+          (Combine with the STEP 5 artifact commit if nothing has been pushed yet;
+           otherwise push as a separate commit.)
+
+        IF NO DEFERRED FINDINGS: write "No deferred findings identified in this lane." to
+          the lane completion doc and skip the register commit.
+
+      ═══════════════════════════════════════════════════════
       STEP 6 — REPORT
       ═══════════════════════════════════════════════════════
         Emit:
-          LANE_COMPLETE L{LANE} PR#{PR_NUMBER} status=MERGED_READY findings={N}_fixed
+          LANE_COMPLETE L{LANE} PR#{PR_NUMBER} status=MERGED_READY findings={N}_fixed deferred={M}
 
       ═══════════════════════════════════════════════════════
       HARD_FAILURE CONDITIONS (emit LANE_HARD_FAILURE, halt)
