@@ -164,11 +164,13 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool IsRepairSubmitAuthorized(string accountName)
         {
             if (HasActiveFsmForAccount(accountName))
+            {
                 return true;
+            }
 
             bool dispatchPending = _dispatchSyncPendingExpKeys.ContainsKey(ExpKey(accountName));
             bool hasActivePositionEntry = activePositions.Values.Any(p =>
-                p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName
+                p != null && p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName
             );
             if (!dispatchPending && !hasActivePositionEntry)
             {
