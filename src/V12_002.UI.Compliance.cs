@@ -40,6 +40,10 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         #region Compliance Tracking
 
+        // [SA1204] Static helper -- must precede non-static members per StyleCop SA1204
+        private static bool IsValidTradeExecution(Account acct, Execution execution) =>
+            acct != null && execution != null && execution.Order != null;
+
         private DateTime GetComplianceNow()
         {
             return ConvertToSelectedTimeZone(DateTime.Now);
@@ -63,9 +67,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             accountTradingDays.TryAdd(accountName, new ConcurrentDictionary<int, byte>());
             accountLastSummaryDate.TryAdd(accountName, nowInZone.Date);
         }
-
-        private static bool IsValidTradeExecution(Account acct, Execution execution) =>
-            acct != null && execution != null && execution.Order != null;
 
         private void TrackTradeEntry(Account acct, Execution execution)
         {
