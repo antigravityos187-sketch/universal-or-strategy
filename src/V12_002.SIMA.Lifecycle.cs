@@ -696,14 +696,17 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool HasFsmForAccount(Account acct)
         {
             return _followerBrackets.Values.Any(f =>
-                string.Equals(f.AccountName, acct.Name, StringComparison.OrdinalIgnoreCase)
+                f != null && string.Equals(f.AccountName, acct.Name, StringComparison.OrdinalIgnoreCase)
             );
         }
 
         private Position FindOpenPositionForInstrument(Account acct)
         {
             return acct.Positions.FirstOrDefault(p =>
-                p.Instrument.FullName == Instrument.FullName && p.MarketPosition != MarketPosition.Flat
+                p != null
+                && p.Instrument != null
+                && p.Instrument.FullName == Instrument.FullName
+                && p.MarketPosition != MarketPosition.Flat
             );
         }
 
