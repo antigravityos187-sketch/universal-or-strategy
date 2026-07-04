@@ -102,8 +102,13 @@
     "L5": {
       "pr": 24,
       "branch": "wave7/pr5-s5-signals",
-      "status": "pending",
-      "worktree": "/tmp/wt-pr24"
+      "status": "complete",
+      "worktree": "/tmp/wt-pr24",
+      "completed": "2026-07-04",
+      "cr_state": "COMMENTED",
+      "fixed_findings": 8,
+      "gate_status": "PASS",
+      "gitleaks_status": "SUCCESS"
     },
     "L6": {
       "pr": 26,
