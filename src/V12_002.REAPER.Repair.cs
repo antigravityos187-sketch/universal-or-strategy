@@ -164,7 +164,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool IsRepairSubmitAuthorized(string accountName)
         {
             if (HasActiveFsmForAccount(accountName))
+            {
                 return true;
+            }
 
             bool dispatchPending = _dispatchSyncPendingExpKeys.ContainsKey(ExpKey(accountName));
             bool hasActivePositionEntry = activePositions.Values.Any(p =>

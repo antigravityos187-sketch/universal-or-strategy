@@ -460,9 +460,13 @@ namespace NinjaTrader.NinjaScript.Strategies
             foreach (var f in accountFsms)
             {
                 if (f == null)
+                {
                     continue;
+                }
                 if (f.State != FollowerBracketState.Active || f.EntryOrder != null)
+                {
                     continue;
+                }
                 if (actualQty != 0)
                 {
                     fsmExpectedQty += actualQty;
@@ -624,7 +628,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void AuditMaster_HandleDesyncFlatten(bool shouldLog, int masterActualQty, int masterExpectedQty)
         {
             if (masterExpectedQty == masterActualQty)
+            {
                 return;
+            }
 
             if (masterActualQty == 0 && masterExpectedQty != 0)
             {
@@ -642,7 +648,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void AuditMaster_LogFlatPosition(bool shouldLog, int masterExpectedQty)
         {
             if (!shouldLog)
+            {
                 return;
+            }
             Print($"[REAPER] {Account.Name} (Master) is Flat (Target/Stop hit). Expected was {masterExpectedQty}.");
         }
 
@@ -654,7 +662,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print($"[REAPER] QUEUING FLATTEN for {Account.Name} (Master) - Emergency Re-sync!");
             }
             if (!EnqueueReaperMasterFlatten())
+            {
                 return;
+            }
             try
             {
                 TriggerCustomEvent(o => ProcessReaperFlattenQueue(), null);
