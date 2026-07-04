@@ -168,7 +168,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             bool dispatchPending = _dispatchSyncPendingExpKeys.ContainsKey(ExpKey(accountName));
             bool hasActivePositionEntry = activePositions.Values.Any(p =>
-                p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName
+                p != null && p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName
             );
             if (!dispatchPending && !hasActivePositionEntry)
             {

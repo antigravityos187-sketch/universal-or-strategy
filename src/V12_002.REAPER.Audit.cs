@@ -459,6 +459,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             foreach (var f in accountFsms)
             {
+                if (f == null)
+                    continue;
                 if (f.State != FollowerBracketState.Active || f.EntryOrder != null)
                     continue;
                 if (actualQty != 0)
@@ -558,6 +560,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private bool IsWorkingStopOrderForInstrument(Order o)
         {
+            if (o == null)
+                return false;
             bool stateMatch = o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted;
             bool typeMatch = o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
             bool actionMatch = o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover;
@@ -736,7 +740,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Extracted helper: evaluates whether a single order qualifies as an active protective stop.
         private bool AuditMaster_IsWorkingStopOrder(Order o, string instrName)
         {
-            if (o.Instrument?.FullName != instrName)
+            if (o == null || o.Instrument?.FullName != instrName)
                 return false;
             bool isActive = o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted;
             bool isStop = o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
