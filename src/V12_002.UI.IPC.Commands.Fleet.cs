@@ -309,6 +309,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || oName.StartsWith("T5_", StringComparison.Ordinal);
         }
 
+        private static bool IsLongOrShort(string action) => action == "LONG" || action == "SHORT";
+
         private int CancelAll_ProcessFleetAccounts()
         {
             int fleetCancelled = CancelAll_ProcessFleetOrders();
@@ -417,8 +419,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             SendResponseToRemote("MSG|Memory Reset Complete");
             return true;
         }
-
-        private static bool IsLongOrShort(string action) => action == "LONG" || action == "SHORT";
 
         private bool TryHandleFleet_LongShort(string action, string cmdId)
         {
