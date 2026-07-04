@@ -154,7 +154,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             Print($"[SIMA] Account Prefix Filter: \"{AccountPrefix}\"");
             Print("[SIMA] ---------------------------------------------------");
 
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (IsFleetAccount(acct))
                 {
@@ -1425,7 +1425,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             int brokerCancels = 0;
             string[] v12Prefixes = BuildSweepPrefixes(force);
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (!IsFleetAccount(acct))
                     continue;
