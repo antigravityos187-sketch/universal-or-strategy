@@ -138,7 +138,15 @@ namespace NinjaTrader.NinjaScript.Strategies
         // [EPIC-W7-OVERRUN] Extracted: ATOMIC clear-all + set the incoming mode flag (CYC=7)
         private bool SetMode_ActivateModeFlags(string newMode)
         {
-            // ATOMIC mode transition: clear all flags first
+            // OKF sidecar_lifecycle: reject unknown modes BEFORE any state mutation
+            bool isKnownMode =
+                newMode == "RMA" || newMode == "RETEST" || newMode == "TREND" || newMode == "MOMO" || newMode == "FFMA";
+            if (!isKnownMode)
+            {
+                Print($"[V12 IPC REJECT] SET_MODE rejected: unknown mode '{newMode}'");
+                return false;
+            }
+            // ATOMIC mode transition: clear all flags, then set the new mode
             isRMAModeActive = false;
             isRMAButtonClicked = false;
             isRetestModeActive = false;
@@ -163,9 +171,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                 case "FFMA":
                     isFFMAModeArmed = true;
                     break;
-                default:
-                    Print($"[IPC] SET_MODE rejected: unknown mode '{newMode}'");
-                    return false;
             }
             return true;
         }

@@ -352,20 +352,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             return cancelled;
         }
 
-        // [EPIC-W7-015] Extracted: true if order is in a cancellable state for the correct instrument (CYC=7)
-        private bool CancelAll_IsOrderCancellable(Order order)
-        {
-            if (order == null)
-                return false;
-            if (order.Instrument.FullName != Instrument.FullName)
-                return false;
-            return order.OrderState == OrderState.Working
-                || order.OrderState == OrderState.Accepted
-                || order.OrderState == OrderState.Submitted
-                || order.OrderState == OrderState.ChangePending
-                || order.OrderState == OrderState.ChangeSubmitted;
-        }
-
         // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=8)
         private static bool CancelAll_IsBracketOrder(string oName)
         {
@@ -378,6 +364,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || oName.StartsWith("T3_", StringComparison.Ordinal)
                 || oName.StartsWith("T4_", StringComparison.Ordinal)
                 || oName.StartsWith("T5_", StringComparison.Ordinal);
+        }
+
+        // [EPIC-W7-015] Extracted: true if order is in a cancellable state for the correct instrument (CYC=7)
+        private bool CancelAll_IsOrderCancellable(Order order)
+        {
+            if (order == null)
+                return false;
+            if (order.Instrument.FullName != Instrument.FullName)
+                return false;
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.ChangePending
+                || order.OrderState == OrderState.ChangeSubmitted;
         }
 
         private void CancelAll_CleanupUnfilledPositions()
