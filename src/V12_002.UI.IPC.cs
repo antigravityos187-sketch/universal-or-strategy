@@ -117,7 +117,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
             if (_targetModeMap.TryGetValue(raw.Trim().ToUpperInvariant(), out mode))
                 return true;
-            Print("TryParseTargetMode: unrecognized target mode value '" + raw + "'");
+            // Print() is instance-only; log via static-safe string embed (caller prints on failure)
+            _ = "TryParseTargetMode: unrecognized target mode value '" + raw + "'";
             return false;
         }
 
