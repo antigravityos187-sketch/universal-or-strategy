@@ -44,7 +44,9 @@
         "search_codebase",
         "query_codebase",
         "semantic_search",
-        "search_custom_context"
+        "search_custom_context",
+        "list_merge_requests",
+        "list_merge_request_comments"
       ]
     },
     "sequential-thinking": {

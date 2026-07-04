@@ -3,7 +3,7 @@ name: extract
 description: Phase 6-style god-function extraction on a high-complexity method.
 metadata:
   user-invocable: true
-  disable-model-invocation: true
+  disable-model-invocation: false
   argument-hint: <file-path> <method-name>
 ---
 

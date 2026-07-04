@@ -4,6 +4,7 @@
 # Bob IDE Context Exclusions (keep these)
 .agent/
 .agents/
+.claude/
 mcp-servers/
 node_modules/
 bin/
