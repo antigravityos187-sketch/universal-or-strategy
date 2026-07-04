@@ -142,6 +142,55 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        // [SA1204] Static helpers -- must precede non-static members per StyleCop SA1204
+        private static readonly HashSet<string> GlobalCommandsSet = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase
+        )
+        {
+            "TOGGLE_ACCOUNT",
+            "SET_SIMA",
+            "GET_FLEET",
+            "DIAG_FLEET",
+            "CANCEL_ALL",
+            "FLATTEN",
+            "SYNC_ALL",
+            "MKT_SYNC",
+            "REQUEST_FLEET_STATE",
+            "RESET_MEMORY",
+            "DIAG_IPC",
+            "LOCK_50",
+            "SET_TARGETS",
+            "SET_TRAIL",
+            "SET_CIT",
+            "BE_CUSTOM",
+        };
+
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
+        )]
+        private static bool IsGlobalCommand(string action)
+        {
+            return GlobalCommandsSet.Contains(action)
+                || action.StartsWith("MOVE_TARGET", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsMicroContractAlias(string target, string mySym)
+        {
+            return (target == "MES" && mySym.Contains("ES"))
+                || (target == "MYM" && mySym.Contains("YM"))
+                || (target == "MGC" && mySym.Contains("GC"));
+        }
+
+        private static bool IsRoutingAlias(string target)
+        {
+            return target == "GLOBAL" || target == "ALL" || target == "ON" || target == "OFF";
+        }
+
+        private static bool IsStrategyKeyword(string target)
+        {
+            return target == "RMA" || target == "ORB" || target == "OR" || target == "MOMO";
+        }
+
         private bool TryEnqueueIpcCommand(string message, out string reason)
         {
             reason = null;
@@ -295,54 +344,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
-        private static readonly HashSet<string> GlobalCommandsSet = new HashSet<string>(
-            StringComparer.OrdinalIgnoreCase
-        )
-        {
-            "TOGGLE_ACCOUNT",
-            "SET_SIMA",
-            "GET_FLEET",
-            "DIAG_FLEET",
-            "CANCEL_ALL",
-            "FLATTEN",
-            "SYNC_ALL",
-            "MKT_SYNC",
-            "REQUEST_FLEET_STATE",
-            "RESET_MEMORY",
-            "DIAG_IPC",
-            "LOCK_50",
-            "SET_TARGETS",
-            "SET_TRAIL",
-            "SET_CIT",
-            "BE_CUSTOM",
-        };
-
-        [System.Runtime.CompilerServices.MethodImpl(
-            System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining
-        )]
-        private static bool IsGlobalCommand(string action)
-        {
-            return GlobalCommandsSet.Contains(action)
-                || action.StartsWith("MOVE_TARGET", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsMicroContractAlias(string target, string mySym)
-        {
-            return (target == "MES" && mySym.Contains("ES"))
-                || (target == "MYM" && mySym.Contains("YM"))
-                || (target == "MGC" && mySym.Contains("GC"));
-        }
-
-        private static bool IsRoutingAlias(string target)
-        {
-            return target == "GLOBAL" || target == "ALL" || target == "ON" || target == "OFF";
-        }
-
-        private static bool IsStrategyKeyword(string target)
-        {
-            return target == "RMA" || target == "ORB" || target == "OR" || target == "MOMO";
-        }
-
         private bool IsSymbolMatch(string target, string mySym, string myFull)
         {
             if (IsRoutingAlias(target))
@@ -453,17 +454,17 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             string action = parts[0].Trim().ToUpperInvariant();
 
-            // EPIC-4 Ticket 03: IPC Hardening validation (rate limiting, circuit breakers, anomaly detection)
-            ValidationResult validationResult = ValidateIpcCommand(action, parts);
-            if (HandleValidationFailure(validationResult, action))
-                return;
-
             if (!IsAllowedIpcAction(action))
             {
                 Interlocked.Increment(ref _ipcAllowlistRejectCount);
                 Print("V12 IPC REJECT: action '" + action + "' is not allowed");
                 return;
             }
+
+            // EPIC-4 Ticket 03: IPC Hardening validation (rate limiting, circuit breakers, anomaly detection)
+            ValidationResult validationResult = ValidateIpcCommand(action, parts);
+            if (HandleValidationFailure(validationResult, action))
+                return;
             string targetSymbol = parts.Length > 1 ? parts[1] : "Global";
 
             if (!IsCommandForThisInstrument(action, targetSymbol))

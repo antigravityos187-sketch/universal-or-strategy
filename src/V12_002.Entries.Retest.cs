@@ -135,7 +135,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     t5Qty;
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
 
-                string timestamp = DateTime.Now.ToString("HHmmssffff");
+                string timestamp = DateTime.UtcNow.ToString("HHmmssffff");
                 string entryName = signalName + "_" + timestamp;
 
                 PositionInfo pos = new PositionInfo
@@ -300,7 +300,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 signalName = "RetestShort";
                 Print(
                     string.Format(
-                        "RETEST: Price below OR Mid ({0:F2} < {1:F2}) = SHORT at OR Low {2:F2}",
+                        "RETEST: Price below OR Mid ({0:F2} <= {1:F2}) = SHORT at OR Low {2:F2}",
                         currentPrice,
                         sessionMid,
                         entryPrice
@@ -389,7 +389,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
 
                 string signalName = direction == MarketPosition.Long ? "RetestMnlLong" : "RetestMnlShort";
-                string entryName = signalName + "_" + DateTime.Now.ToString("HHmmssffff");
+                string entryName = signalName + "_" + DateTime.UtcNow.ToString("HHmmssffff");
 
                 PositionInfo pos = new PositionInfo
                 {

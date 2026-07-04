@@ -113,20 +113,20 @@ namespace NinjaTrader.NinjaScript.Strategies
             FleetDispatchSlot ringSlot;
             while (_photonDispatchRing != null && _photonDispatchRing.TryDequeue(out ringSlot))
             {
-                int _sbIdx = ringSlot.PoolSlotIndex;
-                string _expectedKey =
-                    (_sbIdx >= 0 && _sbIdx < _photonSideband.Length) ? _photonSideband[_sbIdx].ExpectedKey : null;
-                if (_expectedKey != null)
+                int sbIdx = ringSlot.PoolSlotIndex;
+                string expectedKey =
+                    (sbIdx >= 0 && sbIdx < _photonSideband.Length) ? _photonSideband[sbIdx].ExpectedKey : null;
+                if (expectedKey != null)
                 {
                     if (ringSlot.ReservedDelta != 0)
-                        AddExpectedPositionDelta(_expectedKey, -ringSlot.ReservedDelta);
-                    ClearDispatchSyncPending(_expectedKey);
+                        AddExpectedPositionDelta(expectedKey, -ringSlot.ReservedDelta);
+                    ClearDispatchSyncPending(expectedKey);
                 }
-                if (_sbIdx >= 0)
+                if (sbIdx >= 0)
                 {
-                    _photonPool.ReleaseByIndex(_sbIdx);
-                    if (_sbIdx < _photonSideband.Length)
-                        _photonSideband[_sbIdx] = default(FleetDispatchSideband);
+                    _photonPool.ReleaseByIndex(sbIdx);
+                    if (sbIdx < _photonSideband.Length)
+                        _photonSideband[sbIdx] = default(FleetDispatchSideband);
                 }
             }
             Print("[SIMA] Photon ring cleared on shutdown with delta rollback.");
@@ -155,7 +155,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             Print($"[SIMA] Account Prefix Filter: \"{AccountPrefix}\"");
             Print("[SIMA] ---------------------------------------------------");
 
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (IsFleetAccount(acct))
                 {
@@ -697,15 +697,20 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool HasFsmForAccount(Account acct)
         {
             return _followerBrackets.Values.Any(f =>
-                string.Equals(f.AccountName, acct.Name, StringComparison.OrdinalIgnoreCase)
+                f != null && string.Equals(f.AccountName, acct.Name, StringComparison.OrdinalIgnoreCase)
             );
         }
 
         private Position FindOpenPositionForInstrument(Account acct)
         {
-            return acct.Positions.FirstOrDefault(p =>
-                p.Instrument.FullName == Instrument.FullName && p.MarketPosition != MarketPosition.Flat
-            );
+            return acct
+                .Positions.ToArray()
+                .FirstOrDefault(p =>
+                    p != null
+                    && p.Instrument != null
+                    && p.Instrument.FullName == Instrument.FullName
+                    && p.MarketPosition != MarketPosition.Flat
+                );
         }
 
         private (string Key, Order Stop) FindStopOrderForAccount(
@@ -1252,7 +1257,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     continue; // Skip unrecognized orders and Fleet_ entries (master has no Fleet_ orders)
 
                 // Build dictionary key and route to appropriate dictionary
-                string key = GetAdoptionDictionaryKey(name);
+                string key = GetAdoptionDictionaryKey(name, classification);
                 AssignOrderToAdoptionDictionary(classification, key, ord);
                 adoptedCount++;
             }
@@ -1276,11 +1281,15 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         /// <summary>
         /// Derives the dictionary key from an order name by stripping the type prefix.
-        /// Stop_ prefix is 5 chars; all other prefixes (T1_, T2_, etc.) are 2 chars.
+        /// Stop_/S_ prefixes: 5 or 2 chars. Target prefixes T1_-T5_: 3 chars.
         /// </summary>
-        private static string GetAdoptionDictionaryKey(string name)
+        private static string GetAdoptionDictionaryKey(string name, string classification)
         {
-            return name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase) ? name.Substring(5) : name.Substring(2);
+            if (classification == "stop")
+                return name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase)
+                    ? name.Substring(5)
+                    : name.Substring(2);
+            return name.Substring(3);
         }
 
         /// <summary>
@@ -1417,7 +1426,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             int brokerCancels = 0;
             string[] v12Prefixes = BuildSweepPrefixes(force);
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (!IsFleetAccount(acct))
                     continue;
