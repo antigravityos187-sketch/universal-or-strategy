@@ -173,7 +173,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 StopPrice = validatedStopPrice,
                 Direction = pos.Direction,
                 OldOrder = currentStop,
-                CreatedTime = DateTime.Now,
+                CreatedTime = DateTime.UtcNow,
                 CapturedTargets = b955TargetsA,
                 BracketRestorationNeeded = b955TargetsA != null && b955TargetsA.Length > 0,
             };
@@ -185,7 +185,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (currentCount >= CIRCUIT_BREAKER_THRESHOLD && !circuitBreakerActive)
                 {
                     circuitBreakerActive = true;
-                    circuitBreakerActivatedTime = DateTime.Now;
+                    circuitBreakerActivatedTime = DateTime.UtcNow;
                     Print(
                         string.Format(
                             "V8.30: CIRCUIT BREAKER ACTIVATED - {0} pending replacements (threshold: {1})",
