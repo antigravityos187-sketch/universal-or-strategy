@@ -23,11 +23,11 @@ epic-run EPIC-X
   ├─ Phase 1: Scope Definition (plan mode)
   ├─ Phase 1.5: Scope Boundary (plan mode)
   ├─ Phase 2: Architecture Planning (plan mode)
-  ├─ Phase 3: DNA & PR Audit (advanced mode)
+  ├─ Phase 3: DNA & PR Audit (agent mode)
   ├─ Phase 4: Ticket Generation (plan mode)
   ├─ Phase 5.X: Ticket Execution (v12-engineer mode)
-  ├─ Phase 5.X.V: Verification (advanced mode)
-  └─ Phase 6: Final Review (advanced mode)
+  ├─ Phase 5.X.V: Verification (agent mode)
+  └─ Phase 6: Final Review (agent mode)
 ```
 
 **Problems**:

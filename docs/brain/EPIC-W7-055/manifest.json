@@ -4,7 +4,7 @@
   "method": "DrainPhotonQueuesOnShutdown",
   "source": "src/V12_002.SIMA.Lifecycle.cs",
   "cyc": 8,
-  "status": "in_progress",
+  "status": "complete",
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -74,6 +74,14 @@
       "final_cyc": 8,
       "wave_ready": true,
       "build_passed": true
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-01T20:00:00Z",
+      "final_cyc": 8,
+      "wave_ready": true
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-01T20:00:00Z"
 }

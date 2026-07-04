@@ -3,7 +3,11 @@
   "wave": 7,
   "method": "HandleMatchedFollowerOrder",
   "cyc": 14,
+  "final_cyc": 8,
   "source_file": "src/V12_002.Orders.Callbacks.AccountOrders.cs",
+  "status": "complete",
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-01T20:00:00Z",
   "phases": {
     "phase_0": {
       "status": "completed",
@@ -46,12 +50,16 @@
       "build_passed": true
     },
     "phase_5_V": {
-      "status": "pending",
-      "output": null
+      "status": "completed",
+      "output": "ticket-1-verification.md"
     },
     "phase_6": {
-      "status": "pending",
-      "output": null
+      "status": "completed",
+      "completed_at": "2026-07-01T20:00:00Z",
+      "final_cyc": 8,
+      "wave_ready": true,
+      "agent": "v12-phase6-review",
+      "output": "05-completion-report.md"
     },
     "phase_5_ticket_1": {
       "status": "completed",

@@ -218,3 +218,18 @@ Each arrow represents: VERIFIED_COMPLETE handoff
 - **Jane Street KB**: `python scripts/query_kb.py "<term>"`
 
 *Protocol: V12.28 — Bob IDE V2 3-Tier Subagent Model*
+
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

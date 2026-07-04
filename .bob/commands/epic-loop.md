@@ -206,3 +206,17 @@ If orchestration window freezes or crashes:
 - **Jane Street Baseline**: `docs/brain/JANE_STREET_BASELINE_AUDIT.md`
 - **Epic Run Protocol**: `.bob/commands/epic-run.md`
 - **Pre-Push Validation**: `scripts/pre_push_validation.ps1`
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```
