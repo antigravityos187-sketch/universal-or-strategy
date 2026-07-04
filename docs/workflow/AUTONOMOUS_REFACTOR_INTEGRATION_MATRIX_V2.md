@@ -1,9 +1,9 @@
 # Autonomous Refactor Integration Matrix V2
 
 **Date**: 2026-06-27
-**Version**: 2.8 (Bob IDE V2 — MCP Cold-Start Hardening + Post-Batch Hook + Deterministic Audit — AUTHORITATIVE)
-**Purpose**: Map skills, MCPs, custom modes, slash commands, and Jane Street KB hooks across all 10 phases
-**Context**: Wave 7 execution — 3-tier subagent model (1 top orch → 10 phase orchs → 161 epic workers)
+**Version**: 3.0 (Wave 7 PR Repair Loop — Phase 7 PR Repair added, Greptile exception documented, poll_all_bots.py integrated)
+**Purpose**: Map skills, MCPs, custom modes, slash commands, and Jane Street KB hooks across all phases
+**Context**: Wave 7 execution — 3-tier subagent model (1 top orch → 10 phase orchs → 161 epic workers) + Phase 7 PR repair (autonomous-refactor → lane orchs → planner/engineer/verifier triplets)
 
 ## Executive Summary
 
@@ -30,8 +30,12 @@ This document validates that the `/autonomous-refactor` master orchestrator prop
 ✅ **CLUSTER DOMAIN CONTEXT (V3.0 NEW)** — Cluster description injected into every Phase 5 worker. Better helper naming, better tests, better invariant preservation.
 ✅ **BUILD RETRY PROTOCOL (V3.0 NEW)** — dotnet build lock collisions handled: wait 15s, retry max 3. Expected ~1 collision per wave.
 ✅ **LANE ASSIGNMENT TABLE** — `docs/workflow/WAVE7_PHASE5_LANE_ASSIGNMENT.md` — canonical 40-lane mapping
+✅ **PHASE 7 PR REPAIR LOOP (V3.0 NEW)** — Post-wave PR repair: autonomous-refactor produces 6 lane prompts → wave-orch-phase7-lane runs planner→engineer→verifier triplets per finding → LANE_COMPLETE/LANE_HARD_FAILURE
+✅ **GREPTILE MCP EXCEPTION (V3.0)** — Greptile IS used in Phase 7 PR repair (wave-orch-phase7-lane reads bot comments via mcp__greptile__*). All other phases: Greptile not used.
+✅ **poll_all_bots.py (V3.0)** — `scripts/poll_all_bots.py` replaces raw `gh pr view` for bot signal extraction; 8-bot triage, OKF-override filter, 5-bot satisfaction score
+✅ **CS-ONLY GATE (V3.0)** — `scripts/wave7_prepush_gate.py` Check 0 + `.github/workflows/cs-only-pr-gate.yml` enforce no non-.cs files on wave7/* branches
 ❌ **OBSOLETE**: `gcp-vm-wave-execution` skill — marked retired
-❌ **OBSOLETE**: Greptile MCP referenced in old system prompts
+❌ **OBSOLETE**: Greptile MCP removed from all phases EXCEPT Phase 7 PR repair (see exception above)
 ❌ **OBSOLETE**: 2-tier model (top orch spawning workers directly)
 ❌ **OBSOLETE**: Inline `python3 -c "..."` compliance scan
 ❌ **OBSOLETE**: Single Phase 5 worker per epic (V2.x model) — replaced by per-ticket file-lane model
@@ -649,21 +653,25 @@ python scripts/query_kb.py "complexity reduction"
 | `v12-phase0-hotspot` | Phase 0 | md/json/yaml/yml/txt | ✅ Yes | ❌ No |
 | `v12-phase1-scope` | Phase 1 | md/json/yaml/yml/txt | ✅ Yes | ❌ No |
 | `v12-phase1-5-boundary` | Phase 1.5 | md/json/yaml/yml/txt | ✅ Yes | ❌ No |
-| `v12-phase2-architecture` | Phase 2 | md/json/yaml/yml/txt | ✅ Yes | ✅ Yes |
+| `v12-phase2-architecture` | Phase 2 + Phase 7 planner | md/json/yaml/yml/txt | ✅ Yes | ✅ Yes |
 | `v12-phase3-audit` | Phase 3 | md/json/yaml/yml/txt | ✅ Yes | ✅ Yes |
 | `v12-phase4-tickets` | Phase 4 | md/json/yaml/yml/txt | ✅ Yes | ❌ No |
 | `v12-phase4-5-review` | Phase 4.5 | md/json/yaml/yml/txt | ✅ Yes | ✅ Yes |
-| `v12-engineer` | Phase 5 | ALL files | ✅ Yes | ✅ Yes |
+| `v12-engineer` | Phase 5 + Phase 7 fixer | ALL files | ✅ Yes | ✅ Yes |
 | `v12-phase5-v-verify` | Phase 5.V | md/json/yaml/yml/txt | ✅ Yes | ✅ Yes |
 | `v12-phase6-review` | Phase 6 | md/json/yaml/yml/txt | ✅ Yes | ✅ Yes |
+| `wave-orch-phase7-lane` | Phase 7 PR repair (Tier 2 lane orch) | md/json/jsonl/txt | ✅ Yes (incl. Greptile) | ❌ No |
+| `v12-pr-repair-verify` | Phase 7 verifier (Tier 3) | md/json/yaml/yml/txt | ✅ Yes | ❌ No |
 
-**Key Insight**: Only `v12-engineer` (Phase 5) can edit source code files. All other phases are restricted to documentation files.
+**Key Insight**: Only `v12-engineer` (Phase 5 + Phase 7 fixes) can edit source code files. All other phases are restricted to documentation files.
+
+**Phase 7 Exception**: `wave-orch-phase7-lane` uses Greptile MCP (`mcp__greptile__*`) to fetch bot review comments. This is the ONLY phase where Greptile is actively used.
 
 ---
 
 ## Autonomous Refactor Command Validation
 
-### Does `/autonomous-refactor` properly orchestrate all 10 custom modes?
+### Does `/autonomous-refactor` properly orchestrate all phases (including Phase 7)?
 
 **Analysis of `/autonomous-refactor` command structure**:
 
@@ -690,22 +698,87 @@ Phase 2: Epic Execution Loop (autonomous-refactor mode)
 Phase 3: Final Verification (autonomous-refactor mode)
   ↓
 Phase 4: Completion Handshake (autonomous-refactor - no mode switch)
+  ↓
+Phase 7 (POST-WAVE): PR Repair Loop (autonomous-refactor mode)  [see below]
 ```
+
+### Phase 7 PR Repair Loop — Architecture
+
+**⚠️ NAME COLLISION NOTE**: There are TWO things called "Phase 7":
+- **OLD Phase 7** = Wave 7 lock-free concurrency hardening (`v12-phase7-lead` mode, `/phase7` command) — refactors individual .cs files
+- **NEW Phase 7** = Wave 7 PR repair loop (`wave-orch-phase7-lane` mode, `/pr-loop` command) — iterative bot triage + repair until PRs are merge-ready
+
+This section documents the **NEW Phase 7 (PR Repair Loop)** only.
+
+```
+autonomous-refactor (Tier 1):
+  - Reads manifest.json + 6 fix_queue.md files
+  - Produces 6 lane prompts (one per PR/branch)
+  - Director pastes each into a new wave-orch-phase7-lane tab
+  ↓
+wave-orch-phase7-lane (Tier 2, one instance per PR):
+  STEP 0: CS-only gate (python3 scripts/wave7_prepush_gate.py)
+  STEP 1: Bot poll via scripts/poll_all_bots.py (8-bot triage)
+  STEP 2: Triage findings → VALID-LOGIC-BUG / VALID-MECHANICAL / VALID-DNA / HALLUCINATION / INFRA-NOISE
+  STEP 3: For each VALID-LOGIC-BUG:
+    - Read OKF doc(s) for finding type (see table below)
+    - start_subtask(v12-phase2-architecture) → plan  [PLANNER]
+    - start_subtask(v12-engineer)            → fix   [ENGINEER]
+    - start_subtask(v12-pr-repair-verify)    → verify [VERIFIER]
+  STEP 4: Mechanical/DNA fixes applied directly (no subtask)
+  STEP 5: Gate + push → re-poll until 5/5 bots green or max 3 rounds
+  STEP 6: Write repair-log.md + completion.md on main
+  ↓
+  Emits: LANE_COMPLETE L{N} PR#{N} status=(MERGED_READY|NEEDS_DIRECTOR) findings={N}_fixed
+       | LANE_HARD_FAILURE L{N} PR#{N} reason=<one-line>
+```
+
+### Phase 7 OKF Doc → Finding Type Mapping
+
+| Finding Type | OKF Docs to Load |
+|---|---|
+| VALID-LOGIC-BUG (timezone, state regression, wrong key) | `how-to-build-an-exchange.md` (determinism, one_in_flight), `production-engineering-billions.md` (independent_tracking, rate_limiting) |
+| VALID-LOGIC-BUG (security / ordering) | `production-engineering-billions.md` (rate_limiting), `how-to-build-an-exchange.md` (sidecar_lifecycle) |
+| VALID-DNA (lock()) | `lock-free-patterns.md` — **HALT AND ESCALATE** (never auto-fix) |
+| VALID-DNA (DateTime.Now) | `how-to-build-an-exchange.md` → determinism pattern |
+| VALID-DNA (Unicode / underscore locals) | No OKF doc needed — mechanical ASCII-only rule |
+| Any verification of logic fix | `production-engineering-billions.md` (independent_tracking), `testing-strategies.md` |
+
+### Phase 7 Modes & Tools
+
+| Mode | Tier | MCP Groups | Bot Signal Source |
+|------|------|------------|-------------------|
+| `wave-orch-phase7-lane` | 2 (Lane Orch) | read, edit, execute, **mcp** (Greptile+ST), skill, todo, subtask, subagent | `mcp__greptile__*` + `scripts/poll_all_bots.py` |
+| `v12-phase2-architecture` | 3 (Planner) | read, edit, execute, **mcp** (all), browser, skill, todo, subtask, subagent | n/a |
+| `v12-engineer` | 3 (Engineer) | read, edit (ALL), execute, **mcp** (all), browser, skill, todo, subtask, subagent | n/a |
+| `v12-pr-repair-verify` | 3 (Verifier) | read, edit, execute, **mcp** (all), skill, todo, subtask, subagent | `scripts/poll_all_bots.py` |
+
+### Phase 7 Scripts & Infrastructure
+
+| Script/File | Purpose |
+|---|---|
+| `scripts/poll_all_bots.py` | 8-bot triage via gh CLI + GitHub API; OKF-override filter; 5-bot satisfaction score |
+| `scripts/wave7_prepush_gate.py` | Pre-push gate: Check 0=CS-only, Check 1=ASCII, Check 2=DateTime.Now, Check 3=lock(), Check 4=diff size, Check 5=Sourcery 150k |
+| `.github/workflows/cs-only-pr-gate.yml` | CI enforcement: no non-.cs files on wave7/* branches |
+| `docs/brain/wave7-pr-repairs/manifest.json` | 6 lane entries: PR, branch, cluster, gate_status |
+| `docs/brain/wave7-pr-repairs/PR-{20..25}/fix_queue.md` | Per-PR P0/P1 findings with OKF references |
+| `.bob/commands/pr-loop.md` | `/pr-loop` slash command — PR review & repair loop V4 |
 
 ### Validation Results
 
-✅ **Phase 0**: Mapped via `/epic-run` → `/epic-intake` → `v12-phase0-hotspot`  
-✅ **Phase 1**: Mapped via `/epic-run` → `/epic-scope-boundary` → `v12-phase1-scope`  
-✅ **Phase 1.5**: Mapped via `/epic-run` → `/epic-scope-boundary --phase 1.5` → `v12-phase1-5-boundary`  
-✅ **Phase 2**: Mapped via `/epic-run` → `/epic-plan` → `v12-phase2-architecture`  
-✅ **Phase 3**: Mapped via `/epic-run` → `/epic-scan` → `v12-phase3-audit`  
-✅ **Phase 4**: Mapped via `/epic-run` → `/epic-tickets` → `v12-phase4-tickets`  
+✅ **Phase 0**: Mapped via `/epic-run` → `/epic-intake` → `v12-phase0-hotspot`
+✅ **Phase 1**: Mapped via `/epic-run` → `/epic-scope-boundary` → `v12-phase1-scope`
+✅ **Phase 1.5**: Mapped via `/epic-run` → `/epic-scope-boundary --phase 1.5` → `v12-phase1-5-boundary`
+✅ **Phase 2**: Mapped via `/epic-run` → `/epic-plan` → `v12-phase2-architecture`
+✅ **Phase 3**: Mapped via `/epic-run` → `/epic-scan` → `v12-phase3-audit`
+✅ **Phase 4**: Mapped via `/epic-run` → `/epic-tickets` → `v12-phase4-tickets`
 ✅ **Phase 4.5**: Mapped via `/epic-review-tickets` → `v12-phase4-5-review`
-✅ **Phase 5**: Mapped via `/epic-run` → `/epic-validate` → `v12-engineer`  
-✅ **Phase 5.V**: Mapped via `/epic-run` → `/epic-verify-ticket` → `v12-phase5-v-verify`  
+✅ **Phase 5**: Mapped via `/epic-run` → `/epic-validate` → `v12-engineer`
+✅ **Phase 5.V**: Mapped via `/epic-run` → `/epic-verify-ticket` → `v12-phase5-v-verify`
 ✅ **Phase 6**: Mapped via `/epic-run` → `/epic-review-final` → `v12-phase6-review` (partial) + Phase 3 (Final Verification)
+✅ **Phase 7 (PR Repair)**: Mapped via `/pr-loop` → `wave-orch-phase7-lane` (Tier 2) → `v12-phase2-architecture` + `v12-engineer` + `v12-pr-repair-verify` (Tier 3)
 
-**Conclusion**: 10 out of 10 phases properly mapped to custom modes. All phases now fully automated.
+**Conclusion**: All phases mapped to custom modes. Phase 7 (PR Repair) fully automated with 3-tier architecture.
 
 ---
 
@@ -713,11 +786,11 @@ Phase 4: Completion Handshake (autonomous-refactor - no mode switch)
 
 ### Critical Gaps
 
-1. **Greptile MCP References in System Prompt**
-   - **Impact**: Confusing documentation, agent may attempt to use unavailable MCP
-   - **Fix**: Remove ALL Greptile references from system prompts
-   - **Priority**: P0 (documentation accuracy)
-   - **Files to Clean**: See Greptile Cleanup Plan below
+1. **Greptile MCP — Phase 7 Exception** ✅ RESOLVED
+   - **Status**: Greptile IS actively used in Phase 7 PR repair (`wave-orch-phase7-lane`)
+   - **Old matrix said**: "❌ OBSOLETE: Greptile MCP referenced in old system prompts" — **WRONG for Phase 7**
+   - **Correct policy**: Greptile removed from Phases 0–6; KEPT and required for Phase 7 lane orchestrators
+   - **Priority**: Documentation corrected in this version (V3.0)
 
 2. **Phase 4.5 Automation Complete** ✅
    - **Status**: `/epic-review-tickets` command created
@@ -804,24 +877,25 @@ Write-Host "Greptile cleanup complete. Review files manually for context-specifi
 ### Immediate (Pre-Wave 7)
 
 1. ✅ **Matrix V2 Complete**: This document corrects custom mode mapping
-2. ✅ **Greptile Cleanup Complete**: Script executed, 2 files archived, 5 files identified for manual review
+2. ✅ **Greptile Cleanup Complete**: Greptile removed from Phases 0–6; preserved and documented for Phase 7
 3. ✅ **Phase 4.5 Automated**: `/epic-review-tickets` command created with 6 validation checks
-4. ⏳ **Add Graphify to `.mcp.json`**: Verify Phase 2 requirements (P1)
-5. ⏳ **Add Skill References**: Update custom mode definitions (P3)
-6. ⏳ **Test Integration**: Run pilot epic with full custom mode stack
+4. ✅ **Phase 7 PR Repair Loop Automated**: 3-tier architecture, 6 lane prompts, OKF hardening committed
+5. ⏳ **Add Graphify to `.mcp.json`**: Verify Phase 2 requirements (P1)
+6. ⏳ **Add Skill References**: Update custom mode definitions (P3)
+7. ⏳ **Test Integration**: Run pilot epic with full custom mode stack
 
-### Short-Term (Wave 7 Execution)
+### Short-Term (Wave 7 Execution + PR Repair)
 
-6. ⏳ **Enable Extended Thinking**: Phases 2, 3, 5 (via custom modes)
-7. ⏳ **Enable Prompt Caching**: System prompts + Jane Street KB
-8. ⏳ **Monitor MCP Usage**: Track jcodemunch usage patterns
-9. ⏳ **Measure Cost Savings**: Compare with/without caching
+8. ⏳ **Enable Extended Thinking**: Phases 2, 3, 5 (via custom modes)
+9. ⏳ **Enable Prompt Caching**: System prompts + Jane Street KB
+10. ⏳ **Monitor MCP Usage**: Track jcodemunch + Greptile usage patterns (Phase 7)
+11. ⏳ **Measure Cost Savings**: Compare with/without caching
 
 ### Long-Term (Post-Wave 7)
 
-10. ⏳ **Consolidate Skills**: Merge VM + local parallel execution
-11. ⏳ **Optimize MCP Calls**: Reduce redundant tool invocations
-12. ⏳ **Document Patterns**: Best practices for custom mode + MCP integration
+12. ⏳ **Consolidate Skills**: Merge VM + local parallel execution
+13. ⏳ **Optimize MCP Calls**: Reduce redundant tool invocations
+14. ⏳ **Document Patterns**: Best practices for custom mode + MCP integration
 
 ---
 
@@ -834,13 +908,18 @@ Write-Host "Greptile cleanup complete. Review files manually for context-specifi
 - **MCP Configuration**: `.mcp.json`
 - **GCP VM Skill**: `.bob/skills/gcp-vm-wave-execution/skill.md`
 - **Lamport Recovery**: `.bob/skills/lamport-clock-recovery/skill.md`
+- **PR Repair Manifest**: `docs/brain/wave7-pr-repairs/manifest.json`
+- **PR Repair Fix Queues**: `docs/brain/wave7-pr-repairs/PR-{20..25}/fix_queue.md`
+- **PR Loop Command**: `.bob/commands/pr-loop.md`
+- **Bot Triage Script**: `scripts/poll_all_bots.py`
 
 ---
 
-**Document Status**: ✅ Complete (V2.2 - Jane Street KB Hooks + Explicit Skills)
-**Validation**: 10/10 custom modes mapped, 10/10 phases automated, 2 MCPs active, 6 skills explicit
-**Greptile Cleanup**: ✅ Complete (45 command references + 2 doc files archived, 5 files for manual review)
-**Jane Street KB**: ✅ Documented (4 MANDATORY hooks, 1 optional hook, 5 no hooks)
+**Document Status**: ✅ Complete (V3.0 - Phase 7 PR Repair Loop + Greptile Exception + poll_all_bots.py)
+**Validation**: 12/12 custom modes mapped (10 epic phases + 2 Phase 7 PR repair), all phases automated
+**Greptile Status**: ✅ Phases 0–6: removed. Phase 7 (wave-orch-phase7-lane): ACTIVE and required.
+**Jane Street KB**: ✅ Documented (4 MANDATORY hooks, 1 optional hook, 5 no hooks) + Phase 7 OKF table
 **Skills**: ✅ Made explicit in matrix (gcp-vm-wave-execution, scope-boundary-check, architecture-validation, parallel-epic-execution, WAVE2_SHELL_WORKAROUND)
 **Phase 4.5**: ✅ Automated via `/epic-review-tickets` command
+**Phase 7 PR Repair**: ✅ Automated — 3-tier architecture, OKF hardening, CS-only gate, 6 lane prompts ready
 **Next Review**: After Wave 7 pilot epic

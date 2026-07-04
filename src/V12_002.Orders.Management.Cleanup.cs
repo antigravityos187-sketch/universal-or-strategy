@@ -51,29 +51,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (pendingStopReplacements.TryRemove(entryName, out _))
                     Interlocked.Decrement(ref pendingReplacementCount);
 
-                if (cancelledStops > 0 || cancelledTargets > 0 || cancelledEntries > 0)
-                    Print(
-                        string.Format(
-                            "CLEANUP SUMMARY for {0}: Stops={1} Targets={2} Entries={3}",
-                            entryName,
-                            cancelledStops,
-                            cancelledTargets,
-                            cancelledEntries
-                        )
-                    );
+                LogCancelSummaryIfAny(entryName, cancelledStops, cancelledTargets, cancelledEntries);
 
                 if (EvaluateFollowerRepairBlock(entryName))
                     return;
 
-                int followerExpected = 0;
-                if (
-                    activePositions.TryGetValue(entryName, out var metaCheck)
-                    && metaCheck.IsFollower
-                    && metaCheck.ExecutingAccount != null
-                )
-                {
-                    expectedPositions.TryGetValue(ExpKey(metaCheck.ExecutingAccount.Name), out followerExpected);
-                }
+                int followerExpected = GetFollowerExpectedCount(entryName);
 
                 PurgePositionIfEligible(entryName, followerExpected);
             }
@@ -85,6 +68,47 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Print(string.Format("[FSM-C1] Terminated FSM for {0} (was {1})", entryName, removedFsm.State));
                 }
             }
+        }
+
+        /// <summary>
+        /// Print cancellation summary for CleanupPosition if any orders were cancelled.
+        /// Extracted from CleanupPosition to reduce CYC. CYC=4.
+        /// </summary>
+        private void LogCancelSummaryIfAny(
+            string entryName,
+            int cancelledStops,
+            int cancelledTargets,
+            int cancelledEntries
+        )
+        {
+            if (cancelledStops > 0 || cancelledTargets > 0 || cancelledEntries > 0)
+                Print(
+                    string.Format(
+                        "CLEANUP SUMMARY for {0}: Stops={1} Targets={2} Entries={3}",
+                        entryName,
+                        cancelledStops,
+                        cancelledTargets,
+                        cancelledEntries
+                    )
+                );
+        }
+
+        /// <summary>
+        /// Retrieve the expected position count for a follower entry, or 0 if not a follower.
+        /// Extracted from CleanupPosition to reduce CYC. CYC=4.
+        /// </summary>
+        private int GetFollowerExpectedCount(string entryName)
+        {
+            int followerExpected = 0;
+            if (
+                activePositions.TryGetValue(entryName, out var metaCheck)
+                && metaCheck.IsFollower
+                && metaCheck.ExecutingAccount != null
+            )
+            {
+                expectedPositions.TryGetValue(ExpKey(metaCheck.ExecutingAccount.Name), out followerExpected);
+            }
+            return followerExpected;
         }
 
         /// <summary>
@@ -382,32 +406,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (activePositions.TryGetValue(removedKey, out var purgeCheck) && purgeCheck.RemainingContracts > 0)
                     return;
 
-                if (
-                    activePositions.TryGetValue(removedKey, out var ghostMetaCheck)
-                    && ghostMetaCheck.IsFollower
-                    && ghostMetaCheck.ExecutingAccount != null
-                )
-                {
-                    string ghostAcctName = ghostMetaCheck.ExecutingAccount.Name;
-                    int ghostExpected = 0;
-                    expectedPositions.TryGetValue(ExpKey(ghostAcctName), out ghostExpected);
-                    if (ghostExpected != 0)
-                    {
-                        Print(
-                            string.Format(
-                                "[META-GUARD] {0}: ZOMBIE_PURGE suppressed -- expectedPositions={1} on {2}. "
-                                    + "Retaining metadata for Repair Hook.",
-                                removedKey,
-                                ghostExpected,
-                                ghostAcctName
-                            )
-                        );
-                        return;
-                    }
-                }
+                if (IsFollowerZombieSuppressed(removedKey))
+                    return;
 
-                bool zombieRemoved;
-                zombieRemoved = activePositions.TryRemove(removedKey, out _);
+                bool zombieRemoved = activePositions.TryRemove(removedKey, out _);
                 if (zombieRemoved)
                 {
                     SymmetryGuardForgetEntry(removedKey);
@@ -422,50 +424,90 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Returns true if a follower zombie purge should be suppressed because
+        /// expectedPositions is still non-zero on the follower account.
+        /// Extracted from EvaluateZombiePurgeEligibility to reduce CYC (9->6). EPIC-W7-OVERRUN.
+        /// </summary>
+        private bool IsFollowerZombieSuppressed(string removedKey)
+        {
+            if (
+                activePositions.TryGetValue(removedKey, out var ghostMetaCheck)
+                && ghostMetaCheck.IsFollower
+                && ghostMetaCheck.ExecutingAccount != null
+            )
+            {
+                string ghostAcctName = ghostMetaCheck.ExecutingAccount.Name;
+                int ghostExpected = 0;
+                expectedPositions.TryGetValue(ExpKey(ghostAcctName), out ghostExpected);
+                if (ghostExpected != 0)
+                {
+                    Print(
+                        string.Format(
+                            "[META-GUARD] {0}: ZOMBIE_PURGE suppressed -- expectedPositions={1} on {2}. "
+                                + "Retaining metadata for Repair Hook.",
+                            removedKey,
+                            ghostExpected,
+                            ghostAcctName
+                        )
+                    );
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true if the order name matches any known V12 tracked order pattern.
+        /// Extracted from ClassifyOrphanReason to reduce CYC (11->5). EPIC-W7-OVERRUN.
+        /// </summary>
+        private bool IsTrackedOrderPattern(string name)
+        {
+            return name.Contains("RMA")
+                || name.Contains("OR")
+                || name.Contains("MOMO")
+                || name.Contains("TREND")
+                || name.Contains("Stop_")
+                || name.Contains("Tgt_")
+                || name.Contains("Fleet_");
+        }
+
+        /// <summary>
         /// Classify why an order was not found in dictionaries.
         /// Distinguishes expected cascade from suspicious orphan.
         /// </summary>
         private void ClassifyOrphanReason(Order order, string reason)
         {
-            if (
-                order.Name.Contains("RMA")
-                || order.Name.Contains("OR")
-                || order.Name.Contains("MOMO")
-                || order.Name.Contains("TREND")
-                || order.Name.Contains("Stop_")
-                || order.Name.Contains("Tgt_")
-                || order.Name.Contains("Fleet_")
-            )
+            if (!IsTrackedOrderPattern(order.Name))
+                return;
+
+            bool positionStillActive = false;
+            foreach (var kvp in activePositions.ToArray())
             {
-                bool positionStillActive = false;
-                foreach (var kvp in activePositions.ToArray())
+                if (order.Name.Contains(kvp.Key))
                 {
-                    if (order.Name.Contains(kvp.Key))
-                    {
-                        positionStillActive = true;
-                        Print(
-                            string.Format(
-                                "V12.17: WARNING {0} {1} - dict ref gone but position {2} still active (orphan risk, OrderId={3})",
-                                order.Name,
-                                reason,
-                                kvp.Key,
-                                order.OrderId ?? "NULL"
-                            )
-                        );
-                        break;
-                    }
-                }
-                if (!positionStillActive)
-                {
+                    positionStillActive = true;
                     Print(
                         string.Format(
-                            "V12.17: {0} {1} - cleaned by upstream handler (expected cascade, OrderId={2})",
+                            "V12.17: WARNING {0} {1} - dict ref gone but position {2} still active (orphan risk, OrderId={3})",
                             order.Name,
                             reason,
+                            kvp.Key,
                             order.OrderId ?? "NULL"
                         )
                     );
+                    break;
                 }
+            }
+            if (!positionStillActive)
+            {
+                Print(
+                    string.Format(
+                        "V12.17: {0} {1} - cleaned by upstream handler (expected cascade, OrderId={2})",
+                        order.Name,
+                        reason,
+                        order.OrderId ?? "NULL"
+                    )
+                );
             }
         }
 
@@ -567,45 +609,40 @@ namespace NinjaTrader.NinjaScript.Strategies
             return string.IsNullOrEmpty(entryName) || !activePositions.ContainsKey(entryName);
         }
 
+        // CYC: 2 -- helper: is order active in broker
+        private bool IsBrokerOrderLive(Order order)
+        {
+            if (order == null || string.IsNullOrEmpty(order.OrderId))
+                return false;
+            return order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted;
+        }
+
+        // CYC: 4 -- helper: add live orders from all fleet accounts into set
+        private void AddFleetOrdersToIndex(HashSet<string> set)
+        {
+            foreach (Account acct in Account.All)
+            {
+                if (!IsFleetAccount(acct))
+                    continue;
+                foreach (Order fleetOrder in acct.Orders)
+                {
+                    if (IsBrokerOrderLive(fleetOrder))
+                        set.Add(fleetOrder.OrderId);
+                }
+            }
+        }
+
+        // CYC: 4 -- extracted from CYC=14 original; EPIC-W7-OVERRUN
         private HashSet<string> BuildLiveBrokerOrderIndex()
         {
             HashSet<string> liveBrokerOrderIds = new HashSet<string>();
             foreach (Order brokerOrder in Account.Orders)
             {
-                if (
-                    brokerOrder != null
-                    && !string.IsNullOrEmpty(brokerOrder.OrderId)
-                    && (brokerOrder.OrderState == OrderState.Working || brokerOrder.OrderState == OrderState.Accepted)
-                )
-                {
+                if (IsBrokerOrderLive(brokerOrder))
                     liveBrokerOrderIds.Add(brokerOrder.OrderId);
-                }
             }
-
-            // Also scan fleet accounts if SIMA is enabled
             if (EnableSIMA)
-            {
-                foreach (Account acct in Account.All)
-                {
-                    if (IsFleetAccount(acct))
-                    {
-                        foreach (Order fleetOrder in acct.Orders)
-                        {
-                            if (
-                                fleetOrder != null
-                                && !string.IsNullOrEmpty(fleetOrder.OrderId)
-                                && (
-                                    fleetOrder.OrderState == OrderState.Working
-                                    || fleetOrder.OrderState == OrderState.Accepted
-                                )
-                            )
-                            {
-                                liveBrokerOrderIds.Add(fleetOrder.OrderId);
-                            }
-                        }
-                    }
-                }
-            }
+                AddFleetOrdersToIndex(liveBrokerOrderIds);
             return liveBrokerOrderIds;
         }
 
@@ -633,31 +670,23 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                     // Only audit orders that SHOULD be alive (Working/Accepted)
                     // Terminal orders are cleaned by OnOrderUpdate; this catches leaks
-                    bool isTerminal = (
-                        trackedOrder.OrderState == OrderState.Cancelled
-                        || trackedOrder.OrderState == OrderState.Rejected
-                        || trackedOrder.OrderState == OrderState.Filled
-                        || trackedOrder.OrderState == OrderState.Unknown
-                    );
-
-                    bool notInBroker =
-                        !string.IsNullOrEmpty(trackedOrder.OrderId)
-                        && !liveBrokerOrderIds.Contains(trackedOrder.OrderId);
-
-                    if (isTerminal || notInBroker)
+                    if (IsGhostOrder(trackedOrder, liveBrokerOrderIds))
                     {
                         bool reverseRemoved;
                         reverseRemoved = dict.TryRemove(kvp.Key, out _);
                         if (reverseRemoved)
                         {
                             string state = trackedOrder.OrderState.ToString();
+                            bool inBroker =
+                                !string.IsNullOrEmpty(trackedOrder.OrderId)
+                                && liveBrokerOrderIds.Contains(trackedOrder.OrderId);
                             Print(
                                 string.Format(
                                     "[GHOST_FIX] REVERSE AUDIT: {0} ghost for {1} purged (State={2}, InBroker={3}, OrderId={4})",
                                     label,
                                     kvp.Key,
                                     state,
-                                    !notInBroker,
+                                    inBroker,
                                     trackedOrder.OrderId ?? "NULL"
                                 )
                             );
@@ -667,6 +696,19 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
             }
             return reverseGhosts;
+        }
+
+        private bool IsGhostOrder(Order trackedOrder, HashSet<string> liveBrokerOrderIds)
+        {
+            bool isTerminal = (
+                trackedOrder.OrderState == OrderState.Cancelled
+                || trackedOrder.OrderState == OrderState.Rejected
+                || trackedOrder.OrderState == OrderState.Filled
+                || trackedOrder.OrderState == OrderState.Unknown
+            );
+            bool notInBroker =
+                !string.IsNullOrEmpty(trackedOrder.OrderId) && !liveBrokerOrderIds.Contains(trackedOrder.OrderId);
+            return isTerminal || notInBroker;
         }
 
         private void ReconcileOrphanedOrders(string reason)

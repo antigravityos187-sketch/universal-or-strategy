@@ -1,0 +1,1 @@
+{"nodes":[{"id":"test_regex","label":"test_regex.py","file_type":"code","source_file":"test_regex.py","source_location":"L1"}],"edges":[{"source":"test_regex","target":"re","relation":"imports","confidence":"EXTRACTED","source_file":"test_regex.py","source_location":"L1","weight":1}]}

@@ -1,0 +1,1 @@
+{"nodes":[{"id":"scripts_apply_anthropic_colors","label":"apply_anthropic_colors.py","file_type":"code","source_file":"scripts/apply_anthropic_colors.py","source_location":"L1"}],"edges":[{"source":"scripts_apply_anthropic_colors","target":"re","relation":"imports","confidence":"EXTRACTED","source_file":"scripts/apply_anthropic_colors.py","source_location":"L1","weight":1}]}

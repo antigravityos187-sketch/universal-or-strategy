@@ -45,36 +45,30 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     if (pendingStopReplacements.TryRemove(kvp.Key, out var pending))
                     {
-                        Interlocked.Decrement(ref pendingReplacementCount);
-                        Print(string.Format("V8.30: Stale pending replacement REMOVED for {0} (>5sec old)", kvp.Key));
-
-                        // If position still exists and needs protection, create emergency stop
-                        if (
-                            activePositions.TryGetValue(kvp.Key, out var pos)
-                            && pos.EntryFilled
-                            && pos.RemainingContracts > 0
-                        )
-                        {
-                            Print(string.Format("[1104.2] Recovery: force-initiating stop for {0}", kvp.Key));
-                            // V12.1101E [F-02]: Use live RemainingContracts under stateLock instead of stale pending.Quantity
-                            int replacementQty;
-                            replacementQty = pos.RemainingContracts;
-                            CreateNewStopOrder(
-                                kvp.Key,
-                                replacementQty,
-                                pending.StopPrice,
-                                pending.Direction,
-                                isRecovery: true
-                            );
-                            // Build 950: Also restore bracket targets after V8.30 emergency stop.
-                            if (pending.BracketRestorationNeeded && pending.CapturedTargets != null)
-                            {
-                                TargetSnapshot[] _tSnap = pending.CapturedTargets;
-                                string _tKey = kvp.Key;
-                                TriggerCustomEvent(o => RestoreCascadedTargets(_tKey, _tSnap), null);
-                            }
-                        }
+                        HandleStalePendingRemoval(kvp.Key, pending);
                     }
+                }
+            }
+        }
+
+        private void HandleStalePendingRemoval(string key, PendingStopReplacement pending)
+        {
+            Interlocked.Decrement(ref pendingReplacementCount);
+            Print(string.Format("V8.30: Stale pending replacement REMOVED for {0} (>5sec old)", key));
+
+            // If position still exists and needs protection, create emergency stop
+            if (activePositions.TryGetValue(key, out var pos) && pos.EntryFilled && pos.RemainingContracts > 0)
+            {
+                Print(string.Format("[1104.2] Recovery: force-initiating stop for {0}", key));
+                // V12.1101E [F-02]: Use live RemainingContracts under stateLock instead of stale pending.Quantity
+                int replacementQty = pos.RemainingContracts;
+                CreateNewStopOrder(key, replacementQty, pending.StopPrice, pending.Direction, isRecovery: true);
+                // Build 950: Also restore bracket targets after V8.30 emergency stop.
+                if (pending.BracketRestorationNeeded && pending.CapturedTargets != null)
+                {
+                    TargetSnapshot[] _tSnap = pending.CapturedTargets;
+                    string _tKey = key;
+                    TriggerCustomEvent(o => RestoreCascadedTargets(_tKey, _tSnap), null);
                 }
             }
         }
@@ -108,22 +102,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // Route to appropriate handler based on order state
-                if (
-                    currentStop != null
-                    && (
-                        currentStop.OrderState == OrderState.CancelPending
-                        || currentStop.OrderState == OrderState.Submitted
-                    )
-                )
+                if (IsStopInPendingState(currentStop))
                 {
                     UpdateExistingPendingReplacement(entryName, pos, currentStop, validatedStopPrice, newTrailLevel);
                     return;
                 }
 
-                if (
-                    currentStop != null
-                    && (currentStop.OrderState == OrderState.Working || currentStop.OrderState == OrderState.Accepted)
-                )
+                if (IsStopInWorkingState(currentStop))
                 {
                     InitiateStopReplacement(entryName, pos, currentStop, validatedStopPrice, newTrailLevel);
                     return;
@@ -137,6 +122,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 HandleUpdateException(entryName, pos, ex);
             }
         }
+
+        private bool IsStopInPendingState(Order o) =>
+            o != null && (o.OrderState == OrderState.CancelPending || o.OrderState == OrderState.Submitted);
+
+        private bool IsStopInWorkingState(Order o) =>
+            o != null && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted);
 
         private void HandleStalePendingReplacement(
             string entryName,
@@ -313,27 +304,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             // Build 955: Snapshot targets BEFORE TryAdd so any callback sees a fully-initialized record
-            var _b955TargetsB = new System.Collections.Generic.List<TargetSnapshot>();
-            for (int _tB = 1; _tB <= 5; _tB++)
-            {
-                var _tDB = GetTargetOrdersDictionary(_tB);
-                Order _tOB;
-                if (
-                    _tDB != null
-                    && _tDB.TryGetValue(entryName, out _tOB)
-                    && _tOB != null
-                    && (_tOB.OrderState == OrderState.Working || _tOB.OrderState == OrderState.Accepted)
-                )
-                    _b955TargetsB.Add(
-                        new TargetSnapshot
-                        {
-                            TargetNum = _tB,
-                            Price = _tOB.LimitPrice,
-                            Qty = _tOB.Quantity,
-                            CapturedOrder = _tOB,
-                        }
-                    );
-            }
+            TargetSnapshot[] _b955Targets = CaptureTargetSnapshot(entryName);
 
             var newPending = new PendingStopReplacement
             {
@@ -343,20 +314,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Direction = pos.Direction,
                 OldOrder = currentStop,
                 CreatedTime = DateTime.Now,
-                CapturedTargets = _b955TargetsB.Count > 0 ? _b955TargetsB.ToArray() : null,
-                BracketRestorationNeeded = _b955TargetsB.Count > 0,
+                CapturedTargets = _b955Targets,
+                BracketRestorationNeeded = _b955Targets != null,
             };
 
             // V8.30: Thread-safe add
             if (pendingStopReplacements.TryAdd(entryName, newPending))
             {
                 int currentCount = Interlocked.Increment(ref pendingReplacementCount);
-                if (currentCount >= CIRCUIT_BREAKER_THRESHOLD && !circuitBreakerActive)
-                {
-                    circuitBreakerActive = true;
-                    circuitBreakerActivatedTime = DateTime.Now;
-                    Print(string.Format("V8.30: CIRCUIT BREAKER ACTIVATED - {0} pending replacements", currentCount));
-                }
+                ActivateCircuitBreakerIfThreshold(currentCount);
             }
 
             CancelOrderForReplace(currentStop, pos);
@@ -364,8 +330,27 @@ namespace NinjaTrader.NinjaScript.Strategies
             pos.CurrentTrailLevel = newTrailLevel;
             MarkStickyDirty();
 
-            string levelName = newTrailLevel <= 0 ? "Initial" : (newTrailLevel == 1 ? "BE" : "T" + (newTrailLevel - 1));
+            string levelName = TrailLevelName(newTrailLevel);
             Print(string.Format("STOP UPDATED: {0} -> {1:F2} (Level: {2})", entryName, validatedStopPrice, levelName));
+        }
+
+        private void ActivateCircuitBreakerIfThreshold(int currentCount)
+        {
+            if (currentCount >= CIRCUIT_BREAKER_THRESHOLD && !circuitBreakerActive)
+            {
+                circuitBreakerActive = true;
+                circuitBreakerActivatedTime = DateTime.Now;
+                Print(string.Format("V8.30: CIRCUIT BREAKER ACTIVATED - {0} pending replacements", currentCount));
+            }
+        }
+
+        private string TrailLevelName(int level)
+        {
+            if (level <= 0)
+                return "Initial";
+            if (level == 1)
+                return "BE";
+            return "T" + (level - 1);
         }
 
         private void CreateDirectStopOrder(

@@ -3,7 +3,7 @@
   "wave": 7,
   "method": "PropagateMaster_IdentifyMove",
   "source": "src/V12_002.Orders.Callbacks.Propagation.cs",
-  "cyc": 9,
+  "cyc": 5,
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -62,6 +62,19 @@
       "final_cyc": 1,
       "wave_ready": true,
       "build_passed": true
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "final_cyc": 5,
+      "wave_ready": true,
+      "agent": "v12-phase6-review",
+      "mcp_verified": true,
+      "lane": "P6-REDO-A2"
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-02T00:00:00Z",
+  "status": "complete",
+  "final_cyc": 5
 }

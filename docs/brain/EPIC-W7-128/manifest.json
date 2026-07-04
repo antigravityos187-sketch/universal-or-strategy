@@ -1,10 +1,11 @@
 {
   "epic_id": "EPIC-W7-128",
   "wave": 7,
-  "status": "in_progress",
+  "status": "complete",
   "method": "SymmetryGuardReplaceExistingFollowerTarget",
   "file": "src/V12_002.Symmetry.Replace.cs",
   "cyc_before": 20,
+  "final_cyc": 8,
   "phases": {
     "phase_0": {
       "status": "completed",
@@ -58,12 +59,17 @@
       "build_passed": true
     },
     "phase_6": {
-      "status": "pending",
-      "output": null
+      "status": "completed",
+      "completed_at": "2026-07-01T20:30:00Z",
+      "final_cyc": 8,
+      "wave_ready": true,
+      "agent": "v12-phase6-review"
     },
     "phase_5_ticket_1": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z"
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-01T20:30:00Z"
 }

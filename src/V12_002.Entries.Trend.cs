@@ -244,13 +244,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
             }
 
-            if (currentATR <= 0 || ema9 == null || ema15 == null)
+            if (!IsTrendIndicatorsReady())
             {
                 Print("Cannot execute TREND entry - indicators not ready");
                 return false;
             }
 
             return true;
+        }
+
+        // Extracted from ExecuteTREND_Preflight to reduce CYC (Wave 7 Overrun).
+        // Returns false when ATR is unavailable or EMA instances are not yet initialized.
+        private bool IsTrendIndicatorsReady()
+        {
+            return currentATR > 0 && ema9 != null && ema15 != null;
         }
 
         private bool ExecuteTREND_ResolveDirection(

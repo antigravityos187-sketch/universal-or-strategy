@@ -93,6 +93,20 @@ namespace NinjaTrader.NinjaScript.Strategies
         // We only remove references after broker-confirmed terminal states.
         // Build 1104 routes stop cancels through the gateway so follower orders use Account.Cancel()
         // while master orders continue to use the NinjaScript managed cancel path.
+        // V12.1101H [COLLIDE-01]: Include ChangePending/ChangeSubmitted -- stops in these transient
+        // states were previously ignored by this function, leaving them live at the broker after FlattenAll.
+        private static bool IsStopOrderCancellable(OrderState state) =>
+            state == OrderState.Working
+            || state == OrderState.Accepted
+            || state == OrderState.ChangePending
+            || state == OrderState.ChangeSubmitted;
+
+        private static bool IsStopOrderTerminal(OrderState state) =>
+            state == OrderState.Cancelled
+            || state == OrderState.Filled
+            || state == OrderState.Rejected
+            || state == OrderState.Unknown;
+
         private void RequestStopCancelLifecycleSafe(string entryName)
         {
             if (string.IsNullOrEmpty(entryName))
@@ -100,14 +114,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (!stopOrders.TryGetValue(entryName, out var stopOrder) || stopOrder == null)
                 return;
 
-            // V12.1101H [COLLIDE-01]: Include ChangePending/ChangeSubmitted -- stops in these transient
-            // states were previously ignored by this function, leaving them live at the broker after FlattenAll.
-            if (
-                stopOrder.OrderState == OrderState.Working
-                || stopOrder.OrderState == OrderState.Accepted
-                || stopOrder.OrderState == OrderState.ChangePending
-                || stopOrder.OrderState == OrderState.ChangeSubmitted
-            )
+            if (IsStopOrderCancellable(stopOrder.OrderState))
             {
                 PositionInfo posRef;
                 activePositions.TryGetValue(entryName, out posRef);
@@ -115,12 +122,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
             }
 
-            if (
-                stopOrder.OrderState == OrderState.Cancelled
-                || stopOrder.OrderState == OrderState.Filled
-                || stopOrder.OrderState == OrderState.Rejected
-                || stopOrder.OrderState == OrderState.Unknown
-            )
+            if (IsStopOrderTerminal(stopOrder.OrderState))
             {
                 stopOrders.TryRemove(entryName, out _);
             }
@@ -255,18 +257,36 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             bool handled = false;
+            var category = ClassifyOrderState(orderState);
 
-            if (orderState == OrderState.Filled)
+            if (category == OrderStateCategory.Filled)
                 handled = HandleOrderState_Filled(order, quantity, filled, averageFillPrice, time);
-            else if (orderState == OrderState.Rejected || orderState == OrderState.Cancelled)
+            else if (category == OrderStateCategory.Terminal)
                 handled = HandleOrderState_Terminal(order, orderState, nativeError);
-            else if (orderState == OrderState.Accepted || orderState == OrderState.Working)
+            else if (category == OrderStateCategory.Working)
                 handled = HandleOrderState_Working(order, limitPrice, stopPrice, quantity);
 
             if (!handled && IsTerminalState(orderState))
-            {
                 RemoveGhostOrderRef(order, orderState.ToString().ToUpper());
-            }
+        }
+
+        private enum OrderStateCategory
+        {
+            Other,
+            Filled,
+            Terminal,
+            Working,
+        }
+
+        private static OrderStateCategory ClassifyOrderState(OrderState s)
+        {
+            if (s == OrderState.Filled)
+                return OrderStateCategory.Filled;
+            if (s == OrderState.Rejected || s == OrderState.Cancelled)
+                return OrderStateCategory.Terminal;
+            if (s == OrderState.Accepted || s == OrderState.Working)
+                return OrderStateCategory.Working;
+            return OrderStateCategory.Other;
         }
 
         private void ProcessOnOrderUpdate(
@@ -645,47 +665,59 @@ namespace NinjaTrader.NinjaScript.Strategies
             // T04: Single snapshot for both stop and entry rejection paths
             var snapshot = activePositions.ToArray();
 
-            if (stopOrders.Values.Contains(order))
-            {
-                foreach (var kvp in snapshot)
-                {
-                    // Mutation-safety guard (zero-allocation)
-                    if (!activePositions.ContainsKey(kvp.Key))
-                        continue;
-                    if (stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order)
-                    {
-                        Print(LogBuffer.Format("(!) CRITICAL: Stop REJECTED for {0}. Re-submitting...", kvp.Key));
-                        stopOrders.TryRemove(kvp.Key, out _);
-                        CreateNewStopOrder(
-                            kvp.Key,
-                            kvp.Value.RemainingContracts,
-                            kvp.Value.CurrentStopPrice,
-                            kvp.Value.Direction
-                        );
-                        return true;
-                    }
-                }
-            }
+            if (stopOrders.Values.Contains(order) && TryHandleRejectedStop(order, snapshot))
+                return true;
 
-            if (entryOrders.Values.Contains(order))
-            {
-                foreach (var kvp in snapshot)
-                {
-                    // Mutation-safety guard (zero-allocation)
-                    if (!activePositions.ContainsKey(kvp.Key))
-                        continue;
-                    if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
-                    {
-                        Print(LogBuffer.Format("[ZOMBIE-FIX] Entry REJECTED: {0}. Tearing down.", orderName));
-                        RollbackExpectedPosition(kvp.Key, kvp.Value);
-                        CleanupPosition(kvp.Key);
-                        return true;
-                    }
-                }
-            }
+            if (entryOrders.Values.Contains(order) && TryHandleRejectedEntry(order, snapshot, orderName))
+                return true;
 
             RemoveGhostOrderRef(order, "REJECTED");
             return true;
+        }
+
+        private bool TryHandleRejectedStop(Order order, KeyValuePair<string, PositionInfo>[] snapshot)
+        {
+            foreach (var kvp in snapshot)
+            {
+                // Mutation-safety guard (zero-allocation)
+                if (!activePositions.ContainsKey(kvp.Key))
+                    continue;
+                if (stopOrders.TryGetValue(kvp.Key, out var sOrder) && sOrder == order)
+                {
+                    Print(LogBuffer.Format("(!) CRITICAL: Stop REJECTED for {0}. Re-submitting...", kvp.Key));
+                    stopOrders.TryRemove(kvp.Key, out _);
+                    CreateNewStopOrder(
+                        kvp.Key,
+                        kvp.Value.RemainingContracts,
+                        kvp.Value.CurrentStopPrice,
+                        kvp.Value.Direction
+                    );
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool TryHandleRejectedEntry(
+            Order order,
+            KeyValuePair<string, PositionInfo>[] snapshot,
+            string orderName
+        )
+        {
+            foreach (var kvp in snapshot)
+            {
+                // Mutation-safety guard (zero-allocation)
+                if (!activePositions.ContainsKey(kvp.Key))
+                    continue;
+                if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
+                {
+                    Print(LogBuffer.Format("[ZOMBIE-FIX] Entry REJECTED: {0}. Tearing down.", orderName));
+                    RollbackExpectedPosition(kvp.Key, kvp.Value);
+                    CleanupPosition(kvp.Key);
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void RollbackExpectedPosition(string entryName, PositionInfo pos)
@@ -723,38 +755,37 @@ namespace NinjaTrader.NinjaScript.Strategies
             var snapshot = pendingStopReplacements.ToArray();
             foreach (var kvp in snapshot)
             {
-                // Mutation-safety guard
                 if (!activePositions.ContainsKey(kvp.Key))
                     continue;
-                if (
-                    kvp.Value.OldOrder == order
-                    || (kvp.Value.OldOrder != null && kvp.Value.OldOrder.OrderId == order.OrderId)
-                )
-                {
-                    if (!activePositions.TryGetValue(kvp.Key, out var pos))
-                        continue;
-                    // Build 955: Snapshot qty under stateLock -- single atomic read for both check and use.
-                    int _stopQty = pos.RemainingContracts;
-                    if (_stopQty > 0)
-                    {
-                        CreateNewStopOrder(kvp.Key, _stopQty, kvp.Value.StopPrice, kvp.Value.Direction);
-                        // Build 950: Restore OCO-cascade-cancelled targets after stop replacement.
-                        if (kvp.Value.BracketRestorationNeeded && kvp.Value.CapturedTargets != null)
-                        {
-                            TargetSnapshot[] _mSnap = kvp.Value.CapturedTargets;
-                            string _mKey = kvp.Key;
-                            TriggerCustomEvent(o => RestoreCascadedTargets(_mKey, _mSnap), null);
-                        }
-                    }
-                    if (pendingStopReplacements.TryRemove(kvp.Key, out _))
-                    {
-                        Interlocked.Decrement(ref pendingReplacementCount);
-                    }
-                    return true;
-                }
+                if (!StopReplacementMatchesOrder(kvp.Value, order))
+                    continue;
+                if (!activePositions.TryGetValue(kvp.Key, out var pos))
+                    continue;
+                ApplyStopReplacement(kvp.Key, kvp.Value, pos.RemainingContracts);
+                if (pendingStopReplacements.TryRemove(kvp.Key, out _))
+                    Interlocked.Decrement(ref pendingReplacementCount);
+                return true;
             }
-
             return false;
+        }
+
+        private static bool StopReplacementMatchesOrder(PendingStopReplacement replacement, Order order)
+        {
+            return replacement.OldOrder == order
+                || (replacement.OldOrder != null && replacement.OldOrder.OrderId == order.OrderId);
+        }
+
+        private void ApplyStopReplacement(string posKey, PendingStopReplacement replacement, int stopQty)
+        {
+            if (stopQty <= 0)
+                return;
+            CreateNewStopOrder(posKey, stopQty, replacement.StopPrice, replacement.Direction);
+            if (replacement.BracketRestorationNeeded && replacement.CapturedTargets != null)
+            {
+                TargetSnapshot[] mSnap = replacement.CapturedTargets;
+                string mKey = posKey;
+                TriggerCustomEvent(o => RestoreCascadedTargets(mKey, mSnap), null);
+            }
         }
 
         private void HandleOrderCancelled_PurgePendingCleanup(Order order)
@@ -786,29 +817,29 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private bool HandleOrderCancelled_RollbackUnfilledEntry(Order order)
         {
-            if (entryOrders.Values.Contains(order))
+            if (!entryOrders.Values.Contains(order))
+                return false;
+            // [EPIC-5-PERF-T02] Zero-allocation foreach loop with mutation-safety guard
+            var snapshot = activePositions.ToArray();
+            foreach (var kvp in snapshot)
             {
-                // [EPIC-5-PERF-T02] Zero-allocation foreach loop with mutation-safety guard
-                var snapshot = activePositions.ToArray();
-                foreach (var kvp in snapshot)
-                {
-                    // Mutation-safety guard
-                    if (!activePositions.ContainsKey(kvp.Key))
-                        continue;
-                    if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
-                    {
-                        if (EnableSIMA && !kvp.Value.IsFollower)
-                        {
-                            SymmetryGuardCascadeFollowerCleanup(kvp.Key);
-                        }
-                        RollbackExpectedPosition(kvp.Key, kvp.Value);
-                        CleanupPosition(kvp.Key);
-                        return true;
-                    }
-                }
+                if (!activePositions.ContainsKey(kvp.Key))
+                    continue;
+                if (TryRollbackUnfilledEntryMatch(kvp.Key, kvp.Value, order))
+                    return true;
             }
-
             return false;
+        }
+
+        private bool TryRollbackUnfilledEntryMatch(string posKey, PositionInfo pos, Order order)
+        {
+            if (!entryOrders.TryGetValue(posKey, out var eOrder) || eOrder != order || pos.EntryFilled)
+                return false;
+            if (EnableSIMA && !pos.IsFollower)
+                SymmetryGuardCascadeFollowerCleanup(posKey);
+            RollbackExpectedPosition(posKey, pos);
+            CleanupPosition(posKey);
+            return true;
         }
 
         private bool HandleOrderPriceOrQuantityChanged(Order order, double limitPrice, double stopPrice, int quantity)
@@ -824,47 +855,55 @@ namespace NinjaTrader.NinjaScript.Strategies
                         continue;
                     if (entryOrders.TryGetValue(kvp.Key, out var eOrder) && eOrder == order && !kvp.Value.EntryFilled)
                     {
-                        double newPrice = limitPrice > 0 ? limitPrice : stopPrice;
-                        if (newPrice > 0 && Math.Abs(newPrice - kvp.Value.EntryPrice) > tickSize * 0.5)
-                        {
-                            kvp.Value.EntryPrice = newPrice;
-                            Print(LogBuffer.Format("V12: Entry order MOVED: {0} to {1:F2}", kvp.Key, newPrice));
-                        }
-                        int _totalContracts = kvp.Value.TotalContracts;
-                        if (quantity > 0 && quantity != _totalContracts)
-                        {
-                            // [937-FIX] Sync expectedPositions with broker-confirmed qty.
-                            // Without this, RollbackExpectedPosition uses stale TotalContracts -> desync.
-                            int qtyDiff = quantity - _totalContracts;
-                            string fixAcct =
-                                (kvp.Value.IsFollower && kvp.Value.ExecutingAccount != null)
-                                    ? kvp.Value.ExecutingAccount.Name
-                                    : Account.Name;
-                            int expDelta = (kvp.Value.Direction == MarketPosition.Long) ? qtyDiff : -qtyDiff;
-                            DeltaExpectedPositionLocked(ExpKey(fixAcct), expDelta);
-                            Print(
-                                LogBuffer.Format(
-                                    "[937-FIX] expectedPositions adjusted on qty change: {0} delta={1}",
-                                    fixAcct,
-                                    expDelta
-                                )
-                            );
-                            kvp.Value.TotalContracts = quantity;
-                            kvp.Value.RemainingContracts = quantity;
-                            GetTargetDistribution(
-                                quantity,
-                                out kvp.Value.T1Contracts,
-                                out kvp.Value.T2Contracts,
-                                out kvp.Value.T3Contracts,
-                                out kvp.Value.T4Contracts,
-                                out kvp.Value.T5Contracts
-                            );
-                        }
+                        UpdateEntryPriceIfMoved(kvp.Value, kvp.Key, limitPrice, stopPrice);
+                        SyncQuantityChange(kvp.Value, quantity);
                         return true;
                     }
                 }
             }
             return false;
+        }
+
+        private void UpdateEntryPriceIfMoved(PositionInfo pos, string posKey, double limitPrice, double stopPrice)
+        {
+            double newPrice = limitPrice > 0 ? limitPrice : stopPrice;
+            if (newPrice > 0 && Math.Abs(newPrice - pos.EntryPrice) > tickSize * 0.5)
+            {
+                pos.EntryPrice = newPrice;
+                Print(LogBuffer.Format("V12: Entry order MOVED: {0} to {1:F2}", posKey, newPrice));
+            }
+        }
+
+        private void SyncQuantityChange(PositionInfo pos, int quantity)
+        {
+            int totalContracts = pos.TotalContracts;
+            if (quantity > 0 && quantity != totalContracts)
+            {
+                // [937-FIX] Sync expectedPositions with broker-confirmed qty.
+                // Without this, RollbackExpectedPosition uses stale TotalContracts -> desync.
+                int qtyDiff = quantity - totalContracts;
+                string fixAcct =
+                    (pos.IsFollower && pos.ExecutingAccount != null) ? pos.ExecutingAccount.Name : Account.Name;
+                int expDelta = (pos.Direction == MarketPosition.Long) ? qtyDiff : -qtyDiff;
+                DeltaExpectedPositionLocked(ExpKey(fixAcct), expDelta);
+                Print(
+                    LogBuffer.Format(
+                        "[937-FIX] expectedPositions adjusted on qty change: {0} delta={1}",
+                        fixAcct,
+                        expDelta
+                    )
+                );
+                pos.TotalContracts = quantity;
+                pos.RemainingContracts = quantity;
+                GetTargetDistribution(
+                    quantity,
+                    out pos.T1Contracts,
+                    out pos.T2Contracts,
+                    out pos.T3Contracts,
+                    out pos.T4Contracts,
+                    out pos.T5Contracts
+                );
+            }
         }
 
         #endregion

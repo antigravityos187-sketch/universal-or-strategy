@@ -1,0 +1,82 @@
+# Node Description Batch 13 of 61
+
+Graphify is running in assistant/skill mode (no API key). You are the host
+assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
+your JSON answer to the answer file.
+
+## Prompt
+
+You are documenting nodes in a knowledge graph.
+For each entry below, write ONE concise factual plain-language sentence
+describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+No marketing language.
+Respond ONLY with a JSON object mapping each node id (as a string) to its
+one-sentence description — no prose, no markdown fences.
+
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@d3c9d811811bca3269f4cc98110dcc8029883005": "d3c9d81 feat(analysis): Add epic roadmap, hotspot analysis, and extraction tests" | kind=Commit | source=git | neighbors=[aa054cc docs(misc): Add session trackin…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@d57b96157fa2448eddef815a7628644b33e71d71": "d57b961 docs: Wave 4 rollback continuation prompt" | kind=Commit | source=git | neighbors=[0adc411 docs: Wave 4 protocol hardening…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@d83a512e1ac75b6e1c4236d5e9c5d7830af98783": "d83a512 EPIC-CCN-16-T3: Extract ResolveRemainingContracts (CYC 3) [BUILD_TAG: 1…" | kind=Commit | source=git | neighbors=[3ffdb1f feat(epic-ccn-16-t2): extract B…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e042b7eabc0675d4163b6b6ce4c2b51a85933b1f": "e042b7e docs(epics): Add EPIC-CCN-1 and EPIC-CCN-2 documentation" | kind=Commit | source=git | neighbors=[gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf, wave7/xunit-tests]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e2219293f643515117649653d7b7307504000dcb": "e221929 V12.40: Fix Wave 5 VM MCP server issues" | kind=Commit | source=git | neighbors=[7586049 protocol: Add VM Setup Protocol…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e4c350adda08b4690cc5ba21e995b3e2f42925db": "e4c350a V12 Epic Workflow Phase 3: Documentation & Testing Prep" | kind=Commit | source=git | neighbors=[44582d8 feat: V12 Epic Workflow Refacto…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e6095954511d0305360df687567effccf6ef9136": "e609595 docs(epics): Add EPIC-CCN-1 and EPIC-CCN-2 documentation" | kind=Commit | source=git | neighbors=[gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf, wave7/xunit-tests]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e6774fd3c323994bee145a82dae258d391418be0": "e6774fd docs: Update epic roadmap with EPIC-CCN-19/20 completion status" | kind=Commit | source=git | neighbors=[c436b66 feat(epic-ccn-19-20): Parallel …, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e6f3f1e48d03987a11e900766b43a4feb9f9d5d6": "e6f3f1e [DOCS] Branch consolidation complete - final summary and deletion check…" | kind=Commit | source=git | neighbors=[6e695bd Merge branch 'infra/epic-posinf…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e704b57fddc89f82d75f537e998a5aca7bbce09d": "e704b57 docs: Wave 4 Phase 6 completion - remaining 10 epics (79/80 total)" | kind=Commit | source=git | neighbors=[b0a388b docs: Wave 4 final status summa…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e7f857ab13ecd0edde2ce54e29e657bbe908e1ce": "e7f857a [CHERRY-PICK] Documentation from epic-ccn-14-propagate-master" | kind=Commit | source=git | neighbors=[ae6e384 Merge branch 'main' into gitbut…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e82abceab7697f4aebed789ce0e2cec0d62224f8": "e82abce feat(epic-ccn-14-t03): extract HandleValidationFailure (CYC 62->57)" | kind=Commit | source=git | neighbors=[67ed6b1 feat(epic-ccn-14-t02): extract …, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e8748dcae1a709c4c7f9596ecfbd1c3360b01a76": "e8748dc docs(epic-ccn-13): Add complete epic documentation and recovery report" | kind=Commit | source=git | neighbors=[ab37bd0 [EPIC-CCN-13] ticket-05: extrac…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@e96c96e02f41d543986f55b18a3528ad80ca0788": "e96c96e docs(agents): Add AGENTS.md to all directories for agent context" | kind=Commit | source=git | neighbors=[c6f6b0f feat(infra): Add epic failure h…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@ea6ba7199906f3729b003dd2bf4836b7642066c2": "ea6ba71 [EPIC-CCN-13] ticket-03: extract HandleConfigure + InitializeMmioMirror…" | kind=Commit | source=git | neighbors=[7f36285 [EPIC-CCN-13] ticket-02: extrac…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@ec726e03e0a697d629051d30af431804f2aaf539": "ec726e0 [EPIC-CCN-13] ticket-04: extract HandleDataLoaded + InitializeInstrumen…" | kind=Commit | source=git | neighbors=[ea6ba71 [EPIC-CCN-13] ticket-03: extrac…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@ee69417d3990483ababfc61531d79cfd9002e9a7": "ee69417 feat(protocol): recover missing loops + fix GitButler violations" | kind=Commit | source=git | neighbors=[39c9fb8 docs(gitbutler): restore workfl…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@f3b380e26e64665bf615108bc9b02f98c6a2af47": "f3b380e docs: clarify VM vs Local building blocks in SOP V3.3" | kind=Commit | source=git | neighbors=[e704b57 docs: Wave 4 Phase 6 completion…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@f49ff2e3ae1e8ed35dd545908b2d02ee513ec6dc": "f49ff2e docs: solidify 10-phase workflow structure (V12.25)" | kind=Commit | source=git | neighbors=[eba9abf Wave 2 Complete: Documentation,…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@f83be4585e16377514286fc5d829c665e6321915": "f83be45 docs(agents): Add AGENTS.md to all directories for agent context" | kind=Commit | source=git | neighbors=[bd33127 feat(infra): Add epic failure h…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@f98efd015ffac133026e0e0b238d97b612f88ed1": "f98efd0 test: Add 6 TDD tests for AdoptSingleOrder extraction (EPIC-CCN-17 T2)" | kind=Commit | source=git | neighbors=[2743a5c EPIC-CCN-17 Ticket 1: Extract R…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@f9966abc5f5f7d4321916a04a070448ba03d9312": "f9966ab docs: clarify branch strategy - tests are Tier 1" | kind=Commit | source=git | neighbors=[64d357f fix: restore REAPER infrastruct…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@fa998a7e598b7cbf79f54179bcae13c274bd7971": "fa998a7 fix: Update generator to use 16 fresh API keys (removed api_rotation.js…" | kind=Commit | source=git | neighbors=[912cc53 Wave 7: Remove exhausted API ke…, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf, wave7/xunit-tests]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@fbbf7fd6f82d146f2deeefbc04e4fc5c6ae82801": "fbbf7fd feat(epic-ccn-14-t01): extract ValidateCommandFormat (CYC 76->70)" | kind=Commit | source=git | neighbors=[d3c9d81 feat(analysis): Add epic roadma…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@fc76b466b9b234ba01acf0a05bba59654eea11df": "fc76b46 Restore .cs changes from autonomous wave execution" | kind=Commit | source=git | neighbors=[3aab54f Merge main into gitbutler/works…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "commit:repo:github.com/antigravityos187-sketch/universal-or-strategy@ff23404288688b994f28b1debf5ba335557d23d2": "ff23404 [CHERRY-PICK] EPIC-CCN-14 documentation from epic-ccn-14-src-only" | kind=Commit | source=git | neighbors=[c22028a Merge branch 'docs/epic-posinfo…, gitbutler/workspace, wave7/s2-execution-trailing-symmetry, wave7/s3-ui-photon, wave7/s5-symmetry-orders, wave7/tests-perf]
+- "scripts_agent_bootstrap_agentbootstraploader_load_all": ".load_all()" | kind=code-symbol | source=scripts/agent_bootstrap.py:L57 | neighbors=[AgentBootstrapLoader, ._generate_summary(), ._load_compound_intelligence(), ._load_graphify_graph(), ._load_jane_street_kb(), ._load_session_history()]
+- "scripts_aggregate_benchmark": "aggregate_benchmark.py" | kind=code-symbol | source=.bob/skills/skill-creator/scripts/aggregate_benchmark.py:L1 | neighbors=[f3a9c30 Wave 7 preparation: Merge all n…, fd39b13 Wave 7 preparation: Merge all n…, aggregate_results(), calculate_stats(), generate_benchmark(), generate_markdown()]
+- "scripts_jane_street_utils_main": "main()" | kind=code-symbol | source=scripts/jane_street_utils.py:L307 | neighbors=[jane_street_utils.py, format_violation_report(), load_violations_file(), load_violations_for_file(), load_violations_for_files(), load_violations_in_range()]
+- "scripts_lamport_clock_deterministicworkflow_record_event": ".record_event()" | kind=code-symbol | source=scripts/lamport_clock.py:L113 | neighbors=[DeterministicWorkflow, ._append_event(), ._compute_state_hash(), .tick(), Record deterministic event with state h…, record_phase_complete()]
+- "scripts_load_api_keys": "load_api_keys.py" | kind=code-symbol | source=scripts/load_api_keys.py:L1 | neighbors=[00170a9 Wave 2 Complete: Documentation,…, 1392356 docs: Wave 4 documentation merg…, be6c8a1 docs: Wave 4 documentation merg…, eba9abf Wave 2 Complete: Documentation,…, calculate_key_distribution(), format_keys_for_executor()]
+- "scripts_negative_evidence_check": "negative_evidence_check.py" | kind=code-symbol | source=scripts/negative_evidence_check.py:L1 | neighbors=[283eb34 Merge documentation: EPIC-CCN-1…, 662aedb feat(infra): Add epic failure h…, 8fd8b93 Merge documentation: EPIC-CCN-1…, bd33127 feat(infra): Add epic failure h…, c6f6b0f feat(infra): Add epic failure h…, db71df4 feat(infra): Add epic failure h…]
+- "scripts_phase_0_hotspot_mcp": "phase_0_hotspot_mcp.py" | kind=code-symbol | source=scripts/phase_0_hotspot_mcp.py:L1 | neighbors=[1392356 docs: Wave 4 documentation merg…, 1440258 docs: Wave 2 session artifacts …, 1b142f7 docs: Wave 2 session artifacts …, be6c8a1 docs: Wave 4 documentation merg…, call_tool(), execute_phase_0_tool()]
+- "scripts_preflight_validation_preflight_validation": "preflight_validation()" | kind=code-symbol | source=scripts/preflight_validation.py:L147 | neighbors=[preflight_validation.py, detect_already_complete(), detect_encoding_issues(), detect_invalid_target(), detect_test_requirements(), Run all special case detections before …]
+- "scripts_query_codescene_main": "main()" | kind=code-symbol | source=scripts/query_codescene.py:L86 | neighbors=[query_codescene.py, CodeSceneClient, .get_code_health(), .get_file_health(), .get_hotspots(), .get_project_id()]
+- "scripts_run_eval": "run_eval.py" | kind=code-symbol | source=.bob/skills/skill-creator/scripts/run_eval.py:L1 | neighbors=[f3a9c30 Wave 7 preparation: Merge all n…, fd39b13 Wave 7 preparation: Merge all n…, find_project_root(), main(), run_eval(), run_single_query()]
+- "scripts_session_continuity": "session_continuity.py" | kind=code-symbol | source=scripts/session_continuity.py:L1 | neighbors=[283eb34 Merge documentation: EPIC-CCN-1…, 662aedb feat(infra): Add epic failure h…, 8fd8b93 Merge documentation: EPIC-CCN-1…, bd33127 feat(infra): Add epic failure h…, c6f6b0f feat(infra): Add epic failure h…, db71df4 feat(infra): Add epic failure h…]
+- "scripts_session_snapshot": "session_snapshot.py" | kind=code-symbol | source=scripts/session_snapshot.py:L1 | neighbors=[283eb34 Merge documentation: EPIC-CCN-1…, 662aedb feat(infra): Add epic failure h…, 8fd8b93 Merge documentation: EPIC-CCN-1…, bd33127 feat(infra): Add epic failure h…, c6f6b0f feat(infra): Add epic failure h…, db71df4 feat(infra): Add epic failure h…]
+- "scripts_session_snapshot_sessionsnapshot_save": "._save()" | kind=code-symbol | source=scripts/session_snapshot.py:L73 | neighbors=[Save session data to disk., SessionSnapshot, .__init__(), .record_negative_evidence(), .record_read(), .record_search()]
+- "scripts_test_phase_mcp_integration_integrationtester_test_full_workflow": ".test_full_workflow()" | kind=code-symbol | source=scripts/test_phase_mcp_integration.py:L311 | neighbors=[IntegrationTester, .generate_summary(), .log(), .test_dependency_validation(), .test_manifest_initialization(), .test_phase_execution()]
+
+## Instructions
+
+Write a single JSON object mapping each node id to a one-sentence description
+to: /home/malhitticrypto/universal-or-strategy/.graphify/description-instructions/batch-012.json
+
+Keep each description factual and concise (one sentence). No markdown, no prose
+outside the JSON object. It is acceptable to omit a node if context is
+insufficient — but include every node you can ground confidently.
+
+Example answer format:
+```json
+{
+  "node_id_1": "Resolves the configured ontology profile from graphify.yaml.",
+  "node_id_2": "Colonel James Barclay, an antagonist in The Crooked Man."
+}
+```

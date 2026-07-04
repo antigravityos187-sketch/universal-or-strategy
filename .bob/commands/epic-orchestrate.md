@@ -376,3 +376,17 @@ Update `docs/brain/{{epic_id}}/manifest.json` after each phase:
 - **Internal review**: Phase 3 uses Bob's internal review (no external droid dependency)
 
 **Begin orchestration for {{epic_id}}. Start with Phase 0.**
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

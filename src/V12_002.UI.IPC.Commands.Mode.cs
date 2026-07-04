@@ -117,90 +117,97 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        // [EPIC-W7-OVERRUN] CYC 13->4: extracted flag-set and hydration helpers
         private bool TryHandleMode_SetMode(string action, string[] parts)
         {
             // V12.5: SET_MODE|mode - Panel is sole source of truth
             if (action != "SET_MODE")
                 return false;
+            if (parts.Length <= 1)
+                return true;
+            string newMode = parts[1].Trim().ToUpperInvariant();
+            // Build 1106 Phase 1: Snapshot outgoing mode's config before switching
+            string outgoingMode = GetCurrentConfigMode();
+            _modeProfiles[outgoingMode] = SnapshotCurrentConfig();
+            SetMode_ActivateModeFlags(newMode);
+            SetMode_HydrateAndPublish(newMode, outgoingMode);
+            return true;
+        }
 
-            if (parts.Length > 1)
+        // [EPIC-W7-OVERRUN] Extracted: ATOMIC clear-all + set the incoming mode flag (CYC=6)
+        private void SetMode_ActivateModeFlags(string newMode)
+        {
+            // ATOMIC mode transition: clear all flags first
+            isRMAModeActive = false;
+            isRMAButtonClicked = false;
+            isRetestModeActive = false;
+            isTRENDModeActive = false;
+            isMOMOModeActive = false;
+            isFFMAModeArmed = false;
+            switch (newMode)
             {
-                string newMode = parts[1].Trim().ToUpperInvariant();
-
-                // Build 1106 Phase 1: Snapshot outgoing mode's config before switching
-                string outgoingMode = GetCurrentConfigMode();
-                _modeProfiles[outgoingMode] = SnapshotCurrentConfig();
-
-                // ATOMIC mode transition: clear all flags first
-                isRMAModeActive = false;
-                isRMAButtonClicked = false;
-                isRetestModeActive = false;
-                isTRENDModeActive = false;
-                isMOMOModeActive = false;
-                isFFMAModeArmed = false;
-
-                if (newMode == "RMA")
-                {
+                case "RMA":
                     isRMAModeActive = true;
                     isRMAButtonClicked = true;
-                }
-                else if (newMode == "RETEST")
+                    break;
+                case "RETEST":
                     isRetestModeActive = true;
-                else if (newMode == "TREND")
+                    break;
+                case "TREND":
                     isTRENDModeActive = true;
-                else if (newMode == "MOMO")
-                {
+                    break;
+                case "MOMO":
                     ActivateMOMOMode();
-                }
-                else if (newMode == "FFMA")
+                    break;
+                case "FFMA":
                     isFFMAModeArmed = true;
+                    break;
+            }
+        }
 
-                // Build 1106 Phase 2: Hydrate incoming mode's config (if profile exists)
-                ModeConfigProfile incomingProfile;
-                if (_modeProfiles.TryGetValue(newMode, out incomingProfile))
-                {
-                    HydrateFromProfile(incomingProfile, newMode);
-                    Print(
-                        string.Format(
-                            "[STICKY] Mode switch {0} -> {1}: hydrated profile (count={2})",
-                            outgoingMode,
-                            newMode,
-                            incomingProfile.TargetCount
-                        )
-                    );
-                }
-                else
-                {
-                    Print(
-                        string.Format(
-                            "[STICKY] Mode switch {0} -> {1}: no saved profile, using current config",
-                            outgoingMode,
-                            newMode
-                        )
-                    );
-                }
-                BumpUiConfigRevision();
-                ClearClickTraderBorderIfInactive();
-
+        // [EPIC-W7-OVERRUN] Extracted: profile hydration, logging, UI bump, and publish (CYC=3)
+        private void SetMode_HydrateAndPublish(string newMode, string outgoingMode)
+        {
+            // Build 1106 Phase 2: Hydrate incoming mode's config (if profile exists)
+            ModeConfigProfile incomingProfile;
+            if (_modeProfiles.TryGetValue(newMode, out incomingProfile))
+            {
+                HydrateFromProfile(incomingProfile, newMode);
                 Print(
                     string.Format(
-                        "V12.25: SET_MODE = {0} | RMA={1} RETEST={2} TREND={3} MOMO={4} FFMA={5} (no CONFIG echo)",
+                        "[STICKY] Mode switch {0} -> {1}: hydrated profile (count={2})",
+                        outgoingMode,
                         newMode,
-                        isRMAModeActive,
-                        isRetestModeActive,
-                        isTRENDModeActive,
-                        isMOMOModeActive,
-                        isFFMAModeArmed
+                        incomingProfile.TargetCount
                     )
                 );
-                MarkStickyDirty(); // Build 1103: Persist mode change
-                PublishUiSnapshot();
-
-                // V12.25: CONFIG broadcast REMOVED -- Panel is sole source of truth.
-                // Sending CONFIG back here caused the Ping-Pong overwrite bug.
             }
-
-            return true;
+            else
+            {
+                Print(
+                    string.Format(
+                        "[STICKY] Mode switch {0} -> {1}: no saved profile, using current config",
+                        outgoingMode,
+                        newMode
+                    )
+                );
+            }
+            BumpUiConfigRevision();
+            ClearClickTraderBorderIfInactive();
+            Print(
+                string.Format(
+                    "V12.25: SET_MODE = {0} | RMA={1} RETEST={2} TREND={3} MOMO={4} FFMA={5} (no CONFIG echo)",
+                    newMode,
+                    isRMAModeActive,
+                    isRetestModeActive,
+                    isTRENDModeActive,
+                    isMOMOModeActive,
+                    isFFMAModeArmed
+                )
+            );
+            MarkStickyDirty(); // Build 1103: Persist mode change
+            PublishUiSnapshot();
+            // V12.25: CONFIG broadcast REMOVED -- Panel is sole source of truth.
         }
 
         private bool TryHandleMode_ToggleOrExecute(string action)
@@ -318,12 +325,19 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        // [EPIC-W7-OVERRUN] CYC 12->3: extracted BE offset calculator
         private bool TryHandleRisk_Breakeven(string action, string[] parts)
         {
             if (action != "BE" && action != "BE_CUSTOM" && action != "BE_PLUS_2" && action != "BE_PLUS_1")
                 return false;
+            double beOffset = Breakeven_CalcOffset(action, parts);
+            MoveStopsToBreakevenWithOffset(beOffset);
+            return true;
+        }
 
-            double beOffset;
+        // [EPIC-W7-OVERRUN] Extracted: compute the breakeven offset in points from action + parts (CYC=5)
+        private double Breakeven_CalcOffset(string action, string[] parts)
+        {
             if (action == "BE_CUSTOM" && parts.Length >= 2)
             {
                 // V12.23: Dynamic ticks from panel input -- syncs auto-trail BE too
@@ -331,14 +345,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (!int.TryParse(parts[1].Trim(), out customTicks) || customTicks < 0)
                     customTicks = BreakEvenOffsetTicks; // fallback to default
                 BreakEvenOffsetTicks = customTicks; // V12.23: Sync auto-trail + fleet symmetry
-                beOffset = customTicks * tickSize;
+                return customTicks * tickSize;
             }
-            else if (action == "BE" || action == "BE_PLUS_2")
-                beOffset = BreakEvenOffsetTicks * tickSize;
-            else
-                beOffset = 1 * tickSize; // Legacy BE_PLUS_1
-            MoveStopsToBreakevenWithOffset(beOffset);
-            return true;
+            if (action == "BE" || action == "BE_PLUS_2")
+                return BreakEvenOffsetTicks * tickSize;
+            return 1 * tickSize; // Legacy BE_PLUS_1
         }
 
         private bool TryHandleRisk_SetMaxRisk(string action, string[] parts)

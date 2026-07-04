@@ -76,22 +76,86 @@
     },
     "phase_5_ticket_1": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:16:46Z"
+      "timestamp": "2026-07-04T00:00:00Z",
+      "redo": true,
+      "redo_reason": "Previous run falsely reported COMPLIANCE_PASS without writing any code"
     },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 1,
+      "timestamp": "2026-07-04T00:00:00Z",
+      "final_cyc": 5,
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "lock_violations": 0,
+      "cyc_achieved": 5,
+      "redo": true,
+      "helpers_extracted": [
+        "TryHandleFleetCommand_CoreActions",
+        "TryHandleFleetCommand_EntryActions",
+        "TryHandleFleetCommand_StateActions"
+      ]
+    },
+    "phase_6": {
+      "status": "completed",
+      "agent": "v12-phase6-review",
+      "completed_at": "2026-07-04T00:00:00Z",
+      "final_cyc": 5,
+      "wave_ready": true,
+      "redo": true,
+      "mcp_evidence": "live source manual McCabe count: TryHandleFleetCommand=5, CoreActions=8, EntryActions=8, StateActions=5. All <=8. grep lock()=0. 18 dispatch calls preserved.",
+      "overall_verdict": "PASS",
+      "sequential_thinking_steps": 6
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "cyc_verified": true,
+      "verdict": "PASS",
+      "cyc_measurements": {
+        "TryHandleFleetCommand": 5,
+        "TryHandleFleetCommand_CoreActions": 8,
+        "TryHandleFleetCommand_EntryActions": 8,
+        "TryHandleFleetCommand_StateActions": 5
+      },
+      "all_cyc_le_8": true,
+      "lock_violations": 0,
+      "behavior_unchanged": true,
+      "scope_creep": false,
+      "sequential_thinking_steps": 6,
+      "verified_by": "v12-phase5-v-verify"
     }
+  },
+  "phase_5_v": {
+    "status": "completed",
+    "cyc_verified": true,
+    "timestamp": "2026-07-04T00:00:00Z",
+    "verdict": "PASS",
+    "cyc_measured": {
+      "TryHandleFleetCommand": 5,
+      "TryHandleFleetCommand_CoreActions": 8,
+      "TryHandleFleetCommand_EntryActions": 8,
+      "TryHandleFleetCommand_StateActions": 5
+    },
+    "all_cyc_le_8": true,
+    "lock_violations": 0,
+    "dispatch_calls_confirmed": 18,
+    "scope_creep": false,
+    "sequential_thinking_steps": 6,
+    "output": "ticket-1-verification.md",
+    "verified_by": "V12 Verifier Phase 5.V (independent session)"
   },
   "mcp_tools_used": [
     "resolve_repo",
+    "register_edit",
     "search_symbols",
     "get_symbol_complexity",
-    "get_blast_radius",
     "get_hotspots",
+    "get_repo_health",
     "sequentialthinking"
-  ]
+  ],
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-04T00:00:00Z",
+  "status": "complete",
+  "final_cyc": 5,
+  "redo_phase_5": true,
+  "redo_completed_at": "2026-07-04T00:00:00Z"
 }

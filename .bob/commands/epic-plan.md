@@ -313,3 +313,18 @@ Ask the Director:
 **Do NOT proceed to /epic-scan or /epic-validate until the Director explicitly types: APPROVED**
 
 Output: "[PLAN-GATE] Analysis and Approach documents complete. Awaiting Director approval."
+
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

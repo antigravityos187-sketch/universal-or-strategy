@@ -7,9 +7,38 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 **TL;DR**: NEVER use CodeFactor's "Apply fixes" button. It caused 320 compilation errors and required emergency rollback. Manual fixes only, with build verification after every batch.
 
 
-## 1. Agent Hierarchy (The Director's Gate)
+## 1. Agent: Bob IDE (End-to-End)
 
-- **ORCHESTRATOR (P1)**: Central Switchboard (Antigravity / Gemini CLI). Controls context and cross-agent routing.
+**Bob IDE is the sole agent for all work in this repository.** Bob handles everything end-to-end: planning, architecture, surgical src/ edits, wave orchestration, verification, commits, and PR management. No external agents (Gemini CLI, Codex CLI, Arena AI, Jules AI, etc.) are required.
+
+### Bob Mode Routing
+
+| Task | Mode |
+|------|------|
+| Code changes outside `src/` | `agent` (built-in) |
+| Surgical refactoring in `src/` | `v12-engineer` (custom) |
+| Architecture planning, markdown docs | `plan` (built-in) |
+| Analysis, Q&A, no edits | `ask` (built-in) |
+| Wave execution — Tier 1 coordinator | `autonomous-refactor` (custom) |
+| Wave execution — Tier 2 phase orchestrators | `wave-orch-phase0/1/1-5/2/3/4/4-5/5/5v/6` (custom, via `start_subtask`) |
+| Wave execution — Tier 3 per-epic workers | see worker mode table below |
+| Ad-hoc interactive epic planning | `v12-epic-planner` (custom) |
+| Concurrency/Phase 7 tasks | `v12-phase7-lead` (custom) |
+
+### Wave Tier 3 Worker Modes
+
+| Phase | Slug | Spawned via |
+|-------|------|-------------|
+| Phase 0 — Hotspot Analysis | `v12-phase0-hotspot` | `spawn_subagent` |
+| Phase 1 — Scope Definition | `v12-phase1-scope` | `spawn_subagent` |
+| Phase 1.5 — Boundary Validation | `v12-phase1-5-boundary` | `spawn_subagent` |
+| Phase 2 — Architecture Planning | `v12-phase2-architecture` | `start_subtask` (needs MCP) |
+| Phase 3 — DNA Audit | `v12-phase3-audit` | `start_subtask` (needs MCP) |
+| Phase 4 — Ticket Generation | `v12-phase4-tickets` | `spawn_subagent` |
+| Phase 4.5 — Ticket Review | `v12-phase4-5-review` | `start_subtask` (needs MCP) |
+| Phase 5 — Ticket Execution | `v12-engineer` | `spawn_subagent` |
+| Phase 5.V — Verification | `v12-phase5-v-verify` | `spawn_subagent` |
+| Phase 6 — Final Review | `v12-phase6-review` | `spawn_subagent` |
 
 ## ⚠️ CRITICAL: 100% Completion Mandate (V12.28)
 
@@ -40,40 +69,6 @@ Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repos
 - `.bob/custom_modes.yaml` - Protocol 0 (autonomous-refactor mode)
 - `.bob/skills/gcp-vm-wave-execution/skill.md` - V2.5 update
 - `docs/protocol/RECOVERY_LOOP_PROTOCOL.md` - V1.1 update
-
-## ⚠️ CRITICAL: Code/Advanced Mode Removal (V12.18+)
-
-**EFFECTIVE IMMEDIATELY**: `code` and `advanced` modes are **GONE**. Current default modes are `plan`, `agent`, `ask`.
-
-**Enforcement**:
-- ❌ **Code mode** (`code`): REMOVED - does not exist
-- ❌ **Advanced mode** (`advanced`): REMOVED - does not exist
-- ✅ **Agent mode** (`agent`): PRIMARY for all code changes (replaces both)
-- ✅ **Bob CLI** (`v12-engineer`): PRIMARY for src/ architectural work
-
-**Rationale**: Agent mode provides:
-- MCP tool access (jcodemunch, graphify)
-- Browser tools for research
-- Subagents support (spawn_subagent, start_subtask)
-- Full feature parity with former advanced/code modes
-
-**Violation Protocol**: Any agent attempting to use code or advanced mode must:
-1. Immediately switch to agent mode
-2. Document the attempted violation
-3. Report to Director for protocol review
-
-- **ARCHITECT + ENGINEER (P3/P4/P5)   src/ tasks**: **Bob CLI** (`v12-engineer`) is the unified Architect-Engineer for all `src/` work. Bob handles design (planning), extraction, refactoring, and surgical implementation in a single Orchestrator session. No separate P3 handoff to Claude is required for `src/` tickets.
-  - **Bob CLI** (`v12-engineer`): Primary. Handles design-only gates, God-function splitting, and full implementation.
-  - **Codex CLI** (`codex-rescue`): Secondary. Specialist for surgical logic hardening and lock-free kernel updates when Bob delegates.
-- **ARCHITECT (P3)   escalation only**: **Claude Opus 4.7** is reserved for (a) non-src architectural review, (b) $battlezip compound intelligence sessions, and (c) cross-subgraph design decisions that span >3 files outside Bob's current context. Claude remains PLAN-ONLY when invoked.
-- **ADJUDICATOR (Arena AI)**: **P4 Vetting Gate**. Adversarial consensus and **PR Audit** required BEFORE surgery.
-- **ENGINEER (P4/P5)   non-src tasks**: Target selection follows strict routing logic:
-    - **Agent Mode** (`agent`): Primary non-src engineer for all code modification tasks (replaces advanced)
-    - **Jules AI**: GitHub-based workflows only
-    - **Gemini CLI** (`yolo`): Secondary for tasks requiring local file access or visual context
-    - ~~**Code Mode** (`code`): REMOVED~~
-    - ~~**Advanced Mode** (`advanced`): REMOVED~~
-- **FORENSICS (P2/P6)**: Diagnosis (P2) and Adversarial Audit (P6).
 
 ## 2. Architectural Mandates (THE PLATINUM STANDARD)
 
@@ -253,9 +248,15 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 
 ## Graphify Protocols (Universal Knowledge Layer)
 
-- **Check First**: Before deep architectural exploration, always check for `graphify-out/graph.json` or `graphify-out/GRAPH_REPORT.md`.
-- **Update**: Use `graphify update .` to refresh the repo knowledge graph after major structural changes.
+**MANDATORY — Every Task, Every Agent, Every Mode.**
+
+- **Startup**: Run `graphify update . --no-cluster --no-description` as the FIRST action of every task (~19s, AST-only).
+- **Shutdown**: Run `graphify update . --no-cluster --no-description` as the LAST action after any file edits.
+- **Read First**: After startup update, read `.graphify/GRAPH_REPORT.md` for god nodes and community structure before any exploration.
+- **Query**: Use `graphify query "<question>"` for scoped subgraph lookups — much cheaper than reading GRAPH_REPORT.md in full.
 - **Efficiency**: Use the graph to navigate codebase relationships with 71x fewer tokens than raw file reading.
+- **Path**: Graph is at `.graphify/` — NOT `graphify-out/` (legacy, migrated).
+- **Full rule**: See `.bob/rules/03-graphify-protocol.md`.
 
 ## Code Exploration Policy
 
@@ -441,7 +442,7 @@ docs/brain/EPIC-{ID}/
 |-------|-------|-----------|
 | 0 | Ask mode | Analysis only, no code changes |
 | 1, 1.5, 2, 4 | Plan mode | Strategic planning, no code changes |
-| 3, 5.X.V, 6 | Advanced mode | Requires MCP tools (jcodemunch, graphify) |
+| 3, 5.X.V, 6 | Agent mode | Requires MCP tools (jcodemunch, graphify) |
 | 5.X | Bob CLI (`v12-engineer`) | Surgical refactoring in src/ |
 
 ### Failure Recovery
@@ -709,12 +710,14 @@ dotnet tool install -g csharpier
 
 ## graphify
 
-This project has a graphify knowledge graph at graphify-out/.
+This project has a graphify knowledge graph at `.graphify/`.
 
 Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+- **START of every task**: run `graphify update . --no-cluster --no-description` then read `.graphify/GRAPH_REPORT.md`
+- **END of every task**: run `graphify update . --no-cluster --no-description` after any file modifications
+- For focused questions, run `graphify query "<question>"` instead of reading GRAPH_REPORT.md in full
+- If `.graphify/wiki/index.md` exists, navigate it instead of reading raw files
+- NEVER reference `graphify-out/` — that path is legacy and no longer valid
 
 ## Mode Selection Rules (V12.18+)
 
@@ -734,8 +737,6 @@ Is task modifying code?
 │  └─ NO → Use Agent mode (`agent`)
 └─ NO → Use Ask mode (`ask`) or Plan mode (`plan`)
 ```
-
-**Code/Advanced Mode**: REMOVED - these modes no longer exist.
 
 
 ## 11. No Scope Creep Protocol (V12.23 - MANDATORY)

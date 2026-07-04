@@ -283,3 +283,18 @@ Ask the Director to review:
 **Do NOT tell the Director to execute anything until they explicitly approve the ticket breakdown.**
 
 Output: "[TICKETS-GATE] $1 epic ticket breakdown complete. {ticket_count} tickets created. Awaiting Director approval to begin execution."
+
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

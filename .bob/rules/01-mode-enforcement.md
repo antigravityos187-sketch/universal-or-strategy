@@ -1,35 +1,29 @@
-# Mode Enforcement Protocol (V12.18)
+# Mode Routing Protocol (V12.18+)
 
-## Code Mode Ban
+## Built-In Modes (Bob IDE 2.0)
 
-**CRITICAL**: Code mode is BANNED. All code modification tasks MUST use:
-- **Advanced mode** (`advanced`) for general code work
-- **Bob CLI** (`v12-engineer`) for src/ architectural work
+| Mode | Tool Access | Use For |
+|------|------------|---------|
+| **agent** | read, edit, execute, mcp, browser, subagents | All code changes, verification, shell tasks, MCP queries |
+| **plan** | read, edit (markdown only), browser, mcp | Architecture planning, specs — no code edits |
+| **ask** | read, browser, mcp | Analysis, Q&A — no file edits |
 
-## Pre-Task Validation
+## Mode Routing Decision Tree
 
-Before accepting any code modification task, verify:
-1. Current mode is NOT `code`
-2. If in code mode, immediately switch to `advanced`
-3. Document switch in session notes
+```
+Is task modifying code?
+├─ YES → Is task in src/?
+│  ├─ YES → Use Bob CLI (v12-engineer custom mode)
+│  └─ NO  → Use agent mode
+└─ NO  → Use ask mode or plan mode
+```
 
-## Violation Handling
+## V12 Custom Modes (Phase-Specific)
 
-If code mode is detected during task execution:
-- STOP immediately
-- Switch to advanced mode via `switch_mode` tool
-- Restart task from checkpoint
-- Log violation: "Code mode violation detected at [timestamp] - switched to advanced mode"
-
-## Rationale
-
-Advanced mode provides superior capabilities:
-- ✅ MCP tool access (jcodemunch-mcp, graphify)
-- ✅ Browser tools for research and documentation
-- ✅ Enhanced context management
-- ✅ Full feature parity with deprecated code mode
+For wave execution, always use the appropriate phase mode from `.bob/custom_modes.yaml`.
+Use `agent` mode for any task not covered by a custom mode.
 
 ## Enforcement Date
 
-**Effective**: 2026-05-25 (V12.18)
+**Effective**: 2026-05-25 (V12.18) — Bob IDE 2.0
 **Mandatory Compliance**: All agents, all sessions

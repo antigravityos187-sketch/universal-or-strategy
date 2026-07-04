@@ -1,60 +1,29 @@
 {
   "epic_id": "EPIC-W7-051",
-  "wave": 7,
-  "status": "in_progress",
+  "method": "UpdateStopOrder",
+  "file": "src/V12_002.Trailing.StopUpdate.cs",
+  "initial_cyc": 11,
   "phases": {
-    "phase_0": {
-      "status": "completed",
-      "output": "00-hotspots.md"
-    },
-    "phase_1": {
-      "status": "completed",
-      "output": "00-scope.md"
-    },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "output": "01-scope-boundary.md"
-    },
-    "phase_2": {
-      "name": "Architecture Planning",
-      "status": "completed",
-      "output": "docs/brain/EPIC-W7-051/02-architecture-plan.md",
-      "completed_at": "2026-06-29T01:10:00Z"
-    },
-    "phase_3": {
-      "name": "DNA & PR Audit",
-      "status": "completed",
-      "output": "03-audit-report.md",
-      "completed_at": "2026-06-29T01:12:00Z",
-      "dna_verdict": "PASS",
-      "violations": []
-    },
-    "phase_4": {
-      "name": "Ticket Generation",
-      "status": "completed",
-      "output": "docs/brain/EPIC-W7-051/04-tickets.md",
-      "completed_at": "2026-06-29T01:15:00Z",
-      "ticket_count": 4
-    },
-    "phase_4_5": {
-      "status": "completed",
-      "output": "docs/brain/EPIC-W7-051/04-5-ticket-review.md",
-      "review_verdict": "PASS",
-      "failed_tickets": [],
-      "agent": "v12-phase4-5-review",
-      "completed_at": "2026-06-29T01:17:00Z"
-    },
-    "phase_5_ticket_1": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:16:46Z"
-    },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 1,
+      "final_cyc": 7,
+      "agent": "v12-engineer",
       "wave_ready": true,
+      "cyc_gate_output": "CYC_GATE: PASS  EPIC-W7-051  UpdateStopOrder  CYC=7",
       "build_passed": true
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "verification_verdict": "PASS",
+      "cyc_verified": 7,
+      "build_verified": true,
+      "agent": "v12-phase5-v-verify"
+    },
+    "phase_6": {
+      "status": "completed",
+      "agent": "v12-phase6-review",
+      "final_cyc": 7
     }
-  }
+  },
+  "wave_ready": true
 }
