@@ -1,8 +1,8 @@
 {
   "wave": 7,
-  "description": "Wave 7 cluster PRs — CYC reduction, 161 methods to CYC<=8",
+  "description": "Wave 7 cluster PRs \u2014 CYC reduction, 161 methods to CYC<=8",
   "created": "2026-06-22",
-  "phase7_status": "pending",
+  "phase7_status": "round1_complete_awaiting_bot_review",
   "cluster_prs": [
     {
       "pr": 20,
@@ -56,15 +56,56 @@
       "files": 4,
       "repairs_committed": true,
       "gate_status": "PASS",
+      "lane": "L6",
+      "status": "closed_contaminated",
+      "replaced_by": 26
+    },
+    {
+      "pr": 26,
+      "branch": "wave7/pr6-s6-kernel-infra-v2",
+      "cluster": "S6 Kernel Infra",
+      "files": 4,
+      "replaces": 25,
+      "gate_status": "CLEAN",
       "lane": "L6"
     }
   ],
   "lanes": {
-    "L1": { "pr": 20, "branch": "wave7/pr1-s2-execution",    "status": "pending" },
-    "L2": { "pr": 21, "branch": "wave7/pr2-s3-ui-ipc",       "status": "pending" },
-    "L3": { "pr": 22, "branch": "wave7/pr3-s1-sima-core",    "status": "pending" },
-    "L4": { "pr": 23, "branch": "wave7/pr4-s4-reaper-defense","status": "pending" },
-    "L5": { "pr": 24, "branch": "wave7/pr5-s5-signals",      "status": "pending" },
-    "L6": { "pr": 25, "branch": "wave7/pr6-s6-kernel-infra", "status": "pending" }
+    "L1": {
+      "pr": 20,
+      "branch": "wave7/pr1-s2-execution",
+      "status": "pending",
+      "worktree": "/tmp/wt-pr20"
+    },
+    "L2": {
+      "pr": 21,
+      "branch": "wave7/pr2-s3-ui-ipc",
+      "status": "pending",
+      "worktree": "/tmp/wt-pr21"
+    },
+    "L3": {
+      "pr": 22,
+      "branch": "wave7/pr3-s1-sima-core",
+      "status": "pending",
+      "worktree": "/tmp/wt-pr22"
+    },
+    "L4": {
+      "pr": 23,
+      "branch": "wave7/pr4-s4-reaper-defense",
+      "status": "pending",
+      "worktree": "/tmp/wt-pr23"
+    },
+    "L5": {
+      "pr": 24,
+      "branch": "wave7/pr5-s5-signals",
+      "status": "pending",
+      "worktree": "/tmp/wt-pr24"
+    },
+    "L6": {
+      "pr": 26,
+      "branch": "wave7/pr6-s6-kernel-infra-v2",
+      "status": "pending",
+      "worktree": "/tmp/wt-pr25-clean"
+    }
   }
 }
