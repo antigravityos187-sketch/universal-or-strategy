@@ -1155,7 +1155,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private bool IsValidQueuedOrderForThisInstrument(QueuedAccountOrderUpdate item)
         {
-            if (item?.EventArgs?.Order == null)
+            if (item.EventArgs?.Order == null)
                 return false;
             if (
                 !Instrument.MasterInstrument.Name.Equals(
@@ -1197,9 +1197,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private bool ShouldSkipSnapshotEntry(PositionInfo pos, QueuedAccountOrderUpdate item)
         {
-            if (pos == null || !IsFollowerPosition(pos))
+            if (pos == null || !pos.IsFollower)
                 return true;
-            return pos.Account?.Name != item.Account?.Name;
+            return pos.ExecutingAccount?.Name != item.Account?.Name;
         }
 
         private void DispatchMatchedFollowerResult(

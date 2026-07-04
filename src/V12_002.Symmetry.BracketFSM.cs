@@ -96,10 +96,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <summary>
         /// Consumes queued account events from the strategy thread.
         /// Called from OnBarUpdate or OnOrderUpdate via TriggerCustomEvent.
+        /// Renamed from DrainAccountMailbox to avoid duplicate with Lifecycle.cs shutdown flush.
         /// </summary>
-        private void DrainAccountMailbox()
+        private void ProcessAccountMailbox()
         {
-            if (!EnsureStartupReady("DrainAccountMailbox"))
+            if (!EnsureStartupReady("ProcessAccountMailbox"))
                 return;
 
             int processed = 0;

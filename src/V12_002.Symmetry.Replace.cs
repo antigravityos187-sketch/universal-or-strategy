@@ -119,7 +119,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (tSpec == null)
                 return;
 
-            _followerTargetReplaceSpecs[signalName] = tSpec.Value;
+            _followerTargetReplaceSpecs[signalName] = tSpec;
             // A1-2: Stamp REAPER grace window before cancel to suppress false desync during replace gap.
             StampReaperMoveGrace();
             pos.ExecutingAccount.Cancel(new[] { oldTarget });
