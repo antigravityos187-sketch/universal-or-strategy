@@ -50,18 +50,18 @@ refactoring. Stale analysis causes duplicated or conflicting work.
 ## File-Specific Notes
 
 ### V12_002.cs (Main Strategy)
-- God-file — active Wave 7 refactoring target
+- God-file  -- active Wave 7 refactoring target
 - All extracted methods go to `V12_002.*.cs` partial classes
 - Pattern: one partial class per concern (`BarUpdate`, `Entries.*`, `Orders.*`, etc.)
 
 ### Partial Class Naming
-- `V12_002.BarUpdate.cs` — bar processing
-- `V12_002.Entries.*.cs` — entry signal families (OR, FFMA, MOMO, Retest, Trend)
-- `V12_002.Orders.*.cs` — order lifecycle (Callbacks, Management, etc.)
-- `V12_002.UI.*.cs` — panel, IPC, sizing, snapshot
-- `V12_002.SIMA.*.cs` — SIMA FSM lifecycle and fleet
-- `V12_002.REAPER.*.cs` — audit and repair
-- `V12_002.Safety.*.cs` — watchdog and compliance
+- `V12_002.BarUpdate.cs`  -- bar processing
+- `V12_002.Entries.*.cs`  -- entry signal families (OR, FFMA, MOMO, Retest, Trend)
+- `V12_002.Orders.*.cs`  -- order lifecycle (Callbacks, Management, etc.)
+- `V12_002.UI.*.cs`  -- panel, IPC, sizing, snapshot
+- `V12_002.SIMA.*.cs`  -- SIMA FSM lifecycle and fleet
+- `V12_002.REAPER.*.cs`  -- audit and repair
+- `V12_002.Safety.*.cs`  -- watchdog and compliance
 
 ---
 
@@ -103,13 +103,13 @@ private void LinkTargetOrderToFSM(Order targetOrder, SIMA_FSM fsm)
 powershell -File .\deploy-sync.ps1
 ```
 Synchronizes 83 hard-linked files to NinjaTrader Strategies directory.
-Verification: F5 in NinjaTrader IDE → check BUILD_TAG in output.
+Verification: F5 in NinjaTrader IDE -> check BUILD_TAG in output.
 
 ---
 
 ## Testing Requirements
 
-- **Framework**: xUnit ONLY — never NUnit or MSTest
+- **Framework**: xUnit ONLY  -- never NUnit or MSTest
 - **Location**: `tests/V12_Performance.Tests/`
 - **Pattern**: Arrange-Act-Assert with `[Fact]` attribute
 - **Coverage**: All Wave 7 extracted methods must have xUnit tests
@@ -131,7 +131,7 @@ Verification: F5 in NinjaTrader IDE → check BUILD_TAG in output.
 4. Run: `powershell -File .\deploy-sync.ps1`
 
 ### After Refactoring
-1. F5 in NinjaTrader IDE — verify BUILD_TAG
+1. F5 in NinjaTrader IDE  -- verify BUILD_TAG
 2. Update "Recent Major Refactors" table in this file
 3. Commit: `[EPIC-W7-NNN] ticket-N: extract MethodName CYC before->after [BUILD_TAG]`
 
@@ -144,7 +144,7 @@ Check `epic_roadmap.json` and completion reports first.
 
 ### Forgetting deploy-sync.ps1
 File-edit tools create new inodes, silently breaking hard links.
-Every `src/` change requires sync — no exceptions.
+Every `src/` change requires sync  -- no exceptions.
 
 ### Exceeding CYC threshold after extraction
 If the extracted method still exceeds CYC 8, extract further.
@@ -158,4 +158,4 @@ One method, one responsibility.
 **Children**: None (leaf node)
 **Related**:
 - [`../docs/intel/jane-street/complexity-reduction.md`](../docs/intel/jane-street/complexity-reduction.md)
-- [`../tests/AGENTS.md`](../tests/AGENTS.md) — Testing rules
+- [`../tests/AGENTS.md`](../tests/AGENTS.md)  -- Testing rules
