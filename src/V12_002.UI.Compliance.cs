@@ -847,9 +847,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     string.Format(
                         "[ProcessQueuedExecution] Fleet {0} is Flat -- expectedPositions cleared for {1}",
                         fleetAcct.Name,
-                        Instrument.FullName
-                    )
-                );
+                        Instrument.FullName));
             }
         }
 
@@ -950,8 +948,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             double maxDrawdown = accountMaxDrawdown.TryGetValue(acct.Name, out var dd) ? dd : 0;
 
             var brokerPos = acct.Positions.FirstOrDefault(p =>
-                p.Instrument != null && p.Instrument.FullName == Instrument.FullName
-            );
+                p.Instrument != null && p.Instrument.FullName == Instrument.FullName);
             int actualQty =
                 (brokerPos != null && brokerPos.MarketPosition != MarketPosition.Flat)
                     ? (brokerPos.MarketPosition == MarketPosition.Long ? brokerPos.Quantity : -brokerPos.Quantity)

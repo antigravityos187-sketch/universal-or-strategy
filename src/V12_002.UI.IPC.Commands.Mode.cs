@@ -146,6 +146,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print($"[V12 IPC REJECT] SET_MODE rejected: unknown mode '{newMode}'");
                 return false;
             }
+
             // ATOMIC mode transition: clear all flags, then set the new mode
             isRMAModeActive = false;
             isRMAButtonClicked = false;
@@ -202,6 +203,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     )
                 );
             }
+
             BumpUiConfigRevision();
             ClearClickTraderBorderIfInactive();
             Print(
@@ -250,7 +252,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (TryHandleRisk_SetTargets(action, parts))
                 return true;
             if (TryHandleRisk_SetManualPrice(action, parts))
+            {
                 return true;
+            }
+
             return false;
         }
 
@@ -357,6 +362,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 BreakEvenOffsetTicks = customTicks; // V12.23: Sync auto-trail + fleet symmetry
                 return customTicks * tickSize;
             }
+
             if (action == "BE" || action == "BE_PLUS_2")
                 return BreakEvenOffsetTicks * tickSize;
             return 1 * tickSize; // Legacy BE_PLUS_1

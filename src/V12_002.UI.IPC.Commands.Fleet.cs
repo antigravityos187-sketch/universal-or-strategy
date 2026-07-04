@@ -509,7 +509,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 stopDist = MinimumStop;
                 Print($"[IPC] RMA ATR latency detected. Falling back to MinimumStop={MinimumStop:F4}");
             }
-            int contracts = CalculatePositionSize(stopDist);
+
+            int contracts = stopDist > 0 ? CalculatePositionSize(stopDist) : Math.Max(1, minContracts);
             Enqueue(ctx => ctx.ExecuteRMAEntryV2(currentPrice, direction, contracts));
             return true;
         }
@@ -785,7 +786,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool TryHandleFleet_SetShadow(string action, string[] parts)
         {
             if (action != "SET_SHADOW")
+            {
                 return false;
+            }
 
             if (parts.Length >= 2)
             {
