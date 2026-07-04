@@ -773,12 +773,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             // HandleOrderCancelled never fires for them. Match pendingStopReplacements here.
             if (order.Name.StartsWith("Stop_") || order.Name.StartsWith("S_"))
             {
-                foreach (var _psr in pendingStopReplacements.ToArray())
+                foreach (var psr in pendingStopReplacements.ToArray())
                 {
-                    if (IsMatchingStopReplacement(_psr.Value.OldOrder, order))
+                    if (IsMatchingStopReplacement(psr.Value.OldOrder, order))
                     {
-                        ExecuteStopReplacementIfActive(_psr.Key, _psr.Value);
-                        if (pendingStopReplacements.TryRemove(_psr.Key, out _))
+                        ExecuteStopReplacementIfActive(psr.Key, psr.Value);
+                        if (pendingStopReplacements.TryRemove(psr.Key, out _))
                             Interlocked.Decrement(ref pendingReplacementCount);
                         return true;
                     }
@@ -821,22 +821,22 @@ namespace NinjaTrader.NinjaScript.Strategies
         // A2-2 helper: scans stopOrders for a matching order and purges if PendingCleanup complete.
         private void PurgeFollowerStop_ScanStopOrders(Order order)
         {
-            foreach (var _sc in stopOrders.ToArray())
+            foreach (var sc in stopOrders.ToArray())
             {
-                if (_sc.Value == order)
+                if (sc.Value == order)
                 {
                     PositionInfo scPos;
                     if (
-                        activePositions.TryGetValue(_sc.Key, out scPos)
+                        activePositions.TryGetValue(sc.Key, out scPos)
                         && scPos != null
                         && scPos.PendingCleanup
                         && scPos.RemainingContracts <= 0
                     )
                     {
-                        stopOrders.TryRemove(_sc.Key, out _);
-                        activePositions.TryRemove(_sc.Key, out _);
-                        SymmetryGuardForgetEntry(_sc.Key);
-                        Print("[A2-2] Deferred PendingCleanup purge (follower stop terminal): " + _sc.Key);
+                        stopOrders.TryRemove(sc.Key, out _);
+                        activePositions.TryRemove(sc.Key, out _);
+                        SymmetryGuardForgetEntry(sc.Key);
+                        Print("[A2-2] Deferred PendingCleanup purge (follower stop terminal): " + sc.Key);
                     }
                     break;
                 }
