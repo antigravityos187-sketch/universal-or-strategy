@@ -75,7 +75,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
-        // Returns true if order belongs to this strategy's instrument (or instrument is null).
+        // Returns true only if order belongs to this strategy's instrument.
         // Returning false signals the caller to skip further processing.
         private bool IsOrderForThisInstrument(Order order)
         {
