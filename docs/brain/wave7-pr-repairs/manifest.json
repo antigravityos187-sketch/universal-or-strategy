@@ -74,8 +74,15 @@
     "L1": {
       "pr": 20,
       "branch": "wave7/pr1-s2-execution",
-      "status": "pending",
-      "worktree": "/tmp/wt-pr20"
+      "status": "complete",
+      "worktree": "/tmp/wt-pr20",
+      "completed": "2026-07-04",
+      "cr_state": "CHANGES_REQUESTED_STALE",
+      "fixed_findings": 11,
+      "gate_status": "PASS",
+      "final_commit": "49b7fc96",
+      "needs_director": ["F6-PropagateMasterTargetMove", "NEW-F5-OrderId-fallback", "NEW-F6-cascade-suppression", "NEW-F7-ghost-order-window", "NEW-F3-snapshot-dedup"],
+      "deferred_debt": ["DD-002", "DD-003", "DD-004", "DD-005", "DD-006", "DD-007", "DD-008"]
     },
     "L2": {
       "pr": 21,
