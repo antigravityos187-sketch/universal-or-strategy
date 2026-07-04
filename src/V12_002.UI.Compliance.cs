@@ -587,11 +587,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         )]
         private bool IsTargetOrderPrefix(string name)
         {
-            return name.StartsWith("T1_")
-                || name.StartsWith("T2_")
-                || name.StartsWith("T3_")
-                || name.StartsWith("T4_")
-                || name.StartsWith("T5_");
+            return name.StartsWith("T1_", StringComparison.Ordinal)
+                || name.StartsWith("T2_", StringComparison.Ordinal)
+                || name.StartsWith("T3_", StringComparison.Ordinal)
+                || name.StartsWith("T4_", StringComparison.Ordinal)
+                || name.StartsWith("T5_", StringComparison.Ordinal);
         }
 
         private bool IsOrphanedTarget(Order o)
@@ -906,7 +906,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     if (count > 0)
                         sbCompliance.Append(",\n");
 
-                    sbCompliance.Append(BuildAccountJsonEntry(acct, count));
+                    sbCompliance.Append(BuildAccountJsonEntry(acct));
                     count++;
                 }
 
@@ -937,7 +937,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         // EPIC-W7-149: per-account JSON fragment extracted from LogApexPerformance
-        private string BuildAccountJsonEntry(Account acct, int count)
+        private string BuildAccountJsonEntry(Account acct)
         {
             UpdateAccountMetricsFromAccount(acct);
 
