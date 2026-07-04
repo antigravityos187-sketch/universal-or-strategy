@@ -366,16 +366,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || order.OrderState == OrderState.ChangeSubmitted;
         }
 
-        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=7)
+        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=8)
         private static bool CancelAll_IsBracketOrder(string oName)
         {
-            return oName.StartsWith("Stop_")
-                || oName.StartsWith("S_")
-                || oName.StartsWith("T1_")
-                || oName.StartsWith("T2_")
-                || oName.StartsWith("T3_")
-                || oName.StartsWith("T4_")
-                || oName.StartsWith("T5_");
+            if (string.IsNullOrEmpty(oName))
+                return false;
+            return oName.StartsWith("Stop_", StringComparison.Ordinal)
+                || oName.StartsWith("S_", StringComparison.Ordinal)
+                || oName.StartsWith("T1_", StringComparison.Ordinal)
+                || oName.StartsWith("T2_", StringComparison.Ordinal)
+                || oName.StartsWith("T3_", StringComparison.Ordinal)
+                || oName.StartsWith("T4_", StringComparison.Ordinal)
+                || oName.StartsWith("T5_", StringComparison.Ordinal);
         }
 
         private void CancelAll_CleanupUnfilledPositions()
@@ -501,6 +503,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
             }
             double stopDist = CalculateATRStopDistance(RMAStopATRMultiplier);
+            if (stopDist <= 0)
+            {
+                stopDist = MinimumStop;
+                Print($"[IPC] RMA ATR latency detected. Falling back to MinimumStop={MinimumStop:F4}");
+            }
             int contracts = CalculatePositionSize(stopDist);
             Enqueue(ctx => ctx.ExecuteRMAEntryV2(currentPrice, direction, contracts));
             return true;
