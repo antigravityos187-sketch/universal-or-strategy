@@ -1,14 +1,14 @@
 ---
 name: autonomous-refactor
 description: >-
-  Wave orchestrator for autonomous complexity refactoring (Bob IDE V2).
-  3-tier subagent architecture: 1 top-level orchestrator spawns 10 phase
-  orchestrators sequentially; each phase orchestrator spawns 161 epic workers
-  in parallel. 100% completion enforced per phase before hand-off.
-  All 161 methods reach CYC <= 8 (Jane Street strict standard).
+  Wave orchestrator for autonomous complexity refactoring (Bob IDE V2). 3-tier
+  subagent architecture: 1 top-level orchestrator spawns 10 phase orchestrators
+  sequentially; each phase orchestrator spawns 161 epic workers in parallel.
+  100% completion enforced per phase before hand-off. All 161 methods reach CYC
+  <= 8 (Jane Street strict standard).
 metadata:
   user-invocable: true
-  disable-model-invocation: true
+  disable-model-invocation: false
   argument-hint: '[--phase PHASE] [--start-epic EPIC-W7-NNN] [--target-cyc N]'
 ---
 
