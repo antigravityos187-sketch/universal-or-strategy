@@ -456,7 +456,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return true;
 
                 // Check 4: PendingCleanup purge for terminal stops
-                HandleMatchedFollower_PendingCleanupPurge(order);
+                HandleMatchedFollowerPendingCleanupPurge(order);
                 Print(
                     string.Format(
                         "[SIMA] Follower order terminal: {0} on {1} ({2}) | Id={3}",
@@ -811,15 +811,15 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
-        private void HandleMatchedFollower_PendingCleanupPurge(Order order)
+        private void HandleMatchedFollowerPendingCleanupPurge(Order order)
         {
             // A2-2: Deferred PendingCleanup purge -- follower stop terminal (Build 960 audit fix).
             if (order.Name.StartsWith("Stop_") || order.Name.StartsWith("S_"))
-                PurgeFollowerStop_ScanStopOrders(order);
+                PurgeFollowerStopScanStopOrders(order);
         }
 
         // A2-2 helper: scans stopOrders for a matching order and purges if PendingCleanup complete.
-        private void PurgeFollowerStop_ScanStopOrders(Order order)
+        private void PurgeFollowerStopScanStopOrders(Order order)
         {
             foreach (var sc in stopOrders.ToArray())
             {
@@ -859,7 +859,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 string masterEntryName;
                 string[] dispatchFollowers;
                 if (
-                    ExecuteFollowerCascade_SuppressMasterReplace(
+                    ExecuteFollowerCascadeSuppressMasterReplace(
                         order,
                         reason,
                         snapshot,
@@ -874,7 +874,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 foreach (var kvp in snapshot)
                     snapshotByKey[kvp.Key] = kvp.Value;
 
-                IEnumerable<string> followerKeys = ExecuteFollowerCascade_ResolveFollowers(
+                IEnumerable<string> followerKeys = ExecuteFollowerCascadeResolveFollowers(
                     orderSignal,
                     masterEntryName,
                     dispatchFollowers,
@@ -882,12 +882,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
 
                 foreach (string followerKey in followerKeys)
-                    ExecuteFollowerCascade_ProcessFollower(followerKey, snapshotByKey, masterEntryName, orderSignal);
+                    ExecuteFollowerCascadeProcessFollower(followerKey, snapshotByKey, masterEntryName, orderSignal);
             }
             RemoveGhostOrderRef(order, reason);
         }
 
-        private void ExecuteFollowerCascade_ProcessFollower(
+        private void ExecuteFollowerCascadeProcessFollower(
             string followerKey,
             Dictionary<string, PositionInfo> snapshotByKey,
             string masterEntryName,
@@ -919,12 +919,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             if (!cascadePos.EntryFilled)
-                ExecuteFollowerCascade_CleanupUnfilled(masterEntryName, orderSignal, followerKey, cascadePos);
+                ExecuteFollowerCascadeCleanupUnfilled(masterEntryName, orderSignal, followerKey, cascadePos);
             else
-                ExecuteFollowerCascade_EmergencyFlattenFilled(masterEntryName, orderSignal, followerKey, cascadePos);
+                ExecuteFollowerCascadeEmergencyFlattenFilled(masterEntryName, orderSignal, followerKey, cascadePos);
         }
 
-        private bool ExecuteFollowerCascade_SuppressMasterReplace(
+        private bool ExecuteFollowerCascadeSuppressMasterReplace(
             Order order,
             string reason,
             KeyValuePair<string, PositionInfo>[] snapshot,
@@ -944,7 +944,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             return false;
         }
 
-        private IEnumerable<string> ExecuteFollowerCascade_ResolveFollowers(
+        private IEnumerable<string> ExecuteFollowerCascadeResolveFollowers(
             string orderSignal,
             string masterEntryName,
             string[] dispatchFollowers,
@@ -972,7 +972,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 .ToArray();
         }
 
-        private void ExecuteFollowerCascade_CleanupUnfilled(
+        private void ExecuteFollowerCascadeCleanupUnfilled(
             string masterEntryName,
             string orderSignal,
             string followerKey,
@@ -1025,7 +1025,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
-        private void ExecuteFollowerCascade_EmergencyFlattenFilled(
+        private void ExecuteFollowerCascadeEmergencyFlattenFilled(
             string masterEntryName,
             string orderSignal,
             string followerKey,
@@ -1106,7 +1106,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (HandleMatchedFollower_StopReplacement(order))
                 return true;
 
-            HandleMatchedFollower_PendingCleanupPurge(order);
+            HandleMatchedFollowerPendingCleanupPurge(order);
             Print(
                 string.Format(
                     "[SIMA] Follower order terminal: {0} on {1} ({2}) | Id={3}",
