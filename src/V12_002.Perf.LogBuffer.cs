@@ -96,7 +96,13 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             string argStr;
             if (!TryGetSingleDigitArg(format, formatPos, args, out argStr))
+            {
+                // Literal brace -- write it to buffer before advancing past it.
+                if (bufferPos >= _buffer.Length)
+                    return -1;
+                _buffer[bufferPos++] = OpenBrace;
                 return 1;
+            }
 
             if (bufferPos + argStr.Length >= _buffer.Length)
                 return -1;
