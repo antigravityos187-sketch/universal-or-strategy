@@ -914,7 +914,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 sbCompliance.AppendLine("}");
 
                 string jsonPayload = sbCompliance.ToString();
-                lastComplianceLog = DateTime.Now;
+                lastComplianceLog = DateTime.UtcNow;
                 WriteComplianceJsonAsync(jsonPayload);
             }
             catch (Exception ex)
