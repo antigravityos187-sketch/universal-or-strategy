@@ -493,12 +493,14 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void EmergencyFlattenCloseOpenPosition(Account acct)
         {
-            Position pos = acct.Positions.FirstOrDefault(p =>
-                p != null
-                && p.Instrument != null
-                && p.Instrument.FullName == Instrument.FullName
-                && p.MarketPosition != MarketPosition.Flat
-            );
+            Position pos = acct
+                .Positions.ToArray()
+                .FirstOrDefault(p =>
+                    p != null
+                    && p.Instrument != null
+                    && p.Instrument.FullName == Instrument.FullName
+                    && p.MarketPosition != MarketPosition.Flat
+                );
             if (pos == null)
             {
                 Print(

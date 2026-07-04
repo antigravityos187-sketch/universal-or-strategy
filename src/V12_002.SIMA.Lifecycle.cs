@@ -702,12 +702,14 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private Position FindOpenPositionForInstrument(Account acct)
         {
-            return acct.Positions.FirstOrDefault(p =>
-                p != null
-                && p.Instrument != null
-                && p.Instrument.FullName == Instrument.FullName
-                && p.MarketPosition != MarketPosition.Flat
-            );
+            return acct
+                .Positions.ToArray()
+                .FirstOrDefault(p =>
+                    p != null
+                    && p.Instrument != null
+                    && p.Instrument.FullName == Instrument.FullName
+                    && p.MarketPosition != MarketPosition.Flat
+                );
         }
 
         private (string Key, Order Stop) FindStopOrderForAccount(
