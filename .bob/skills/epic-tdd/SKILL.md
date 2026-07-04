@@ -5,7 +5,7 @@ description: >-
   execution while maintaining autonomous /pr-loop hardening after every commit.
 metadata:
   user-invocable: true
-  disable-model-invocation: true
+  disable-model-invocation: false
   argument-hint: <epic-slug> <ticket-number> <pr-number>
 ---
 
