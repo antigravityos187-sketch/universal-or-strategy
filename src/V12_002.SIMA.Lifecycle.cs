@@ -1280,7 +1280,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private static string GetAdoptionDictionaryKey(string name, string classification)
         {
             if (classification == "stop")
-                return name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase) ? name.Substring(5) : name.Substring(2);
+                return name.StartsWith("Stop_", StringComparison.OrdinalIgnoreCase)
+                    ? name.Substring(5)
+                    : name.Substring(2);
             return name.Substring(3);
         }
 

@@ -468,17 +468,16 @@ namespace NinjaTrader.NinjaScript.Strategies
         private List<Order> EmergencyFlattenCollectWorkingOrders(Account acct)
         {
             var ordersToCancel = new List<Order>();
-            foreach (Order o in acct.Orders)
+            foreach (Order o in acct.Orders.ToArray())
             {
+                if (!IsOrderRelevantToInstrument(o))
+                    continue;
                 if (
-                    o.Instrument.FullName == Instrument.FullName
-                    && (
-                        o.OrderState == OrderState.Working
-                        || o.OrderState == OrderState.Submitted
-                        || o.OrderState == OrderState.Accepted
-                        || o.OrderState == OrderState.ChangePending
-                        || o.OrderState == OrderState.ChangeSubmitted
-                    )
+                    o.OrderState == OrderState.Working
+                    || o.OrderState == OrderState.Submitted
+                    || o.OrderState == OrderState.Accepted
+                    || o.OrderState == OrderState.ChangePending
+                    || o.OrderState == OrderState.ChangeSubmitted
                 )
                 {
                     ordersToCancel.Add(o);
@@ -495,7 +494,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void EmergencyFlattenCloseOpenPosition(Account acct)
         {
             Position pos = acct.Positions.FirstOrDefault(p =>
-                p.Instrument.FullName == Instrument.FullName && p.MarketPosition != MarketPosition.Flat
+                p != null
+                && p.Instrument != null
+                && p.Instrument.FullName == Instrument.FullName
+                && p.MarketPosition != MarketPosition.Flat
             );
             if (pos == null)
             {
