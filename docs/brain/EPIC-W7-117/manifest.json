@@ -1,7 +1,7 @@
 {
   "epic_id": "EPIC-W7-117",
   "wave": 7,
-  "status": "in_progress",
+  "status": "complete",
   "phases": {
     "phase_0": {
       "status": "completed",
@@ -57,6 +57,17 @@
     "phase_5_ticket_2": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z"
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-01T20:00:00Z",
+      "final_cyc": 8,
+      "wave_ready": true,
+      "agent": "v12-phase6-review"
     }
-  }
+  },
+  "wave_ready": true,
+  "final_cyc": 8,
+  "status": "complete",
+  "phase_6_completed_at": "2026-07-01T20:00:00Z"
 }

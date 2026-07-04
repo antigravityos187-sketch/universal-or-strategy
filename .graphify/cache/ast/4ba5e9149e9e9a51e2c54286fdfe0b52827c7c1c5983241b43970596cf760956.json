@@ -1,0 +1,1 @@
+{"nodes":[{"id":"check_epic_structure","label":"check_epic_structure.py","file_type":"code","source_file":"check_epic_structure.py","source_location":"L1"}],"edges":[{"source":"check_epic_structure","target":"json","relation":"imports","confidence":"EXTRACTED","source_file":"check_epic_structure.py","source_location":"L1","weight":1}]}

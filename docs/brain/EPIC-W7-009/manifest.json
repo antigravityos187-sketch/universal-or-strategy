@@ -63,17 +63,18 @@
     },
     "phase_6": {
       "status": "completed",
+      "agent": "v12-phase6-review",
       "output": "05-completion-report.md",
-      "completed_at": "2026-06-30T04:00:00Z",
+      "completed_at": "2026-07-02T00:00:00Z",
       "final_cyc": 5,
       "wave_ready": true,
-      "method_name": "GetChartTabFromPanel",
-      "source_file": "src/V12_002.UI.Panel.Helpers.cs",
       "helpers_extracted": [
         "ResolveChartTab"
       ],
       "jane_street_compliant": true
     }
   },
-  "status": "complete"
+  "status": "complete",
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }

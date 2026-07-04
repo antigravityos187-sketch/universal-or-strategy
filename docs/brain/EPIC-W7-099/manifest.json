@@ -4,6 +4,8 @@
   "method": "PurgePositionIfEligible",
   "source": "V12_002.Orders.Management.Cleanup.cs",
   "cyc": 11,
+  "final_cyc": 8,
+  "status": "complete",
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -64,6 +66,18 @@
       "final_cyc": 8,
       "wave_ready": true,
       "build_passed": true
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-01T20:00:00Z",
+      "final_cyc": 8,
+      "wave_ready": true,
+      "agent": "v12-phase6-review",
+      "mcp_evidence": true,
+      "jane_street_compliant": true,
+      "lane": "P6-REDO-B"
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-01T20:00:00Z"
 }

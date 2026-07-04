@@ -137,3 +137,18 @@ Status: READY FOR F5 COMPILE
 Action: Press F5 in NinjaTrader IDE to compile and verify BUILD_TAG banner.
 Next Target: [suggest next file from hotspot map if applicable]
 ```
+
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

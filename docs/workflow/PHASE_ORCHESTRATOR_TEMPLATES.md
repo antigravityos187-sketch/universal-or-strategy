@@ -205,6 +205,10 @@ Source: <SOURCE_FILE>
 Wave: 7
 Phase: 0 — Hotspot Analysis
 
+GRAPHIFY (MANDATORY — before any analysis):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — note god nodes and communities relevant to <METHOD_NAME>
+
 YOUR TASK (V2.8 — follow EXACTLY, including cold-start probes):
 
 STEP 0a — jcodemunch cold-start probe (MANDATORY FIRST ACTION):
@@ -242,6 +246,7 @@ STEP 7. Update docs/brain/<EPIC_ID>/manifest.json:
    - Set phases.phase_0.status = "completed"
    - Set phases.phase_0.output = "00-hotspots.md"
 STEP 8. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/00-hotspots.md", "cyc_confirmed": <CYC> }
+STEP 9. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---
@@ -262,6 +267,10 @@ Wave: 7
 Phase: 1 — Scope Definition
 Input: docs/brain/<EPIC_ID>/00-hotspots.md
 
+GRAPHIFY (MANDATORY — before any analysis):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — note god nodes and communities relevant to <METHOD_NAME>
+
 YOUR TASK:
 1. Read docs/brain/<EPIC_ID>/00-hotspots.md (Phase 0 output)
 2. Use mcp__jcodemunch-mcp__get_file_outline on <SOURCE_FILE>
@@ -278,6 +287,7 @@ YOUR TASK:
    - Agent Tracking block (Agent Name: v12-phase1-scope, Bobcoins Used: [amount], Execution Time: [duration])
 8. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_1.status = "completed"
 9. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/00-scope.md", "scope_confirmed_single_method": true }
+10. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---
@@ -298,6 +308,10 @@ Wave: 7
 Phase: 1.5 — Scope Boundary Validation (V12.23 No Scope Creep Protocol)
 Input: docs/brain/<EPIC_ID>/00-scope.md
 
+GRAPHIFY (MANDATORY — before any analysis):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — note god nodes and communities relevant to <METHOD_NAME>
+
 YOUR TASK:
 1. Read docs/brain/<EPIC_ID>/00-scope.md (Phase 1 output)
 2. Use mcp__jcodemunch-mcp__get_symbol_source for <METHOD_NAME>
@@ -312,6 +326,7 @@ YOUR TASK:
    - Agent Tracking block (Agent Name: v12-phase1-5-boundary, Bobcoins Used: [amount], Execution Time: [duration])
 8. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_1_5.status = "completed"
 9. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/01-scope-boundary.md", "boundary_verdict": "PASS" }
+10. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---
@@ -339,6 +354,10 @@ Input: docs/brain/<EPIC_ID>/01-scope-boundary.md
 Jane Street KB Results (apply these patterns):
 <INSERT KB QUERY RESULTS HERE>
 
+GRAPHIFY (MANDATORY — before any analysis):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — note god nodes and communities relevant to <METHOD_NAME>
+
 YOUR TASK:
 1. Read docs/brain/<EPIC_ID>/01-scope-boundary.md
 2. Use mcp__jcodemunch-mcp__get_context_bundle for <METHOD_NAME>
@@ -357,6 +376,7 @@ YOUR TASK:
    - Agent Tracking block (Agent Name: v12-phase2-architecture, Bobcoins Used: [amount], Execution Time: [duration])
 9. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_2.status = "completed"
 10. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/02-architecture-plan.md", "extraction_count": N, "max_cyc_projected": M }
+11. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---
@@ -376,6 +396,10 @@ Source: <SOURCE_FILE>
 Wave: 7
 Phase: 3 — DNA Audit
 Input: docs/brain/<EPIC_ID>/02-architecture-plan.md
+
+GRAPHIFY (MANDATORY — before any analysis):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — note god nodes and communities relevant to <METHOD_NAME>
 
 YOUR TASK:
 1. Read docs/brain/<EPIC_ID>/02-architecture-plan.md
@@ -397,6 +421,7 @@ YOUR TASK:
    - Agent Tracking block (Agent Name: v12-phase3-audit, Bobcoins Used: [amount], Execution Time: [duration])
 8. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_3.status = "completed"
 9. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/03-audit-report.md", "dna_verdict": "PASS", "violations": [] }
+10. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---
@@ -417,6 +442,10 @@ Source: <SOURCE_FILE>
 Wave: 7
 Phase: 4 — Ticket Generation
 Inputs: docs/brain/<EPIC_ID>/02-architecture-plan.md + docs/brain/<EPIC_ID>/03-audit-report.md
+
+GRAPHIFY (MANDATORY — before any analysis):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — note god nodes and communities relevant to <METHOD_NAME>
 
 YOUR TASK:
 STEP 0a — MCP probe: mcp__jcodemunch-mcp__resolve_repo ("/home/malhitticrypto/universal-or-strategy")
@@ -444,6 +473,7 @@ STEP 5. Write docs/brain/<EPIC_ID>/04-tickets.md with:
    - Agent Tracking block (Agent Name: v12-phase4-tickets, Bobcoins Used: [amount], Execution Time: [duration])
 STEP 6. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_4.status = "completed"
 STEP 7. Return: { "status": "success", "output_path": "docs/brain/<EPIC_ID>/04-tickets.md", "ticket_count": N }
+STEP 8. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---
@@ -476,6 +506,10 @@ CYC<=8 mandatory — functions >8 are cognitively unsafe at microsecond latency.
 Single-responsibility extraction. Actor/Enqueue model — no lock() blocks.
 Make illegal states unrepresentable. Zero-allocation hot paths.
 
+GRAPHIFY (MANDATORY — before any analysis):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — note god nodes and communities relevant to <METHOD_NAME>
+
 YOUR TASK:
 STEP 0 — MCP probes (same as all workers, see Cold-Start Retry Rule above).
 STEP 1. Read docs/brain/<EPIC_ID>/04-tickets.md
@@ -492,6 +526,7 @@ STEP 3. Write docs/brain/<EPIC_ID>/04-5-ticket-review.md with:
 STEP 4. Update docs/brain/<EPIC_ID>/manifest.json phases.phase_4_5.status = "completed"
 STEP 5. Return: { "status": "success", "review_verdict": "PASS", "failed_tickets": [] }
   If review_verdict = FAIL: phase orchestrator must re-run phase 4 for this epic, then re-run 4.5.
+STEP 6. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---
@@ -583,6 +618,10 @@ DNA RULES (non-negotiable — violation = immediate FAIL):
   If build fails with lock/access error: wait 15s, retry build up to 3 times.
   If build fails with compilation error: fix it before returning.
 
+GRAPHIFY (MANDATORY — before writing any code):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — note god nodes and communities relevant to <METHOD_NAME>
+
 YOUR TASK:
 STEP 0a — MCP probe: mcp__jcodemunch-mcp__resolve_repo("/home/malhitticrypto/universal-or-strategy")
   If fails → retry once after 5s → return { "status": "MCP_FAILED" }, STOP.
@@ -631,6 +670,7 @@ STEP 7. Return: {
    "build_passed": true,
    "tests_written": <N>
 }
+STEP 8. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---
@@ -645,6 +685,10 @@ Source: src/<SOURCE_FILE>
 Claimed cyc_parent_now: <CLAIMED_CYC>
 Wave: 7
 Phase: 5.V Ticket Verification — DO NOT TRUST Phase 5 self-reports. Verify independently.
+
+GRAPHIFY (MANDATORY — before verification):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — confirm <METHOD_NAME> community context
 
 YOUR TASK:
 STEP 0 — MCP probes (same cold-start retry as all workers).
@@ -688,6 +732,7 @@ STEP 11. Return: {
    "cyc_measured": <N>,
    "failures": []
 }
+STEP 12. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---
@@ -703,6 +748,10 @@ All tickets completed: <N> tickets, all verified PASS
 Final claimed CYC: <FINAL_CLAIMED_CYC>
 Wave: 7
 Phase: 6 — Final Epic Review & Completion
+
+GRAPHIFY (MANDATORY — before final review):
+  Run: graphify update . --no-cluster --no-description
+  Read: .graphify/GRAPH_REPORT.md — confirm <METHOD_NAME> no longer appears as a god node
 
 YOUR TASK:
 STEP 0 — MCP probes (same cold-start retry as all workers).
@@ -747,6 +796,7 @@ STEP 8. Return: {
    "helpers_extracted": N,
    "tests_written_total": N
 }
+STEP 9. GRAPHIFY SHUTDOWN: Run graphify update . --no-cluster --no-description
 ```
 
 ---

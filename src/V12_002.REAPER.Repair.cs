@@ -144,6 +144,46 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Phase7-T1: Submits repair order with authorization validation.
         /// Checks FSM state, dispatch reservation, metadata guard, then creates and submits order.
         /// </summary>
+        // Phase7-T1: Checks whether any follower bracket FSM for this account is in an active state.
+        private bool HasActiveFsmForAccount(string accountName)
+        {
+            return _followerBrackets.Values.Any(f =>
+                f != null
+                && f.AccountName == accountName
+                && (
+                    f.State == FollowerBracketState.Active
+                    || f.State == FollowerBracketState.Accepted
+                    || f.State == FollowerBracketState.Submitted
+                    || f.State == FollowerBracketState.Replacing
+                )
+            );
+        }
+
+        // Phase7-T1: Validates FSM/dispatch/position authorization before repair order submit.
+        // Build 1004: fallback to dispatch-sync-pending or active-position when FSM not yet created.
+        private bool IsRepairSubmitAuthorized(string accountName)
+        {
+            if (HasActiveFsmForAccount(accountName))
+                return true;
+
+            bool dispatchPending = _dispatchSyncPendingExpKeys.ContainsKey(ExpKey(accountName));
+            bool hasActivePositionEntry = activePositions.Values.Any(p =>
+                p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName
+            );
+            if (!dispatchPending && !hasActivePositionEntry)
+            {
+                Print(
+                    string.Format(
+                        "[FSM-RACE GUARD ABORT] {0}: no FSM, no dispatch reservation, no position -- aborted",
+                        accountName
+                    )
+                );
+                return false;
+            }
+            Print(string.Format("[FSM-RACE GUARD] {0}: no FSM -- dispatch/position fallback authorized", accountName));
+            return true;
+        }
+
         private void SubmitRepairOrderWithAuthorization(
             string accountName,
             PositionInfo repairPos,
@@ -186,41 +226,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
             }
 
-            bool hasActiveFsm = _followerBrackets.Values.Any(f =>
-                f != null
-                && f.AccountName == accountName
-                && (
-                    f.State == FollowerBracketState.Active
-                    || f.State == FollowerBracketState.Accepted
-                    || f.State == FollowerBracketState.Submitted
-                    || f.State == FollowerBracketState.Replacing
-                )
-            );
-
-            if (!hasActiveFsm)
-            {
-                // Build 1004: Replace expectedPositions fallback with dispatch-sync-pending check.
-                // During dispatch window, FSM does not yet exist but _dispatchSyncPendingExpKeys
-                // marks the account as reserved. If neither FSM nor dispatch reservation exists,
-                // abort repair -- no authorization source.
-                bool dispatchPending = _dispatchSyncPendingExpKeys.ContainsKey(ExpKey(accountName));
-                bool hasActivePositionEntry = activePositions.Values.Any(p =>
-                    p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName
-                );
-                if (!dispatchPending && !hasActivePositionEntry)
-                {
-                    Print(
-                        string.Format(
-                            "[FSM-RACE GUARD ABORT] {0}: no FSM, no dispatch reservation, no position -- aborted",
-                            accountName
-                        )
-                    );
-                    return;
-                }
-                Print(
-                    string.Format("[FSM-RACE GUARD] {0}: no FSM -- dispatch/position fallback authorized", accountName)
-                );
-            }
+            if (!IsRepairSubmitAuthorized(accountName))
+                return;
 
             if (!MetadataGuardRepairAuthorized(accountName, "ExecuteReaperRepair"))
                 return;

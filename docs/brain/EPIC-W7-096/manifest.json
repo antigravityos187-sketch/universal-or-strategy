@@ -69,10 +69,20 @@
     },
     "phase_6": {
       "status": "completed",
-      "timestamp": "2026-06-30T05:45:00Z",
+      "timestamp": "2026-07-02T12:00:00Z",
       "final_cyc": 6,
+      "wave_ready": true,
       "output": "docs/brain/EPIC-W7-096/05-completion-report.md",
-      "agent": "v12-phase6-review"
+      "agent": "v12-phase6-review",
+      "lane": "P6-REDO-B",
+      "mcp_evidence": true,
+      "jane_street_compliant": true,
+      "sequential_thinking_calls": 4,
+      "hotspot_absent": true,
+      "repo_avg_complexity": 6.55,
+      "repo_cycle_count": 0,
+      "repo_grade": "B"
     }
-  }
+  },
+  "wave_ready": true
 }

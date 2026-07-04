@@ -360,53 +360,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 while (current != null)
                 {
-                    string shortName = current.GetType().Name;
-                    string info = "  [" + depth + "] " + shortName;
-
-                    if (current is FrameworkElement fe)
-                        info +=
-                            " Name="
-                            + fe.Name
-                            + " W="
-                            + fe.ActualWidth.ToString("F0")
-                            + " H="
-                            + fe.ActualHeight.ToString("F0")
-                            + " Vis="
-                            + fe.Visibility;
-
-                    if (current is Grid grid)
-                    {
-                        info +=
-                            " Cols="
-                            + grid.ColumnDefinitions.Count
-                            + " Rows="
-                            + grid.RowDefinitions.Count
-                            + " Children="
-                            + grid.Children.Count;
-
-                        for (int i = 0; i < grid.ColumnDefinitions.Count; i++)
-                        {
-                            var cd = grid.ColumnDefinitions[i];
-                            info +=
-                                "\n      Col["
-                                + i
-                                + "]: Width="
-                                + cd.Width
-                                + " Actual="
-                                + cd.ActualWidth.ToString("F0");
-                        }
-
-                        for (int i = 0; i < grid.Children.Count; i++)
-                        {
-                            var ch = grid.Children[i];
-                            string childType = ch.GetType().Name;
-                            if (childType.Contains("ChartTrader") || childType.Contains("Trader"))
-                                info += "\n      ** Trader child at index " + i + ": " + ch.GetType().FullName;
-                        }
-                    }
-
-                    Print(info);
-
+                    Print(BuildNodeInfo(current, depth));
                     if (current is Window)
                         break;
                     current = VisualTreeHelper.GetParent(current);
@@ -418,6 +372,49 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Print("V12 PANEL: DumpVisualTree error -- " + ex.Message);
             }
+        }
+
+        private string BuildNodeInfo(DependencyObject node, int depth)
+        {
+            string info = "  [" + depth + "] " + node.GetType().Name;
+
+            if (node is FrameworkElement fe)
+                info +=
+                    " Name="
+                    + fe.Name
+                    + " W="
+                    + fe.ActualWidth.ToString("F0")
+                    + " H="
+                    + fe.ActualHeight.ToString("F0")
+                    + " Vis="
+                    + fe.Visibility;
+
+            if (node is Grid grid)
+            {
+                info +=
+                    " Cols="
+                    + grid.ColumnDefinitions.Count
+                    + " Rows="
+                    + grid.RowDefinitions.Count
+                    + " Children="
+                    + grid.Children.Count;
+
+                for (int i = 0; i < grid.ColumnDefinitions.Count; i++)
+                {
+                    var cd = grid.ColumnDefinitions[i];
+                    info += "\n      Col[" + i + "]: Width=" + cd.Width + " Actual=" + cd.ActualWidth.ToString("F0");
+                }
+
+                for (int i = 0; i < grid.Children.Count; i++)
+                {
+                    var ch = grid.Children[i];
+                    string childType = ch.GetType().Name;
+                    if (childType.Contains("ChartTrader") || childType.Contains("Trader"))
+                        info += "\n      ** Trader child at index " + i + ": " + ch.GetType().FullName;
+                }
+            }
+
+            return info;
         }
 
         private FrameworkElement FindChartTraderViaOwnerChart()
@@ -571,23 +568,31 @@ namespace NinjaTrader.NinjaScript.Strategies
                     current = VisualTreeHelper.GetParent(current);
                     if (current is Grid grid)
                     {
-                        foreach (UIElement child in grid.Children)
-                        {
-                            if (
-                                child is FrameworkElement fe
-                                && child.GetType().Name.Contains("ChartTrader")
-                                && fe.Visibility == Visibility.Visible
-                            )
-                                return fe;
-                        }
+                        var found = ScanGridForChartTrader(grid);
+                        if (found != null)
+                            return found;
                     }
                 }
             }
             catch (Exception ex)
             {
                 // V12.EPIC-7-QUALITY-006: Log UI element traversal errors
-                Print($"[IPC_CLEANUP] ChartTrader search failed: {ex.Message}");
+                Print("[IPC_CLEANUP] ChartTrader search failed: " + ex.Message);
                 // Return null - non-fatal UI navigation failure
+            }
+            return null;
+        }
+
+        private static FrameworkElement ScanGridForChartTrader(Grid grid)
+        {
+            foreach (UIElement child in grid.Children)
+            {
+                if (
+                    child is FrameworkElement fe
+                    && child.GetType().Name.Contains("ChartTrader")
+                    && fe.Visibility == Visibility.Visible
+                )
+                    return fe;
             }
             return null;
         }
@@ -642,6 +647,27 @@ namespace NinjaTrader.NinjaScript.Strategies
             return null;
         }
 
+        private static bool IsChartTabTypeName(string typeName) =>
+            typeName == "ChartTab" || typeName.Contains("ChartTab");
+
+        private Grid TryGetGridFromChartTab(DependencyObject node)
+        {
+            if (node is Grid chartTabGrid && chartTabGrid.ColumnDefinitions.Count >= 2)
+                return chartTabGrid;
+            var descendantGrid = FindDescendantGrid(node, 2);
+            if (descendantGrid != null)
+            {
+                Print(
+                    "V12 PANEL: FindChartTabGrid -- found descendant Grid inside "
+                        + node.GetType().Name
+                        + " Cols="
+                        + descendantGrid.ColumnDefinitions.Count
+                );
+                return descendantGrid;
+            }
+            return null;
+        }
+
         private Grid FindChartTabGrid(DependencyObject child)
         {
             DependencyObject current = VisualTreeHelper.GetParent(child);
@@ -649,25 +675,11 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             while (current != null)
             {
-                string typeName = current.GetType().Name;
-
-                if (typeName == "ChartTab" || typeName.Contains("ChartTab"))
+                if (IsChartTabTypeName(current.GetType().Name))
                 {
-                    if (current is Grid chartTabGrid && chartTabGrid.ColumnDefinitions.Count >= 2)
-                        return chartTabGrid;
-
-                    // Search ALL descendants (not just direct children) for target Grid
-                    var descendantGrid = FindDescendantGrid(current, 2);
-                    if (descendantGrid != null)
-                    {
-                        Print(
-                            "V12 PANEL: FindChartTabGrid -- found descendant Grid inside "
-                                + current.GetType().Name
-                                + " Cols="
-                                + descendantGrid.ColumnDefinitions.Count
-                        );
-                        return descendantGrid;
-                    }
+                    var tabGrid = TryGetGridFromChartTab(current);
+                    if (tabGrid != null)
+                        return tabGrid;
                 }
 
                 if (current is Grid grid && grid.ColumnDefinitions.Count >= 2)

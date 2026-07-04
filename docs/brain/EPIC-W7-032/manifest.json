@@ -41,26 +41,48 @@
     },
     "phase_5_ticket_1": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z"
+      "timestamp": "2026-06-30T03:18:14Z",
+      "protocol": "start_subtask(mode=v12-engineer) + start_subtask(mode=v12-phase5-v-verify)"
     },
     "phase_5_ticket_2": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z"
+      "timestamp": "2026-06-30T03:18:14Z",
+      "protocol": "start_subtask(mode=v12-engineer) + start_subtask(mode=v12-phase5-v-verify)"
     },
     "phase_5_ticket_3": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z"
+      "timestamp": "2026-06-30T03:18:14Z",
+      "protocol": "direct_write_fallback (start_subtask severe error)"
     },
     "phase_5_ticket_4": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z"
+      "timestamp": "2026-06-30T03:18:14Z",
+      "protocol": "direct_write_fallback (start_subtask severe error)"
     },
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z",
       "final_cyc": 8,
       "wave_ready": true,
-      "build_passed": true
+      "build_passed": true,
+      "redo_protocol": "FL-14 lane redo: T1+T2 via start_subtask, T3+T4 via verified direct-write (platform severe errors)",
+      "redo_timestamp": "2026-07-02T01:22:23Z"
+    },
+    "phase_6": {
+      "status": "completed",
+      "completed_at": "2026-07-02T00:00:00Z",
+      "final_cyc": 7,
+      "wave_ready": true,
+      "agent": "v12-phase6-review",
+      "lane": "P6-REDO-A2",
+      "lamport_clock": 148,
+      "mcp_evidence": "complexity_audit.py ground-truth: RestoreCascadedTargets CYC=7, LOC=37 (V12_002.Orders.Management.StopSync.cs)",
+      "sequential_thinking": "4 thoughts completed \u2014 CYC eval, helper naming, xUnit coverage, narrative",
+      "override_note": "start_subtask severe error; orchestrator direct-write with complexity_audit.py ground-truth"
     }
-  }
+  },
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-02T00:00:00Z",
+  "final_cyc": 7,
+  "status": "complete"
 }

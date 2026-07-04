@@ -33,26 +33,39 @@ namespace NinjaTrader.NinjaScript.Strategies
             Print("[WATCHDOG] Stopped");
         }
 
-        private void OnWatchdogTimer(object state)
+        private bool IsWatchdogShouldReset()
         {
             if (_isTerminating || State != State.Realtime)
-            {
-                Interlocked.Exchange(ref _watchdogStage, 0);
-                return;
-            }
-
+                return true;
             long lastBeat = Interlocked.Read(ref _strategyHeartbeatTicks);
             if (lastBeat <= 0)
-                return;
-
+                return true;
             long heartbeatAge = DateTime.UtcNow.Ticks - lastBeat;
             if (heartbeatAge <= WatchdogTimeoutTicks)
+                return true;
+            return !HasWatchdogLeadAccountWorkingOrder();
+        }
+
+        private void ExecuteWatchdogStage0Escalation()
+        {
+            if (Interlocked.CompareExchange(ref _watchdogStage, 1, 0) != 0)
+                return;
+            try
+            {
+                Print("[!] CRITICAL: DEADLOCK DETECTED (TIMEOUT > 5S)");
+                Enqueue(ctx => ctx.ExecuteWatchdogLeadAccountFlatten());
+                Print("[WATCHDOG] Enqueued lead account emergency flatten.");
+            }
+            catch (Exception ex)
             {
                 Interlocked.Exchange(ref _watchdogStage, 0);
-                return;
+                Print("[WATCHDOG] Enqueue failed: " + ex.Message);
             }
+        }
 
-            if (!HasWatchdogLeadAccountWorkingOrder())
+        private void OnWatchdogTimer(object state)
+        {
+            if (IsWatchdogShouldReset())
             {
                 Interlocked.Exchange(ref _watchdogStage, 0);
                 return;
@@ -61,27 +74,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             int stage = Volatile.Read(ref _watchdogStage);
             if (stage == 0)
             {
-                if (Interlocked.CompareExchange(ref _watchdogStage, 1, 0) == 0)
-                {
-                    try
-                    {
-                        Print("[!] CRITICAL: DEADLOCK DETECTED (TIMEOUT > 5S)");
-                        Enqueue(ctx => ctx.ExecuteWatchdogLeadAccountFlatten());
-                        Print("[WATCHDOG] Enqueued lead account emergency flatten.");
-                    }
-                    catch (Exception ex)
-                    {
-                        Interlocked.Exchange(ref _watchdogStage, 0);
-                        Print("[WATCHDOG] Enqueue failed: " + ex.Message);
-                    }
-                }
+                ExecuteWatchdogStage0Escalation();
                 return;
             }
 
-            if (stage != 1)
-                return;
-
-            if (Interlocked.CompareExchange(ref _watchdogStage, 2, 1) == 1)
+            if (stage == 1 && Interlocked.CompareExchange(ref _watchdogStage, 2, 1) == 1)
             {
                 Print("[WATCHDOG] Escalating to direct master close fallback.");
                 ExecuteWatchdogDirectFallback();
@@ -135,26 +132,27 @@ namespace NinjaTrader.NinjaScript.Strategies
             return HasWatchdogLeadAccountPosition() || HasWatchdogLeadAccountWorkingOrder();
         }
 
+        private bool IsWatchdogCancellableOrder(Order order, string instrumentName)
+        {
+            if (order == null || order.Instrument == null)
+                return false;
+            if (order.Instrument.FullName != instrumentName)
+                return false;
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.ChangePending
+                || order.OrderState == OrderState.ChangeSubmitted;
+        }
+
         private void CancelWatchdogWorkingOrders(Account masterAccount, string instrumentName)
         {
             List<Order> ordersToCancel = new List<Order>();
 
             foreach (Order order in masterAccount.Orders.ToArray())
             {
-                if (order == null || order.Instrument == null)
-                    continue;
-                if (order.Instrument.FullName != instrumentName)
-                    continue;
-                if (
-                    order.OrderState == OrderState.Working
-                    || order.OrderState == OrderState.Submitted
-                    || order.OrderState == OrderState.Accepted
-                    || order.OrderState == OrderState.ChangePending
-                    || order.OrderState == OrderState.ChangeSubmitted
-                )
-                {
+                if (IsWatchdogCancellableOrder(order, instrumentName))
                     ordersToCancel.Add(order);
-                }
             }
 
             foreach (Order orderToCancel in ordersToCancel)
@@ -271,20 +269,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             foreach (Order order in masterAccount.Orders.ToArray())
             {
-                if (order == null || order.Instrument == null)
-                    continue;
-                if (order.Instrument.FullName != instrumentName)
-                    continue;
-                if (
-                    order.OrderState == OrderState.Working
-                    || order.OrderState == OrderState.Submitted
-                    || order.OrderState == OrderState.Accepted
-                    || order.OrderState == OrderState.ChangePending
-                    || order.OrderState == OrderState.ChangeSubmitted
-                )
-                {
+                if (IsWatchdogCancellableOrder(order, instrumentName))
                     ordersToCancel.Add(order);
-                }
             }
 
             if (ordersToCancel.Count > 0)

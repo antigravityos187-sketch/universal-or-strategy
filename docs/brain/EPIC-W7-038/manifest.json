@@ -83,9 +83,20 @@
       ]
     },
     "phase_6": {
-      "status": "completed"
+      "status": "completed",
+      "agent": "v12-phase6-review",
+      "wave_ready": true,
+      "final_cyc": 2,
+      "jane_street_compliant": true,
+      "mcp_tools_used": ["jcodemunch resolve_repo", "jcodemunch register_edit", "jcodemunch index_file", "jcodemunch get_symbol_complexity", "jcodemunch get_hotspots", "jcodemunch get_repo_health", "sequential sequentialthinking"],
+      "cyc_confirmed_by_jcodemunch": true,
+      "completed_at": "2026-07-01T00:00:00Z"
     }
   },
+  "status": "complete",
+  "wave": 7,
+  "final_cyc": 2,
   "wave_ready": true,
+  "agent": "v12-phase6-review",
   "phase_6_completed_at": "2026-07-01T00:00:00Z"
 }

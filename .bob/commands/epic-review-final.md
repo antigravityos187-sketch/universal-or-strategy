@@ -408,3 +408,17 @@ Ask the Director:
 **Do NOT create PR until the Director explicitly approves.**
 
 Output: "[FINAL-REVIEW-GATE] Epic $1 final review complete. Verdict: [READY_FOR_PR/NEEDS_REWORK/BLOCKED]. Awaiting Director decision."
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

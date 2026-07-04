@@ -42,8 +42,13 @@ description = "Exclude gitleaks report files and Firebase credentials (gitignore
 paths = [
     '''gitleaks_report\.json$''',
     '''firebase-credentials\.json$''',
+    '''firebase-credentials\.json\.revoked$''',
     '''.*firebase-adminsdk.*\.json$'''
 ]
+
+[[allowlists]]
+description = "Allow EPIC-W7-114 architecture plan (false positive: jcodemunch call hierarchy text)"
+paths = ['''docs/brain/EPIC-W7-114/02-architecture-plan\.md$''']
 
 [[allowlists]]
 description = "Allow test fixtures in routa-tools tests"

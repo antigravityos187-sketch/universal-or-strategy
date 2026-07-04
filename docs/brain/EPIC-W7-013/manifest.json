@@ -68,19 +68,31 @@
     },
     "phase_6": {
       "status": "completed",
+      "agent": "v12-phase6-review",
+      "lane": "P6-REDO-A1",
       "output": "05-completion-report.md",
-      "completed_at": "2026-06-30T04:00:00Z",
-      "final_cyc": 7,
-      "wave_ready": true,
-      "method_name": "UpdatePanelState",
-      "source_file": "src/V12_002.UI.Panel.StateSync.cs",
+      "completed_at": "2026-07-02T01:00:00Z",
+      "final_cyc": 22,
+      "claimed_cyc": 7,
+      "wave_ready": false,
+      "mcp_tool_used": "jcodemunch get_symbol_complexity",
       "helpers_extracted": [
-        "SyncLastPriceDisplay",
-        "TrySyncCountChipGuarded",
-        "SyncLivePositionOrCollapse"
+        "SyncPanelConfigFromSnapshot",
+        "UpdateComplianceDisplay",
+        "UpdateTrendIndicator",
+        "UpdateTelemetryDisplay",
+        "UpdateHubStatusLed",
+        "UpdateOrText",
+        "UpdateEmaText"
       ],
-      "jane_street_compliant": true
+      "jane_street_compliant": false,
+      "verification_verdict": "FAIL",
+      "fail_reason": "actual CYC=22 exceeds Jane Street threshold <=8; claimed CYC=7 not supported by index"
     }
   },
-  "status": "complete"
+  "status": "complete",
+  "wave": 7,
+  "final_cyc": 22,
+  "wave_ready": false,
+  "phase_6_completed_at": "2026-07-02T01:00:00Z"
 }

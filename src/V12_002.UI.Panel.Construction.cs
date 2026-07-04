@@ -702,15 +702,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             foreach (var acct in fleetAccounts)
             {
-                bool isActive = false;
-                foreach (var kv in activeSnapshot)
-                {
-                    if (kv.Key == acct.Name)
-                    {
-                        isActive = kv.Value;
-                        break;
-                    }
-                }
+                bool isActive = IsFleetAccountActive(activeSnapshot, acct.Name);
                 if (isActive && !selectedFleetAccounts.Contains(acct.Name))
                     selectedFleetAccounts.Add(acct.Name);
 
@@ -745,6 +737,19 @@ namespace NinjaTrader.NinjaScript.Strategies
                 };
                 fleetCheckboxPanel.Children.Add(cb);
             }
+        }
+
+        private bool IsFleetAccountActive(
+            System.Collections.Generic.KeyValuePair<string, bool>[] activeSnapshot,
+            string accountName
+        )
+        {
+            foreach (var kv in activeSnapshot)
+            {
+                if (kv.Key == accountName)
+                    return kv.Value;
+            }
+            return false;
         }
 
         private Grid BuildManualEntryRow()

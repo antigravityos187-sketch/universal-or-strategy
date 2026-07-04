@@ -341,20 +341,41 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <summary>
         /// Detect SQL injection and path traversal attempts.
         /// EPIC-4 P0 Fix #2: Uses static readonly arrays to eliminate hot-path allocations.
-        /// CYC: 4
+        /// CYC: 5 (extracted helpers reduce from 11)
         /// </summary>
         private bool IsAllowlistBypassAttempt(string action, string[] parts)
         {
-            // Check action first (avoid Join allocation)
+            if (IsActionSqlInjection(action))
+                return true;
+            if (IsPartsSqlInjection(parts))
+                return true;
+            if (IsActionPathTraversal(action))
+                return true;
+            if (IsPartsPathTraversal(parts))
+                return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Check action string for SQL injection patterns.
+        /// CYC: 3
+        /// </summary>
+        private bool IsActionSqlInjection(string action)
+        {
             foreach (string pattern in SqlInjectionPatterns)
             {
                 if (action.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
                     return true;
-                }
             }
+            return false;
+        }
 
-            // Check each part separately (avoid Join allocation)
+        /// <summary>
+        /// Check each part for SQL injection patterns.
+        /// CYC: 4
+        /// </summary>
+        private bool IsPartsSqlInjection(string[] parts)
+        {
             foreach (string part in parts)
             {
                 foreach (string pattern in SqlInjectionPatterns)
@@ -366,8 +387,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                 }
             }
+            return false;
+        }
 
-            // Check path traversal patterns
+        /// <summary>
+        /// Check action string for path traversal patterns.
+        /// CYC: 3
+        /// </summary>
+        private bool IsActionPathTraversal(string action)
+        {
             foreach (string pattern in PathTraversalPatterns)
             {
                 if (action.IndexOf(pattern, StringComparison.Ordinal) >= 0)
@@ -376,7 +404,15 @@ namespace NinjaTrader.NinjaScript.Strategies
                     return true;
                 }
             }
+            return false;
+        }
 
+        /// <summary>
+        /// Check each part for path traversal patterns.
+        /// CYC: 4
+        /// </summary>
+        private bool IsPartsPathTraversal(string[] parts)
+        {
             foreach (string part in parts)
             {
                 foreach (string pattern in PathTraversalPatterns)
@@ -388,7 +424,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                 }
             }
-
             return false;
         }
 

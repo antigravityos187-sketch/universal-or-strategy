@@ -106,8 +106,11 @@ PHASE_SPECS = {
     "5": {
         # artifact = 05-completion-report.md (final per-epic output from v12-p6-review)
         # When --ticket N supplied: checks ticket-N-completion.md instead
-        # V3.1: cyc_ground_truth check runs complexity_audit.py and verifies
+        # V3.2: cyc_ground_truth check runs complexity_audit.py and verifies
         #        the target method's actual measured CYC is <= 8 in src/.
+        #        cyc_gate_line is a SOFT check logged in checks{} but NOT in hard_checks —
+        #        it does not fail epics that pre-date the gate (written before wave7_cyc_gate.py
+        #        existed). It is enforced only by roleDefinition + pre-push hook going forward.
         "artifact":        "05-completion-report.md",
         "manifest_key":    "phase_5",
         "agent_name":      "wave7-phase5-worker",
@@ -115,6 +118,7 @@ PHASE_SPECS = {
         "jcm_keywords":    [],
         "seq_keywords":    [],
         "content_checks":  ["final_cyc", "wave_ready", "build_passed", "cyc_achieved"],
+        "soft_checks":     ["cyc_gate_line"],   # logged but not blocking
         "hard_checks":     ["artifact_exists", "min_size", "no_denial",
                             "manifest_complete", "content_assertions",
                             "cyc_ground_truth"],
@@ -253,39 +257,58 @@ def _resolve_target_method(epic_id: str) -> str | None:
     Return the target method name for an epic.
     Priority:
       1. precomputed.json method_name (if non-empty)
-      2. First method name found in 04-tickets.md (between backticks after "Method")
+      2. 00-scope.md  — | **Method Name** | `MethodName` |  (most reliable)
+      3. 04-tickets.md — first `MethodName` after "method" keyword
+      4. 05-completion-report.md — method_name field
+    A valid method name has no dots (rules out filenames like V12_002.Foo.cs).
     """
     brain_dir = Path("docs/brain") / epic_id
 
-    # Try precomputed.json first
+    def _is_valid_method(name: str) -> bool:
+        """Method names never contain dots; reject file-path fragments."""
+        return bool(name) and "." not in name and name.lower() not in ("unknown", "n/a", "")
+
+    # 1. precomputed.json
     pre = brain_dir / "precomputed.json"
     if pre.exists():
         try:
             data = json.loads(pre.read_text(encoding="utf-8"))
             name = data.get("method_name", "").strip()
-            if name:
+            if _is_valid_method(name):
                 return name
         except Exception:
             pass
 
-    # Fall back to 04-tickets.md
-    tickets = brain_dir / "04-tickets.md"
-    if tickets.exists():
+    # 2. 00-scope.md  (format: | **Method Name** | `FooBar` |)
+    scope = brain_dir / "00-scope.md"
+    if scope.exists():
         try:
-            text = tickets.read_text(encoding="utf-8")
-            m = re.search(r'[Mm]ethod[^\n`]*`(\w+)`', text)
-            if m:
+            text = scope.read_text(encoding="utf-8")
+            m = re.search(r'\*\*Method Name\*\*\s*\|\s*`([\w]+)`', text)
+            if m and _is_valid_method(m.group(1)):
                 return m.group(1)
         except Exception:
             pass
 
-    # Last resort: 05-completion-report.md
+    # 3. 04-tickets.md
+    tickets = brain_dir / "04-tickets.md"
+    if tickets.exists():
+        try:
+            text = tickets.read_text(encoding="utf-8")
+            # Match "method" keyword followed by a backtick-quoted identifier
+            m = re.search(r'[Mm]ethod[^\n`]*`([\w_]+)`', text)
+            if m and _is_valid_method(m.group(1)):
+                return m.group(1)
+        except Exception:
+            pass
+
+    # 4. 05-completion-report.md
     report = brain_dir / "05-completion-report.md"
     if report.exists():
         try:
             text = report.read_text(encoding="utf-8")
-            m = re.search(r'method(?:_name)?\s*[|:]\s*`?(\w+)`?', text, re.IGNORECASE)
-            if m and m.group(1).lower() not in ("unknown", "n/a", ""):
+            m = re.search(r'method(?:_name)?\s*[|:]\s*`?([\w_]+)`?', text, re.IGNORECASE)
+            if m and _is_valid_method(m.group(1)):
                 return m.group(1)
         except Exception:
             pass
@@ -422,6 +445,20 @@ def audit_epic(epic_id: str, phase: str, ticket_id: str | None = None) -> dict:
             failures.append(
                 f"Required content assertion not found. Expected one of: {spec['content_checks']}"
             )
+
+    # --- Soft check: cyc_gate_line (Phase 5 only, non-blocking) ---
+    # Records whether the completion report contains "CYC_GATE: PASS" or "CYC_GATE: NOT_FOUND".
+    # SOFT — logged in checks{} for observability, does NOT block passing epics.
+    # Reason: reports written before wave7_cyc_gate.py existed (pre-V3.2) never had this line.
+    # The cyc_ground_truth hard check is the real enforcer for those old reports.
+    # For new reports (post-V3.2), enforcement is via roleDefinition + pre-push hook.
+    if "cyc_gate_line" in spec.get("soft_checks", []):
+        has_gate_line = (
+            "cyc_gate: pass" in content_lower
+            or "cyc_gate: not_found" in content_lower
+        )
+        checks["cyc_gate_line"] = has_gate_line
+        # Soft: intentionally not appended to failures
 
     # --- Check: cyc_ground_truth (Phase 5 only) ---
     # Runs complexity_audit.py and verifies the target method's ACTUAL CYC in src/ is <= 8.

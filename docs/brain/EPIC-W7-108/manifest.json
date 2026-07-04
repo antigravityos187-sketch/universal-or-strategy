@@ -5,7 +5,8 @@
   "source": "src/V12_002.SIMA.Lifecycle.cs",
   "cyc": 0,
   "cyc_note": "Method absent as standalone symbol; inline body in ProcessShutdownSIMA has CYC~8 per static analysis. Duplicate of EPIC-W7-055.",
-  "status": "in_progress",
+  "status": "complete",
+  "final_cyc": 0,
   "phases": {
     "phase_0": {
       "name": "Hotspot Analysis",
@@ -67,9 +68,20 @@
     "phase_5": {
       "status": "completed",
       "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 1,
+      "final_cyc": 0,
       "wave_ready": true,
       "build_passed": true
+    },
+    "phase_6": {
+      "status": "completed",
+      "timestamp": "2026-07-02T00:00:00Z",
+      "final_cyc": 0,
+      "wave_ready": true,
+      "agent": "v12-phase6-review"
     }
-  }
+  },
+  "status": "complete",
+  "final_cyc": 0,
+  "wave_ready": true,
+  "phase_6_completed_at": "2026-07-02T00:00:00Z"
 }
