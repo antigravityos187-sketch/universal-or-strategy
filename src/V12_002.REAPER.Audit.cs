@@ -568,10 +568,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 return false;
             }
-            bool stateMatch = o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted;
-            bool typeMatch = o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit;
-            bool actionMatch = o.OrderAction == OrderAction.Sell || o.OrderAction == OrderAction.BuyToCover;
-            return IsMatchingInstrument(o) && stateMatch && typeMatch && actionMatch;
+            return IsMatchingInstrument(o) && IsWorkingOrderState(o) && IsStopOrderType(o) && IsProtectiveAction(o);
         }
 
         // Build 1111.007-reaper-t1: EnqueueReaperNakedStopCandidate extracted to V12_002.REAPER.NakedPosition.cs as DetectNakedPosition
