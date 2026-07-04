@@ -295,6 +295,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || state == OrderState.Rejected;
         }
 
+        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=8)
+        private static bool CancelAll_IsBracketOrder(string oName)
+        {
+            if (string.IsNullOrEmpty(oName))
+                return false;
+            return oName.StartsWith("Stop_", StringComparison.Ordinal)
+                || oName.StartsWith("S_", StringComparison.Ordinal)
+                || oName.StartsWith("T1_", StringComparison.Ordinal)
+                || oName.StartsWith("T2_", StringComparison.Ordinal)
+                || oName.StartsWith("T3_", StringComparison.Ordinal)
+                || oName.StartsWith("T4_", StringComparison.Ordinal)
+                || oName.StartsWith("T5_", StringComparison.Ordinal);
+        }
+
         private int CancelAll_ProcessFleetAccounts()
         {
             int fleetCancelled = CancelAll_ProcessFleetOrders();
@@ -350,20 +364,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             return cancelled;
-        }
-
-        // [EPIC-W7-015] Extracted: true if order name is a bracket (stop or target) order (CYC=8)
-        private static bool CancelAll_IsBracketOrder(string oName)
-        {
-            if (string.IsNullOrEmpty(oName))
-                return false;
-            return oName.StartsWith("Stop_", StringComparison.Ordinal)
-                || oName.StartsWith("S_", StringComparison.Ordinal)
-                || oName.StartsWith("T1_", StringComparison.Ordinal)
-                || oName.StartsWith("T2_", StringComparison.Ordinal)
-                || oName.StartsWith("T3_", StringComparison.Ordinal)
-                || oName.StartsWith("T4_", StringComparison.Ordinal)
-                || oName.StartsWith("T5_", StringComparison.Ordinal);
         }
 
         // [EPIC-W7-015] Extracted: true if order is in a cancellable state for the correct instrument (CYC=7)
