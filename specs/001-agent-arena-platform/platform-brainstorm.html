@@ -3398,13 +3398,467 @@
 
 <hr class="divider" />
 
+<!-- ============================================================ -->
+<!-- SESSIONS 15–20 -->
+<!-- ============================================================ -->
+<style>
+/* Shared tag styles for new sessions */
+.stag15{display:inline-block;font-size:11px;font-weight:600;background:#1c1917;color:#fb923c;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;}
+.stag16{display:inline-block;font-size:11px;font-weight:600;background:#1e1b4b;color:#a5b4fc;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;}
+.stag17{display:inline-block;font-size:11px;font-weight:600;background:#0c4a6e;color:#7dd3fc;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;}
+.stag18{display:inline-block;font-size:11px;font-weight:600;background:#0c1a2e;color:#38bdf8;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;}
+.stag19{display:inline-block;font-size:11px;font-weight:600;background:#14532d;color:#86efac;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;}
+.stag20{display:inline-block;font-size:11px;font-weight:600;background:#3b0764;color:#e9d5ff;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;}
+
+/* Dark header blocks */
+.sdark{border-radius:10px;padding:20px 22px;margin-bottom:14px;}
+.sdark .slabel{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.sdark .stitle{font-size:16px;font-weight:700;margin-bottom:6px;}
+.sdark .sdesc{font-size:13px;margin:0;}
+
+/* Game catalog grid */
+.game-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0;}
+.game-card{border-radius:8px;padding:14px;border:1px solid #e5e7eb;font-size:12px;}
+.gc-free{background:#f0fdf4;border-color:#86efac;}
+.gc-casino{background:#fff7ed;border-color:#fdba74;}
+.gc-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.gc-free .gc-tag{color:#15803d;}
+.gc-casino .gc-tag{color:#c2410c;}
+.gc-name{font-size:13px;font-weight:700;color:#1f2328;margin-bottom:4px;}
+.gc-desc{color:#57606a;line-height:1.5;margin-bottom:5px;}
+.gc-badge{font-size:11px;font-weight:600;padding:2px 6px;border-radius:3px;display:inline-block;}
+.gc-free .gc-badge{background:#dcfce7;color:#14532d;border:1px solid #86efac;}
+.gc-casino .gc-badge{background:#ffedd5;color:#c2410c;border:1px solid #fed7aa;}
+
+/* Competitor comparison table */
+.comp-table{width:100%;border-collapse:collapse;font-size:12px;margin:14px 0;}
+.comp-table th{text-align:left;padding:8px 10px;background:#0c4a6e;color:#e0f2fe;border-bottom:2px solid #0369a1;font-weight:600;font-size:11px;}
+.comp-table td{padding:7px 10px;border-bottom:1px solid #f0f0f0;vertical-align:top;}
+.comp-table td:first-child{font-weight:600;color:#1f2328;}
+.ct-win{color:#15803d;font-weight:700;}
+.ct-lose{color:#9ca3af;}
+.ct-tie{color:#b45309;font-weight:600;}
+
+/* Tool analysis */
+.tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;}
+.tool-card{border-radius:10px;padding:16px 18px;border:1px solid #e5e7eb;font-size:12px;}
+.tc-gstack{background:#f7fee7;border-color:#84cc16;}
+.tc-bu{background:#eff6ff;border-color:#3b82f6;}
+.tc-bh{background:#fafaf9;border-color:#a8a29e;}
+.tc-ab{background:#fdf4ff;border-color:#c084fc;}
+.tool-card .tc-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.tc-gstack .tc-type{color:#4d7c0f;}
+.tc-bu .tc-type{color:#1d4ed8;}
+.tc-bh .tc-type{color:#57534e;}
+.tc-ab .tc-type{color:#7e22ce;}
+.tool-card .tc-name{font-size:14px;font-weight:700;color:#1f2328;margin-bottom:6px;}
+.tool-card .tc-what{color:#57606a;line-height:1.5;margin-bottom:8px;}
+.tool-card .tc-verdict{font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;display:inline-block;}
+.tc-gstack .tc-verdict{background:#ecfccb;color:#365314;border:1px solid #a3e635;}
+.tc-bu .tc-verdict{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;}
+.tc-bh .tc-verdict{background:#f5f5f4;color:#44403c;border:1px solid #d6d3d1;}
+.tc-ab .tc-verdict{background:#fae8ff;color:#6b21a8;border:1px solid #e879f9;}
+
+/* Naval insight cards */
+.insight-card{border-radius:8px;padding:14px 16px;margin-bottom:8px;border-left:4px solid #1d4ed8;background:#f0f9ff;}
+.insight-card .ic-quote{font-size:12px;color:#1e3a8a;font-style:italic;margin-bottom:6px;line-height:1.6;}
+.insight-card .ic-action{font-size:12px;font-weight:700;color:#1f2328;margin-bottom:4px;}
+.insight-card .ic-so{font-size:11px;color:#57606a;}
+.insight-card.orange{border-color:#c2410c;background:#fff7ed;}
+.insight-card.orange .ic-quote{color:#c2410c;}
+.insight-card.green{border-color:#15803d;background:#f0fdf4;}
+.insight-card.green .ic-quote{color:#15803d;}
+.insight-card.red{border-color:#dc2626;background:#fef2f2;}
+.insight-card.red .ic-quote{color:#dc2626;}
+.insight-card.purple{border-color:#7c3aed;background:#faf5ff;}
+.insight-card.purple .ic-quote{color:#7c3aed;}
+
+/* Harness comparison table */
+.harness-table{width:100%;border-collapse:collapse;font-size:12px;margin:14px 0;}
+.harness-table th{text-align:left;padding:8px 10px;background:#3b0764;color:#e9d5ff;border-bottom:2px solid #7c3aed;font-weight:600;font-size:11px;}
+.harness-table td{padding:7px 10px;border-bottom:1px solid #f0f0f0;vertical-align:top;}
+.harness-table td:first-child{font-weight:600;color:#1f2328;font-size:11px;}
+.hw{color:#15803d;font-weight:700;}
+.hn{color:#d1d5db;}
+.hp{color:#b45309;font-weight:600;}
+</style>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SESSION 15 — GAME CATALOGUE & CASINO ARENA                 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div style="margin-top:52px;">
+  <span class="stag15">Session 15</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#f0fdf4;color:#15803d;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;">Game Catalogue</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#fff7ed;color:#c2410c;padding:2px 8px;border-radius:9999px;margin-bottom:24px;">Casino Arena</span>
+
+  <div class="sdark" style="background:#1c0a00;border:1px solid #7c2d12;">
+    <div class="slabel" style="color:#fb923c;">Session 15 — Arena Game Catalogue</div>
+    <div class="stitle" style="color:#ffedd5;">From Chess to Poker: The Full Arena Game Stack</div>
+    <div class="sdesc" style="color:#fed7aa;">Two game tiers: Free/Open (benchmark-grade, ELO-tracked, strategy-diverse) and Casino Arena (rake-funded, AC non-withdrawable at launch, legal firewall via non-fiat status). Both feed the same Arena Credits economy. The Casino Arena is the engagement layer that prints AC for re-investment in the platform ecosystem.</div>
+  </div>
+
+  <h2>Free &amp; Open Game Catalogue</h2>
+  <p>All games below are free to integrate, open-licensed, and have existing community infrastructure. Final selection is TBD based on integration complexity vs engagement value.</p>
+
+  <div class="game-grid">
+    <div class="game-card gc-free"><div class="gc-tag">Strategy · Turn-based</div><div class="gc-name">Lichess (Chess)</div><div class="gc-desc">Open-source chess platform, 100k+ games/day. Full API, open puzzles, engine analysis. Best-in-class for measurable skill signal — 1500 ELO vs 2000 ELO is a precise, universal benchmark.</div><div class="gc-badge">lichess.org API — free</div></div>
+    <div class="game-card gc-free"><div class="gc-tag">Strategy · Real-time</div><div class="gc-name">Battlesnake</div><div class="gc-desc">Multi-player snake where agents compete via HTTP webhooks. Already designed for AI competition. Low latency, deterministic, community-run tournaments. Perfect first Arena event format.</div><div class="gc-badge">battlesnake.com — free</div></div>
+    <div class="game-card gc-free"><div class="gc-tag">Research · Multi-game</div><div class="gc-name">OpenSpiel (70+ games)</div><div class="gc-desc">DeepMind's game framework: Poker, Go, Chess, Mahjong, Hex, Backgammon, 70+ more. The broadest benchmark surface — one integration gives access to an entire game research library.</div><div class="gc-badge">DeepMind — Apache 2.0</div></div>
+    <div class="game-card gc-free"><div class="gc-tag">Multi-agent · RL</div><div class="gc-name">PettingZoo</div><div class="gc-desc">The multi-agent RL standard library. Atari multiplayer, card games, classic board games, physics sims. Essential for testing agent coordination and adversarial dynamics beyond pure strategy.</div><div class="gc-badge">Farama Foundation — MIT</div></div>
+    <div class="game-card gc-free"><div class="gc-tag">Card games · RL</div><div class="gc-name">RLCard</div><div class="gc-desc">RL toolkit for card games: Poker, Mahjong, Gin Rummy, Doudizhu, Bridge. Lightweight, well-documented, easy to integrate. Bridges the Free and Casino tiers for the same game types.</div><div class="gc-badge">GitHub — MIT</div></div>
+    <div class="game-card gc-free"><div class="gc-tag">Strategy · Go</div><div class="gc-name">OGS (Online Go Server)</div><div class="gc-desc">The largest Go server with open API. Go is the deepest pure strategy game — AlphaGo territory. High signal-to-noise on spatial reasoning and long-horizon planning. Niche but prestigious.</div><div class="gc-badge">online-go.com — free API</div></div>
+    <div class="game-card gc-free"><div class="gc-tag">Strategy · RTS</div><div class="gc-name">PySC2 (StarCraft II)</div><div class="gc-desc">DeepMind's SC2 RL environment. The hardest real-time strategy benchmark in existence — AlphaStar territory. Massive signal for reasoning under time pressure. High integration complexity.</div><div class="gc-badge">DeepMind / Blizzard — MIT</div></div>
+  </div>
+
+  <h2 style="margin-top:28px;">Casino Arena</h2>
+  <p>Casino Arena runs the same games as the Free tier (Poker, Mahjong, etc.) but with Arena Credits at stake. Legal firewall: AC is non-fiat, non-withdrawable at launch — this is platform-internal gaming currency, not gambling under most jurisdictions. A 5% rake on every Casino Arena pot funds the prize pool and platform treasury.</p>
+
+  <div class="game-grid">
+    <div class="game-card gc-casino"><div class="gc-tag">Casino · Cards</div><div class="gc-name">Texas Hold'em Poker</div><div class="gc-desc">The canonical AI poker benchmark. Information-incomplete, bluffing-required, ELO-trackable. 5% rake. Agents enter with AC stake. Top finishers earn AC. RLCard engine for simulation.</div><div class="gc-badge">5% rake · AC only</div></div>
+    <div class="game-card gc-casino"><div class="gc-tag">Casino · Cards</div><div class="gc-name">Blackjack</div><div class="gc-desc">Agent vs house (platform). Fastest iteration loop — millions of hands per hour. Good for stress-testing agent decision speed and cost-per-decision optimization. Fixed house edge, no bluffing complexity.</div><div class="gc-badge">House edge · AC only</div></div>
+    <div class="game-card gc-casino"><div class="gc-tag">Casino · Tiles</div><div class="gc-name">Mahjong</div><div class="gc-desc">4-player, imperfect information, highly complex. Popular with Asian markets — strategic geographic expansion angle. RLCard + OpenSpiel both support it. High prestige in the agent competition scene.</div><div class="gc-badge">5% rake · AC only</div></div>
+    <div class="game-card gc-casino"><div class="gc-tag">Casino · Cards</div><div class="gc-name">Gin Rummy</div><div class="gc-desc">2-player, fast, well-studied in RL literature. Lower complexity than Poker but higher than Blackjack. Good "training wheels" Casino Arena game for new agents entering the staked tier.</div><div class="gc-badge">5% rake · AC only</div></div>
+    <div class="game-card gc-casino"><div class="gc-tag">Casino · Social</div><div class="gc-name">Uno</div><div class="gc-desc">Wildcard social deduction element. 2–4 players. Least studied in AI research — genuinely novel benchmark territory. High engagement from casual observers watching agent chaos. Good streaming content.</div><div class="gc-badge">5% rake · AC only</div></div>
+  </div>
+
+  <div class="resolved" style="margin-top:14px;">
+    <div class="icon">&#9989;</div>
+    <div class="body">
+      <div class="label">Decision — Casino Arena Legal Architecture</div>
+      <p class="text">AC (Arena Credits) are fiat-backed but <strong>non-withdrawable</strong> at launch. They are platform-internal currency — equivalent to casino chips, not cash. This places Casino Arena outside the legal definition of gambling in most jurisdictions (no real-money prize, no withdrawal path). Phase 2: introduce AC-to-prize-pool conversion via a legal structure (skill-based competition exemptions apply in most US states). Phase 3: on-chain conversion with full legal review. Agent sponsors who buy jersey deals for Casino Arena agents get logo placement on all session replays — 90% of deal value goes to agent owner, 10% to platform.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SESSION 16 — agents-cli + google integration note          -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div style="margin-top:48px;">
+  <span class="stag16">Session 16</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:9999px;margin-bottom:24px;">Google Integration</span>
+
+  <div class="sdark" style="background:#0f172a;border:1px solid #1e3a8a;">
+    <div class="slabel" style="color:#a5b4fc;">Session 16 — Google agents-cli</div>
+    <div class="stitle" style="color:#e0e7ff;">Builder Onboarding Path A: google/agents-cli</div>
+    <div class="sdesc" style="color:#c7d2fe;">google/agents-cli is not a platform dependency. It is <strong>Builder Onboarding Path A</strong> — the fastest route for a developer building an agent to get pre-ABIF evaluation data before their first official benchmark run. The platform uses A2A, MCP, and UCP as its protocol stack. agents-cli is one entry point into that ecosystem, not the foundation.</div>
+  </div>
+
+  <div class="resolved" style="margin-top:12px;background:#eff6ff;border-color:#bfdbfe;">
+    <div class="icon">&#128221;</div>
+    <div class="body">
+      <div class="label">Locked — google/agents-cli Role Definition</div>
+      <p class="text"><strong>What it is:</strong> Google's open-source CLI for running and evaluating AI agents locally against benchmark tasks. Supports A2A protocol natively. Produces structured evaluation reports that are compatible with (and can bootstrap) an ABIF submission. <strong>How we use it:</strong> Pre-ABIF eval prep for builders in the Arena onboarding flow. "Install agents-cli, run your agent on 3 tasks, see your baseline score — then submit for official ABIF certification." It lowers the barrier to the first benchmark without requiring the full certification infrastructure. <strong>What it is not:</strong> The platform's evaluation engine, the agent runtime, or a dependency for any platform service. If Google deprecates it, the onboarding flow updates to an alternative. The ABIF standard is ours to own.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SESSION 17 — MCPMarket Full Competitor Teardown             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div style="margin-top:48px;">
+  <span class="stag17">Session 17</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;">Competitor Intel</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#f0fdf4;color:#15803d;padding:2px 8px;border-radius:9999px;margin-bottom:24px;">MCPMarket</span>
+
+  <div class="sdark" style="background:#0c4a6e;border:1px solid #0369a1;">
+    <div class="slabel" style="color:#38bdf8;">Session 17 — MCPMarket Full Competitor Teardown</div>
+    <div class="stitle" style="color:#e0f2fe;">mcpmarket.com is NOT a directory — it is a two-product SaaS company</div>
+    <div class="sdesc" style="color:#7dd3fc;">437+ MCPs · 1,200+ agent skills · 1M+ monthly visitors. Product 1: public SEO directory. Product 2: authenticated Hub workspace (Skills versioning, Toolkit bundles, Observability, Members). Product 3: Skills Seller Marketplace launching June 2026. Threat level upgraded from "reference site" to "direct competitor."</div>
+  </div>
+
+  <h2>MCPMarket — Complete Product Map</h2>
+  <table class="comp-table">
+    <thead><tr><th style="width:180px;">Dimension</th><th>MCPMarket</th><th style="width:160px;">Arena Platform</th></tr></thead>
+    <tbody>
+      <tr><td>Core model</td><td style="color:#57606a;">MCP tool directory + SaaS workspace Hub + Skills marketplace</td><td class="ct-win">Agent competition + expertise marketplace + standards body</td></tr>
+      <tr><td>Creator commission</td><td style="color:#57606a;">80% — but $19/mo Pro required to sell (real net: ~73% below $100/mo)</td><td class="ct-win">70% — zero subscription gate. Better below $63/mo gross</td></tr>
+      <tr><td>Revenue streams</td><td class="ct-lose">1 (per-install sales only)</td><td class="ct-win">8 (sales + chub royalties + rental + prizes + sponsors + ABIF premium + work sharing + standards bond)</td></tr>
+      <tr><td>Agent identity</td><td class="ct-lose">None — no DID, no VC, no provenance</td><td class="ct-win">A2A DID + W3C VC 2.0 on every agent</td></tr>
+      <tr><td>Quality signal</td><td class="ct-lose">Install count only</td><td class="ct-win">ABIF benchmark score — certified, dated, auditable</td></tr>
+      <tr><td>Plugin install</td><td class="ct-tie">One-command Toolkit URL → Claude/Codex/Cursor</td><td class="ct-tie">arena install @handle/rig — same UX + DID + ABIF delta gate</td></tr>
+      <tr><td>Versioning</td><td style="color:#57606a;">Draft/publish/rollback, 30d history on Pro, unlimited on Team</td><td class="ct-win">7-stage CKPF workflow + ABIF score per version snapshot</td></tr>
+      <tr><td>Skill format</td><td style="color:#57606a;">SKILL.md (de facto standard they created)</td><td class="ct-win">CKPF superset of SKILL.md — backwards compatible, migration = paste</td></tr>
+      <tr><td>Competition layer</td><td class="ct-lose">None</td><td class="ct-win">Full ELO arena, tournaments, prize pools, game catalogue</td></tr>
+      <tr><td>Standards body</td><td class="ct-lose">None</td><td class="ct-win">ABIF · CKPF · AWOF · AGDF — proposed open standards</td></tr>
+      <tr><td>Pricing (workspace)</td><td style="color:#57606a;">Free $0 / Pro $19/mo / Team $149/mo+</td><td style="color:#57606a;">TBD — no subscription gate to sell is the competitive differentiator</td></tr>
+      <tr><td>Observability</td><td style="color:#57606a;">Enterprise: per-tool latency, error rate, audit log</td><td class="ct-win">Same + ABIF regression alerts + A2A audit trail</td></tr>
+    </tbody>
+  </table>
+
+  <div class="resolved" style="margin-top:14px;background:#fef2f2;border-color:#fecaca;">
+    <div class="icon">&#128308;</div>
+    <div class="body">
+      <div class="label">Threat Upgrade — MCPMarket is a Real Competitor</div>
+      <p class="text">MCPMarket is not a directory. It is a two-product SaaS with a clear pricing ladder, a plugin distribution moat (SKILL.md format adoption, one-command install), a skills marketplace launching June 2026, and a hosted agents product in the pipeline. 1M+ monthly visitors is a real audience moat. Treat as direct competitor, not a reference site. Three irreplaceable advantages we hold: <strong>(1) A2A DID + VC 2.0</strong> — architectural, not a feature flag. <strong>(2) ABIF benchmark certification</strong> — quality backed by a proposed open standard. <strong>(3) Arena competition layer + ELO</strong> — contradicts their "managed infrastructure" brand. These cannot be bought.</p>
+    </div>
+  </div>
+
+  <div class="resolved" style="margin-top:10px;background:#f0fdf4;border-color:#86efac;">
+    <div class="icon">&#128204;</div>
+    <div class="body">
+      <div class="label">Standards Leverage — CKPF as SKILL.md Grown Up</div>
+      <p class="text">SKILL.md is already the de facto format — our own workspace uses it. Strategic position: propose CKPF as the open standards body superset of SKILL.md. CKPF is backwards-compatible with any SKILL.md, adds <code>allowed-tools</code> typing, benchmark delta gates, provenance tracking, and OKF governance. Migration message: <strong>"If you already have a SKILL.md, paste it in — it works."</strong> If CKPF is accepted as the ecosystem standard, MCPMarket's SKILL.md format is a dialect of our standard, not the other way around.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SESSION 18 — GAP CLOSURE: Plugin · CKPF Versioning · Rig Pack · Earnings Calc -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div style="margin-top:48px;">
+  <span class="stag18">Session 18</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;">Gap Closure</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#f0fdf4;color:#15803d;padding:2px 8px;border-radius:9999px;margin-bottom:24px;">4 Designs</span>
+
+  <div class="sdark" style="background:#0c1a2e;border:1px solid #0369a1;">
+    <div class="slabel" style="color:#38bdf8;">Session 18 — Closing the Four MCPMarket Gaps</div>
+    <div class="stitle" style="color:#e0f2fe;">Plugin · CKPF Versioning · Rig Pack (Block Type 9) · Creator Earnings Calculator</div>
+    <div class="sdesc" style="color:#7dd3fc;">Session 17 identified 4 design gaps. Session 18 closes them all with buildable specs: a one-command Arena Rig Plugin with A2A DID + ABIF delta gate, a SKILL.md-superset CKPF versioning workflow, a Tool Bundle primitive (Block Type 9 — Rig Pack), and a commission narrative that wins on streams not percentage.</div>
+  </div>
+
+  <h2>Gap 1 — Arena Rig Plugin</h2>
+  <p>One-command install: <code>arena install @handle/rig-name</code>. Matches MCPMarket's convenience, adds cryptographic identity (A2A DID) and quality signal (ABIF score + delta gate that blocks regressions). The <code>rig.json</code> manifest contains: DID, semantic version, ABIF score + suite + delta_gate, agent block reference, chubs list with mount type, tools list with allowed_tools scope, W3C VC 2.0 credential. Clients at launch: Claude Code, Claude Desktop, Codex, Cursor.</p>
+
+  <div class="resolved" style="background:#eff6ff;border-color:#bfdbfe;">
+    <div class="icon">&#128274;</div>
+    <div class="body">
+      <div class="label">Gap 1 Closed — rig.json Manifest Specced</div>
+      <p class="text">Key differentiator: <code>"delta_gate": -5</code> in <code>rig.json</code> blocks auto-updates where ABIF score regresses more than 5 points. No MCP tool platform offers quality-gated auto-update. Distribution URL: <code>arena.ai/install/@handle/rig-name</code>.</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top:28px;">Gap 2 — CKPF Versioning Workflow (7 Stages)</h2>
+  <p>Draft → ABIF Check (auto, blocks if min_score not met) → Publish (issues W3C VC 2.0 per version hash) → Install Notify (ABIF delta shown, regression blocks auto-update) → Rollback (one-click, instant) → Deprecate → Audit Trail (every event logged with DID + ABIF score at that moment). Version history tiers: Free = last 3 versions, Pro = 90d, Team/Enterprise = unlimited.</p>
+
+  <div class="resolved" style="background:#f0fdf4;border-color:#86efac;">
+    <div class="icon">&#128274;</div>
+    <div class="body">
+      <div class="label">Gap 2 Closed — CKPF is Quality-Indexed, MCPMarket is Admin-Only</div>
+      <p class="text">MCPMarket version history records who changed what. CKPF version history records ABIF score at every snapshot — making rollback data-driven, not a gut call. Every version is an immutable quality artifact, not just a file diff.</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top:28px;">Gap 3 — Block Type 9: Rig Pack</h2>
+  <p>Block Architecture now has 9 types. Rig Pack = capability bundle (MCP tools + CKPF chubs). Distinct from Crew (Block 7 = agent team). The Rig Pack installs as a capability layer any agent can use. Revenue-generating: every install triggers AP2 chub royalty micro-payments proportionally across all chub authors embedded in the pack. Schema: <code>rigpack.json</code> with <code>access.model</code> (per_install / subscription / free), <code>access.price_ac</code>, <code>roles</code>, <code>tools[]</code> with <code>allowed_tools</code> scope, <code>chubs[]</code> with <code>royalty_pct</code>, and <code>revenue_split</code>.</p>
+
+  <div class="resolved" style="background:#f0fdf4;border-color:#86efac;">
+    <div class="icon">&#128274;</div>
+    <div class="body">
+      <div class="label">Gap 3 Closed — Block Architecture is Now 9 Types</div>
+      <p class="text">Benchmark (1) · Chub (2) · Agent (3) · Game (4) · Credential (5) · Standard (6) · Crew (7) · MCP/API Marketplace (8) · <strong>Rig Pack (9)</strong>. The Crew bundles intelligence. The Rig Pack bundles capability. A Crew can contain a Rig Pack. A Rig Pack cannot contain a Crew. Clean separation.</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top:28px;">Gap 4 — Creator Earnings Calculator</h2>
+  <p>MCPMarket headline: "Keep 80%." Our headline is NOT "Keep 70%." It is: <strong>"8 ways to earn. Zero subscription gate."</strong> The $63/mo break-even: below that gross income, Arena pays more than MCPMarket Pro (no $19/mo gate vs higher % take). Above that, MCPMarket wins on skills-only — but Arena adds 7 more revenue streams. 8 streams: skill sales (70%) · chub royalties (AP2 passive) · agent rental (3 models) · arena prizes (AC→fiat) · sponsor deals (90% to creator) · ABIF premium pricing (2–5x vs uncertified) · paid work sharing (sell/license/fork/collab) · standards bond return (500 AC → 5x if accepted).</p>
+
+  <div class="resolved" style="background:#0c1a2e;border-color:#0369a1;">
+    <div class="icon" style="color:#38bdf8;">&#128274;</div>
+    <div class="body">
+      <div class="label" style="color:#38bdf8;">Gap 4 Closed — Commission Narrative Locked</div>
+      <p class="text" style="color:#7dd3fc;">Creator page copy: "8 ways to earn. Zero subscription gate." Secondary hook: "A certified agent isn't competing on price. It's competing on proof." Live calculator shows $63/mo break-even vs MCPMarket Pro fee. ABIF certification as pricing power multiplier is the conversion argument.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SESSION 19 — NAVAL PODCAST INTELLIGENCE BRIEF              -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div style="margin-top:48px;">
+  <span class="stag19">Session 19</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#f0fdf4;color:#15803d;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;">Founder Intelligence</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#fef9c3;color:#92400e;padding:2px 8px;border-radius:9999px;margin-bottom:24px;">Naval · Gary Tan · YC</span>
+
+  <div class="sdark" style="background:#052e16;border:1px solid #16a34a;">
+    <div class="slabel" style="color:#86efac;">Session 19 — Naval Podcast Board Brief</div>
+    <div class="stitle" style="color:#dcfce7;">Riding AGI: What Gary Tan, Naval &amp; the YC orbit told us today</div>
+    <div class="sdesc" style="color:#bbf7d0;">Source: "Riding AGI, AI Anxiety, Who Funded COVID, Defending Taiwan, and California Empire" — Naval podcast with Gary Tan (YC President), Daniel (Able Police), Farbood (A-List). Read as a founder intelligence brief: what signals from the top of the ecosystem should directly change what we build and how we pitch.</div>
+  </div>
+
+  <h2>The 9 Signals That Matter for Arena Platform</h2>
+
+  <div class="insight-card green">
+    <div class="ic-quote">"If you're just willing to spend $100,000 a year on tokens, you can basically live like you are a normal citizen in 2028. Token costs going to come down. Compute is going to go way way up — 90,000x in 24–36 months." — Gary Tan</div>
+    <div class="ic-action">Signal 1 — Token cost collapse is baked in. Price today for 2028.</div>
+    <div class="ic-so">Platform implication: our AC credit pricing must be set for a world where inference is nearly free. The arena economics need to work when agent runs cost 1/90,000th of today. This means the value we charge for is not compute — it's the quality signal (ABIF), the identity (DID), the reputation (ELO), and the marketplace liquidity. Those don't deflate with token costs. Build the moat on what doesn't commoditize.</div>
+  </div>
+
+  <div class="insight-card orange">
+    <div class="ic-quote">"Software was eating the world and AI ate software. The moment you can specify it, an AI can oneshot it or twoshot it. Software is commoditized. What's not commoditized? AI research itself is the new software engineering." — Naval</div>
+    <div class="ic-action">Signal 2 — Software is commoditized. The moat is the harness, the standard, the eval layer.</div>
+    <div class="ic-so">This is existential validation of our thesis. If software is free, then the value is: (a) who controls the benchmark standard (ABIF), (b) who owns the agent identity layer (A2A DID), (c) who has the training data from agent competitions (ELO + match history). Arena Platform owns all three. MCPMarket owns none. This is the YC pitch in one sentence: "We are building the standard layer on top of commoditized AI — the benchmark, the identity, and the marketplace."</div>
+  </div>
+
+  <div class="insight-card">
+    <div class="ic-quote">"2027 will be the year of the AI harness war. Is it going to be Codex? Is it going to be Claude Code? Is it going to be OpenClaw Hermes? What harnesses are people going to use day-to-day for everything?" — Gary Tan</div>
+    <div class="ic-action">Signal 3 — The harness war starts in 2027. We need to be embedded before that war peaks.</div>
+    <div class="ic-so">Our Arena Rig Plugin (Session 18, Gap 1) is a direct response to this signal. The agent that wins the harness war controls distribution. If we can make Arena Rigs installable into every major harness (Claude Code, Codex, Cursor, OpenClaw) before 2027, we become infrastructure for whoever wins the harness war — not a victim of it. The CKPF standard is our leverage: if it becomes the skill format, every harness that adopts SKILL.md is adopting our standard.</div>
+  </div>
+
+  <div class="insight-card purple">
+    <div class="ic-quote">"I basically converted from claude code cult to openclaw cult within 24 hours... if you have an eval harness, if you've actually built a big enough corpus, if you've done crossmodal eval — you can improve the skill file to a point where it's indistinguishable." — Gary Tan</div>
+    <div class="ic-action">Signal 4 — Gary Tan personally runs evals + skill files. He is our target enterprise user.</div>
+    <div class="ic-so">Gary Tan described our exact product — an eval harness, a skill corpus, crossmodal benchmarking — and he built it himself for personal use. He is the early adopter we want on the platform. His use case: he has 400,000 markdown files, a custom LSD (Lateral Sarcastic Drift) brainstorm mode, and multi-model re-ranking. This is a CKPF chub hub. This is exactly what we're building. The YC pitch is: "You built GBrain manually. We're productizing it for every agent builder." Direct line from Gary's personal tool to our product.</div>
+  </div>
+
+  <div class="insight-card red">
+    <div class="ic-quote">"Open source once something gets in the lead it rarely surrenders it — because an ecosystem springs up around it. If something like GLM were ever to surpass Claude, it's not clear they'd get a lead back." — Naval</div>
+    <div class="ic-action">Signal 5 — First-mover in open standards wins permanently. Standards are winner-take-all.</div>
+    <div class="ic-so">This is the strategic case for moving fast on ABIF and CKPF proposals. If we propose ABIF as an open standard before any other platform creates an agent benchmark interchange format, and if we get even 3–5 major harnesses to adopt CKPF for skill versioning, the standard becomes self-reinforcing. Naval's Linux analogy is precise: once Linux got into enterprise servers it never left, even when Windows was arguably better. We need to get ABIF into the first 100 serious agent builders before any competitor even thinks about proposing a standard.</div>
+  </div>
+
+  <div class="insight-card orange">
+    <div class="ic-quote">"The general models beat the specialized ones. It's not because OpenAI Legal Act — it just totals that market. Why would I pay $5,000/month for some other SaaS company?" — Gary Tan</div>
+    <div class="ic-action">Signal 6 — Vertical AI SaaS is getting eaten. Our moat cannot be vertical fine-tuning.</div>
+    <div class="ic-so">This kills one product direction we might have taken: "a fine-tuned model for agent evaluation." We don't need it. General frontier models running ABIF benchmarks are already better than any specialized evaluator we could train. Our moat is the benchmark <em>protocol</em> (ABIF), the <em>result store</em> (ELO + agent cards), and the <em>marketplace liquidity</em> — not the model. This is also why the Rig Pack (Session 18) is a better product than a "specialized agent platform": it leverages general models with specialized context (chubs), not specialized models.</div>
+  </div>
+
+  <div class="insight-card">
+    <div class="ic-quote">"Have your agent talk to my agent. My thing will just file an issue on your GitHub repo." — Gary Tan &amp; Naval riffing on A2A</div>
+    <div class="ic-action">Signal 7 — A2A agent-to-agent commerce is already the mental model at the top of the ecosystem.</div>
+    <div class="ic-so">Gary Tan and Naval independently arrived at the A2A vision ("have your agent talk to my agent") without knowing it's a protocol. This means A2A is the right bet — it's not an academic standard, it's the natural endpoint that the smartest people in the room are already imagining. Arena Platform is the marketplace where that agent-to-agent commerce happens with trust (DID), quality proof (ABIF), and payment rails (UCP + AP2). We are not building ahead of demand. We are building the infrastructure for demand that already exists in the imagination of our target users.</div>
+  </div>
+
+  <div class="insight-card green">
+    <div class="ic-quote">"The people who are using AI today are more productive than ever. The only reason you're being displaced by AI is because you refuse to use the AI." — Naval</div>
+    <div class="ic-action">Signal 8 — The winner narrative is "AI handler," not "AI victim." Build for the handlers.</div>
+    <div class="ic-so">Naval's "Pokemon trainer" framing ("people become AI handlers, robot handlers") is exactly the brand positioning for Arena Platform. We are not building for people afraid of AI. We are building for people who want to be the best AI handlers in the world — and want to be able to prove it (ABIF certification), get paid for it (marketplace), and compete for status (ELO leaderboard). The platform's emotional appeal is: "Become the best AI handler. Prove it. Get hired for it." This is the YC pitch's emotional hook — it's aspirational, not defensive.</div>
+  </div>
+
+  <div class="insight-card red">
+    <div class="ic-quote">"The YC program — the most reliable way to become a billionaire is to join YC... spending $100k/year on tokens to live like 2028." — Naval introducing Gary</div>
+    <div class="ic-action">Signal 9 — Gary Tan is personally living our platform thesis. He is the pitch.</div>
+    <div class="ic-so">Gary Tan: 810x his 2013 coding pace using AI agents. Built GStack (top 100 open source, MIT license). Runs 10–15 parallel Claude Code sprints. Has his own eval harness (crossmodal, multi-model re-ranking). Maintains a 400k-file knowledge corpus (GBrain). He did not build all of this because he had time — he built it because the leverage is real. Arena Platform is the productized version of what Gary built for himself. The YC pitch is: "Gary Tan is your first power user. We are productizing his personal workflow for every serious agent builder in the world." If we get a YC intro meeting, lead with this frame.</div>
+  </div>
+
+  <h2 style="margin-top:24px;">YC Pitch Frame — Updated from Session 19</h2>
+  <div class="resolved" style="background:#052e16;border-color:#16a34a;">
+    <div class="icon" style="color:#86efac;">&#127775;</div>
+    <div class="body">
+      <div class="label" style="color:#86efac;">The YC Pitch in 3 Sentences</div>
+      <p class="text" style="color:#bbf7d0;">
+        <strong>1. The problem:</strong> AI software is commoditized. The missing layer is trust — you can't tell a great agent from a mediocre one, there's no standard for measuring it, and there's no marketplace where quality is the price signal.<br><br>
+        <strong>2. Our solution:</strong> Arena Platform is the benchmark standard (ABIF), the agent identity layer (A2A DID), and the marketplace where benchmark-certified agents are hired and paid — all in one platform. Gary Tan built his own version of this manually for personal use (GBrain + eval harness + skill corpus). We're productizing it.<br><br>
+        <strong>3. Why now:</strong> 90,000x compute increase in 36 months (Gary's own number). The harness war starts in 2027. Open standards are winner-take-all once adopted. We need to own the benchmark standard before that war peaks. The window is 12–18 months.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SESSION 20 — TOOL STACK ANALYSIS: gstack vs browser-use vs browser-harness vs agent-browser -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div style="margin-top:48px;">
+  <span class="stag20">Session 20</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#faf5ff;color:#7c3aed;padding:2px 8px;border-radius:9999px;margin-bottom:24px;margin-right:6px;">Tool Stack</span>
+  <span style="display:inline-block;font-size:11px;font-weight:600;background:#f7fee7;color:#4d7c0f;padding:2px 8px;border-radius:9999px;margin-bottom:24px;">gstack · browser-use · browser-harness · agent-browser</span>
+
+  <div class="sdark" style="background:#1e1b4b;border:1px solid #4f46e5;">
+    <div class="slabel" style="color:#a5b4fc;">Session 20 — My Tool Stack Decision</div>
+    <div class="stitle" style="color:#e0e7ff;">Four Browser Tools, One Platform to Build. Which stack do I run on?</div>
+    <div class="sdesc" style="color:#c7d2fe;">Researched all four repos from source. This is the founder's tool selection decision — not a comparison for a blog post, but "what do I actually install to build Arena Platform at maximum velocity?" Sources: github.com/garrytan/gstack (v1.58.5, MIT) · github.com/browser-use/browser-use (v0.13.3, MIT) · github.com/browser-use/browser-harness (v0.1.4, MIT) · github.com/vercel-labs/agent-browser (v0.31.1, MIT).</div>
+  </div>
+
+  <h2>What Each Tool Actually Is</h2>
+  <div class="tool-grid">
+    <div class="tool-card tc-gstack">
+      <div class="tc-type">Gary Tan · YC · MIT · v1.58.5</div>
+      <div class="tc-name">gstack — The AI Engineering OS</div>
+      <div class="tc-what">23 slash-command specialists + 8 power tools for Claude Code. A complete sprint process: /office-hours → /plan-ceo-review → /plan-eng-review → /review → /qa → /ship. Includes: GBrain persistent memory, /browse headless Chromium CLI (~100ms/cmd), /open-gstack-browser (real Chrome + sidebar agent + anti-bot stealth), /design-shotgun (GPT Image variants), /design-html (Pretext computed layout, shippable output), /cso (OWASP + STRIDE), /pair-agent (cross-agent browser coordination), /codex (OpenAI second opinion), iOS QA, PDF/diagram generation, cross-model benchmark CLI. Works on 10 AI coding agents. MIT, free forever.</div>
+      <div class="tc-verdict">PRIMARY — Install this first, always</div>
+    </div>
+    <div class="tool-card tc-bu">
+      <div class="tc-type">browser-use · MIT · v0.13.3 · Python</div>
+      <div class="tc-name">browser-use — The High-Level Agent Browser</div>
+      <div class="tc-what">Python library + CLI 3.0. LLM-native browser agent: you give it a task in natural language, it figures out how to do it. Chromium via Playwright under the hood. Hosted cloud option (Browser Use Cloud) with stealth, proxy rotation, captcha solving, 1000+ integrations, persistent memory. Open-source version is self-hosted. Best for: task-level automation ("fill out this job application"), not command-level control. Has its own optimized model (bu-2-0). Free open source + paid cloud.</div>
+      <div class="tc-verdict">COMPLEMENTARY — Cloud tier for stealth/scale</div>
+    </div>
+    <div class="tool-card tc-bh">
+      <div class="tc-type">browser-use · MIT · v0.1.4 · Python · Alpha</div>
+      <div class="tc-name">browser-harness — The Self-Writing Harness</div>
+      <div class="tc-what">~1k lines across 4 core files. Thin CDP wrapper where the agent writes its own helper functions as it goes — agent_helpers.py grows during execution. Domain skills auto-saved per site (e.g., "LinkedIn Apply button is in an iframe"). Architecture: no abstraction between LLM and raw Chrome DevTools Protocol. The "Bitter Lesson" philosophy: don't pre-build helpers, let the agent build what it needs. Same team as browser-use. Alpha (v0.1.4). Works with Browser Use Cloud browsers. Real browser attach (your actual Chrome with your cookies).</div>
+      <div class="tc-verdict">SITUATIONAL — Real-browser scraping tasks only</div>
+    </div>
+    <div class="tool-card tc-ab">
+      <div class="tc-type">Vercel Labs · MIT · v0.31.1 · Rust CLI</div>
+      <div class="tc-name">agent-browser — The Fast Native CLI</div>
+      <div class="tc-what">Native Rust binary, not a Node wrapper. 70+ commands via CDP with accessibility-tree snapshots (@eN ref system). Skills served live from CLI (`agent-browser skills get core`) so instructions never go stale. Specialized skills: Electron desktop apps, Slack automation, Vercel Sandbox microVMs, AWS Bedrock AgentCore. Built-in evals framework (routes through Vercel AI Gateway). Observability dashboard on port 4848. Works with any AI agent (Cursor, Claude Code, Codex, Continue, Windsurf). No Playwright/Puppeteer dependency.</div>
+      <div class="tc-verdict">SECONDARY — Fast CDP commands + Electron/Slack</div>
+    </div>
+  </div>
+
+  <h2 style="margin-top:24px;">Feature Comparison — Does Any Single Tool Have Everything?</h2>
+  <table class="harness-table">
+    <thead>
+      <tr>
+        <th style="width:200px;">Feature</th>
+        <th style="width:80px;">gstack</th>
+        <th style="width:80px;">browser-use</th>
+        <th style="width:90px;">browser-harness</th>
+        <th style="width:90px;">agent-browser</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Sprint process (/plan → /review → /ship)</td><td class="hw">✓ Full</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td></tr>
+      <tr><td>Headless browser CLI (~100ms/cmd)</td><td class="hw">✓ /browse</td><td class="hp">~ via Playwright</td><td class="hn">✗</td><td class="hw">✓ Rust native</td></tr>
+      <tr><td>Real Chrome attach (your cookies)</td><td class="hw">✓ connect</td><td class="hn">✗</td><td class="hw">✓ primary mode</td><td class="hp">~ CDP connect</td></tr>
+      <tr><td>Natural-language task execution</td><td class="hp">~ via /qa skill</td><td class="hw">✓ core feature</td><td class="hw">✓ agent-authored</td><td class="hp">~ via chat cmd</td></tr>
+      <tr><td>Anti-bot stealth browser</td><td class="hw">✓ GStack Browser</td><td class="hw">✓ Cloud tier</td><td class="hw">✓ Cloud tier</td><td class="hn">✗</td></tr>
+      <tr><td>Domain skills (per-site memory)</td><td class="hw">✓ browser-skills</td><td class="hn">✗</td><td class="hw">✓ agent-written</td><td class="hn">✗</td></tr>
+      <tr><td>Cross-agent browser sharing</td><td class="hw">✓ /pair-agent</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td></tr>
+      <tr><td>Persistent memory (GBrain/sessions)</td><td class="hw">✓ GBrain</td><td class="hw">✓ Cloud memory</td><td class="hn">✗</td><td class="hn">✗</td></tr>
+      <tr><td>Security audit (/cso OWASP+STRIDE)</td><td class="hw">✓</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td></tr>
+      <tr><td>Multi-model review (/codex OpenAI)</td><td class="hw">✓</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td></tr>
+      <tr><td>Design system (/design-shotgun + HTML)</td><td class="hw">✓</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td></tr>
+      <tr><td>iOS live-device QA</td><td class="hw">✓ v1.43+</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td></tr>
+      <tr><td>Electron/desktop app automation</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td><td class="hw">✓ specialized skill</td></tr>
+      <tr><td>Vercel Sandbox / AWS AgentCore</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td><td class="hw">✓ specialized skill</td></tr>
+      <tr><td>Agent-self-writing helpers</td><td class="hn">✗</td><td class="hn">✗</td><td class="hw">✓ core philosophy</td><td class="hn">✗</td></tr>
+      <tr><td>Prompt injection defense</td><td class="hw">✓ L1–L6 stack</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td></tr>
+      <tr><td>PDF/diagram generation</td><td class="hw">✓ /make-pdf /diagram</td><td class="hn">✗</td><td class="hn">✗</td><td class="hn">✗</td></tr>
+      <tr><td>Works with 10+ AI coding agents</td><td class="hw">✓ 10 agents</td><td class="hp">~ CLI install</td><td class="hp">~ SKILL.md</td><td class="hw">✓ universal</td></tr>
+      <tr><td>Captcha solving / proxy rotation</td><td class="hn">✗</td><td class="hw">✓ Cloud tier</td><td class="hw">✓ Cloud tier</td><td class="hn">✗</td></tr>
+      <tr><td>MIT free forever</td><td class="hw">✓</td><td class="hw">✓ open source</td><td class="hw">✓</td><td class="hw">✓</td></tr>
+    </tbody>
+  </table>
+
+  <h2 style="margin-top:24px;">Answer: No Single Tool Has Everything. My Stack Decision.</h2>
+
+  <div class="resolved" style="background:#1e1b4b;border-color:#4f46e5;">
+    <div class="icon" style="color:#a5b4fc;">&#9989;</div>
+    <div class="body">
+      <div class="label" style="color:#a5b4fc;">Tool Stack Decision — Locked for Arena Platform Build</div>
+      <p class="text" style="color:#c7d2fe;">
+        <strong>Layer 1 — Primary (install first, always):</strong> <strong>gstack</strong>. The only tool with a complete sprint process, GBrain memory, security auditing, design system generation, iOS QA, and prompt injection defense. Gary Tan uses it to ship 10–15 parallel sprints. It is the engineering OS. Everything else plugs into it.<br><br>
+        <strong>Layer 2 — Secondary (browser speed + Electron):</strong> <strong>agent-browser</strong> (Vercel). Native Rust, ~100ms commands, Electron app automation (VS Code, Slack), Vercel Sandbox integration. Use for fast headless CDP work and desktop automation that gstack's /browse doesn't cover.<br><br>
+        <strong>Layer 3 — Cloud browser (stealth + scale):</strong> <strong>browser-use Cloud</strong>. When we need captcha solving, proxy rotation, or parallel browser sessions at scale for the Arena benchmarking infrastructure. Not for local dev — for production agent evaluation pipelines.<br><br>
+        <strong>Layer 4 — Situational (real-browser scraping):</strong> <strong>browser-harness</strong>. When a task requires attaching to our own authenticated Chrome session (e.g., scraping a competitor's authenticated dashboard, or testing a complex OAuth flow with real cookies). The self-writing helper philosophy is elegant for one-off scraping tasks.<br><br>
+        <strong>Relationship to Arena Platform product:</strong> gstack's /browse architecture is conceptually identical to what we are building for the Arena Plugin ecosystem — a compiled CLI that talks to a Chromium daemon with domain skills, per-site memory, and prompt injection defense. gstack is our dogfood reference implementation. When we build the Arena Rig evaluation harness, it should look like a gstack /browse extension with ABIF scoring on top.<br><br>
+        <strong>gstack note from Gary Tan himself (heard in Naval podcast today):</strong> "One of the top 100 open-source packages for how people vibe code" — he was referring to gstack by name. He's actively building it. It's MIT. It integrates with OpenClaw natively. <strong>Install it. Use it. It is the fastest path to 2028 productivity today.</strong>
+      </p>
+    </div>
+  </div>
+
+  <div class="resolved" style="margin-top:10px;background:#f0fdf4;border-color:#86efac;">
+    <div class="icon">&#128161;</div>
+    <div class="body">
+      <div class="label">Platform Architecture Insight — gstack is our reference impl</div>
+      <p class="text">gstack's browser architecture (compiled CLI + persistent Chromium daemon + domain skills + /skillify to codify flows + /pair-agent for cross-agent coordination) is a direct blueprint for the Arena Rig Plugin execution layer. The ABIF evaluation harness we need to build is essentially: gstack's /browse + ABIF scoring protocol on top. We don't need to design the execution layer from scratch — we need to design the standard that sits above an execution layer that already exists and works. This halves our infrastructure build scope.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ONE-LINER (preserved + updated) -->
+<hr class="divider" />
+
 <h2>The One-Liner</h2>
 <p style="font-size:15px; color:#1f2328; font-weight:600;">"Battle your agent. Load it with expertise. Get hired from Google."</p>
 <p style="margin-top:6px;">For the enterprise pitch: <strong>"The agent marketplace that lives inside Google's AI — and hires itself."</strong></p>
 <p style="margin-top:6px;">For knowledge creators: <strong>"Package what you know. Earn every time an AI uses it."</strong></p>
 <p style="margin-top:6px;">For the standards pitch: <strong>"We don't just run the arena. We write the rules."</strong></p>
 <p style="margin-top:6px;">For developers: <strong>"The first AI platform where building the ecosystem pays you back."</strong></p>
+<p style="margin-top:6px;">For YC: <strong>"Gary Tan built his version manually. We're productizing it for every agent builder in the world."</strong></p>
 
-<footer>Made with IBM Bob · Sessions 1–14 · Protocols: MCP · A2A · UCP · AP2 · A2UI · AG-UI · OKF · W3C VC 2.0 · Open Badges 3.0 · Proposed: ABIF · CKPF · AWOF · AGDF · schema.org/AIAgent · Block Architecture: ibm-self-serve-assets · Nexus: Upwork + OpenSea + GitHub + Arena AI + YouTube + Instagram + X · Block Type 8: MCP/API Marketplace · Screen Record + Clip Marketplace · Trend Engine: 8 event types · Paid Work Sharing: sell/license/fork/co-build · Credit System: AC (Arena Credits) — fiat-backed, non-transferable · Enterprise tier: private pools, private ABIF suites, SOC 2 audit · Standards Bond: 500 AC deposit → 5x return on approval · ELO Decay: 0.5%/wk after 90d idle · Disputes: T1 auto / T2 agent / T3 human panel · AP2 clawback on T1 fail · ABIF scores never decay · Product Hunt: free to list, community is the gate · Agent #1: Bob</footer>
+<footer>Made with IBM Bob · Sessions 1–20 · Protocols: MCP · A2A · UCP · AP2 · A2UI · AG-UI · OKF · W3C VC 2.0 · Open Badges 3.0 · Proposed: ABIF · CKPF · AWOF · AGDF · schema.org/AIAgent · Block Architecture v2: 9 types (added Rig Pack) · Nexus: Upwork + OpenSea + GitHub + Arena AI + YouTube + Instagram + X · Casino Arena: Poker · Blackjack · Mahjong · Gin Rummy · Uno · 5% rake · AC non-withdrawable at launch · ELO Decay: 0.5%/wk after 90d idle · Disputes: T1 auto / T2 agent / T3 human panel · 8 creator revenue streams · Break-even vs MCPMarket: $63/mo gross · Tool stack: gstack (primary) + agent-browser (secondary) + browser-use Cloud (stealth) + browser-harness (real-browser) · YC pitch frame: Gary Tan is our first power user · Window: 12–18 months before harness war peaks · Agent #1: Bob</footer>
 </body>
 </html>
