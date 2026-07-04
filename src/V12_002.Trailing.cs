@@ -98,9 +98,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             bool allowPointBasedTrailing = !isTrendOrRetestTrade || pos.IsRMATrade;
             if (!allowPointBasedTrailing)
                 return;
-            double _newStopPrice = pos.CurrentStopPrice;
-            int _newTrailLevel = pos.CurrentTrailLevel;
-            ManageTrail_RunPointBasedTrailing(entryName, pos, ref _newStopPrice, ref _newTrailLevel);
+            double newStopPrice = pos.CurrentStopPrice;
+            int newTrailLevel = pos.CurrentTrailLevel;
+            ManageTrail_RunPointBasedTrailing(entryName, pos, ref newStopPrice, ref newTrailLevel);
         }
 
         private void ManageTrail_RunFleetSymmetrySync(KeyValuePair<string, PositionInfo>[] positionSnapshot)

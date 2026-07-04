@@ -462,6 +462,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private bool IsTrackedOrderPattern(string name)
         {
+            if (string.IsNullOrEmpty(name))
+                return false;
             return name.Contains("RMA")
                 || name.Contains("OR")
                 || name.Contains("MOMO")
@@ -614,7 +616,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (order == null || string.IsNullOrEmpty(order.OrderId))
                 return false;
-            return order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted;
+            return order.OrderState == OrderState.Working
+                || order.OrderState == OrderState.Accepted
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.ChangeSubmitted
+                || order.OrderState == OrderState.ChangePending;
         }
 
         // CYC: 4 -- helper: add live orders from all fleet accounts into set
