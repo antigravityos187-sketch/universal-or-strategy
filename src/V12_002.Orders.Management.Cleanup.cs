@@ -618,9 +618,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
             return order.OrderState == OrderState.Working
                 || order.OrderState == OrderState.Accepted
-                || order.OrderState == OrderState.PendingSubmit
-                || order.OrderState == OrderState.PendingChange
-                || order.OrderState == OrderState.PendingCancel;
+                || order.OrderState == OrderState.Submitted
+                || order.OrderState == OrderState.ChangeSubmitted
+                || order.OrderState == OrderState.ChangePending;
         }
 
         // CYC: 4 -- helper: add live orders from all fleet accounts into set

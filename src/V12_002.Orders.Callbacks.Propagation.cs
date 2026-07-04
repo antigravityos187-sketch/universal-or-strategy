@@ -489,7 +489,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void ResubmitTargetOrder(
             PositionInfo pos,
-            Dictionary<string, Order> targetDict,
+            ConcurrentDictionary<string, Order> targetDict,
             string fleetEntryName,
             int targetNum,
             Order tOrder,
