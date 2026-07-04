@@ -1,6 +1,6 @@
 # pr-loop
 
-description: PR Review & Repair Loop V4. Iteratively triages bot findings, repairs confirmed issues, and verifies until all bots are green. Used both manually (single PR) and as the inner loop of Phase 7 wave-orch-phase7-lane workers.
+description: PR Review & Repair Loop V5. Iteratively triages bot findings, repairs confirmed issues, and verifies until all bots are green. Uses poll_all_bots.py for OKF-filtered 8-bot signal extraction. Used both manually (single PR) and as the inner loop of Phase 7 wave-orch-phase7-lane workers.
 
 ## Usage
 
@@ -69,10 +69,26 @@ SETUP:
 ### Step 1: Bot Forensics (MANDATORY — before any code change)
 
 ```
-EXTRACT BOT FINDINGS:
-  gh pr view {PR_NUMBER} --json reviews,comments \
-    --jq '[.reviews[].body, .comments[].body] | .[]' \
-    > /tmp/pr{PR_NUMBER}_bot_raw.txt
+EXTRACT BOT FINDINGS (V5 — use poll_all_bots.py, NOT raw gh pr view):
+  python3 scripts/poll_all_bots.py {PR_NUMBER} \
+    --repo antigravityos187-sketch/universal-or-strategy \
+    > /tmp/pr{PR_NUMBER}_bot_poll.json
+
+  The script outputs structured JSON with:
+    - findings[]         : list of {bot, severity, body, okf_override}
+    - satisfaction_score : N/5 (counts: CodeRabbit, Gemini, Cubic, Sourcery, CodeAnt)
+    - all_green          : true if satisfaction_score == 5
+    - okf_overrides[]    : findings auto-classified INFORMATIONAL by OKF policy
+
+  OKF auto-overrides (never fix, log as INFORMATIONAL):
+    - #nullable enable suggestions   -> OKF: not applicable in V12 lock-free model
+    - lock() suggestions             -> HALT + LANE_HARD_FAILURE (escalate to Director)
+    - NUnit/MSTest suggestions       -> xUnit only; but if existing tests pass, INFORMATIONAL
+    - PR size warnings               -> INFRA-NOISE
+    - deploy-sync.ps1 not in PR      -> INFRA-NOISE
+
+  If all_green == true  -> skip to Step 4 (push already done, poll again to confirm)
+  If all_green == false -> parse findings[] for VALID items, proceed to classification
 
 CLASSIFY each finding as exactly one of:
   VALID-LOGIC-BUG   Behavior change, wrong output, data corruption,
@@ -105,10 +121,10 @@ WRITE: docs/brain/wave7-pr-repairs/PR-{N}/triage.md
     - [ ] VALID-MECHANICAL: <description>
     - [ ] VALID-DNA: <description>
 
-EMIT: TRIAGE_DONE PR#{N} logic=X mech=Y dna=Z hall=A noise=B
+EMIT: TRIAGE_DONE PR#{N} logic=X mech=Y dna=Z hall=A noise=B okf_overrides=C
 ```
 
-**Gate:** If zero VALID findings → skip to Step 4 (push + poll). PR is already clean.
+**Gate:** If zero VALID findings → skip to Step 5 (poll). PR is already clean.
 
 ---
 
@@ -223,18 +239,28 @@ If pre-push hook blocks: read hook output, fix the issue, retry.
 ### Step 5: Bot Poll (wait for re-review)
 
 ```
-POLLING PROTOCOL (4-minute intervals — cost-optimized):
-  Round 1: sleep 240s (4 min), then: gh pr checks {PR_NUMBER}
-  Round 2: sleep 240s, then: gh pr checks {PR_NUMBER}
-  Round 3: sleep 240s, then: gh pr checks {PR_NUMBER}
-  Round 4: sleep 240s, then: gh pr checks {PR_NUMBER}
-  Round 5: sleep 240s, then: gh pr checks {PR_NUMBER}  (20 min total)
+POLLING PROTOCOL V5 (4-minute intervals — cost-optimized):
+  Use poll_all_bots.py for EVERY poll — NOT raw gh pr checks.
 
-On each poll result:
-  ALL GREEN -> proceed to Step 6
-  PENDING   -> wait next interval
-  NEW VALID FINDINGS -> loop back to Step 1 (increment round counter)
-  SAME FINDINGS REPEATING after fix -> classify as HALLUCINATION, document, proceed
+  Round 1: sleep 240s (4 min), then:
+    python3 scripts/poll_all_bots.py {PR_NUMBER} \
+      --repo antigravityos187-sketch/universal-or-strategy \
+      > /tmp/pr{PR_NUMBER}_poll_r1.json
+  Round 2: sleep 240s, then: (same command → _r2.json)
+  Round 3: sleep 240s, then: (same command → _r3.json)
+  Round 4: sleep 240s, then: (same command → _r4.json)
+  Round 5: sleep 240s, then: (same command → _r5.json)  (20 min total)
+
+On each poll result (read .all_green and .satisfaction_score):
+  all_green == true  OR satisfaction_score == 5  -> proceed to Step 6
+  PENDING (bots not yet reviewed)                -> wait next interval
+  NEW VALID FINDINGS (not in previous triage)    -> loop back to Step 1 (increment round counter)
+  SAME FINDINGS REPEATING after fix              -> classify as HALLUCINATION, document, proceed
+
+SATISFACTION THRESHOLD:
+  5/5 bots green = LANE_COMPLETE status=MERGED_READY
+  4/5 green (1 INFRA-NOISE or deferred) = LANE_COMPLETE status=MERGED_READY (log exception)
+  <4/5 green with VALID findings = continue repair loop
 
 ROUND COUNTER:
   Round 1 (first pass): normal
@@ -307,14 +333,18 @@ Emit one of:
 
 ---
 
-## V4 Changes from V3
+## V5 Changes from V4
 
-| Aspect | V3 | V4 |
+| Aspect | V4 | V5 |
 |--------|----|----|
-| Branch model | GitButler virtual branches | Standard git checkout |
-| Gate tool | verify_pr_hygiene.ps1 | wave7_prepush_gate.py (5 checks) |
-| Machine contract | None | LANE_COMPLETE / LANE_HARD_FAILURE |
-| Step 1.5 logic planner | Added in V3 | Retained, formalized |
-| Artifact location | Mixed | main-only (never PR branch) |
-| Poll interval | 5 min / 3 min | 4 min uniform (cost-optimized) |
-| Max rounds | Unlimited | 3 (then LANE_HARD_FAILURE) |
+| Bot signal extraction | `gh pr view --json reviews,comments` | `scripts/poll_all_bots.py` (8-bot triage, OKF-filtered) |
+| Poll step | `gh pr checks {N}` | `scripts/poll_all_bots.py` with JSON output |
+| OKF auto-overrides | Manual classification | Built into poll_all_bots.py (nullable, NUnit, PR size) |
+| Satisfaction threshold | Not defined | 5/5 bots = MERGED_READY; 4/5 acceptable with logged exception |
+| Branch model | Standard git checkout | Standard git checkout (unchanged) |
+| Gate tool | wave7_prepush_gate.py (5 checks) | wave7_prepush_gate.py (6 checks — added Check 0 CS-only) |
+| Machine contract | LANE_COMPLETE / LANE_HARD_FAILURE | Unchanged |
+| Step 1.5 logic planner | Retained, formalized | Unchanged |
+| Artifact location | main-only | main-only (unchanged) |
+| Poll interval | 4 min uniform | 4 min uniform (unchanged) |
+| Max rounds | 3 (then LANE_HARD_FAILURE) | 3 (unchanged) |
