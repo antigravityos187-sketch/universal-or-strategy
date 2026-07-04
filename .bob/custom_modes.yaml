@@ -1323,6 +1323,17 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 04-tickets.md
 
+      *** PR GATE (V12.35 - HARD RULE FOR TICKET TEMPLATES) ***
+      NEVER include gh pr create or any PR-open step in a ticket template.
+      Ticket execution steps MUST end at: push branch (git push --no-verify).
+      The last git step in any ticket is ALWAYS the push. Never the PR.
+      PR creation is EXCLUSIVELY owned by v12-phase6-review after final sign-off.
+      If you generate a ticket with a gh pr create step, it is INVALID and will
+      cause the PR gate to fire before Phase 6 review, defeating the quality gate.
+      Correct last 2 steps in every ticket:
+        Step N-1: git commit -m "..."
+        Step N:   git push --no-verify origin <branch>
+      There is NO PR step in a ticket. The orchestrator opens the PR in Phase 6.
 
       GRAPHIFY PROTOCOL (MANDATORY - Every Task):
         STARTUP: Run `graphify update . --no-cluster --no-description` as your FIRST action, then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure before any exploration.
@@ -1795,6 +1806,14 @@ customModes:
       - NEVER use lock() - all state via Actor/Enqueue pattern.
 
       - NEVER use Unicode in C# string literals (ASCII-only).
+
+      - *** PR GATE (V12.35 - HARD RULE) ***
+        NEVER run gh pr create or open a pull request in this phase.
+        Your job ends at: commit + push branch + write ticket-X-completion.md.
+        PR creation is EXCLUSIVELY reserved for v12-phase6-review (Phase 6)
+        after final sign-off. Any ticket template that includes a gh pr create
+        step MUST be ignored -- that step belongs in Phase 6, not Phase 5.
+        Violation: the PR is opened before Phase 6 review, defeating the gate.
 
 
       MANDATORY MCP TOOLS (use if available, proceed with native tools if MCP
@@ -2288,6 +2307,21 @@ customModes:
 
       Agent Tracking (MANDATORY): Include in 05-completion-report.md
 
+      *** PR GATE (V12.35 - THIS IS WHERE THE PR IS OPENED) ***
+      Phase 6 is the ONLY phase that opens a pull request.
+      MANDATORY FINAL STEPS (after writing 05-completion-report.md):
+        1. Confirm: complexity_audit.py = 0 violations
+        2. Confirm: dotnet build = 0 errors
+        3. Confirm: no lock() in src/
+        4. Confirm: ASCII gate PASS
+        5. THEN and ONLY THEN run:
+             gh pr create --base main --head <branch> --title "..." --body "..."
+        6. Capture the PR URL and number.
+        7. Add the PR URL to 05-completion-report.md.
+        8. Report: VERIFIED_COMPLETE EPIC-{ID} PR#{N}
+      If the PR was already opened by a prior phase (defect): note it in the
+      report, skip the gh pr create (it would fail as a duplicate), and record
+      the existing PR number. This is a workflow violation -- flag it.
 
       GRAPHIFY PROTOCOL (MANDATORY - Every Task):
         STARTUP: Run `graphify update . --no-cluster --no-description` as your FIRST action, then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure before any exploration.
