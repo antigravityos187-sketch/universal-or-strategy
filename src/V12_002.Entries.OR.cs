@@ -122,19 +122,82 @@ namespace NinjaTrader.NinjaScript.Strategies
             EnterORPosition(MarketPosition.Short, entryPrice, stopPrice, contracts);
         }
 
-        private void EnterORPosition(MarketPosition direction, double entryPrice, double stopPrice, int contracts)
+        private bool IsOREntryAllowed(int contracts)
         {
-            // V12.Phase7 [C-09]: Compliance enforcement gate -- abort if drawdown or daily cap breached.
             if (!IsOrderAllowed())
-                return;
-            // V12.Phase6 [FLATTEN-GUARD]: Prevent order submission during active flatten
+                return false;
             if (isFlattenRunning)
-                return;
+                return false;
             if (contracts <= 0)
             {
                 Print(string.Format("[OR] EnterORPosition received invalid contracts={0}. Aborting entry.", contracts));
-                return;
+                return false;
             }
+            return true;
+        }
+
+        private bool IsORBreakoutPriceValid(MarketPosition direction, double entryPrice)
+        {
+            double currentPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
+            if (direction == MarketPosition.Long && entryPrice <= currentPrice)
+            {
+                Print(
+                    string.Format(
+                        "OR ENTRY BLOCKED: Long entry {0:F2} already below market {1:F2} - too late for breakout",
+                        entryPrice,
+                        currentPrice
+                    )
+                );
+                return false;
+            }
+            if (direction == MarketPosition.Short && entryPrice >= currentPrice)
+            {
+                Print(
+                    string.Format(
+                        "OR ENTRY BLOCKED: Short entry {0:F2} already above market {1:F2} - too late for breakout",
+                        entryPrice,
+                        currentPrice
+                    )
+                );
+                return false;
+            }
+            return true;
+        }
+
+        private Order SubmitORStopMarketOrder(
+            MarketPosition direction,
+            int contracts,
+            double entryPrice,
+            string entryName
+        )
+        {
+            if (direction == MarketPosition.Long)
+                return SubmitOrderUnmanaged(
+                    0,
+                    OrderAction.Buy,
+                    OrderType.StopMarket,
+                    contracts,
+                    0,
+                    entryPrice,
+                    "",
+                    entryName
+                );
+            return SubmitOrderUnmanaged(
+                0,
+                OrderAction.SellShort,
+                OrderType.StopMarket,
+                contracts,
+                0,
+                entryPrice,
+                "",
+                entryName
+            );
+        }
+
+        private void EnterORPosition(MarketPosition direction, double entryPrice, double stopPrice, int contracts)
+        {
+            if (!IsOREntryAllowed(contracts))
+                return;
 
             try
             {
@@ -142,29 +205,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // For LONG: entry must be ABOVE current price (breakout up)
                 // For SHORT: entry must be BELOW current price (breakout down)
                 // Use lastKnownPrice for real-time accuracy (Close[0] can be stale)
-                double currentPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
-                if (direction == MarketPosition.Long && entryPrice <= currentPrice)
-                {
-                    Print(
-                        string.Format(
-                            "OR ENTRY BLOCKED: Long entry {0:F2} already below market {1:F2} - too late for breakout",
-                            entryPrice,
-                            currentPrice
-                        )
-                    );
+                if (!IsORBreakoutPriceValid(direction, entryPrice))
                     return;
-                }
-                if (direction == MarketPosition.Short && entryPrice >= currentPrice)
-                {
-                    Print(
-                        string.Format(
-                            "OR ENTRY BLOCKED: Short entry {0:F2} already above market {1:F2} - too late for breakout",
-                            entryPrice,
-                            currentPrice
-                        )
-                    );
-                    return;
-                }
 
                 // V12.1101E: 5-target system with priority fill distribution
                 int t1Qty,
@@ -186,9 +228,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     )
                 );
 
-                string signalName = direction == MarketPosition.Long ? "ORLong" : "ORShort";
-                string timestamp = DateTime.Now.ToString("HHmmssffff");
-                string entryName = signalName + "_" + timestamp;
+                string entryName = BuildOREntryName(direction);
 
                 // Universal Ladder: T(n)Type dropdown drives all target pricing.
                 double target1Price = CalculateTargetPrice(direction, entryPrice, 1);
@@ -234,51 +274,16 @@ namespace NinjaTrader.NinjaScript.Strategies
                 SendResponseToRemote(syncMsg);
 
                 // Build 1102Y-V3 [MS-03]: Register Master's expected position BEFORE StopMarket entry.
-                int masterDeltaOR = (direction == MarketPosition.Long) ? contracts : -contracts;
-                {
-                    var _aek966 = ExpKey(Account.Name);
-                    var _aed966 = (masterDeltaOR);
-                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
-                }
+                int masterDeltaOR = ComputeORMasterDelta(direction, contracts);
+                EnqueueORExpectedDelta(masterDeltaOR);
 
                 // Submit entry order as stop market (breakout entry)
-                Order entryOrder =
-                    direction == MarketPosition.Long
-                        ? SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.Buy,
-                            OrderType.StopMarket,
-                            contracts,
-                            0,
-                            entryPrice,
-                            "",
-                            entryName
-                        )
-                        : SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.SellShort,
-                            OrderType.StopMarket,
-                            contracts,
-                            0,
-                            entryPrice,
-                            "",
-                            entryName
-                        );
+                Order entryOrder = SubmitORStopMarketOrder(direction, contracts, entryPrice, entryName);
 
-                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
+                // A1-1/A2-1: Null-abort rollback (Build 960 audit fix)
                 if (entryOrder == null)
                 {
-                    // Build 1102Y-V3 [MS-03 ROLLBACK]: Submit failed -- undo Order Ledger reservation.
-                    {
-                        var _aek966 = ExpKey(Account.Name);
-                        var _aed966 = (-masterDeltaOR);
-                        Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
-                    }
-                    Print(
-                        "[ENTRY_ABORT] OR SubmitOrderUnmanaged returned NULL for "
-                            + entryName
-                            + " -- Master expected rolled back. Fleet dispatch aborted."
-                    );
+                    HandleNullOREntry(entryName, masterDeltaOR);
                     return;
                 }
                 {
@@ -298,6 +303,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     });
                 }
 
+                string signalName = GetORSignalName(direction);
                 Print(
                     string.Format(
                         "OR ENTRY ORDER: {0} {1}@{2:F2} | Stop: {3:F2} | OR Range: {4:F2}",
@@ -325,25 +331,73 @@ namespace NinjaTrader.NinjaScript.Strategies
                 );
 
                 // V12 SIMA: Dispatch to fleet (replaces legacy slave broadcast)
-                if (EnableSIMA)
-                {
-                    // [923A-P0-OR]: StopMarket prevents immediate "marketable limit" fill.
-                    // OR Long entry price is ABOVE current market; a Limit order there is immediately
-                    // marketable on Apex/Tradovate (fills at current ask). StopMarket activates only
-                    // when price actually reaches/breaks the OR High/Low -- matching master behavior.
-                    ExecuteSmartDispatchEntry(
-                        "OR",
-                        direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort,
-                        contracts,
-                        entryPrice,
-                        OrderType.StopMarket
-                    );
-                }
+                DispatchSIMAEntry(direction, contracts, entryPrice);
             }
             catch (Exception ex)
             {
                 Print("ERROR EnterORPosition: " + ex.Message);
             }
+        }
+
+        // Extracted helper: returns "ORLong_<timestamp>" or "ORShort_<timestamp>".
+        // Removes a ternary branch from EnterORPosition to reduce CYC.
+        private string BuildOREntryName(MarketPosition direction)
+        {
+            string signalName = direction == MarketPosition.Long ? "ORLong" : "ORShort";
+            string timestamp = DateTime.Now.ToString("HHmmssffff");
+            return signalName + "_" + timestamp;
+        }
+
+        // Extracted helper: returns "ORLong" or "ORShort" label used in log output.
+        // Keeps CYC-contributing ternary out of EnterORPosition.
+        private string GetORSignalName(MarketPosition direction)
+        {
+            return direction == MarketPosition.Long ? "ORLong" : "ORShort";
+        }
+
+        // Extracted helper: computes signed master delta for the Order Ledger.
+        // Long entries add positive delta; short entries subtract.
+        // Removes a ternary branch from EnterORPosition to reduce CYC.
+        private int ComputeORMasterDelta(MarketPosition direction, int contracts)
+        {
+            return direction == MarketPosition.Long ? contracts : -contracts;
+        }
+
+        // Extracted helper: enqueues an expected position delta on the Actor.
+        // Encapsulates the Enqueue/ExpKey boilerplate for Order Ledger updates.
+        private void EnqueueORExpectedDelta(int delta)
+        {
+            var _aek966 = ExpKey(Account.Name);
+            var _aed966 = delta;
+            Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
+        }
+
+        // Extracted helper: handles null-order rollback path (Build 960 / MS-03).
+        // Rolls back the Order Ledger reservation and logs the abort reason.
+        // Removes the null-check body from EnterORPosition to reduce CYC.
+        private void HandleNullOREntry(string entryName, int masterDeltaOR)
+        {
+            // Build 1102Y-V3 [MS-03 ROLLBACK]: Submit failed -- undo Order Ledger reservation.
+            EnqueueORExpectedDelta(-masterDeltaOR);
+            Print(
+                "[ENTRY_ABORT] OR SubmitOrderUnmanaged returned NULL for "
+                    + entryName
+                    + " -- Master expected rolled back. Fleet dispatch aborted."
+            );
+        }
+
+        // Extracted helper: dispatches SIMA fleet order when SIMA is enabled.
+        // [923A-P0-OR]: StopMarket prevents immediate "marketable limit" fill.
+        // OR Long entry price is ABOVE current market; a Limit order there is immediately
+        // marketable on Apex/Tradovate (fills at current ask). StopMarket activates only
+        // when price actually reaches/breaks the OR High/Low -- matching master behavior.
+        // Removes the if(EnableSIMA) branch and its internal ternary from EnterORPosition.
+        private void DispatchSIMAEntry(MarketPosition direction, int contracts, double entryPrice)
+        {
+            if (!EnableSIMA)
+                return;
+            OrderAction action = direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort;
+            ExecuteSmartDispatchEntry("OR", action, contracts, entryPrice, OrderType.StopMarket);
         }
 
         private double CalculateORStopDistance()

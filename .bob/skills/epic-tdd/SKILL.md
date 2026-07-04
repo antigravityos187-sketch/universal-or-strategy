@@ -149,7 +149,7 @@ If ANY blocking check fails: **HALT and fix.**
 3. `git push`
 
 ### Step 5: Autonomous Perfection Gate
-**Switch to: Orchestrator mode (/pr-loop)**
+**Run: /pr-loop**
 
 Immediately after pushing, hand off to the perfection loop:
 ```
@@ -164,3 +164,18 @@ STOP when /pr-loop outputs [PHS-PERFECT].
 ## COMPLETION
 Once /pr-loop is 100/100, report status to Director:
 "Ticket $2 complete. 100/100 PHS achieved. Proceed to next ticket?"
+
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```

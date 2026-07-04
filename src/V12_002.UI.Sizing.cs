@@ -200,18 +200,22 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // V12.45 ORDER STATE GUARD: Only modify orders in stable states
-            // Accepted = broker acknowledged, waiting for fill
-            // Working  = actively in the order book
-            // ChangePending = a ChangeOrder is already in-flight -- DO NOT send another
-            OrderState currentState = entryOrder.OrderState;
-            if (currentState != OrderState.Accepted && currentState != OrderState.Working)
-            {
-                if (currentState == OrderState.ChangePending)
-                    Print($"[V12.45 SYNC] SKIP {entryName}: ChangeOrder already in-flight (ChangePending)");
+            if (!IsEntryOrderStateValid(entryOrder, entryName))
                 return false;
-            }
 
             return true;
+        }
+
+        // V12.45: Returns true if entryOrder is in a state safe to modify (Accepted or Working).
+        // Prints a diagnostic if ChangePending is detected.
+        private bool IsEntryOrderStateValid(Order entryOrder, string entryName)
+        {
+            OrderState currentState = entryOrder.OrderState;
+            if (currentState == OrderState.Accepted || currentState == OrderState.Working)
+                return true;
+            if (currentState == OrderState.ChangePending)
+                Print("[V12.45 SYNC] SKIP " + entryName + ": ChangeOrder already in-flight (ChangePending)");
+            return false;
         }
 
         /// <summary>

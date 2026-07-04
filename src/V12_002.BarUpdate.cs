@@ -58,6 +58,48 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
+        /// Runs the throttled compliance daily-summary roll-over when enabled.
+        /// Extracted from ProcessSessionReset to reduce CYC (Wave 7).
+        /// </summary>
+        private void MaybeRunDailySummary()
+        {
+            if (!EnableComplianceHub)
+                return;
+
+            DateTime nowInZone = GetComplianceNow();
+            if ((nowInZone - lastDailySummaryCheck).TotalSeconds < 30)
+                return;
+
+            List<Account> complianceAccounts = GetComplianceAccounts();
+            if (complianceAccounts.Count > 0)
+                MaybeFinalizeDailySummaries(nowInZone, complianceAccounts);
+        }
+
+        /// <summary>
+        /// Determines whether a session reset should be performed for the current bar.
+        /// Handles both overnight (midnight-crossing) and regular intraday sessions.
+        /// Extracted from ProcessSessionReset to reduce CYC (Wave 7).
+        /// </summary>
+        private bool ShouldPerformSessionReset(
+            DateTime barTimeInZone,
+            TimeSpan currentTime,
+            TimeSpan sessionStartTime,
+            bool sessionCrossesMidnight
+        )
+        {
+            if (sessionCrossesMidnight)
+            {
+                // Overnight sessions: only reset within the first 10 min of session start
+                bool inStartWindow =
+                    currentTime >= sessionStartTime && currentTime < sessionStartTime.Add(TimeSpan.FromMinutes(10));
+                return inStartWindow && barTimeInZone.Date != lastResetDate;
+            }
+
+            // Regular sessions: reset when date changes at or after session start
+            return barTimeInZone.Date != lastResetDate && currentTime >= sessionStartTime;
+        }
+
+        /// <summary>
         /// Processes session reset logic with compliance daily summary roll-over.
         /// Handles both regular and midnight-crossing sessions.
         /// </summary>
@@ -69,42 +111,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             bool sessionCrossesMidnight
         )
         {
-            // V12.12: Daily summary roll-over (throttled)
-            if (EnableComplianceHub)
-            {
-                DateTime nowInZone = GetComplianceNow();
-                if ((nowInZone - lastDailySummaryCheck).TotalSeconds >= 30)
-                {
-                    List<Account> complianceAccounts = GetComplianceAccounts();
-                    if (complianceAccounts.Count > 0)
-                        MaybeFinalizeDailySummaries(nowInZone, complianceAccounts);
-                }
-            }
+            MaybeRunDailySummary();
 
-            // Smart reset logic - only reset at NEW SESSION START
-            bool shouldReset = false;
-
-            if (sessionCrossesMidnight)
-            {
-                // For overnight sessions: only reset at session start
-                if (currentTime >= sessionStartTime && currentTime < sessionStartTime.Add(TimeSpan.FromMinutes(10)))
-                {
-                    if (barTimeInZone.Date != lastResetDate)
-                    {
-                        shouldReset = true;
-                    }
-                }
-            }
-            else
-            {
-                // For regular sessions: reset when date changes AFTER session ends
-                if (barTimeInZone.Date != lastResetDate && currentTime >= sessionStartTime)
-                {
-                    shouldReset = true;
-                }
-            }
-
-            if (shouldReset)
+            if (ShouldPerformSessionReset(barTimeInZone, currentTime, sessionStartTime, sessionCrossesMidnight))
             {
                 ResetOR();
                 lastResetDate = barTimeInZone.Date;
@@ -234,6 +243,18 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        /// <summary>
+        /// Updates the ATR cache from the 5-minute bar series when sufficient bars are available.
+        /// Extracted from OnBarUpdate to reduce CYC (Wave 7 overrun fix).
+        /// </summary>
+        private void UpdateATRFromFiveMinBars()
+        {
+            if (BarsArray[1] != null && BarsArray[1].Count > RMAATRPeriod)
+            {
+                currentATR = atrIndicator[0];
+            }
+        }
+
         protected override void OnBarUpdate()
         {
             // [EPIC-5-PERF] Latency instrumentation
@@ -276,10 +297,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // Update ATR value from 5-min bars
-                if (BarsArray[1] != null && BarsArray[1].Count > RMAATRPeriod)
-                {
-                    currentATR = atrIndicator[0];
-                }
+                UpdateATRFromFiveMinBars();
 
                 // V11: Update Telemetry Cache (Thread-safe for UI)
                 _ema9Val = (float)ema9[0];

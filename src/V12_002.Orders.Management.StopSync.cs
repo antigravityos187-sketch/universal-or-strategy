@@ -47,52 +47,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 PositionInfo pos = kvp.Value;
 
                 for (int targetNum = 1; targetNum <= 5; targetNum++)
-                {
-                    if (IsTargetFilled(pos, targetNum))
-                        continue;
-
-                    int targetQty = GetTargetContracts(pos, targetNum);
-                    if (targetQty <= 0)
-                        continue;
-
-                    var targetDict = GetTargetOrdersDictionary(targetNum);
-                    if (targetDict == null)
-                        continue;
-
-                    Order existingOrder = null;
-                    bool hasWorkingOrder =
-                        targetDict.TryGetValue(entryName, out existingOrder)
-                        && existingOrder != null
-                        && (
-                            existingOrder.OrderState == OrderState.Working
-                            || existingOrder.OrderState == OrderState.Accepted
-                        );
-
-                    if (existingOrder != null && existingOrder.OrderState == OrderState.ChangePending)
-                    {
-                        Print(string.Format("[SYNC_ALL] T{0} {1}: ChangePending -- skipping", targetNum, entryName));
-                        continue;
-                    }
-
-                    bool isNowRunner = IsRunnerTarget(targetNum);
-
-                    if (isNowRunner)
-                    {
-                        SyncRunnerTarget(entryName, pos, targetNum, targetDict, existingOrder, ref refreshed);
-                        continue;
-                    }
-
-                    SyncLimitTarget(
-                        entryName,
-                        pos,
-                        targetNum,
-                        targetQty,
-                        targetDict,
-                        existingOrder,
-                        hasWorkingOrder,
-                        ref refreshed
-                    );
-                }
+                    RefreshActivePositionOrders_ProcessTarget(entryName, pos, targetNum, ref refreshed);
             }
 
             Print(
@@ -103,6 +58,65 @@ namespace NinjaTrader.NinjaScript.Strategies
                 )
             );
         }
+
+        // [Phase 7 OVERRUN] Extracted: inner loop body of RefreshActivePositionOrders (CYC 13->4)
+        // Handles one target slot: guard checks, ChangePending skip, runner vs limit dispatch.
+        private void RefreshActivePositionOrders_ProcessTarget(
+            string entryName,
+            PositionInfo pos,
+            int targetNum,
+            ref int refreshed
+        )
+        {
+            if (IsTargetFilled(pos, targetNum))
+                return;
+
+            int targetQty = GetTargetContracts(pos, targetNum);
+            if (targetQty <= 0)
+                return;
+
+            var targetDict = GetTargetOrdersDictionary(targetNum);
+            if (targetDict == null)
+                return;
+
+            Order existingOrder;
+            targetDict.TryGetValue(entryName, out existingOrder);
+
+            if (RefreshActivePositionOrders_IsChangePending(existingOrder, targetNum, entryName))
+                return;
+
+            bool hasWorkingOrder = RefreshActivePositionOrders_IsWorking(existingOrder);
+
+            if (IsRunnerTarget(targetNum))
+            {
+                SyncRunnerTarget(entryName, pos, targetNum, targetDict, existingOrder, ref refreshed);
+                return;
+            }
+
+            SyncLimitTarget(
+                entryName,
+                pos,
+                targetNum,
+                targetQty,
+                targetDict,
+                existingOrder,
+                hasWorkingOrder,
+                ref refreshed
+            );
+        }
+
+        private bool RefreshActivePositionOrders_IsChangePending(Order order, int targetNum, string entryName)
+        {
+            if (order == null)
+                return false;
+            if (order.OrderState != OrderState.ChangePending)
+                return false;
+            Print(string.Format("[SYNC_ALL] T{0} {1}: ChangePending -- skipping", targetNum, entryName));
+            return true;
+        }
+
+        private bool RefreshActivePositionOrders_IsWorking(Order order) =>
+            order != null && (order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted);
 
         private List<KeyValuePair<string, PositionInfo>> ValidateAndSnapshotPositions()
         {
@@ -574,10 +588,15 @@ namespace NinjaTrader.NinjaScript.Strategies
             // V12.Hardening [RISK-01]: Atomic update guard
             // Actor/dispatch-thread serialization prevents dirty reads of pos.RemainingContracts
             if (ShouldSkipStopQuantityUpdate(entryName, pos))
-            {
                 return;
-            }
 
+            // [Phase 7 OVERRUN] Extracted: try/catch body to reduce CYC
+            UpdateStopQuantity_Execute(entryName, pos);
+        }
+
+        // [Phase 7 OVERRUN] Extracted: core execution body of UpdateStopQuantity
+        private void UpdateStopQuantity_Execute(string entryName, PositionInfo pos)
+        {
             try
             {
                 Order currentStop = stopOrders[entryName];
@@ -621,39 +640,42 @@ namespace NinjaTrader.NinjaScript.Strategies
                     CreateNewStopOrder(entryName, pos.RemainingContracts, pos.CurrentStopPrice, pos.Direction);
                 }
             }
-            catch (InvalidOperationException ex)
-                when (ex.Message.Contains("SubmitOrderUnmanaged")
-                    || ex.Message.Contains("CreateOrder")
-                    || ex.Message.Contains("CancelOrder")
-                )
+            catch (InvalidOperationException ex) when (IsKnownNtOrderException(ex))
             {
-                // P0-3: Clean orphaned pendingStopReplacements entry (Jane Street Principle #1: Correctness by Construction)
-                // If CancelOrderForReplace threw, the dictionary entry added before the cancel is never removed.
-                // Future stop-resize calls hit the existing-pending branch and silently update a stale record that will never complete.
-                if (pendingStopReplacements.TryRemove(entryName, out _))
-                    Interlocked.Decrement(ref pendingReplacementCount);
-
-                Print(
+                UpdateStopQuantity_HandleCatchCleanup(
+                    entryName,
+                    pos.RemainingContracts,
                     string.Format("(!) WARNING UpdateStopQuantity for {0} (known quirk): {1}", entryName, ex.Message)
                 );
-
-                // [Phase 7 NEW-2] Extracted: Emergency flatten logic
-                UpdateStopQuantity_HandleEmergencyFlatten(entryName, pos.RemainingContracts);
             }
             catch (Exception ex)
             {
-                // P0-3: Clean orphaned pendingStopReplacements entry (Jane Street Principle #1: Correctness by Construction)
-                // If CancelOrderForReplace threw, the dictionary entry added before the cancel is never removed.
-                // Future stop-resize calls hit the existing-pending branch and silently update a stale record that will never complete.
-                if (pendingStopReplacements.TryRemove(entryName, out _))
-                    Interlocked.Decrement(ref pendingReplacementCount);
-
-                Print(string.Format("(!) CRITICAL UpdateStopQuantity for {0}: {1}", entryName, ex.ToString()));
-
-                // [Phase 7 NEW-2] Extracted: Emergency flatten logic
-                UpdateStopQuantity_HandleEmergencyFlatten(entryName, pos.RemainingContracts);
                 // Do NOT rethrow - position safety requires stop order attempt to complete
+                UpdateStopQuantity_HandleCatchCleanup(
+                    entryName,
+                    pos.RemainingContracts,
+                    string.Format("(!) CRITICAL UpdateStopQuantity for {0}: {1}", entryName, ex.ToString())
+                );
             }
+        }
+
+        // [Phase 7 OVERRUN] Extracted: when-filter predicate for known NT order operation exceptions
+        private static bool IsKnownNtOrderException(InvalidOperationException ex) =>
+            ex.Message.Contains("SubmitOrderUnmanaged")
+            || ex.Message.Contains("CreateOrder")
+            || ex.Message.Contains("CancelOrder");
+
+        // [Phase 7 OVERRUN] Extracted: shared catch-block cleanup for UpdateStopQuantity
+        // Removes orphaned pendingStopReplacements entry, decrements counter, prints log, triggers emergency flatten.
+        private void UpdateStopQuantity_HandleCatchCleanup(string entryName, int remainingContracts, string logMessage)
+        {
+            // P0-3: Clean orphaned pendingStopReplacements entry (Jane Street Principle #1: Correctness by Construction)
+            if (pendingStopReplacements.TryRemove(entryName, out _))
+                Interlocked.Decrement(ref pendingReplacementCount);
+
+            Print(logMessage);
+
+            UpdateStopQuantity_HandleEmergencyFlatten(entryName, remainingContracts);
         }
 
         // V8.11: Helper method to create a new stop order
@@ -670,64 +692,26 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 // Phase 1: Validate preconditions (zombie guard, duplicate stop guard, recovery mode)
                 var (canProceed, pos) = ValidateStopOrderPreconditions(entryName, quantity, direction, isRecovery);
-
                 if (!canProceed)
                     return;
 
                 // Phase 2: Submit to broker (fleet vs local routing, OCO linking)
                 Order newStop = SubmitStopOrderToBroker(entryName, quantity, stopPrice, direction, pos);
-
                 if (newStop == null)
                 {
-                    Print(string.Format("(!) CRITICAL ERROR: Stop order submission returned NULL for {0}!", entryName));
-                    Print(
-                        string.Format(
-                            "(!) POSITION UNPROTECTED: {0} {1} contracts @ {2:F2}",
-                            direction == MarketPosition.Long ? "LONG" : "SHORT",
-                            quantity,
-                            stopPrice
-                        )
-                    );
-
-                    // Attempt to flatten position immediately
-                    Print(string.Format("(!) Attempting emergency flatten for {0}...", entryName));
-                    FlattenPositionByName(entryName);
+                    CreateNewStopOrder_HandleNullResult(entryName, quantity, stopPrice, direction);
                     return;
                 }
 
                 // A1-1: B966 -- Enqueue actor pipeline (was naked stateLock write)
+                var _en966 = entryName;
+                var _ns966 = newStop;
+                Enqueue(ctx =>
                 {
-                    var _en966 = entryName;
-                    var _ns966 = newStop;
-                    Enqueue(ctx =>
-                    {
-                        ctx.stopOrders[_en966] = _ns966;
-                    });
-                }
+                    ctx.stopOrders[_en966] = _ns966;
+                });
 
-                // [LATENCY_AUDIT] Measure OCO turnaround: CreatedTime was stamped in UpdateStopQuantity() when
-                // the target fill triggered the pending stop replacement. The delta = Target Fill -> Stop Cancel
-                // confirmed -> new stop submitted -- the full OCO lifecycle round-trip.
-                if (pendingStopReplacements.TryGetValue(entryName, out var pendingForLatency))
-                {
-                    double ocoLatencyMs = (DateTime.Now - pendingForLatency.CreatedTime).TotalMilliseconds;
-                    Print(
-                        string.Format(
-                            "[LATENCY_AUDIT] Target Fill -> Stop Cancel Delta: {0:F1}ms (Entry: {1})",
-                            ocoLatencyMs,
-                            entryName
-                        )
-                    );
-                }
-
-                Print(
-                    string.Format(
-                        "STOP QTY UPDATED: {0} contracts @ {1:F2} (Order: {2})",
-                        quantity,
-                        stopPrice,
-                        newStop.Name
-                    )
-                );
+                CreateNewStopOrder_LogLatencyAndSuccess(entryName, quantity, stopPrice, newStop);
             }
             catch (InvalidOperationException ex)
                 when (ex.Message.Contains("SubmitOrderUnmanaged") || ex.Message.Contains("CreateOrder"))
@@ -735,47 +719,85 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Print(
                     string.Format("(!) WARNING CreateNewStopOrder for {0} (known quirk): {1}", entryName, ex.Message)
                 );
-                Print(
-                    string.Format("(!) Attempting emergency flatten for {0} due to stop creation failure...", entryName)
-                );
-                try
-                {
-                    FlattenPositionByName(entryName);
-                }
-                catch (Exception flatEx)
-                {
-                    Print(
-                        string.Format(
-                            "(!) CRITICAL: Emergency flatten also failed for {0}: {1}",
-                            entryName,
-                            flatEx.ToString()
-                        )
-                    );
-                }
-                // Do NOT rethrow - position safety requires stop order attempt to complete
+                CreateNewStopOrder_FlattenSafe(entryName);
             }
             catch (Exception ex)
             {
                 Print(string.Format("(!) CRITICAL CreateNewStopOrder for {0}: {1}", entryName, ex.ToString()));
-                Print(
-                    string.Format("(!) Attempting emergency flatten for {0} due to stop creation failure...", entryName)
-                );
-                try
-                {
-                    FlattenPositionByName(entryName);
-                }
-                catch (Exception flatEx)
-                {
-                    Print(
-                        string.Format(
-                            "(!) CRITICAL: Emergency flatten also failed for {0}: {1}",
-                            entryName,
-                            flatEx.ToString()
-                        )
-                    );
-                }
+                CreateNewStopOrder_FlattenSafe(entryName);
                 // Do NOT rethrow - position safety requires stop order attempt to complete
             }
+        }
+
+        // [Phase 7 OVERRUN] Extracted: null stop result handling
+        private void CreateNewStopOrder_HandleNullResult(
+            string entryName,
+            int quantity,
+            double stopPrice,
+            MarketPosition direction
+        )
+        {
+            Print(string.Format("(!) CRITICAL ERROR: Stop order submission returned NULL for {0}!", entryName));
+            Print(
+                string.Format(
+                    "(!) POSITION UNPROTECTED: {0} {1} contracts @ {2:F2}",
+                    direction == MarketPosition.Long ? "LONG" : "SHORT",
+                    quantity,
+                    stopPrice
+                )
+            );
+            Print(string.Format("(!) Attempting emergency flatten for {0}...", entryName));
+            FlattenPositionByName(entryName);
+        }
+
+        // [Phase 7 OVERRUN] Extracted: latency audit log + success log
+        private void CreateNewStopOrder_LogLatencyAndSuccess(
+            string entryName,
+            int quantity,
+            double stopPrice,
+            Order newStop
+        )
+        {
+            if (pendingStopReplacements.TryGetValue(entryName, out var pendingForLatency))
+            {
+                double ocoLatencyMs = (DateTime.Now - pendingForLatency.CreatedTime).TotalMilliseconds;
+                Print(
+                    string.Format(
+                        "[LATENCY_AUDIT] Target Fill -> Stop Cancel Delta: {0:F1}ms (Entry: {1})",
+                        ocoLatencyMs,
+                        entryName
+                    )
+                );
+            }
+            Print(
+                string.Format(
+                    "STOP QTY UPDATED: {0} contracts @ {1:F2} (Order: {2})",
+                    quantity,
+                    stopPrice,
+                    newStop.Name
+                )
+            );
+        }
+
+        // [Phase 7 OVERRUN] Extracted: safe flatten with catch for both catch blocks in CreateNewStopOrder
+        private void CreateNewStopOrder_FlattenSafe(string entryName)
+        {
+            Print(string.Format("(!) Attempting emergency flatten for {0} due to stop creation failure...", entryName));
+            try
+            {
+                FlattenPositionByName(entryName);
+            }
+            catch (Exception flatEx)
+            {
+                Print(
+                    string.Format(
+                        "(!) CRITICAL: Emergency flatten also failed for {0}: {1}",
+                        entryName,
+                        flatEx.ToString()
+                    )
+                );
+            }
+            // Do NOT rethrow - position safety requires stop order attempt to complete
         }
 
         /// <summary>
@@ -1195,45 +1217,35 @@ namespace NinjaTrader.NinjaScript.Strategies
             double tickSize = Instrument.MasterInstrument.TickSize;
 
             // [V12.1102E] RELAXED SAFETY: For Manual BE (Level 1), allow zero-tick distance from market.
-            // This prevents the safety guard from pulling back a BE stop that price has just reached.
-            // Standard trailing (Level > 1) still enforces a 2-tick buffer.
             double minDistance = (level == 1) ? 0 : (2 * tickSize);
 
-            double resultStop = desiredStopPrice;
+            double resultStop =
+                direction == MarketPosition.Long
+                    ? Validate_LongIsIllegalAdjust(desiredStopPrice, currentPrice, level, entryPrice, minDistance)
+                    : Validate_ShortIsIllegalAdjust(desiredStopPrice, currentPrice, level, entryPrice, minDistance);
 
-            if (direction == MarketPosition.Long)
-            {
-                resultStop = Validate_LongIsIllegalAdjust(
-                    desiredStopPrice,
-                    currentPrice,
-                    level,
-                    entryPrice,
-                    minDistance
-                );
-            }
-            else
-            {
-                resultStop = Validate_ShortIsIllegalAdjust(
-                    desiredStopPrice,
-                    currentPrice,
-                    level,
-                    entryPrice,
-                    minDistance
-                );
-            }
-
-            // [Build 1102H] Profit Floor: secondary backstop -- ensures resultStop never crosses
-            // below entry for Long (or above entry for Short) regardless of how resultStop was set.
-            if (level == 1 && entryPrice > 0)
-            {
-                if (direction == MarketPosition.Long && resultStop < entryPrice)
-                    resultStop = entryPrice;
-                else if (direction == MarketPosition.Short && resultStop > entryPrice)
-                    resultStop = entryPrice;
-            }
+            // [Build 1102H] Profit Floor: secondary backstop.
+            resultStop = ValidateStopPrice_ApplyProfitFloor(direction, resultStop, level, entryPrice);
 
             // V12.Phase7 [C-04]: Always round to valid tick boundary before returning.
             return Instrument.MasterInstrument.RoundToTickSize(resultStop);
+        }
+
+        // [Phase 7 OVERRUN] Extracted: profit floor guard for ValidateStopPrice
+        private double ValidateStopPrice_ApplyProfitFloor(
+            MarketPosition direction,
+            double resultStop,
+            int level,
+            double entryPrice
+        )
+        {
+            if (level != 1 || entryPrice <= 0)
+                return resultStop;
+            if (direction == MarketPosition.Long && resultStop < entryPrice)
+                return entryPrice;
+            if (direction == MarketPosition.Short && resultStop > entryPrice)
+                return entryPrice;
+            return resultStop;
         }
 
         #endregion

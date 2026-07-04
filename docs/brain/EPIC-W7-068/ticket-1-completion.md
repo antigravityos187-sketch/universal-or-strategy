@@ -1,37 +1,64 @@
-# Ticket 1 Completion -- EPIC-W7-068
+# EPIC-W7-068 Ticket 1 Completion
 
-**epic_id:** EPIC-W7-068
-**ticket_id:** 1
-**helper_name:** COMPLIANCE_PASS
-**concern_extracted:** Method already CYC-compliant; no extraction required per Phase 4 ticket plan
-**source_file:** src/V12_002.UI.IPC.cs
-**parent_method:** TryParseTargetMode
-**cyc_parent_now:** 1
-**cyc_achieved:** 1
-**build_passed:** true
-**tests_written:** 0
+**Method**: TryParseTargetMode
+**File**: src/V12_002.UI.IPC.cs
+**Status**: COMPLETED
+**CYC Before**: 13 | **CYC After**: 3
+**Approach**: Dictionary<string,TargetMode> dispatch replaces 4-arm switch
+**Behavior Change**: None — same mappings, same fallthrough logic
+**DNA**: No lock() blocks, ASCII-only, UTF-8
 
-## Compliance Verification
+---
 
-Method `TryParseTargetMode` in `src/V12_002.UI.IPC.cs` is CYC=0 which is within CYC<=8 target.
-No structural code changes performed. Phase 4.5 review_verdict: PASS.
+## Summary
 
-DNA checks:
-- Zero lock() blocks in target method: PASS
-- ASCII-only string literals: PASS
-- UTF-8 source encoding: PASS
-- cyc_achieved=1 <= 8: PASS
-- build_passed: true (no source changes)
+Extracted the 11-entry string-to-enum mapping from a 4-arm `switch` block into a
+`static readonly Dictionary<string, TargetMode> _targetModeMap` field. The refactored
+`TryParseTargetMode` now has only 2 decision branches (null-check + TryGetValue), reducing
+cyclomatic complexity from **13** to **3**.
+
+## Changes
+
+| Symbol | Location | Change |
+|--------|----------|--------|
+| `_targetModeMap` | `src/V12_002.UI.IPC.cs:97` | NEW — static readonly Dictionary field |
+| `TryParseTargetMode` | `src/V12_002.UI.IPC.cs:114` | MODIFIED — switch replaced with dict lookup |
+
+## CYC Verification
+
+```
+TryParseTargetMode (new):
+  1 (base)
+  + 1 (if IsNullOrWhiteSpace)
+  + 1 (if TryGetValue)
+  = CYC 3
+```
+
+## Diff Summary
+
+```diff
+- string normalized = raw.Trim().ToUpperInvariant();
+- switch (normalized) { case "ATR": ... case "RUNNER": ... default: ... }
++ if (_targetModeMap.TryGetValue(raw.Trim().ToUpperInvariant(), out mode))
++     return true;
++ Print("TryParseTargetMode: unrecognized target mode value '" + raw + "'");
++ return false;
+```
+
+## DNA Compliance
+
+- [x] No `lock()` blocks
+- [x] ASCII-only strings (straight quotes, no Unicode)
+- [x] UTF-8 no BOM
+- [x] Zero logic drift — identical mappings and fallback `Print` message
+- [x] No scope creep — only `TryParseTargetMode` touched
 
 ## Agent Tracking
 
-| Field | Value |
-|---|---|
-| Agent Name | wave7-phase5-worker |
-| Wave | 7 |
-| Epic ID | EPIC-W7-068 |
-| Ticket ID | 1 |
-| Phase | 5 |
-| Executed | 2026-06-30T03:16:46Z |
-| cyc_achieved | 1 |
-| build_passed | true |
+- **Agent**: v12-engineer (Phase 5 REDO)
+- **Wave**: 7
+- **Epic**: EPIC-W7-068
+- **Ticket**: 1
+- **Completed**: 2026-07-02
+- **Build Gate**: Pending deploy-sync.ps1 (ASCII gate)
+- **Sequential Thinking**: Applied — Dictionary dispatch confirmed optimal (CYC 3 vs extract-helpers CYC 4)

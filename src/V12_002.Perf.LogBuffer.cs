@@ -21,6 +21,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         private static int _overflowCount;
         private static int _threadAffinityWarnings;
 
+        private const char OpenBrace = (char)0x7B; // '{'
+        private const char CloseBrace = (char)0x7D; // '}'
+        private const char Colon = (char)0x3A; // ':'
+
         /// <summary>
         /// Drop-in replacement for string.Format() with zero allocations for common patterns.
         /// Falls back to string.Format() if buffer overflows (correctness by construction).
@@ -50,7 +54,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         /// <summary>
         /// Internal formatting logic supporting common patterns:
-        /// - {0}, {1}, {2}, etc. (positional arguments)
+        /// - positional arguments: N-th arg substituted at index N
         /// - Mixed literal text and placeholders
         /// </summary>
         private static int FormatInternal(string format, object[] args)
@@ -62,53 +66,83 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 char c = format[formatPos];
 
-                if (c == '{')
+                if (c == OpenBrace)
                 {
-                    // Scan for format specifier (e.g., {0:F2})
-                    int closingBrace = formatPos + 1;
-                    while (closingBrace < format.Length && format[closingBrace] != '}')
-                    {
-                        if (format[closingBrace] == ':')
-                        {
-                            // Format specifier detected - fallback to string.Format
-                            return -1;
-                        }
-                        closingBrace++;
-                    }
-
-                    // Check for placeholder {N}
-                    if (formatPos + 2 < format.Length && format[formatPos + 2] == '}')
-                    {
-                        char digitChar = format[formatPos + 1];
-                        if (digitChar >= '0' && digitChar <= '9')
-                        {
-                            int argIndex = digitChar - '0';
-                            if (argIndex < args.Length)
-                            {
-                                string argStr = args[argIndex]?.ToString() ?? "null";
-                                if (bufferPos + argStr.Length >= _buffer.Length)
-                                {
-                                    return -1; // Overflow
-                                }
-                                argStr.CopyTo(0, _buffer, bufferPos, argStr.Length);
-                                bufferPos += argStr.Length;
-                                formatPos += 3; // Skip {N}
-                                continue;
-                            }
-                        }
-                    }
+                    int advance = TryExpandPlaceholder(format, formatPos, args, ref bufferPos);
+                    if (advance < 0)
+                        return -1;
+                    formatPos += advance;
+                    continue;
                 }
 
-                // Copy literal character
                 if (bufferPos >= _buffer.Length)
-                {
-                    return -1; // Overflow
-                }
+                    return -1;
+
                 _buffer[bufferPos++] = c;
                 formatPos++;
             }
 
             return bufferPos;
+        }
+
+        /// <summary>
+        /// Attempts to expand a placeholder starting at formatPos.
+        /// Returns 3 if arg was written, 1 to treat brace as literal, -1 on overflow or specifier.
+        /// </summary>
+        private static int TryExpandPlaceholder(string format, int formatPos, object[] args, ref int bufferPos)
+        {
+            if (HasFormatSpecifier(format, formatPos))
+                return -1;
+
+            string argStr;
+            if (!TryGetSingleDigitArg(format, formatPos, args, out argStr))
+                return 1;
+
+            if (bufferPos + argStr.Length >= _buffer.Length)
+                return -1;
+
+            argStr.CopyTo(0, _buffer, bufferPos, argStr.Length);
+            bufferPos += argStr.Length;
+            return 3;
+        }
+
+        /// <summary>
+        /// Returns true if the opening brace at formatPos is followed by a format specifier colon.
+        /// </summary>
+        private static bool HasFormatSpecifier(string format, int formatPos)
+        {
+            int p = formatPos + 1;
+            while (p < format.Length && format[p] != CloseBrace)
+            {
+                if (format[p] == Colon)
+                    return true;
+                p++;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Extracts the argument string for a single-digit placeholder at formatPos.
+        /// Returns false if the pattern does not match or argIndex is out of range.
+        /// </summary>
+        private static bool TryGetSingleDigitArg(string format, int formatPos, object[] args, out string argStr)
+        {
+            argStr = null;
+
+            if (formatPos + 2 >= format.Length || format[formatPos + 2] != CloseBrace)
+                return false;
+
+            char digitChar = format[formatPos + 1];
+            if (digitChar < (char)0x30 || digitChar > (char)0x39)
+                return false;
+
+            int argIndex = digitChar - '0';
+            if (argIndex >= args.Length)
+                return false;
+
+            object arg = args[argIndex];
+            argStr = arg != null ? arg.ToString() : "null";
+            return true;
         }
 
         /// <summary>

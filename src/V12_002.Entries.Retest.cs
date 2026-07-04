@@ -46,42 +46,37 @@ namespace NinjaTrader.NinjaScript.Strategies
             return CalculateATRStopDistance(multToUse);
         }
 
-        // V8.4: Execute RETEST entry - auto-detects direction based on price vs OR Mid
-        private void ExecuteRetestEntry(int contracts)
+        // V8.4: Returns true when any precondition blocks a RETEST entry (extracted for CYC).
+        private bool RetestEntryPreconditionFailed(int contracts)
         {
             // V12.Phase7 [C-09]: Compliance enforcement gate.
             if (!IsOrderAllowed())
-                return;
+                return true;
             // V12.Phase6 [FLATTEN-GUARD]: Prevent order submission during active flatten
             if (isFlattenRunning)
-                return;
-
+                return true;
             if (!RetestEnabled)
             {
                 Print("RETEST mode is disabled");
-                return;
+                return true;
             }
-
             // V12.1101E [B-2]: Session-scoped latch -- one RETEST entry per OR session maximum.
             // Resets automatically in ResetOR() at the start of each new session.
             if (retestFiredThisSession)
             {
                 Print("RETEST: Already fired this session -- latch active, ignoring duplicate arm");
-                return;
+                return true;
             }
-
             if (!orComplete)
             {
                 Print("Cannot execute RETEST - OR not complete yet");
-                return;
+                return true;
             }
-
             if (currentATR <= 0)
             {
                 Print("Cannot execute RETEST entry - ATR not available yet");
-                return;
+                return true;
             }
-
             if (contracts <= 0)
             {
                 Print(
@@ -90,8 +85,16 @@ namespace NinjaTrader.NinjaScript.Strategies
                         contracts
                     )
                 );
-                return;
+                return true;
             }
+            return false;
+        }
+
+        // V8.4: Execute RETEST entry - auto-detects direction based on price vs OR Mid
+        private void ExecuteRetestEntry(int contracts)
+        {
+            if (RetestEntryPreconditionFailed(contracts))
+                return;
 
             try
             {
@@ -101,33 +104,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Auto-detect direction: Price > OR Mid = LONG, Price < OR Mid = SHORT
                 MarketPosition direction;
                 double entryPrice;
-
-                if (currentPrice > sessionMid)
-                {
-                    direction = MarketPosition.Long;
-                    entryPrice = sessionHigh; // Entry at OR High (NO buffer)
-                    Print(
-                        string.Format(
-                            "RETEST: Price above OR Mid ({0:F2} > {1:F2}) = LONG at OR High {2:F2}",
-                            currentPrice,
-                            sessionMid,
-                            entryPrice
-                        )
-                    );
-                }
-                else
-                {
-                    direction = MarketPosition.Short;
-                    entryPrice = sessionLow; // Entry at OR Low (NO buffer)
-                    Print(
-                        string.Format(
-                            "RETEST: Price below OR Mid ({0:F2} < {1:F2}) = SHORT at OR Low {2:F2}",
-                            currentPrice,
-                            sessionMid,
-                            entryPrice
-                        )
-                    );
-                }
+                string signalName;
+                DetermineRetestDirection(currentPrice, out direction, out entryPrice, out signalName);
 
                 // Calculate stop and targets using ATR
                 double multToUse = isRetestRmaMode ? RMAStopATRMultiplier : RetestATRMultiplier;
@@ -141,9 +119,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 double stopDistance = CalculateATRStopDistance(multToUse); // V12.30: Ceiling-rounded
 
                 // V12.Phase6 [TICK-01]: All prices rounded to valid tick increments
-                double stopPrice = Instrument.MasterInstrument.RoundToTickSize(
-                    direction == MarketPosition.Long ? entryPrice - stopDistance : entryPrice + stopDistance
-                );
+                double stopPrice = CalculateRetestStopPrice(direction, entryPrice, stopDistance);
 
                 // Universal Ladder: T(n)Type dropdown drives all target pricing.
                 double target1Price = CalculateTargetPrice(direction, entryPrice, 1);
@@ -159,7 +135,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                     t5Qty;
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
 
-                string signalName = direction == MarketPosition.Long ? "RetestLong" : "RetestShort";
                 string timestamp = DateTime.Now.ToString("HHmmssffff");
                 string entryName = signalName + "_" + timestamp;
 
@@ -208,7 +183,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // Build 1102Y-V3 [MS-07]: Register Master expected BEFORE Limit entry.
-                int masterDeltaRetest = (direction == MarketPosition.Long) ? contracts : -contracts;
+                int masterDeltaRetest = direction == MarketPosition.Long ? contracts : -contracts;
                 {
                     var _aek966 = ExpKey(Account.Name);
                     var _aed966 = (masterDeltaRetest);
@@ -216,28 +191,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // Submit LIMIT order at OR High/Low (NO buffer)
-                Order entryOrder =
-                    direction == MarketPosition.Long
-                        ? SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.Buy,
-                            OrderType.Limit,
-                            contracts,
-                            entryPrice,
-                            0,
-                            "",
-                            entryName
-                        )
-                        : SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.SellShort,
-                            OrderType.Limit,
-                            contracts,
-                            entryPrice,
-                            0,
-                            "",
-                            entryName
-                        );
+                Order entryOrder = SubmitRetestLimitOrder(direction, contracts, entryPrice, entryName);
 
                 if (entryOrder == null)
                 {
@@ -315,6 +269,63 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Print("ERROR ExecuteRetestEntry: " + ex.Message);
             }
+        }
+
+        // Extracted helper: auto-detect RETEST direction and entry price from current price vs OR mid.
+        private void DetermineRetestDirection(
+            double currentPrice,
+            out MarketPosition direction,
+            out double entryPrice,
+            out string signalName
+        )
+        {
+            if (currentPrice > sessionMid)
+            {
+                direction = MarketPosition.Long;
+                entryPrice = sessionHigh; // Entry at OR High (NO buffer)
+                signalName = "RetestLong";
+                Print(
+                    string.Format(
+                        "RETEST: Price above OR Mid ({0:F2} > {1:F2}) = LONG at OR High {2:F2}",
+                        currentPrice,
+                        sessionMid,
+                        entryPrice
+                    )
+                );
+            }
+            else
+            {
+                direction = MarketPosition.Short;
+                entryPrice = sessionLow; // Entry at OR Low (NO buffer)
+                signalName = "RetestShort";
+                Print(
+                    string.Format(
+                        "RETEST: Price below OR Mid ({0:F2} < {1:F2}) = SHORT at OR Low {2:F2}",
+                        currentPrice,
+                        sessionMid,
+                        entryPrice
+                    )
+                );
+            }
+        }
+
+        // Extracted helper: round RETEST stop price to valid tick size.
+        private double CalculateRetestStopPrice(MarketPosition direction, double entryPrice, double stopDistance)
+        {
+            double rawStop = direction == MarketPosition.Long ? entryPrice - stopDistance : entryPrice + stopDistance;
+            return Instrument.MasterInstrument.RoundToTickSize(rawStop);
+        }
+
+        // Extracted helper: submit RETEST LIMIT order for long or short direction.
+        private Order SubmitRetestLimitOrder(
+            MarketPosition direction,
+            int contracts,
+            double entryPrice,
+            string entryName
+        )
+        {
+            OrderAction action = direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort;
+            return SubmitOrderUnmanaged(0, action, OrderType.Limit, contracts, entryPrice, 0, "", entryName);
         }
 
         private void DeactivateRetestMode()

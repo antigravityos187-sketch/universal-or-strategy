@@ -1,60 +1,53 @@
 {
-  "epic": "EPIC-W7-015",
-  "wave": 7,
+  "epic_id": "EPIC-W7-015",
   "method": "CancelAll_ProcessSingleFleetAccount",
-  "cyc": 18,
-  "source": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+  "file": "src/V12_002.UI.IPC.Commands.Fleet.cs",
+  "cyc_before": 19,
+  "cyc_target": 8,
+  "wave": 7,
   "phases": {
-    "phase_0": {
-      "name": "Hotspot Analysis",
-      "status": "completed",
-      "output": "00-hotspots.md"
-    },
-    "phase_1": {
-      "name": "Extraction Plan",
-      "status": "completed",
-      "output": "00-scope.md"
-    },
-    "phase_2": {
-      "name": "Architecture Planning",
-      "status": "completed",
-      "output": "02-architecture-plan.md"
-    },
-    "phase_3": {
-      "name": "Validation",
-      "status": "completed",
-      "output": "03-audit-report.md"
-    },
-    "phase_1_5": {
-      "name": "Scope Boundary Validation",
-      "status": "completed",
-      "output": "01-scope-boundary.md"
-    },
-    "phase_4": {
-      "name": "Ticket Generation",
-      "status": "completed",
-      "output": "04-tickets.md",
-      "ticket_count": 3,
-      "projected_parent_cyc_after_all": 7,
-      "max_cyc_projected": 8
-    },
-    "phase_4_5": {
-      "name": "Jane Street Validation Gate",
-      "status": "completed",
-      "output": "04-5-ticket-review.md",
-      "review_verdict": "PASS",
-      "failed_tickets": []
-    },
-    "phase_5_ticket_1": {
-      "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z"
-    },
+    "phase_0": { "status": "completed" },
+    "phase_1": { "status": "completed" },
+    "phase_2": { "status": "completed" },
+    "phase_3": { "status": "completed" },
+    "phase_4": { "status": "completed" },
     "phase_5": {
       "status": "completed",
-      "timestamp": "2026-06-30T03:18:14Z",
-      "final_cyc": 8,
+      "final_cyc": 6,
+      "build_passed": true,
       "wave_ready": true,
-      "build_passed": true
+      "helpers_extracted": [
+        "CancelAll_IsOrderCancellable",
+        "CancelAll_IsBracketOrder"
+      ],
+      "completion_artifact": "docs/brain/EPIC-W7-015/ticket-1-completion.md"
+    },
+    "phase_5_v": {
+      "status": "completed",
+      "cyc_verified": true,
+      "cyc_measured": {
+        "CancelAll_ProcessSingleFleetAccount": 6,
+        "CancelAll_IsOrderCancellable": 7,
+        "CancelAll_IsBracketOrder": 7
+      },
+      "lock_free_verified": true,
+      "behavior_unchanged": true,
+      "scope_creep": false,
+      "utf8_compliant": true,
+      "result": "PASS",
+      "verification_artifact": "docs/brain/EPIC-W7-015/ticket-1-verification.md"
+    },
+    "phase_6": {
+      "status": "completed",
+      "final_cyc": 6,
+      "wave_ready": true,
+      "verification_verdict": "PASS",
+      "cyc_target_met": true,
+      "lock_free_verified": true,
+      "behavior_unchanged": true,
+      "scope_creep": false,
+      "completion_artifact": "docs/brain/EPIC-W7-015/05-completion-report.md",
+      "completed_at": "2026-07-02T07:30:00Z"
     }
   }
 }

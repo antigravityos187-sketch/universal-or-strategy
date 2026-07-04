@@ -1,6 +1,6 @@
 # docs/ - Documentation Rules
 
-**Last Updated**: 2026-06-08T22:45:00Z
+**Last Updated**: 2026-07-02
 **Scope**: Project documentation, standards, and knowledge base
 
 ---
@@ -10,67 +10,71 @@
 ```
 docs/
 ├── brain/              # Epic documentation and session tracking
-├── standards/          # Coding standards and patterns
-│   └── jane-street/    # Jane Street HFT patterns
-├── protocol/           # Workflow protocols
-├── workflow/           # Git and branch strategies
-└── mcp/                # MCP server configurations
+│   └── EPIC-W7-NNN/   # Wave 7 epic artifacts (manifest-based)
+├── intel/
+│   └── jane-street/   # OKF knowledge wiki (Jane Street HFT patterns)
+├── protocol/          # Workflow protocols and enforcement rules
+└── workflow/          # Git, branch, and collaboration workflows
 ```
 
 ---
 
 ## Documentation Standards
 
-### Epic Documentation (`docs/brain/EPIC-*/`)
+### Epic Documentation (`docs/brain/EPIC-W7-NNN/`)
 
-**Required Files**:
-1. `00-scope.md` - Epic scope and objectives
-2. `01-analysis.md` - Risk analysis and complexity assessment
-3. `02-approach.md` - Implementation strategy
-4. `02-greptile-report.md` - Sentinel audit results
-5. `ticket-XX-*.md` - Individual ticket specifications
-6. `EXECUTION_GUIDE.md` - Ticket execution order
-7. `FORENSIC_REPORT.md` - Post-mortem (if epic fails)
-8. `CANCELLATION_NOTICE.md` - Cancellation rationale (if applicable)
+**Required Files** (manifest-based architecture):
+1. `manifest.json` — Central state tracker (phase status, artifact paths)
+2. `00-hotspots.md` — Phase 0: hotspot analysis with MCP evidence
+3. `00-scope.md` — Phase 1: scope definition
+4. `01-scope-boundary.md` — Phase 1.5: boundary validation
+5. `02-architecture-plan.md` — Phase 2: extraction plan with signatures
+6. `03-audit-report.md` — Phase 3: DNA compliance audit
+7. `04-tickets.md` — Phase 4: ticket breakdown
+8. `ticket-N-completion.md` — Phase 5.N: execution record
+9. `ticket-N-verification.md` — Phase 5.N.V: independent verification
+10. `05-completion-report.md` — Phase 6: final review
 
 **Naming Convention**:
-- Epic IDs: `EPIC-CCN-N` (Cyclomatic Complexity Normalization)
-- Ticket IDs: `ticket-01-extract-method-name.md`
+- Epic IDs: `EPIC-W7-NNN` (Wave 7, zero-padded three digits)
+- Legacy: `EPIC-CCN-N` (Cyclomatic Complexity Normalization — Waves 1-6)
 
-**Update Frequency**: After each epic phase completion
+**Update Frequency**: After each phase completion (manifest.json updated automatically)
 
 ---
 
-## Jane Street Knowledge Base (`docs/standards/jane-street/`)
+## Jane Street Knowledge Base (`docs/intel/jane-street/`)
 
-**Purpose**: HFT (High-Frequency Trading) patterns and principles
+**Format**: Open Knowledge Format (OKF) v0.1
+**Status**: MANDATORY — architectural constraints, not suggestions
+**Replaces**: Firebase Firestore `jane_street_knowledge_base` (credential revoked)
 
-**Key Documents**:
-- `RULES_CATALOG.md` - 100+ rules with P0/P1/P2 severity
-- `CORE_PATTERNS.md` - Fundamental design patterns
-- `ASYNC_PATTERNS.md` - Asynchronous programming patterns
-- `FSM_PATTERNS.md` - Finite State Machine patterns
-- `TESTING_PATTERNS.md` - Testing strategies
+**Index**: [`docs/intel/jane-street/index.md`](intel/jane-street/index.md)
 
-**Usage**: Query before epic planning
-```bash
-python scripts/query_kb.py "complexity reduction"
-python scripts/query_kb.py "FSM extraction"
-```
+| File | Topic |
+|------|-------|
+| `complexity-reduction.md` | CYC <= 8 extraction patterns |
+| `lock-free-patterns.md` | Actor/Enqueue mandate |
+| `testing-strategies.md` | xUnit [Fact] only |
+| `how-to-build-an-exchange.md` | FSM determinism, one_in_flight |
+| `microsecond-eternity.md` | Zero-alloc, JIT warmup, cache alignment |
+| `ocaml-performance-engineering.md` | Struct locality, data race freedom |
+| `concurrency-coordination.md` | Cache coherency, false sharing |
+| `advanced-skylake-deep-dive.md` | CPU front-end, DSB cache, CYC <= 8 rationale |
 
-**Maintenance**: Read-only (sourced from Firebase)
+**Query**: `python scripts/query_kb.py "<term>"`
+**Maintenance**: Read-only (sourced from Jane Street engineering talks)
 
 ---
 
 ## Protocol Documentation (`docs/protocol/`)
 
-**Purpose**: Workflow and process documentation
-
 **Key Documents**:
-- `BRANCH_STRATEGY.md` - Three-tier branch model
-- `COMPLEXITY_REDUCTION_PROTOCOL.md` - CYC ≤ 8 enforcement
-- `CODEFACTOR_PROTOCOL.md` - CodeFactor integration rules
-- `CODESCENE_INTEGRATION.md` - Hotspot analysis workflow
+- `BRANCH_STRATEGY.md` — Three-tier branch model (src/docs/infra)
+- `COMPLEXITY_REDUCTION_PROTOCOL.md` — CYC <= 8 enforcement
+- `CODEFACTOR_PROTOCOL.md` — NEVER use "Apply fixes" button (320 error precedent)
+- `TEST_FRAMEWORK_PROTOCOL.md` — xUnit only, never NUnit/MSTest
+- `RECOVERY_LOOP_PROTOCOL.md` — Epic failure recovery
 
 **Update Trigger**: When workflow changes
 
@@ -78,122 +82,57 @@ python scripts/query_kb.py "FSM extraction"
 
 ## Workflow Documentation (`docs/workflow/`)
 
-**Purpose**: Git, branch, and collaboration workflows
-
 **Key Documents**:
-- `AUTONOMOUS_GITBUTLER_WORKFLOW.md` - Virtual branch management
-- `BATCH_COMMIT_STRATEGY.md` - Commit batching rules
-- `BRANCH_SYNC_PROTOCOL.md` - Branch synchronization
-- `LOOP_ORCHESTRATION.md` - PR loop automation
+- `V12_EPIC_WORKFLOW_REFACTORING_DESIGN.md` — Manifest-based epic architecture
+- `WAVE_PHASE_SCRIPT_GENERATION_SOP_V3.md` — Building-blocks method (copy, don't generate)
+- `BRANCH_STRATEGY_ENFORCEMENT.md` — GitButler virtual branch mandate
 
-**Update Trigger**: When git workflow changes
-
----
-
-## MCP Documentation (`docs/mcp/`)
-
-**Purpose**: Model Context Protocol server configurations
-
-**Key Documents**:
-- `CUBIC_JANE_STREET_CONFIG.md` - Cubic MCP setup
-- `GREPTILE_MCP_TROUBLESHOOTING.md` - Greptile debugging
-- `MULTI_TOOL_REVIEW_WORKFLOW.md` - Multi-tool review process
-
-**Update Trigger**: When MCP servers added/modified
+**Update Trigger**: When epic or wave workflow changes
 
 ---
 
 ## Session Tracking (`docs/brain/`)
 
-### Autonomous Refactor Session
-**Files**:
-- `autonomous_refactor_session.json` - Session metadata
-- `autonomous_refactor_progress.md` - Epic queue and log
-- `nexus_a2a.json` - Agent-to-agent handoffs
-
-**Update Frequency**: After each epic completion/failure
+### Wave 7 Session Files
+- `autonomous_refactor_session.json` — Session metadata
+- `autonomous_refactor_progress.md` — Epic queue and log
+- `nexus_a2a.json` — Agent-to-agent handoffs (Nexus Bridge)
+- `wave7-okf-cache.json` — OKF runtime cache (13 Jane Street documents)
 
 ### Forensic Reports
-**Purpose**: Post-mortem analysis of epic failures
-
 **Template**:
 ```markdown
-# FORENSIC REPORT: EPIC-X
-
+# FORENSIC REPORT: EPIC-W7-NNN
 ## Executive Summary
-[One-paragraph summary]
-
 ## Root Cause
-[Detailed root cause analysis]
-
 ## Prevention
-[Safeguards to prevent recurrence]
-
 ## Lessons Learned
-[Key takeaways]
 ```
-
-**Storage**: Firebase `learnings` collection (auto-captured)
 
 ---
 
 ## Markdown Standards
 
-### Headings
-- Use ATX-style headings (`#`, `##`, `###`)
-- One H1 per document
-- No skipping heading levels
-
-### Links
-- Use relative paths: `[text](../path/to/file.md)`
+- ATX-style headings (`#`, `##`, `###`). One H1 per document.
+- Relative paths for links: `[text](../path/to/file.md)`
+- Always specify language in code blocks: ` ```csharp`, ` ```bash`, ` ```json`
 - Verify links: `powershell -File .\scripts\verify_links.ps1`
-
-### Code Blocks
-- Always specify language: ` ```csharp`, ` ```bash`, ` ```json`
-- Use syntax highlighting
-
-### Tables
-- Use GitHub-flavored Markdown tables
-- Align columns with pipes
 
 ---
 
 ## Documentation Workflow
 
 ### Before Epic
-1. Create `docs/brain/EPIC-X/` directory
-2. Generate `00-scope.md` via `/epic-intake`
-3. Generate `01-analysis.md` and `02-approach.md` via `/epic-plan`
+1. Create `docs/brain/EPIC-W7-NNN/` directory
+2. Run `epic-intake EPIC-W7-NNN "description"` to generate Phase 0 artifacts
 
 ### During Epic
-1. Update ticket files as work progresses
-2. Document decisions in `02-approach.md`
-3. Track blockers in `EXECUTION_GUIDE.md`
+1. Each phase writes its output artifact and updates `manifest.json`
+2. Track blockers in the ticket completion file
 
-### After Epic Success
-1. Update `autonomous_refactor_progress.md`
-2. Archive epic directory (keep for reference)
-
-### After Epic Failure
-1. Generate `FORENSIC_REPORT.md`
-2. Auto-capture lesson to Firebase
-3. Update `CANCELLATION_NOTICE.md`
-
----
-
-## Common Pitfalls
-
-### ❌ Stale Documentation
-**Problem**: Docs don't reflect current code state
-**Solution**: Update docs immediately after code changes
-
-### ❌ Missing Forensic Reports
-**Problem**: Epic fails without post-mortem
-**Solution**: Automated via `.bob/hooks/after_epic_failure.py`
-
-### ❌ Broken Links
-**Problem**: Links point to moved/deleted files
-**Solution**: Run `verify_links.ps1` before commit
+### After Epic
+1. Phase 6 generates `05-completion-report.md`
+2. `manifest.json` status → all phases `completed`
 
 ---
 
@@ -202,5 +141,5 @@ python scripts/query_kb.py "FSM extraction"
 **Parent**: [`../AGENTS.md`](../AGENTS.md) (root)
 **Children**: None (leaf node)
 **Related**:
-- [`../src/AGENTS.md`](../src/AGENTS.md) - Source code rules
-- [`../scripts/AGENTS.md`](../scripts/AGENTS.md) - Tooling rules
+- [`../src/AGENTS.md`](../src/AGENTS.md) — Source code rules
+- [`../scripts/AGENTS.md`](../scripts/AGENTS.md) — Tooling rules

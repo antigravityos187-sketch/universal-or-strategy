@@ -321,72 +321,91 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 Print("FLATTEN: Closing all positions...");
-
-                // Phase 1: Cancel master entry orders (with known quirk handling)
-                try
-                {
-                    CancelMasterEntryOrders();
-                }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("CancelOrder"))
-                {
-                    Print("WARNING: Known quirk in CancelMasterEntryOrders: " + ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    Print("CRITICAL: Unexpected exception in CancelMasterEntryOrders: " + ex.ToString());
-                }
-
-                // Phase 2: Dispatch fleet flatten (with known quirk handling)
-                if (EnableSIMA)
-                {
-                    try
-                    {
-                        DispatchFleetFlatten();
-                    }
-                    catch (InvalidOperationException ex) when (ex.Message.Contains("TriggerCustomEvent"))
-                    {
-                        Print("WARNING: Known NT8 quirk in TriggerCustomEvent: " + ex.Message);
-                    }
-                    catch (Exception ex)
-                    {
-                        Print("CRITICAL: Unexpected exception in DispatchFleetFlatten: " + ex.ToString());
-                    }
-                }
-
-                // Phase 3: Reset sync state (always execute)
-                try
-                {
-                    ResetSyncStateAndPurgeFollowers();
-                }
-                catch (Exception ex)
-                {
-                    Print("CRITICAL: Unexpected exception in ResetSyncStateAndPurgeFollowers: " + ex.ToString());
-                }
-
-                // Phase 4: Flatten filled positions (always execute)
-                try
-                {
-                    FlattenFilledMasterPositions();
-                }
-                catch (Exception ex)
-                {
-                    Print("CRITICAL: Unexpected exception in FlattenFilledMasterPositions: " + ex.ToString());
-                }
-
-                // Phase 5: Cancel unfilled entries (always execute)
-                try
-                {
-                    CancelUnfilledMasterEntries();
-                }
-                catch (Exception ex)
-                {
-                    Print("CRITICAL: Unexpected exception in CancelUnfilledMasterEntries: " + ex.ToString());
-                }
+                ExecutePhase1CancelEntries();
+                ExecutePhase2FleetFlatten();
+                ExecutePhase3ResetSync();
+                ExecutePhase4FlattenFilled();
+                ExecutePhase5CancelUnfilled();
             }
             finally
             {
                 // V1101E HOT-PATCH: Release flatten guard only after serialized flatten pipeline exits.
                 isFlattenRunning = false; // V12.13b: Always release guard
+            }
+        }
+
+        // Phase 1 fault-isolation wrapper: cancel master entry orders.
+        private void ExecutePhase1CancelEntries()
+        {
+            try
+            {
+                CancelMasterEntryOrders();
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("CancelOrder"))
+            {
+                Print("WARNING: Known quirk in CancelMasterEntryOrders: " + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Print("CRITICAL: Unexpected exception in CancelMasterEntryOrders: " + ex.ToString());
+            }
+        }
+
+        // Phase 2 fault-isolation wrapper: dispatch fleet flatten when SIMA enabled.
+        private void ExecutePhase2FleetFlatten()
+        {
+            if (!EnableSIMA)
+                return;
+            try
+            {
+                DispatchFleetFlatten();
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("TriggerCustomEvent"))
+            {
+                Print("WARNING: Known NT8 quirk in TriggerCustomEvent: " + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Print("CRITICAL: Unexpected exception in DispatchFleetFlatten: " + ex.ToString());
+            }
+        }
+
+        // Phase 3 fault-isolation wrapper: reset sync state and purge followers.
+        private void ExecutePhase3ResetSync()
+        {
+            try
+            {
+                ResetSyncStateAndPurgeFollowers();
+            }
+            catch (Exception ex)
+            {
+                Print("CRITICAL: Unexpected exception in ResetSyncStateAndPurgeFollowers: " + ex.ToString());
+            }
+        }
+
+        // Phase 4 fault-isolation wrapper: flatten all filled master positions.
+        private void ExecutePhase4FlattenFilled()
+        {
+            try
+            {
+                FlattenFilledMasterPositions();
+            }
+            catch (Exception ex)
+            {
+                Print("CRITICAL: Unexpected exception in FlattenFilledMasterPositions: " + ex.ToString());
+            }
+        }
+
+        // Phase 5 fault-isolation wrapper: cancel all unfilled master entries.
+        private void ExecutePhase5CancelUnfilled()
+        {
+            try
+            {
+                CancelUnfilledMasterEntries();
+            }
+            catch (Exception ex)
+            {
+                Print("CRITICAL: Unexpected exception in CancelUnfilledMasterEntries: " + ex.ToString());
             }
         }
 
@@ -675,6 +694,12 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void CancelAllBracketOrdersForPosition(string entryName, PositionInfo pos)
         {
+            CancelStopOrderIfActive(entryName, pos);
+            CancelTargetOrdersIfActive(entryName, pos);
+        }
+
+        private void CancelStopOrderIfActive(string entryName, PositionInfo pos)
+        {
             if (stopOrders.TryGetValue(entryName, out var stopOrder) && stopOrder != null)
             {
                 if (stopOrder.OrderState == OrderState.Working || stopOrder.OrderState == OrderState.Accepted)
@@ -682,7 +707,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     CancelOrderSafe(stopOrder, pos);
                 }
             }
+        }
 
+        private void CancelTargetOrdersIfActive(string entryName, PositionInfo pos)
+        {
             for (int tNum = 1; tNum <= 5; tNum++)
             {
                 var tDict = GetTargetOrdersDictionary(tNum);
@@ -771,9 +799,24 @@ namespace NinjaTrader.NinjaScript.Strategies
         // V12.1101E [DESYNC-01]: True if any stop/target/entry dict still holds a non-terminal order for this entry.
         private bool HasActiveOrPendingOrderForEntry(string entryName)
         {
-            if (stopOrders.TryGetValue(entryName, out var stop) && stop != null && !IsOrderTerminal(stop.OrderState))
+            if (HasActiveStopForEntry(entryName))
                 return true;
+            if (HasActiveTargetForEntry(entryName))
+                return true;
+            if (HasActiveEntryOrderForEntry(entryName))
+                return true;
+            return false;
+        }
 
+        // [EXTRACTED] Stop order non-terminal check for HasActiveOrPendingOrderForEntry.
+        private bool HasActiveStopForEntry(string entryName)
+        {
+            return stopOrders.TryGetValue(entryName, out var stop) && stop != null && !IsOrderTerminal(stop.OrderState);
+        }
+
+        // [EXTRACTED] Target orders non-terminal check for HasActiveOrPendingOrderForEntry.
+        private bool HasActiveTargetForEntry(string entryName)
+        {
             for (int tNum = 1; tNum <= 5; tNum++)
             {
                 var tDict = GetTargetOrdersDictionary(tNum);
@@ -785,10 +828,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                 )
                     return true;
             }
-
-            if (entryOrders.TryGetValue(entryName, out var e) && e != null && !IsOrderTerminal(e.OrderState))
-                return true;
             return false;
+        }
+
+        // [EXTRACTED] Entry order non-terminal check for HasActiveOrPendingOrderForEntry.
+        private bool HasActiveEntryOrderForEntry(string entryName)
+        {
+            return entryOrders.TryGetValue(entryName, out var e) && e != null && !IsOrderTerminal(e.OrderState);
         }
 
         /// <summary>

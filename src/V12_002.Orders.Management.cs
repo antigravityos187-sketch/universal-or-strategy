@@ -216,9 +216,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 int targetQty = GetTargetContracts(pos, targetNum);
                 if (targetQty <= 0)
-                    continue; // skip orphan/zero fills
+                    continue;
 
-                // Universal Ladder: runner detection is slot-based only -- T(n)Type == Runner.
                 if (IsRunnerTarget(targetNum))
                 {
                     runnerQty += targetQty;
@@ -251,89 +250,105 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // V12.Phase7 [C-04]: Round target price to valid tick boundary before submission.
                 targetPrice = Instrument.MasterInstrument.RoundToTickSize(targetPrice);
 
-                Print(
-                    string.Format(
-                        "[FORENSIC] T{0} {1}: qty={2} price={3:F2} submitting limit",
-                        targetNum,
-                        entryName,
-                        targetQty,
-                        targetPrice
-                    )
+                SubmitTargetOrdersLoop_SubmitOne(
+                    entryName,
+                    pos,
+                    targetNum,
+                    targetQty,
+                    targetPrice,
+                    isFollowerSubmit,
+                    bracketExitAction,
+                    bracketOcoId
                 );
-
-                Order limitOrder;
-                if (isFollowerSubmit)
-                {
-                    // [BUILD 924 - Fix B] Follower target: use ExecutingAccount API
-                    string targetSig = SymmetryTrim("T" + targetNum + "_" + entryName, 40);
-                    Order tOrd = pos.ExecutingAccount.CreateOrder(
-                        Instrument,
-                        bracketExitAction,
-                        OrderType.Limit,
-                        TimeInForce.Gtc,
-                        targetQty,
-                        targetPrice,
-                        0,
-                        bracketOcoId,
-                        targetSig,
-                        null
-                    );
-                    // [BUILD 924 - Fix B / Director's Note] Null-guard after CreateOrder matches S-015 pattern.
-                    if (tOrd != null)
-                        pos.ExecutingAccount.Submit(new[] { tOrd });
-                    else
-                        Print(
-                            string.Format(
-                                "[TARGET_WARN] Follower target T{0} CreateOrder returned null for {1}.",
-                                targetNum,
-                                entryName
-                            )
-                        );
-                    limitOrder = tOrd;
-                }
-                else
-                {
-                    string targetSig = "T" + targetNum + "_" + entryName;
-                    Order tOrd = Account.CreateOrder(
-                        Instrument,
-                        bracketExitAction,
-                        OrderType.Limit,
-                        TimeInForce.Gtc,
-                        targetQty,
-                        targetPrice,
-                        0,
-                        bracketOcoId,
-                        targetSig,
-                        null
-                    );
-                    if (tOrd != null)
-                        Account.Submit(new[] { tOrd });
-                    limitOrder = tOrd;
-                }
-
-                var targetDict = GetTargetOrdersDictionary(targetNum);
-                // V12.Audit [S-015]: Only store non-null target orders. A null result means
-                // broker rejected the target -- skip storage so the slot stays empty rather
-                // than tracking a null reference. Stop is still present; no flatten needed.
-                if (targetDict != null)
-                {
-                    if (limitOrder == null)
-                    {
-                        Print(
-                            string.Format(
-                                "[TARGET_WARN] Target {0} order submission returned null for {1}. Target tracking disabled.",
-                                targetNum,
-                                entryName
-                            )
-                        );
-                    }
-                    else
-                    {
-                        targetDict[entryName] = limitOrder;
-                    }
-                }
-
                 nonRunnerLimitQty += targetQty;
+            }
+        }
+
+        private void SubmitTargetOrdersLoop_SubmitOne(
+            string entryName,
+            PositionInfo pos,
+            int targetNum,
+            int targetQty,
+            double targetPrice,
+            bool isFollowerSubmit,
+            OrderAction bracketExitAction,
+            string bracketOcoId
+        )
+        {
+            Print(
+                string.Format(
+                    "[FORENSIC] T{0} {1}: qty={2} price={3:F2} submitting limit",
+                    targetNum,
+                    entryName,
+                    targetQty,
+                    targetPrice
+                )
+            );
+
+            Order limitOrder;
+            if (isFollowerSubmit)
+            {
+                // [BUILD 924 - Fix B] Follower target: use ExecutingAccount API
+                string targetSig = SymmetryTrim("T" + targetNum + "_" + entryName, 40);
+                Order tOrd = pos.ExecutingAccount.CreateOrder(
+                    Instrument,
+                    bracketExitAction,
+                    OrderType.Limit,
+                    TimeInForce.Gtc,
+                    targetQty,
+                    targetPrice,
+                    0,
+                    bracketOcoId,
+                    targetSig,
+                    null
+                );
+                // [BUILD 924 - Fix B / Director's Note] Null-guard after CreateOrder matches S-015 pattern.
+                if (tOrd != null)
+                    pos.ExecutingAccount.Submit(new[] { tOrd });
+                else
+                    Print(
+                        string.Format(
+                            "[TARGET_WARN] Follower target T{0} CreateOrder returned null for {1}.",
+                            targetNum,
+                            entryName
+                        )
+                    );
+                limitOrder = tOrd;
+            }
+            else
+            {
+                string targetSig = "T" + targetNum + "_" + entryName;
+                Order tOrd = Account.CreateOrder(
+                    Instrument,
+                    bracketExitAction,
+                    OrderType.Limit,
+                    TimeInForce.Gtc,
+                    targetQty,
+                    targetPrice,
+                    0,
+                    bracketOcoId,
+                    targetSig,
+                    null
+                );
+                if (tOrd != null)
+                    Account.Submit(new[] { tOrd });
+                limitOrder = tOrd;
+            }
+
+            var targetDict = GetTargetOrdersDictionary(targetNum);
+            // V12.Audit [S-015]: Only store non-null target orders.
+            if (targetDict != null)
+            {
+                if (limitOrder == null)
+                    Print(
+                        string.Format(
+                            "[TARGET_WARN] Target {0} order submission returned null for {1}. Target tracking disabled.",
+                            targetNum,
+                            entryName
+                        )
+                    );
+                else
+                    targetDict[entryName] = limitOrder;
             }
         }
 

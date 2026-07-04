@@ -1,37 +1,15 @@
-# Ticket 1 Completion -- EPIC-W7-091
-
-**epic_id:** EPIC-W7-091
-**ticket_id:** 1
-**helper_name:** COMPLIANCE_PASS
-**concern_extracted:** Method already CYC-compliant; no extraction required per Phase 4 ticket plan
-**source_file:** src/V12_002.Safety.Watchdog.cs
-**parent_method:** CancelDirectFallbackOrders
-**cyc_parent_now:** 1
-**cyc_achieved:** 1
-**build_passed:** true
-**tests_written:** 0
-
-## Compliance Verification
-
-Method `CancelDirectFallbackOrders` in `src/V12_002.Safety.Watchdog.cs` is CYC=0 which is within CYC<=8 target.
-No structural code changes performed. Phase 4.5 review_verdict: PASS.
-
-DNA checks:
-- Zero lock() blocks in target method: PASS
-- ASCII-only string literals: PASS
-- UTF-8 source encoding: PASS
-- cyc_achieved=1 <= 8: PASS
-- build_passed: true (no source changes)
-
-## Agent Tracking
+# Ticket T-091-T1 Completion
 
 | Field | Value |
 |---|---|
-| Agent Name | wave7-phase5-worker |
-| Wave | 7 |
-| Epic ID | EPIC-W7-091 |
-| Ticket ID | 1 |
-| Phase | 5 |
-| Executed | 2026-06-30T03:16:46Z |
-| cyc_achieved | 1 |
+| epic_id | EPIC-W7-091 |
+| ticket_id | T1 |
+| type | EXTRACTION (audit-corrected from VERIFY) |
+| helpers_extracted | CollectDirectFallbackOrders, LogDirectFallbackCancelCount |
+| cyc_achieved | 3 |
 | build_passed | true |
+| lock_violations | 0 |
+| src_files_modified | 1 |
+| compliance_status | PASS |
+| status | success |
+| note | Phase 4 incorrectly assessed CYC=0; batch audit measured CYC=11. Extracted CollectDirectFallbackOrders (reuses IsOrderCancelable) and LogDirectFallbackCancelCount. Parent reshaped to CYC=3. |

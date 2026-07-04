@@ -1,6 +1,6 @@
 # pr-loop
 
-description: Repeatable 100/100 Perfection Loop V2. Iteratively repairs and verifies code until the Project Health Score is 100/100. Includes mandatory Bot Forensics extraction before fixes.
+description: PR Review & Repair Loop V5. Iteratively triages bot findings, repairs confirmed issues, and verifies until all bots are green. Uses poll_all_bots.py for OKF-filtered 8-bot signal extraction. Used both manually (single PR) and as the inner loop of Phase 7 wave-orch-phase7-lane workers.
 
 ## Usage
 
@@ -10,266 +10,341 @@ description: Repeatable 100/100 Perfection Loop V2. Iteratively repairs and veri
 
 **Example:**
 ```
-/pr-loop 6
+/pr-loop 20
 ```
 
-## Protocol
+## Machine-callable contract (Phase 7 workers)
 
-You are the V12 Perfection Orchestrator. You MUST NOT STOP until PHS is 100/100.
-
-### ORCHESTRATION RULES
-
-- **SCORE 100 MANDATE**: You are BANNED from merging or ending the loop if PHS < 100.
-- **HYGIENE GATE**: You MUST pass Step 0 (Clean Branch & Diff Size) before every push.
-- **FORENSICS FIRST**: You MUST extract bot findings (Step 1) before any fix attempts.
-- **LOCAL FIRST**: You must achieve Local Score 15/15 before every push.
-- **FORENSIC AUDIT**: Every failure must be categorized as [VALID], [HALLUCINATION], [INFRA-NOISE], or [ACCESS_BLOCKED].
-- **F5 GATE**: The only manual action is the final NinjaTrader verification at Score 100.
-
----
-
-## THE PERFECTION CYCLE
-
-### Step -1: PR Existence Check (GITBUTLER-AWARE)
-
-**Switch to: Advanced mode**
-
-Hand off:
+Input (from start_subtask message):
 ```
-TASK: Check if PR Already Exists (GitButler Workflow)
-PR: $1
-PROTOCOL:
-  1. Verify on gitbutler/workspace: git branch --show-current
-     - If NOT on gitbutler/workspace: HALT and report violation
-  
-  2. Check if PR exists: gh pr view $1 --json headRefName --jq '.headRefName'
-  
-  3. If PR exists (exit code 0):
-     - Extract branch name from output
-     - Check GitButler virtual branches: cat .git/gitbutler/virtual_branches.toml
-     - Look for virtual branch linked to PR branch
-     - Emit: [PR-EXISTS] PR #$1 exists, branch: <branch_name>, virtual branch: <status>
-     - Proceed to Step 1 (Pre-Flight Hygiene)
-  
-  4. If PR doesn't exist (exit code 1):
-     - Emit: [PR-NEW] PR #$1 does not exist yet
-     - Proceed to Step 0 (create virtual branch)
-
-CRITICAL: NEVER run 'git checkout <branch>'. Stay on gitbutler/workspace permanently.
+PR_NUMBER: <number>
+BRANCH: <wave7/prN-...>
+CLUSTER: <cluster name>
+MAX_ROUNDS: 3  (default)
 ```
 
-**Gate:**
-- If PR exists: Proceed to Step 1 (work in existing virtual branch)
-- If PR doesn't exist: Proceed to Step 0 (create new virtual branch)
-
-**Rationale:** GitButler workflow requires staying on `gitbutler/workspace` permanently. Virtual branches handle PR work without branch switching.
-
----
-
-### Step 0: Pre-Flight Hygiene (GITBUTLER-AWARE)
-
-**Switch to: Advanced mode**
-
-Hand off:
+Output (emit at end):
 ```
-TASK: Verify PR Hygiene (GitButler Workflow)
-PR: $1
-PROTOCOL:
-  CRITICAL: Verify on gitbutler/workspace: git branch --show-current
-  - If NOT on gitbutler/workspace: HALT and report violation
-  
-  IF PR is new (from Step -1):
-    1. Create virtual branch via GitButler UI or CLI:
-       - Open GitButler UI
-       - Click "New Virtual Branch"
-       - Name: epic-ccn-XX-pr (or appropriate name)
-       - Commit changes to virtual branch
-    2. Run `powershell -File .\scripts\verify_pr_hygiene.ps1`.
-  
-  IF PR already exists (from Step -1):
-    1. Verify virtual branch is active in GitButler UI
-    2. Pull latest changes: git pull origin <pr-branch-name>
-    3. Run `powershell -File .\scripts\verify_pr_hygiene.ps1`.
-  
-  4. If FAIL: HALT and report the violation (e.g. "Diff > 10k" or "Branch is dirty").
-  5. If PASS: Emit [HYGIENE-PASS] and advance to Step 1.
-
-CRITICAL: NEVER run 'git checkout -b', 'git rebase', or 'git reset'. All work happens in virtual branches on gitbutler/workspace.
+LANE_COMPLETE L<N> PR#<N> status=(MERGED_READY|NEEDS_DIRECTOR) findings=<N>_fixed
+```
+or on failure:
+```
+LANE_HARD_FAILURE L<N> PR#<N> reason=<one-line>
 ```
 
 ---
 
-### Step 1: Bot Forensics + Jane Street Audit (MANDATORY - NEW IN V2)
+## ORCHESTRATION RULES
 
-**Switch to: Advanced mode**
-
-Hand off:
-```
-TASK: Extract and Categorize Bot Findings with Jane Street Alignment Review
-PR: $1
-PROTOCOL:
-  1. Run: powershell -File .\scripts\extract_pr_forensics.ps1 -PrNumber $1
-  2. Read the generated forensics report: docs/brain/pr_$1_forensics.md
-  3. JANE STREET AUDIT (MANDATORY):
-     - Read: docs/standards/JANE_STREET_DEVIATIONS.md
-     - For each VALID issue, check if it conflicts with documented Jane Street deviations
-     - Categorize as:
-       * [VALID-FIX]: Issue aligns with Jane Street principles - must fix
-       * [VALID-SUPPRESS]: Issue conflicts with Jane Street - suppress via .codacy.yml
-       * [HALLUCINATION]: Bot error - log and ignore
-       * [INFRA-NOISE]: Infrastructure issue - ignore
-  4. Present summary to Director:
-     - Total VALID-FIX issues (P0/P1/P2 breakdown)
-     - Total VALID-SUPPRESS issues (with Jane Street rationale)
-     - Hallucinations detected
-     - INFRA-NOISE filtered
-  5. If P0 VALID-FIX issues exist: Flag as CRITICAL and proceed to Step 2.
-  6. If only VALID-SUPPRESS issues: Update .codacy.yml, document in JANE_STREET_DEVIATIONS.md
-  7. If no VALID issues: Skip to Step 3 (verification only).
-  8. Emit: [FORENSICS-READY] X VALID-FIX, Y VALID-SUPPRESS, Z hallucinations
-```
-
-**Outputs:**
-- `docs/brain/pr_$1_forensics.md` - Full categorized findings
-- `docs/brain/pr_$1_fix_queue.md` - Priority-ordered fix list (VALID-FIX only)
-- `docs/brain/pr_$1_suppress_queue.md` - Suppression list (VALID-SUPPRESS with rationale)
-- `docs/brain/bot_hallucinations.md` - Updated hallucination log
-
-**Gate:** Review forensics report. If P0 VALID-FIX issues exist, they MUST be fixed before proceeding. If VALID-SUPPRESS issues exist, they MUST be documented before proceeding.
+- **TRIAGE FIRST**: Extract and classify ALL bot findings before touching any code.
+- **LOGIC BUGS**: ALWAYS route through v12-phase2-architecture planner first. Never free-hand a logic fix.
+- **MECHANICAL/DNA**: Apply directly — no planner needed. One commit per category.
+- **GATE BEFORE PUSH**: `python3 scripts/wave7_prepush_gate.py --base origin/main` must PASS.
+- **BUILD BEFORE PUSH**: `dotnet build Linting.csproj` must be 0 errors.
+- **BRANCH HYGIENE**: src/ edits → PR branch. Docs/artifacts → main. Never mixed.
+- **MAX 3 ROUNDS**: If bots still find VALID issues after 3 repair rounds → LANE_HARD_FAILURE.
 
 ---
 
-### Step 2: Local Repair (VALID-FIX) + Suppression (VALID-SUPPRESS)
+## THE REPAIR CYCLE
 
-**Switch to: v12-engineer mode**
-
-Hand off:
-```
-TASK: Fix VALID-FIX Issues and Document VALID-SUPPRESS Issues
-INPUT: @docs/brain/pr_$1_fix_queue.md @docs/brain/pr_$1_suppress_queue.md
-PROTOCOL:
-  PART A: Code Fixes (VALID-FIX)
-    1. Read fix queue completely.
-    2. For each VALID-FIX issue (P0 first, then P1, then P2):
-       - Apply fix
-       - Verify locally (compile, test)
-       - Mark as [x] FIXED in fix queue
-  
-  PART B: Jane Street Suppressions (VALID-SUPPRESS)
-    1. Read suppress queue completely.
-    2. For each VALID-SUPPRESS issue:
-       - Add file/pattern to .codacy.yml exclude_paths with Jane Street rationale
-       - Document in docs/standards/JANE_STREET_DEVIATIONS.md as new Decision #N
-       - Mark as [x] SUPPRESSED in suppress queue
-  
-  PART C: Validation
-    3. Run formatters: powershell -File .\scripts\format_all_csharp.ps1
-    4. Run FULL local validation: powershell -File .\scripts\pre_push_validation.ps1
-       (Includes CodeScene Delta Analysis as Check #14)
-    5. If ANY blocking check fails: identify issue, repeat Step 2.
-    6. If ALL checks pass (14/14): emit [LOCAL-READY] with fix summary.
-```
-
-**Gate:** ALL local checks PASS (9 blocking + 5 warnings). CodeScene Delta must show no high-severity code health degradation. If any blocking check fails, repeat Step 2.
-
----
-
-### Step 3: Global Push & Monitor
-
-**Switch to: Advanced mode**
-
-Hand off:
-```
-TASK: Global Audit & Monitor
-PR: $1
-PROTOCOL:
-  1. powershell -File .\deploy-sync.ps1 (MANDATORY before push - syncs NT8 hard links)
-  2. git add . && git commit -m "fix: PHS Perfection Loop - PR #$1" && git push
-  3. monitor_pr_checks $1 (Wait for all bots).
-     - **MANDATORY SLEEP**: Start-Sleep -Seconds 300 (5 min) for the first check.
-     - **SUBSEQUENT SLEEP**: Start-Sleep -Seconds 180 (3 min) if checks are still pending.
-  4. Run: powershell -File .\scripts\calculate_fleet_score.ps1 -PrNumber $1
-  5. If Score < 100: emit [PHS-RETRY] Current: X/100.
-  6. If Score = 100: emit [PHS-PERFECT] 100/100.
-```
-
-**Gate:**
-- If [PHS-RETRY]: **RESTART at Step 1** (re-extract forensics for new findings).
-- If [PHS-PERFECT]: **Advance to Step 4**.
-
----
-
-### Step 4: Manual Override Gate (NEW IN V2)
-
-**Mode:** Orchestrator  
-**Trigger:** PHS < 100 after 3+ iterations
-
-**Protocol:**
-1. Present current PHS and remaining issues to Director.
-2. Classify remaining issues:
-   - VALID but low-priority (P2 style issues)
-   - Hallucinations not yet logged
-   - INFRA-NOISE
-3. Ask Director: "PHS is X/100. Remaining issues: [list]. Approve merge? (YES/NO)"
-
-**Director Options:**
-- **YES**: Proceed to Step 5 (F5 Gate)
-- **NO**: Provide guidance, restart at Step 1
-- **DEFER**: Create follow-up ticket, proceed to Step 5
-
----
-
-### Step 5: Final F5 Verification
-
-**Mode:** Orchestrator  
-**Action:** Director presses F5 in NinjaTrader
-
-Output:
-```
-[F5-GATE] PR #$1 - PHS <SCORE>/100
-All automated gates: PASSED/APPROVED
-Remaining issues: [list if <100]
-
-ACTION REQUIRED: Press F5 in NinjaTrader IDE.
-When you see the BUILD_TAG banner, type: F5 done [BUILD_TAG]
-```
-
-**Gate:** Wait for Director confirmation.
-
----
-
-## FINAL HANDSHAKE
-
-Once 100/100 is achieved (or Director approves <100), output:
+### Step 0: Branch Setup
 
 ```
-[PHS-PERFECT] PR #$1 - Ready for Merge
-============================================================
-PHS Score       : <SCORE>/100
-VALID Issues    : <COUNT> (all fixed or approved)
-Hallucinations  : <COUNT> (logged)
-INFRA-NOISE     : <COUNT> (ignored)
+BRANCH HYGIENE RULES (read before touching anything):
+  - git checkout {BRANCH} for ALL src/ edits and git push
+  - NEVER commit docs/, scripts/, .bob/, .graphify/ to {BRANCH}
+  - Artifact files go to docs/brain/wave7-pr-repairs/PR-{N}/ on main
+  - One concern per commit — never mix src/ and docs/ changes
 
-Commits: [list of hashes]
-============================================================
-Branch ready for merge. Awaiting F5 verification.
+SETUP:
+  1. git checkout {BRANCH}
+  2. git fetch origin {BRANCH} && git status
+     - If diverged: git pull --rebase origin {BRANCH}
+  3. Record HEAD SHA: git rev-parse HEAD > /tmp/pr{N}_baseline_sha.txt
 ```
 
 ---
 
-## V2 Improvements Over V1
+### Step 1: Bot Forensics (MANDATORY — before any code change)
 
-| Aspect | V1 (Old) | V2 (New) |
-|--------|----------|----------|
-| Bot Comment Reading | ❌ Never read | ✅ Mandatory extraction |
-| Issue Categorization | ❌ None | ✅ VALID/HALLUCINATION/INFRA-NOISE |
-| Hallucination Tracking | ❌ None | ✅ Persistent log |
-| Fix Priority | ❌ Undefined | ✅ P0 → P1 → P2 |
-| Manual Override | ❌ None | ✅ Director gate at <100 |
-| Loop Efficiency | ❌ Blind retries | ✅ Forensics-guided |
+```
+EXTRACT BOT FINDINGS (V5 — use poll_all_bots.py, NOT raw gh pr view):
+  python3 scripts/poll_all_bots.py {PR_NUMBER} \
+    --repo antigravityos187-sketch/universal-or-strategy \
+    > /tmp/pr{PR_NUMBER}_bot_poll.json
+
+  The script outputs structured JSON with:
+    - findings[]         : list of {bot, severity, body, okf_override}
+    - satisfaction_score : N/5 (counts: CodeRabbit, Gemini, Cubic, Sourcery, CodeAnt)
+    - all_green          : true if satisfaction_score == 5
+    - okf_overrides[]    : findings auto-classified INFORMATIONAL by OKF policy
+
+  OKF auto-overrides (never fix, log as INFORMATIONAL):
+    - #nullable enable suggestions   -> OKF: not applicable in V12 lock-free model
+    - lock() suggestions             -> HALT + LANE_HARD_FAILURE (escalate to Director)
+    - NUnit/MSTest suggestions       -> xUnit only; but if existing tests pass, INFORMATIONAL
+    - PR size warnings               -> INFRA-NOISE
+    - deploy-sync.ps1 not in PR      -> INFRA-NOISE
+
+  If all_green == true  -> skip to Step 4 (push already done, poll again to confirm)
+  If all_green == false -> parse findings[] for VALID items, proceed to classification
+
+CLASSIFY each finding as exactly one of:
+  VALID-LOGIC-BUG   Behavior change, wrong output, data corruption,
+                    timezone mismatch, wrong dict key, state regression.
+                    EVIDENCE: multiple bots OR code trace confirms it.
+
+  VALID-MECHANICAL  Naming violation, redundant code, dead guard,
+                    O(N) where O(1) exists, unreachable branch.
+
+  VALID-DNA         ASCII violation, DateTime.Now (should be UtcNow),
+                    underscore local variable, lock() usage,
+                    NUnit/MSTest (must be xUnit).
+
+  HALLUCINATION     Contradicts actual code behavior.
+                    VERIFY: read_file the affected line before classifying.
+                    If code matches bot's claim -> NOT a hallucination.
+
+  INFRA-NOISE       deploy-sync.ps1 not in PR, PR size warning,
+                    process notes, "consider adding tests" suggestions.
+
+WRITE: docs/brain/wave7-pr-repairs/PR-{N}/triage.md
+  Format:
+    ## Triage — PR #{N} — {BRANCH}
+    | Finding | Bot(s) | Class | Notes |
+    |---------|--------|-------|-------|
+    | ...     | ...    | ...   | ...   |
+
+    ### Fix Queue (ordered P0 first)
+    - [ ] VALID-LOGIC-BUG: <description>
+    - [ ] VALID-MECHANICAL: <description>
+    - [ ] VALID-DNA: <description>
+
+EMIT: TRIAGE_DONE PR#{N} logic=X mech=Y dna=Z hall=A noise=B okf_overrides=C
+```
+
+**Gate:** If zero VALID findings → skip to Step 5 (poll). PR is already clean.
 
 ---
 
-## Reference Documentation
+### Step 1.5: Logic Bug Planner (if VALID-LOGIC-BUG findings exist)
 
-Full V2 workflow documentation: `docs/protocol/PR_LOOP_V2.md`
+```
+For EACH VALID-LOGIC-BUG finding:
+
+  start_subtask(
+    mode="v12-phase2-architecture",
+    title="PR#{N} Logic-Bug Plan: {finding_summary}",
+    message="
+      TASK: Plan a minimal targeted fix for this confirmed logic bug.
+      Branch: {BRANCH}  PR: #{N}
+      Bug: {finding_description}
+      Affected file/line: {file}:{line}
+
+      PROTOCOL:
+        1. Read the affected source (read_file).
+        2. Confirm the bug is real (do not plan if hallucination).
+        3. Produce the minimal fix: exact old_text and new_text.
+           Max scope: the single method containing the bug + its immediate callers.
+           No scope creep. No refactoring beyond the fix.
+        4. State: CYC delta (must be 0 or negative).
+        5. Output format:
+             BUG_CONFIRMED: yes/no
+             FILE: src/...
+             OLD: <exact lines to replace>
+             NEW: <replacement lines>
+             CYC_DELTA: 0
+      OKF: docs/intel/jane-street/how-to-build-an-exchange.md
+    "
+  )
+
+  Validate plan: BUG_CONFIRMED=yes, CYC_DELTA<=0, scope is single method.
+  If BUG_CONFIRMED=no: reclassify as HALLUCINATION, skip fix.
+```
+
+---
+
+### Step 2: Repairs (on {BRANCH})
+
+```
+LOGIC BUG FIXES (one start_subtask per bug, sequential):
+  start_subtask(
+    mode="v12-engineer",
+    title="PR#{N} Fix: {finding_summary}",
+    message="
+      Apply this exact fix. Branch: {BRANCH}. PR: #{N}.
+      BRANCH HYGIENE: ONLY modify src/ files. No docs/, .bob/, scripts/.
+      Fix:
+        FILE: {file}
+        OLD: {old_text_from_plan}
+        NEW: {new_text_from_plan}
+      After applying:
+        1. dotnet build Linting.csproj -- must be 0 errors
+        2. python3 -c 'data=open(\"{file}\",\"rb\").read(); bad=[i for i in range(len(data)) if data[i]>127]; print(\"ASCII OK\" if not bad else \"NON-ASCII: \"+str(bad[:3]))'
+        3. git add {file}
+        4. git commit -m 'fix(wave7/pr{N}): {description}'
+      Report: REPAIR_DONE {file} build=PASS ascii=PASS
+    "
+  )
+
+MECHANICAL / DNA FIXES (apply directly, no start_subtask needed):
+  Rules (apply in order, one commit per category):
+    - DateTime.Now -> DateTime.UtcNow  (only in newly added diff lines)
+    - Unicode/em-dash -> ASCII (--)    (only in src/ files)
+    - _localVar -> localVar            (only vars introduced in this PR's diff)
+    - Redundant Contains -> remove     (verify inner helper handles the miss case)
+    - lock() -> HALT, escalate to Director  (NEVER auto-fix lock)
+
+  After each category:
+    dotnet build Linting.csproj -- 0 errors required
+    git add {changed_files}
+    git commit -m "fix(wave7/pr{N}): DNA compliance -- {what}"
+```
+
+---
+
+### Step 3: Local Gate
+
+```
+Run gate (MUST PASS before push):
+  python3 scripts/wave7_prepush_gate.py --base origin/main
+
+Expected output: "GATE PASSED. Ready to push."
+
+If GATE FAILED:
+  - Read each violation carefully
+  - WARN (diff size raw>120k) -> acceptable if stripped<150k
+  - FAIL (any check) -> fix the violation, rebuild, re-run gate
+  - Max 3 gate iterations before escalating
+
+Final build check:
+  dotnet build Linting.csproj
+  Must show: "Build succeeded. 0 Warning(s). 0 Error(s)."
+```
+
+---
+
+### Step 4: Push
+
+```
+git push origin {BRANCH}
+
+Verify exit code 0 and GitHub URL in output.
+If pre-push hook blocks: read hook output, fix the issue, retry.
+```
+
+---
+
+### Step 5: Bot Poll (wait for re-review)
+
+```
+POLLING PROTOCOL V5 (4-minute intervals — cost-optimized):
+  Use poll_all_bots.py for EVERY poll — NOT raw gh pr checks.
+
+  Round 1: sleep 240s (4 min), then:
+    python3 scripts/poll_all_bots.py {PR_NUMBER} \
+      --repo antigravityos187-sketch/universal-or-strategy \
+      > /tmp/pr{PR_NUMBER}_poll_r1.json
+  Round 2: sleep 240s, then: (same command → _r2.json)
+  Round 3: sleep 240s, then: (same command → _r3.json)
+  Round 4: sleep 240s, then: (same command → _r4.json)
+  Round 5: sleep 240s, then: (same command → _r5.json)  (20 min total)
+
+On each poll result (read .all_green and .satisfaction_score):
+  all_green == true  OR satisfaction_score == 5  -> proceed to Step 6
+  PENDING (bots not yet reviewed)                -> wait next interval
+  NEW VALID FINDINGS (not in previous triage)    -> loop back to Step 1 (increment round counter)
+  SAME FINDINGS REPEATING after fix              -> classify as HALLUCINATION, document, proceed
+
+SATISFACTION THRESHOLD:
+  5/5 bots green = LANE_COMPLETE status=MERGED_READY
+  4/5 green (1 INFRA-NOISE or deferred) = LANE_COMPLETE status=MERGED_READY (log exception)
+  <4/5 green with VALID findings = continue repair loop
+
+ROUND COUNTER:
+  Round 1 (first pass): normal
+  Round 2 (one loop): log extra_round=1
+  Round 3 (two loops): log extra_round=2, last chance
+  Round 4+: emit LANE_HARD_FAILURE (max 3 repair rounds exceeded)
+```
+
+---
+
+### Step 6: Write Artifacts (on main — NOT on PR branch)
+
+```
+git checkout main
+git pull origin main  (ensure up to date)
+
+Write docs/brain/wave7-pr-repairs/PR-{N}/repair-log.md:
+  ## Repair Log — PR #{N} — {BRANCH}
+  **Completed**: {ISO timestamp}
+  **Rounds**: {N}
+  **Gate result**: PASS ({raw}raw/{stripped}stripped)
+
+  ### Findings
+  | Finding | Class | Fix Applied | Commit SHA |
+  ...
+
+  ### Bot Re-review Result
+  All bots: GREEN / Remaining: {list if any}
+
+Write docs/brain/wave7-pr-repairs/PR-{N}/completion.md:
+  ## Completion Report — PR #{N}
+  **Status**: MERGED_READY / NEEDS_DIRECTOR
+  **Remaining issues**: {list or none}
+  **Director action required**: {description or none}
+
+git add docs/brain/wave7-pr-repairs/PR-{N}/
+git commit -m "docs(wave7/pr{N}): Phase 7 repair log + completion report"
+git push origin main
+```
+
+---
+
+### Step 7: Report
+
+```
+Emit one of:
+  LANE_COMPLETE L{N} PR#{PR} status=MERGED_READY findings={X}_fixed
+  LANE_COMPLETE L{N} PR#{PR} status=NEEDS_DIRECTOR findings={X}_fixed reason={why}
+  LANE_HARD_FAILURE L{N} PR#{PR} reason={one-line description}
+```
+
+---
+
+## Classification Quick Reference
+
+| Signal | Class | Auto-fix? |
+|--------|-------|-----------|
+| Wrong dict key, wrong prefix length | VALID-LOGIC-BUG | Plan first |
+| State regression after extraction | VALID-LOGIC-BUG | Plan first |
+| Timezone mismatch (Now vs UtcNow) | VALID-DNA | Direct |
+| Unicode in source (em-dash etc) | VALID-DNA | Direct |
+| Underscore local variable | VALID-DNA | Direct |
+| O(N) Contains where O(1) exists | VALID-MECHANICAL | Direct |
+| lock() found | VALID-DNA | HALT — Director |
+| NUnit/MSTest usage | VALID-DNA | Direct |
+| "deploy-sync.ps1 not in PR" | INFRA-NOISE | Skip |
+| "PR too large" | INFRA-NOISE | Skip |
+| "consider adding tests" | INFRA-NOISE | Skip |
+| Claims bug that doesn't exist in code | HALLUCINATION | Skip + log |
+
+---
+
+## V5 Changes from V4
+
+| Aspect | V4 | V5 |
+|--------|----|----|
+| Bot signal extraction | `gh pr view --json reviews,comments` | `scripts/poll_all_bots.py` (8-bot triage, OKF-filtered) |
+| Poll step | `gh pr checks {N}` | `scripts/poll_all_bots.py` with JSON output |
+| OKF auto-overrides | Manual classification | Built into poll_all_bots.py (nullable, NUnit, PR size) |
+| Satisfaction threshold | Not defined | 5/5 bots = MERGED_READY; 4/5 acceptable with logged exception |
+| Branch model | Standard git checkout | Standard git checkout (unchanged) |
+| Gate tool | wave7_prepush_gate.py (5 checks) | wave7_prepush_gate.py (6 checks — added Check 0 CS-only) |
+| Machine contract | LANE_COMPLETE / LANE_HARD_FAILURE | Unchanged |
+| Step 1.5 logic planner | Retained, formalized | Unchanged |
+| Artifact location | main-only | main-only (unchanged) |
+| Poll interval | 4 min uniform | 4 min uniform (unchanged) |
+| Max rounds | 3 (then LANE_HARD_FAILURE) | 3 (unchanged) |

@@ -1,37 +1,38 @@
-# Ticket 1 Completion -- EPIC-W7-076
+# EPIC-W7-076 Ticket 1 Completion
 
-**epic_id:** EPIC-W7-076
-**ticket_id:** 1
-**helper_name:** COMPLIANCE_PASS
-**concern_extracted:** Method already CYC-compliant; no extraction required per Phase 4 ticket plan
-**source_file:** src/V12_002.UI.Panel.Handlers.cs
-**parent_method:** CollapseAllExecutionControls
-**cyc_parent_now:** 1
-**cyc_achieved:** 1
-**build_passed:** true
-**tests_written:** 0
-
-## Compliance Verification
-
-Method `CollapseAllExecutionControls` in `src/V12_002.UI.Panel.Handlers.cs` is CYC=0 which is within CYC<=8 target.
-No structural code changes performed. Phase 4.5 review_verdict: PASS.
-
-DNA checks:
-- Zero lock() blocks in target method: PASS
-- ASCII-only string literals: PASS
-- UTF-8 source encoding: PASS
-- cyc_achieved=1 <= 8: PASS
-- build_passed: true (no source changes)
+**Method**: CollapseAllExecutionControls
+**File**: src/V12_002.UI.Panel.Handlers.cs
+**Status**: COMPLETED
+**CYC Before**: 11 | **CYC After**: 1
+**Helpers Extracted**: CollapseAllExecutionControls_Buttons (CYC=7), CollapseAllExecutionControls_Rows (CYC=5)
+**Behavior Change**: None — same 10 visibility assignments
+**DNA**: No lock() blocks, ASCII-only, UTF-8
 
 ## Agent Tracking
 
 | Field | Value |
 |---|---|
-| Agent Name | wave7-phase5-worker |
-| Wave | 7 |
-| Epic ID | EPIC-W7-076 |
-| Ticket ID | 1 |
-| Phase | 5 |
-| Executed | 2026-06-30T03:16:46Z |
-| cyc_achieved | 1 |
-| build_passed | true |
+| Epic | EPIC-W7-076 |
+| Ticket | 1 |
+| Phase | 5 (Execution) |
+| Agent | V12 Photon Engineer |
+| Mode | v12-engineer (YOLO) |
+
+## Change Summary
+
+Original `CollapseAllExecutionControls` (lines 707-729) had CYC=11 due to 10 sequential null-guard
+if-branches in a single method body. Extracted into two helpers:
+
+| Helper | Responsibility | CYC |
+|---|---|---|
+| `CollapseAllExecutionControls_Buttons` | Collapse 6 mode buttons (rma, momo, ffma, ffmaManual, m, orLong) | 7 |
+| `CollapseAllExecutionControls_Rows` | Collapse row controls + show manualEntryRow (execRetest, execTrend, orShort, manualEntry) | 5 |
+
+Orchestrating method now delegates with 2 calls — CYC=1.
+
+## Validation
+
+- Zero logic drift: all 10 `Visibility` assignments preserved verbatim
+- No lock() introduced
+- ASCII-only identifiers and comments
+- UTF-8 no BOM

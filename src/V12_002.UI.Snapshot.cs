@@ -108,6 +108,16 @@ namespace NinjaTrader.NinjaScript.Strategies
             return live;
         }
 
+        private static bool IsMasterCandidate(PositionInfo candidate)
+        {
+            if (candidate == null || candidate.IsFollower || candidate.PendingCleanup)
+            {
+                return false;
+            }
+
+            return candidate.EntryFilled && candidate.RemainingContracts > 0;
+        }
+
         private bool FindMasterPosition(out PositionInfo masterPos, out string entryName)
         {
             masterPos = null;
@@ -120,23 +130,34 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             foreach (var kvp in activePositions.ToArray())
             {
-                PositionInfo candidate = kvp.Value;
-                if (candidate == null || candidate.IsFollower || candidate.PendingCleanup)
+                if (!IsMasterCandidate(kvp.Value))
                 {
                     continue;
                 }
 
-                if (!candidate.EntryFilled || candidate.RemainingContracts <= 0)
-                {
-                    continue;
-                }
-
-                masterPos = candidate;
+                masterPos = kvp.Value;
                 entryName = kvp.Key;
                 return true;
             }
 
             return false;
+        }
+
+        private Order ResolveTargetOrder(string entryName, int targetNum)
+        {
+            var targetDict = GetTargetOrdersDictionary(targetNum);
+            if (targetDict == null)
+            {
+                return null;
+            }
+
+            targetDict.TryGetValue(entryName, out Order order);
+            return order;
+        }
+
+        private static bool IsOrderWorking(Order order)
+        {
+            return order != null && (order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted);
         }
 
         private void PopulateTargetSnapshots(UILivePositionSnapshot live, PositionInfo masterPos, string entryName)
@@ -151,12 +172,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     continue;
                 }
 
-                var targetDict = GetTargetOrdersDictionary(targetNum);
-                Order targetOrder = null;
-                if (targetDict != null)
-                {
-                    targetDict.TryGetValue(entryName, out targetOrder);
-                }
+                Order targetOrder = ResolveTargetOrder(entryName, targetNum);
 
                 double price = GetTargetPrice(masterPos, targetNum);
                 if (targetOrder != null && targetOrder.LimitPrice > 0)
@@ -168,9 +184,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 int filled = GetTargetFilledQuantity(masterPos, targetNum);
                 target.Price = price;
                 target.RemainingContracts = Math.Max(0, contracts - filled);
-                target.IsWorking =
-                    targetOrder != null
-                    && (targetOrder.OrderState == OrderState.Working || targetOrder.OrderState == OrderState.Accepted);
+                target.IsWorking = IsOrderWorking(targetOrder);
             }
         }
 

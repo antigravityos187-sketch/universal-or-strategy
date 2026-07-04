@@ -75,7 +75,7 @@
       "completed_at": "2026-06-30T04:00:00Z",
       "final_cyc": 7,
       "wave_ready": true,
-      "method_name": "OnMouseDown",
+      "method_name": "OnSubmitClick",
       "source_file": "src/V12_002.UI.Panel.Handlers.cs",
       "helpers_extracted": [
         "BindClick",
@@ -86,5 +86,6 @@
       ],
       "jane_street_compliant": true
     }
-  }
+  },
+  "wave_ready": true
 }

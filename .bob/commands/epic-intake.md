@@ -219,3 +219,18 @@ print(f"Manifest Path: docs/brain/$1/manifest.json")
 **Do NOT proceed to /epic-scope-boundary until the Director explicitly confirms alignment.**
 
 Output: "[INTAKE-GATE] Phase 0 & 1 complete. Manifest updated. Awaiting Director confirmation before Phase 1.5."
+
+---
+
+## GRAPHIFY PROTOCOL (MANDATORY — Every Task)
+
+**STARTUP** (run this as your FIRST action before any exploration):
+```bash
+graphify update . --no-cluster --no-description
+```
+Then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure.
+
+**SHUTDOWN** (run this as your LAST action after any file edits):
+```bash
+graphify update . --no-cluster --no-description
+```
