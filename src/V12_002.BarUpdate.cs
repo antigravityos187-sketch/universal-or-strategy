@@ -280,7 +280,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 ProcessIpcCommands();
 
                 // Phase 2: Drain Follower Bracket FSM Mailbox
-                DrainAccountMailbox();
+                ProcessAccountMailbox();
 
                 // CIT Logic
                 ManageCIT();

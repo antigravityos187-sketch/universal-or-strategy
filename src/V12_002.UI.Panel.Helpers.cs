@@ -528,7 +528,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             try
             {
                 // Phase 1+2: Find ChartTab (visual then logical)
-                DependencyObject chartTab = ResolveChartTab(ChartControl);
+                DependencyObject chartTab = ResolveChartTab((NinjaTrader.Gui.Chart.ChartControl)ChartControl);
 
                 if (chartTab == null)
                 {
@@ -759,7 +759,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             return null;
         }
 
-        private DependencyObject ResolveChartTab(ChartControl chart)
+        private DependencyObject ResolveChartTab(NinjaTrader.Gui.Chart.ChartControl chart)
         {
             return TryFindChartTabViaVisualTree(chart) ?? TryFindChartTabViaLogicalTree(chart);
         }

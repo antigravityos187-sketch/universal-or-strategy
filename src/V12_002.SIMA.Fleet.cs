@@ -624,32 +624,6 @@ namespace NinjaTrader.NinjaScript.Strategies
         }
 
         /// <summary>
-        /// T-W1-Perf Helper: Check if account has active FSM entries.
-        /// Zero-allocation: direct ConcurrentDictionary enumeration (lock-free).
-        /// </summary>
-        private bool HasActiveFsmForAccount(string accountName)
-        {
-            foreach (var kvp in _followerBrackets)
-            {
-                var f = kvp.Value;
-                if (
-                    f != null
-                    && f.AccountName == accountName
-                    && (
-                        f.State == FollowerBracketState.Active
-                        || f.State == FollowerBracketState.Accepted
-                        || f.State == FollowerBracketState.Submitted
-                        || f.State == FollowerBracketState.Replacing
-                    )
-                )
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>
         /// T-W1-Perf Helper: Check if account has active positions.
         /// Zero-allocation: direct ConcurrentDictionary enumeration (lock-free).
         /// </summary>

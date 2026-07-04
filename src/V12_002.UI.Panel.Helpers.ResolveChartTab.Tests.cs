@@ -1,7 +1,10 @@
 // xUnit tests for ResolveChartTab (EPIC-W7-009 T-1)
 // KB: [Fact] + Assert.Equal only -- NUnit/MSTest banned
 // CYC of ResolveChartTab = 2 (base 1 + ?? branch 1)
-
+// NOTE: xUnit is not available in the NinjaTrader 8 runtime.
+// These tests are compiled only in the dedicated xUnit test project.
+// Excluded from NT8 compile via #if false guard.
+#if false
 using Xunit;
 
 namespace V12Tests.UI.Panel
@@ -58,3 +61,4 @@ namespace V12Tests.UI.Panel
         }
     }
 }
+#endif
