@@ -932,8 +932,8 @@
     "hash": "2e6f3762a65a8ed23c8f0f305a218bdc"
   },
   "scripts/pre_push_validation.ps1": {
-    "mtime": 1782083416734.1448,
-    "hash": "3862ed7e96ba636a8ce8c436f6387607"
+    "mtime": 1783289500503.794,
+    "hash": "db18b2ce0a00b43aae5df883c27a6985"
   },
   "scripts/precompute_wave7_graph.py": {
     "mtime": 1782941171247.8447,
@@ -1136,8 +1136,8 @@
     "hash": "1eafddf35ef80b22cc68dc2266e122ad"
   },
   "scripts/verify_links.ps1": {
-    "mtime": 1781246379960.472,
-    "hash": "ac05c2e3f1eebc70bc6d3e74dd146fcd"
+    "mtime": 1783289500503.794,
+    "hash": "c5597fc6eb81a893ec6fbaaee2ed8f52"
   },
   "scripts/verify_phase_1_5.py": {
     "mtime": 1782083416734.1448,
@@ -2080,8 +2080,8 @@
     "hash": "eddb773cee92bd1a39a6c32579fba5c5"
   },
   "src/V12_002.BarUpdate.cs": {
-    "mtime": 1783128475701.8313,
-    "hash": "16aef49bb1cfa680eb05e8918358d80f"
+    "mtime": 1783289500506.7942,
+    "hash": "89d9195ac44c36469ff0d657a395eaeb"
   },
   "src/V12_002.Constants.cs": {
     "mtime": 1781246379960.472,
@@ -2092,28 +2092,28 @@
     "hash": "537df12e0a76e760f3d1aef9c2279151"
   },
   "src/V12_002.DrawingHelpers.cs": {
-    "mtime": 1783128475701.8313,
-    "hash": "380797aa62552464ba8ebfbde375c47c"
+    "mtime": 1783289500506.7942,
+    "hash": "ffb74b000de301eb4bc84881ad7295c1"
   },
   "src/V12_002.Entries.FFMA.cs": {
-    "mtime": 1783128475701.8313,
-    "hash": "f625295bd6a0d5579bff53dc7a9796d1"
+    "mtime": 1783289744036.6313,
+    "hash": "19d0f256869e62d56ad0b48f7d6dcef0"
   },
   "src/V12_002.Entries.MOMO.cs": {
-    "mtime": 1783128475701.8313,
-    "hash": "749bcdb2adbe7bb2245f52b2835a718d"
+    "mtime": 1783289500506.7942,
+    "hash": "20d00a7df8f05823a668e7fd809db9e4"
   },
   "src/V12_002.Entries.OR.cs": {
-    "mtime": 1783128475702.8313,
-    "hash": "89fad65c13b98cfedec9a9fbd2811a77"
+    "mtime": 1783289500506.7942,
+    "hash": "c14bbffc0f5d7299b6c3824681cabda9"
   },
   "src/V12_002.Entries.RMA.cs": {
     "mtime": 1782942783030.676,
     "hash": "0a46eb141004296e7facf8d6aa90542d"
   },
   "src/V12_002.Entries.Retest.cs": {
-    "mtime": 1783128475702.8313,
-    "hash": "36d798a08cbd2bcfe389197c9d2ba3de"
+    "mtime": 1783289500506.7942,
+    "hash": "17f2ec2b421ac5fc2d990176b2c5a3a8"
   },
   "src/V12_002.Entries.Trend.cs": {
     "mtime": 1783128475702.8313,
@@ -2132,8 +2132,8 @@
     "hash": "c022a261e4d69915fdc44798968d0e9b"
   },
   "src/V12_002.IPC.Hardening.cs": {
-    "mtime": 1783128475702.8313,
-    "hash": "fbd882b8768441ee426e6b52d5355f00"
+    "mtime": 1783290404978.4697,
+    "hash": "c0643858be3125a506b511395e59bda9"
   },
   "src/V12_002.Lifecycle.cs": {
     "mtime": 1783128475703.8313,
@@ -2152,36 +2152,36 @@
     "hash": "9aa7ae7ff6861b11bb5fe27e71cac7ab"
   },
   "src/V12_002.Orders.Callbacks.AccountOrders.cs": {
-    "mtime": 1783128475703.8313,
-    "hash": "83fdecea727f18a8ac2db223a48a73ac"
+    "mtime": 1783289500508.7944,
+    "hash": "0d6468ba14e6f25cbfdddecbad975101"
   },
   "src/V12_002.Orders.Callbacks.Execution.cs": {
     "mtime": 1783034327200.6743,
     "hash": "488ce84e9b5357c0cbbc08d259b64dd7"
   },
   "src/V12_002.Orders.Callbacks.Propagation.cs": {
-    "mtime": 1783034327201.6743,
-    "hash": "a6744c4fd570b01bb3c9c75caa2532ac"
+    "mtime": 1783289500509.7944,
+    "hash": "fbc2be387f85880708a50b6716602728"
   },
   "src/V12_002.Orders.Callbacks.cs": {
-    "mtime": 1783128475704.8313,
-    "hash": "5821b3d9445ed32b5008f8079d311092"
+    "mtime": 1783289500509.7944,
+    "hash": "0041f967f106e8006ddac355b75e4a1b"
   },
   "src/V12_002.Orders.CancelGateway.cs": {
     "mtime": 1781246379962.4722,
     "hash": "8e412f27a983d5ba450e27e6ebf9a21e"
   },
   "src/V12_002.Orders.Management.Cleanup.cs": {
-    "mtime": 1783034327201.6743,
-    "hash": "02c93fe9badb78a9a81c8e2799324c76"
+    "mtime": 1783289500509.7944,
+    "hash": "74f304f8e3f8fbc920faa29852a0d2cd"
   },
   "src/V12_002.Orders.Management.Flatten.cs": {
     "mtime": 1783034327202.6743,
     "hash": "95ecc1d36e4429488ea6dec4312a9056"
   },
   "src/V12_002.Orders.Management.StopSync.cs": {
-    "mtime": 1783128475704.8313,
-    "hash": "decf064cb880e39873365b7abde224a4"
+    "mtime": 1783290298513.7974,
+    "hash": "146dbf6a4d01b941939c84e4f43f6eeb"
   },
   "src/V12_002.Orders.Management.cs": {
     "mtime": 1783034327202.6743,
@@ -2196,8 +2196,8 @@
     "hash": "e6990b0a6978974ac3dda7f33c8b5d01"
   },
   "src/V12_002.Perf.LogBuffer.cs": {
-    "mtime": 1783128475704.8313,
-    "hash": "c77ef1945dbd2203e61e7ce9e3ff715d"
+    "mtime": 1783289500509.7944,
+    "hash": "2ae8031d0a62e4be567f31eecc22bc0c"
   },
   "src/V12_002.Photon.MmioMirror.cs": {
     "mtime": 1781246379963.4722,
@@ -2224,8 +2224,8 @@
     "hash": "dc42cba5b3522c6e7f85409bae693ea3"
   },
   "src/V12_002.REAPER.Audit.cs": {
-    "mtime": 1783128475705.8313,
-    "hash": "62fe7db1f50f44a9b5d01bea1e525f43"
+    "mtime": 1783290312593.9443,
+    "hash": "3b899fcaeecc90c91bf09decbe321567"
   },
   "src/V12_002.REAPER.NakedPosition.cs": {
     "mtime": 1781649892875.224,
@@ -2240,8 +2240,8 @@
     "hash": "0cb9e5f2fcb87122bb1dc8aaad695048"
   },
   "src/V12_002.REAPER.Repair.cs": {
-    "mtime": 1783128475705.8313,
-    "hash": "d7aec96887b22a0a0c0770671c79ffd9"
+    "mtime": 1783289500510.7947,
+    "hash": "76f6fe6d6c3e6a64bd270da0ca28d263"
   },
   "src/V12_002.REAPER.cs": {
     "mtime": 1781246379963.4722,
@@ -2256,16 +2256,16 @@
     "hash": "e85ef3a34a4aadb075df5a826453d10d"
   },
   "src/V12_002.SIMA.Flatten.cs": {
-    "mtime": 1783128475705.8313,
-    "hash": "41902addab17a2b7e34272b5f75db254"
+    "mtime": 1783290362493.009,
+    "hash": "785446069181f48daf22edaaeff0c551"
   },
   "src/V12_002.SIMA.Fleet.cs": {
-    "mtime": 1783128475706.8313,
-    "hash": "39c44e2e36a80b71ee353ddfc9b4cde9"
+    "mtime": 1783289500510.7947,
+    "hash": "90f287fc56204a333296e0044f672b25"
   },
   "src/V12_002.SIMA.Lifecycle.cs": {
-    "mtime": 1783128475707.8313,
-    "hash": "55f1b7898e6ca18a8ac9cdc1ab5b5389"
+    "mtime": 1783290334807.7537,
+    "hash": "c6f629fd5e45e59e094c1551698aa562"
   },
   "src/V12_002.SIMA.Shadow.cs": {
     "mtime": 1782942783035.676,
@@ -2276,8 +2276,8 @@
     "hash": "316199428c071d192af67b26fbb0ccc6"
   },
   "src/V12_002.Safety.Watchdog.cs": {
-    "mtime": 1783128475707.8313,
-    "hash": "91022dba4d58583687c3d816a572d021"
+    "mtime": 1783290368550.5024,
+    "hash": "a3b3fb7a1ae59e91c2b5086823de9a92"
   },
   "src/V12_002.StickyState.cs": {
     "mtime": 1782942783026.676,
@@ -2288,16 +2288,16 @@
     "hash": "5929113c2f6107dfe482849cf0b294a9"
   },
   "src/V12_002.Symmetry.BracketFSM.cs": {
-    "mtime": 1782942783009.6758,
-    "hash": "b605b082faa334bb65171be02bb55f5c"
+    "mtime": 1783289500510.7947,
+    "hash": "68bc49b5ee67f98e30179829416927e7"
   },
   "src/V12_002.Symmetry.Follower.cs": {
     "mtime": 1782942783011.6758,
     "hash": "39b6b921405d0bded3d2be8c95b01171"
   },
   "src/V12_002.Symmetry.Replace.cs": {
-    "mtime": 1782942783013.6758,
-    "hash": "73ddec977ce1458f8235ee3e8bc435c6"
+    "mtime": 1783289500510.7947,
+    "hash": "b7b4e7af0be885606957dd3641a0d957"
   },
   "src/V12_002.Symmetry.cs": {
     "mtime": 1783034327203.6743,
@@ -2312,44 +2312,44 @@
     "hash": "3c4b682ba98ecba1e424ae2684d5b1b3"
   },
   "src/V12_002.Trailing.StopUpdate.cs": {
-    "mtime": 1783128475707.8313,
-    "hash": "a8d014ab637de38e61e79bf575233b62"
+    "mtime": 1783289744035.631,
+    "hash": "0afed7a3d51c77e712c96b1b22ac9747"
   },
   "src/V12_002.Trailing.cs": {
-    "mtime": 1783128475708.8313,
-    "hash": "f4a079a4278f7dd47eb0f9f40844d3fd"
+    "mtime": 1783289500511.7947,
+    "hash": "4f63e5a3758b288552bdf6e650755eae"
   },
   "src/V12_002.UI.Callbacks.cs": {
     "mtime": 1782942648309.1023,
     "hash": "c7c8ccfa09baf8fde3c0c1130e3c3874"
   },
   "src/V12_002.UI.Compliance.cs": {
-    "mtime": 1783128475708.8313,
-    "hash": "e4c04e8906404fae0b26fc3f24d2eafb"
+    "mtime": 1783289500512.7947,
+    "hash": "f00e4a5f0c4178fa7752ceffb14f5f61"
   },
   "src/V12_002.UI.IPC.Commands.Config.cs": {
     "mtime": 1783128475708.8313,
     "hash": "3ded024120e3cb039f30c49c73dd6de7"
   },
   "src/V12_002.UI.IPC.Commands.Fleet.cs": {
-    "mtime": 1783128475709.8313,
-    "hash": "7eeac0e8d6dff935876f062055bd0aab"
+    "mtime": 1783290349131.9207,
+    "hash": "c12bc0a9013d79fd634dcfa5f87427e6"
   },
   "src/V12_002.UI.IPC.Commands.Misc.cs": {
     "mtime": 1783128475709.8313,
     "hash": "2936ace63abc41f14a79e02dc2ba8ff7"
   },
   "src/V12_002.UI.IPC.Commands.Mode.cs": {
-    "mtime": 1783128475709.8313,
-    "hash": "b71cd54b7738af3417b5fd7bab3862bf"
+    "mtime": 1783289500514.795,
+    "hash": "74c2df0a78394a7a74c8452c9384aa28"
   },
   "src/V12_002.UI.IPC.Server.cs": {
     "mtime": 1783128475710.8313,
     "hash": "c115fca3b96ac4611727c7d193114161"
   },
   "src/V12_002.UI.IPC.cs": {
-    "mtime": 1783128475710.8313,
-    "hash": "c783abec4a7f5bb72f37be8ee0a8aa7f"
+    "mtime": 1783290329963.3591,
+    "hash": "021e15157677febe767e8f319e953d9d"
   },
   "src/V12_002.UI.Panel.Brushes.cs": {
     "mtime": 1781246379966.4724,
@@ -2364,12 +2364,12 @@
     "hash": "6ff0c8edf5a97656f34ab7d997df6544"
   },
   "src/V12_002.UI.Panel.Helpers.ResolveChartTab.Tests.cs": {
-    "mtime": 1782941171252.845,
-    "hash": "333d836f7db3644e8992bc2f7e86e508"
+    "mtime": 1783289500514.795,
+    "hash": "b1c71b001d6845dca2763a945d155211"
   },
   "src/V12_002.UI.Panel.Helpers.cs": {
-    "mtime": 1783128475714.8313,
-    "hash": "b1cd7147ae8f812fa006ef34db6b9109"
+    "mtime": 1783289500514.795,
+    "hash": "c0f2583a5e93dbebce8d229359a42682"
   },
   "src/V12_002.UI.Panel.Lifecycle.cs": {
     "mtime": 1781246379967.4727,
@@ -2432,8 +2432,8 @@
     "hash": "bc69b765c3dc7d38a487f25621f56314"
   },
   "tests/V12_Performance.Tests/Core/ExtractionSnapshotTests.cs": {
-    "mtime": 1781649892879.224,
-    "hash": "e1845a12fdef80ca258f04b0d6f25cc6"
+    "mtime": 1783289500530.7961,
+    "hash": "d626ad3707d94949c73cbe396309fb3c"
   },
   "tests/V12_Performance.Tests/Core/FSMActorTests.cs": {
     "mtime": 1781246379968.4727,
@@ -2448,16 +2448,16 @@
     "hash": "4a5b7ae90620f624823e4f26c4bfd9bb"
   },
   "tests/V12_Performance.Tests/Core/SIMADispatchTests.cs": {
-    "mtime": 1781649892880.224,
-    "hash": "e2f6ee467c4e0d9f7d83df3e689fbe5c"
+    "mtime": 1783289500530.7961,
+    "hash": "b0e1ed00e5d4da06c0c3a853713cf6a1"
   },
   "tests/V12_Performance.Tests/Core/ValidatePriceInRangeTests.cs": {
     "mtime": 1782941152473.6255,
     "hash": "0a8fd826c944b9c0b2125d165abcc845"
   },
   "tests/V12_Performance.Tests/Infrastructure/LatencyProbeTests.cs": {
-    "mtime": 1781649892880.224,
-    "hash": "8e41830e0149f2e69264cbc3b30dcc9c"
+    "mtime": 1783289500530.7961,
+    "hash": "c0f3eea4ede01192757ed59f53d081b4"
   },
   "tests/V12_Performance.Tests/Infrastructure/LogBufferThreadStaticTests.cs": {
     "mtime": 1781649892880.224,
@@ -2532,8 +2532,8 @@
     "hash": "469e377eb73e83962711e3426d0b3c71"
   },
   "tests/V12_Performance.Tests/SIMA/W7_092_SetRmaAnchorFromIpcTests.cs": {
-    "mtime": 1782941152475.6255,
-    "hash": "d7ecf8a976972bfd060fdffd92b1c8b9"
+    "mtime": 1783289500530.7961,
+    "hash": "5bf71ab84f4ff390bed027451b69f732"
   },
   "tests/V12_Performance.Tests/SIMA/W7_095_ProcessSingleFleetRMAAccountTests.cs": {
     "mtime": 1782941152475.6255,
@@ -2716,8 +2716,8 @@
     "hash": "90430edd06602ce02ad8c7891d063268"
   },
   ".bob/custom_modes.yaml": {
-    "mtime": 1783128876062.5454,
-    "hash": "433a24cdd2d73de1929a1b7cbb823e56"
+    "mtime": 1783289500498.7937,
+    "hash": "ba3438a46246d7e65438e4c04788bb46"
   },
   ".bob/custom_modes_backup_20260617_230739.yaml": {
     "mtime": 1782083416622.1345,
@@ -3068,8 +3068,8 @@
     "hash": "21f33c2c5d934c426abe6ebbafa79d6a"
   },
   "AGENTS.md": {
-    "mtime": 1783128475629.8313,
-    "hash": "e025a3182dab167251d7ede8c171598c"
+    "mtime": 1783289500498.7937,
+    "hash": "d70db8a3d40c40bf8383c713883ef751"
   },
   "API_KEY_CLEANUP_REPORT.md": {
     "mtime": 1782346129112.2036,
@@ -4260,8 +4260,8 @@
     "hash": "4932935cfaf56c722972649cb373c0ba"
   },
   "docs/architecture.md": {
-    "mtime": 1781246379923.4692,
-    "hash": "34a737c2e8b19a2af54146d2b5a3260f"
+    "mtime": 1783289500499.7937,
+    "hash": "7c20186ff0d34e958ffa9157677a0c60"
   },
   "docs/archive/greptile/GREPTILE_MCP_TROUBLESHOOTING.md": {
     "mtime": 1782083416688.1406,
@@ -14872,8 +14872,8 @@
     "hash": "42cd88da08c5512381a69506426c5206"
   },
   "docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md": {
-    "mtime": 1782083416697.1414,
-    "hash": "ca74d6e5ca45a54635e75e765d131471"
+    "mtime": 1783289500503.794,
+    "hash": "e54457a048a5ae1826121d1d154d54f9"
   },
   "docs/protocol/VM_MCP_JSON_UPDATE.md": {
     "mtime": 1782083416697.1414,
@@ -16056,8 +16056,8 @@
     "hash": "29269c7dd27b13dc81f3eba9e4cbaa70"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1783135289965.964,
-    "hash": "72440ca82d4156db23fe3f25fcdb7340"
+    "mtime": 1783141062162.8835,
+    "hash": "4657db51d55209bb5ce300820a922eb1"
   },
   ".graphify/description-instructions/batch-000.md": {
     "mtime": 1783128475602.8313,
@@ -16956,8 +16956,8 @@
     "hash": "b9cb790cfa920278f545916e1a9c3af0"
   },
   "specs/001-agent-arena-platform/platform-brainstorm.html": {
-    "mtime": 1783110051201.8809,
-    "hash": "687eef30a1d1790175868ecefe0baec2"
+    "mtime": 1783289500506.7942,
+    "hash": "cb9c3d7536f3b301984b4997e6db25e7"
   },
   "specs/001-agent-arena-platform/principles.md": {
     "mtime": 1783110051201.8809,
@@ -17006,5 +17006,393 @@
   "docs/brain/wave7-pr-repairs/PR-24/lane-L5-complete.md": {
     "mtime": 1783140922348.9827,
     "hash": "7e5dd1a5907c097842d30eb90f339416"
+  },
+  "scripts/scan_okf_violations.py": {
+    "mtime": 1783193669146.5137,
+    "hash": "f87ae6f48c529863023c887eccd0cbfc"
+  },
+  ".bob/skills/speckit.analyze/SKILL.md": {
+    "mtime": 1783124100517.9631,
+    "hash": "f210af733903c504d0ed74a730363a32"
+  },
+  ".bob/skills/speckit.checklist/SKILL.md": {
+    "mtime": 1783124100574.9631,
+    "hash": "0dd6bddc6d0ced8a6331cc669fc8ad06"
+  },
+  ".bob/skills/speckit.clarify/SKILL.md": {
+    "mtime": 1783124100635.9631,
+    "hash": "ff5f683d11bf8f6c29ba819c9bbb3f87"
+  },
+  ".bob/skills/speckit.constitution/SKILL.md": {
+    "mtime": 1783124100529.9631,
+    "hash": "6e0c2c3cc9a6304242ca83366ac4f470"
+  },
+  ".bob/skills/speckit.converge/SKILL.md": {
+    "mtime": 1783124100556.9631,
+    "hash": "ec6e3238a66893e9cf2b86b6c5dd55a0"
+  },
+  ".bob/skills/speckit.implement/SKILL.md": {
+    "mtime": 1783124100584.9631,
+    "hash": "499da57818167bf51cdf4bfaab10095b"
+  },
+  ".bob/skills/speckit.plan/SKILL.md": {
+    "mtime": 1783124100596.9631,
+    "hash": "d2fd035b0f6f41efe7a12a86e222afd3"
+  },
+  ".bob/skills/speckit.specify/SKILL.md": {
+    "mtime": 1783124100491.9631,
+    "hash": "db10c4b183e9045db4ce755f296b599c"
+  },
+  ".bob/skills/speckit.tasks/SKILL.md": {
+    "mtime": 1783124100608.9631,
+    "hash": "bf005bdf809e32f415ace0e374a36b0d"
+  },
+  ".bob/skills/speckit.taskstoissues/SKILL.md": {
+    "mtime": 1783124100622.9631,
+    "hash": "d53ad2a2ed68db86c614432b5a91d124"
+  },
+  "docs/FastMCP.md": {
+    "mtime": 1783289500499.7937,
+    "hash": "321e1366099f9adb1566fea931bf8047"
+  },
+  "docs/FastMCP3.md": {
+    "mtime": 1783289500499.7937,
+    "hash": "720f2dcdea0cd56fb7b2afd5be466ec2"
+  },
+  "docs/brain/EPIC-IPC-MODE-CYC11/00-hotspots.md": {
+    "mtime": 1783289500499.7937,
+    "hash": "018f81d6211c113e5a33d025623e4ac8"
+  },
+  "docs/brain/EPIC-IPC-MODE-CYC11/00-scope.md": {
+    "mtime": 1783289500499.7937,
+    "hash": "11519c39724e22a2baf4a6acf9d2a8f3"
+  },
+  "docs/brain/EPIC-IPC-MODE-CYC11/01-scope-boundary.md": {
+    "mtime": 1783289500499.7937,
+    "hash": "eab10d091e4892f12cbadb9da238e993"
+  },
+  "docs/brain/EPIC-IPC-MODE-CYC11/02-architecture-plan.md": {
+    "mtime": 1783289500499.7937,
+    "hash": "1dde3221eb9f9fcc8a48772d60739c3f"
+  },
+  "docs/brain/EPIC-IPC-MODE-CYC11/03-audit-report.md": {
+    "mtime": 1783289500499.7937,
+    "hash": "efcadb0d9a1cef80e7ab3bd7a48bbc5d"
+  },
+  "docs/brain/EPIC-IPC-MODE-CYC11/04-tickets.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "627b1cf7e1738ba111960101c4ac7016"
+  },
+  "docs/brain/EPIC-IPC-MODE-CYC11/05-completion-report.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "7038bd53314ab352e2ffa1aff9dbe237"
+  },
+  "docs/brain/EPIC-IPC-MODE-CYC11/ticket-1-completion.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "e17c7ea89be121190e6940f50e06404c"
+  },
+  "docs/brain/EPIC-IPC-MODE-CYC11/ticket-1-verification.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "454e816a517fd3b29fa5aed58db7a686"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/00-hotspots.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "5cb3e711e25766f9a2890ddddfd44c14"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/00-scope.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "475d6e9e260a567bc279a0827c188848"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/01-scope-boundary.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "645486fea04486359f0d76cf9e4c07a1"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/02-architecture-plan.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "d9d8d8918fddcf7254bb0849c912cb25"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/03-audit-report.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "9b2ceada24c2a96ee3a4abe282b816c7"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/04-tickets.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "c0afa01b9524ca0bfa17803d704df00d"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/05-completion-report.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "1d20255468de89e5db76c4c6bb16f7d9"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/pr27-repair-r1r2.md": {
+    "mtime": 1783289500500.7937,
+    "hash": "30f16cf671552c6b3ccd718ef3f7afd3"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/ticket-1-completion.md": {
+    "mtime": 1783289500501.794,
+    "hash": "e3bb3aa23d52ceef681b8b52704554b0"
+  },
+  "docs/brain/EPIC-REAPER-AUDIT-CYC9/ticket-1-verification.md": {
+    "mtime": 1783289500501.794,
+    "hash": "96e7c32d035959919e20c12bb68fdd83"
+  },
+  "docs/brain/debt/README.md": {
+    "mtime": 1783193669152.5137,
+    "hash": "4cdfdd74300d9ff8147098fbe212041c"
+  },
+  "docs/brain/debt/needs-director-register.md": {
+    "mtime": 1783193691000.5623,
+    "hash": "a68fa9dca8034084cbd7c2928d89db5b"
+  },
+  "docs/brain/debt/okf-violation-scan.md": {
+    "mtime": 1783194017803.265,
+    "hash": "fb1060bfcab7c214c74e3b38550bca78"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20-deferred/NEW-F5-verification.md": {
+    "mtime": 1783289500501.794,
+    "hash": "96a697194af861a1e13ad99815c19744"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20-deferred/fix_queue.md": {
+    "mtime": 1783289500501.794,
+    "hash": "eadff0e7865fbe71988c2b5b92d6eabd"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20-deferred/lane-complete.md": {
+    "mtime": 1783289500501.794,
+    "hash": "5ee06caad0b1ec8ea40cbcc5348aaf9e"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20-deferred/repair-log.md": {
+    "mtime": 1783289500501.794,
+    "hash": "e6570abaefd8a5de43d7d9d78df60810"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20-deferred/triage.md": {
+    "mtime": 1783289500501.794,
+    "hash": "d5b242c1b653d05011df8e732e926e17"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20-deferred/verify-G01-G02.md": {
+    "mtime": 1783289500501.794,
+    "hash": "1e900059e8ab8c218bd1be74a0199fa6"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20-deferred/verify-NEW-F5.md": {
+    "mtime": 1783289500501.794,
+    "hash": "318e9d909e4ebd2037fb3d2f7c747670"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20-deferred/verify-NEW-F6.md": {
+    "mtime": 1783289500501.794,
+    "hash": "ffce098f0a80d6126bab44ac3da4caa0"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20-deferred/verify-NEW-F7.md": {
+    "mtime": 1783289500501.794,
+    "hash": "06a0743c19ae6d8539866fc79252356d"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20/lane-L1-complete.md": {
+    "mtime": 1783142973073.532,
+    "hash": "24352b5327c8e602ef826d4aa89ad013"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20/repair-log.md": {
+    "mtime": 1783142958857.542,
+    "hash": "754bc4c5d860b50c4e2f69725e10d903"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20/triage.md": {
+    "mtime": 1783134790500.3193,
+    "hash": "d06cc8ee23aba86feae015f9a69d2b3d"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20/verify-F1-F5.md": {
+    "mtime": 1783135112994.0898,
+    "hash": "be0f0798c984e8d6b1c4dba0167eecd2"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20/verify-NEW-F1a.md": {
+    "mtime": 1783141226651.767,
+    "hash": "161f1d71ee7d932e79ffc61d746ba6f2"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20/verify-NEW-F2.md": {
+    "mtime": 1783141436632.6182,
+    "hash": "24074f676a2534936f00408d8e36e415"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20/verify-NEW-F4.md": {
+    "mtime": 1783142232116.0554,
+    "hash": "658b8239f4e458f24bd678bfba7fcd73"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20/verify-REPAIR-07.md": {
+    "mtime": 1783129876178.829,
+    "hash": "4b5a7d747223d16aaebd2b8925fd4dd0"
+  },
+  "docs/brain/wave7-pr-repairs/PR-20/verify-REPAIR-08.md": {
+    "mtime": 1783130142089.6384,
+    "hash": "cd1f027a48588e8c29bd9baf9fe9d36d"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/lane-L2-codefactor-complete.md": {
+    "mtime": 1783197942301.5864,
+    "hash": "78783aa2ba4e8b044565fea6f6ae4db4"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/lane-L2-complete.md": {
+    "mtime": 1783142873740.602,
+    "hash": "339882b5d0df0a0d80ce639c730be003"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/plan-L2-REPAIR-V2.md": {
+    "mtime": 1783196091078.4473,
+    "hash": "755df8816fab0dfda1e04c8da3b00592"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/repair-log-sa1204.md": {
+    "mtime": 1783142852292.6172,
+    "hash": "79c74a1ff8db121a173a673f247d0623"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/triage.md": {
+    "mtime": 1783129337196.216,
+    "hash": "2ab78020c002e02984fde800036869fa"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/verify-BATCH-LOGIC.md": {
+    "mtime": 1783129830548.862,
+    "hash": "1d00f63879117edc6af04144c066319b"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/verify-BATCH-MECH.md": {
+    "mtime": 1783197645696.3591,
+    "hash": "2ce1c838a640bf637d6fc4d2c037f933"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/verify-F14.md": {
+    "mtime": 1783131098361.9548,
+    "hash": "30ae33fcad2040f0f9fd0d32cb2bcd73"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/verify-SA1204.md": {
+    "mtime": 1783141030597.906,
+    "hash": "4a01e48a13681ac3e2a242c0e62b6cf3"
+  },
+  "docs/brain/wave7-pr-repairs/PR-21/verify-SA1204b.md": {
+    "mtime": 1783142551211.83,
+    "hash": "bfbe8814ca87198b197386a400063efa"
+  },
+  "docs/brain/wave7-pr-repairs/PR-22/lane-L3-complete.md": {
+    "mtime": 1783142882015.5962,
+    "hash": "5737302ed62116f94321ec6cea25f57e"
+  },
+  "docs/brain/wave7-pr-repairs/PR-22/verify-CR-1-CR-2.md": {
+    "mtime": 1783140932616.9753,
+    "hash": "2dd67e12e2e87415a4c91f869b30c315"
+  },
+  "docs/brain/wave7-pr-repairs/PR-23/repair-log.md": {
+    "mtime": 1783130225333.5786,
+    "hash": "1566489e560d6b995ab9bfdaabeff1e3"
+  },
+  "docs/brain/wave7-pr-repairs/PR-23/triage.md": {
+    "mtime": 1783130224317.5793,
+    "hash": "0e0950ec8e1b9f49a231e872d9103f72"
+  },
+  "docs/brain/wave7-pr-repairs/PR-24/plan-F5-F8-F9.md": {
+    "mtime": 1783130285290.5354,
+    "hash": "cd8a96fd1f98c0fd956116bb48c99952"
+  },
+  "docs/brain/wave7-pr-repairs/PR-24/repair-log.md": {
+    "mtime": 1783130725845.2207,
+    "hash": "cb572a38c23d4ee32d77a9d576e5b6f0"
+  },
+  "docs/brain/wave7-pr-repairs/PR-24/triage.md": {
+    "mtime": 1783130702218.2375,
+    "hash": "129b9d274df01442ecae512131ccfdfd"
+  },
+  "docs/brain/wave7-pr-repairs/PR-24/verify-REPAIR-F1.md": {
+    "mtime": 1783135191050.0344,
+    "hash": "a8b98ee55cc926b4564ae1e33fa7a723"
+  },
+  "docs/brain/wave7-pr-repairs/PR-24/verify-REPAIR-F3.md": {
+    "mtime": 1783130140703.6394,
+    "hash": "236b6c9d60ee91b760720db886250c25"
+  },
+  "docs/brain/wave7-pr-repairs/PR-24/verify-REPAIR-F5-F8-F9.md": {
+    "mtime": 1783130602920.3083,
+    "hash": "3ed5dc11c5daa9fa46fdef3aa40ae093"
+  },
+  "docs/brain/wave7-pr-repairs/PR-26/verify-REPAIR-ASCII-01.md": {
+    "mtime": 1783135032887.147,
+    "hash": "11864c35ef8f84226955caa27fb85299"
+  },
+  "docs/brain/wave7-pr-repairs/PR-26/verify-REPAIR-GITLEAKS-01.md": {
+    "mtime": 1783135259261.9858,
+    "hash": "75b446c152c5dfaf0adb14cc34934305"
+  },
+  "docs/brain/wave7-pr-repairs/PR-A-s2-deferred-additions/fix_queue.md": {
+    "mtime": 1783289500501.794,
+    "hash": "cf0fd2e5ec7a7dd98843842e829b0df3"
+  },
+  "docs/brain/wave7-pr-repairs/PR-B-s2-callbacks-sima/fix_queue.md": {
+    "mtime": 1783289500501.794,
+    "hash": "21e5bf34af97483383f430e71f331cc6"
+  },
+  "docs/brain/wave7-pr-repairs/PR-C-s1-lifecycle-reaper/fix_queue.md": {
+    "mtime": 1783289500501.794,
+    "hash": "ef770d8ab6c6c5c8957010a146117826"
+  },
+  "docs/brain/wave7-pr-repairs/PR-D-s3-ui-ipc/fix_queue.md": {
+    "mtime": 1783289500501.794,
+    "hash": "bac123ac4638ee01e2bcf11dbf2c2afb"
+  },
+  "docs/brain/wave7-pr-repairs/PR-E-s5-entries-signals/fix_queue.md": {
+    "mtime": 1783289500502.794,
+    "hash": "f43136c10c2aafb6263df7a200acfa1d"
+  },
+  "docs/brain/wave7-pr-repairs/PR-F-propagation-bulk/fix_queue.md": {
+    "mtime": 1783289500502.794,
+    "hash": "64a726b0dd8664e9a0f146db126e02ca"
+  },
+  "docs/brain/wave7-pr-repairs/PR-G-magic-numbers/fix_queue.md": {
+    "mtime": 1783289500502.794,
+    "hash": "dbbb324c06761f57a336a5e8cfaea7cb"
+  },
+  "docs/brain/wave7-pr-repairs/deferred-debt-register.md": {
+    "mtime": 1783290518861.7463,
+    "hash": "6f27c11f0db120311c556e55d4bb569f"
+  },
+  "docs/brain/wave8-findings/README.md": {
+    "mtime": 1783289500502.794,
+    "hash": "69c1e3d647f22aa19a11a003e11f7683"
+  },
+  "docs/droidmissionstdd.md": {
+    "mtime": 1783289500502.794,
+    "hash": "1d6acacfd30d2ca89c78f0cc90568a22"
+  },
+  "docs/fastMCP2.md": {
+    "mtime": 1783289500502.794,
+    "hash": "321e1366099f9adb1566fea931bf8047"
+  },
+  "docs/intel/gary-tan/corpus-as-moat.md": {
+    "mtime": 1783289500502.794,
+    "hash": "24499239c52d6372fc67ecf274ab2e50"
+  },
+  "docs/intel/gary-tan/cost-per-agent.md": {
+    "mtime": 1783289500502.794,
+    "hash": "43475727209f6412caf8fb710077ffd8"
+  },
+  "docs/intel/gary-tan/error-compounding.md": {
+    "mtime": 1783289500502.794,
+    "hash": "31d9ddc1a29917087d451eae643f50e6"
+  },
+  "docs/intel/gary-tan/harness-is-commodity.md": {
+    "mtime": 1783289500502.794,
+    "hash": "df5e56f3c49c06918dd58b0985e43a4a"
+  },
+  "docs/intel/gary-tan/index.md": {
+    "mtime": 1783289500502.794,
+    "hash": "5db0b78bde36f586dcda60c966d95fe3"
+  },
+  "docs/intel/gary-tan/live-in-the-future.md": {
+    "mtime": 1783289500502.794,
+    "hash": "5951d8549c65571dd0d62d386d423e95"
+  },
+  "docs/intel/gary-tan/lsd-brainstorm-mode.md": {
+    "mtime": 1783289500503.794,
+    "hash": "d80c4ce1c1fa5da0d98ae8324b28bd6c"
+  },
+  "docs/intel/gary-tan/open-source-model-strategy.md": {
+    "mtime": 1783289500503.794,
+    "hash": "433aad93a82ce87b32d050141f84542b"
+  },
+  "docs/mcpmarketdotcom.md": {
+    "mtime": 1783289500503.794,
+    "hash": "1959daa093f0c6ed30db2ac4688413d7"
+  },
+  "docs/protocol/AGENT_INSTRUCTION_AUTHORING_PROTOCOL.md": {
+    "mtime": 1783289500503.794,
+    "hash": "c36dcb43e25574d552367120ba83bce0"
+  },
+  "specs/001-agent-arena-platform/case-studies/wave7-autonomous-refactor.md": {
+    "mtime": 1783289500503.794,
+    "hash": "e2afab6299227b5e54a423a30074359a"
   }
 }
