@@ -419,6 +419,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        // [PR-20-deferred NEW-F6] Guard: true only for in-flight replace states (PendingCancel or Submitting).
+        // SubmitFailed and Idle specs must NOT suppress cascade cleanup -- the replace is not active.
+        private static bool IsFsmStateActive(FollowerReplaceSpec spec) =>
+            spec != null
+            && (spec.State == FollowerReplaceState.PendingCancel || spec.State == FollowerReplaceState.Submitting);
+
         // H06: Top-level follower cancellation processor (state-agnostic).
         // Returns true if cancellation was handled (caller should return early).
         // Checks: PendingCancel FSM, Target Replace FSM, Stop Replacement, PendingCleanup purge.
@@ -905,7 +911,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // expectedPositions mid-replace; the replacement fill then triggers REAPER Critical Desync
             // (actualQty != 0, expectedQty == 0) -> Emergency Flatten.
             FollowerReplaceSpec b948FsmSpec;
-            if (_followerReplaceSpecs.TryGetValue(followerKey, out b948FsmSpec))
+            if (_followerReplaceSpecs.TryGetValue(followerKey, out b948FsmSpec) && IsFsmStateActive(b948FsmSpec))
             {
                 Print(
                     string.Format(
