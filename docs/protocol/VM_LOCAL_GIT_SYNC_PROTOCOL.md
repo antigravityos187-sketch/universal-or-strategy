@@ -1,9 +1,99 @@
-# VM-Local Git Sync Protocol (V12.37)
+# VM-Local Git Sync Protocol (V12.38)
 
-**Version**: 1.2
-**Effective**: 2026-06-16
+**Version**: 1.3
+**Effective**: 2026-07-13
 **Status**: 🔴 MANDATORY - BLOCKING GATE
 **Severity**: P0 (Wave execution blocker)
+
+## Two-Track Local Development Model (V12.38)
+
+This is the foundational model for all local development. Two worktrees, one
+repo, one IDE window. No switching. No stashing. No pollution.
+
+### Setup
+
+```
+C:\WSGTA\
+  universal-or-strategy\           <- TRACK 1: wave work
+    branch: main / wave7/pr-X
+    open in: Arena.code-workspace (root 1)
+    who writes here: VM agent + you for F5 verification
+
+  universal-or-strategy-director\  <- TRACK 2: director work
+    branch: director (or 001-agent-arena-platform)
+    open in: Arena.code-workspace (root 2)
+    who writes here: YOU ONLY -- docs, specs, protocols, rules
+```
+
+Open `Arena.code-workspace` -- both roots appear in one Bob IDE window:
+
+```
+Bob IDE
+  STRATEGY -- WAVE WORK (main)
+    src/
+    docs/brain/
+    ...
+
+  DIRECTOR -- DOCS/SPEC/PROTOCOL (director)
+    docs/protocol/
+    docs/workflow/
+    specs/
+    AGENTS.md
+    .bob/
+    ...
+```
+
+### The Rules
+
+| Rule | Detail |
+|------|--------|
+| Track 1 is wave-only | Only VM agent and F5 verification touches this folder |
+| Track 2 is director-only | Only you touch this -- no agent wave work ever |
+| No switching branches | Each folder has its own permanent branch -- never checkout in Track 1 while wave runs |
+| No stashing | Changes in Track 2 are always safe -- completely separate working tree |
+| Non-.cs files: direct push | docs/protocol/AGENTS.md/.bob/ -- commit and push to main directly, no PR |
+| .cs files: PR + F5 gate | All src/ changes go through wave branch PR and F5 verification |
+| VM never sees director | director branch is local only -- never push to VM |
+| Arena spec lives in Track 2 | specs/ folder edited in director worktree only |
+
+### Day to Day
+
+```
+VM running wave work?
+  -> You open Track 2 (director worktree) in same IDE window
+  -> Edit docs/protocol/AGENTS.md/specs/ freely
+  -> git add . && git commit && git push origin main  (direct, no PR)
+  -> Zero conflict with VM -- different files, different track
+
+Wave PR ready for F5?
+  -> Switch to Track 1 root in same IDE window
+  -> git fetch origin && git checkout wave7/pr-A
+  -> F5 in NinjaTrader
+  -> GREEN -> merge on GitHub
+  -> git checkout main && git pull origin main
+  -> Back to Track 2 for director work -- no stash needed
+
+Want to work on Arena spec?
+  -> Track 2 is already on 001-agent-arena-platform branch
+  -> Edit specs/ freely
+  -> git commit -- stays local, never touches VM
+```
+
+### Worktree Commands (Reference)
+
+```powershell
+# See all active worktrees
+git worktree list
+
+# Track 1 is the main repo folder (always exists)
+# Track 2 was created with:
+# git worktree add ..\universal-or-strategy-director director
+
+# Remove worktree if ever needed
+# git worktree remove ..\universal-or-strategy-director
+```
+
+---
 
 ## Problem Statement
 

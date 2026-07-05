@@ -1,6 +1,33 @@
 # AGENTS.md - Sovereign Agent Protocol
 
 Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repository. This environment is optimized for autonomous multi-agent development under the **Sovereign Droid Protocol (SDP)**.
+
+## ⚠️ TWO-TRACK LOCAL DEVELOPMENT MODEL (V12.38 -- MANDATORY)
+
+This repo uses two git worktrees in one Bob IDE window. As an agent you MUST
+know which track you are operating in before touching any file.
+
+```
+C:\WSGTA\
+  universal-or-strategy\           <- TRACK 1: wave work  (main / wave7/pr-X)
+  universal-or-strategy-director\  <- TRACK 2: director   (director branch)
+```
+
+**Track 1 rules (universal-or-strategy)**:
+- VM agent writes src/ and docs/brain/ wave artifacts here
+- You (agent) operate here during wave execution
+- .cs changes: wave branch PR + F5 gate before merge
+- Never commit director/spec/protocol changes here during a wave
+
+**Track 2 rules (universal-or-strategy-director)**:
+- Director (human) writes docs/protocol/specs/AGENTS.md/.bob/ here
+- You (agent) operate here ONLY when explicitly asked by Director
+- Non-.cs changes: direct push to main, no PR needed
+- Never push director branch to VM
+- Arena spec (001-agent-arena-platform) branches off director
+
+**Full protocol**: `docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md`
+
 ## ⚠️ CRITICAL: CodeFactor Protocol
 **MANDATORY READING**: Before accepting ANY automated fixes from CodeFactor or similar tools, read `docs/protocol/CODEFACTOR_PROTOCOL.md`. 
 
