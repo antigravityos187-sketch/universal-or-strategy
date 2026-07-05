@@ -65,7 +65,7 @@ namespace V12_Performance.Tests.SIMA
             printedMessage = string.Empty;
             try
             {
-                if (TryParseRmaAnchorType(anchorStr, out RmaAnchorType anchor))
+                if (anchorStr != null && TryParseRmaAnchorType(anchorStr, out RmaAnchorType anchor))
                     currentRmaAnchor = anchor;
 
                 printedMessage = "IPC SET ANCHOR: " + anchorStr;
@@ -239,3 +239,4 @@ namespace V12_Performance.Tests.SIMA
         }
     }
 }
+

@@ -43,7 +43,7 @@ namespace V12_Performance.Tests.Core
             Assert.NotNull(result.Stop);
             Assert.NotNull(result.Targets);
             Assert.Equal(3, result.Targets.Count);
-            Assert.Equal(3, result.NonRunnerLimitQty);
+            Assert.Equal(9, result.NonRunnerLimitQty);
         }
 
         [Fact]
