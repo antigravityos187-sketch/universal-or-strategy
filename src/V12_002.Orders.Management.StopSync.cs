@@ -496,6 +496,24 @@ namespace NinjaTrader.NinjaScript.Strategies
             return o.Name.EndsWith(suffix) || o.Name.StartsWith(prefix);
         }
 
+        // [PR-20-deferred NEW-F7] Reconcile stale stop reference after broker reconnect.
+        // NT may return a new Order object for the same logical stop; the dict retains the old reference.
+        // If Account.Orders contains an order with the same OrderId but a different reference, update dict.
+        private Order ResolveStopReference(string entryName, Order tracked)
+        {
+            if (tracked == null || string.IsNullOrEmpty(tracked.OrderId))
+                return tracked;
+            foreach (Order liveOrder in Account.Orders)
+            {
+                if (liveOrder != tracked && liveOrder.OrderId == tracked.OrderId)
+                {
+                    stopOrders.TryUpdate(entryName, liveOrder, tracked);
+                    return liveOrder;
+                }
+            }
+            return tracked;
+        }
+
         private void UpdateStopQuantity_HandleEmergencyFlatten(string entryName, int remainingContracts)
         {
             // P0-1: GRADUATED RESPONSE - Only flatten if position truly lacks stop protection
@@ -600,7 +618,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             try
             {
                 Order currentStop = stopOrders[entryName];
-
+                currentStop = ResolveStopReference(entryName, currentStop); // [NEW-F7] Reconcile stale ref post-reconnect
                 // V8.11 FIX: Store pending replacement BEFORE cancelling
                 // This ensures we only create a new stop when the old one is confirmed cancelled
                 if (
