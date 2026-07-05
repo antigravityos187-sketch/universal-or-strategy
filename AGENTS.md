@@ -544,7 +544,27 @@ epic-review-final EPIC-CCN-X
 - ✅ All tickets verified
 - ✅ Final review passed
 - ✅ `deploy-sync.ps1` executed successfully
-- ✅ F5 in NinjaTrader successful
+- ✅ F5 in NinjaTrader successful (see F5 Gate below)
+
+### F5 Compilation Gate (MANDATORY -- BLOCKING)
+
+Every wave PR MUST pass local F5 compilation before merging to main.
+Full protocol: `docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md` (PR-Gate + F5 section)
+
+**Flow**:
+```
+VM pushes wave branch -> GitHub PR opens -> bots run
+  -> you: git checkout <wave-branch> -> F5 in NinjaTrader
+  -> GREEN: merge PR to main
+  -> RED: do NOT merge, report to VM for fix
+  -> VM: git pull origin main -> next wave
+```
+
+**Rules**:
+- Always checkout the EXACT PR branch -- never F5 on main
+- F5 must be green BEFORE merge -- not after
+- One PR verified at a time -- no batching
+- VM never pushes directly to main
 
 ## 8. IBM Bob Shell Integration
 

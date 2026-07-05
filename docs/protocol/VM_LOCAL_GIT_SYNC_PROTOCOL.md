@@ -586,6 +586,109 @@ chmod +x scripts/sync_vm_git.sh
 
 ---
 
-**Protocol Owner**: Wave Execution Lead  
-**Last Updated**: 2026-06-16T21:35:00Z  
-**Next Review**: After Wave 5 completion
+## PR-Gate + F5 Compilation Flow (V12.38)
+
+This section codifies the mandatory end-to-end flow from wave execution on the VM
+to a merged PR on main. Every agent and every Director session must follow this.
+
+### The Flow
+
+```
+VM
+  1. Executes wave work on a named wave branch (e.g. wave7/pr-A)
+  2. Pushes branch to GitHub
+  3. Opens PR: wave7/pr-A -> main
+
+GitHub PR Bots (automated)
+  4. Codacy runs static analysis
+  5. CodeRabbit runs AI review
+  6. Other bots run (Semgrep, pre-push checks)
+  7. PR must reach green / no new blockers before F5 step
+
+LOCAL (you -- mandatory human gate)
+  8. git fetch origin
+  9. git checkout wave7/pr-A   (the EXACT PR branch -- NOT main)
+  10. Open NinjaTrader
+  11. Press F5 -- strategy must compile with zero errors
+  12. If green --> go to GitHub --> Merge PR into main
+  13. If red  --> do NOT merge --> report failure back to VM for fix
+
+VM (next wave)
+  14. git pull origin main
+  15. Starts next wave on clean, verified main
+```
+
+### Rules
+
+| Rule | Detail |
+|------|--------|
+| Always checkout the PR branch | Never F5 on main -- verify BEFORE merge, not after |
+| F5 is a blocking gate | Green F5 required before any merge to main |
+| main stays compilable | Only verified wave branches land on main |
+| One PR at a time | Do not queue multiple PRs for F5 -- verify each independently |
+| VM never touches main directly | VM pushes to wave branches only, never force-pushes main |
+
+### Branch Naming Convention
+
+```
+wave7/pr-A    wave7/pr-B    wave7/pr-C ...
+     |              |              |
+     v              v              v
+  PR -> main    PR -> main    PR -> main
+  (F5 gate)     (F5 gate)     (F5 gate)
+```
+
+### Local Commands (Quick Reference)
+
+```powershell
+# Step 1: Fetch all remote branches
+git fetch origin
+
+# Step 2: Checkout the PR branch (replace pr-A with actual branch)
+git checkout wave7/pr-A
+
+# Step 3: Verify you are on the right branch
+git branch --show-current
+# Expected: wave7/pr-A
+
+# Step 4: Open NinjaTrader and press F5
+# If compile succeeds --> merge on GitHub
+# If compile fails   --> do NOT merge, report to VM
+
+# Step 5: After merge, sync main locally
+git checkout main
+git pull origin main
+```
+
+### Arena Spec Branch Isolation
+
+The `001-agent-arena-platform` branch is LOCAL ONLY.
+- Never push to VM
+- Never include in wave PRs
+- Switch to it only when doing spec work, not during wave PR verification
+
+```powershell
+# Switching from wave verification back to spec work
+git checkout 001-agent-arena-platform
+
+# Switching from spec work to wave verification
+git stash   # if any uncommitted spec edits
+git checkout wave7/pr-A
+```
+
+---
+
+## Version History
+
+- **V1.3 (V12.38)**: Added PR-Gate + F5 Compilation Flow section with full
+  end-to-end wave branch lifecycle, F5 blocking gate rules, and Arena spec
+  branch isolation guidance
+- **V1.2 (V12.37)** (2026-06-16): Added Step 6 (working tree verification), Step 7 (baseline verification), nuclear clean option, and Wave 5 Pilot Test #2 learnings
+- **V1.1** (2026-06-16): Added bidirectional sync (VM -> Local post-wave) and 5-check verification
+- **V1.0 (V12.36)** (2026-06-16): Initial 5-step protocol created after Wave 5 Pilot Test #1 incident
+
+---
+
+**Protocol Owner**: Wave Execution Lead
+**Last Updated**: 2026-07-13
+**Next Review**: After Wave 7 completion

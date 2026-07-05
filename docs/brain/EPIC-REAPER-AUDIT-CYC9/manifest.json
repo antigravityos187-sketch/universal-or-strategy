@@ -1,0 +1,26 @@
+{
+  "epic_id": "EPIC-REAPER-AUDIT-CYC9",
+  "description": "Extract 3 boolean helpers from AuditMaster_IsWorkingStopOrder to reduce CYC 9 to 6",
+  "target_method": "AuditMaster_IsWorkingStopOrder",
+  "target_file": "src/V12_002.REAPER.Audit.cs",
+  "target_line": 753,
+  "cyc_before": 9,
+  "cyc_after_projection": 6,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "outputs": [
+        "docs/brain/EPIC-REAPER-AUDIT-CYC9/00-hotspots.md"
+      ],
+      "notes": "CYC=9 confirmed by complexity_audit.py and manual branch count. Only true CYC>8 violation remaining."
+    },
+    "phase_1": { "status": "pending" },
+    "phase_1_5": { "status": "pending" },
+    "phase_2": { "status": "pending" },
+    "phase_3": { "status": "pending" },
+    "phase_4": { "status": "pending" },
+    "phase_5": { "status": "pending" },
+    "phase_5_v": { "status": "pending" },
+    "phase_6": { "status": "pending" }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "epic_id": "EPIC-IPC-MODE-CYC11",
+  "description": "Reduce CYC=11 on SetMode_ActivateModeFlags in V12_002.UI.IPC.Commands.Mode.cs",
+  "target_method": "SetMode_ActivateModeFlags",
+  "target_file": "src/V12_002.UI.IPC.Commands.Mode.cs",
+  "target_line": 139,
+  "current_cyc": 11,
+  "target_cyc": 3,
+  "phases": {
+    "phase_0": {
+      "status": "completed",
+      "outputs": [
+        "docs/brain/EPIC-IPC-MODE-CYC11/00-hotspots.md"
+      ],
+      "cyc_confirmed": 11,
+      "loc": 30,
+      "root_cause": "OR-chain (4x||) +4 CYC; switch statement (5 cases) +5 CYC; base +1; if +1 = 11",
+      "fix_strategy": "HashSet replaces OR-chain (-4 CYC); switch expression replaces switch statement (-4 CYC)"
+    },
+    "phase_1": { "status": "pending" },
+    "phase_2": { "status": "pending" },
+    "phase_3": { "status": "pending" },
+    "phase_4": { "status": "pending" },
+    "phase_5": { "status": "pending" },
+    "phase_6": { "status": "pending" }
+  },
+  "created_at": "2026-06-14",
+  "agent": "v12-phase0-hotspot"
+}
