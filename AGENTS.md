@@ -28,6 +28,23 @@ C:\WSGTA\
 
 **Full protocol**: `docs/protocol/VM_LOCAL_GIT_SYNC_PROTOCOL.md`
 
+## ⚠️ CRITICAL: How to Write Instructions for Agents (AIAP v1.0)
+
+**MANDATORY READING before authoring any roleDefinition, start_subtask message, mode, or skill:**
+`docs/protocol/AGENT_INSTRUCTION_AUTHORING_PROTOCOL.md`
+
+**TL;DR** -- 7 laws every instruction must follow:
+1. **Sequence before content** -- STEP 1/2/3 comes first, not last
+2. **Name every tool call** -- exact tool + exact parameters, no vague "use MCP"
+3. **State machine over prose** -- hard gates (EXIT 0/1), not soft English "if"
+4. **Forbidden block is second** -- FORBIDDEN section appears before the task steps
+5. **Verification uses different tools** -- never self-certify with same tool that produced output
+6. **Artifacts are the contract** -- every task writes a structured artifact (no artifact = not verifiable)
+7. **Completion gate is last** -- checklist with exact commands before reporting done
+
+All agents are multiples of Tier 1. Encode the discipline in the instruction. Never rely on the
+receiving agent to infer it. Embed constraints verbatim -- never reference a document.
+
 ## ⚠️ CRITICAL: CodeFactor Protocol
 **MANDATORY READING**: Before accepting ANY automated fixes from CodeFactor or similar tools, read `docs/protocol/CODEFACTOR_PROTOCOL.md`. 
 
