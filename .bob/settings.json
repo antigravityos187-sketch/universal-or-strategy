@@ -20,7 +20,8 @@
     "preferredEditor": "code",
     "approvalMode": "yolo",
     "autoApprove": [
-      "read_file",
+    "start_workflow",
+    "read_file",
       "write_file",
       "apply_diff",
       "insert_content",

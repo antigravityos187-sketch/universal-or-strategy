@@ -12,7 +12,13 @@ $desyncs = 0
 $missing = 0
 $ok = 0
 
-Get-ChildItem $SrcPath -Filter "*.cs" | ForEach-Object {
+# Files that live in src/ but are NOT NT8 strategy files (xUnit tests, pure-logic mirrors).
+# These must never be hard-linked to NT8 -- exclude from audit.
+$NtExcluded = @(
+    "W7_061_SubmitAndRegisterTests.cs"
+)
+
+Get-ChildItem $SrcPath -Filter "*.cs" | Where-Object { $NtExcluded -notcontains $_.Name } | ForEach-Object {
     $srcFile = $_.FullName
     $ntFile  = Join-Path $NtPath $_.Name
 

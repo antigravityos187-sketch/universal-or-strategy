@@ -99,7 +99,7 @@ if (-not $SkipBuild) {
 if (-not $SkipTests) {
     Write-CheckHeader "3. Unit Tests"
     try {
-        $testOutput = dotnet test Testing.csproj --no-build --nologo --verbosity quiet 2>&1
+        $testOutput = dotnet test tests/V12_Performance.Tests/V12_Performance.Tests.csproj --nologo --verbosity quiet 2>&1
         $testSuccess = $LASTEXITCODE -eq 0
         
         if ($testSuccess) {

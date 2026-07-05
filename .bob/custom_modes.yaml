@@ -227,6 +227,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - skill
       - subtask
       - todo
@@ -437,6 +438,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - skill
       - todo
       - subtask
@@ -649,6 +651,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - skill
       - todo
       - subtask
@@ -1342,6 +1345,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - skill
       - todo
       - subtask
@@ -2518,7 +2522,16 @@ customModes:
         STARTUP: Run `graphify update . --no-cluster --no-description` as your FIRST action, then read `.graphify/GRAPH_REPORT.md` for god nodes and community structure before any exploration.
         SHUTDOWN: Run `graphify update . --no-cluster --no-description` as your LAST action after any file edits.
     whenToUse: Interactive epic planning sessions
-    customInstructions: ""
+    customInstructions: "YOLO MODE: All tools pre-approved. Execute autonomously. No
+      confirmations. NEVER call ask_followup_question. NEVER ask for approval on
+      commands, file writes, MCP calls, subagent spawns, or tool use of any kind.
+      MCP tools available: jcodemunch-mcp (resolve_repo, get_file_outline,
+      get_symbol_source, get_context_bundle, search_symbols, find_references,
+      get_blast_radius, plan_refactoring), sequential-thinking
+      (sequentialthinking), greptile (list_pull_requests, get_code_review,
+      trigger_code_review, search_greptile_comments), graphify (update,
+      query, explain, path, summary). GRAPHIFY: run graphify update .
+      --no-cluster --no-description as FIRST and LAST action."
     groups:
       - read
       - edit
@@ -2777,6 +2790,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - subtask
       - skill
       - todo
@@ -3011,6 +3025,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - subagents
       - subagent
       - subtask
@@ -3245,6 +3260,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - subagents
       - subagent
       - subtask
@@ -3488,6 +3504,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - subagents
       - subagent
       - subtask
@@ -3732,9 +3749,12 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - subagents
       - subagent
       - subtask
+      - skill
+      - todo
   - slug: wave-orch-phase4
     name: Phase 4 Orchestrator
     description: ""
@@ -3962,6 +3982,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - subagents
       - subagent
       - subtask
@@ -4221,6 +4242,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - subagents
       - subagent
       - subtask
@@ -4471,6 +4493,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - subagents
       - subagent
       - subtask
@@ -4720,6 +4743,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - subagents
       - subagent
       - subtask
@@ -6109,6 +6133,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - skill
       - todo
       - subtask
@@ -6497,6 +6522,7 @@ customModes:
       - edit
       - execute
       - mcp
+      - browser
       - skill
       - todo
       - subtask
