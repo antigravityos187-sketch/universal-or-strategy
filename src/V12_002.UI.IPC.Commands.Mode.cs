@@ -135,13 +135,21 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
-        // [EPIC-W7-OVERRUN] Extracted: ATOMIC clear-all + set the incoming mode flag (CYC=7)
+        // OKF lock-free-patterns.md: static readonly = immutable after init, zero coordination needed
+        private static readonly HashSet<string> _knownModes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "RMA",
+            "RETEST",
+            "TREND",
+            "MOMO",
+            "FFMA",
+        };
+
+        // [EPIC-W7-OVERRUN] Extracted: ATOMIC clear-all + set the incoming mode flag (CYC=7 post-EPIC-IPC-MODE-CYC11)
         private bool SetMode_ActivateModeFlags(string newMode)
         {
             // OKF sidecar_lifecycle: reject unknown modes BEFORE any state mutation
-            bool isKnownMode =
-                newMode == "RMA" || newMode == "RETEST" || newMode == "TREND" || newMode == "MOMO" || newMode == "FFMA";
-            if (!isKnownMode)
+            if (!_knownModes.Contains(newMode))
             {
                 Print($"[V12 IPC REJECT] SET_MODE rejected: unknown mode '{newMode}'");
                 return false;
