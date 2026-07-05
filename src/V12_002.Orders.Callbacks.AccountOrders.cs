@@ -823,7 +823,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             foreach (var sc in stopOrders.ToArray())
             {
-                if (sc.Value == order || (sc.Value != null && sc.Value.OrderId == order.OrderId))
+                if (IsMatchingStopReplacement(sc.Value, order))
                 {
                     PositionInfo scPos;
                     if (
