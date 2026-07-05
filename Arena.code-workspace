@@ -1,0 +1,29 @@
+{
+	"folders": [
+		{
+			"name": "Strategy -- Wave Work (main)",
+			"path": "."
+		},
+		{
+			"name": "Director -- Docs/Spec/Protocol (director)",
+			"path": "../universal-or-strategy-director"
+		}
+	],
+	"settings": {
+		"[csharp]": {
+			"editor.defaultFormatter": "csharpier.csharpier-vscode",
+			"editor.formatOnSave": true
+		},
+		"files.associations": {
+			"*.cs": "csharp"
+		},
+		"files.watcherExclude": {
+			"**/.git/objects/**": true,
+			"**/.git/subtree-cache/**": true,
+			"**/node_modules/*/**": true,
+			"**/.hg/store/**": true,
+			"**/bin/**": true,
+			"**/obj/**": true
+		}
+	}
+}
