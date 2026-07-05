@@ -15,6 +15,24 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region IPC Hardening (EPIC-4 Ticket 03)
 
+        // [SA1204] Static readonly fields -- must precede instance members per StyleCop SA1204
+        // EPIC-4 P0 Fix #2: Static readonly arrays to eliminate hot-path heap allocations
+        private static readonly string[] SqlInjectionPatterns = new string[]
+        {
+            "SELECT",
+            "INSERT",
+            "UPDATE",
+            "DELETE",
+            "DROP",
+            "--",
+            "/*",
+            "*/",
+            "XP_",
+            "SP_",
+        };
+
+        private static readonly string[] PathTraversalPatterns = new string[] { "..", "~", "/etc/", "C:\\" };
+
         // State fields for hardening layer
         private RateLimiter _ipcCommandRateLimiter;
         private CircuitBreaker _ipcMalformedCircuitBreaker;
@@ -320,23 +338,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             Print(string.Format("[IPC][HARDENING] NACK sent for: {0}", action));
             Interlocked.Increment(ref _ipcBackpressureNackCount);
         }
-
-        // EPIC-4 P0 Fix #2: Static readonly arrays to eliminate hot-path heap allocations
-        private static readonly string[] SqlInjectionPatterns = new string[]
-        {
-            "SELECT",
-            "INSERT",
-            "UPDATE",
-            "DELETE",
-            "DROP",
-            "--",
-            "/*",
-            "*/",
-            "XP_",
-            "SP_",
-        };
-
-        private static readonly string[] PathTraversalPatterns = new string[] { "..", "~", "/etc/", "C:\\" };
 
         /// <summary>
         /// Detect SQL injection and path traversal attempts.

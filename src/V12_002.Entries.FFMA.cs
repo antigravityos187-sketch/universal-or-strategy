@@ -179,7 +179,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     t5Qty;
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
 
-                string timestamp = DateTime.Now.ToString("HHmmssffff");
+                string timestamp = DateTime.UtcNow.ToString("HHmmssffff");
                 string signalName = direction == MarketPosition.Long ? "FFMALong" : "FFMAShort";
                 string entryName = signalName + "_" + timestamp;
 
@@ -389,7 +389,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
 
                 string signalName = direction == MarketPosition.Long ? "FFMAMnlLong" : "FFMAMnlShort";
-                string entryName = signalName + "_" + DateTime.Now.ToString("HHmmssffff");
+                string entryName = signalName + "_" + DateTime.UtcNow.ToString("HHmmssffff");
 
                 PositionInfo pos = new PositionInfo
                 {
@@ -625,7 +625,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
 
                 string signalName = direction == MarketPosition.Long ? "FFMAMnlMktLong" : "FFMAMnlMktShort";
-                string entryName = signalName + "_" + DateTime.Now.ToString("HHmmssffff");
+                string entryName = signalName + "_" + DateTime.UtcNow.ToString("HHmmssffff");
 
                 PositionInfo pos = new PositionInfo
                 {

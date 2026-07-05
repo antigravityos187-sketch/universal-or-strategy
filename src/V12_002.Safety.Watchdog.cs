@@ -142,7 +142,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 || order.OrderState == OrderState.Submitted
                 || order.OrderState == OrderState.Accepted
                 || order.OrderState == OrderState.ChangePending
-                || order.OrderState == OrderState.ChangeSubmitted;
+                || order.OrderState == OrderState.ChangeSubmitted
+                || order.OrderState == OrderState.PartFilled
+                || order.OrderState == OrderState.Initialized
+                || order.OrderState == OrderState.TriggerPending;
         }
 
         private void CancelWatchdogWorkingOrders(Account masterAccount, string instrumentName)

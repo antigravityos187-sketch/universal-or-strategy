@@ -227,7 +227,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private int HydrateFleetAccountPositions()
         {
             int count = 0;
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (!IsFleetAccount(acct))
                     continue;
@@ -653,7 +653,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             int positionFsmCreated = 0;
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (!IsFleetAccount(acct))
                     continue;
@@ -1469,6 +1469,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             int count = 0;
             foreach (Order ord in acct.Orders.ToArray())
             {
+                if (ord == null)
+                    continue;
                 if (!IsOrderInstrumentMatch(ord))
                     continue;
                 if (!IsOrderStateActive(ord))

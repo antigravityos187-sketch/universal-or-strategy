@@ -19,7 +19,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             int auditedCount = 0;
             int activeCount = 0;
 
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (IsFleetAccount(acct))
                 {
@@ -930,7 +930,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             // Find the account by name
             Account targetAcct = null;
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (acct.Name == accountName)
                 {

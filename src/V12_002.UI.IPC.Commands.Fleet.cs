@@ -374,7 +374,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (order == null)
                 return false;
-            if (order.Instrument.FullName != Instrument.FullName)
+            if (order.Instrument == null || order.Instrument.FullName != Instrument.FullName)
                 return false;
             return order.OrderState == OrderState.Working
                 || order.OrderState == OrderState.Accepted

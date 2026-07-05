@@ -478,6 +478,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                     || o.OrderState == OrderState.Accepted
                     || o.OrderState == OrderState.ChangePending
                     || o.OrderState == OrderState.ChangeSubmitted
+                    || o.OrderState == OrderState.PartFilled
+                    || o.OrderState == OrderState.Initialized
+                    || o.OrderState == OrderState.TriggerPending
                 )
                 {
                     ordersToCancel.Add(o);

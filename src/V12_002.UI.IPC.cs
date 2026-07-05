@@ -424,7 +424,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     TriggerCustomEvent(o => ProcessIpcCommands(), null);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Print(string.Format("[IPC] TriggerCustomEvent failed: {0}", ex.Message));
+                }
             }
         }
 

@@ -36,7 +36,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void CleanupStalePendingReplacements()
         {
-            DateTime now = DateTime.Now;
+            DateTime now = DateTime.UtcNow;
 
             // V8.30: Safe iteration with snapshot
             foreach (var kvp in pendingStopReplacements.ToArray())
@@ -93,7 +93,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Check for stale pending replacement
                 if (pendingStopReplacements.TryGetValue(entryName, out var existingPending))
                 {
-                    double pendingAgeSeconds = (DateTime.Now - existingPending.CreatedTime).TotalSeconds;
+                    double pendingAgeSeconds = (DateTime.UtcNow - existingPending.CreatedTime).TotalSeconds;
                     if (pendingAgeSeconds > STALE_PENDING_FAST_PATH_SEC)
                     {
                         HandleStalePendingReplacement(entryName, pos, validatedStopPrice, newTrailLevel);
@@ -139,7 +139,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (pendingStopReplacements.TryRemove(entryName, out var existingPending))
             {
                 Interlocked.Decrement(ref pendingReplacementCount);
-                double pendingAgeSeconds = (DateTime.Now - existingPending.CreatedTime).TotalSeconds;
+                double pendingAgeSeconds = (DateTime.UtcNow - existingPending.CreatedTime).TotalSeconds;
                 Print(
                     string.Format(
                         "[1104.2] Stale pending purged for {0} ({1:F1}s). Re-initiating stop move.",
@@ -313,7 +313,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 StopPrice = validatedStopPrice,
                 Direction = pos.Direction,
                 OldOrder = currentStop,
-                CreatedTime = DateTime.Now,
+                CreatedTime = DateTime.UtcNow,
                 CapturedTargets = b955Targets,
                 BracketRestorationNeeded = b955Targets != null,
             };
@@ -390,7 +390,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             else
             {
                 // V12.3: Truncate signal name to stay under 50-char NinjaTrader limit
-                string suffix = (DateTime.Now.Ticks % 100000000).ToString();
+                string suffix = (DateTime.UtcNow.Ticks % 100000000).ToString();
                 string stopSigName = "S_" + entryName + "_" + suffix;
                 if (stopSigName.Length > 50)
                     stopSigName = stopSigName.Substring(0, 50);
