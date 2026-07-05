@@ -215,7 +215,60 @@ flowchart TD
     class Trend_Main,REAPER_Repair,Telemetry,StructuredLog,V12_Main,Ring_Buffer stable
 ```
 
-## 📊 Technical Debt & Complexity Heatmap (Phase 6 COMPLETE)
+## 📊 Wave 7 COMPLETE — Final Complexity Status
+
+| Metric | Value |
+| :--- | :--- |
+| Total methods audited | **1,378** |
+| CYC > 8 violations | **0** |
+| Compliance rate | **1,378 / 1,378 = 100%** |
+| Jane Street CYC <= 8 standard | **ACHIEVED** |
+| Worst method (pre-Wave 7) | `HydrateWorkingOrdersFromBroker` CYC=96 |
+| Worst method (current) | CYC=8 (watch list only) |
+| PRs merged (Wave 7) | #20 #21 #22 #23 #24 #26 #27 #28 |
+| Completion date | 2026-07-04 |
+
+## 🤖 NT8 AI Strategy Builder -- Integration Protocol
+
+NinjaTrader 8 (post-2026 update) ships an **AI Strategy Builder** panel
+(Tools > AI Strategy Builder) that generates NinjaScript boilerplate
+from natural language descriptions.
+
+### Permitted use cases
+- **New strategy scaffolding**: generate a skeleton `.cs` file for a
+  brand-new strategy concept before onboarding it into the V12 workflow
+- **Backtest harness generation**: produce a Strategy Analyzer-ready
+  template for rapid idea validation without manual boilerplate
+- **Reference lookup**: ask it to produce a minimal example of an NT8
+  API pattern (e.g., ATM strategy submission, order callback wiring)
+  to cross-reference against V12 implementation
+
+### Hard restrictions (NEVER use NT8 AI for)
+- ❌ Any edit to existing `src/` files -- V12 DNA violations guaranteed
+  (it does not know lock-free patterns, CYC<=8, ASCII gate, xUnit, etc.)
+- ❌ Complexity reduction work -- use `/autonomous-refactor` workflow
+- ❌ PR creation, git workflow, or deploy-sync -- Bob only
+- ❌ Production order logic -- output is always boilerplate, never audited
+
+### Integration handoff pattern
+When NT8 AI generates useful scaffolding:
+1. Save output to `docs/brain/scratch/<concept>.cs` (never directly to `src/`)
+2. Open a Bob `plan` mode session: "Here is NT8 AI output for <concept>.
+   Adapt it to V12 DNA standards and produce an architecture plan."
+3. Bob runs the standard V12 epic workflow from Phase 2 onward.
+4. NT8 AI output is treated as a DRAFT SPEC, not as source code.
+
+### Why this boundary matters
+NT8 AI generates syntactically valid NinjaScript but will produce:
+- `lock()` blocks (banned -- OKF lock-free-patterns.md)
+- `DateTime.Now` (banned -- must be `UtcNow`)
+- High-CYC monolithic methods (banned -- CYC <= 8 required)
+- Non-ASCII characters in strings/comments (banned -- ASCII gate)
+The V12 autonomous-refactor workflow exists precisely to fix these
+patterns. Using NT8 AI output directly in `src/` would re-introduce
+the debt Wave 7 eliminated.
+
+## 📊 Technical Debt & Complexity Heatmap (Phase 6 COMPLETE -- superseded by Wave 7)
 
 | Rank | Symbol | File | Complexity (CYC) | Status |
 | :--- | :--- | :--- | :---: | :--- |
