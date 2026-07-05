@@ -224,8 +224,7 @@ customModes:
       Cold-Start Retry Rule."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - skill
@@ -435,8 +434,7 @@ customModes:
       calls, or subagent spawns."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - skill
@@ -648,8 +646,7 @@ customModes:
       calls, or subagent spawns."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - skill
@@ -909,8 +906,7 @@ customModes:
       calls, or subagent spawns."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - browser
@@ -1121,8 +1117,7 @@ customModes:
       calls, or subagent spawns."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - browser
@@ -1344,8 +1339,7 @@ customModes:
       calls, or subagent spawns."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - skill
@@ -1554,8 +1548,7 @@ customModes:
       calls, or subagent spawns."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - browser
@@ -2105,8 +2098,7 @@ customModes:
       Do NOT write verification_verdict: PASS without running the gate first.
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - browser
@@ -2332,8 +2324,7 @@ customModes:
       calls, or subagent spawns."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - browser
@@ -2530,8 +2521,7 @@ customModes:
     customInstructions: ""
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|yaml|yml|json|txt|ps1|py|sh)$
+      - edit
       - execute
       - mcp
       - browser
@@ -2784,8 +2774,7 @@ customModes:
       NOT skip precomputed.json loading step."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subtask
@@ -3019,8 +3008,7 @@ customModes:
       Template 2."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subagents
@@ -3254,8 +3242,7 @@ customModes:
       pilot → HALT, report PILOT_FAILURE to Tier 1. See Template 3."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subagents
@@ -3498,8 +3485,7 @@ customModes:
       wave7_batch_audit.py --phase 2 --all must exit 0 before completing."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subagents
@@ -3743,8 +3729,7 @@ customModes:
       must exit 0 before reporting LANE_COMPLETE."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subagents
@@ -3974,8 +3959,7 @@ customModes:
       → HALT, report PILOT_FAILURE to Tier 1. See Template 6."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subagents
@@ -4234,8 +4218,7 @@ customModes:
       status: VERIFIED_COMPLETE, passed: N, failed: 0 }"
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subagents
@@ -4485,8 +4468,7 @@ customModes:
       → HALT, report PILOT_FAILURE to Tier 1. See Template 8."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subagents
@@ -4735,8 +4717,7 @@ customModes:
       pilot → HALT, report PILOT_FAILURE to Tier 1. See Template 9."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subagents
@@ -4982,8 +4963,7 @@ customModes:
       10."
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt|jsonl)$
+      - edit
       - execute
       - mcp
       - subagents
@@ -6126,8 +6106,7 @@ customModes:
       MAX 3 REPAIR ROUNDS total before LANE_HARD_FAILURE.
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|jsonl|txt)$
+      - edit
       - execute
       - mcp
       - skill
@@ -6515,8 +6494,7 @@ customModes:
       Sequential Thinking: required for logic bug semantic checks (3 thoughts min).
     groups:
       - read
-      - - edit
-        - fileRegex: \.(md|json|yaml|yml|txt)$
+      - edit
       - execute
       - mcp
       - skill
