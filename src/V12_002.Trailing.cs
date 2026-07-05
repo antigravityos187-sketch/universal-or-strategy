@@ -212,7 +212,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void ManageTrail_AdaptiveThrottleTick(out bool shouldExit)
         {
             shouldExit = false;
-            DateTime now = DateTime.Now;
+            DateTime now = DateTime.UtcNow;
 
             // V8.30: Adaptive throttle calculation - adjusts based on tick frequency
             tickCountInLastSecond++;
