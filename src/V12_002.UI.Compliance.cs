@@ -38,6 +38,17 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region Apex Compliance Hub Logic (V12.1)
 
+        // Date-key encoding
+        private const int DATE_KEY_YEAR_MULTIPLIER = 10000;
+        private const int DATE_KEY_MONTH_MULTIPLIER = 100;
+
+        // Timing / throttle intervals
+        private const double DAILY_SUMMARY_POLL_INTERVAL_SECONDS = 30;
+        private const double COMPLIANCE_LOG_THROTTLE_SECONDS = 5;
+
+        // Order name protocol
+        private const int STOP_ORDER_PREFIX_LENGTH = 5;
+
         #region Compliance Tracking
 
         // [SA1204] Static helper -- must precede non-static members per StyleCop SA1204
@@ -51,7 +62,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private int GetTradingDayKey(DateTime timeInZone)
         {
-            return timeInZone.Year * 10000 + timeInZone.Month * 100 + timeInZone.Day;
+            return timeInZone.Year * DATE_KEY_YEAR_MULTIPLIER + timeInZone.Month * DATE_KEY_MONTH_MULTIPLIER + timeInZone.Day;
         }
 
         private void EnsureAccountComplianceTracking(string accountName, DateTime nowInZone)
@@ -274,7 +285,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (string.IsNullOrEmpty(dailySummaryCsvPath))
                 return;
 
-            if ((nowInZone - lastDailySummaryCheck).TotalSeconds < 30)
+            if ((nowInZone - lastDailySummaryCheck).TotalSeconds < DAILY_SUMMARY_POLL_INTERVAL_SECONDS)
                 return;
             lastDailySummaryCheck = nowInZone;
 
@@ -615,10 +626,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <returns>Entry key string, or empty string if invalid</returns>
         private string ExtractEntryKeyFromStopName(string stopOrderName)
         {
-            if (string.IsNullOrEmpty(stopOrderName) || stopOrderName.Length <= 5)
+            if (string.IsNullOrEmpty(stopOrderName) || stopOrderName.Length <= STOP_ORDER_PREFIX_LENGTH)
                 return string.Empty;
 
-            string ocoEntryKey = stopOrderName.Substring(5); // Strip "Stop_"
+            string ocoEntryKey = stopOrderName.Substring(STOP_ORDER_PREFIX_LENGTH); // Strip "Stop_"
             int ocoLastUnderscore = ocoEntryKey.LastIndexOf('_');
             if (ocoLastUnderscore > 0)
                 ocoEntryKey = ocoEntryKey.Substring(0, ocoLastUnderscore);
@@ -936,7 +947,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return true;
 
             // Throttle logging to once per 5 seconds to prevent disk thrashing during heavy fills
-            if ((DateTime.UtcNow - lastComplianceLog).TotalSeconds < 5)
+            if ((DateTime.UtcNow - lastComplianceLog).TotalSeconds < COMPLIANCE_LOG_THROTTLE_SECONDS)
                 return true;
 
             return false;
