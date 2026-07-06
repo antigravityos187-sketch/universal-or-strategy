@@ -802,6 +802,42 @@ namespace NinjaTrader.NinjaScript.Strategies
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
 
+            BuildLeftColumn_EntryButtons(leftCol);
+
+            Grid.SetColumn(leftCol, 0);
+            mainGrid.Children.Add(leftCol);
+
+            StackPanel rightCol = new StackPanel
+            {
+                Margin = new Thickness(1, 0, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
+
+            BuildRightColumn_TargetButtons(rightCol);
+            BuildLiveStopRow(rightCol);
+            PopulateRightColumn_ControlRows(rightCol, mainGrid);
+
+            stack.Children.Add(mainGrid);
+
+            lastPriceText = new TextBlock
+            {
+                Text = "--",
+                Foreground = TextPrimary,
+                FontSize = 18,
+                FontFamily = ConsolasFont,
+                FontWeight = FontWeights.Bold,
+                TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Margin = new Thickness(0, 3, 0, 0),
+            };
+            stack.Children.Add(lastPriceText);
+
+            section.Child = stack;
+            return section;
+        }
+
+        private void BuildLeftColumn_EntryButtons(StackPanel leftCol)
+        {
             orLongButton = CreateDashedButton("OR L", CyanAccent);
             leftCol.Children.Add(orLongButton);
 
@@ -858,16 +894,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             Grid.SetColumn(trendRmaToggle, 1);
             execTrendRow.Children.Add(trendRmaToggle);
             leftCol.Children.Add(execTrendRow);
+        }
 
-            Grid.SetColumn(leftCol, 0);
-            mainGrid.Children.Add(leftCol);
-
-            StackPanel rightCol = new StackPanel
-            {
-                Margin = new Thickness(1, 0, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-            };
-
+        private void BuildRightColumn_TargetButtons(StackPanel rightCol)
+        {
             t1Button = CreateButton("T1", 0, GreenBg, GreenFg, GreenBorder);
             rightCol.Children.Add(t1Button);
             liveT1Row = CreateLiveTargetRow(1, out liveT1Price, out liveT1Cts);
@@ -896,7 +926,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             rightCol.Children.Add(t5Button);
             liveT5Row = CreateLiveTargetRow(5, out liveT5Price, out liveT5Cts);
             rightCol.Children.Add(liveT5Row);
+        }
 
+        private void BuildLiveStopRow(StackPanel rightCol)
+        {
             // Build 1107: Live stop row (read-only price display)
             liveStopRow = new Grid
             {
@@ -929,7 +962,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             Grid.SetColumn(liveStopPrice, 1);
             liveStopRow.Children.Add(liveStopPrice);
             rightCol.Children.Add(liveStopRow);
+        }
 
+        private void PopulateRightColumn_ControlRows(StackPanel rightCol, Grid mainGrid)
+        {
             trim50Button = CreateButton("50%", 0, OrangeBg, OrangeFg, OrangeBorder);
             trim50Button.Margin = new Thickness(0, 2, 0, 0);
             rightCol.Children.Add(trim50Button);
@@ -990,24 +1026,6 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             Grid.SetColumn(rightCol, 1);
             mainGrid.Children.Add(rightCol);
-
-            stack.Children.Add(mainGrid);
-
-            lastPriceText = new TextBlock
-            {
-                Text = "--",
-                Foreground = TextPrimary,
-                FontSize = 18,
-                FontFamily = ConsolasFont,
-                FontWeight = FontWeights.Bold,
-                TextAlignment = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Margin = new Thickness(0, 3, 0, 0),
-            };
-            stack.Children.Add(lastPriceText);
-
-            section.Child = stack;
-            return section;
         }
 
         private Border CreateSection1_5_RiskManager()
