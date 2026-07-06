@@ -440,6 +440,14 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private void ClearPanelWidgetRefs()
         {
+            ClearIdentitySectionRefs();
+            ClearExecButtonRefs();
+            ClearTargetAndLiveManagementRefs();
+            ClearTelemetryAndScorecardRefs();
+        }
+
+        private void ClearIdentitySectionRefs()
+        {
             hubStatusLed = null;
             leaderAccountCombo = null;
             fleetSelectButton = null;
@@ -450,7 +458,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             priceInput = null;
             submitButton = null;
             manualEntryRow = null;
+        }
 
+        private void ClearExecButtonRefs()
+        {
             orLongButton = null;
             orShortButton = null;
             retestButton = null;
@@ -464,7 +475,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             retestRmaToggle = null;
             execRetestRow = null;
             execTrendRow = null;
+        }
 
+        private void ClearTargetAndLiveManagementRefs()
+        {
             t1Button = null;
             t2Button = null;
             t3Button = null;
@@ -497,7 +511,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             flattenButton = null;
             cancelButton = null;
             lastPriceText = null;
+        }
 
+        private void ClearTelemetryAndScorecardRefs()
+        {
             complianceSummaryText = null;
             complianceConsistencyText = null;
             compliancePayoutText = null;
