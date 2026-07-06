@@ -161,7 +161,7 @@ Batched by file (wave9-scan enumerates exact lines per file):
 | W9-L5-002 | src/V12_002.LogicAudit.cs | 18 | audit thresholds (e.g. 3, 10, 100) | P2 | resolved: wave9 e27d32df
 | W9-L5-003 | src/V12_002.Perf.LatencyHistogram.cs | 18 | histogram bucket sizes | P2 | resolved: wave9 826e2f8c |
 | W9-L5-004 | src/V12_002.Lifecycle.cs | 17 | strategy defaults, timeouts | P2 | resolved: wave9 bbfdd2ae
-| W9-L5-005 | src/V12_002.UI.Panel.Helpers.cs | 17 | UI dimensions, offsets | P3 |
+| W9-L5-005 | src/V12_002.UI.Panel.Helpers.cs | 17 | UI dimensions, offsets | P3 | resolved: wave9 aa9222b4
 | W9-L5-006 | src/V12_002.SIMA.Execution.cs | 16 | execution parameters | P2 |
 | W9-L5-007 | src/V12_002.Properties.cs | 16 | NinjaTrader property bounds/defaults | P2 |
 | W9-L5-008 | src/V12_002.UI.IPC.Server.cs | 10 | buffer sizes, port numbers, timeouts | P2 |
@@ -195,6 +195,10 @@ Non-hot-path throws: leave as-is (ArgumentException on validation, etc. are acce
 | W9-L6-002 | src/V12_002.IO.PathValidation.cs:75,96; src/V12_002.UI.Compliance.cs:173,234,1000; src/V12_002.StickyState.cs:120,210 | all SecurityException throws replaced with log+return null/false; dead catch blocks removed; null-guards added | resolved: wave9 a973504b |
 | W9-L6-003 | src/V12_002.IO.PathValidation.cs:95 | co-resolved by W9-L6-002 sweep — PathValidation.cs has 0 remaining throw new statements | resolved: wave9 a973504b |
 | W9-L6-004 | src/V12_002.Orders.Callbacks.cs:232 | InvalidOperationException throw replaced with log+return false in HandleOrderState_Terminal | resolved: wave9 2e6453a9 |
+| W9-L6-005 | src/SignalBroadcaster.cs:286 | ArgumentException throw in BroadcastTradeSignal replaced with log+return | resolved: wave9 8265e7fc |
+| W9-L6-006 | src/SignalBroadcaster.cs:303 | ArgumentException throw in BroadcastTrailUpdate replaced with log+return | resolved: wave9 8265e7fc |
+| W9-L6-007 | src/SignalBroadcaster.cs:318 | ArgumentException throw in BroadcastTargetAction replaced with log+return | resolved: wave9 8265e7fc |
+
 
 
 *Note: wave9-scan uses grep for `throw new` in methods reachable from OnBarUpdate/OnOrderUpdate.*
@@ -211,7 +215,7 @@ Each extraction must keep CYC unchanged or reduce it. No new public API.
 |----|--------|------|-----|-----|----------|
 | W9-L7-001 | ExecuteRetestManualEntry | src/V12_002.Entries.Retest.cs | 149 | 8 | P2 | resolved: wave9 aa0e5fc6 (LOC=30 CYC=5) |
 | W9-L7-002 | ExecuteFFMAManualMarketEntry | src/V12_002.Entries.FFMA.cs | 136 | 8 | P2 | resolved: wave9 c3a131d7 (LOC=69 CYC=6) |
-| W9-L7-003 | ExecuteFFMALimitEntry | src/V12_002.Entries.FFMA.cs | 134 | 8 | P2 |
+| W9-L7-003 | ExecuteFFMALimitEntry | src/V12_002.Entries.FFMA.cs | 134 | 8 | P2 | resolved: wave9 1970f743 (LOC=34 CYC<=8) |
 | W9-L7-004 | ExecuteRetestEntry | src/V12_002.Entries.Retest.cs | 133 | 5 | P2 |
 | W9-L7-005 | ExecuteFFMAEntry | src/V12_002.Entries.FFMA.cs | 126 | 8 | P2 |
 | W9-L7-006 | SubmitTrendSplitBrackets | src/V12_002.Entries.RMA.cs | 126 | 6 | P2 |
