@@ -126,10 +126,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return null;
             }
 
-            List<KeyValuePair<string, PositionInfo>> snapshot = activePositions.ToList();
             List<KeyValuePair<string, PositionInfo>> filtered = new List<KeyValuePair<string, PositionInfo>>();
 
-            foreach (var kvp in snapshot)
+            foreach (var kvp in activePositions)
             {
                 PositionInfo pos = kvp.Value;
 
