@@ -41,26 +41,20 @@ namespace NinjaTrader.NinjaScript.Strategies
             ProcessOnStateChange(state);
         }
 
+        private static readonly Dictionary<State, Action<V12_002>> _stateDispatch =
+            new Dictionary<State, Action<V12_002>>
+            {
+                { State.SetDefaults, s => s.HandleSetDefaults() },
+                { State.Configure,   s => s.HandleConfigure()   },
+                { State.DataLoaded,  s => s.HandleDataLoaded()  },
+                { State.Realtime,    s => s.HandleRealtime()    },
+                { State.Terminated,  s => s.HandleTerminated()  },
+            };
+
         private void ProcessOnStateChange(State state)
         {
-            switch (state)
-            {
-                case State.SetDefaults:
-                    HandleSetDefaults();
-                    break;
-                case State.Configure:
-                    HandleConfigure();
-                    break;
-                case State.DataLoaded:
-                    HandleDataLoaded();
-                    break;
-                case State.Realtime:
-                    HandleRealtime();
-                    break;
-                case State.Terminated:
-                    HandleTerminated();
-                    break;
-            }
+            if (_stateDispatch.TryGetValue(state, out Action<V12_002> handler))
+                handler(this);
         }
 
         private void HandleSetDefaults()
