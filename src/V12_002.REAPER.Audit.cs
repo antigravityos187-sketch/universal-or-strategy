@@ -13,9 +13,13 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region V12 REAPER Audit Logic
 
+        private const int ReaperAuditLogIntervalSeconds = 30;
+        private const int IpcQueueRingCapacity = 2000;
+        private const int IpcQueueAlertThreshold = 1600; // 80% of IpcQueueRingCapacity
+
         private void AuditApexPositions()
         {
-            bool shouldLog = (DateTime.UtcNow - lastReaperLog).TotalSeconds >= 30;
+            bool shouldLog = (DateTime.UtcNow - lastReaperLog).TotalSeconds >= ReaperAuditLogIntervalSeconds;
             int auditedCount = 0;
             int activeCount = 0;
 
@@ -62,14 +66,14 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void AuditIpcCommandQueue(bool shouldLog)
         {
             int queueDepth = GetPhotonDispatchRingDepth();
-            int threshold = 1600; // 80% of 2000 capacity
+            int threshold = IpcQueueAlertThreshold;
 
             if (queueDepth >= threshold)
             {
                 string msg = string.Format(
                     "[REAPER][IPC] Queue depth critical: {0}/{1} (threshold: {2})",
                     queueDepth,
-                    2000,
+                    IpcQueueRingCapacity,
                     threshold
                 );
                 Print(msg);
