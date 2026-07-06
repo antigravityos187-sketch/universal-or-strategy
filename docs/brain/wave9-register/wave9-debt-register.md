@@ -113,37 +113,37 @@ Non-hot-path LINQ (UI, audit, compliance, init) = P3.
 | W9-L4-002 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 544 | `.Values.Any(f =>` | Yes | P1 | resolved: wave9 081e9e04 |
 | W9-L4-003 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 962 | `.Where(kvp =>` | Yes | P1 | resolved: wave9 fba6aee8 |
 | W9-L4-004 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 971 | `.Select(kvp => kvp.Key)` | Yes | P1 | resolved: wave9 fba6aee8 |
-| W9-L4-005 | src/V12_002.Orders.Callbacks.Propagation.cs | 741 | `.FirstOrDefault(a =>` | No | P3 |
-| W9-L4-006 | src/V12_002.Orders.Management.Cleanup.cs | 275 | `.Positions.FirstOrDefault(p =>` | No | P3 |
+| W9-L4-005 | src/V12_002.Orders.Callbacks.Propagation.cs | 741 | `.FirstOrDefault(a =>` | No | P3 | resolved: wave9 fdcad047 |
+| W9-L4-006 | src/V12_002.Orders.Management.Cleanup.cs | 275 | `.Positions.FirstOrDefault(p =>` | No | P3 | resolved: wave9 16e0e15a |
 | W9-L4-007 | src/V12_002.Orders.Management.StopSync.cs | 129 | `activePositions.ToList()` | Yes | P1 | resolved: wave9 91bfd507 |
-| W9-L4-008 | src/V12_002.PureLogic.cs | 58 | `buckets.Sum()` | No | P3 |
-| W9-L4-009 | src/V12_002.REAPER.Audit.cs | 415 | `.Positions.FirstOrDefault(p =>` | No | P3 |
-| W9-L4-010 | src/V12_002.REAPER.Audit.cs | 419 | `.Values.Where(f =>).ToList()` | No | P3 |
-| W9-L4-011 | src/V12_002.REAPER.Audit.cs | 517 | `.Any(f =>` | No | P3 |
-| W9-L4-012 | src/V12_002.REAPER.Audit.cs | 557 | `.Any(o =>` | No | P3 |
-| W9-L4-013 | src/V12_002.REAPER.Audit.cs | 605 | `.Positions.FirstOrDefault(p =>` | No | P3 |
-| W9-L4-014 | src/V12_002.REAPER.Audit.cs | 746 | `.Any(o =>` | No | P3 |
-| W9-L4-015 | src/V12_002.REAPER.NakedStop.cs | 27 | `.FirstOrDefault(a =>` | No | P3 |
-| W9-L4-016 | src/V12_002.REAPER.Repair.cs | 150 | `.Values.Any(f =>` | No | P3 |
-| W9-L4-017 | src/V12_002.REAPER.Repair.cs | 172 | `.Values.Any(p =>` | No | P3 |
-| W9-L4-018 | src/V12_002.SIMA.cs | 238 | `.OrderBy(a => a.DailyPL).ToList()` | No | P3 |
-| W9-L4-019 | src/V12_002.SIMA.Flatten.cs | 501 | `.FirstOrDefault(p =>` | No | P3 |
-| W9-L4-020 | src/V12_002.SIMA.Lifecycle.cs | 631 | `.FirstOrDefault(p =>` | No | P3 |
+| W9-L4-008 | src/V12_002.PureLogic.cs | 58 | `buckets.Sum()` | No | P3 | resolved: wave9 75549a1c |
+| W9-L4-009 | src/V12_002.REAPER.Audit.cs | 415 | `.Positions.FirstOrDefault(p =>` | No | P3 | resolved: wave9 d49af8a8 |
+| W9-L4-010 | src/V12_002.REAPER.Audit.cs | 419 | `.Values.Where(f =>).ToList()` | No | P3 | resolved: wave9 d49af8a8 |
+| W9-L4-011 | src/V12_002.REAPER.Audit.cs | 517 | `.Any(f =>` | No | P3 | resolved: wave9 d49af8a8 |
+| W9-L4-012 | src/V12_002.REAPER.Audit.cs | 557 | `.Any(o =>` | No | P3 | resolved: wave9 d49af8a8 |
+| W9-L4-013 | src/V12_002.REAPER.Audit.cs | 605 | `.Positions.FirstOrDefault(p =>` | No | P3 | resolved: wave9 d49af8a8 |
+| W9-L4-014 | src/V12_002.REAPER.Audit.cs | 746 | `.Any(o =>` | No | P3 | resolved: wave9 d49af8a8 |
+| W9-L4-015 | src/V12_002.REAPER.NakedStop.cs | 27 | `.FirstOrDefault(a =>` | No | P3 | resolved: wave9 16e0e15a |
+| W9-L4-016 | src/V12_002.REAPER.Repair.cs | 150 | `.Values.Any(f =>` | No | P3 | resolved: wave9 1b70f9a4 |
+| W9-L4-017 | src/V12_002.REAPER.Repair.cs | 172 | `.Values.Any(p =>` | No | P3 | resolved: wave9 1b70f9a4 |
+| W9-L4-018 | src/V12_002.SIMA.cs | 238 | `.OrderBy(a => a.DailyPL).ToList()` | No | P3 | resolved: wave9 1b70f9a4 |
+| W9-L4-019 | src/V12_002.SIMA.Flatten.cs | 501 | `.FirstOrDefault(p =>` | No | P3 | resolved: wave9 1b70f9a4 |
+| W9-L4-020 | src/V12_002.SIMA.Lifecycle.cs | 631 | `.FirstOrDefault(p =>` | No | P3 | resolved: wave9 c7c5f45e |
 | W9-L4-021 | src/V12_002.SIMA.Lifecycle.cs | 699 | `.Values.Any(f =>` | Yes | P1 | resolved: wave9 48eb89b0 |
 | W9-L4-022 | src/V12_002.SIMA.Lifecycle.cs | 708 | `.FirstOrDefault(p =>` | Yes | P1 | resolved: wave9 48eb89b0 |
 | W9-L4-023 | src/V12_002.Symmetry.cs | 240 | `.Where(kvp =>` | Yes | P1 | resolved: wave9 48eb89b0 |
 | W9-L4-024 | src/V12_002.Symmetry.cs | 241 | `.Select(kvp => kvp.Key)` | Yes | P1 | resolved: wave9 48eb89b0 |
 | W9-L4-025 | src/V12_002.Symmetry.cs | 242 | `.ToList()` | Yes | P1 | resolved: wave9 48eb89b0 |
-| W9-L4-026 | src/V12_002.UI.Compliance.cs | 347 | `.FirstOrDefault(a =>` | No | P3 |
-| W9-L4-027 | src/V12_002.UI.Compliance.cs | 839 | `.Positions.FirstOrDefault(p =>` | No | P3 |
-| W9-L4-028 | src/V12_002.UI.Compliance.cs | 952 | `.Positions.FirstOrDefault(p =>` | No | P3 |
-| W9-L4-029 | src/V12_002.UI.IPC.Commands.Fleet.cs | 327 | `.Positions.Any(p =>` | No | P3 |
-| W9-L4-030 | src/V12_002.UI.IPC.Commands.Fleet.cs | 351 | `.Values.Any(f =>` | No | P3 |
-| W9-L4-031 | src/V12_002.UI.IPC.Commands.Misc.cs | 188 | `.Positions.FirstOrDefault(p =>` | No | P3 |
-| W9-L4-032 | src/V12_002.UI.IPC.cs | 258 | `.All.Where(a =>` | No | P3 |
-| W9-L4-033 | src/V12_002.UI.IPC.cs | 259 | `.OrderBy(a => a.Name,` | No | P3 |
-| W9-L4-034 | src/V12_002.UI.IPC.cs | 260 | `.ToList()` | No | P3 |
-| W9-L4-035 | src/V12_002.UI.IPC.cs | 295 | `.FirstOrDefault(a =>` | No | P3 |
+| W9-L4-026 | src/V12_002.UI.Compliance.cs | 347 | `.FirstOrDefault(a =>` | No | P3 | resolved: wave9 1f479056 |
+| W9-L4-027 | src/V12_002.UI.Compliance.cs | 839 | `.Positions.FirstOrDefault(p =>` | No | P3 | resolved: wave9 1f479056 |
+| W9-L4-028 | src/V12_002.UI.Compliance.cs | 952 | `.Positions.FirstOrDefault(p =>` | No | P3 | resolved: wave9 1f479056 |
+| W9-L4-029 | src/V12_002.UI.IPC.Commands.Fleet.cs | 327 | `.Positions.Any(p =>` | No | P3 | resolved: wave9 2b1f4edd |
+| W9-L4-030 | src/V12_002.UI.IPC.Commands.Fleet.cs | 351 | `.Values.Any(f =>` | No | P3 | resolved: wave9 2b1f4edd |
+| W9-L4-031 | src/V12_002.UI.IPC.Commands.Misc.cs | 188 | `.Positions.FirstOrDefault(p =>` | No | P3 | resolved: wave9 9db8a8a9 |
+| W9-L4-032 | src/V12_002.UI.IPC.cs | 258 | `.All.Where(a =>` | No | P3 | resolved: wave9 9db8a8a9 |
+| W9-L4-033 | src/V12_002.UI.IPC.cs | 259 | `.OrderBy(a => a.Name,` | No | P3 | resolved: wave9 9db8a8a9 |
+| W9-L4-034 | src/V12_002.UI.IPC.cs | 260 | `.ToList()` | No | P3 | resolved: wave9 9db8a8a9 |
+| W9-L4-035 | src/V12_002.UI.IPC.cs | 295 | `.FirstOrDefault(a =>` | No | P3 | resolved: wave9 9db8a8a9 |
 
 ---
 
@@ -192,6 +192,7 @@ Non-hot-path throws: leave as-is (ArgumentException on validation, etc. are acce
 |----|------|---------|----------|
 | W9-L6-001 through W9-L6-012 | Various src/ | wave9-scan enumerates exact files/lines | P2 |
 | W9-L6-001 | src/V12_002.IO.PathValidation.cs:56 | hot-path throw replaced with log+return null; null-guard added in EnsureDailySummaryCsv | resolved: wave9 8cbe00d7 |
+| W9-L6-002 | src/V12_002.IO.PathValidation.cs:75,96; src/V12_002.UI.Compliance.cs:173,234,1000; src/V12_002.StickyState.cs:120,210 | all SecurityException throws replaced with log+return null/false; dead catch blocks removed; null-guards added | resolved: wave9 a973504b |
 
 *Note: wave9-scan uses grep for `throw new` in methods reachable from OnBarUpdate/OnOrderUpdate.*
 
