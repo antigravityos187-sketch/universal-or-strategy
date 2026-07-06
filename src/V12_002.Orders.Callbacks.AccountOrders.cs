@@ -963,8 +963,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Bidirectional .Contains() caused accidental cascade of unrelated positions:
             // e.g. signal "OR" matched "Fleet_Apex_RETEST_OR_1" incidentally.
             // Anchoring on underscores prevents substring contamination across signal families.
-            return snapshot
-                .Where(kvp =>
+            var result = new List<string>();
+            foreach (var kvp in snapshot)
+            {
+                if (
                     kvp.Value != null
                     && kvp.Value.IsFollower
                     && (
@@ -973,8 +975,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                         || kvp.Key.EndsWith("_" + orderSignal)
                     )
                 )
-                .Select(kvp => kvp.Key)
-                .ToArray();
+                    result.Add(kvp.Key);
+            }
+            return result.ToArray();
         }
 
         private void ExecuteFollowerCascadeCleanupUnfilled(
