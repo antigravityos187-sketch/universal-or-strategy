@@ -738,9 +738,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             FollowerReplaceSpec spec
         )
         {
-            Account acct = Account.All.ToArray().FirstOrDefault(a =>
-                string.Equals(a.Name, accountName, StringComparison.OrdinalIgnoreCase)
-            );
+            // not hot path -- LINQ acceptable
+            Account acct = Account
+                .All.ToArray()
+                .FirstOrDefault(a => string.Equals(a.Name, accountName, StringComparison.OrdinalIgnoreCase));
             if (acct == null)
             {
                 Print("[FSM] SUBMIT FAIL: account not found: " + accountName);
