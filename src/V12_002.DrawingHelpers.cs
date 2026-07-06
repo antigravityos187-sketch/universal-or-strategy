@@ -31,6 +31,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        private const uint FnvOffsetBasis = 2166136261; // FNV-1a 32-bit offset basis
+        private const uint FnvPrime = 16777619;         // FNV-1a 32-bit prime
+
         #region Drawing - Box Instead of Rays
 
         private void DrawORBox()
@@ -204,10 +207,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (string.IsNullOrEmpty(input))
                 return "00000000";
-            uint hash = 2166136261;
+            uint hash = FnvOffsetBasis;
             foreach (char c in input)
             {
-                hash = (hash ^ c) * 16777619;
+                hash = (hash ^ c) * FnvPrime;
             }
             return hash.ToString("X8").ToUpperInvariant();
         }
