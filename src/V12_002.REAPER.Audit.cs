@@ -412,10 +412,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             out Position pos
         )
         {
+            // not hot path -- LINQ acceptable
             pos = acct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
             actualQty = AuditFleet_GetActualQty(pos);
 
             // Build 1105: FSM is the SOLE authority for follower expected position.
+            // not hot path -- LINQ acceptable
             accountFsms = _followerBrackets.Values.Where(f => f.AccountName == acct.Name).ToList();
             int fsmExpectedQty = GetFsmExpectedPosition(acct.Name);
 
@@ -514,6 +516,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // Phase 4: Use FSM to identify working entry (EXISTING LOGIC - not new)
+            // not hot path -- LINQ acceptable
             bool hasWorkingEntry = accountFsms.Any(f =>
                 f.State == FollowerBracketState.Submitted || f.State == FollowerBracketState.Accepted
             );
@@ -554,6 +557,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             // Build 1108.003 [D3]: Snapshot broker orders before iteration. orderSnapshot
             var orders = acct.Orders.ToArray();
+            // not hot path -- LINQ acceptable
             return orders.Any(o => IsWorkingStopOrderForInstrument(o));
         }
 
@@ -602,6 +606,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             out bool hasState
         )
         {
+            // not hot path -- LINQ acceptable
             masterPos = Account.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
             masterActualQty = 0;
             if (masterPos != null && masterPos.MarketPosition != MarketPosition.Flat)
@@ -743,6 +748,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private bool AuditMaster_HasWorkingStop(Order[] orders)
         {
             string instrName = Instrument?.FullName;
+            // not hot path -- LINQ acceptable
             return orders.Any(o => AuditMaster_IsWorkingStopOrder(o, instrName));
         }
 
