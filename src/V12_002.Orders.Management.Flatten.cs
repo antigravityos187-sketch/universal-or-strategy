@@ -35,6 +35,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        private const int FlattenSignalNameMaxLength = 50; // NinjaTrader hard limit for signal name length
+
         #region Orders Management Flatten
 
         private void SyncPositionState()
@@ -735,8 +737,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (isFleetFollower)
             {
                 string sigName = "EF_" + entryName;
-                if (sigName.Length > 50)
-                    sigName = sigName.Substring(0, 50);
+                if (sigName.Length > FlattenSignalNameMaxLength)
+                    sigName = sigName.Substring(0, FlattenSignalNameMaxLength);
                 flattenOrder = pos.ExecutingAccount.CreateOrder(
                     Instrument,
                     flattenAction,
@@ -764,8 +766,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 string sigName = "EF_" + entryName;
-                if (sigName.Length > 50)
-                    sigName = sigName.Substring(0, 50);
+                if (sigName.Length > FlattenSignalNameMaxLength)
+                    sigName = sigName.Substring(0, FlattenSignalNameMaxLength);
                 flattenOrder = SubmitOrderUnmanaged(0, flattenAction, OrderType.Market, flattenQty, 0, 0, "", sigName);
             }
 
