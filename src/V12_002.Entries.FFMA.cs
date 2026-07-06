@@ -353,169 +353,287 @@ namespace NinjaTrader.NinjaScript.Strategies
             // V12.Phase6 [FLATTEN-GUARD]: Prevent order submission during active flatten
             if (isFlattenRunning)
                 return;
-
             if (currentATR <= 0)
             {
                 Print("V12.27 FFMA_LIMIT: Ignored - ATR not available");
                 return;
             }
-
             try
             {
-                double entryPrice = Instrument.MasterInstrument.RoundToTickSize(manualPrice);
-
-                // V12.27: ATR-based stop (mirrors standard FFMA but won't use candle high/low since manual)
-                double stopDistance = CalculateATRStopDistance(RMAStopATRMultiplier); // V12.30: Ceiling-rounded
-                double stopPrice = Instrument.MasterInstrument.RoundToTickSize(
-                    direction == MarketPosition.Long ? entryPrice - stopDistance : entryPrice + stopDistance
-                );
-
-                if (!ValidateAndAdjustFFMALimitStop(direction, entryPrice, ref stopDistance, ref stopPrice))
-                    return;
-
-                // Universal Ladder: T(n)Type dropdown drives all target pricing.
-                double target1Price = CalculateTargetPrice(direction, entryPrice, 1);
-                double target2Price = CalculateTargetPrice(direction, entryPrice, 2);
-                double target3Price = CalculateTargetPrice(direction, entryPrice, 3);
-                double target4Price = CalculateTargetPrice(direction, entryPrice, 4);
-                double target5Price = CalculateTargetPrice(direction, entryPrice, 5);
-
-                // contracts input passed directly by UI/IPC (No-Blink compliance)
-                int t1Qty,
-                    t2Qty,
-                    t3Qty,
-                    t4Qty,
-                    t5Qty;
-                GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
-
-                string signalName = direction == MarketPosition.Long ? "FFMAMnlLong" : "FFMAMnlShort";
-                string entryName = signalName + "_" + DateTime.UtcNow.ToString("HHmmssffff");
-
-                PositionInfo pos = new PositionInfo
-                {
-                    SignalName = entryName,
-                    Direction = direction,
-                    TotalContracts = contracts,
-                    T1Contracts = t1Qty,
-                    T2Contracts = t2Qty,
-                    T3Contracts = t3Qty,
-                    T4Contracts = t4Qty,
-                    T5Contracts = t5Qty,
-                    RemainingContracts = contracts,
-                    EntryPrice = entryPrice,
-                    InitialStopPrice = stopPrice,
-                    CurrentStopPrice = stopPrice,
-                    Target1Price = target1Price,
-                    Target2Price = target2Price,
-                    Target3Price = target3Price,
-                    Target4Price = target4Price,
-                    Target5Price = target5Price,
-                    EntryFilled = false,
-                    T1Filled = false,
-                    T2Filled = false,
-                    T3Filled = false,
-                    BracketSubmitted = false,
-                    ExtremePriceSinceEntry = entryPrice,
-                    CurrentTrailLevel = 0,
-                    EntryOrderType = OrderType.Limit,
-                    IsRMATrade = false,
-                    IsFFMATrade = true,
-                    OcoGroupId = "V12_" + GetStableHash(entryName),
-                };
-                // V12.27: Submit LIMIT order (not Market like standard FFMA)
-                Order entryOrder =
-                    direction == MarketPosition.Long
-                        ? SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.Buy,
-                            OrderType.Limit,
-                            contracts,
-                            entryPrice,
-                            0,
-                            "",
-                            entryName
-                        )
-                        : SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.SellShort,
-                            OrderType.Limit,
-                            contracts,
-                            entryPrice,
-                            0,
-                            "",
-                            entryName
-                        );
-
-                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
-                if (entryOrder == null)
-                {
-                    Print(
-                        "[ENTRY_ABORT] FFMA_LIMIT SubmitOrderUnmanaged returned null for "
-                            + entryName
-                            + ". Rolling back."
-                    );
-                    return;
-                }
-                {
-                    var _en966ap = entryName;
-                    var _p966ap = pos;
-                    Enqueue(ctx =>
-                    {
-                        ctx.activePositions[_en966ap] = _p966ap;
-                    });
-                }
-                {
-                    var _en966 = entryName;
-                    var _eo966 = entryOrder;
-                    Enqueue(ctx =>
-                    {
-                        ctx.entryOrders[_en966] = _eo966;
-                    });
-                }
-
-                Print(
-                    string.Format(
-                        "V12.27 FFMA_LIMIT: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | ATR-based",
+                if (
+                    !BuildFFMALimitPrices(
+                        manualPrice,
                         direction,
-                        contracts,
-                        entryPrice,
-                        stopPrice
+                        out double entryPrice,
+                        out double stopDistance,
+                        out double stopPrice
                     )
-                );
-                Print(
-                    string.Format(
-                        "V12.27 FFMA_LIMIT TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2} | T4:{6}@{7:F2} | T5:{8}@{9:F2}",
-                        t1Qty,
-                        target1Price,
-                        t2Qty,
-                        target2Price,
-                        t3Qty,
-                        target3Price,
-                        t4Qty,
-                        target4Price,
-                        t5Qty,
-                        target5Price
-                    )
-                );
-
-                if (EnableSIMA)
-                {
-                    ExecuteSmartDispatchEntry(
-                        "FFMA_MNL",
-                        direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort,
-                        contracts,
-                        entryPrice,
-                        OrderType.Limit,
-                        entryName
-                    );
-                }
-
+                )
+                    return;
+                if (!ExecuteFFMALimitCoreAndDispatch(direction, contracts, entryPrice, stopDistance, stopPrice))
+                    return;
                 DeactivateFFMAMode();
             }
             catch (Exception ex)
             {
                 Print("ERROR ExecuteFFMALimitEntry: " + ex.Message);
             }
+        }
+
+        private bool ExecuteFFMALimitCoreAndDispatch(
+            MarketPosition direction,
+            int contracts,
+            double entryPrice,
+            double stopDistance,
+            double stopPrice
+        )
+        {
+            BuildFFMALimitTargets(
+                direction,
+                entryPrice,
+                contracts,
+                out double t1Price,
+                out double t2Price,
+                out double t3Price,
+                out double t4Price,
+                out double t5Price,
+                out int t1Qty,
+                out int t2Qty,
+                out int t3Qty,
+                out int t4Qty,
+                out int t5Qty
+            );
+            PositionInfo pos = BuildFFMALimitPositionInfo(
+                direction,
+                contracts,
+                entryPrice,
+                stopPrice,
+                t1Price,
+                t2Price,
+                t3Price,
+                t4Price,
+                t5Price,
+                t1Qty,
+                t2Qty,
+                t3Qty,
+                t4Qty,
+                t5Qty,
+                out string entryName
+            );
+            if (
+                !SubmitFFMALimitOrderAndEnqueue(
+                    direction,
+                    contracts,
+                    entryPrice,
+                    stopPrice,
+                    entryName,
+                    pos,
+                    t1Price,
+                    t2Price,
+                    t3Price,
+                    t4Price,
+                    t5Price,
+                    t1Qty,
+                    t2Qty,
+                    t3Qty,
+                    t4Qty,
+                    t5Qty
+                )
+            )
+                return false;
+            if (EnableSIMA)
+                ExecuteSmartDispatchEntry(
+                    "FFMA_MNL",
+                    direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort,
+                    contracts,
+                    entryPrice,
+                    OrderType.Limit,
+                    entryName
+                );
+            return true;
+        }
+
+        private bool BuildFFMALimitPrices(
+            double manualPrice,
+            MarketPosition direction,
+            out double entryPrice,
+            out double stopDistance,
+            out double stopPrice
+        )
+        {
+            entryPrice = Instrument.MasterInstrument.RoundToTickSize(manualPrice);
+            // V12.27: ATR-based stop (mirrors standard FFMA but won't use candle high/low since manual)
+            stopDistance = CalculateATRStopDistance(RMAStopATRMultiplier); // V12.30: Ceiling-rounded
+            stopPrice = Instrument.MasterInstrument.RoundToTickSize(
+                direction == MarketPosition.Long ? entryPrice - stopDistance : entryPrice + stopDistance
+            );
+            return ValidateAndAdjustFFMALimitStop(direction, entryPrice, ref stopDistance, ref stopPrice);
+        }
+
+        private void BuildFFMALimitTargets(
+            MarketPosition direction,
+            double entryPrice,
+            int contracts,
+            out double t1Price,
+            out double t2Price,
+            out double t3Price,
+            out double t4Price,
+            out double t5Price,
+            out int t1Qty,
+            out int t2Qty,
+            out int t3Qty,
+            out int t4Qty,
+            out int t5Qty
+        )
+        {
+            // Universal Ladder: T(n)Type dropdown drives all target pricing.
+            t1Price = CalculateTargetPrice(direction, entryPrice, 1);
+            t2Price = CalculateTargetPrice(direction, entryPrice, 2);
+            t3Price = CalculateTargetPrice(direction, entryPrice, 3);
+            t4Price = CalculateTargetPrice(direction, entryPrice, 4);
+            t5Price = CalculateTargetPrice(direction, entryPrice, 5);
+            // contracts input passed directly by UI/IPC (No-Blink compliance)
+            GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
+        }
+
+        private PositionInfo BuildFFMALimitPositionInfo(
+            MarketPosition direction,
+            int contracts,
+            double entryPrice,
+            double stopPrice,
+            double t1Price,
+            double t2Price,
+            double t3Price,
+            double t4Price,
+            double t5Price,
+            int t1Qty,
+            int t2Qty,
+            int t3Qty,
+            int t4Qty,
+            int t5Qty,
+            out string entryName
+        )
+        {
+            string signalName = direction == MarketPosition.Long ? "FFMAMnlLong" : "FFMAMnlShort";
+            entryName = signalName + "_" + DateTime.UtcNow.ToString("HHmmssffff");
+            return new PositionInfo
+            {
+                SignalName = entryName,
+                Direction = direction,
+                TotalContracts = contracts,
+                T1Contracts = t1Qty,
+                T2Contracts = t2Qty,
+                T3Contracts = t3Qty,
+                T4Contracts = t4Qty,
+                T5Contracts = t5Qty,
+                RemainingContracts = contracts,
+                EntryPrice = entryPrice,
+                InitialStopPrice = stopPrice,
+                CurrentStopPrice = stopPrice,
+                Target1Price = t1Price,
+                Target2Price = t2Price,
+                Target3Price = t3Price,
+                Target4Price = t4Price,
+                Target5Price = t5Price,
+                EntryFilled = false,
+                T1Filled = false,
+                T2Filled = false,
+                T3Filled = false,
+                BracketSubmitted = false,
+                ExtremePriceSinceEntry = entryPrice,
+                CurrentTrailLevel = 0,
+                EntryOrderType = OrderType.Limit,
+                IsRMATrade = false,
+                IsFFMATrade = true,
+                OcoGroupId = "V12_" + GetStableHash(entryName),
+            };
+        }
+
+        private bool SubmitFFMALimitOrderAndEnqueue(
+            MarketPosition direction,
+            int contracts,
+            double entryPrice,
+            double stopPrice,
+            string entryName,
+            PositionInfo pos,
+            double t1Price,
+            double t2Price,
+            double t3Price,
+            double t4Price,
+            double t5Price,
+            int t1Qty,
+            int t2Qty,
+            int t3Qty,
+            int t4Qty,
+            int t5Qty
+        )
+        {
+            // V12.27: Submit LIMIT order (not Market like standard FFMA)
+            Order entryOrder =
+                direction == MarketPosition.Long
+                    ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, contracts, entryPrice, 0, "", entryName)
+                    : SubmitOrderUnmanaged(
+                        0,
+                        OrderAction.SellShort,
+                        OrderType.Limit,
+                        contracts,
+                        entryPrice,
+                        0,
+                        "",
+                        entryName
+                    );
+
+            // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
+            if (entryOrder == null)
+            {
+                Print(
+                    "[ENTRY_ABORT] FFMA_LIMIT SubmitOrderUnmanaged returned null for " + entryName + ". Rolling back."
+                );
+                return false;
+            }
+
+            {
+                var en966ap = entryName;
+                var p966ap = pos;
+                Enqueue(ctx =>
+                {
+                    ctx.activePositions[en966ap] = p966ap;
+                });
+            }
+            {
+                var en966 = entryName;
+                var eo966 = entryOrder;
+                Enqueue(ctx =>
+                {
+                    ctx.entryOrders[en966] = eo966;
+                });
+            }
+
+            Print(
+                string.Format(
+                    "V12.27 FFMA_LIMIT: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | ATR-based",
+                    direction,
+                    contracts,
+                    entryPrice,
+                    stopPrice
+                )
+            );
+            Print(
+                string.Format(
+                    "V12.27 FFMA_LIMIT TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2} | T4:{6}@{7:F2} | T5:{8}@{9:F2}",
+                    t1Qty,
+                    t1Price,
+                    t2Qty,
+                    t2Price,
+                    t3Qty,
+                    t3Price,
+                    t4Qty,
+                    t4Price,
+                    t5Qty,
+                    t5Price
+                )
+            );
+            return true;
         }
 
         /// <summary>
