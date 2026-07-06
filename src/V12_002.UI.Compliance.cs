@@ -346,6 +346,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (!accountEquityPeak.TryGetValue(acctName, out double peak) || peak <= 0 || TrailingDrawdownLimit <= 0)
                 return false;
             double balance = 0;
+            // not hot path -- LINQ acceptable
             Account currentAccount = Account.All.ToArray().FirstOrDefault(a => a.Name == acctName) ?? this.Account;
             if (currentAccount != null)
             {
@@ -838,6 +839,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // [EPIC-W7-OVERRUN] Extracted: broker position flat-clear logic (CYC=4)
         private void TryClearFlatExpectedPosition(Account fleetAcct)
         {
+            // not hot path -- LINQ acceptable
             var brokerPos = fleetAcct.Positions.FirstOrDefault(p =>
                 p.Instrument != null && p.Instrument.FullName == Instrument.FullName
             );
@@ -892,7 +894,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 StringBuilder sbCompliance = new StringBuilder();
                 sbCompliance.AppendLine("{");
-                sbCompliance.AppendLine("  \"Timestamp\": \"" + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") + "\",");
+                sbCompliance.AppendLine(
+                    "  \"Timestamp\": \"" + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") + "\","
+                );
                 sbCompliance.AppendLine("  \"Instrument\": \"" + Instrument.FullName + "\",");
                 sbCompliance.AppendLine("  \"Accounts\": [");
 
@@ -951,6 +955,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             int uniqueDays = GetUniqueTradingDays(acct.Name);
             double maxDrawdown = accountMaxDrawdown.TryGetValue(acct.Name, out var dd) ? dd : 0;
 
+            // not hot path -- LINQ acceptable
             var brokerPos = acct.Positions.FirstOrDefault(p =>
                 p.Instrument != null && p.Instrument.FullName == Instrument.FullName
             );
