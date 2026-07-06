@@ -160,7 +160,7 @@ Batched by file (wave9-scan enumerates exact lines per file):
 | W9-L5-001 | src/V12_002.UI.Panel.Brushes.cs | 38 | RGB int literals (e.g. 255, 128, 64) | P3 | resolved: wave9 ad31a5a4
 | W9-L5-002 | src/V12_002.LogicAudit.cs | 18 | audit thresholds (e.g. 3, 10, 100) | P2 | resolved: wave9 e27d32df
 | W9-L5-003 | src/V12_002.Perf.LatencyHistogram.cs | 18 | histogram bucket sizes | P2 | resolved: wave9 826e2f8c |
-| W9-L5-004 | src/V12_002.Lifecycle.cs | 17 | strategy defaults, timeouts | P2 |
+| W9-L5-004 | src/V12_002.Lifecycle.cs | 17 | strategy defaults, timeouts | P2 | resolved: wave9 bbfdd2ae
 | W9-L5-005 | src/V12_002.UI.Panel.Helpers.cs | 17 | UI dimensions, offsets | P3 |
 | W9-L5-006 | src/V12_002.SIMA.Execution.cs | 16 | execution parameters | P2 |
 | W9-L5-007 | src/V12_002.Properties.cs | 16 | NinjaTrader property bounds/defaults | P2 |
