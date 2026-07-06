@@ -31,24 +31,24 @@ Exception: if feeding NT8 API that requires local time, use `DateTime.UtcNow.ToL
 
 | ID | File | Line | Code | Priority |
 |----|------|------|------|----------|
-| W9-L1-001 | src/SignalBroadcaster.cs | 289 | `signal.Timestamp = DateTime.Now;` | P1 |
-| W9-L1-002 | src/SignalBroadcaster.cs | 306 | `update.Timestamp = DateTime.Now;` | P1 |
-| W9-L1-003 | src/SignalBroadcaster.cs | 321 | `action.Timestamp = DateTime.Now;` | P1 |
-| W9-L1-004 | src/SignalBroadcaster.cs | 330 | `Timestamp = DateTime.Now` (FlattenSignal) | P1 |
-| W9-L1-005 | src/SignalBroadcaster.cs | 340 | `Timestamp = DateTime.Now` (BreakevenSignal) | P1 |
-| W9-L1-006 | src/SignalBroadcaster.cs | 355 | `Timestamp = DateTime.Now,` | P1 |
-| W9-L1-007 | src/SignalBroadcaster.cs | 370 | `Timestamp = DateTime.Now,` | P1 |
-| W9-L1-008 | src/SignalBroadcaster.cs | 385 | `Timestamp = DateTime.Now,` | P1 |
-| W9-L1-009 | src/SignalBroadcaster.cs | 400 | `Timestamp = DateTime.Now,` | P1 |
-| W9-L1-010 | src/V12_002.Entries.RMA.cs | 107 | `DateTime.Now.ToString("HHmmssffff")` | P1 |
-| W9-L1-011 | src/V12_002.LogicAudit.cs | 482 | `DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")` | P2 (logging only) |
-| W9-L1-012 | src/V12_002.SIMA.Execution.cs | 360 | `DateTime.Now.Ticks` (ocoId suffix) | P1 |
-| W9-L1-013 | src/V12_002.SIMA.Execution.cs | 992 | `DateTime.Now.Ticks` (baseSignal suffix) | P1 |
-| W9-L1-014 | src/V12_002.Trailing.cs | 215 | `DateTime now = DateTime.Now;` | P1 |
-| W9-L1-015 | src/V12_002.UI.Compliance.cs | 49 | `ConvertToSelectedTimeZone(DateTime.Now)` | P2 (UI display) |
-| W9-L1-016 | src/V12_002.UI.Compliance.cs | 893 | `DateTime.Now.ToString(...)` (JSON export) | P2 (reporting) |
-| W9-L1-017 | src/V12_002.UI.Sizing.cs | 130 | `DateTime.Now - _lastSyncFailureTime` | P1 (timing logic) |
-| W9-L1-018 | src/V12_002.UI.Sizing.cs | 314 | `_lastSyncFailureTime = DateTime.Now;` | P1 (timing logic) |
+| W9-L1-001 | src/SignalBroadcaster.cs | 289 | `signal.Timestamp = DateTime.Now;` | P1 | resolved: wave9 dfc263fe |
+| W9-L1-002 | src/SignalBroadcaster.cs | 306 | `update.Timestamp = DateTime.Now;` | P1 | resolved: wave9 dfc263fe |
+| W9-L1-003 | src/SignalBroadcaster.cs | 321 | `action.Timestamp = DateTime.Now;` | P1 | resolved: wave9 dfc263fe |
+| W9-L1-004 | src/SignalBroadcaster.cs | 330 | `Timestamp = DateTime.Now` (FlattenSignal) | P1 | resolved: wave9 dfc263fe |
+| W9-L1-005 | src/SignalBroadcaster.cs | 340 | `Timestamp = DateTime.Now` (BreakevenSignal) | P1 | resolved: wave9 dfc263fe |
+| W9-L1-006 | src/SignalBroadcaster.cs | 355 | `Timestamp = DateTime.Now,` | P1 | resolved: wave9 dfc263fe |
+| W9-L1-007 | src/SignalBroadcaster.cs | 370 | `Timestamp = DateTime.Now,` | P1 | resolved: wave9 dfc263fe |
+| W9-L1-008 | src/SignalBroadcaster.cs | 385 | `Timestamp = DateTime.Now,` | P1 | resolved: wave9 dfc263fe |
+| W9-L1-009 | src/SignalBroadcaster.cs | 400 | `Timestamp = DateTime.Now,` | P1 | resolved: wave9 dfc263fe |
+| W9-L1-010 | src/V12_002.Entries.RMA.cs | 107 | `DateTime.Now.ToString("HHmmssffff")` | P1 | resolved: wave9 dfc263fe |
+| W9-L1-011 | src/V12_002.LogicAudit.cs | 482 | `DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")` | P2 (logging only) | resolved: wave9 dfc263fe |
+| W9-L1-012 | src/V12_002.SIMA.Execution.cs | 360 | `DateTime.Now.Ticks` (ocoId suffix) | P1 | resolved: wave9 dfc263fe |
+| W9-L1-013 | src/V12_002.SIMA.Execution.cs | 992 | `DateTime.Now.Ticks` (baseSignal suffix) | P1 | resolved: wave9 dfc263fe |
+| W9-L1-014 | src/V12_002.Trailing.cs | 215 | `DateTime now = DateTime.Now;` | P1 | resolved: wave9 dfc263fe |
+| W9-L1-015 | src/V12_002.UI.Compliance.cs | 49 | `ConvertToSelectedTimeZone(DateTime.Now)` | P2 (UI display) | resolved: wave9 dfc263fe |
+| W9-L1-016 | src/V12_002.UI.Compliance.cs | 893 | `DateTime.Now.ToString(...)` (JSON export) | P2 (reporting) | resolved: wave9 dfc263fe |
+| W9-L1-017 | src/V12_002.UI.Sizing.cs | 130 | `DateTime.Now - _lastSyncFailureTime` | P1 (timing logic) | resolved: wave9 dfc263fe |
+| W9-L1-018 | src/V12_002.UI.Sizing.cs | 314 | `_lastSyncFailureTime = DateTime.Now;` | P1 (timing logic) | resolved: wave9 dfc263fe |
 
 ---
 
