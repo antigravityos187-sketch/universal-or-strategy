@@ -1215,6 +1215,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             UIStateSnapshot snapshot = GetUiSnapshot();
             UIConfigSnapshot config = snapshot.Config ?? new UIConfigSnapshot();
+            string currentMode = string.IsNullOrEmpty(snapshot.Mode) ? "ORB" : snapshot.Mode;
+            int currentCount = Math.Max(1, Math.Min(5, snapshot.TargetCount));
+
             Border section = CreateSectionBorder();
             section.BorderThickness = new Thickness(0);
             StackPanel stack = new StackPanel
@@ -1224,14 +1227,33 @@ namespace NinjaTrader.NinjaScript.Strategies
             };
 
             stack.Children.Add(CreateSectionHeader("SECTION 3: CONFIG"));
+            stack.Children.Add(BuildModeCountGrid(currentMode));
+            stack.Children.Add(BuildSvT1T2Row(config));
+            stack.Children.Add(BuildT3Row(config));
+            stack.Children.Add(BuildT4Row(config));
+            stack.Children.Add(BuildT5Row(config));
+            stack.Children.Add(BuildRiskRow(config, currentMode));
+            stack.Children.Add(BuildChaseRow(config));
 
+            syncAllButton = CreateButton("SYNC ALL", 0, CyanBg, CyanFg, CyanBorder);
+            syncAllButton.Height = 24;
+            syncAllButton.FontWeight = FontWeights.Bold;
+            stack.Children.Add(syncAllButton);
+
+            section.Child = stack;
+
+            _panelLastSyncedMode = currentMode;
+            _panelLastSyncedTargetCount = currentCount;
+            _panelAppliedConfigRevision = snapshot.ConfigRevision;
+            return section;
+        }
+
+        private Grid BuildModeCountGrid(string currentMode)
+        {
             Grid modeCountGrid = new Grid { Margin = new Thickness(0, 3, 0, 3) };
             modeCountGrid.HorizontalAlignment = HorizontalAlignment.Stretch;
             modeCountGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             modeCountGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            string currentMode = string.IsNullOrEmpty(snapshot.Mode) ? "ORB" : snapshot.Mode;
-            int currentCount = Math.Max(1, Math.Min(5, snapshot.TargetCount));
 
             StackPanel modeColumn = new StackPanel
             {
@@ -1288,8 +1310,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             countColumn.Children.Add(cnt5);
             Grid.SetColumn(countColumn, 1);
             modeCountGrid.Children.Add(countColumn);
-            stack.Children.Add(modeCountGrid);
+            return modeCountGrid;
+        }
 
+        private StackPanel BuildSvT1T2Row(UIConfigSnapshot config)
+        {
             StackPanel svRow1 = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -1306,7 +1331,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Margin = new Thickness(0, 0, 4, 0),
                 }
             );
-
             svRow1.Children.Add(
                 new TextBlock
                 {
@@ -1328,7 +1352,6 @@ namespace NinjaTrader.NinjaScript.Strategies
             svT1Type.Margin = new Thickness(2, 0, 6, 0);
             SetComboSelection(svT1Type, GetPanelTargetModeText(config.Target1Type));
             svRow1.Children.Add(svT1Type);
-
             svRow1.Children.Add(
                 new TextBlock
                 {
@@ -1349,8 +1372,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             svT2Type.FontSize = 8;
             SetComboSelection(svT2Type, GetPanelTargetModeText(config.Target2Type));
             svRow1.Children.Add(svT2Type);
-            stack.Children.Add(svRow1);
+            return svRow1;
+        }
 
+        private StackPanel BuildT3Row(UIConfigSnapshot config)
+        {
             t3Row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 2) };
             t3Row.Children.Add(
                 new TextBlock
@@ -1373,8 +1399,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             svT3Type.Margin = new Thickness(2, 0, 0, 0);
             SetComboSelection(svT3Type, GetPanelTargetModeText(config.Target3Type));
             t3Row.Children.Add(svT3Type);
-            stack.Children.Add(t3Row);
+            return t3Row;
+        }
 
+        private StackPanel BuildT4Row(UIConfigSnapshot config)
+        {
             t4Row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -1402,8 +1431,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             svT4Type.Margin = new Thickness(2, 0, 0, 0);
             SetComboSelection(svT4Type, GetPanelTargetModeText(config.Target4Type));
             t4Row.Children.Add(svT4Type);
-            stack.Children.Add(t4Row);
+            return t4Row;
+        }
 
+        private StackPanel BuildT5Row(UIConfigSnapshot config)
+        {
             t5Row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -1431,8 +1463,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             svT5Type.Margin = new Thickness(2, 0, 0, 0);
             SetComboSelection(svT5Type, GetPanelTargetModeText(config.Target5Type));
             t5Row.Children.Add(svT5Type);
-            stack.Children.Add(t5Row);
+            return t5Row;
+        }
 
+        private Grid BuildRiskRow(UIConfigSnapshot config, string currentMode)
+        {
             Grid riskRow = new Grid { Margin = new Thickness(0, 0, 0, 3) };
             riskRow.HorizontalAlignment = HorizontalAlignment.Left;
             riskRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -1489,8 +1524,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             maxVal.Foreground = OrangeFg;
             Grid.SetColumn(maxVal, 3);
             riskRow.Children.Add(maxVal);
-            stack.Children.Add(riskRow);
+            return riskRow;
+        }
 
+        private Grid BuildChaseRow(UIConfigSnapshot config)
+        {
             Grid citRow = new Grid { Margin = new Thickness(0, 2, 0, 3) };
             citRow.HorizontalAlignment = HorizontalAlignment.Left;
             citRow.Height = 24;
@@ -1520,19 +1558,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             citVal.ToolTip = "Chase If Touch: Points offset (0 = disabled)";
             Grid.SetColumn(citVal, 1);
             citRow.Children.Add(citVal);
-            stack.Children.Add(citRow);
-
-            syncAllButton = CreateButton("SYNC ALL", 0, CyanBg, CyanFg, CyanBorder);
-            syncAllButton.Height = 24;
-            syncAllButton.FontWeight = FontWeights.Bold;
-            stack.Children.Add(syncAllButton);
-
-            section.Child = stack;
-
-            _panelLastSyncedMode = currentMode;
-            _panelLastSyncedTargetCount = currentCount;
-            _panelAppliedConfigRevision = snapshot.ConfigRevision;
-            return section;
+            return citRow;
         }
 
         private Border CreateSectionBorder()
