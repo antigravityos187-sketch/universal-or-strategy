@@ -46,16 +46,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             /// <param name="path">Path to validate</param>
             /// <param name="operation">Operation name for logging (e.g., "WriteState", "ReadCSV")</param>
             /// <returns>Canonicalized safe path</returns>
-            /// <exception cref="ArgumentException">Path is null or empty</exception>
             /// <exception cref="SecurityException">Path traversal detected</exception>
             public static string ValidateAndCanonicalize(string path, string operation)
             {
                 // Guard: Null/empty check
                 if (string.IsNullOrWhiteSpace(path))
                 {
-                    throw new ArgumentException(
-                        string.Format("[IO_VALIDATION] Path cannot be null/empty for operation: {0}", operation)
-                    );
+                    NinjaTrader.Code.Output.Process("[IO_VALIDATION] Path cannot be null/empty for operation: " + operation, PrintTo.OutputTab1);
+                    return null;
                 }
 
                 try

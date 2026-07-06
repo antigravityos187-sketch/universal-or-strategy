@@ -145,6 +145,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 // EPIC-7-QUALITY-010: Validate CSV path before checking existence
                 string validCsvPath = PathValidation.ValidateAndCanonicalize(dailySummaryCsvPath, "CheckCSV");
+                if (validCsvPath == null)
+                    return;
 
                 if (System.IO.File.Exists(validCsvPath))
                 {

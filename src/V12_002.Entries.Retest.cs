@@ -366,20 +366,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                 PositionInfo pos = BuildRetestManualPosition(direction, contracts, d, out entryName);
 
                 {
-                    var _en966 = entryName;
-                    var _p966 = pos;
+                    var enKey = entryName;
+                    var posVal = pos;
                     Enqueue(ctx =>
                     {
-                        ctx.activePositions[_en966] = _p966;
+                        ctx.activePositions[enKey] = posVal;
                     });
                 }
 
                 // Build 1102Y-V3 [MS-08]: Register Master expected BEFORE Limit entry.
                 int masterDeltaRetestMnl = (direction == MarketPosition.Long) ? contracts : -contracts;
                 {
-                    var _aek966 = ExpKey(Account.Name);
-                    var _aed966 = (masterDeltaRetestMnl);
-                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
+                    var expKey = ExpKey(Account.Name);
+                    var expDelta = (masterDeltaRetestMnl);
+                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(expKey, expDelta));
                 }
 
                 if (!SubmitRetestManualLimitOrder(direction, contracts, d.EntryPrice, entryName, masterDeltaRetestMnl))
@@ -528,9 +528,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (entryOrder == null)
             {
                 {
-                    var _aek966 = ExpKey(Account.Name);
-                    var _aed966 = (-masterDelta);
-                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
+                    var expKey = ExpKey(Account.Name);
+                    var expDelta = (-masterDelta);
+                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(expKey, expDelta));
                 }
                 activePositions.TryRemove(entryName, out _); // [Build 956]: Clean pre-registered state on null submit.
                 Print(
@@ -539,11 +539,11 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false; // [Build 956]: Do not assign null entryOrder or dispatch SIMA for a failed order.
             }
             {
-                var _en966 = entryName;
-                var _eo966 = entryOrder;
+                var enKey = entryName;
+                var eoVal = entryOrder;
                 Enqueue(ctx =>
                 {
-                    ctx.entryOrders[_en966] = _eo966;
+                    ctx.entryOrders[enKey] = eoVal;
                 });
             }
             return true;
