@@ -625,6 +625,22 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        private static readonly Dictionary<
+            string,
+            Action<V12_002, string, PositionInfo, string, ConcurrentDictionary<string, Order>, int, double>>
+            _targetDispatch = new Dictionary<
+                string,
+                Action<V12_002, string, PositionInfo, string, ConcurrentDictionary<string, Order>, int, double>>(
+                StringComparer.Ordinal)
+            {
+                { "market",      (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_Market(en, p, tt, to, tc)      },
+                { "1point",      (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_OnePoint(en, p, tt, tc)         },
+                { "2point",      (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_TwoPoint(en, p, tt, tc)         },
+                { "marketprice", (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_MarketPrice(en, p, tt, tc, cp) },
+                { "breakeven",   (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_Breakeven(en, p, tt, tc)        },
+                { "cancel",      (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_Cancel(en, p, tt, to, tc)       },
+            };
+
         private void RouteTargetActionToHandler(
             string action,
             string entryName,
@@ -636,36 +652,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             double currentPrice
         )
         {
-            switch (action)
-            {
-                case "market":
-                    ExecuteTarget_Market(entryName, pos, targetType, targetOrders, targetContracts);
-                    break;
-
-                case "1point":
-                    ExecuteTarget_OnePoint(entryName, pos, targetType, targetContracts);
-                    break;
-
-                case "2point":
-                    ExecuteTarget_TwoPoint(entryName, pos, targetType, targetContracts);
-                    break;
-
-                case "marketprice":
-                    ExecuteTarget_MarketPrice(entryName, pos, targetType, targetContracts, currentPrice);
-                    break;
-
-                case "breakeven":
-                    ExecuteTarget_Breakeven(entryName, pos, targetType, targetContracts);
-                    break;
-
-                case "cancel":
-                    ExecuteTarget_Cancel(entryName, pos, targetType, targetOrders, targetContracts);
-                    break;
-
-                default:
-                    Print(string.Format("[UI] Unknown target action: {0}", action));
-                    break;
-            }
+            if (_targetDispatch.TryGetValue(action, out var handler))
+                handler(this, entryName, pos, targetType, targetOrders, targetContracts, currentPrice);
+            else
+                Print(string.Format("[UI] Unknown target action: {0}", action));
         }
 
         private bool ExecuteTarget_ValidateContext(
