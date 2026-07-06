@@ -272,6 +272,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
             if (followerCheck.ExecutingAccount == null)
                 return;
+            // not hot path -- LINQ acceptable
             var brokerPos = followerCheck.ExecutingAccount.Positions.FirstOrDefault(p => p.Instrument == Instrument);
             if (brokerPos == null)
                 return;
