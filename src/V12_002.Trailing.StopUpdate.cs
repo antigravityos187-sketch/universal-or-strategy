@@ -34,6 +34,9 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region Trailing Stop Update
 
+        private const int NtSignalNameMaxLength = 50;   // NinjaTrader hard limit for signal name length
+        private const long StopSuffixTicksMod = 100000000; // modulo for ticks-based stop signal suffix
+
         private void CleanupStalePendingReplacements()
         {
             DateTime now = DateTime.UtcNow;
@@ -390,10 +393,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             else
             {
                 // V12.3: Truncate signal name to stay under 50-char NinjaTrader limit
-                string suffix = (DateTime.UtcNow.Ticks % 100000000).ToString();
+                string suffix = (DateTime.UtcNow.Ticks % StopSuffixTicksMod).ToString();
                 string stopSigName = "S_" + entryName + "_" + suffix;
-                if (stopSigName.Length > 50)
-                    stopSigName = stopSigName.Substring(0, 50);
+                if (stopSigName.Length > NtSignalNameMaxLength)
+                    stopSigName = stopSigName.Substring(0, NtSignalNameMaxLength);
                 OrderAction stopExitAction =
                     pos.Direction == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
                 newStop = SubmitOrderUnmanaged(
