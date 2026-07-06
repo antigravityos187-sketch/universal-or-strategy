@@ -36,6 +36,13 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region Trailing Stops
 
+        private const int TrailThrottleHighTickRate = 50;  // ticks/sec threshold for throttle increase
+        private const int TrailThrottleMaxMs = 500;        // maximum adaptive throttle ceiling (ms)
+        private const int TrailThrottleMinMs = 100;        // minimum adaptive throttle floor (ms)
+        private const int TrailThrottleDecreaseMs = 25;    // throttle decrement step when calm
+        private const int TrailThrottleIncreaseMs = 50;    // throttle increment step under load
+        private const int TrailThrottleLowTickRate = 20;   // ticks/sec threshold for throttle decrease
+
         // [EPIC-W7-039] CYC 16->4: foreach body extracted to ManageTrail_ProcessSinglePosition
         private void ManageTrailingStops()
         {
@@ -219,10 +226,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             if ((now - lastTickCountReset).TotalSeconds >= 1)
             {
                 // Adjust throttle based on tick frequency
-                if (tickCountInLastSecond > 50)
-                    adaptiveThrottleMs = Math.Min(500, adaptiveThrottleMs + 50); // Increase throttle under load
-                else if (tickCountInLastSecond < 20)
-                    adaptiveThrottleMs = Math.Max(100, adaptiveThrottleMs - 25); // Decrease throttle when calm
+                if (tickCountInLastSecond > TrailThrottleHighTickRate)
+                    adaptiveThrottleMs = Math.Min(TrailThrottleMaxMs, adaptiveThrottleMs + TrailThrottleIncreaseMs); // Increase throttle under load
+                else if (tickCountInLastSecond < TrailThrottleLowTickRate)
+                    adaptiveThrottleMs = Math.Max(TrailThrottleMinMs, adaptiveThrottleMs - TrailThrottleDecreaseMs); // Decrease throttle when calm
 
                 tickCountInLastSecond = 0;
                 lastTickCountReset = now;
