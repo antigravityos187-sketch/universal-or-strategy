@@ -201,6 +201,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Build 935 [R-02]: Cap per-drain budget to prevent strategy-thread starvation
         // under high-velocity broker event bursts. Mirrors IpcMaxCommandsPerDrain pattern.
         private const int MaxAccountOrdersPerDrain = 8;
+        private const int AccountOrderQueueDepthWarningThreshold = 50; // queue depth warning level
+        private const int DesyncDrawTextOpacity = 50; // NinjaTrader Draw.TextFixed opacity for desync alert
 
         // Build 971 [CYC-REDUCE]: Extracted from ProcessAccountOrderQueue to remove 3 duplicate
         // try/catch/if-_diagFleet patterns (6 CYC). Schedules a reprocess on the strategy thread.
@@ -221,7 +223,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             // Build 1109 [FREEZE-PROOF]: Queue depth warning
             int oqDepth = _accountOrderQueue.Count;
-            if (oqDepth > 50)
+            if (oqDepth > AccountOrderQueueDepthWarningThreshold)
                 Print("[ORDER_WARN] Account order queue depth=" + oqDepth);
             // V12.Phase7 [THREAD-01a]: Buffer-and-wait during flatten (symmetric with ProcessAccountExecutionQueue).
             if (isFlattenRunning)
@@ -588,7 +590,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 new SimpleFont("Arial", 11),
                 Brushes.Transparent,
                 Brushes.Transparent,
-                50
+                DesyncDrawTextOpacity
             );
         }
 
