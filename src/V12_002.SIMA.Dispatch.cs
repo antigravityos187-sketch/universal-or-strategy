@@ -1,4 +1,5 @@
 // Build 971: SIMA Dispatch -- ExecuteSmartDispatchEntry
+// W9-L5-015: Magic number constants extracted
 // V12 SIMA Module (Extracted)
 using System;
 using System.Collections.Concurrent;
@@ -33,6 +34,14 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        #region V12 SIMA Dispatch -- Constants
+
+        private const int SIMA_REPORT_BUILDER_CAPACITY = 1024;
+        private const int SIMA_SIG_TRIM_LENGTH = 40;
+        private const double TICKS_TO_MS = 1000.0;
+
+        #endregion
+
         #region V12 SIMA Dispatch
 
         /// <summary>
@@ -409,7 +418,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             double setupMs = (tLoopStartTicks - t0Ticks) * 1000.0 / Stopwatch.Frequency;
             double loopMs = (tFinalTicks - tLoopStartTicks) * 1000.0 / Stopwatch.Frequency;
 
-            var report = new StringBuilder(1024);
+            var report = new StringBuilder(SIMA_REPORT_BUILDER_CAPACITY);
             report.AppendLine("+==============================================================+");
             report.AppendLine("|          (+/-)  FORENSIC PULSE REPORT  Phase 7.2 Latency       |");
             report.AppendLine("+==============================================================+");
@@ -550,7 +559,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             ocoId = LogBuffer.Format("V12_{0}_{1}", fleetEntryName, DateTime.UtcNow.Ticks);
 
             // Create entry order signal name
-            string entrySig = SymmetryTrim("Entry_" + fleetEntryName, 40);
+            string entrySig = SymmetryTrim("Entry_" + fleetEntryName, SIMA_SIG_TRIM_LENGTH);
 
             // Create the entry order
             entry = acct.CreateOrder(
@@ -877,7 +886,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             double validatedStop = ValidateStopPrice(fleetPos.Direction, stopPrice);
-            string stopSig = SymmetryTrim("Stop_" + fleetEntryName, 40);
+            string stopSig = SymmetryTrim("Stop_" + fleetEntryName, SIMA_SIG_TRIM_LENGTH);
             Order stop = acct.CreateOrder(
                 Instrument,
                 exitAction,
@@ -914,7 +923,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             int targetNum
         )
         {
-            string targetSig = SymmetryTrim("T" + targetNum + "_" + fleetEntryName, 40);
+            string targetSig = SymmetryTrim("T" + targetNum + "_" + fleetEntryName, SIMA_SIG_TRIM_LENGTH);
             Order target = acct.CreateOrder(
                 Instrument,
                 exitAction,

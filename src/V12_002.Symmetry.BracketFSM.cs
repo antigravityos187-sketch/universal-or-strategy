@@ -13,6 +13,12 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        #region BracketFSM -- Constants
+
+        private const int FSM_MAILBOX_DRAIN_LIMIT = 100;
+
+        #endregion
+
         #region BracketFSM Definitions
 
         /// <summary>
@@ -104,9 +110,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
 
             int processed = 0;
-            const int MAX_PER_DRAIN = 100;
 
-            while (processed < MAX_PER_DRAIN && _accountMailbox.TryDequeue(out var evt))
+            while (processed < FSM_MAILBOX_DRAIN_LIMIT && _accountMailbox.TryDequeue(out var evt))
             {
                 ProcessBracketEvent(evt);
                 processed++;

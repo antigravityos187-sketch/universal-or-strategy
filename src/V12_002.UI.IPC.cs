@@ -40,6 +40,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         private const int IpcMaxQueueDepth = 2000;
         private const int IpcMaxCommandsPerDrain = 500;
         private const int IpcMaxOutboundMessagesPerClient = 128;
+        private const double IpcMultiplierMin = 0.01;
+        private const double IpcMultiplierMax = 50.0;
         private int ipcQueuedCommandCount = 0;
         private int _ipcClientIdSeed = 0;
         private int _ipcInvalidUtf8Count = 0;
@@ -126,7 +128,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // All multiplier values arriving over the TCP/IPC channel must pass this domain guard
         // before being written to strategy state. A negative or zero multiplier causes
         // CalculateTargetPrice to produce inverted prices (target on wrong side of entry).
-        private static bool ValidateIpcMultiplier(double v, out string reason, double min = 0.01, double max = 50.0)
+        private static bool ValidateIpcMultiplier(double v, out string reason, double min = IpcMultiplierMin, double max = IpcMultiplierMax)
         {
             if (v < min)
             {
