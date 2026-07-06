@@ -31,6 +31,18 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        // W9-L5-004: Magic-number consts extracted from Lifecycle
+        // Reaper/Actor drain
+        private const int ACTOR_DRAIN_LIMIT = 50;
+
+        // Photon/MMIO Layout
+        private const int FLEET_DISPATCH_SLOT_BYTES = 64;
+        private const int FLEET_DISPATCH_SHADOW_OFFSET = 56;
+
+        // Execution ID Ring
+        private const int EXECUTION_ID_RING_SIZE = 512;
+        private const int EXECUTION_ID_RING_CAPACITY = 1024;
+
         #region OnStateChange
 
         protected override void OnStateChange()
@@ -319,7 +331,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 int actorDrained = 0;
-                while (actorDrained < 50 && _cmdQueue.TryDequeue(out StrategyCommand cmd))
+                while (actorDrained < ACTOR_DRAIN_LIMIT && _cmdQueue.TryDequeue(out StrategyCommand cmd))
                 {
                     try
                     {
@@ -336,7 +348,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 Print(string.Format("[SHUTDOWN] Drained {0} IPC cmds and {1} Actor cmds.", ipcDrained, actorDrained));
             }
-            catch (Exception ex) { NinjaTrader.Code.Output.Process("Error DrainQueuesForShutdown: " + ex.Message, PrintTo.OutputTab1); }
+            catch (Exception ex)
+            {
+                NinjaTrader.Code.Output.Process("Error DrainQueuesForShutdown: " + ex.Message, PrintTo.OutputTab1);
+            }
         }
 
         #endregion
@@ -373,7 +388,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     Enqueue(ctx => ctx.HydrateWorkingOrdersFromBroker());
                 }
-                catch (Exception ex) { NinjaTrader.Code.Output.Process("Error OnConnectionStatusUpdate: " + ex.Message, PrintTo.OutputTab1); }
+                catch (Exception ex)
+                {
+                    NinjaTrader.Code.Output.Process(
+                        "Error OnConnectionStatusUpdate: " + ex.Message,
+                        PrintTo.OutputTab1
+                    );
+                }
             }
         }
 
@@ -449,7 +470,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 int _shadowOffset = System
                     .Runtime.InteropServices.Marshal.OffsetOf(typeof(FleetDispatchSlot), "Shadow")
                     .ToInt32();
-                if (_slotSize != 64 || _shadowOffset != 56)
+                if (_slotSize != FLEET_DISPATCH_SLOT_BYTES || _shadowOffset != FLEET_DISPATCH_SHADOW_OFFSET)
                 {
                     throw new InvalidOperationException(
                         string.Format(
@@ -464,8 +485,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             InitializeMmioMirror();
 
             // V14.2 Sovereign Photon [ADR-011]: Pre-allocate execution ID dedup rings
-            _executionIdRing = new ExecutionIdRing(512, 1024);
-            _executionIdFallbackRing = new ExecutionIdRing(512, 1024);
+            _executionIdRing = new ExecutionIdRing(EXECUTION_ID_RING_SIZE, EXECUTION_ID_RING_CAPACITY);
+            _executionIdFallbackRing = new ExecutionIdRing(EXECUTION_ID_RING_SIZE, EXECUTION_ID_RING_CAPACITY);
 
             // V12.1: Initialize Compliance Hub -- create log directory early (idempotent).
             // Build 935 [Fix-2/3]: Symbol-specific log paths and LogicAudit moved to DataLoaded.
@@ -496,7 +517,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                     + System.Diagnostics.Process.GetCurrentProcess().Id.ToString()
                     + "_"
                     + _photonShadowSalt.ToString("X16");
-                _photonMmioMirror = new MmioDispatchMirror(_mmfName, PhotonPoolCapacity, 64, _photonShadowSalt);
+                _photonMmioMirror = new MmioDispatchMirror(
+                    _mmfName,
+                    PhotonPoolCapacity,
+                    FLEET_DISPATCH_SLOT_BYTES,
+                    _photonShadowSalt
+                );
                 Print(string.Format("[PHOTON MMIO] mirror online: {0}", _mmfName));
             }
             catch (Exception _mmioEx)
