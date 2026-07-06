@@ -15,6 +15,12 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region IPC Hardening (EPIC-4 Ticket 03)
 
+        private const int IpcRateLimitRequestsPerSecond = 1600; // max IPC commands per second
+        private const int IpcMalformedCircuitBreakerThreshold = 10; // malformed payload trip count
+        private const int IpcAllowlistBypassCircuitBreakerThreshold = 20; // allowlist bypass trip count
+        private const int IpcCircuitBreakerWindowSeconds = 1; // sliding window for malformed CB
+        private const int IpcAllowlistBypassWindowMinutes = 1; // sliding window for allowlist bypass CB
+
         // [SA1204] Static readonly fields -- must precede instance members per StyleCop SA1204
         // EPIC-4 P0 Fix #2: Static readonly arrays to eliminate hot-path heap allocations
         private static readonly string[] SqlInjectionPatterns = new string[]
@@ -191,9 +197,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void InitializeIpcHardening()
         {
-            _ipcCommandRateLimiter = new RateLimiter(1600);
-            _ipcMalformedCircuitBreaker = new CircuitBreaker(10, TimeSpan.FromSeconds(1));
-            _ipcAllowlistBypassDetector = new CircuitBreaker(20, TimeSpan.FromMinutes(1));
+            _ipcCommandRateLimiter = new RateLimiter(IpcRateLimitRequestsPerSecond);
+            _ipcMalformedCircuitBreaker = new CircuitBreaker(IpcMalformedCircuitBreakerThreshold, TimeSpan.FromSeconds(IpcCircuitBreakerWindowSeconds));
+            _ipcAllowlistBypassDetector = new CircuitBreaker(IpcAllowlistBypassCircuitBreakerThreshold, TimeSpan.FromMinutes(IpcAllowlistBypassWindowMinutes));
             _ipcBackpressureNackCount = 0;
         }
 
