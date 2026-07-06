@@ -541,11 +541,16 @@ namespace NinjaTrader.NinjaScript.Strategies
         )]
         private bool IsAnyFollowerBracketActive(string acctName)
         {
-            return _followerBrackets.Values.Any(f =>
-                f != null
-                && f.AccountName == acctName
-                && (f.State == FollowerBracketState.Active || f.State == FollowerBracketState.Accepted)
-            );
+            foreach (var f in _followerBrackets.Values)
+            {
+                if (
+                    f != null
+                    && f.AccountName == acctName
+                    && (f.State == FollowerBracketState.Active || f.State == FollowerBracketState.Accepted)
+                )
+                    return true;
+            }
+            return false;
         }
 
         private bool ShouldRescuePendingCancelSpec(string matchedEntry, Order order)
