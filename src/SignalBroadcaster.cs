@@ -283,7 +283,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Struct validation: Check for uninitialized/default state
             if (string.IsNullOrEmpty(signal.SignalId))
             {
-                throw new ArgumentException("SignalId cannot be null or empty", nameof(signal));
+                NinjaTrader.Code.Output.Process("Error BroadcastTradeSignal: SignalId cannot be null or empty", PrintTo.OutputTab1);
+                return;
             }
 
             signal.Timestamp = DateTime.UtcNow;
@@ -300,7 +301,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Struct validation: Check for uninitialized/default state
             if (string.IsNullOrEmpty(update.SignalId))
             {
-                throw new ArgumentException("SignalId cannot be null or empty", nameof(update));
+                NinjaTrader.Code.Output.Process("Error BroadcastTrailUpdate: SignalId cannot be null or empty", PrintTo.OutputTab1);
+                return;
             }
 
             update.Timestamp = DateTime.UtcNow;
@@ -315,7 +317,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             // Struct validation: Check for uninitialized/default state
             if (string.IsNullOrEmpty(action.SignalId))
             {
-                throw new ArgumentException("SignalId cannot be null or empty", nameof(action));
+                NinjaTrader.Code.Output.Process("Error BroadcastTargetAction: SignalId cannot be null or empty", PrintTo.OutputTab1);
+                return;
             }
 
             action.Timestamp = DateTime.UtcNow;
