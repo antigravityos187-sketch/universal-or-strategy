@@ -41,15 +41,17 @@ namespace NinjaTrader.NinjaScript.Strategies
             ProcessOnStateChange(state);
         }
 
-        private static readonly Dictionary<State, Action<V12_002>> _stateDispatch =
-            new Dictionary<State, Action<V12_002>>
-            {
-                { State.SetDefaults, s => s.HandleSetDefaults() },
-                { State.Configure,   s => s.HandleConfigure()   },
-                { State.DataLoaded,  s => s.HandleDataLoaded()  },
-                { State.Realtime,    s => s.HandleRealtime()    },
-                { State.Terminated,  s => s.HandleTerminated()  },
-            };
+        private static readonly Dictionary<State, Action<V12_002>> _stateDispatch = new Dictionary<
+            State,
+            Action<V12_002>
+        >
+        {
+            { State.SetDefaults, s => s.HandleSetDefaults() },
+            { State.Configure, s => s.HandleConfigure() },
+            { State.DataLoaded, s => s.HandleDataLoaded() },
+            { State.Realtime, s => s.HandleRealtime() },
+            { State.Terminated, s => s.HandleTerminated() },
+        };
 
         private void ProcessOnStateChange(State state)
         {
@@ -252,7 +254,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     _photonMmioMirror.Dispose();
                 }
-                catch (Exception ex) { NinjaTrader.Code.Output.Process("Error TeardownMmioMirror: " + ex.Message, PrintTo.OutputTab1); }
+                catch (Exception ex)
+                {
+                    NinjaTrader.Code.Output.Process("Error TeardownMmioMirror: " + ex.Message, PrintTo.OutputTab1);
+                }
                 _photonMmioMirror = null;
             }
         }
@@ -320,12 +325,18 @@ namespace NinjaTrader.NinjaScript.Strategies
                     {
                         cmd.Execute(this);
                     }
-                    catch (Exception ex) { NinjaTrader.Code.Output.Process("Error DrainQueuesForShutdown: " + ex.Message, PrintTo.OutputTab1); }
+                    catch (Exception ex)
+                    {
+                        NinjaTrader.Code.Output.Process(
+                            "Error DrainQueuesForShutdown: " + ex.Message,
+                            PrintTo.OutputTab1
+                        );
+                    }
                     actorDrained++;
                 }
                 Print(string.Format("[SHUTDOWN] Drained {0} IPC cmds and {1} Actor cmds.", ipcDrained, actorDrained));
             }
-            catch { }
+            catch (Exception ex) { NinjaTrader.Code.Output.Process("Error DrainQueuesForShutdown: " + ex.Message, PrintTo.OutputTab1); }
         }
 
         #endregion
