@@ -466,6 +466,23 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
         }
 
+        // W9-L8-002: Dictionary dispatch -- replaces switch in ProcessBracketEvent.
+        // static readonly = immutable after class init; thread-safe for concurrent reads (no lock).
+        // Action<V12_002, AccountEvent, FollowerBracketFSM>: explicit self avoids closure capture
+        // in static field initializer (partial class pattern, per lock-free-patterns.md).
+        private static readonly Dictionary<
+            OrderState,
+            Action<V12_002, AccountEvent, FollowerBracketFSM>
+        > _bracketDispatch = new Dictionary<OrderState, Action<V12_002, AccountEvent, FollowerBracketFSM>>
+        {
+            { OrderState.Accepted, (self, e, f) => self.TransitionToAccepted(f) },
+            { OrderState.Working, (self, e, f) => self.TransitionToAccepted(f) },
+            { OrderState.Filled, (self, e, f) => self.HandleFsmFilled(e, f) },
+            { OrderState.PartFilled, (self, e, f) => self.HandleFsmFilled(e, f) },
+            { OrderState.Cancelled, (self, e, f) => self.TransitionToCancelled(e, f) },
+            { OrderState.Rejected, (self, e, f) => self.TransitionToRejected(e, f) },
+        };
+
         /// <summary>
         /// Core FSM transition logic. Driven exclusively by broker confirmations.
         /// Shadow Mode: Observes reality and logs divergences.
@@ -477,30 +494,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             FollowerBracketState oldState = fsm.State;
 
-            switch (evt.NewState)
-            {
-                case OrderState.Accepted:
-                case OrderState.Working:
-                    TransitionToAccepted(fsm);
-                    break;
-
-                case OrderState.Filled:
-                case OrderState.PartFilled:
-                    HandleFsmFilled(evt, fsm);
-                    break;
-
-                case OrderState.Cancelled:
-                    TransitionToCancelled(evt, fsm);
-                    break;
-
-                case OrderState.Rejected:
-                    TransitionToRejected(evt, fsm);
-                    break;
-
-                default:
-                    // Unhandled order state - no FSM transition
-                    break;
-            }
+            if (_bracketDispatch.TryGetValue(evt.NewState, out var handler))
+                handler(this, evt, fsm);
 
             LogFsmTransition(fsm, oldState, evt);
         }
