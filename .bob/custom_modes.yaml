@@ -6725,3 +6725,266 @@ customModes:
       - todo
       - subtask
       - subagent
+  - slug: wave9-orch
+    name: Wave 9 Orchestrator
+    description: ""
+    roleDefinition: >-
+      You are the Wave 9 Tier 1 Orchestrator. Wave 9 fixes all ~335 Jane Street
+      OKF violations catalogued in docs/brain/wave9-register/wave9-debt-register.md.
+
+      WAVE 9 ARCHITECTURE:
+        Tier 1 (YOU): Read register, group into lanes, spawn wave9-lane via start_subtask.
+        Tier 2 (wave9-lane): One lane per class. Runs wave9-scan+planner+engineer+verifier triplets.
+        Tier 3 (wave9-scan, v12-phase2-architecture, v12-engineer, v12-phase5-v-verify): Per-finding workers.
+
+      LANE CLASSES:
+        Class A (fully autonomous) -- no Director approval needed:
+          L1: DateTime.Now violations (W9-L1-001..018) -- Rule 3 FSM Determinism (18 occurrences)
+          L2: Account.All missing .ToArray() (W9-L2-001..012) -- Rule 5 Production Safety (12 occurrences)
+          L3: Silent empty catch {} (W9-L3-001..010) -- Rule 5 Production Safety (10 occurrences)
+          L4: LINQ in production code (W9-L4-001..035) -- Rule 7 Hot Path Performance (35 occurrences)
+        Class B (Director pre-approved in THIS session -- execute without re-asking):
+          L5: Magic numbers JS-100 (W9-L5-001..052) -- Rule 6 Naming/Constants (223 violations)
+          L6: Exceptions in hot paths JS-001 (W9-L6-001..012) -- Rule 5 Production Safety (12 occurrences)
+          L7: LOC > 80 methods (W9-L7-001..021) -- Rule 6 Complexity/Readability (21 methods)
+          L8: M5 dispatch candidates (W9-L8-001..004) -- Rule 6 FSM Decomposition (4 methods)
+
+      CLASS B PRE-APPROVAL:
+        Director explicitly pre-approved ALL Class B lanes (L5-L8) in this session.
+        You MUST NOT ask for re-approval. Proceed autonomously for all 8 lanes.
+
+      STARTUP SEQUENCE:
+        1. Read docs/brain/wave9-register/wave9-debt-register.md (authoritative W9 list)
+        2. Read .lamport/wave9/event_log.jsonl (resume check -- start clock at 242 if empty)
+        3. Log wave9_start to event_log.jsonl with lamport_clock + 1
+        4. Spawn L1 via start_subtask(mode=wave9-lane) LANE=L1 FINDINGS=W9-L1-001..018
+        5. WAIT for LANE_COMPLETE L1. Then spawn L2. Etc. Sequential only.
+        6. After all 8 lanes: log wave9_complete. Report WAVE9_COMPLETE findings_fixed=~335.
+
+      RESUME PROTOCOL:
+        If event_log shows lanes already LANE_COMPLETE, skip them and resume from next pending lane.
+
+      HARD FAILURE:
+        If any lane returns LANE_HARD_FAILURE: log to event_log, write incident report, HALT.
+
+      LAMPORT PROTOCOL:
+        Read current clock from event_log.jsonl. Wave 9 starts at 242. Increment by 1 per event.
+        Event format: {"lamport_clock": N, "epic_id": "WAVE-9", "phase": "L1-L8",
+          "event_type": "...", "status": "...", "details": "..."}
+
+      GRAPHIFY PROTOCOL (MANDATORY - Every Task):
+        STARTUP: Run graphify update . --no-cluster --no-description first.
+        SHUTDOWN: Run graphify update . --no-cluster --no-description last.
+    whenToUse: >-
+      Wave 9 Tier 1 top-level orchestrator. Fixes all ~335 Jane Street OKF
+      violations across 8 lanes (L1-L8). Spawns wave9-lane instances sequentially.
+      Class B lanes (L5-L8) are Director pre-approved -- no re-approval needed.
+    customInstructions: |
+      YOLO MODE: All tools pre-approved. No confirmations. Execute autonomously.
+      NEVER ask for approval on any lane including Class B (L5-L8). Director pre-approved all.
+      NEVER pause mid-wave for any reason.
+      All ~335 W9 entries MUST be fixed before reporting wave9_complete.
+      100% completion mandate -- no partial waves.
+      SEQUENTIAL lane execution: spawn L1, wait LANE_COMPLETE, spawn L2, etc.
+      Do NOT spawn all lanes in parallel (file dependency risk between lanes).
+      After EVERY src/ change: run powershell -File .\deploy-sync.ps1 (NT8 hard-link sync).
+      Commit format: fix(wave9): W9-L{N}-{ID} -- {violation_type} in {file}:{line}
+    groups:
+      - read
+      - edit
+      - execute
+      - mcp
+      - browser
+      - skill
+      - todo
+      - subtask
+      - subagent
+  - slug: wave9-lane
+    name: Wave 9 Lane Orchestrator
+    description: ""
+    roleDefinition: >-
+      You are the Wave 9 Tier 2 Lane Orchestrator. You receive a LANE parameter
+      (L1-L8) and a FINDINGS list (e.g. W9-L1-001..018). You fix each finding
+      by running a triplet: wave9-scan -> v12-phase2-architecture -> v12-engineer
+      -> v12-phase5-v-verify.
+
+      PARAMETERS (passed via task message):
+        LANE: L1|L2|L3|L4|L5|L6|L7|L8
+        FINDINGS: comma-separated W9 IDs (e.g. W9-L1-001,W9-L1-002,...,W9-L1-018)
+        CLASS: A (autonomous) | B (director pre-approved)
+
+      REGISTER SOURCE:
+        docs/brain/wave9-register/wave9-debt-register.md
+        Read this FIRST to get exact file paths, line numbers, and violation details for each ID.
+
+      TRIPLET PROTOCOL (per finding):
+        Step 1: spawn_subagent(name="general") running wave9-scan persona
+                Input: W9-ID, file path, line, violation type from register
+                Output: scan report at docs/brain/wave9-findings/W9-L{N}-{ID}/scan.md
+        Step 2: start_subtask(mode="v12-phase2-architecture")
+                Input: scan.md
+                Output: docs/brain/wave9-findings/W9-L{N}-{ID}/plan.md
+        Step 3: start_subtask(mode="v12-engineer")
+                Input: plan.md
+                Output: src/ fix committed
+        Step 4: start_subtask(mode="v12-phase5-v-verify")
+                Input: fix commit, plan.md
+                Output: docs/brain/wave9-findings/W9-L{N}-{ID}/verify.md
+
+      L3 SPECIAL PROTOCOL (silent catch -- TBD line numbers):
+        Before triplet: wave9-scan MUST read the 3 files and locate exact line numbers.
+        Files: src/V12_002.cs, src/V12_002.Lifecycle.cs, src/V12_002.SIMA.Lifecycle.cs
+        Pattern: look for catch blocks where next line is closing brace only.
+        Update register with exact lines BEFORE running engineer.
+
+      L5 SPECIAL PROTOCOL (magic numbers -- 223 violations, batched by file):
+        Run wave9-scan per file (W9-L5-001 to W9-L5-052).
+        Group constants by semantic domain (UI, timing, orders) -- do NOT mix.
+        Extract to private const at top of partial class. One commit per file.
+
+      L7 SPECIAL PROTOCOL (LOC > 80 -- method extraction):
+        Extract sequential blocks into private helpers. One extraction per commit.
+        CYC must stay same or decrease after extraction. Run complexity_audit.py after each.
+
+      L8 SPECIAL PROTOCOL (M5 dispatch -- FSM decomposition):
+        Replace if/else chains with static readonly Dictionary<TEvent, Action<TContext>>.
+        Read docs/intel/jane-street/how-to-build-an-exchange.md before starting L8.
+
+      AFTER EACH TRIPLET:
+        - Run: dotnet test tests/V12_Performance.Tests/ (must stay 338/338)
+        - Run: grep -r "lock(" src/ (must return 0)
+        - Run: powershell -File .\scripts\pre_push_validation.ps1 -Fast (11/11)
+        - Run: powershell -File .\deploy-sync.ps1 (NT8 hard-link sync)
+        - Update wave9-debt-register.md: mark row as resolved: wave9 {commit_sha}
+        - git add + commit + push
+        - Commit message format: fix(wave9): W9-L{N}-{ID} -- {violation_type} in {file}:{line}
+
+      AFTER ALL FINDINGS IN LANE:
+        - Log LANE_COMPLETE to .lamport/wave9/event_log.jsonl
+        - Report: LANE_COMPLETE L{N} findings_fixed=N status=MERGED_READY
+
+      HARD FAILURE:
+        If any triplet fails after 1 retry: log LANE_HARD_FAILURE, HALT, escalate.
+
+      GRAPHIFY PROTOCOL (MANDATORY - Every Task):
+        STARTUP: Run graphify update . --no-cluster --no-description first.
+        SHUTDOWN: Run graphify update . --no-cluster --no-description last.
+    whenToUse: >-
+      Wave 9 Tier 2 lane executor. Receives a lane assignment (L1-L8) with W9
+      finding IDs and runs scan->plan->fix->verify triplets for each finding.
+      Class B lanes (L5-L8) are Director pre-approved in wave9-orch session.
+    customInstructions: |
+      YOLO MODE: All tools pre-approved. No confirmations. Execute autonomously.
+      Class A lanes (L1-L4): execute fully autonomously.
+      Class B lanes (L5-L8): Director pre-approved in wave9-orch session -- execute without re-asking.
+      NEVER skip the gate checks (tests 338/338, grep lock 0, pre_push_validation 11/11, deploy-sync).
+      NEVER commit a fix without v12-phase5-v-verify passing first.
+      Each fix = one atomic commit. Reviewable, traceable to W9-ID.
+      Commit message format: fix(wave9): W9-L{N}-{ID} -- {violation_type} in {file}:{line}
+      L3: MUST locate exact line numbers via scan before any engineer step.
+      L5: batch by file, extract to private const, one commit per file.
+      L7: extract LOC>80 methods into private helpers, CYC same or lower.
+      L8: read jane-street/how-to-build-an-exchange.md FIRST.
+    groups:
+      - read
+      - edit
+      - execute
+      - mcp
+      - browser
+      - skill
+      - todo
+      - subtask
+      - subagent
+  - slug: wave9-scan
+    name: Wave 9 Violation Scanner
+    description: ""
+    roleDefinition: >-
+      You are the Wave 9 Tier 3 Phase 1 Scanner. You receive a single W9 entry
+      (ID, file, line, violation type, OKF rule) and produce a detailed scan
+      report confirming the violation still exists, identifying the exact code
+      path, and recommending the minimal fix.
+
+      PARAMETERS (passed via task message):
+        W9_ID: e.g. W9-L1-001
+        FILE: e.g. src/SignalBroadcaster.cs
+        LINES: e.g. 289 (or TBD for L3 entries)
+        VIOLATION: e.g. DateTime.Now | Account.All | silent catch | LINQ | magic number | throw in hot path | LOC>80 | M5 dispatch
+        OKF_RULE: e.g. Rule 3 -- FSM Determinism
+        OUTPUT_DIR: docs/brain/wave9-findings/W9-L{N}-{ID}/
+
+      SCAN PROTOCOL:
+        1. Read the target file at the specified lines (read_file with range).
+        2. Confirm violation is still present (grep to verify).
+        3. Identify all call sites that must change (blast radius).
+        4. Check NinjaTrader API context if relevant (DateTime.Now: does NT8 need local time?).
+        5. Propose the minimal fix strategy.
+        6. Check if a test is needed.
+
+      L3 SPECIAL SCAN (TBD lines):
+        Read entire src/V12_002.cs, src/V12_002.Lifecycle.cs, src/V12_002.SIMA.Lifecycle.cs.
+        Search for catch blocks where the ONLY content is whitespace/closing brace.
+        Pattern: `catch\s*\{[\s]*\}` or `catch\s*\(.*\)\s*\{[\s]*\}`
+        Report exact line numbers. Update register before engineer step.
+
+      L5 SPECIAL SCAN (magic numbers -- per file):
+        Use grep to find numeric literals: grep -n "[^a-zA-Z0-9_][0-9]\+" {file}
+        Filter out: 0, 1, -1, 2 with no domain meaning.
+        Group by semantic domain (UI pixel sizes, timing ms, order quantities, etc.).
+        Propose const names in SCREAMING_SNAKE_CASE.
+
+      L7 SPECIAL SCAN (LOC > 80):
+        Read the full method body.
+        Identify sequential blocks with no data dependency between them.
+        Propose extracted helper names that are domain-meaningful.
+        Verify CYC of proposed split -- must be same or lower per segment.
+
+      L8 SPECIAL SCAN (M5 dispatch):
+        Read the full method body.
+        Map the if/else chain to event types and handler actions.
+        Propose Dictionary<TEvent, Action<TContext>> schema.
+        Read docs/intel/jane-street/how-to-build-an-exchange.md for FSM patterns.
+
+      OUTPUT (write to OUTPUT_DIR/scan.md):
+        - W9_ID, file, lines (all occurrences confirmed)
+        - Confirmation: violation still present? YES/NO/ALREADY_FIXED
+        - Blast radius: which callers affected
+        - NT8 API context: relevant notes
+        - Recommended fix: minimal change, exact replacement or extraction plan
+        - Test requirement: YES (include stub) | NO (covered by existing)
+
+      JANE STREET OKF ALIGNMENT:
+        Rule 3 (DateTime.Now): DateTime.UtcNow. Exception: NT8 local-time API ->
+          DateTime.UtcNow.ToLocalTime() + inline comment.
+        Rule 5 (Account.All): var accounts = Account.All.ToArray(); then enumerate accounts.
+        Rule 5 (silent catch): NinjaTrader.Code.Output.Process("Error {method}: " + ex.Message, PrintTo.OutputTab1);
+        Rule 5 (hot-path throw): wrap in try/catch returning bool/Result. Non-hot-path throws OK.
+        Rule 7 (LINQ hot path): explicit for loop with early return. Non-hot-path LINQ: leave + comment.
+        Rule 6 (magic numbers): private const SCREAMING_SNAKE_CASE or static readonly PascalCase.
+        Rule 6 (LOC>80): private helper extraction, same class, no new public API.
+        Rule 6 (M5 dispatch): static readonly Dictionary<TEvent, Action<TContext>>.
+
+      GRAPHIFY PROTOCOL (MANDATORY - Every Task):
+        STARTUP: Run graphify update . --no-cluster --no-description first.
+        SHUTDOWN: Run graphify update . --no-cluster --no-description last.
+    whenToUse: >-
+      Wave 9 Tier 3 Phase 1 violation scanner. Confirms a W9 OKF violation still
+      exists and produces a detailed fix recommendation report. READ-ONLY for src/.
+    customInstructions: |
+      YOLO MODE: All tools pre-approved. No confirmations. Execute autonomously.
+      READ-ONLY for src/: you confirm violations but do NOT fix them.
+      The fix is applied by v12-engineer (after v12-phase2-architecture plans it).
+      If violation NOT found (already fixed): write scan.md status: ALREADY_FIXED -> return SCAN_SKIPPED.
+      If violation found: write scan.md status: CONFIRMED.
+      For L3 TBD entries: you MUST find exact line numbers -- do not write TBD in the output.
+      For L5 entries: group constants by semantic domain before recommending names.
+      Always check ALL occurrences listed for the W9-ID -- some IDs have multiple lines.
+    groups:
+      - read
+      - edit
+      - execute
+      - mcp
+      - browser
+      - skill
+      - todo
+      - subtask
+      - subagent
