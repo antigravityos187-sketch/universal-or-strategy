@@ -57,7 +57,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             long tLoopStartTicks = sw.ElapsedTicks;
             var dispatchLog = new StringBuilder(512);
 
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (!IsFleetAccount(acct))
                     continue;
@@ -249,7 +249,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             long tLoopStartTicks = sw.ElapsedTicks;
             var dispatchLog = new StringBuilder(512);
 
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (!IsFleetAccount(acct))
                     continue;
@@ -357,7 +357,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             reservedDelta = 0;
             var prices = CalculateBracketPrices(action, currentPrice, stopPoints, targetPoints);
-            string ocoId = action.ToString() + "_" + DateTime.Now.Ticks;
+            string ocoId = action.ToString() + "_" + DateTime.UtcNow.Ticks;
             if (
                 !CreateBracketOrders(
                     acct,
@@ -989,7 +989,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // Helper 2: Calculate bracket prices and distribution
                 RMABracketPrices prices = CalculateRMABracketPrices(price, direction, contracts);
 
-                string baseSignal = "RMA_" + DateTime.Now.Ticks;
+                string baseSignal = "RMA_" + DateTime.UtcNow.Ticks;
                 OrderAction entryAction = (direction == MarketPosition.Long) ? OrderAction.Buy : OrderAction.SellShort;
                 string symmetryDispatchId = SymmetryGuardBeginDispatch("RMA", entryAction, contracts, price);
 
@@ -1061,7 +1061,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 long tLoopStartTicks = sw.ElapsedTicks;
                 var dispatchLog = new StringBuilder(512);
 
-                foreach (Account acct in Account.All)
+                foreach (Account acct in Account.All.ToArray())
                 {
                     if (!IsEligibleFleetAccount(acct))
                         continue;

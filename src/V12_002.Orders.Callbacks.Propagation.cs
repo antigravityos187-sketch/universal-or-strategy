@@ -738,7 +738,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             FollowerReplaceSpec spec
         )
         {
-            Account acct = Account.All.FirstOrDefault(a =>
+            Account acct = Account.All.ToArray().FirstOrDefault(a =>
                 string.Equals(a.Name, accountName, StringComparison.OrdinalIgnoreCase)
             );
             if (acct == null)

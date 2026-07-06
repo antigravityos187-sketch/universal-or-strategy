@@ -138,7 +138,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             Print($"[DIAG] AccountPrefix = \"{AccountPrefix}\"");
             int total = 0;
             int active = 0;
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (IsFleetAccount(acct))
                 {

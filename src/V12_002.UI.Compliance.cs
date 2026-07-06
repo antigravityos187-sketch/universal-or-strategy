@@ -46,7 +46,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private DateTime GetComplianceNow()
         {
-            return ConvertToSelectedTimeZone(DateTime.Now);
+            return ConvertToSelectedTimeZone(DateTime.UtcNow.ToLocalTime()); // NT8 requires local time -- using UtcNow.ToLocalTime()
         }
 
         private int GetTradingDayKey(DateTime timeInZone)
@@ -300,7 +300,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             if (EnableSIMA)
             {
-                foreach (Account acct in Account.All)
+                foreach (Account acct in Account.All.ToArray())
                 {
                     if (IsFleetAccount(acct))
                         accounts.Add(acct);
@@ -344,7 +344,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (!accountEquityPeak.TryGetValue(acctName, out double peak) || peak <= 0 || TrailingDrawdownLimit <= 0)
                 return false;
             double balance = 0;
-            Account currentAccount = Account.All.FirstOrDefault(a => a.Name == acctName) ?? this.Account;
+            Account currentAccount = Account.All.ToArray().FirstOrDefault(a => a.Name == acctName) ?? this.Account;
             if (currentAccount != null)
             {
                 try
@@ -890,7 +890,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 StringBuilder sbCompliance = new StringBuilder();
                 sbCompliance.AppendLine("{");
-                sbCompliance.AppendLine("  \"Timestamp\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",");
+                sbCompliance.AppendLine("  \"Timestamp\": \"" + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") + "\",");
                 sbCompliance.AppendLine("  \"Instrument\": \"" + Instrument.FullName + "\",");
                 sbCompliance.AppendLine("  \"Accounts\": [");
 

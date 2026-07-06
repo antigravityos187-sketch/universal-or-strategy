@@ -626,7 +626,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // CYC: 4 -- helper: add live orders from all fleet accounts into set
         private void AddFleetOrdersToIndex(HashSet<string> set)
         {
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (!IsFleetAccount(acct))
                     continue;

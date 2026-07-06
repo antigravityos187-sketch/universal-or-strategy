@@ -218,7 +218,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             List<AccountRankInfo> fleet = new List<AccountRankInfo>();
 
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (IsFleetAccount(acct))
                 {

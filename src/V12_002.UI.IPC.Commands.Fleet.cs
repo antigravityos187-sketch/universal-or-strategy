@@ -331,7 +331,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             );
 
             // Fleet accounts
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (IsFleetAccount(acct))
                 {
@@ -406,7 +406,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return false;
 
             int resetAcctCount = 0;
-            foreach (Account acct in Account.All)
+            foreach (Account acct in Account.All.ToArray())
             {
                 if (IsFleetAccount(acct) || acct == this.Account)
                 {
