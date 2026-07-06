@@ -7,6 +7,47 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        // -- Group A: Audit sample counts
+        private const int AUDIT_SAMPLE_COUNT = 100;
+        private const int AUDIT_PRINT_STRIDE = 10;
+        private const int AUDIT_SMALL_SAMPLE = 20;
+        private const int AUDIT_MIN_SAMPLE = 5;
+
+        // -- Group B: Fallback instrument params
+        private const double FALLBACK_TICK_SIZE = 0.25;
+        private const int FALLBACK_POINT_VALUE = 200;
+        private const double FALLBACK_ATR_MULT = 1.10;
+        private const int FALLBACK_SL_TICKS = 5;
+
+        // -- Group C: ATR/multiplier stress
+        private const double ATR_STRESS_HIGH = 1.1;
+        private const double ATR_STRESS_LOW = 0.1;
+        private const double ATR_STRESS_MED = 0.2;
+        private const double ATR_STRESS_WIDE = 2.40;
+
+        // -- Group D: Epsilon tolerance
+        private const double RISK_BREACH_EPSILON = 0.01;
+
+        // -- Group E: RMA split ratio
+        private const double RMA_SPLIT_RATIO = 3.0;
+
+        // -- Group F: Synthetic ES prices
+        private const double ES_REF_PRICE = 5000.0;
+        private const double ES_REF_PLUS_HALF = 5000.50;
+        private const double ES_REF_PLUS_ONE = 5001.25;
+        private const double ES_REF_PLUS_TWO = 5002.00;
+        private const double ES_REF_UP_TEN = 5010.00;
+        private const double ES_REF_DOWN_TEN = 4990.00;
+
+        // -- Group G: Slippage scenarios
+        private const int SLIPPAGE_TICKS_3 = 3;
+        private const int SLIPPAGE_TICKS_5 = 5;
+        private const int SLIPPAGE_TICKS_6 = 6;
+
+        // -- Group H: Distribution test
+        private const int DIST_TEST_QTY = 5;
+        private const int DIST_TEST_QTY_LARGE = 10;
+
         #region Risk Logic Audit (The Testing Rig)
 
         /// <summary>
@@ -17,16 +58,16 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void AuditCase1_ATRRounding()
         {
             Print("[AUDIT] CASE 1: ATR STOP ROUNDING STRESS TEST (100 SAMPLES)");
-            double multiplier = 1.1;
+            double multiplier = ATR_STRESS_HIGH;
 
-            for (int i = 1; i <= 100; i++)
+            for (int i = 1; i <= AUDIT_SAMPLE_COUNT; i++)
             {
-                double testAtr = 1.0 + (i * 0.1); // Range: 1.1 to 11.0
+                double testAtr = 1.0 + (i * ATR_STRESS_LOW); // Range: 1.1 to 11.0
                 double rawDistance = testAtr * multiplier;
                 double ceilingDistance = Math.Ceiling(rawDistance);
 
                 // Only print every 10th sample to avoid flooding, but audit all
-                if (i % 10 == 0)
+                if (i % AUDIT_PRINT_STRIDE == 0)
                     Print(string.Format("  Sample {0}: ATR {1:F2} -> RoundUp: {2:F0}pt", i, testAtr, ceilingDistance));
             }
 
@@ -41,18 +82,18 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void AuditCase2_ContractSizing()
         {
             Print("[AUDIT] CASE 2: CONTRACT SIZING STRESS TEST (100 SAMPLES)");
-            double riskAmount = MaxRiskAmount > 0 ? MaxRiskAmount : 200;
+            double riskAmount = MaxRiskAmount > 0 ? MaxRiskAmount : FALLBACK_POINT_VALUE;
             double auditPointValue = (Instrument != null) ? Instrument.MasterInstrument.PointValue : 5.0;
 
-            for (int i = 1; i <= 100; i++)
+            for (int i = 1; i <= AUDIT_SAMPLE_COUNT; i++)
             {
-                double stopPoints = 1.0 + (i * 0.2); // Range: 1.2 to 21.2
+                double stopPoints = 1.0 + (i * ATR_STRESS_MED); // Range: 1.2 to 21.2
                 double stopDollars = stopPoints * auditPointValue;
                 int calculatedQty = stopDollars > 0 ? (int)Math.Floor(riskAmount / stopDollars) : 0;
                 int finalQty = Math.Max(minContracts, calculatedQty);
 
                 // Verify if Risk is exceeded: Qty * StopDollars > Risk
-                if (finalQty * stopDollars > riskAmount + 0.01 && finalQty > minContracts)
+                if (finalQty * stopDollars > riskAmount + RISK_BREACH_EPSILON && finalQty > minContracts)
                 {
                     Print(
                         string.Format(
@@ -65,7 +106,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     );
                 }
 
-                if (i % 10 == 0)
+                if (i % AUDIT_PRINT_STRIDE == 0)
                     Print(
                         string.Format(
                             "  Sample {0}: Stop {1:F1}pt -> Qty: {2} (Cost: ${3:F0})",
@@ -91,7 +132,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             // app connects and pushes COUNT:n. Testing all counts makes this timing-independent.
             Print("[AUDIT] CASE 3: TARGET DISTRIBUTION (ALL COUNT SCENARIOS)");
             int[] auditCounts = { 1, 2, 3, 4, 5 };
-            int[] auditQtys = { 1, 2, 3, 5, 10 };
+            int[] auditQtys = { 1, 2, 3, DIST_TEST_QTY, DIST_TEST_QTY_LARGE };
 
             foreach (int count in auditCounts)
             {
@@ -121,7 +162,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (currentATR > 0)
             {
-                double auditEntry = 5000.0;
+                double auditEntry = ES_REF_PRICE;
                 Print("[AUDIT] CASE 3b: UNIVERSAL LADDER SPREAD (Long @ 5000.00)");
 
                 for (int tn = 1; tn <= 5; tn++)
@@ -158,9 +199,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void AuditCase4_SymmetrySlippage()
         {
             Print("[AUDIT] CASE 4: SYMMETRY GUARD SLIPPAGE TEST");
-            double masterFill = 5000.00;
-            double[] fleetFills = { 5000.00, 5000.50, 5001.25 }; // Zero ticks, 2 ticks, 5 ticks slippage (ES)
-            double auditTickSize = (Instrument != null) ? Instrument.MasterInstrument.TickSize : 0.25;
+            double masterFill = ES_REF_PRICE;
+            double[] fleetFills = { ES_REF_PRICE, ES_REF_PLUS_HALF, ES_REF_PLUS_ONE }; // Zero ticks, 2 ticks, 5 ticks slippage (ES)
+            double auditTickSize = (Instrument != null) ? Instrument.MasterInstrument.TickSize : FALLBACK_TICK_SIZE;
 
             foreach (double fleetFill in fleetFills)
             {
@@ -190,14 +231,14 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             Print("[AUDIT] CASE 5: TREND RMA 9/15 SPLIT SYMMETRY STRESS");
 
-            double riskAmount = MaxRiskAmount > 0 ? MaxRiskAmount : 200;
+            double riskAmount = MaxRiskAmount > 0 ? MaxRiskAmount : FALLBACK_POINT_VALUE;
             double auditPointValue = (Instrument != null) ? Instrument.MasterInstrument.PointValue : 5.0;
-            double auditTickSize = (Instrument != null) ? Instrument.MasterInstrument.TickSize : 0.25;
+            double auditTickSize = (Instrument != null) ? Instrument.MasterInstrument.TickSize : FALLBACK_TICK_SIZE;
 
-            double ema9Audit = 5002.00;
-            double ema15Audit = 5000.50;
-            double trendAtrAudit = 2.40;
-            double trendMultiplier = RMAStopATRMultiplier > 0 ? RMAStopATRMultiplier : 1.10;
+            double ema9Audit = ES_REF_PLUS_TWO;
+            double ema15Audit = ES_REF_PLUS_HALF;
+            double trendAtrAudit = ATR_STRESS_WIDE;
+            double trendMultiplier = RMAStopATRMultiplier > 0 ? RMAStopATRMultiplier : FALLBACK_ATR_MULT;
             double trendStopRaw = trendAtrAudit * trendMultiplier;
             double trendStopCeil = Math.Ceiling(trendStopRaw);
             double trendStopDollars = trendStopCeil * auditPointValue;
@@ -207,7 +248,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             int trendQty9 =
                 trendTotalQty <= 1
                     ? 1
-                    : Math.Max(1, (int)Math.Round(trendTotalQty / 3.0, MidpointRounding.AwayFromZero));
+                    : Math.Max(1, (int)Math.Round(trendTotalQty / RMA_SPLIT_RATIO, MidpointRounding.AwayFromZero));
             int trendQty15 = Math.Max(0, trendTotalQty - trendQty9);
             if (trendTotalQty > 1 && trendQty15 < 1)
             {
@@ -236,7 +277,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 trendAnchor,
                 trendAnchor + (auditTickSize * 2),
-                trendAnchor + (auditTickSize * 5),
+                trendAnchor + (auditTickSize * SLIPPAGE_TICKS_5),
             };
 
             foreach (double fleetFill in trendFleetFills)
@@ -265,15 +306,15 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void AuditCase6_RetestOrBound()
         {
             Print("[AUDIT] CASE 6: RETEST OR-BOUND LIMIT SYMMETRY STRESS");
-            double auditTickSize = (Instrument != null) ? Instrument.MasterInstrument.TickSize : 0.25;
-            double orHighAudit = 5010.00;
-            double orLowAudit = 4990.00;
+            double auditTickSize = (Instrument != null) ? Instrument.MasterInstrument.TickSize : FALLBACK_TICK_SIZE;
+            double orHighAudit = ES_REF_UP_TEN;
+            double orLowAudit = ES_REF_DOWN_TEN;
 
             double[] retestLongFleetFills =
             {
                 orHighAudit,
-                orHighAudit + (auditTickSize * 3),
-                orHighAudit + (auditTickSize * 5),
+                orHighAudit + (auditTickSize * SLIPPAGE_TICKS_3),
+                orHighAudit + (auditTickSize * SLIPPAGE_TICKS_5),
             };
 
             foreach (double fleetFill in retestLongFleetFills)
@@ -296,7 +337,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 orLowAudit,
                 orLowAudit - (auditTickSize * 2),
-                orLowAudit - (auditTickSize * 6),
+                orLowAudit - (auditTickSize * SLIPPAGE_TICKS_6),
             };
 
             foreach (double fleetFill in retestShortFleetFills)
@@ -325,7 +366,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void AuditCase7_SimaBroadcast()
         {
             Print("[AUDIT] CASE 7: SIMA BROADCAST COLLISION SIMULATION");
-            int collisionSamples = 20;
+            int collisionSamples = AUDIT_SMALL_SAMPLE;
             Print(string.Format("  Simulating {0} simultaneous multi-account fills...", collisionSamples));
 
             // We simulate the queue depth here. In live, OnAccountExecutionUpdate enqueues these.
