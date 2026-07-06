@@ -80,9 +80,9 @@ Fix: `catch { }` -> `catch (Exception ex) { NinjaTrader.Code.Output.Process("Err
 
 | ID | File | Line | Context | Priority |
 |----|------|------|---------|----------|
-| W9-L3-001 | src/V12_002.cs | ~TBD | Silent catch in V12_002.cs (scan required) | P2 |
-| W9-L3-002 | src/V12_002.cs | ~TBD | Second silent catch in V12_002.cs | P2 |
-| W9-L3-003 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #1 (scan required) | P2 |
+| W9-L3-001 | src/V12_002.cs | ~TBD | Silent catch in V12_002.cs (scan required) | P2 | resolved: wave9 4c978b88
+| W9-L3-002 | src/V12_002.cs | ~TBD | Second silent catch in V12_002.cs | P2 | resolved: wave9 b0626eac
+| W9-L3-003 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #1 (scan required) | P2 | resolved: wave9 414ebdbe
 | W9-L3-004 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #2 | P2 |
 | W9-L3-005 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #3 | P2 |
 | W9-L3-006 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #4 | P2 |
@@ -109,7 +109,7 @@ Non-hot-path LINQ (UI, audit, compliance, init) = P3.
 
 | ID | File | Line | LINQ Call | Hot Path? | Priority |
 |----|------|------|-----------|-----------|----------|
-| W9-L4-001 | src/V12_002.MetadataGuard.cs | 168 | `.Values.Any(f =>` | No | P3 |
+| W9-L4-001 | src/V12_002.MetadataGuard.cs | 168 | `.Values.Any(f =>` | No | P3 | resolved: wave9 6cc3b5e9 |
 | W9-L4-002 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 544 | `.Values.Any(f =>` | Yes | P1 |
 | W9-L4-003 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 962 | `.Where(kvp =>` | Yes | P1 |
 | W9-L4-004 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 971 | `.Select(kvp => kvp.Key)` | Yes | P1 |
@@ -157,7 +157,7 @@ Batched by file (wave9-scan enumerates exact lines per file):
 
 | ID | File | Violations | Top Literals | Priority |
 |----|------|-----------|-------------|----------|
-| W9-L5-001 | src/V12_002.UI.Panel.Brushes.cs | 38 | RGB int literals (e.g. 255, 128, 64) | P3 |
+| W9-L5-001 | src/V12_002.UI.Panel.Brushes.cs | 38 | RGB int literals (e.g. 255, 128, 64) | P3 | resolved: wave9 ad31a5a4
 | W9-L5-002 | src/V12_002.LogicAudit.cs | 18 | audit thresholds (e.g. 3, 10, 100) | P2 |
 | W9-L5-003 | src/V12_002.Perf.LatencyHistogram.cs | 18 | histogram bucket sizes | P2 |
 | W9-L5-004 | src/V12_002.Lifecycle.cs | 17 | strategy defaults, timeouts | P2 |
@@ -191,6 +191,7 @@ Non-hot-path throws: leave as-is (ArgumentException on validation, etc. are acce
 | ID | File | Context | Priority |
 |----|------|---------|----------|
 | W9-L6-001 through W9-L6-012 | Various src/ | wave9-scan enumerates exact files/lines | P2 |
+| W9-L6-001 | src/V12_002.IO.PathValidation.cs:56 | hot-path throw replaced with log+return null; null-guard added in EnsureDailySummaryCsv | resolved: wave9 8cbe00d7 |
 
 *Note: wave9-scan uses grep for `throw new` in methods reachable from OnBarUpdate/OnOrderUpdate.*
 
@@ -236,7 +237,7 @@ Fix: replace if/else chains with static readonly Dictionary dispatch.
 
 | ID | Method | File | Current Pattern | Priority |
 |----|--------|------|-----------------|----------|
-| W9-L8-001 | ProcessOnStateChange | src/V12_002.Lifecycle.cs | if/else state chain | P2 |
+| W9-L8-001 | ProcessOnStateChange | src/V12_002.Lifecycle.cs | if/else state chain | P2 | resolved: wave9 f37362a9
 | W9-L8-002 | ProcessBracketEvent | src/V12_002.Symmetry.BracketFSM.cs | switch/if FSM | P2 |
 | W9-L8-003 | RouteTargetActionToHandler | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 |
 | W9-L8-004 | DispatchRunnerAction | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 |
