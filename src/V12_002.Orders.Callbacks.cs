@@ -229,7 +229,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return HandleOrderCancelled(order);
 
             // Unhandled terminal state: log and return false (no hot-path throw)
-            NinjaTrader.Code.Output.Process("Error HandleOrderState_Terminal: unhandled terminal state " + orderState.ToString(), PrintTo.OutputTab1);
+            NinjaTrader.Code.Output.Process(
+                "Error HandleOrderState_Terminal: unhandled terminal state " + orderState.ToString(),
+                PrintTo.OutputTab1
+            );
             return false;
         }
 

@@ -62,7 +62,9 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private int GetTradingDayKey(DateTime timeInZone)
         {
-            return timeInZone.Year * DATE_KEY_YEAR_MULTIPLIER + timeInZone.Month * DATE_KEY_MONTH_MULTIPLIER + timeInZone.Day;
+            return timeInZone.Year * DATE_KEY_YEAR_MULTIPLIER
+                + timeInZone.Month * DATE_KEY_MONTH_MULTIPLIER
+                + timeInZone.Day;
         }
 
         private void EnsureAccountComplianceTracking(string accountName, DateTime nowInZone)

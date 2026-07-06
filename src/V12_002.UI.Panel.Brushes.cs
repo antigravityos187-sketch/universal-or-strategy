@@ -121,7 +121,11 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private static readonly SolidColorBrush BgDeep = PanelBrush(BG_DEEP_R, BG_DEEP_G, BG_DEEP_B);
         private static readonly SolidColorBrush BgSlate = PanelBrush(BG_SLATE_R, BG_SLATE_G, BG_SLATE_B);
-        private static readonly SolidColorBrush BorderSlate = PanelBrush(BORDER_SLATE_R, BORDER_SLATE_G, BORDER_SLATE_B);
+        private static readonly SolidColorBrush BorderSlate = PanelBrush(
+            BORDER_SLATE_R,
+            BORDER_SLATE_G,
+            BORDER_SLATE_B
+        );
         private static readonly SolidColorBrush BtnBg = PanelBrush(BTN_BG_R, BTN_BG_G, BTN_BG_B);
         private static readonly SolidColorBrush BtnBorder = PanelBrush(BTN_BORDER_R, BTN_BORDER_G, BTN_BORDER_B);
         private static readonly SolidColorBrush TextPri = PanelBrush(TEXT_PRI_R, TEXT_PRI_G, TEXT_PRI_B);

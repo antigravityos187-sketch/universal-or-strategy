@@ -71,7 +71,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                         && !canonical.Equals(_baseDir, StringComparison.OrdinalIgnoreCase)
                     )
                     {
-                        NinjaTrader.Code.Output.Process("[IO_VALIDATION] Path traversal detected for operation: " + operation + " path: " + path, PrintTo.OutputTab1);
+                        NinjaTrader.Code.Output.Process(
+                            "[IO_VALIDATION] Path traversal detected for operation: " + operation + " path: " + path,
+                            PrintTo.OutputTab1
+                        );
                         return null;
                     }
 
@@ -79,7 +82,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
                 catch (Exception ex)
                 {
-                    NinjaTrader.Code.Output.Process("[IO_VALIDATION] Cannot resolve path for operation: " + operation + " - " + ex.Message, PrintTo.OutputTab1);
+                    NinjaTrader.Code.Output.Process(
+                        "[IO_VALIDATION] Cannot resolve path for operation: " + operation + " - " + ex.Message,
+                        PrintTo.OutputTab1
+                    );
                     return null;
                 }
             }

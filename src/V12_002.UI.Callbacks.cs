@@ -627,19 +627,19 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private static readonly Dictionary<
             string,
-            Action<V12_002, string, PositionInfo, string, ConcurrentDictionary<string, Order>, int, double>>
-            _targetDispatch = new Dictionary<
-                string,
-                Action<V12_002, string, PositionInfo, string, ConcurrentDictionary<string, Order>, int, double>>(
-                StringComparer.Ordinal)
-            {
-                { "market",      (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_Market(en, p, tt, to, tc)      },
-                { "1point",      (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_OnePoint(en, p, tt, tc)         },
-                { "2point",      (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_TwoPoint(en, p, tt, tc)         },
-                { "marketprice", (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_MarketPrice(en, p, tt, tc, cp) },
-                { "breakeven",   (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_Breakeven(en, p, tt, tc)        },
-                { "cancel",      (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_Cancel(en, p, tt, to, tc)       },
-            };
+            Action<V12_002, string, PositionInfo, string, ConcurrentDictionary<string, Order>, int, double>
+        > _targetDispatch = new Dictionary<
+            string,
+            Action<V12_002, string, PositionInfo, string, ConcurrentDictionary<string, Order>, int, double>
+        >(StringComparer.Ordinal)
+        {
+            { "market", (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_Market(en, p, tt, to, tc) },
+            { "1point", (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_OnePoint(en, p, tt, tc) },
+            { "2point", (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_TwoPoint(en, p, tt, tc) },
+            { "marketprice", (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_MarketPrice(en, p, tt, tc, cp) },
+            { "breakeven", (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_Breakeven(en, p, tt, tc) },
+            { "cancel", (self, en, p, tt, to, tc, cp) => self.ExecuteTarget_Cancel(en, p, tt, to, tc) },
+        };
 
         private void RouteTargetActionToHandler(
             string action,
@@ -1131,19 +1131,15 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private double GetCurrentPrice() => lastKnownPrice > 0 ? lastKnownPrice : Close[0];
 
-        private static readonly Dictionary<
-            string,
-            Action<V12_002, string, PositionInfo, int, double>>
-            _runnerDispatch = new Dictionary<
-                string,
-                Action<V12_002, string, PositionInfo, int, double>>(StringComparer.Ordinal)
+        private static readonly Dictionary<string, Action<V12_002, string, PositionInfo, int, double>> _runnerDispatch =
+            new Dictionary<string, Action<V12_002, string, PositionInfo, int, double>>(StringComparer.Ordinal)
             {
-                { "market",       (self, en, p, rc, cp) => self.ExecuteRunner_Market(en, p, rc)    },
-                { "stop1pt",      (self, en, p, rc, cp) => self.ExecuteRunner_StopOnePoint(en, p)  },
-                { "stop2pt",      (self, en, p, rc, cp) => self.ExecuteRunner_StopTwoPoint(en, p)  },
-                { "stopbe",       (self, en, p, rc, cp) => self.ExecuteRunner_Breakeven(en, p, cp) },
-                { "lock50",       (self, en, p, rc, cp) => self.ExecuteRunner_Lock50(en, p, cp)    },
-                { "disabletrail", (self, en, p, rc, cp) => self.ExecuteRunner_DisableTrail(en, p)  },
+                { "market", (self, en, p, rc, cp) => self.ExecuteRunner_Market(en, p, rc) },
+                { "stop1pt", (self, en, p, rc, cp) => self.ExecuteRunner_StopOnePoint(en, p) },
+                { "stop2pt", (self, en, p, rc, cp) => self.ExecuteRunner_StopTwoPoint(en, p) },
+                { "stopbe", (self, en, p, rc, cp) => self.ExecuteRunner_Breakeven(en, p, cp) },
+                { "lock50", (self, en, p, rc, cp) => self.ExecuteRunner_Lock50(en, p, cp) },
+                { "disabletrail", (self, en, p, rc, cp) => self.ExecuteRunner_DisableTrail(en, p) },
             };
 
         private void DispatchRunnerAction(string action, string entryName, PositionInfo pos, int runnerContracts)

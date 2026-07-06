@@ -164,8 +164,8 @@ Batched by file (wave9-scan enumerates exact lines per file):
 | W9-L5-005 | src/V12_002.UI.Panel.Helpers.cs | 17 | UI dimensions, offsets | P3 | resolved: wave9 aa9222b4
 | W9-L5-006 | src/V12_002.SIMA.Execution.cs | 16 | execution parameters | P2 | resolved: wave9 1ccf547b
 | W9-L5-007 | src/V12_002.Properties.cs | 16 | NinjaTrader property bounds/defaults | P2 | resolved: wave9 8182de13
-| W9-L5-008 | src/V12_002.UI.IPC.Server.cs | 10 | buffer sizes, port numbers, timeouts | P2 |
-| W9-L5-009 | src/V12_002.UI.Compliance.cs | 9 | compliance thresholds | P2 |
+| W9-L5-008 | src/V12_002.UI.IPC.Server.cs | 10 | buffer sizes, port numbers, timeouts | P2 | resolved: wave9 0fb0a8b2
+| W9-L5-009 | src/V12_002.UI.Compliance.cs | 9 | compliance thresholds | P2 | resolved: wave9 384426bb
 | W9-L5-010 | src/V12_002.UI.Panel.StateSync.cs | 8 | UI state thresholds | P3 |
 | W9-L5-011 | src/V12_002.Orders.Management.StopSync.cs | 8 | stop management parameters | P2 |
 | W9-L5-012 | src/V12_002.cs | 7 | core strategy parameters | P2 |
@@ -219,10 +219,10 @@ Each extraction must keep CYC unchanged or reduce it. No new public API.
 | W9-L7-004 | ExecuteRetestEntry | src/V12_002.Entries.Retest.cs | 133 | 5 | P2 | resolved: wave9 244850bb (LOC=46 CYC<=8) |
 | W9-L7-005 | ExecuteFFMAEntry | src/V12_002.Entries.FFMA.cs | 126 | 8 | P2 | resolved: wave9 0b077f60 (LOC=61 CYC=6) |
 | W9-L7-006 | SubmitTrendSplitBrackets | src/V12_002.Entries.RMA.cs | 126 | 6 | P2 | resolved: wave9 b4946364 (LOC=18 CYC<=4) |
-| W9-L7-007 | CreateSection1_Execution | src/V12_002.UI.Panel.Construction.cs | 181 | ~5 | P3 |
-| W9-L7-008 | CreateSection3_Config | src/V12_002.UI.Panel.Construction.cs | 277 | ~5 | P3 |
-| W9-L7-009 | CreateSection2_Telemetry | src/V12_002.UI.Panel.Construction.cs | 95 | ~3 | P3 |
-| W9-L7-010 | ClearPanelWidgetRefs | src/V12_002.UI.Panel.Construction.cs | 103 | ~2 | P3 |
+| W9-L7-007 | CreateSection1_Execution | src/V12_002.UI.Panel.Construction.cs | 181 | ~5 | P3 | resolved: wave9 be199269 (LOC=55 4 helpers extracted) |
+| W9-L7-008 | CreateSection3_Config | src/V12_002.UI.Panel.Construction.cs | 277 | ~5 | P3 | resolved: wave9 95b64aba (LOC=36 7 helpers extracted) |
+| W9-L7-009 | CreateSection2_Telemetry | src/V12_002.UI.Panel.Construction.cs | 95 | ~3 | P3 | RESOLVED d1b7dccc -- LOC 24 (was 115) |
+| W9-L7-010 | ClearPanelWidgetRefs | src/V12_002.UI.Panel.Construction.cs | 103 | ~2 | P3 | RESOLVED 1905d01f -- LOC 7 (was 112), 4 helpers extracted |
 | W9-L7-011 | Dispatch_ProcessFleetLoop | src/V12_002.SIMA.Dispatch.cs | 107 | ~6 | P2 |
 | W9-L7-012 | Dispatch_BuildFollowerOrders | src/V12_002.SIMA.Dispatch.cs | 98 | ~5 | P2 |
 | W9-L7-013 | Dispatch_PublishLimitEntryToPhoton | src/V12_002.SIMA.Dispatch.cs | 84 | ~4 | P2 |
