@@ -32,6 +32,14 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        #region Orders Management Stop Sync -- Constants
+
+        private const int STOP_SIGNAL_MAX_LENGTH = 50;
+        private const int SIG_TRIM_LENGTH = 40;
+        private const long TICK_SUFFIX_MODULUS = 100000000L;
+
+        #endregion
+
         #region Orders Management Stop Sync
 
         private void RefreshActivePositionOrders()
@@ -915,8 +923,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 
                 // Fleet follower: use Account API
                 string sigName = "S_" + entryName;
-                if (sigName.Length > 50)
-                    sigName = sigName.Substring(0, 50);
+                if (sigName.Length > STOP_SIGNAL_MAX_LENGTH)
+                    sigName = sigName.Substring(0, STOP_SIGNAL_MAX_LENGTH);
 
                 newStop = pos.ExecutingAccount.CreateOrder(
                     Instrument,
@@ -964,10 +972,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 string _b950OcoId = pos.OcoGroupId ?? string.Empty;
 
                 // Local: use SubmitOrderUnmanaged with truncated signal name
-                string suffix = (DateTime.UtcNow.Ticks % 100000000).ToString();
+                string suffix = (DateTime.UtcNow.Ticks % TICK_SUFFIX_MODULUS).ToString();
                 string sigName = "S_" + entryName + "_" + suffix;
-                if (sigName.Length > 50)
-                    sigName = sigName.Substring(0, 50);
+                if (sigName.Length > STOP_SIGNAL_MAX_LENGTH)
+                    sigName = sigName.Substring(0, STOP_SIGNAL_MAX_LENGTH);
 
                 newStop = SubmitOrderUnmanaged(
                     0,
@@ -1023,7 +1031,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             Account executingAccount
         )
         {
-            string tSig = SymmetryTrim("T" + snap.TargetNum + "_" + entryName, 40);
+            string tSig = SymmetryTrim("T" + snap.TargetNum + "_" + entryName, SIG_TRIM_LENGTH);
             Order tOrd = executingAccount.CreateOrder(
                 Instrument,
                 exitAction,
