@@ -236,10 +236,12 @@ namespace NinjaTrader.NinjaScript.Strategies
                 }
 
                 // Clean up master entry mapping if it exists
-                var masterToRemove = symmetryMasterEntryToDispatch
-                    .Where(kvp => kvp.Value == dispatchId)
-                    .Select(kvp => kvp.Key)
-                    .ToList();
+                var masterToRemove = new List<string>();
+                foreach (var kvp in symmetryMasterEntryToDispatch)
+                {
+                    if (kvp.Value == dispatchId)
+                        masterToRemove.Add(kvp.Key);
+                }
 
                 foreach (var masterKey in masterToRemove)
                 {

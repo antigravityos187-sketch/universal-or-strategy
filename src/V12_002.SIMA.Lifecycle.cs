@@ -696,21 +696,27 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private bool HasFsmForAccount(Account acct)
         {
-            return _followerBrackets.Values.Any(f =>
-                f != null && string.Equals(f.AccountName, acct.Name, StringComparison.OrdinalIgnoreCase)
-            );
+            foreach (var f in _followerBrackets.Values)
+            {
+                if (f != null && string.Equals(f.AccountName, acct.Name, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
 
         private Position FindOpenPositionForInstrument(Account acct)
         {
-            return acct
-                .Positions.ToArray()
-                .FirstOrDefault(p =>
+            foreach (var p in acct.Positions)
+            {
+                if (
                     p != null
                     && p.Instrument != null
                     && p.Instrument.FullName == Instrument.FullName
                     && p.MarketPosition != MarketPosition.Flat
-                );
+                )
+                    return p;
+            }
+            return null;
         }
 
         private (string Key, Order Stop) FindStopOrderForAccount(
