@@ -35,6 +35,13 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region V12 SIMA Execution
 
+        // Timing conversion
+        private const double TICKS_TO_MS = 1000.0;
+
+        // Buffer sizing
+        private const int DISPATCH_LOG_CAPACITY = 512;
+        private const int FORENSIC_REPORT_CAPACITY = 1024;
+
         /// <summary>
         /// V12 SIMA: Execute a market order across ALL accounts matching the prefix
         /// </summary>
@@ -55,7 +62,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // [Phase 9 LATENCY] T_LoopStart + batch log buffer (flushed once after loop).
             long tLoopStartTicks = sw.ElapsedTicks;
-            var dispatchLog = new StringBuilder(512);
+            var dispatchLog = new StringBuilder(DISPATCH_LOG_CAPACITY);
 
             foreach (Account acct in Account.All.ToArray())
             {
@@ -80,8 +87,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             // [Phase 9 LATENCY] T_Final: Fleet loop complete -- stop clock, flush forensic report.
             sw.Stop();
             long tFinalTicks = sw.ElapsedTicks;
-            double setupMs = (tLoopStartTicks - t0Ticks) * 1000.0 / Stopwatch.Frequency;
-            double loopMs = (tFinalTicks - tLoopStartTicks) * 1000.0 / Stopwatch.Frequency;
+            double setupMs = (tLoopStartTicks - t0Ticks) * TICKS_TO_MS / Stopwatch.Frequency;
+            double loopMs = (tFinalTicks - tLoopStartTicks) * TICKS_TO_MS / Stopwatch.Frequency;
 
             Print(BuildMarketExecutionReport(action, quantity, successCount, failCount, setupMs, loopMs, dispatchLog));
         }
@@ -196,7 +203,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             double totalMs = setupMs + loopMs;
-            var report = new StringBuilder(1024);
+            var report = new StringBuilder(FORENSIC_REPORT_CAPACITY);
             report.AppendLine("+==============================================================+");
             report.AppendLine("|       FORENSIC PULSE REPORT  Phase 9 MULTI-ACCOUNT MARKET    |");
             report.AppendLine("+==============================================================+");
@@ -247,7 +254,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // [Phase 9 LATENCY] T_LoopStart + batch log buffer.
             long tLoopStartTicks = sw.ElapsedTicks;
-            var dispatchLog = new StringBuilder(512);
+            var dispatchLog = new StringBuilder(DISPATCH_LOG_CAPACITY);
 
             foreach (Account acct in Account.All.ToArray())
             {
@@ -277,8 +284,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             // [Phase 9 LATENCY] T_Final: Fleet loop complete -- stop clock, flush forensic report.
             sw.Stop();
             long tFinalTicks = sw.ElapsedTicks;
-            double setupMs = (tLoopStartTicks - t0Ticks) * 1000.0 / Stopwatch.Frequency;
-            double loopMs = (tFinalTicks - tLoopStartTicks) * 1000.0 / Stopwatch.Frequency;
+            double setupMs = (tLoopStartTicks - t0Ticks) * TICKS_TO_MS / Stopwatch.Frequency;
+            double loopMs = (tFinalTicks - tLoopStartTicks) * TICKS_TO_MS / Stopwatch.Frequency;
 
             // TICKET-4: Forensic timing report extracted
             PrintFleetForensicReport(
@@ -527,7 +534,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         )
         {
             double totalMs = setupMs + loopMs;
-            var report = new StringBuilder(1024);
+            var report = new StringBuilder(FORENSIC_REPORT_CAPACITY);
             report.AppendLine("+==============================================================+");
             report.AppendLine(header);
             report.AppendLine("+==============================================================+");
@@ -1059,7 +1066,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 int fleetSkip = 0;
                 // [Phase 9 LATENCY] T_LoopStart: Fleet iteration begins.
                 long tLoopStartTicks = sw.ElapsedTicks;
-                var dispatchLog = new StringBuilder(512);
+                var dispatchLog = new StringBuilder(DISPATCH_LOG_CAPACITY);
 
                 foreach (Account acct in Account.All.ToArray())
                 {
@@ -1092,10 +1099,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // [Phase 9 LATENCY] T_Final: Fleet loop complete -- stop clock, flush forensic report.
                 sw.Stop();
                 long tFinalTicks = sw.ElapsedTicks;
-                double totalMs = tFinalTicks * 1000.0 / Stopwatch.Frequency;
-                double setupMs = (tSetupDoneTicks - t0Ticks) * 1000.0 / Stopwatch.Frequency;
-                double localMs = (tLoopStartTicks - tSetupDoneTicks) * 1000.0 / Stopwatch.Frequency;
-                double loopMs = (tFinalTicks - tLoopStartTicks) * 1000.0 / Stopwatch.Frequency;
+                double totalMs = tFinalTicks * TICKS_TO_MS / Stopwatch.Frequency;
+                double setupMs = (tSetupDoneTicks - t0Ticks) * TICKS_TO_MS / Stopwatch.Frequency;
+                double localMs = (tLoopStartTicks - tSetupDoneTicks) * TICKS_TO_MS / Stopwatch.Frequency;
+                double loopMs = (tFinalTicks - tLoopStartTicks) * TICKS_TO_MS / Stopwatch.Frequency;
 
                 BuildRmaForensicPulseReport(dispatchLog, fleetOk, fleetSkip, setupMs, localMs, loopMs, totalMs);
             }
@@ -1120,7 +1127,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             double totalMs
         )
         {
-            var report = new StringBuilder(1024);
+            var report = new StringBuilder(FORENSIC_REPORT_CAPACITY);
             report.AppendLine("+==============================================================+");
             report.AppendLine("|       FORENSIC PULSE REPORT  Phase 9 RMA ENTRY V2            |");
             report.AppendLine("+==============================================================+");
