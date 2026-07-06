@@ -337,93 +337,33 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// V12.27: RETEST manual entry at user-specified price using Limit Order with RMA targets.
         /// Uses RMA stop multiplier regardless of the R toggle state.
         /// </summary>
+        // [W9-L7-001] Value bundle for manual retest price/qty data.
+        private struct RetestMnlData
+        {
+            public double EntryPrice;
+            public double StopPrice;
+            public double T1Price,
+                T2Price,
+                T3Price,
+                T4Price,
+                T5Price;
+            public int T1Qty,
+                T2Qty,
+                T3Qty,
+                T4Qty,
+                T5Qty;
+        }
+
         private void ExecuteRetestManualEntry(double manualPrice, MarketPosition direction, int contracts)
         {
-            // V12.Phase7 [C-09]: Compliance enforcement gate.
-            if (!IsOrderAllowed())
+            if (!IsRetestManualEntryAllowed(contracts))
                 return;
-            // V12.Phase6 [FLATTEN-GUARD]: Prevent order submission during active flatten
-            if (isFlattenRunning)
-                return;
-
-            if (currentATR <= 0)
-            {
-                Print("V12.27 RETEST_MANUAL: Ignored - ATR not available");
-                return;
-            }
-
-            if (contracts <= 0)
-            {
-                Print(
-                    string.Format(
-                        "[RETEST] ExecuteRetestManualEntry received invalid contracts={0}. Aborting entry.",
-                        contracts
-                    )
-                );
-                return;
-            }
 
             try
             {
-                double entryPrice = Instrument.MasterInstrument.RoundToTickSize(manualPrice);
-
-                // V12.27: Always uses RMA multiplier for manual retest entries
-                double stopDistance = CalculateATRStopDistance(RMAStopATRMultiplier); // V12.30: Ceiling-rounded
-                // V12.Phase6 [TICK-01]: All prices rounded to valid tick increments
-                double stopPrice = Instrument.MasterInstrument.RoundToTickSize(
-                    direction == MarketPosition.Long ? entryPrice - stopDistance : entryPrice + stopDistance
-                );
-
-                // Universal Ladder: T(n)Type dropdown drives all target pricing.
-                double target1Price = CalculateTargetPrice(direction, entryPrice, 1);
-                double target2Price = CalculateTargetPrice(direction, entryPrice, 2);
-                double target3Price = CalculateTargetPrice(direction, entryPrice, 3);
-                double target4Price = CalculateTargetPrice(direction, entryPrice, 4);
-                double target5Price = CalculateTargetPrice(direction, entryPrice, 5);
-
-                int t1Qty,
-                    t2Qty,
-                    t3Qty,
-                    t4Qty,
-                    t5Qty;
-                GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
-
-                string signalName = direction == MarketPosition.Long ? "RetestMnlLong" : "RetestMnlShort";
-                string entryName = signalName + "_" + DateTime.UtcNow.ToString("HHmmssffff");
-
-                PositionInfo pos = new PositionInfo
-                {
-                    SignalName = entryName,
-                    Direction = direction,
-                    TotalContracts = contracts,
-                    T1Contracts = t1Qty,
-                    T2Contracts = t2Qty,
-                    T3Contracts = t3Qty,
-                    T4Contracts = t4Qty,
-                    T5Contracts = t5Qty,
-                    RemainingContracts = contracts,
-                    EntryPrice = entryPrice,
-                    InitialStopPrice = stopPrice,
-                    CurrentStopPrice = stopPrice,
-                    Target1Price = target1Price,
-                    Target2Price = target2Price,
-                    Target3Price = target3Price,
-                    Target4Price = target4Price,
-                    Target5Price = target5Price,
-                    EntryFilled = false,
-                    T1Filled = false,
-                    T2Filled = false,
-                    T3Filled = false,
-                    BracketSubmitted = false,
-                    ExtremePriceSinceEntry = entryPrice,
-                    CurrentTrailLevel = 0,
-                    EntryOrderType = OrderType.Limit,
-                    IsRMATrade = true, // Uses RMA targets
-                    IsRetestTrade = true,
-                    RetestTrailActivated = false,
-                    OcoGroupId = "V12_" + GetStableHash(entryName),
-                };
-                ApplyTargetLadderGuard(pos);
+                RetestMnlData d = CalculateRetestManualPrices(manualPrice, direction, contracts);
+                string entryName;
+                PositionInfo pos = BuildRetestManualPosition(direction, contracts, d, out entryName);
 
                 {
                     var _en966 = entryName;
@@ -442,86 +382,17 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
                 }
 
-                // Submit LIMIT order at manual price
-                Order entryOrder =
-                    direction == MarketPosition.Long
-                        ? SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.Buy,
-                            OrderType.Limit,
-                            contracts,
-                            entryPrice,
-                            0,
-                            "",
-                            entryName
-                        )
-                        : SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.SellShort,
-                            OrderType.Limit,
-                            contracts,
-                            entryPrice,
-                            0,
-                            "",
-                            entryName
-                        );
+                if (!SubmitRetestManualLimitOrder(direction, contracts, d.EntryPrice, entryName, masterDeltaRetestMnl))
+                    return;
 
-                if (entryOrder == null)
-                {
-                    {
-                        var _aek966 = ExpKey(Account.Name);
-                        var _aed966 = (-masterDeltaRetestMnl);
-                        Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
-                    }
-                    activePositions.TryRemove(entryName, out _); // [Build 956]: Clean pre-registered state on null submit.
-                    Print(
-                        "[ERROR][1102Y-V3] RETEST_MANUAL SubmitOrderUnmanaged NULL for "
-                            + entryName
-                            + " -- rolled back."
-                    );
-                    return; // [Build 956]: Do not assign null entryOrder or dispatch SIMA for a failed order.
-                }
-                {
-                    var _en966 = entryName;
-                    var _eo966 = entryOrder;
-                    Enqueue(ctx =>
-                    {
-                        ctx.entryOrders[_en966] = _eo966;
-                    });
-                }
-
-                Print(
-                    string.Format(
-                        "V12.27 RETEST_MANUAL: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | RMA Targets",
-                        direction,
-                        contracts,
-                        entryPrice,
-                        stopPrice
-                    )
-                );
-                Print(
-                    string.Format(
-                        "V12.27 RETEST_MANUAL TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2} | T4:{6}@{7:F2} | T5:{8}@{9:F2}",
-                        t1Qty,
-                        target1Price,
-                        t2Qty,
-                        target2Price,
-                        t3Qty,
-                        target3Price,
-                        t4Qty,
-                        target4Price,
-                        t5Qty,
-                        target5Price
-                    )
-                );
-
+                LogRetestManualEntry(direction, contracts, d);
                 if (EnableSIMA)
                 {
                     ExecuteSmartDispatchEntry(
                         "RETEST_MNL",
                         direction == MarketPosition.Long ? OrderAction.Buy : OrderAction.SellShort,
                         contracts,
-                        entryPrice,
+                        d.EntryPrice,
                         OrderType.Limit,
                         entryName
                     );
@@ -531,6 +402,180 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Print("ERROR ExecuteRetestManualEntry: " + ex.Message);
             }
+        }
+
+        // [W9-L7-001] Guard: validates all preconditions before manual retest entry. CYC=5.
+        private bool IsRetestManualEntryAllowed(int contracts)
+        {
+            // V12.Phase7 [C-09]: Compliance enforcement gate.
+            if (!IsOrderAllowed())
+                return false;
+            // V12.Phase6 [FLATTEN-GUARD]: Prevent order submission during active flatten
+            if (isFlattenRunning)
+                return false;
+            if (currentATR <= 0)
+            {
+                Print("V12.27 RETEST_MANUAL: Ignored - ATR not available");
+                return false;
+            }
+            if (contracts <= 0)
+            {
+                Print(
+                    string.Format(
+                        "[RETEST] ExecuteRetestManualEntry received invalid contracts={0}. Aborting entry.",
+                        contracts
+                    )
+                );
+                return false;
+            }
+            return true;
+        }
+
+        // [W9-L7-001] Computes entry price, stop price, target prices and qty distribution. CYC=3.
+        private RetestMnlData CalculateRetestManualPrices(double manualPrice, MarketPosition direction, int contracts)
+        {
+            RetestMnlData d;
+            d.EntryPrice = Instrument.MasterInstrument.RoundToTickSize(manualPrice);
+
+            // V12.27: Always uses RMA multiplier for manual retest entries
+            double stopDistance = CalculateATRStopDistance(RMAStopATRMultiplier); // V12.30: Ceiling-rounded
+            // V12.Phase6 [TICK-01]: All prices rounded to valid tick increments
+            d.StopPrice = Instrument.MasterInstrument.RoundToTickSize(
+                direction == MarketPosition.Long ? d.EntryPrice - stopDistance : d.EntryPrice + stopDistance
+            );
+
+            // Universal Ladder: T(n)Type dropdown drives all target pricing.
+            d.T1Price = CalculateTargetPrice(direction, d.EntryPrice, 1);
+            d.T2Price = CalculateTargetPrice(direction, d.EntryPrice, 2);
+            d.T3Price = CalculateTargetPrice(direction, d.EntryPrice, 3);
+            d.T4Price = CalculateTargetPrice(direction, d.EntryPrice, 4);
+            d.T5Price = CalculateTargetPrice(direction, d.EntryPrice, 5);
+
+            GetTargetDistribution(contracts, out d.T1Qty, out d.T2Qty, out d.T3Qty, out d.T4Qty, out d.T5Qty);
+            return d;
+        }
+
+        // [W9-L7-001] Constructs PositionInfo and applies target ladder guard. CYC=2.
+        private PositionInfo BuildRetestManualPosition(
+            MarketPosition direction,
+            int contracts,
+            RetestMnlData d,
+            out string entryName
+        )
+        {
+            string signalName = direction == MarketPosition.Long ? "RetestMnlLong" : "RetestMnlShort";
+            entryName = signalName + "_" + DateTime.UtcNow.ToString("HHmmssffff");
+
+            PositionInfo pos = new PositionInfo
+            {
+                SignalName = entryName,
+                Direction = direction,
+                TotalContracts = contracts,
+                T1Contracts = d.T1Qty,
+                T2Contracts = d.T2Qty,
+                T3Contracts = d.T3Qty,
+                T4Contracts = d.T4Qty,
+                T5Contracts = d.T5Qty,
+                RemainingContracts = contracts,
+                EntryPrice = d.EntryPrice,
+                InitialStopPrice = d.StopPrice,
+                CurrentStopPrice = d.StopPrice,
+                Target1Price = d.T1Price,
+                Target2Price = d.T2Price,
+                Target3Price = d.T3Price,
+                Target4Price = d.T4Price,
+                Target5Price = d.T5Price,
+                EntryFilled = false,
+                T1Filled = false,
+                T2Filled = false,
+                T3Filled = false,
+                BracketSubmitted = false,
+                ExtremePriceSinceEntry = d.EntryPrice,
+                CurrentTrailLevel = 0,
+                EntryOrderType = OrderType.Limit,
+                IsRMATrade = true, // Uses RMA targets
+                IsRetestTrade = true,
+                RetestTrailActivated = false,
+                OcoGroupId = "V12_" + GetStableHash(entryName),
+            };
+            ApplyTargetLadderGuard(pos);
+            return pos;
+        }
+
+        // [W9-L7-001] Submits the limit entry order; rolls back on null. CYC=4.
+        private bool SubmitRetestManualLimitOrder(
+            MarketPosition direction,
+            int contracts,
+            double entryPrice,
+            string entryName,
+            int masterDelta
+        )
+        {
+            Order entryOrder =
+                direction == MarketPosition.Long
+                    ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, contracts, entryPrice, 0, "", entryName)
+                    : SubmitOrderUnmanaged(
+                        0,
+                        OrderAction.SellShort,
+                        OrderType.Limit,
+                        contracts,
+                        entryPrice,
+                        0,
+                        "",
+                        entryName
+                    );
+
+            if (entryOrder == null)
+            {
+                {
+                    var _aek966 = ExpKey(Account.Name);
+                    var _aed966 = (-masterDelta);
+                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
+                }
+                activePositions.TryRemove(entryName, out _); // [Build 956]: Clean pre-registered state on null submit.
+                Print(
+                    "[ERROR][1102Y-V3] RETEST_MANUAL SubmitOrderUnmanaged NULL for " + entryName + " -- rolled back."
+                );
+                return false; // [Build 956]: Do not assign null entryOrder or dispatch SIMA for a failed order.
+            }
+            {
+                var _en966 = entryName;
+                var _eo966 = entryOrder;
+                Enqueue(ctx =>
+                {
+                    ctx.entryOrders[_en966] = _eo966;
+                });
+            }
+            return true;
+        }
+
+        // [W9-L7-001] Logs the RETEST_MANUAL entry confirmation prints. CYC=1.
+        private void LogRetestManualEntry(MarketPosition direction, int contracts, RetestMnlData d)
+        {
+            Print(
+                string.Format(
+                    "V12.27 RETEST_MANUAL: {0} {1}@{2:F2} LIMIT | Stop: {3:F2} | RMA Targets",
+                    direction,
+                    contracts,
+                    d.EntryPrice,
+                    d.StopPrice
+                )
+            );
+            Print(
+                string.Format(
+                    "V12.27 RETEST_MANUAL TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2} | T4:{6}@{7:F2} | T5:{8}@{9:F2}",
+                    d.T1Qty,
+                    d.T1Price,
+                    d.T2Qty,
+                    d.T2Price,
+                    d.T3Qty,
+                    d.T3Price,
+                    d.T4Qty,
+                    d.T4Price,
+                    d.T5Qty,
+                    d.T5Price
+                )
+            );
         }
 
         #endregion
