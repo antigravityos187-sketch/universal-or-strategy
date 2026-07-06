@@ -166,18 +166,27 @@ Batched by file (wave9-scan enumerates exact lines per file):
 | W9-L5-007 | src/V12_002.Properties.cs | 16 | NinjaTrader property bounds/defaults | P2 | resolved: wave9 8182de13
 | W9-L5-008 | src/V12_002.UI.IPC.Server.cs | 10 | buffer sizes, port numbers, timeouts | P2 | resolved: wave9 0fb0a8b2
 | W9-L5-009 | src/V12_002.UI.Compliance.cs | 9 | compliance thresholds | P2 | resolved: wave9 384426bb
-| W9-L5-010 | src/V12_002.UI.Panel.StateSync.cs | 8 | UI state thresholds | P3 |
-| W9-L5-011 | src/V12_002.Orders.Management.StopSync.cs | 8 | stop management parameters | P2 |
-| W9-L5-012 | src/V12_002.cs | 7 | core strategy parameters | P2 |
-| W9-L5-013 | src/V12_002.UI.Callbacks.cs | 7 | UI callback values | P3 |
-| W9-L5-014 | src/V12_002.UI.IPC.cs | 7 | IPC queue thresholds (e.g. 2000, 1600) | P2 |
-| W9-L5-015 | src/V12_002.SIMA.Dispatch.cs | 7 | dispatch parameters | P2 |
-| W9-L5-016 | src/V12_002.Symmetry.BracketFSM.cs | 7 | FSM parameters | P2 |
-| W9-L5-017 | src/V12_002.StickyState.cs | 6 | state persistence values | P3 |
-| W9-L5-018 | src/SignalBroadcaster.cs | 5 | signal parameters | P2 |
-| W9-L5-019 | src/V12_002.UI.Panel.Construction.cs | 5 | panel layout values | P3 |
-| W9-L5-020 | src/V12_002.Orders.Management.cs | 5 | order management parameters | P2 |
-| W9-L5-021-052 | remaining 32 files | ~30 | varied | P3 |
+| W9-L5-010 | src/V12_002.UI.Panel.StateSync.cs | 8 | UI state thresholds | P3 | resolved: wave9 79ab55f7 |
+| W9-L5-011 | src/V12_002.Orders.Management.StopSync.cs | 8 | stop management parameters | P2 | resolved: wave9 813ade99 |
+| W9-L5-012 | src/V12_002.cs | 7 | core strategy parameters | P2 | resolved: wave9 08293c97 |
+| W9-L5-013 | src/V12_002.UI.Callbacks.cs | 7 | UI callback values | P3 | resolved: wave9 f48d79cb |
+| W9-L5-014 | src/V12_002.UI.IPC.cs | 7 | IPC queue thresholds (e.g. 2000, 1600) | P2 | resolved: wave9 08293c97 |
+| W9-L5-015 | src/V12_002.SIMA.Dispatch.cs | 7 | dispatch parameters | P2 | resolved: wave9 08293c97 |
+| W9-L5-016 | src/V12_002.Symmetry.BracketFSM.cs | 7 | FSM parameters | P2 | resolved: wave9 08293c97 |
+| W9-L5-017 | src/V12_002.StickyState.cs | 6 | state persistence values | P3 | resolved: wave9 e83c871b |
+| W9-L5-018 | src/SignalBroadcaster.cs | 5 | signal parameters | P2 | resolved: wave9 e83c871b |
+| W9-L5-019 | src/V12_002.UI.Panel.Construction.cs | 5 | panel layout values | P3 | resolved: wave9 e83c871b |
+| W9-L5-020 | src/V12_002.Orders.Management.cs | 5 | order management parameters | P2 | resolved: wave9 e83c871b |
+| W9-L5-021 | src/V12_002.REAPER.Audit.cs | 3 | ReaperAuditLogIntervalSeconds=30, IpcQueueRingCapacity=2000, IpcQueueAlertThreshold=1600 | P2 | resolved: wave9 79efebe5 |
+| W9-L5-022 | src/V12_002.Trailing.cs | 6 | TrailThrottle{HighTickRate,MaxMs,MinMs,DecreaseMs,IncreaseMs,LowTickRate} | P2 | resolved: wave9 017c16cf |
+| W9-L5-023 | src/V12_002.Trailing.StopUpdate.cs | 2 | NtSignalNameMaxLength=50, StopSuffixTicksMod=100000000 | P2 | resolved: wave9 ec6537e4 |
+| W9-L5-024 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 2 | AccountOrderQueueDepthWarningThreshold=50, DesyncDrawTextOpacity=50 | P2 | resolved: wave9 af704f7b |
+| W9-L5-025 | src/V12_002.UI.Sizing.cs | 1 | SyncFailureCooldownMs=500 | P2 | resolved: wave9 d7a48868 |
+| W9-L5-026 | src/V12_002.Orders.Management.Flatten.cs | 1 | FlattenSignalNameMaxLength=50 | P2 | resolved: wave9 f5c19f6d |
+| W9-L5-027 | src/V12_002.DrawingHelpers.cs | 2 | FnvOffsetBasis=2166136261, FnvPrime=16777619 | P2 | resolved: wave9 1c7cd5ae |
+| W9-L5-028 | src/V12_002.IPC.Hardening.cs | 5 | IpcRateLimitRequestsPerSecond=1600, IpcMalformed/AllowlistBypass CB thresholds+windows | P2 | resolved: wave9 43220b59 |
+| W9-L5-029 | src/V12_002.BarUpdate.cs | 1 | ComplianceDailySummaryCheckIntervalSeconds=30 | P2 | resolved: wave9 2b90973f |
+| W9-L5-030-052 | 35 remaining files scanned | 0 | No domain-meaningful magic numbers found | P3 | resolved: wave9 scan-only (no fix needed) |
 
 *Note: wave9-scan enumerates exact lines per file before engineer fixes.*
 
