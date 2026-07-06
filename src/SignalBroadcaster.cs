@@ -286,7 +286,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 throw new ArgumentException("SignalId cannot be null or empty", nameof(signal));
             }
 
-            signal.Timestamp = DateTime.Now;
+            signal.Timestamp = DateTime.UtcNow;
 
             // V12.Phase6: Safe per-handler invocation with subscriber isolation
             SafeInvoke(OnTradeSignal, signal);
@@ -303,7 +303,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 throw new ArgumentException("SignalId cannot be null or empty", nameof(update));
             }
 
-            update.Timestamp = DateTime.Now;
+            update.Timestamp = DateTime.UtcNow;
             SafeInvoke(OnTrailUpdate, update);
         }
 
@@ -318,7 +318,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 throw new ArgumentException("SignalId cannot be null or empty", nameof(action));
             }
 
-            action.Timestamp = DateTime.Now;
+            action.Timestamp = DateTime.UtcNow;
             SafeInvoke(OnTargetAction, action);
         }
 
@@ -327,7 +327,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         public static void BroadcastFlatten(string reason)
         {
-            var signal = new FlattenSignal { Reason = reason ?? "Manual flatten", Timestamp = DateTime.Now };
+            var signal = new FlattenSignal { Reason = reason ?? "Manual flatten", Timestamp = DateTime.UtcNow };
 
             SafeInvoke(OnFlattenAll, signal);
         }
@@ -337,7 +337,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         public static void BroadcastBreakeven(string signalId = "")
         {
-            var signal = new BreakevenSignal { SignalId = signalId, Timestamp = DateTime.Now };
+            var signal = new BreakevenSignal { SignalId = signalId, Timestamp = DateTime.UtcNow };
 
             SafeInvoke(OnBreakevenRequest, signal);
         }
@@ -352,7 +352,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 TradeId = tradeId,
                 NewStopPrice = newStopPrice,
                 StopLevel = stopLevel,
-                Timestamp = DateTime.Now,
+                Timestamp = DateTime.UtcNow,
             };
 
             SafeInvoke(OnStopUpdate, signal);
@@ -367,7 +367,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 TradeId = tradeId,
                 NewEntryPrice = newEntryPrice,
-                Timestamp = DateTime.Now,
+                Timestamp = DateTime.UtcNow,
             };
 
             SafeInvoke(OnEntryUpdate, signal);
@@ -382,7 +382,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 TradeId = tradeId,
                 Reason = reason ?? "Manual cancel",
-                Timestamp = DateTime.Now,
+                Timestamp = DateTime.UtcNow,
             };
 
             SafeInvoke(OnOrderCancel, signal);
@@ -397,7 +397,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Command = command,
                 TargetSymbol = targetSymbol,
-                Timestamp = DateTime.Now,
+                Timestamp = DateTime.UtcNow,
             };
 
             SafeInvoke(OnExternalCommand, signal);

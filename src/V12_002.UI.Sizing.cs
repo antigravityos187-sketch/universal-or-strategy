@@ -127,7 +127,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // V12.45 RETRY COOLDOWN: If a ChangeOrder failed recently, back off for 500ms
-            if ((DateTime.Now - _lastSyncFailureTime).TotalMilliseconds < 500)
+            if ((DateTime.UtcNow - _lastSyncFailureTime).TotalMilliseconds < 500)
             {
                 return;
             }
@@ -311,7 +311,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             catch (Exception ex)
             {
                 // V12.45 RETRY COOLDOWN: Record failure time to prevent hammering
-                _lastSyncFailureTime = DateTime.Now;
+                _lastSyncFailureTime = DateTime.UtcNow;
                 Print($"[V12.45 SYNC] ERROR syncing {entryName}: {ex.Message} -- cooldown 500ms");
             }
         }

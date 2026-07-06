@@ -479,7 +479,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Print("----------------------------------------------------------------");
                 Print(string.Format("{0} RISK LOGIC AUDIT (The Testing Rig)", BUILD_TAG));
-                Print("Date: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                Print("Date: " + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
                 Print("----------------------------------------------------------------");
 
                 AuditCase1_ATRRounding();

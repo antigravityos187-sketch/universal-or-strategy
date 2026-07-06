@@ -104,7 +104,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             int finalTotalQty = qty9 + qty15;
-            string timestamp = DateTime.Now.ToString("HHmmssffff");
+            string timestamp = DateTime.UtcNow.ToString("HHmmssffff");
             string trendGroupId = "TRMA_" + timestamp;
 
             return new TrendSplitLevels
