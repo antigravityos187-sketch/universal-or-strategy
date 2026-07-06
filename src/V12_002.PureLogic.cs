@@ -55,6 +55,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private static void ValidateAndAdjustBucketSum(int[] buckets, int contracts, int count)
         {
+            // not hot path -- LINQ acceptable
             int sum = buckets.Sum();
             if (sum != contracts)
             {
