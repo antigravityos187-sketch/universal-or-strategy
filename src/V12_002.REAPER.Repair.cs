@@ -147,6 +147,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Phase7-T1: Checks whether any follower bracket FSM for this account is in an active state.
         private bool HasActiveFsmForAccount(string accountName)
         {
+            // not hot path -- LINQ acceptable
             return _followerBrackets.Values.Any(f =>
                 f != null
                 && f.AccountName == accountName
@@ -169,6 +170,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             bool dispatchPending = _dispatchSyncPendingExpKeys.ContainsKey(ExpKey(accountName));
+            // not hot path -- LINQ acceptable
             bool hasActivePositionEntry = activePositions.Values.Any(p =>
                 p != null && p.IsFollower && p.ExecutingAccount != null && p.ExecutingAccount.Name == accountName
             );

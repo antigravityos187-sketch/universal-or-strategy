@@ -496,6 +496,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private void EmergencyFlattenCloseOpenPosition(Account acct)
         {
+            // not hot path -- LINQ acceptable
             Position pos = acct
                 .Positions.ToArray()
                 .FirstOrDefault(p =>

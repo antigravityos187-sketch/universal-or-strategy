@@ -235,6 +235,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // Sort by P/L ascending (Lowest P/L first)
+            // not hot path -- LINQ acceptable
             return fleet.OrderBy(a => a.DailyPL).ToList();
         }
 
