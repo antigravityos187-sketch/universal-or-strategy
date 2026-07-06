@@ -13,6 +13,30 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002
     {
+        // GROUP 1 - Button/Row Heights
+        private const double BUTTON_HEIGHT_PX = 22;
+        private const double TEXTBOX_HEIGHT_PX = 20;
+
+        // GROUP 2 - Column Widths
+        private const double TARGET_LABEL_COL_WIDTH_PX = 22;
+        private const double CLOSE_BTN_COL_WIDTH_PX = 22;
+        private const double CLOSE_BTN_WIDTH_PX = 20;
+
+        // GROUP 3 - Font Sizes
+        private const double FONT_SIZE_BTN = 10;
+        private const double FONT_SIZE_TEXTBOX = 9;
+        private const double FONT_SIZE_SUBLABEL = 8;
+        private const double FONT_SIZE_EMA_LABEL = 11;
+
+        // GROUP 4 - Padding/Margin
+        private const double BTN_PADDING_H = 2;
+        private const double CHIP_MARGIN_BOTTOM = 2;
+        private const double TARGET_ROW_MARGIN_TOP = 2;
+        private const double EMA_LABEL_MARGIN_RIGHT = 10;
+
+        // GROUP 5 - Domain Cardinality
+        private const int MAX_LIVE_TARGETS = 5;
+
         #region Panel Button Factories
 
         private static readonly FontFamily ConsolasFont = new FontFamily("Consolas");
@@ -33,10 +57,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 BorderBrush = border,
                 BorderThickness = new Thickness(1),
                 FontFamily = ConsolasFont,
-                FontSize = 10,
+                FontSize = FONT_SIZE_BTN,
                 FontWeight = FontWeights.SemiBold,
-                Height = 22,
-                Padding = new Thickness(2, 0, 2, 0),
+                Height = BUTTON_HEIGHT_PX,
+                Padding = new Thickness(BTN_PADDING_H, 0, BTN_PADDING_H, 0),
                 Cursor = System.Windows.Input.Cursors.Hand,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
@@ -55,9 +79,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 BorderBrush = fg,
                 BorderThickness = new Thickness(1),
                 FontFamily = ConsolasFont,
-                FontSize = 10,
+                FontSize = FONT_SIZE_BTN,
                 FontWeight = FontWeights.Bold,
-                Height = 22,
+                Height = BUTTON_HEIGHT_PX,
                 Cursor = System.Windows.Input.Cursors.Hand,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
@@ -81,8 +105,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 BorderBrush = BtnBorder,
                 BorderThickness = new Thickness(1),
                 FontFamily = ConsolasFont,
-                FontSize = 9,
-                Height = 20,
+                FontSize = FONT_SIZE_TEXTBOX,
+                Height = TEXTBOX_HEIGHT_PX,
                 TextAlignment = TextAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
             };
@@ -210,7 +234,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 BorderBrush = BtnBorder,
                 BorderThickness = new Thickness(1),
                 FontFamily = ConsolasFont,
-                FontSize = 10,
+                FontSize = FONT_SIZE_BTN,
                 IsTextSearchEnabled = false,
             };
             if (width > 0)
@@ -232,10 +256,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                 BorderBrush = isActive ? CyanBorder : BtnBorder,
                 BorderThickness = new Thickness(1),
                 FontFamily = ConsolasFont,
-                FontSize = 9,
-                Height = 22,
-                Padding = new Thickness(2, 0, 2, 0),
-                Margin = new Thickness(0, 0, 0, 2),
+                FontSize = FONT_SIZE_TEXTBOX,
+                Height = BUTTON_HEIGHT_PX,
+                Padding = new Thickness(BTN_PADDING_H, 0, BTN_PADDING_H, 0),
+                Margin = new Thickness(0, 0, 0, CHIP_MARGIN_BOTTOM),
                 Cursor = System.Windows.Input.Cursors.Hand,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
@@ -244,9 +268,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         private Button CreateCountChip(string text)
         {
             var btn = CreateButton(text, 0, BtnBg, TextPrimary, BtnBorder);
-            btn.Height = 22;
-            btn.FontSize = 9;
-            btn.Margin = new Thickness(0, 0, 0, 2);
+            btn.Height = BUTTON_HEIGHT_PX;
+            btn.FontSize = FONT_SIZE_TEXTBOX;
+            btn.Margin = new Thickness(0, 0, 0, CHIP_MARGIN_BOTTOM);
             btn.HorizontalAlignment = HorizontalAlignment.Stretch;
             return btn;
         }
@@ -278,20 +302,20 @@ namespace NinjaTrader.NinjaScript.Strategies
                     break;
             }
 
-            Grid row = new Grid { Visibility = Visibility.Collapsed, Height = 22 };
+            Grid row = new Grid { Visibility = Visibility.Collapsed, Height = BUTTON_HEIGHT_PX };
             if (targetNum > 1)
-                row.Margin = new Thickness(0, 2, 0, 0);
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+                row.Margin = new Thickness(0, TARGET_ROW_MARGIN_TOP, 0, 0);
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(TARGET_LABEL_COL_WIDTH_PX) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CLOSE_BTN_COL_WIDTH_PX) });
 
             TextBlock label = new TextBlock
             {
                 Text = "T" + targetNum,
                 Foreground = color,
                 FontFamily = ConsolasFont,
-                FontSize = 9,
+                FontSize = FONT_SIZE_TEXTBOX,
                 FontWeight = FontWeights.Bold,
                 VerticalAlignment = VerticalAlignment.Center,
             };
@@ -299,8 +323,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             row.Children.Add(label);
 
             priceBox = CreateTextBox("--", 0);
-            priceBox.FontSize = 10;
-            priceBox.Margin = new Thickness(2, 0, 2, 0);
+            priceBox.FontSize = FONT_SIZE_BTN;
+            priceBox.Margin = new Thickness(BTN_PADDING_H, 0, BTN_PADDING_H, 0);
             priceBox.TextAlignment = TextAlignment.Right;
             Grid.SetColumn(priceBox, 1);
             row.Children.Add(priceBox);
@@ -310,7 +334,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Text = "0",
                 Foreground = TextMuted,
                 FontFamily = ConsolasFont,
-                FontSize = 8,
+                FontSize = FONT_SIZE_SUBLABEL,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(2, 0, 2, 0),
             };
@@ -318,8 +342,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             row.Children.Add(ctsBlock);
 
             // Close button: liquidate this target at market
-            Button closeBtn = CreateButton("X", 20, RedBg, RedFg, RedBorder);
-            closeBtn.FontSize = 8;
+            Button closeBtn = CreateButton("X", CLOSE_BTN_WIDTH_PX, RedBg, RedFg, RedBorder);
+            closeBtn.FontSize = FONT_SIZE_SUBLABEL;
             closeBtn.Padding = new Thickness(0);
             closeBtn.Click += (s, e) =>
             {
@@ -336,10 +360,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             var tb = new TextBlock
             {
-                FontSize = 11,
+                FontSize = FONT_SIZE_EMA_LABEL,
                 FontFamily = ConsolasFont,
                 FontWeight = FontWeights.Bold,
-                Margin = new Thickness(0, 0, 10, 0),
+                Margin = new Thickness(0, 0, EMA_LABEL_MARGIN_RIGHT, 0),
             };
             tb.Inlines.Add(new System.Windows.Documents.Run(label) { Foreground = TextMuted });
             tb.Inlines.Add(new System.Windows.Documents.Run(value) { Foreground = valueColor });
