@@ -43,12 +43,12 @@ docs/
 
 ---
 
-## Jane Street Knowledge Base (`docs/intel/jane-street/`)
+## Jane Street Knowledge Base (TWO SOURCES -- BOTH MANDATORY)
+
+### Source 1: OKF Wiki -- Pattern Guide (`docs/intel/jane-street/`)
 
 **Format**: Open Knowledge Format (OKF) v0.1
-**Status**: MANDATORY — architectural constraints, not suggestions
-**Replaces**: Firebase Firestore `jane_street_knowledge_base` (credential revoked)
-
+**Status**: MANDATORY -- HOW to implement patterns
 **Index**: [`docs/intel/jane-street/index.md`](intel/jane-street/index.md)
 
 | File | Topic |
@@ -63,7 +63,28 @@ docs/
 | `advanced-skylake-deep-dive.md` | CPU front-end, DSB cache, CYC <= 8 rationale |
 
 **Query**: `python scripts/query_kb.py "<term>"`
-**Maintenance**: Read-only (sourced from Jane Street engineering talks)
+
+### Source 2: Rules Catalog -- The Coding Bible (`docs/standards/jane-street/`)
+
+**Status**: MANDATORY -- WHAT to enforce. 100+ numbered rules. Supersedes OKF wiki on conflicts.
+**Catalog**: [`docs/standards/jane-street/RULES_CATALOG.md`](standards/jane-street/RULES_CATALOG.md)
+**Index**: [`docs/standards/jane-street/INDEX.md`](standards/jane-street/INDEX.md)
+
+| Category | Rules | Examples |
+|----------|-------|---------|
+| Type Safety | JS-001..020 | Result<T,E>, Option<T>, sealed hierarchies, #nullable enable |
+| Concurrency | JS-021..035 | lock() ban, Actor/Channel, Interlocked, async void ban |
+| Performance | JS-036..050 | Span, ArrayPool, readonly struct, zero-alloc hot paths |
+| Testing | JS-051..065 | Property-based, seeded Random, BenchmarkDotNet |
+| Code Review | JS-066..080 | Diff <10k chars, CYC<=8, ASCII-only, switch expressions |
+| Serialization | JS-081..095 | Versioned messages, checksums, zero-copy deserialization |
+| Philosophy | JS-096..110 | Illegal states unrepresentable, compile-time enforcement |
+
+### Source 3: PR Enforcement Agent (`docs/Jane Street Sentinel`)
+
+**Status**: MANDATORY -- PR review agent instructions (GODMODE).
+**Enforcement**: Every violation labeled `[CRITICAL-JS-P0/P1/P2]`. All violations BLOCK merge.
+**Read**: `docs/Jane Street Sentinel` for full workflow and quick-reference top-10 violations.
 
 ---
 

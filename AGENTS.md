@@ -120,6 +120,7 @@ receiving agent to infer it. Embed constraints verbatim -- never reference a doc
 - **Lock-Free Actor Pattern**: Legacy `lock(stateLock)` blocks are **STRICTLY BANNED**. All state mutations must use the FSM/Actor `Enqueue` model or atomic primitives.
 - **ASCII-Only Compliance**: NEVER use Unicode, emoji, or curly quotes in C# string literals.
 - **Jane Street Alignment (V12.17)**: ALL agents (Bob, Codex, Qwen, Antigravity, Jules, Rovo Dev, Cursor, etc.) MUST load and apply the ingested Jane Street Intel from `docs/intel/jane-street/` for every architectural decision.
+- **Jane Street Rules Catalog (V12.39)**: The authoritative numbered rule set is `docs/standards/jane-street/RULES_CATALOG.md` (JS-001..JS-110, 100+ rules across Type Safety, Concurrency, Performance, Testing, Code Review, Serialization, Philosophy). ALL agents MUST treat this as the coding bible. The OKF wiki (`docs/intel/jane-street/`) is the distilled pattern guide; the Catalog is the enforceable rule list. The Sentinel enforcement agent (`docs/Jane Street Sentinel`) uses the Catalog directly. When in doubt: Catalog wins.
 - **Test Framework Mandate (V12.32)**: ALL agents MUST generate xUnit tests ONLY. NEVER use NUnit or MSTest. See `docs/protocol/TEST_FRAMEWORK_PROTOCOL.md` for complete requirements.
 - **Hard-Link Integrity**: Every `src/` modification MUST be followed by `powershell -File .\deploy-sync.ps1` to re-synchronize NinjaTrader hard links.
 - **Branch Strategy Mandate (V12.24)**:

@@ -4,7 +4,7 @@ title: Jane Street Intelligence Wiki
 description: Distilled architectural patterns from Jane Street engineering talks, applied to V12 C# trading system. Used by all wave execution agents.
 tags: [jane-street, architecture, hft, v12, complexity-reduction]
 timestamp: 2026-06-25T00:00:00Z
-version: "1.0"
+version: "1.1"
 format: OKF-v0.1
 ---
 
@@ -12,8 +12,14 @@ format: OKF-v0.1
 
 **Format**: Open Knowledge Format (OKF) v0.1
 **Source**: Jane Street engineering talks, distilled into V12 C# patterns
-**Status**: MANDATORY — these are architectural constraints, not suggestions
+**Status**: MANDATORY -- these are architectural constraints, not suggestions
 **Replaces**: Firebase Firestore `jane_street_knowledge_base` collection (revoked credential)
+
+> **THIS IS THE PATTERN GUIDE, NOT THE COMPLETE RULE SET.**
+> The authoritative numbered rule catalog is at `docs/standards/jane-street/RULES_CATALOG.md`
+> (JS-001..JS-110, 100+ rules). Read the Catalog for enforcement decisions.
+> Read this wiki for HOW to implement the patterns. Both are mandatory.
+> PR review agent: `docs/Jane Street Sentinel`
 
 ## Documents
 
@@ -45,3 +51,11 @@ python scripts/query_kb.py "complexity reduction"
 - [complexity-reduction.md](complexity-reduction.md) links to [how-to-build-an-exchange.md](how-to-build-an-exchange.md) (FSM patterns)
 - [lock-free-patterns.md](lock-free-patterns.md) links to [ocaml-performance-engineering.md](ocaml-performance-engineering.md) (data race freedom)
 - [testing-strategies.md](testing-strategies.md) links to [building-tools-for-traders.md](building-tools-for-traders.md) (expect tests)
+
+## Related: Rules Catalog (enforcement layer)
+
+| File | Contents |
+|------|----------|
+| [`docs/standards/jane-street/RULES_CATALOG.md`](../../standards/jane-street/RULES_CATALOG.md) | JS-001..JS-110 numbered rules with DO/DON'T + grep patterns |
+| [`docs/standards/jane-street/INDEX.md`](../../standards/jane-street/INDEX.md) | Category index for all 10 standards documents |
+| [`docs/Jane Street Sentinel`](../../Jane Street Sentinel) | PR enforcement agent instructions (GODMODE) |
