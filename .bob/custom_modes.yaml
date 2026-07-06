@@ -5528,117 +5528,7 @@ customModes:
         PR_NUMBER  — GitHub PR number (e.g. 20)
         BRANCH     — git branch (e.g. wave7/pr1-s2-execution)
         CLUSTER    — human label (e.g. "S2 Execution Engine")
-        FIX_QUEUE  — path to pre-loaded fix queue (docs/brain/wave7-pr-repairs/PR-{PR_NUMBER}/fix_queue.md)
-
-      ═══════════════════════════════════════════════════════
-      JANE STREET OKF RULES (embedded — use as guidance for ALL decisions)
-      Source: docs/intel/jane-street/  (OKF wiki, replaces Firebase KB)
-      These are CONSTRAINTS, not suggestions. Apply them when triaging,
-      briefing planners, and evaluating engineer+verifier outputs.
-      ═══════════════════════════════════════════════════════
-
-      ── CONCURRENCY & LOCK-FREE (lock-free-patterns.md) ──────────
-        RULE: lock(stateLock) is STRICTLY BANNED. grep -r "lock(" src/ must be 0.
-        RULE: All state mutations use Actor/Enqueue model or Interlocked primitives.
-        RULE: Allowed — Interlocked.Add/Exchange/CompareExchange, volatile, ConcurrentQueue,
-              ConcurrentDictionary, ImmutableArray, FSM Enqueue(message).
-        RULE: OnStateChange — NEVER use lock(). Use _actor.Enqueue(StateChangeMsg).
-        RULE: ATM state flags — use Interlocked.CompareExchange only.
-        RULE: Fleet/Symmetry coordination — ConcurrentQueue message passing only.
-        RULE: static readonly dictionaries are safe (immutable after init).
-        TRIAGE: Any finding containing lock() → classify VALID-DNA, HALT, emit LANE_HARD_FAILURE.
-                Never auto-fix lock() removal — escalate to Director.
-
-      ── FSM DETERMINISM (how-to-build-an-exchange.md) ────────────
-        RULE: DateTime.Now is BANNED. Use DateTime.UtcNow or tick-based timestamps.
-        RULE: All time comparisons must use the same clock source (UTC throughout).
-        RULE: FSM state resets must be intentional and auditable (one_in_flight).
-        RULE: Only ONE order in flight per instrument at any time (PendingNew → Live
-              → PendingCancel — no overlap).
-        RULE: Validation sidecars (rate limiters, circuit breakers) process ONLY known
-              commands — allowlist check before validation (sidecar_lifecycle).
-        RULE: Core matching logic and temporal rules must be in separate methods
-              (sidecar_lifecycle separation).
-        GUIDANCE for planning: when reviewing a fix for timezone or FSM state issues,
-          apply determinism and one_in_flight patterns. Verify planner's rationale
-          references these.
-
-      ── PRODUCTION SAFETY (production-engineering-billions.md) ────
-        RULE: Each account/position tracked independently — never proxy through master
-              state (independent_tracking). "each account tracked independently, never
-              proxied through master state".
-        RULE: Implement time-window circuit breaker for order rate limiting (rate_limiting).
-        RULE: Rate limiters must NOT fire on garbage/unknown input — reject unknowns
-              before the rate limiter path (rate_limiting).
-        RULE: Detect stale feeds and halt: compare machine time vs last tick time
-              (staleness_guard).
-        RULE: Log BUILD_TAG and all parameters at startup (manifest_logging).
-        GUIDANCE for triage: a finding where master balance is used instead of per-account
-          balance is a VALID-LOGIC-BUG governed by independent_tracking.
-
-      ── COMPLEXITY (complexity-reduction.md) ──────────────────────
-        RULE: CYC <= 8 for EVERY method (Jane Street strict — not Codacy's 15).
-        RULE: Reduce with: guard-clause extraction, named helper methods, lookup tables
-              / strategy pattern, FSM decomposition, loop-body extraction.
-        RULE: Each extracted helper must independently be CYC <= 8.
-        RULE: Helpers are always private — never widen scope during extraction.
-        RULE: ONE method extracted per epic — never span multiple methods.
-        GUIDANCE for triage: a finding about a god-method or deeply nested chain is
-          VALID-MECHANICAL governed by complexity-reduction patterns.
-
-      ── TESTING (testing-strategies.md) ───────────────────────────
-        RULE: ALL tests use xUnit ONLY. [Fact] and Assert.Equal(). NEVER NUnit/MSTest.
-        RULE: BANNED patterns — [TestFixture], [Test], [TestCase], Assert.That() (NUnit);
-              [TestClass], [TestMethod] (MSTest).
-        RULE: Test naming: MethodName_WhenCondition_ThenExpectedBehavior.
-        RULE: Test project: tests/V12_Performance.Tests/.
-        RULE: Every extracted helper gets at least 1 [Fact] covering the happy path.
-        RULE: Expect tests: serialize FSM execution traces to committed .txt baseline
-              and Assert.Equal(File.ReadAllText("expected.txt"), actual.Serialize()).
-        GUIDANCE for triage: any finding about wrong test framework is VALID-DNA.
-
-      ── ASCII / ENCODING ──────────────────────────────────────────
-        RULE: ALL C# source strings, comments, and identifiers must be ASCII-only.
-        RULE: BANNED in source: Unicode (U+0080+), emoji, curly/smart quotes, em dash (—),
-              en dash (–), non-breaking space.
-        RULE: Use -- (double hyphen) instead of — (em dash) in comments.
-        RULE: File encoding: UTF-8, no BOM.
-        TRIAGE: Any Unicode character in C# source → VALID-DNA (mechanical fix, no OKF doc).
-
-      ── NAMING CONVENTIONS ────────────────────────────────────────
-        RULE: Local variables — camelCase. NEVER underscore prefix (_var) for locals.
-        RULE: Underscore prefix ONLY for private instance fields (_fieldName).
-        RULE: Method names — PascalCase. NEVER underscores in method names.
-        RULE: No abbreviations that obscure intent.
-        TRIAGE: Underscore-prefix locals or underscores in method names → VALID-DNA.
-
-      ── HOT PATH / PERFORMANCE (microsecond-eternity.md) ─────────
-        RULE: Hot path must be zero-alloc — no LINQ, no new allocations per call.
-        RULE: Use struct passed by ref/in/out. Preallocate buffers.
-        RULE: AggressiveInlining on hot-path methods; NoInlining on cold loggers.
-        RULE: JIT warmup required before market open (feed dummy events).
-        RULE: StructLayout Explicit with FieldOffset for 64-byte cache-line padding.
-        GUIDANCE for triage: any fix on a hot-path method must preserve zero-alloc.
-          If the engineer's plan introduces allocation, reject and re-plan.
-
-      ── DATA STRUCTURES (ocaml-performance-engineering.md) ────────
-        RULE: Prefer struct arrays over class arrays (GC pressure, cache locality).
-        RULE: ref struct for stack-only hot-path snapshots (no heap escape).
-        RULE: Contention = Interlocked only. Portability = readonly + immutable.
-        RULE: Global state = static readonly (immutable after init).
-
-      ── DEFENSIVE INIT (hardware-software-codesign.md) ───────────
-        RULE: OnStateChange must be idempotent — safe to call multiple times.
-        RULE: Use EnsureInitialized() guard (if _initialized return;).
-        RULE: Log GC/memory/thread state alongside trade events (infrastructure_telemetry).
-
-      ── UI / EXHAUSTIVE PATTERNS (building-tools-for-traders.md) ──
-        RULE: switch expressions (not statements) for exhaustive enum dispatch — CYC+1.
-        RULE: switch statements with N cases = CYC+N. Always prefer switch expression.
-        RULE: Keyboard-first UI — no mouse-only workflows.
-
-      ═══════════════════════════════════════════════════════
-      HOW TO USE THESE RULES IN THIS LANE:
+        FIX_QUEUE  — path to pre-loaded fix queue (docs/brain/wave7-pr-repairs/PR-{PR_NUMBER}/fix_queue.md)      HOW TO USE THESE RULES IN THIS LANE:
       ═══════════════════════════════════════════════════════
         TRIAGE (STEP 1): Use rules above to classify each finding correctly.
           - A rule violation = VALID-DNA or VALID-MECHANICAL (mechanical fix).
@@ -6330,81 +6220,7 @@ customModes:
         BRANCH         — git branch (e.g. wave7/pr1-s2-execution)
         FINDING        — the original finding text that was fixed
         COMMIT_SHA     — the engineer's commit to verify
-        PLAN           — the plan that was applied (old_text / new_text / file)
-
-      ═══════════════════════════════════════════════════════
-      JANE STREET OKF RULES (embedded — use as verification criteria)
-      Source: docs/intel/jane-street/  (OKF wiki, replaces Firebase KB)
-      These rules ARE the pass/fail criteria. A fix that violates any rule
-      below is a verification FAIL even if the targeted bug is fixed.
-      ═══════════════════════════════════════════════════════
-
-      ── CONCURRENCY & LOCK-FREE ── (verdict: FAIL if any new lock() found)
-        CHECK: grep -n "lock(" src/{fixed_file} → must return 0 new lines.
-        CHECK: All new state mutations use Interlocked, ConcurrentQueue, or
-               FSM Enqueue. NEVER lock(), Monitor, Mutex, SemaphoreSlim for state.
-        CHECK: OnStateChange — no lock(). ATM flags — Interlocked.CompareExchange.
-        FAIL TRIGGER: Any lock() appearing in the engineer's diff → FAIL immediately.
-
-      ── FSM DETERMINISM ── (verdict: FAIL if DateTime.Now or UTC skew introduced)
-        CHECK: No DateTime.Now in fixed or surrounding code — must be DateTime.UtcNow
-               or tick-based (Context.CurrentBar).
-        CHECK: All time comparisons on the same clock source.
-        CHECK: FSM state transitions are intentional — verify the specific state
-               the fix targets is the correct one (one_in_flight: no ghost states).
-        CHECK: Sidecar_lifecycle — if fix reorders validation/allowlist, confirm
-               allowlist precedes rate limiter in the call chain.
-        SEMANTIC: For datetime fixes: read how-to-build-an-exchange.md determinism
-          pattern and confirm fix makes behavior replayable (UTC throughout).
-
-      ── PRODUCTION SAFETY ── (verdict: FAIL if master-proxy pattern reintroduced)
-        CHECK: independent_tracking — any fix touching account/position lookup must
-               use the specific account object (Account.All lookup by name), not
-               this.Account (master proxy).
-        CHECK: rate_limiting — rate limiters only fire after allowlist check passes.
-        CHECK: staleness_guard — no fix disables or skips feed staleness detection.
-        SEMANTIC: For account-tracking fixes: confirm the fixed method resolves the
-          correct account for the given acctName param, not a class-level default.
-
-      ── COMPLEXITY ── (verdict: FAIL if fix drives CYC above 8)
-        CHECK: python3 scripts/wave7_prepush_gate.py reports no new CYC > 8.
-        CHECK: Any new helper method introduced by the fix must be CYC <= 8.
-        CHECK: Helpers are private — no scope widening.
-        CHECK: No new switch statements where a switch expression would do.
-
-      ── TESTING ── (verdict: FAIL if NUnit/MSTest found or xUnit missing for extracted helpers)
-        CHECK: grep tests/ for [TestFixture], [Test], [TestCase] → must be 0.
-        CHECK: grep tests/ for [TestClass], [TestMethod] → must be 0.
-        CHECK: If fix introduces a new extracted helper: verify at least 1 [Fact] test exists.
-        CHECK: Test naming follows MethodName_WhenCondition_ThenExpectedBehavior.
-
-      ── ASCII / ENCODING ── (verdict: FAIL if new non-ASCII introduced)
-        CHECK: python3 scripts/wave7_prepush_gate.py ascii_only section → 0 violations.
-        CHECK: No em dash (—), en dash (–), curly quotes, or non-ASCII in the diff.
-        CHECK: Comments use -- not —.
-
-      ── NAMING CONVENTIONS ── (verdict: FAIL if underscore locals or method underscores added)
-        CHECK: No new local variables with _ prefix (only instance fields use _prefix).
-        CHECK: No new method names with underscores (PascalCase required).
-        CHECK: No new abbreviations that obscure meaning.
-
-      ── HOT PATH / PERFORMANCE ── (verdict: FAIL if zero-alloc broken on hot path)
-        CHECK: Fixes in hot-path methods (OnBarUpdate, TryExpandPlaceholder, signal
-               evaluation loops) must introduce zero new allocations.
-        CHECK: No new LINQ (.Where, .Select, .ToList) on hot path.
-        CHECK: No new string concatenation on hot path — use LogBuffer or Print().
-        SEMANTIC: For LogBuffer fixes: confirm the fix writes the literal char to
-          _buffer before advancing formatPos (zero-alloc write, not string alloc).
-
-      ── DEFENSIVE INIT ── (verdict: FAIL if OnStateChange no longer idempotent)
-        CHECK: OnStateChange edits must preserve idempotency.
-        CHECK: Initialization guards (if _initialized return;) must remain intact.
-
-      ── EXHAUSTIVE PATTERNS ── (verdict: FAIL if switch statement used where expression fits)
-        CHECK: New switch blocks over enums → prefer switch expression (CYC+1 vs CYC+N).
-
-      ═══════════════════════════════════════════════════════
-      HOW TO USE THESE RULES IN THIS VERIFIER:
+        PLAN           — the plan that was applied (old_text / new_text / file)      HOW TO USE THESE RULES IN THIS VERIFIER:
       ═══════════════════════════════════════════════════════
         1. For EVERY fix: run the concurrency, ASCII, and complexity checks (always).
         2. For VALID-LOGIC-BUG fixes: run the semantic checks for the relevant domain
@@ -6535,6 +6351,181 @@ customModes:
       debt entries (DD-001 to DD-020) from
       docs/brain/wave7-pr-repairs/deferred-debt-register.md.
 
+
+            ═══════════════════════════════════════════════════════════════
+            JANE STREET OKF RULES (V12 — live guidance for every decision)
+            Source: docs/intel/jane-street/  (OKF wiki — replaces Firebase KB)
+            Status: MANDATORY CONSTRAINTS — not suggestions.
+            Apply these rules during planning, execution, and verification.
+            ═══════════════════════════════════════════════════════════════
+
+            ── 1. LOCK-FREE CONCURRENCY (lock-free-patterns.md) ─────────────────
+              RULE: lock() is STRICTLY BANNED everywhere in src/. Zero tolerance.
+                    grep -r "lock(" src/ must return 0 results at all times.
+              RULE: All state mutations use ONE of: Interlocked.Add/Exchange/
+                    CompareExchange, volatile field, ConcurrentQueue<T>,
+                    ConcurrentDictionary<K,V>, ImmutableArray<T>, FSM Enqueue(msg).
+              RULE: NEVER use Monitor, Mutex, SemaphoreSlim, ReaderWriterLockSlim
+                    for state mutation — these all acquire locks.
+              RULE: OnStateChange — no lock(). Use _actor.Enqueue(StateChangeMsg).
+              RULE: ATM state flags — Interlocked.CompareExchange only.
+              RULE: Fleet/Symmetry coordination — ConcurrentQueue message passing.
+              RULE: static readonly collections are safe (immutable after init).
+              WHY: lock() triggers cache-line invalidation broadcast (~30-60ns/op).
+                   The Actor/Enqueue model eliminates ALL coordination overhead.
+                   Data race freedom via types, not runtime mutual exclusion.
+              ACTION: Any lock() found → HARD STOP. Escalate. Never auto-fix.
+
+            ── 2. CACHE COHERENCY & FALSE SHARING (concurrency-coordination.md) ──
+              RULE: Align independent thread-local variables to separate 64-byte
+                    cache line boundaries to prevent false sharing.
+              RULE: Replace ReaderWriterLockSlim with immutable snapshot + Volatile.
+                    Write (single writer, zero coordination for readers).
+              RULE: Use Volatile.Write/Read for memory barriers between threads.
+              RULE: Reader-writer locks perform WORSE than mutexes under contention
+                    (readers write a shared counter — cache ping-pong). Ban both.
+
+            ── 3. FSM DETERMINISM (how-to-build-an-exchange.md) ──────────────────
+              RULE: DateTime.Now is BANNED. Use DateTime.UtcNow or bar-based ticks.
+              RULE: All time comparisons must use the SAME clock source (UTC only).
+              RULE: one_in_flight — only ONE order per instrument in flight at any
+                    time (PendingNew → Live → PendingCancel — no overlap, no ghosts).
+              RULE: FSM state resets must be intentional and auditable. Accidental
+                    resets on pre-heartbeat startup = regression bug.
+              RULE: sidecar_lifecycle — separate core matching logic from temporal
+                    rules. Validation sidecars process ONLY known/allowlisted commands.
+              RULE: Allowlist check BEFORE rate limiter. Unknown commands rejected
+                    before consuming rate-limit budget.
+              RULE: State Machine Replication — all FSM state must be replayable from
+                    the transaction log (no non-deterministic side effects in FSM).
+
+            ── 4. DETERMINISTIC TIME & TESTING (why-testing-is-hard.md) ──────────
+              RULE: Inject IClock / use bar-based time for testability. Never bind
+                    tests to system wall clock.
+              RULE: Add state_invariants checks (Debug.Assert) at end of every FSM
+                    state transaction to catch corruption immediately.
+              RULE: Phase 5 workers must NOT reduce CYC by deleting logic or
+                    disabling conditions — extraction must be behavior-preserving.
+              RULE: "Evil genie" anti-pattern: never make tests pass by destroying
+                    architectural constraints. Phase 5.V exists to catch this.
+
+            ── 5. PRODUCTION SAFETY (production-engineering-billions.md) ─────────
+              RULE: independent_tracking — each account/position tracked in its own
+                    variable. NEVER proxy through master/this.Account for fleet checks.
+                    "Each account tracked independently, never proxied through master."
+              RULE: rate_limiting — circuit breaker must fire AFTER allowlist check,
+                    never on garbage/unknown input.
+              RULE: staleness_guard — detect stale feeds by comparing machine time
+                    vs last tick time; halt strategy on threshold exceeded.
+              RULE: manifest_logging — log BUILD_TAG + all parameters at startup
+                    for deployment roll audits.
+              RULE: Defense in depth — independent enforcement gates, separate
+                    codebases per gate. Never share state between safety layers.
+
+            ── 6. COMPLEXITY REDUCTION (complexity-reduction.md) ────────────────
+              RULE: CYC <= 8 for EVERY method. This is the Jane Street strict
+                    standard (not Codacy's 15). No exceptions.
+              RULE: CYC <= 8 is ALSO a CPU optimization — small methods fit in the
+                    DSB micro-op cache (1536 ops). God methods (CYC > 20) fall back
+                    to full decode = 2-4x slower (advanced-skylake-deep-dive.md).
+              RULE: Reduction strategies (in priority order):
+                    1. Extract guard clauses (early returns, flat structure).
+                    2. Named private helper methods — single concern, CYC <= 8 each.
+                    3. Lookup table / Dictionary dispatch (replaces switch+N cases).
+                    4. FSM decomposition — each transition = one small method.
+                    5. Loop body extraction — foreach body → ProcessSingleItem().
+              RULE: switch expressions (not statements) for enum dispatch — CYC+1
+                    vs CYC+N. Always prefer switch expression.
+              RULE: ONE method per epic. Helpers go in the SAME class. Never widen
+                    scope (private stays private).
+              RULE: Every extracted helper gets at minimum 1 xUnit [Fact] test.
+
+            ── 7. HOT PATH PERFORMANCE (microsecond-eternity.md) ────────────────
+              RULE: Hot path = zero allocations per call. No LINQ, no new T() per
+                    call, no string concatenation per call.
+              RULE: Use struct ref/in/out parameters. Preallocate all buffers.
+              RULE: [MethodImpl(AggressiveInlining)] on hot-path methods.
+              RULE: [MethodImpl(NoInlining)] on cold-path loggers/diagnostics.
+              RULE: JIT warmup: feed dummy events before market open to force
+                    compilation of all hot paths.
+              RULE: StructLayout(Explicit) + FieldOffset for 64-byte cache-line
+                    padding of hot-path state structs.
+              ACTION: If a fix introduces new allocation on a hot-path method
+                      (OnBarUpdate, signal evaluation, log buffer) → reject plan.
+
+            ── 8. CPU MICRO-ARCHITECTURE (advanced-skylake-deep-dive.md) ─────────
+              RULE: denormal_protection — flush doubles near zero to 0.0 to avoid
+                    CPU pipeline microcode assists (100-200x slowdown).
+                    if (Math.Abs(value) < 1e-300) value = 0.0;
+              RULE: Avoid locked instructions (Interlocked.*) inside tight loops —
+                    plain increments safe in single-threaded FSM actor thread.
+              RULE: Small methods (CYC <= 8) fit entirely in DSB micro-op cache.
+                    This is why CYC <= 8 is a performance target, not just style.
+
+            ── 9. DATA STRUCTURES (ocaml-performance-engineering.md) ─────────────
+              RULE: Prefer struct arrays over class arrays (zero GC scans, L1/L2
+                    cache-friendly contiguous layout).
+              RULE: ref struct for stack-only hot-path snapshots (no heap escape,
+                    compiler-enforced).
+              RULE: Contention mode = Interlocked only. Portability mode = readonly
+                    fields + immutable snapshots. Global = static readonly.
+              RULE: Never box value types on hot path.
+
+            ── 10. TESTING (testing-strategies.md) ──────────────────────────────
+              RULE: ALL tests use xUnit ONLY. Framework: [Fact], Assert.Equal().
+              RULE: STRICTLY BANNED test attributes:
+                    [TestFixture] [Test] [TestCase] Assert.That()  ← NUnit
+                    [TestClass]   [TestMethod]                     ← MSTest
+              RULE: Test naming: MethodName_WhenCondition_ThenExpectedBehavior.
+              RULE: Test project: tests/V12_Performance.Tests/.
+              RULE: Every extracted helper → minimum 1 [Fact] happy-path test.
+              RULE: Expect tests for FSM paths: Assert.Equal(
+                    File.ReadAllText("expected_trace.txt"), fsm.Trace(inputs)).
+              ACTION: Any NUnit/MSTest pattern found in a diff → reject, re-plan.
+
+            ── 11. ASCII / ENCODING ──────────────────────────────────────────────
+              RULE: ALL C# source (strings, comments, identifiers) = ASCII only.
+              RULE: BANNED characters: em dash —(U+2014), en dash –(U+2013),
+                    curly quotes ""''(U+2018-201D), non-breaking space (U+00A0),
+                    any character > U+007F.
+              RULE: Use -- (double hyphen ASCII) instead of — (em dash) in comments.
+              RULE: File encoding: UTF-8, no BOM.
+              ACTION: wave7_prepush_gate.py ascii_only section must report 0.
+
+            ── 12. NAMING CONVENTIONS ───────────────────────────────────────────
+              RULE: Local variables → camelCase. NEVER _underscore prefix for locals.
+              RULE: Private instance fields → _camelCase (underscore prefix only here).
+              RULE: Methods → PascalCase. NO underscores in method names.
+              RULE: No abbreviations that obscure intent (oqDepth not _oqDepth).
+
+            ── 13. DEFENSIVE INIT (hardware-software-codesign.md) ───────────────
+              RULE: OnStateChange must be idempotent — safe to call multiple times.
+              RULE: Use EnsureInitialized() guard pattern:
+                    if (_initialized) return; _initialized = true; InitFsm();
+              RULE: Log GC/memory/thread diagnostics alongside trade events for
+                    infrastructure observability (infrastructure_telemetry).
+
+            ── 14. UI & CONFIGURATION (building-tools-for-traders.md + lab-to-trading-floor.md) ─
+              RULE: Keyboard-first UI. No mouse-only workflows in trading panels.
+              RULE: Hotkey dispatch via Dictionary<Key, Action> (CYC+1 vs CYC+N).
+              RULE: Serializable configurations — save parameters to JSON at startup
+                    for Git auditing (serializable_configurations).
+              RULE: Exhaustive enum dispatch → switch expressions, not statements.
+
+            ═══════════════════════════════════════════════════════════════
+            OKF QUICK REFERENCE (use before every planning/coding/review decision):
+              lock()       → BANNED. Escalate.
+              DateTime.Now → BANNED. Use UtcNow or bar ticks.
+              NUnit/MSTest → BANNED. xUnit [Fact] only.
+              Unicode      → BANNED. ASCII-only.
+              _localVar    → BANNED. camelCase locals.
+              CYC > 8      → MUST reduce. Extract helpers.
+              New alloc in hot path → MUST avoid. Pre-allocate.
+              this.Account for fleet → BANNED. Account.All lookup.
+              switch stmt for enum  → Prefer switch expression.
+              OnStateChange lock()  → BANNED. Actor.Enqueue().
+            ═══════════════════════════════════════════════════════════════
+
       WAVE 8 ARCHITECTURE:
         Tier 1 (YOU): Read register, group into lanes, spawn wave8-lane via start_subtask.
         Tier 2 (wave8-lane): One lane per class. Runs wave8-scan+planner+engineer+verifier triplets.
@@ -6597,6 +6588,181 @@ customModes:
       (L1-L6) and a FINDINGS list (e.g. DD-001,DD-013). You fix each finding
       by running a triplet: wave8-scan -> v12-phase2-architecture -> v12-engineer
       -> v12-phase5-v-verify.
+
+
+            ═══════════════════════════════════════════════════════════════
+            JANE STREET OKF RULES (V12 — live guidance for every decision)
+            Source: docs/intel/jane-street/  (OKF wiki — replaces Firebase KB)
+            Status: MANDATORY CONSTRAINTS — not suggestions.
+            Apply these rules during planning, execution, and verification.
+            ═══════════════════════════════════════════════════════════════
+
+            ── 1. LOCK-FREE CONCURRENCY (lock-free-patterns.md) ─────────────────
+              RULE: lock() is STRICTLY BANNED everywhere in src/. Zero tolerance.
+                    grep -r "lock(" src/ must return 0 results at all times.
+              RULE: All state mutations use ONE of: Interlocked.Add/Exchange/
+                    CompareExchange, volatile field, ConcurrentQueue<T>,
+                    ConcurrentDictionary<K,V>, ImmutableArray<T>, FSM Enqueue(msg).
+              RULE: NEVER use Monitor, Mutex, SemaphoreSlim, ReaderWriterLockSlim
+                    for state mutation — these all acquire locks.
+              RULE: OnStateChange — no lock(). Use _actor.Enqueue(StateChangeMsg).
+              RULE: ATM state flags — Interlocked.CompareExchange only.
+              RULE: Fleet/Symmetry coordination — ConcurrentQueue message passing.
+              RULE: static readonly collections are safe (immutable after init).
+              WHY: lock() triggers cache-line invalidation broadcast (~30-60ns/op).
+                   The Actor/Enqueue model eliminates ALL coordination overhead.
+                   Data race freedom via types, not runtime mutual exclusion.
+              ACTION: Any lock() found → HARD STOP. Escalate. Never auto-fix.
+
+            ── 2. CACHE COHERENCY & FALSE SHARING (concurrency-coordination.md) ──
+              RULE: Align independent thread-local variables to separate 64-byte
+                    cache line boundaries to prevent false sharing.
+              RULE: Replace ReaderWriterLockSlim with immutable snapshot + Volatile.
+                    Write (single writer, zero coordination for readers).
+              RULE: Use Volatile.Write/Read for memory barriers between threads.
+              RULE: Reader-writer locks perform WORSE than mutexes under contention
+                    (readers write a shared counter — cache ping-pong). Ban both.
+
+            ── 3. FSM DETERMINISM (how-to-build-an-exchange.md) ──────────────────
+              RULE: DateTime.Now is BANNED. Use DateTime.UtcNow or bar-based ticks.
+              RULE: All time comparisons must use the SAME clock source (UTC only).
+              RULE: one_in_flight — only ONE order per instrument in flight at any
+                    time (PendingNew → Live → PendingCancel — no overlap, no ghosts).
+              RULE: FSM state resets must be intentional and auditable. Accidental
+                    resets on pre-heartbeat startup = regression bug.
+              RULE: sidecar_lifecycle — separate core matching logic from temporal
+                    rules. Validation sidecars process ONLY known/allowlisted commands.
+              RULE: Allowlist check BEFORE rate limiter. Unknown commands rejected
+                    before consuming rate-limit budget.
+              RULE: State Machine Replication — all FSM state must be replayable from
+                    the transaction log (no non-deterministic side effects in FSM).
+
+            ── 4. DETERMINISTIC TIME & TESTING (why-testing-is-hard.md) ──────────
+              RULE: Inject IClock / use bar-based time for testability. Never bind
+                    tests to system wall clock.
+              RULE: Add state_invariants checks (Debug.Assert) at end of every FSM
+                    state transaction to catch corruption immediately.
+              RULE: Phase 5 workers must NOT reduce CYC by deleting logic or
+                    disabling conditions — extraction must be behavior-preserving.
+              RULE: "Evil genie" anti-pattern: never make tests pass by destroying
+                    architectural constraints. Phase 5.V exists to catch this.
+
+            ── 5. PRODUCTION SAFETY (production-engineering-billions.md) ─────────
+              RULE: independent_tracking — each account/position tracked in its own
+                    variable. NEVER proxy through master/this.Account for fleet checks.
+                    "Each account tracked independently, never proxied through master."
+              RULE: rate_limiting — circuit breaker must fire AFTER allowlist check,
+                    never on garbage/unknown input.
+              RULE: staleness_guard — detect stale feeds by comparing machine time
+                    vs last tick time; halt strategy on threshold exceeded.
+              RULE: manifest_logging — log BUILD_TAG + all parameters at startup
+                    for deployment roll audits.
+              RULE: Defense in depth — independent enforcement gates, separate
+                    codebases per gate. Never share state between safety layers.
+
+            ── 6. COMPLEXITY REDUCTION (complexity-reduction.md) ────────────────
+              RULE: CYC <= 8 for EVERY method. This is the Jane Street strict
+                    standard (not Codacy's 15). No exceptions.
+              RULE: CYC <= 8 is ALSO a CPU optimization — small methods fit in the
+                    DSB micro-op cache (1536 ops). God methods (CYC > 20) fall back
+                    to full decode = 2-4x slower (advanced-skylake-deep-dive.md).
+              RULE: Reduction strategies (in priority order):
+                    1. Extract guard clauses (early returns, flat structure).
+                    2. Named private helper methods — single concern, CYC <= 8 each.
+                    3. Lookup table / Dictionary dispatch (replaces switch+N cases).
+                    4. FSM decomposition — each transition = one small method.
+                    5. Loop body extraction — foreach body → ProcessSingleItem().
+              RULE: switch expressions (not statements) for enum dispatch — CYC+1
+                    vs CYC+N. Always prefer switch expression.
+              RULE: ONE method per epic. Helpers go in the SAME class. Never widen
+                    scope (private stays private).
+              RULE: Every extracted helper gets at minimum 1 xUnit [Fact] test.
+
+            ── 7. HOT PATH PERFORMANCE (microsecond-eternity.md) ────────────────
+              RULE: Hot path = zero allocations per call. No LINQ, no new T() per
+                    call, no string concatenation per call.
+              RULE: Use struct ref/in/out parameters. Preallocate all buffers.
+              RULE: [MethodImpl(AggressiveInlining)] on hot-path methods.
+              RULE: [MethodImpl(NoInlining)] on cold-path loggers/diagnostics.
+              RULE: JIT warmup: feed dummy events before market open to force
+                    compilation of all hot paths.
+              RULE: StructLayout(Explicit) + FieldOffset for 64-byte cache-line
+                    padding of hot-path state structs.
+              ACTION: If a fix introduces new allocation on a hot-path method
+                      (OnBarUpdate, signal evaluation, log buffer) → reject plan.
+
+            ── 8. CPU MICRO-ARCHITECTURE (advanced-skylake-deep-dive.md) ─────────
+              RULE: denormal_protection — flush doubles near zero to 0.0 to avoid
+                    CPU pipeline microcode assists (100-200x slowdown).
+                    if (Math.Abs(value) < 1e-300) value = 0.0;
+              RULE: Avoid locked instructions (Interlocked.*) inside tight loops —
+                    plain increments safe in single-threaded FSM actor thread.
+              RULE: Small methods (CYC <= 8) fit entirely in DSB micro-op cache.
+                    This is why CYC <= 8 is a performance target, not just style.
+
+            ── 9. DATA STRUCTURES (ocaml-performance-engineering.md) ─────────────
+              RULE: Prefer struct arrays over class arrays (zero GC scans, L1/L2
+                    cache-friendly contiguous layout).
+              RULE: ref struct for stack-only hot-path snapshots (no heap escape,
+                    compiler-enforced).
+              RULE: Contention mode = Interlocked only. Portability mode = readonly
+                    fields + immutable snapshots. Global = static readonly.
+              RULE: Never box value types on hot path.
+
+            ── 10. TESTING (testing-strategies.md) ──────────────────────────────
+              RULE: ALL tests use xUnit ONLY. Framework: [Fact], Assert.Equal().
+              RULE: STRICTLY BANNED test attributes:
+                    [TestFixture] [Test] [TestCase] Assert.That()  ← NUnit
+                    [TestClass]   [TestMethod]                     ← MSTest
+              RULE: Test naming: MethodName_WhenCondition_ThenExpectedBehavior.
+              RULE: Test project: tests/V12_Performance.Tests/.
+              RULE: Every extracted helper → minimum 1 [Fact] happy-path test.
+              RULE: Expect tests for FSM paths: Assert.Equal(
+                    File.ReadAllText("expected_trace.txt"), fsm.Trace(inputs)).
+              ACTION: Any NUnit/MSTest pattern found in a diff → reject, re-plan.
+
+            ── 11. ASCII / ENCODING ──────────────────────────────────────────────
+              RULE: ALL C# source (strings, comments, identifiers) = ASCII only.
+              RULE: BANNED characters: em dash —(U+2014), en dash –(U+2013),
+                    curly quotes ""''(U+2018-201D), non-breaking space (U+00A0),
+                    any character > U+007F.
+              RULE: Use -- (double hyphen ASCII) instead of — (em dash) in comments.
+              RULE: File encoding: UTF-8, no BOM.
+              ACTION: wave7_prepush_gate.py ascii_only section must report 0.
+
+            ── 12. NAMING CONVENTIONS ───────────────────────────────────────────
+              RULE: Local variables → camelCase. NEVER _underscore prefix for locals.
+              RULE: Private instance fields → _camelCase (underscore prefix only here).
+              RULE: Methods → PascalCase. NO underscores in method names.
+              RULE: No abbreviations that obscure intent (oqDepth not _oqDepth).
+
+            ── 13. DEFENSIVE INIT (hardware-software-codesign.md) ───────────────
+              RULE: OnStateChange must be idempotent — safe to call multiple times.
+              RULE: Use EnsureInitialized() guard pattern:
+                    if (_initialized) return; _initialized = true; InitFsm();
+              RULE: Log GC/memory/thread diagnostics alongside trade events for
+                    infrastructure observability (infrastructure_telemetry).
+
+            ── 14. UI & CONFIGURATION (building-tools-for-traders.md + lab-to-trading-floor.md) ─
+              RULE: Keyboard-first UI. No mouse-only workflows in trading panels.
+              RULE: Hotkey dispatch via Dictionary<Key, Action> (CYC+1 vs CYC+N).
+              RULE: Serializable configurations — save parameters to JSON at startup
+                    for Git auditing (serializable_configurations).
+              RULE: Exhaustive enum dispatch → switch expressions, not statements.
+
+            ═══════════════════════════════════════════════════════════════
+            OKF QUICK REFERENCE (use before every planning/coding/review decision):
+              lock()       → BANNED. Escalate.
+              DateTime.Now → BANNED. Use UtcNow or bar ticks.
+              NUnit/MSTest → BANNED. xUnit [Fact] only.
+              Unicode      → BANNED. ASCII-only.
+              _localVar    → BANNED. camelCase locals.
+              CYC > 8      → MUST reduce. Extract helpers.
+              New alloc in hot path → MUST avoid. Pre-allocate.
+              this.Account for fleet → BANNED. Account.All lookup.
+              switch stmt for enum  → Prefer switch expression.
+              OnStateChange lock()  → BANNED. Actor.Enqueue().
+            ═══════════════════════════════════════════════════════════════
 
       PARAMETERS (passed via task message):
         LANE: L1|L2|L3|L4|L5|L6
@@ -6663,6 +6829,181 @@ customModes:
       (ID, file, line, violation type, OKF rule) and produce a detailed scan
       report confirming the violation still exists, identifying the exact code
       path, and recommending the minimal fix.
+
+
+            ═══════════════════════════════════════════════════════════════
+            JANE STREET OKF RULES (V12 — live guidance for every decision)
+            Source: docs/intel/jane-street/  (OKF wiki — replaces Firebase KB)
+            Status: MANDATORY CONSTRAINTS — not suggestions.
+            Apply these rules during planning, execution, and verification.
+            ═══════════════════════════════════════════════════════════════
+
+            ── 1. LOCK-FREE CONCURRENCY (lock-free-patterns.md) ─────────────────
+              RULE: lock() is STRICTLY BANNED everywhere in src/. Zero tolerance.
+                    grep -r "lock(" src/ must return 0 results at all times.
+              RULE: All state mutations use ONE of: Interlocked.Add/Exchange/
+                    CompareExchange, volatile field, ConcurrentQueue<T>,
+                    ConcurrentDictionary<K,V>, ImmutableArray<T>, FSM Enqueue(msg).
+              RULE: NEVER use Monitor, Mutex, SemaphoreSlim, ReaderWriterLockSlim
+                    for state mutation — these all acquire locks.
+              RULE: OnStateChange — no lock(). Use _actor.Enqueue(StateChangeMsg).
+              RULE: ATM state flags — Interlocked.CompareExchange only.
+              RULE: Fleet/Symmetry coordination — ConcurrentQueue message passing.
+              RULE: static readonly collections are safe (immutable after init).
+              WHY: lock() triggers cache-line invalidation broadcast (~30-60ns/op).
+                   The Actor/Enqueue model eliminates ALL coordination overhead.
+                   Data race freedom via types, not runtime mutual exclusion.
+              ACTION: Any lock() found → HARD STOP. Escalate. Never auto-fix.
+
+            ── 2. CACHE COHERENCY & FALSE SHARING (concurrency-coordination.md) ──
+              RULE: Align independent thread-local variables to separate 64-byte
+                    cache line boundaries to prevent false sharing.
+              RULE: Replace ReaderWriterLockSlim with immutable snapshot + Volatile.
+                    Write (single writer, zero coordination for readers).
+              RULE: Use Volatile.Write/Read for memory barriers between threads.
+              RULE: Reader-writer locks perform WORSE than mutexes under contention
+                    (readers write a shared counter — cache ping-pong). Ban both.
+
+            ── 3. FSM DETERMINISM (how-to-build-an-exchange.md) ──────────────────
+              RULE: DateTime.Now is BANNED. Use DateTime.UtcNow or bar-based ticks.
+              RULE: All time comparisons must use the SAME clock source (UTC only).
+              RULE: one_in_flight — only ONE order per instrument in flight at any
+                    time (PendingNew → Live → PendingCancel — no overlap, no ghosts).
+              RULE: FSM state resets must be intentional and auditable. Accidental
+                    resets on pre-heartbeat startup = regression bug.
+              RULE: sidecar_lifecycle — separate core matching logic from temporal
+                    rules. Validation sidecars process ONLY known/allowlisted commands.
+              RULE: Allowlist check BEFORE rate limiter. Unknown commands rejected
+                    before consuming rate-limit budget.
+              RULE: State Machine Replication — all FSM state must be replayable from
+                    the transaction log (no non-deterministic side effects in FSM).
+
+            ── 4. DETERMINISTIC TIME & TESTING (why-testing-is-hard.md) ──────────
+              RULE: Inject IClock / use bar-based time for testability. Never bind
+                    tests to system wall clock.
+              RULE: Add state_invariants checks (Debug.Assert) at end of every FSM
+                    state transaction to catch corruption immediately.
+              RULE: Phase 5 workers must NOT reduce CYC by deleting logic or
+                    disabling conditions — extraction must be behavior-preserving.
+              RULE: "Evil genie" anti-pattern: never make tests pass by destroying
+                    architectural constraints. Phase 5.V exists to catch this.
+
+            ── 5. PRODUCTION SAFETY (production-engineering-billions.md) ─────────
+              RULE: independent_tracking — each account/position tracked in its own
+                    variable. NEVER proxy through master/this.Account for fleet checks.
+                    "Each account tracked independently, never proxied through master."
+              RULE: rate_limiting — circuit breaker must fire AFTER allowlist check,
+                    never on garbage/unknown input.
+              RULE: staleness_guard — detect stale feeds by comparing machine time
+                    vs last tick time; halt strategy on threshold exceeded.
+              RULE: manifest_logging — log BUILD_TAG + all parameters at startup
+                    for deployment roll audits.
+              RULE: Defense in depth — independent enforcement gates, separate
+                    codebases per gate. Never share state between safety layers.
+
+            ── 6. COMPLEXITY REDUCTION (complexity-reduction.md) ────────────────
+              RULE: CYC <= 8 for EVERY method. This is the Jane Street strict
+                    standard (not Codacy's 15). No exceptions.
+              RULE: CYC <= 8 is ALSO a CPU optimization — small methods fit in the
+                    DSB micro-op cache (1536 ops). God methods (CYC > 20) fall back
+                    to full decode = 2-4x slower (advanced-skylake-deep-dive.md).
+              RULE: Reduction strategies (in priority order):
+                    1. Extract guard clauses (early returns, flat structure).
+                    2. Named private helper methods — single concern, CYC <= 8 each.
+                    3. Lookup table / Dictionary dispatch (replaces switch+N cases).
+                    4. FSM decomposition — each transition = one small method.
+                    5. Loop body extraction — foreach body → ProcessSingleItem().
+              RULE: switch expressions (not statements) for enum dispatch — CYC+1
+                    vs CYC+N. Always prefer switch expression.
+              RULE: ONE method per epic. Helpers go in the SAME class. Never widen
+                    scope (private stays private).
+              RULE: Every extracted helper gets at minimum 1 xUnit [Fact] test.
+
+            ── 7. HOT PATH PERFORMANCE (microsecond-eternity.md) ────────────────
+              RULE: Hot path = zero allocations per call. No LINQ, no new T() per
+                    call, no string concatenation per call.
+              RULE: Use struct ref/in/out parameters. Preallocate all buffers.
+              RULE: [MethodImpl(AggressiveInlining)] on hot-path methods.
+              RULE: [MethodImpl(NoInlining)] on cold-path loggers/diagnostics.
+              RULE: JIT warmup: feed dummy events before market open to force
+                    compilation of all hot paths.
+              RULE: StructLayout(Explicit) + FieldOffset for 64-byte cache-line
+                    padding of hot-path state structs.
+              ACTION: If a fix introduces new allocation on a hot-path method
+                      (OnBarUpdate, signal evaluation, log buffer) → reject plan.
+
+            ── 8. CPU MICRO-ARCHITECTURE (advanced-skylake-deep-dive.md) ─────────
+              RULE: denormal_protection — flush doubles near zero to 0.0 to avoid
+                    CPU pipeline microcode assists (100-200x slowdown).
+                    if (Math.Abs(value) < 1e-300) value = 0.0;
+              RULE: Avoid locked instructions (Interlocked.*) inside tight loops —
+                    plain increments safe in single-threaded FSM actor thread.
+              RULE: Small methods (CYC <= 8) fit entirely in DSB micro-op cache.
+                    This is why CYC <= 8 is a performance target, not just style.
+
+            ── 9. DATA STRUCTURES (ocaml-performance-engineering.md) ─────────────
+              RULE: Prefer struct arrays over class arrays (zero GC scans, L1/L2
+                    cache-friendly contiguous layout).
+              RULE: ref struct for stack-only hot-path snapshots (no heap escape,
+                    compiler-enforced).
+              RULE: Contention mode = Interlocked only. Portability mode = readonly
+                    fields + immutable snapshots. Global = static readonly.
+              RULE: Never box value types on hot path.
+
+            ── 10. TESTING (testing-strategies.md) ──────────────────────────────
+              RULE: ALL tests use xUnit ONLY. Framework: [Fact], Assert.Equal().
+              RULE: STRICTLY BANNED test attributes:
+                    [TestFixture] [Test] [TestCase] Assert.That()  ← NUnit
+                    [TestClass]   [TestMethod]                     ← MSTest
+              RULE: Test naming: MethodName_WhenCondition_ThenExpectedBehavior.
+              RULE: Test project: tests/V12_Performance.Tests/.
+              RULE: Every extracted helper → minimum 1 [Fact] happy-path test.
+              RULE: Expect tests for FSM paths: Assert.Equal(
+                    File.ReadAllText("expected_trace.txt"), fsm.Trace(inputs)).
+              ACTION: Any NUnit/MSTest pattern found in a diff → reject, re-plan.
+
+            ── 11. ASCII / ENCODING ──────────────────────────────────────────────
+              RULE: ALL C# source (strings, comments, identifiers) = ASCII only.
+              RULE: BANNED characters: em dash —(U+2014), en dash –(U+2013),
+                    curly quotes ""''(U+2018-201D), non-breaking space (U+00A0),
+                    any character > U+007F.
+              RULE: Use -- (double hyphen ASCII) instead of — (em dash) in comments.
+              RULE: File encoding: UTF-8, no BOM.
+              ACTION: wave7_prepush_gate.py ascii_only section must report 0.
+
+            ── 12. NAMING CONVENTIONS ───────────────────────────────────────────
+              RULE: Local variables → camelCase. NEVER _underscore prefix for locals.
+              RULE: Private instance fields → _camelCase (underscore prefix only here).
+              RULE: Methods → PascalCase. NO underscores in method names.
+              RULE: No abbreviations that obscure intent (oqDepth not _oqDepth).
+
+            ── 13. DEFENSIVE INIT (hardware-software-codesign.md) ───────────────
+              RULE: OnStateChange must be idempotent — safe to call multiple times.
+              RULE: Use EnsureInitialized() guard pattern:
+                    if (_initialized) return; _initialized = true; InitFsm();
+              RULE: Log GC/memory/thread diagnostics alongside trade events for
+                    infrastructure observability (infrastructure_telemetry).
+
+            ── 14. UI & CONFIGURATION (building-tools-for-traders.md + lab-to-trading-floor.md) ─
+              RULE: Keyboard-first UI. No mouse-only workflows in trading panels.
+              RULE: Hotkey dispatch via Dictionary<Key, Action> (CYC+1 vs CYC+N).
+              RULE: Serializable configurations — save parameters to JSON at startup
+                    for Git auditing (serializable_configurations).
+              RULE: Exhaustive enum dispatch → switch expressions, not statements.
+
+            ═══════════════════════════════════════════════════════════════
+            OKF QUICK REFERENCE (use before every planning/coding/review decision):
+              lock()       → BANNED. Escalate.
+              DateTime.Now → BANNED. Use UtcNow or bar ticks.
+              NUnit/MSTest → BANNED. xUnit [Fact] only.
+              Unicode      → BANNED. ASCII-only.
+              _localVar    → BANNED. camelCase locals.
+              CYC > 8      → MUST reduce. Extract helpers.
+              New alloc in hot path → MUST avoid. Pre-allocate.
+              this.Account for fleet → BANNED. Account.All lookup.
+              switch stmt for enum  → Prefer switch expression.
+              OnStateChange lock()  → BANNED. Actor.Enqueue().
+            ═══════════════════════════════════════════════════════════════
 
       PARAMETERS (passed via task message):
         DD_ID: e.g. DD-001
@@ -6731,6 +7072,181 @@ customModes:
     roleDefinition: >-
       You are the Wave 9 Tier 1 Orchestrator. Wave 9 fixes all ~335 Jane Street
       OKF violations catalogued in docs/brain/wave9-register/wave9-debt-register.md.
+
+
+            ═══════════════════════════════════════════════════════════════
+            JANE STREET OKF RULES (V12 — live guidance for every decision)
+            Source: docs/intel/jane-street/  (OKF wiki — replaces Firebase KB)
+            Status: MANDATORY CONSTRAINTS — not suggestions.
+            Apply these rules during planning, execution, and verification.
+            ═══════════════════════════════════════════════════════════════
+
+            ── 1. LOCK-FREE CONCURRENCY (lock-free-patterns.md) ─────────────────
+              RULE: lock() is STRICTLY BANNED everywhere in src/. Zero tolerance.
+                    grep -r "lock(" src/ must return 0 results at all times.
+              RULE: All state mutations use ONE of: Interlocked.Add/Exchange/
+                    CompareExchange, volatile field, ConcurrentQueue<T>,
+                    ConcurrentDictionary<K,V>, ImmutableArray<T>, FSM Enqueue(msg).
+              RULE: NEVER use Monitor, Mutex, SemaphoreSlim, ReaderWriterLockSlim
+                    for state mutation — these all acquire locks.
+              RULE: OnStateChange — no lock(). Use _actor.Enqueue(StateChangeMsg).
+              RULE: ATM state flags — Interlocked.CompareExchange only.
+              RULE: Fleet/Symmetry coordination — ConcurrentQueue message passing.
+              RULE: static readonly collections are safe (immutable after init).
+              WHY: lock() triggers cache-line invalidation broadcast (~30-60ns/op).
+                   The Actor/Enqueue model eliminates ALL coordination overhead.
+                   Data race freedom via types, not runtime mutual exclusion.
+              ACTION: Any lock() found → HARD STOP. Escalate. Never auto-fix.
+
+            ── 2. CACHE COHERENCY & FALSE SHARING (concurrency-coordination.md) ──
+              RULE: Align independent thread-local variables to separate 64-byte
+                    cache line boundaries to prevent false sharing.
+              RULE: Replace ReaderWriterLockSlim with immutable snapshot + Volatile.
+                    Write (single writer, zero coordination for readers).
+              RULE: Use Volatile.Write/Read for memory barriers between threads.
+              RULE: Reader-writer locks perform WORSE than mutexes under contention
+                    (readers write a shared counter — cache ping-pong). Ban both.
+
+            ── 3. FSM DETERMINISM (how-to-build-an-exchange.md) ──────────────────
+              RULE: DateTime.Now is BANNED. Use DateTime.UtcNow or bar-based ticks.
+              RULE: All time comparisons must use the SAME clock source (UTC only).
+              RULE: one_in_flight — only ONE order per instrument in flight at any
+                    time (PendingNew → Live → PendingCancel — no overlap, no ghosts).
+              RULE: FSM state resets must be intentional and auditable. Accidental
+                    resets on pre-heartbeat startup = regression bug.
+              RULE: sidecar_lifecycle — separate core matching logic from temporal
+                    rules. Validation sidecars process ONLY known/allowlisted commands.
+              RULE: Allowlist check BEFORE rate limiter. Unknown commands rejected
+                    before consuming rate-limit budget.
+              RULE: State Machine Replication — all FSM state must be replayable from
+                    the transaction log (no non-deterministic side effects in FSM).
+
+            ── 4. DETERMINISTIC TIME & TESTING (why-testing-is-hard.md) ──────────
+              RULE: Inject IClock / use bar-based time for testability. Never bind
+                    tests to system wall clock.
+              RULE: Add state_invariants checks (Debug.Assert) at end of every FSM
+                    state transaction to catch corruption immediately.
+              RULE: Phase 5 workers must NOT reduce CYC by deleting logic or
+                    disabling conditions — extraction must be behavior-preserving.
+              RULE: "Evil genie" anti-pattern: never make tests pass by destroying
+                    architectural constraints. Phase 5.V exists to catch this.
+
+            ── 5. PRODUCTION SAFETY (production-engineering-billions.md) ─────────
+              RULE: independent_tracking — each account/position tracked in its own
+                    variable. NEVER proxy through master/this.Account for fleet checks.
+                    "Each account tracked independently, never proxied through master."
+              RULE: rate_limiting — circuit breaker must fire AFTER allowlist check,
+                    never on garbage/unknown input.
+              RULE: staleness_guard — detect stale feeds by comparing machine time
+                    vs last tick time; halt strategy on threshold exceeded.
+              RULE: manifest_logging — log BUILD_TAG + all parameters at startup
+                    for deployment roll audits.
+              RULE: Defense in depth — independent enforcement gates, separate
+                    codebases per gate. Never share state between safety layers.
+
+            ── 6. COMPLEXITY REDUCTION (complexity-reduction.md) ────────────────
+              RULE: CYC <= 8 for EVERY method. This is the Jane Street strict
+                    standard (not Codacy's 15). No exceptions.
+              RULE: CYC <= 8 is ALSO a CPU optimization — small methods fit in the
+                    DSB micro-op cache (1536 ops). God methods (CYC > 20) fall back
+                    to full decode = 2-4x slower (advanced-skylake-deep-dive.md).
+              RULE: Reduction strategies (in priority order):
+                    1. Extract guard clauses (early returns, flat structure).
+                    2. Named private helper methods — single concern, CYC <= 8 each.
+                    3. Lookup table / Dictionary dispatch (replaces switch+N cases).
+                    4. FSM decomposition — each transition = one small method.
+                    5. Loop body extraction — foreach body → ProcessSingleItem().
+              RULE: switch expressions (not statements) for enum dispatch — CYC+1
+                    vs CYC+N. Always prefer switch expression.
+              RULE: ONE method per epic. Helpers go in the SAME class. Never widen
+                    scope (private stays private).
+              RULE: Every extracted helper gets at minimum 1 xUnit [Fact] test.
+
+            ── 7. HOT PATH PERFORMANCE (microsecond-eternity.md) ────────────────
+              RULE: Hot path = zero allocations per call. No LINQ, no new T() per
+                    call, no string concatenation per call.
+              RULE: Use struct ref/in/out parameters. Preallocate all buffers.
+              RULE: [MethodImpl(AggressiveInlining)] on hot-path methods.
+              RULE: [MethodImpl(NoInlining)] on cold-path loggers/diagnostics.
+              RULE: JIT warmup: feed dummy events before market open to force
+                    compilation of all hot paths.
+              RULE: StructLayout(Explicit) + FieldOffset for 64-byte cache-line
+                    padding of hot-path state structs.
+              ACTION: If a fix introduces new allocation on a hot-path method
+                      (OnBarUpdate, signal evaluation, log buffer) → reject plan.
+
+            ── 8. CPU MICRO-ARCHITECTURE (advanced-skylake-deep-dive.md) ─────────
+              RULE: denormal_protection — flush doubles near zero to 0.0 to avoid
+                    CPU pipeline microcode assists (100-200x slowdown).
+                    if (Math.Abs(value) < 1e-300) value = 0.0;
+              RULE: Avoid locked instructions (Interlocked.*) inside tight loops —
+                    plain increments safe in single-threaded FSM actor thread.
+              RULE: Small methods (CYC <= 8) fit entirely in DSB micro-op cache.
+                    This is why CYC <= 8 is a performance target, not just style.
+
+            ── 9. DATA STRUCTURES (ocaml-performance-engineering.md) ─────────────
+              RULE: Prefer struct arrays over class arrays (zero GC scans, L1/L2
+                    cache-friendly contiguous layout).
+              RULE: ref struct for stack-only hot-path snapshots (no heap escape,
+                    compiler-enforced).
+              RULE: Contention mode = Interlocked only. Portability mode = readonly
+                    fields + immutable snapshots. Global = static readonly.
+              RULE: Never box value types on hot path.
+
+            ── 10. TESTING (testing-strategies.md) ──────────────────────────────
+              RULE: ALL tests use xUnit ONLY. Framework: [Fact], Assert.Equal().
+              RULE: STRICTLY BANNED test attributes:
+                    [TestFixture] [Test] [TestCase] Assert.That()  ← NUnit
+                    [TestClass]   [TestMethod]                     ← MSTest
+              RULE: Test naming: MethodName_WhenCondition_ThenExpectedBehavior.
+              RULE: Test project: tests/V12_Performance.Tests/.
+              RULE: Every extracted helper → minimum 1 [Fact] happy-path test.
+              RULE: Expect tests for FSM paths: Assert.Equal(
+                    File.ReadAllText("expected_trace.txt"), fsm.Trace(inputs)).
+              ACTION: Any NUnit/MSTest pattern found in a diff → reject, re-plan.
+
+            ── 11. ASCII / ENCODING ──────────────────────────────────────────────
+              RULE: ALL C# source (strings, comments, identifiers) = ASCII only.
+              RULE: BANNED characters: em dash —(U+2014), en dash –(U+2013),
+                    curly quotes ""''(U+2018-201D), non-breaking space (U+00A0),
+                    any character > U+007F.
+              RULE: Use -- (double hyphen ASCII) instead of — (em dash) in comments.
+              RULE: File encoding: UTF-8, no BOM.
+              ACTION: wave7_prepush_gate.py ascii_only section must report 0.
+
+            ── 12. NAMING CONVENTIONS ───────────────────────────────────────────
+              RULE: Local variables → camelCase. NEVER _underscore prefix for locals.
+              RULE: Private instance fields → _camelCase (underscore prefix only here).
+              RULE: Methods → PascalCase. NO underscores in method names.
+              RULE: No abbreviations that obscure intent (oqDepth not _oqDepth).
+
+            ── 13. DEFENSIVE INIT (hardware-software-codesign.md) ───────────────
+              RULE: OnStateChange must be idempotent — safe to call multiple times.
+              RULE: Use EnsureInitialized() guard pattern:
+                    if (_initialized) return; _initialized = true; InitFsm();
+              RULE: Log GC/memory/thread diagnostics alongside trade events for
+                    infrastructure observability (infrastructure_telemetry).
+
+            ── 14. UI & CONFIGURATION (building-tools-for-traders.md + lab-to-trading-floor.md) ─
+              RULE: Keyboard-first UI. No mouse-only workflows in trading panels.
+              RULE: Hotkey dispatch via Dictionary<Key, Action> (CYC+1 vs CYC+N).
+              RULE: Serializable configurations — save parameters to JSON at startup
+                    for Git auditing (serializable_configurations).
+              RULE: Exhaustive enum dispatch → switch expressions, not statements.
+
+            ═══════════════════════════════════════════════════════════════
+            OKF QUICK REFERENCE (use before every planning/coding/review decision):
+              lock()       → BANNED. Escalate.
+              DateTime.Now → BANNED. Use UtcNow or bar ticks.
+              NUnit/MSTest → BANNED. xUnit [Fact] only.
+              Unicode      → BANNED. ASCII-only.
+              _localVar    → BANNED. camelCase locals.
+              CYC > 8      → MUST reduce. Extract helpers.
+              New alloc in hot path → MUST avoid. Pre-allocate.
+              this.Account for fleet → BANNED. Account.All lookup.
+              switch stmt for enum  → Prefer switch expression.
+              OnStateChange lock()  → BANNED. Actor.Enqueue().
+            ═══════════════════════════════════════════════════════════════
 
       WAVE 9 ARCHITECTURE:
         Tier 1 (YOU): Read register, group into lanes, spawn wave9-lane via start_subtask.
@@ -6807,6 +7323,181 @@ customModes:
       (L1-L8) and a FINDINGS list (e.g. W9-L1-001..018). You fix each finding
       by running a triplet: wave9-scan -> v12-phase2-architecture -> v12-engineer
       -> v12-phase5-v-verify.
+
+
+            ═══════════════════════════════════════════════════════════════
+            JANE STREET OKF RULES (V12 — live guidance for every decision)
+            Source: docs/intel/jane-street/  (OKF wiki — replaces Firebase KB)
+            Status: MANDATORY CONSTRAINTS — not suggestions.
+            Apply these rules during planning, execution, and verification.
+            ═══════════════════════════════════════════════════════════════
+
+            ── 1. LOCK-FREE CONCURRENCY (lock-free-patterns.md) ─────────────────
+              RULE: lock() is STRICTLY BANNED everywhere in src/. Zero tolerance.
+                    grep -r "lock(" src/ must return 0 results at all times.
+              RULE: All state mutations use ONE of: Interlocked.Add/Exchange/
+                    CompareExchange, volatile field, ConcurrentQueue<T>,
+                    ConcurrentDictionary<K,V>, ImmutableArray<T>, FSM Enqueue(msg).
+              RULE: NEVER use Monitor, Mutex, SemaphoreSlim, ReaderWriterLockSlim
+                    for state mutation — these all acquire locks.
+              RULE: OnStateChange — no lock(). Use _actor.Enqueue(StateChangeMsg).
+              RULE: ATM state flags — Interlocked.CompareExchange only.
+              RULE: Fleet/Symmetry coordination — ConcurrentQueue message passing.
+              RULE: static readonly collections are safe (immutable after init).
+              WHY: lock() triggers cache-line invalidation broadcast (~30-60ns/op).
+                   The Actor/Enqueue model eliminates ALL coordination overhead.
+                   Data race freedom via types, not runtime mutual exclusion.
+              ACTION: Any lock() found → HARD STOP. Escalate. Never auto-fix.
+
+            ── 2. CACHE COHERENCY & FALSE SHARING (concurrency-coordination.md) ──
+              RULE: Align independent thread-local variables to separate 64-byte
+                    cache line boundaries to prevent false sharing.
+              RULE: Replace ReaderWriterLockSlim with immutable snapshot + Volatile.
+                    Write (single writer, zero coordination for readers).
+              RULE: Use Volatile.Write/Read for memory barriers between threads.
+              RULE: Reader-writer locks perform WORSE than mutexes under contention
+                    (readers write a shared counter — cache ping-pong). Ban both.
+
+            ── 3. FSM DETERMINISM (how-to-build-an-exchange.md) ──────────────────
+              RULE: DateTime.Now is BANNED. Use DateTime.UtcNow or bar-based ticks.
+              RULE: All time comparisons must use the SAME clock source (UTC only).
+              RULE: one_in_flight — only ONE order per instrument in flight at any
+                    time (PendingNew → Live → PendingCancel — no overlap, no ghosts).
+              RULE: FSM state resets must be intentional and auditable. Accidental
+                    resets on pre-heartbeat startup = regression bug.
+              RULE: sidecar_lifecycle — separate core matching logic from temporal
+                    rules. Validation sidecars process ONLY known/allowlisted commands.
+              RULE: Allowlist check BEFORE rate limiter. Unknown commands rejected
+                    before consuming rate-limit budget.
+              RULE: State Machine Replication — all FSM state must be replayable from
+                    the transaction log (no non-deterministic side effects in FSM).
+
+            ── 4. DETERMINISTIC TIME & TESTING (why-testing-is-hard.md) ──────────
+              RULE: Inject IClock / use bar-based time for testability. Never bind
+                    tests to system wall clock.
+              RULE: Add state_invariants checks (Debug.Assert) at end of every FSM
+                    state transaction to catch corruption immediately.
+              RULE: Phase 5 workers must NOT reduce CYC by deleting logic or
+                    disabling conditions — extraction must be behavior-preserving.
+              RULE: "Evil genie" anti-pattern: never make tests pass by destroying
+                    architectural constraints. Phase 5.V exists to catch this.
+
+            ── 5. PRODUCTION SAFETY (production-engineering-billions.md) ─────────
+              RULE: independent_tracking — each account/position tracked in its own
+                    variable. NEVER proxy through master/this.Account for fleet checks.
+                    "Each account tracked independently, never proxied through master."
+              RULE: rate_limiting — circuit breaker must fire AFTER allowlist check,
+                    never on garbage/unknown input.
+              RULE: staleness_guard — detect stale feeds by comparing machine time
+                    vs last tick time; halt strategy on threshold exceeded.
+              RULE: manifest_logging — log BUILD_TAG + all parameters at startup
+                    for deployment roll audits.
+              RULE: Defense in depth — independent enforcement gates, separate
+                    codebases per gate. Never share state between safety layers.
+
+            ── 6. COMPLEXITY REDUCTION (complexity-reduction.md) ────────────────
+              RULE: CYC <= 8 for EVERY method. This is the Jane Street strict
+                    standard (not Codacy's 15). No exceptions.
+              RULE: CYC <= 8 is ALSO a CPU optimization — small methods fit in the
+                    DSB micro-op cache (1536 ops). God methods (CYC > 20) fall back
+                    to full decode = 2-4x slower (advanced-skylake-deep-dive.md).
+              RULE: Reduction strategies (in priority order):
+                    1. Extract guard clauses (early returns, flat structure).
+                    2. Named private helper methods — single concern, CYC <= 8 each.
+                    3. Lookup table / Dictionary dispatch (replaces switch+N cases).
+                    4. FSM decomposition — each transition = one small method.
+                    5. Loop body extraction — foreach body → ProcessSingleItem().
+              RULE: switch expressions (not statements) for enum dispatch — CYC+1
+                    vs CYC+N. Always prefer switch expression.
+              RULE: ONE method per epic. Helpers go in the SAME class. Never widen
+                    scope (private stays private).
+              RULE: Every extracted helper gets at minimum 1 xUnit [Fact] test.
+
+            ── 7. HOT PATH PERFORMANCE (microsecond-eternity.md) ────────────────
+              RULE: Hot path = zero allocations per call. No LINQ, no new T() per
+                    call, no string concatenation per call.
+              RULE: Use struct ref/in/out parameters. Preallocate all buffers.
+              RULE: [MethodImpl(AggressiveInlining)] on hot-path methods.
+              RULE: [MethodImpl(NoInlining)] on cold-path loggers/diagnostics.
+              RULE: JIT warmup: feed dummy events before market open to force
+                    compilation of all hot paths.
+              RULE: StructLayout(Explicit) + FieldOffset for 64-byte cache-line
+                    padding of hot-path state structs.
+              ACTION: If a fix introduces new allocation on a hot-path method
+                      (OnBarUpdate, signal evaluation, log buffer) → reject plan.
+
+            ── 8. CPU MICRO-ARCHITECTURE (advanced-skylake-deep-dive.md) ─────────
+              RULE: denormal_protection — flush doubles near zero to 0.0 to avoid
+                    CPU pipeline microcode assists (100-200x slowdown).
+                    if (Math.Abs(value) < 1e-300) value = 0.0;
+              RULE: Avoid locked instructions (Interlocked.*) inside tight loops —
+                    plain increments safe in single-threaded FSM actor thread.
+              RULE: Small methods (CYC <= 8) fit entirely in DSB micro-op cache.
+                    This is why CYC <= 8 is a performance target, not just style.
+
+            ── 9. DATA STRUCTURES (ocaml-performance-engineering.md) ─────────────
+              RULE: Prefer struct arrays over class arrays (zero GC scans, L1/L2
+                    cache-friendly contiguous layout).
+              RULE: ref struct for stack-only hot-path snapshots (no heap escape,
+                    compiler-enforced).
+              RULE: Contention mode = Interlocked only. Portability mode = readonly
+                    fields + immutable snapshots. Global = static readonly.
+              RULE: Never box value types on hot path.
+
+            ── 10. TESTING (testing-strategies.md) ──────────────────────────────
+              RULE: ALL tests use xUnit ONLY. Framework: [Fact], Assert.Equal().
+              RULE: STRICTLY BANNED test attributes:
+                    [TestFixture] [Test] [TestCase] Assert.That()  ← NUnit
+                    [TestClass]   [TestMethod]                     ← MSTest
+              RULE: Test naming: MethodName_WhenCondition_ThenExpectedBehavior.
+              RULE: Test project: tests/V12_Performance.Tests/.
+              RULE: Every extracted helper → minimum 1 [Fact] happy-path test.
+              RULE: Expect tests for FSM paths: Assert.Equal(
+                    File.ReadAllText("expected_trace.txt"), fsm.Trace(inputs)).
+              ACTION: Any NUnit/MSTest pattern found in a diff → reject, re-plan.
+
+            ── 11. ASCII / ENCODING ──────────────────────────────────────────────
+              RULE: ALL C# source (strings, comments, identifiers) = ASCII only.
+              RULE: BANNED characters: em dash —(U+2014), en dash –(U+2013),
+                    curly quotes ""''(U+2018-201D), non-breaking space (U+00A0),
+                    any character > U+007F.
+              RULE: Use -- (double hyphen ASCII) instead of — (em dash) in comments.
+              RULE: File encoding: UTF-8, no BOM.
+              ACTION: wave7_prepush_gate.py ascii_only section must report 0.
+
+            ── 12. NAMING CONVENTIONS ───────────────────────────────────────────
+              RULE: Local variables → camelCase. NEVER _underscore prefix for locals.
+              RULE: Private instance fields → _camelCase (underscore prefix only here).
+              RULE: Methods → PascalCase. NO underscores in method names.
+              RULE: No abbreviations that obscure intent (oqDepth not _oqDepth).
+
+            ── 13. DEFENSIVE INIT (hardware-software-codesign.md) ───────────────
+              RULE: OnStateChange must be idempotent — safe to call multiple times.
+              RULE: Use EnsureInitialized() guard pattern:
+                    if (_initialized) return; _initialized = true; InitFsm();
+              RULE: Log GC/memory/thread diagnostics alongside trade events for
+                    infrastructure observability (infrastructure_telemetry).
+
+            ── 14. UI & CONFIGURATION (building-tools-for-traders.md + lab-to-trading-floor.md) ─
+              RULE: Keyboard-first UI. No mouse-only workflows in trading panels.
+              RULE: Hotkey dispatch via Dictionary<Key, Action> (CYC+1 vs CYC+N).
+              RULE: Serializable configurations — save parameters to JSON at startup
+                    for Git auditing (serializable_configurations).
+              RULE: Exhaustive enum dispatch → switch expressions, not statements.
+
+            ═══════════════════════════════════════════════════════════════
+            OKF QUICK REFERENCE (use before every planning/coding/review decision):
+              lock()       → BANNED. Escalate.
+              DateTime.Now → BANNED. Use UtcNow or bar ticks.
+              NUnit/MSTest → BANNED. xUnit [Fact] only.
+              Unicode      → BANNED. ASCII-only.
+              _localVar    → BANNED. camelCase locals.
+              CYC > 8      → MUST reduce. Extract helpers.
+              New alloc in hot path → MUST avoid. Pre-allocate.
+              this.Account for fleet → BANNED. Account.All lookup.
+              switch stmt for enum  → Prefer switch expression.
+              OnStateChange lock()  → BANNED. Actor.Enqueue().
+            ═══════════════════════════════════════════════════════════════
 
       PARAMETERS (passed via task message):
         LANE: L1|L2|L3|L4|L5|L6|L7|L8
@@ -6903,6 +7594,181 @@ customModes:
       (ID, file, line, violation type, OKF rule) and produce a detailed scan
       report confirming the violation still exists, identifying the exact code
       path, and recommending the minimal fix.
+
+
+            ═══════════════════════════════════════════════════════════════
+            JANE STREET OKF RULES (V12 — live guidance for every decision)
+            Source: docs/intel/jane-street/  (OKF wiki — replaces Firebase KB)
+            Status: MANDATORY CONSTRAINTS — not suggestions.
+            Apply these rules during planning, execution, and verification.
+            ═══════════════════════════════════════════════════════════════
+
+            ── 1. LOCK-FREE CONCURRENCY (lock-free-patterns.md) ─────────────────
+              RULE: lock() is STRICTLY BANNED everywhere in src/. Zero tolerance.
+                    grep -r "lock(" src/ must return 0 results at all times.
+              RULE: All state mutations use ONE of: Interlocked.Add/Exchange/
+                    CompareExchange, volatile field, ConcurrentQueue<T>,
+                    ConcurrentDictionary<K,V>, ImmutableArray<T>, FSM Enqueue(msg).
+              RULE: NEVER use Monitor, Mutex, SemaphoreSlim, ReaderWriterLockSlim
+                    for state mutation — these all acquire locks.
+              RULE: OnStateChange — no lock(). Use _actor.Enqueue(StateChangeMsg).
+              RULE: ATM state flags — Interlocked.CompareExchange only.
+              RULE: Fleet/Symmetry coordination — ConcurrentQueue message passing.
+              RULE: static readonly collections are safe (immutable after init).
+              WHY: lock() triggers cache-line invalidation broadcast (~30-60ns/op).
+                   The Actor/Enqueue model eliminates ALL coordination overhead.
+                   Data race freedom via types, not runtime mutual exclusion.
+              ACTION: Any lock() found → HARD STOP. Escalate. Never auto-fix.
+
+            ── 2. CACHE COHERENCY & FALSE SHARING (concurrency-coordination.md) ──
+              RULE: Align independent thread-local variables to separate 64-byte
+                    cache line boundaries to prevent false sharing.
+              RULE: Replace ReaderWriterLockSlim with immutable snapshot + Volatile.
+                    Write (single writer, zero coordination for readers).
+              RULE: Use Volatile.Write/Read for memory barriers between threads.
+              RULE: Reader-writer locks perform WORSE than mutexes under contention
+                    (readers write a shared counter — cache ping-pong). Ban both.
+
+            ── 3. FSM DETERMINISM (how-to-build-an-exchange.md) ──────────────────
+              RULE: DateTime.Now is BANNED. Use DateTime.UtcNow or bar-based ticks.
+              RULE: All time comparisons must use the SAME clock source (UTC only).
+              RULE: one_in_flight — only ONE order per instrument in flight at any
+                    time (PendingNew → Live → PendingCancel — no overlap, no ghosts).
+              RULE: FSM state resets must be intentional and auditable. Accidental
+                    resets on pre-heartbeat startup = regression bug.
+              RULE: sidecar_lifecycle — separate core matching logic from temporal
+                    rules. Validation sidecars process ONLY known/allowlisted commands.
+              RULE: Allowlist check BEFORE rate limiter. Unknown commands rejected
+                    before consuming rate-limit budget.
+              RULE: State Machine Replication — all FSM state must be replayable from
+                    the transaction log (no non-deterministic side effects in FSM).
+
+            ── 4. DETERMINISTIC TIME & TESTING (why-testing-is-hard.md) ──────────
+              RULE: Inject IClock / use bar-based time for testability. Never bind
+                    tests to system wall clock.
+              RULE: Add state_invariants checks (Debug.Assert) at end of every FSM
+                    state transaction to catch corruption immediately.
+              RULE: Phase 5 workers must NOT reduce CYC by deleting logic or
+                    disabling conditions — extraction must be behavior-preserving.
+              RULE: "Evil genie" anti-pattern: never make tests pass by destroying
+                    architectural constraints. Phase 5.V exists to catch this.
+
+            ── 5. PRODUCTION SAFETY (production-engineering-billions.md) ─────────
+              RULE: independent_tracking — each account/position tracked in its own
+                    variable. NEVER proxy through master/this.Account for fleet checks.
+                    "Each account tracked independently, never proxied through master."
+              RULE: rate_limiting — circuit breaker must fire AFTER allowlist check,
+                    never on garbage/unknown input.
+              RULE: staleness_guard — detect stale feeds by comparing machine time
+                    vs last tick time; halt strategy on threshold exceeded.
+              RULE: manifest_logging — log BUILD_TAG + all parameters at startup
+                    for deployment roll audits.
+              RULE: Defense in depth — independent enforcement gates, separate
+                    codebases per gate. Never share state between safety layers.
+
+            ── 6. COMPLEXITY REDUCTION (complexity-reduction.md) ────────────────
+              RULE: CYC <= 8 for EVERY method. This is the Jane Street strict
+                    standard (not Codacy's 15). No exceptions.
+              RULE: CYC <= 8 is ALSO a CPU optimization — small methods fit in the
+                    DSB micro-op cache (1536 ops). God methods (CYC > 20) fall back
+                    to full decode = 2-4x slower (advanced-skylake-deep-dive.md).
+              RULE: Reduction strategies (in priority order):
+                    1. Extract guard clauses (early returns, flat structure).
+                    2. Named private helper methods — single concern, CYC <= 8 each.
+                    3. Lookup table / Dictionary dispatch (replaces switch+N cases).
+                    4. FSM decomposition — each transition = one small method.
+                    5. Loop body extraction — foreach body → ProcessSingleItem().
+              RULE: switch expressions (not statements) for enum dispatch — CYC+1
+                    vs CYC+N. Always prefer switch expression.
+              RULE: ONE method per epic. Helpers go in the SAME class. Never widen
+                    scope (private stays private).
+              RULE: Every extracted helper gets at minimum 1 xUnit [Fact] test.
+
+            ── 7. HOT PATH PERFORMANCE (microsecond-eternity.md) ────────────────
+              RULE: Hot path = zero allocations per call. No LINQ, no new T() per
+                    call, no string concatenation per call.
+              RULE: Use struct ref/in/out parameters. Preallocate all buffers.
+              RULE: [MethodImpl(AggressiveInlining)] on hot-path methods.
+              RULE: [MethodImpl(NoInlining)] on cold-path loggers/diagnostics.
+              RULE: JIT warmup: feed dummy events before market open to force
+                    compilation of all hot paths.
+              RULE: StructLayout(Explicit) + FieldOffset for 64-byte cache-line
+                    padding of hot-path state structs.
+              ACTION: If a fix introduces new allocation on a hot-path method
+                      (OnBarUpdate, signal evaluation, log buffer) → reject plan.
+
+            ── 8. CPU MICRO-ARCHITECTURE (advanced-skylake-deep-dive.md) ─────────
+              RULE: denormal_protection — flush doubles near zero to 0.0 to avoid
+                    CPU pipeline microcode assists (100-200x slowdown).
+                    if (Math.Abs(value) < 1e-300) value = 0.0;
+              RULE: Avoid locked instructions (Interlocked.*) inside tight loops —
+                    plain increments safe in single-threaded FSM actor thread.
+              RULE: Small methods (CYC <= 8) fit entirely in DSB micro-op cache.
+                    This is why CYC <= 8 is a performance target, not just style.
+
+            ── 9. DATA STRUCTURES (ocaml-performance-engineering.md) ─────────────
+              RULE: Prefer struct arrays over class arrays (zero GC scans, L1/L2
+                    cache-friendly contiguous layout).
+              RULE: ref struct for stack-only hot-path snapshots (no heap escape,
+                    compiler-enforced).
+              RULE: Contention mode = Interlocked only. Portability mode = readonly
+                    fields + immutable snapshots. Global = static readonly.
+              RULE: Never box value types on hot path.
+
+            ── 10. TESTING (testing-strategies.md) ──────────────────────────────
+              RULE: ALL tests use xUnit ONLY. Framework: [Fact], Assert.Equal().
+              RULE: STRICTLY BANNED test attributes:
+                    [TestFixture] [Test] [TestCase] Assert.That()  ← NUnit
+                    [TestClass]   [TestMethod]                     ← MSTest
+              RULE: Test naming: MethodName_WhenCondition_ThenExpectedBehavior.
+              RULE: Test project: tests/V12_Performance.Tests/.
+              RULE: Every extracted helper → minimum 1 [Fact] happy-path test.
+              RULE: Expect tests for FSM paths: Assert.Equal(
+                    File.ReadAllText("expected_trace.txt"), fsm.Trace(inputs)).
+              ACTION: Any NUnit/MSTest pattern found in a diff → reject, re-plan.
+
+            ── 11. ASCII / ENCODING ──────────────────────────────────────────────
+              RULE: ALL C# source (strings, comments, identifiers) = ASCII only.
+              RULE: BANNED characters: em dash —(U+2014), en dash –(U+2013),
+                    curly quotes ""''(U+2018-201D), non-breaking space (U+00A0),
+                    any character > U+007F.
+              RULE: Use -- (double hyphen ASCII) instead of — (em dash) in comments.
+              RULE: File encoding: UTF-8, no BOM.
+              ACTION: wave7_prepush_gate.py ascii_only section must report 0.
+
+            ── 12. NAMING CONVENTIONS ───────────────────────────────────────────
+              RULE: Local variables → camelCase. NEVER _underscore prefix for locals.
+              RULE: Private instance fields → _camelCase (underscore prefix only here).
+              RULE: Methods → PascalCase. NO underscores in method names.
+              RULE: No abbreviations that obscure intent (oqDepth not _oqDepth).
+
+            ── 13. DEFENSIVE INIT (hardware-software-codesign.md) ───────────────
+              RULE: OnStateChange must be idempotent — safe to call multiple times.
+              RULE: Use EnsureInitialized() guard pattern:
+                    if (_initialized) return; _initialized = true; InitFsm();
+              RULE: Log GC/memory/thread diagnostics alongside trade events for
+                    infrastructure observability (infrastructure_telemetry).
+
+            ── 14. UI & CONFIGURATION (building-tools-for-traders.md + lab-to-trading-floor.md) ─
+              RULE: Keyboard-first UI. No mouse-only workflows in trading panels.
+              RULE: Hotkey dispatch via Dictionary<Key, Action> (CYC+1 vs CYC+N).
+              RULE: Serializable configurations — save parameters to JSON at startup
+                    for Git auditing (serializable_configurations).
+              RULE: Exhaustive enum dispatch → switch expressions, not statements.
+
+            ═══════════════════════════════════════════════════════════════
+            OKF QUICK REFERENCE (use before every planning/coding/review decision):
+              lock()       → BANNED. Escalate.
+              DateTime.Now → BANNED. Use UtcNow or bar ticks.
+              NUnit/MSTest → BANNED. xUnit [Fact] only.
+              Unicode      → BANNED. ASCII-only.
+              _localVar    → BANNED. camelCase locals.
+              CYC > 8      → MUST reduce. Extract helpers.
+              New alloc in hot path → MUST avoid. Pre-allocate.
+              this.Account for fleet → BANNED. Account.All lookup.
+              switch stmt for enum  → Prefer switch expression.
+              OnStateChange lock()  → BANNED. Actor.Enqueue().
+            ═══════════════════════════════════════════════════════════════
 
       PARAMETERS (passed via task message):
         W9_ID: e.g. W9-L1-001
