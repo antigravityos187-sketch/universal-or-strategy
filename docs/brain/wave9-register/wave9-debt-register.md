@@ -85,11 +85,11 @@ Fix: `catch { }` -> `catch (Exception ex) { NinjaTrader.Code.Output.Process("Err
 | W9-L3-003 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #1 (scan required) | P2 | resolved: wave9 414ebdbe
 | W9-L3-004 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #2 | P2 | resolved: wave9 89994413
 | W9-L3-005 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #3 | P2 | resolved: wave9 92520a65
-| W9-L3-006 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #4 | P2 |
-| W9-L3-007 | src/V12_002.SIMA.Lifecycle.cs | ~TBD | Silent catch #1 (scan required) | P2 |
-| W9-L3-008 | src/V12_002.SIMA.Lifecycle.cs | ~TBD | Silent catch #2 | P2 |
-| W9-L3-009 | src/V12_002.SIMA.Lifecycle.cs | ~TBD | Silent catch #3 | P2 |
-| W9-L3-010 | src/V12_002.SIMA.Lifecycle.cs | ~TBD | Silent catch #4 | P2 |
+| W9-L3-006 | src/V12_002.Lifecycle.cs | ~TBD | Silent catch #4 | P2 | resolved: wave9 6205dc6d
+| W9-L3-007 | src/V12_002.SIMA.Lifecycle.cs | ~TBD | Silent catch #1 (scan required) | P2 | resolved: wave9 f35286c3
+| W9-L3-008 | src/V12_002.SIMA.Lifecycle.cs | ~TBD | Silent catch #2 | P2 | resolved: wave9 f35286c3
+| W9-L3-009 | src/V12_002.SIMA.Lifecycle.cs | ~TBD | Silent catch #3 | P2 | resolved: wave9 f35286c3
+| W9-L3-010 | src/V12_002.SIMA.Lifecycle.cs | ~TBD | Silent catch #4 | P2 | resolved: wave9 f35286c3
 
 *Note: wave9-scan must confirm exact line numbers -- pattern detection requires context check.*
 
@@ -110,12 +110,12 @@ Non-hot-path LINQ (UI, audit, compliance, init) = P3.
 | ID | File | Line | LINQ Call | Hot Path? | Priority |
 |----|------|------|-----------|-----------|----------|
 | W9-L4-001 | src/V12_002.MetadataGuard.cs | 168 | `.Values.Any(f =>` | No | P3 | resolved: wave9 6cc3b5e9 |
-| W9-L4-002 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 544 | `.Values.Any(f =>` | Yes | P1 | resolved: wave9 081e9e04
-| W9-L4-003 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 962 | `.Where(kvp =>` | Yes | P1 |
-| W9-L4-004 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 971 | `.Select(kvp => kvp.Key)` | Yes | P1 |
+| W9-L4-002 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 544 | `.Values.Any(f =>` | Yes | P1 | resolved: wave9 081e9e04 |
+| W9-L4-003 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 962 | `.Where(kvp =>` | Yes | P1 | resolved: wave9 fba6aee8 |
+| W9-L4-004 | src/V12_002.Orders.Callbacks.AccountOrders.cs | 971 | `.Select(kvp => kvp.Key)` | Yes | P1 | resolved: wave9 fba6aee8 |
 | W9-L4-005 | src/V12_002.Orders.Callbacks.Propagation.cs | 741 | `.FirstOrDefault(a =>` | No | P3 |
 | W9-L4-006 | src/V12_002.Orders.Management.Cleanup.cs | 275 | `.Positions.FirstOrDefault(p =>` | No | P3 |
-| W9-L4-007 | src/V12_002.Orders.Management.StopSync.cs | 129 | `activePositions.ToList()` | Yes | P1 |
+| W9-L4-007 | src/V12_002.Orders.Management.StopSync.cs | 129 | `activePositions.ToList()` | Yes | P1 | resolved: wave9 91bfd507 |
 | W9-L4-008 | src/V12_002.PureLogic.cs | 58 | `buckets.Sum()` | No | P3 |
 | W9-L4-009 | src/V12_002.REAPER.Audit.cs | 415 | `.Positions.FirstOrDefault(p =>` | No | P3 |
 | W9-L4-010 | src/V12_002.REAPER.Audit.cs | 419 | `.Values.Where(f =>).ToList()` | No | P3 |
@@ -129,11 +129,11 @@ Non-hot-path LINQ (UI, audit, compliance, init) = P3.
 | W9-L4-018 | src/V12_002.SIMA.cs | 238 | `.OrderBy(a => a.DailyPL).ToList()` | No | P3 |
 | W9-L4-019 | src/V12_002.SIMA.Flatten.cs | 501 | `.FirstOrDefault(p =>` | No | P3 |
 | W9-L4-020 | src/V12_002.SIMA.Lifecycle.cs | 631 | `.FirstOrDefault(p =>` | No | P3 |
-| W9-L4-021 | src/V12_002.SIMA.Lifecycle.cs | 699 | `.Values.Any(f =>` | Yes | P1 |
-| W9-L4-022 | src/V12_002.SIMA.Lifecycle.cs | 708 | `.FirstOrDefault(p =>` | Yes | P1 |
-| W9-L4-023 | src/V12_002.Symmetry.cs | 240 | `.Where(kvp =>` | Yes | P1 |
-| W9-L4-024 | src/V12_002.Symmetry.cs | 241 | `.Select(kvp => kvp.Key)` | Yes | P1 |
-| W9-L4-025 | src/V12_002.Symmetry.cs | 242 | `.ToList()` | Yes | P1 |
+| W9-L4-021 | src/V12_002.SIMA.Lifecycle.cs | 699 | `.Values.Any(f =>` | Yes | P1 | resolved: wave9 48eb89b0 |
+| W9-L4-022 | src/V12_002.SIMA.Lifecycle.cs | 708 | `.FirstOrDefault(p =>` | Yes | P1 | resolved: wave9 48eb89b0 |
+| W9-L4-023 | src/V12_002.Symmetry.cs | 240 | `.Where(kvp =>` | Yes | P1 | resolved: wave9 48eb89b0 |
+| W9-L4-024 | src/V12_002.Symmetry.cs | 241 | `.Select(kvp => kvp.Key)` | Yes | P1 | resolved: wave9 48eb89b0 |
+| W9-L4-025 | src/V12_002.Symmetry.cs | 242 | `.ToList()` | Yes | P1 | resolved: wave9 48eb89b0 |
 | W9-L4-026 | src/V12_002.UI.Compliance.cs | 347 | `.FirstOrDefault(a =>` | No | P3 |
 | W9-L4-027 | src/V12_002.UI.Compliance.cs | 839 | `.Positions.FirstOrDefault(p =>` | No | P3 |
 | W9-L4-028 | src/V12_002.UI.Compliance.cs | 952 | `.Positions.FirstOrDefault(p =>` | No | P3 |
@@ -238,7 +238,7 @@ Fix: replace if/else chains with static readonly Dictionary dispatch.
 | ID | Method | File | Current Pattern | Priority |
 |----|--------|------|-----------------|----------|
 | W9-L8-001 | ProcessOnStateChange | src/V12_002.Lifecycle.cs | if/else state chain | P2 | resolved: wave9 f37362a9
-| W9-L8-002 | ProcessBracketEvent | src/V12_002.Symmetry.BracketFSM.cs | switch/if FSM | P2 |
+| W9-L8-002 | ProcessBracketEvent | src/V12_002.Symmetry.BracketFSM.cs | switch/if FSM | P2 | resolved: wave9 6eb7f212
 | W9-L8-003 | RouteTargetActionToHandler | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 |
 | W9-L8-004 | DispatchRunnerAction | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 |
 
