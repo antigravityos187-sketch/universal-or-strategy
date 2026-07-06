@@ -373,7 +373,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     Enqueue(ctx => ctx.HydrateWorkingOrdersFromBroker());
                 }
-                catch { }
+                catch (Exception ex) { NinjaTrader.Code.Output.Process("Error OnConnectionStatusUpdate: " + ex.Message, PrintTo.OutputTab1); }
             }
         }
 
