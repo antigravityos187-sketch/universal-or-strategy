@@ -626,6 +626,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (pi.ExecutingAccount == null)
                 return null;
 
+            // not hot path -- LINQ acceptable
             return pi
                 .ExecutingAccount.Positions.ToArray()
                 .FirstOrDefault(p =>
