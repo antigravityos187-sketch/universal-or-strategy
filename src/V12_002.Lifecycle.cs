@@ -320,7 +320,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     {
                         cmd.Execute(this);
                     }
-                    catch { }
+                    catch (Exception ex) { NinjaTrader.Code.Output.Process("Error DrainQueuesForShutdown: " + ex.Message, PrintTo.OutputTab1); }
                     actorDrained++;
                 }
                 Print(string.Format("[SHUTDOWN] Drained {0} IPC cmds and {1} Actor cmds.", ipcDrained, actorDrained));
