@@ -34,6 +34,8 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region V12.30 ATR Auto-Sizing Engine
 
+        private const int SyncFailureCooldownMs = 500; // V12.45: ChangeOrder retry cooldown after failure
+
         // IS-01: Iron Shield Target Distribution [V12.BEYOND-BUG]
         // Replaces percentage-based engine with count-based integer division.
         // Source of truth: activeTargetCount (mirrors dashboard selection exactly).
@@ -127,7 +129,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // V12.45 RETRY COOLDOWN: If a ChangeOrder failed recently, back off for 500ms
-            if ((DateTime.UtcNow - _lastSyncFailureTime).TotalMilliseconds < 500)
+            if ((DateTime.UtcNow - _lastSyncFailureTime).TotalMilliseconds < SyncFailureCooldownMs)
             {
                 return;
             }
