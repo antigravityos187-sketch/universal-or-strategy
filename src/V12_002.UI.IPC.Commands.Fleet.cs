@@ -324,6 +324,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             int cancelled = 0;
 
             // Build 1001: Use broker truth for master position check
+            // not hot path -- LINQ acceptable
             bool masterHasPosition = Account.Positions.Any(p =>
                 p.Instrument != null
                 && p.Instrument.FullName == Instrument.FullName
@@ -348,6 +349,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private int CancelAll_ProcessSingleFleetAccount(Account acct, bool masterHasPosition)
         {
             int cancelled = 0;
+            // not hot path -- LINQ acceptable
             bool acctHasActiveFsm = _followerBrackets.Values.Any(f =>
                 f.AccountName == acct.Name && f.State == FollowerBracketState.Active
             );
