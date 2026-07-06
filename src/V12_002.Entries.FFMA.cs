@@ -579,152 +579,53 @@ namespace NinjaTrader.NinjaScript.Strategies
                 double currentPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
                 double ema9Value = ema9[0];
                 MarketPosition direction = DetermineFFMAManualMarketDirection(currentPrice, ema9Value);
+                double entryPrice = currentPrice;
 
-                double entryPrice = currentPrice; // Market order
-
-                // Stop at entry candle high/low (same as Auto FFMA)
-                double stopPrice = Instrument.MasterInstrument.RoundToTickSize(
-                    direction == MarketPosition.Long ? Low[0] : High[0]
-                );
-                double stopDistance = Math.Min(Math.Abs(entryPrice - stopPrice), MaximumStop);
-
-                if (stopDistance < tickSize * 2)
-                {
-                    Print(
-                        string.Format(
-                            "V12.27 FFMA_MANUAL_MARKET: Stop too tight ({0:F2}pts) - using 2 tick minimum",
-                            stopDistance
-                        )
-                    );
-                    stopPrice = Instrument.MasterInstrument.RoundToTickSize(
-                        direction == MarketPosition.Long ? entryPrice - (tickSize * 2) : entryPrice + (tickSize * 2)
-                    );
-                    stopDistance = tickSize * 2;
-                }
-
-                // V12.44: Final stop-distance guard -- prevent CalculatePositionSize(0) -> ? contracts
-                if (stopDistance <= 0)
-                {
-                    Print("[FFMA_MANUAL_MARKET REJECT] Stop distance is zero (doji candle?). Aborting entry.");
+                double stopPrice = CalcFFMAManualStopPrice(direction, entryPrice);
+                if (double.IsNaN(stopPrice))
                     return;
-                }
 
-                // Universal Ladder: T(n)Type dropdown drives all target pricing.
-                double target1Price = CalculateTargetPrice(direction, entryPrice, 1);
-                double target2Price = CalculateTargetPrice(direction, entryPrice, 2);
-                double target3Price = CalculateTargetPrice(direction, entryPrice, 3);
-                double target4Price = CalculateTargetPrice(direction, entryPrice, 4);
-                double target5Price = CalculateTargetPrice(direction, entryPrice, 5);
-
-                // contracts input passed directly by UI/IPC (No-Blink compliance)
-                int t1Qty,
-                    t2Qty,
-                    t3Qty,
-                    t4Qty,
-                    t5Qty;
-                GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
+                CalcFFMAManualTargetPrices(
+                    direction,
+                    entryPrice,
+                    contracts,
+                    out double target1Price,
+                    out double target2Price,
+                    out double target3Price,
+                    out double target4Price,
+                    out double target5Price,
+                    out int t1Qty,
+                    out int t2Qty,
+                    out int t3Qty,
+                    out int t4Qty,
+                    out int t5Qty
+                );
 
                 string signalName = direction == MarketPosition.Long ? "FFMAMnlMktLong" : "FFMAMnlMktShort";
                 string entryName = signalName + "_" + DateTime.UtcNow.ToString("HHmmssffff");
 
-                PositionInfo pos = new PositionInfo
-                {
-                    SignalName = entryName,
-                    Direction = direction,
-                    TotalContracts = contracts,
-                    T1Contracts = t1Qty,
-                    T2Contracts = t2Qty,
-                    T3Contracts = t3Qty,
-                    T4Contracts = t4Qty,
-                    T5Contracts = t5Qty,
-                    RemainingContracts = contracts,
-                    EntryPrice = entryPrice,
-                    InitialStopPrice = stopPrice,
-                    CurrentStopPrice = stopPrice,
-                    Target1Price = target1Price,
-                    Target2Price = target2Price,
-                    Target3Price = target3Price,
-                    Target4Price = target4Price,
-                    Target5Price = target5Price,
-                    EntryFilled = false,
-                    T1Filled = false,
-                    T2Filled = false,
-                    T3Filled = false,
-                    BracketSubmitted = false,
-                    ExtremePriceSinceEntry = entryPrice,
-                    CurrentTrailLevel = 0,
-                    EntryOrderType = OrderType.Market,
-                    IsRMATrade = false,
-                    IsFFMATrade = true,
-                    OcoGroupId = "V12_" + GetStableHash(entryName),
-                };
-                // Submit MARKET order (immediate execution)
-                Order entryOrder =
-                    direction == MarketPosition.Long
-                        ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Market, contracts, 0, 0, "", entryName)
-                        : SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.SellShort,
-                            OrderType.Market,
-                            contracts,
-                            0,
-                            0,
-                            "",
-                            entryName
-                        );
+                PositionInfo pos = BuildFFMAManualPositionInfo(
+                    entryName,
+                    direction,
+                    contracts,
+                    entryPrice,
+                    stopPrice,
+                    target1Price,
+                    target2Price,
+                    target3Price,
+                    target4Price,
+                    target5Price,
+                    t1Qty,
+                    t2Qty,
+                    t3Qty,
+                    t4Qty,
+                    t5Qty
+                );
 
-                // A1-1/A2-1: Null-abort rollback + stateLock wrap (Build 960 audit fix)
-                if (entryOrder == null)
-                {
-                    Print(
-                        "[ENTRY_ABORT] FFMA_MANUAL_MARKET SubmitOrderUnmanaged returned null for "
-                            + entryName
-                            + ". Rolling back."
-                    );
+                if (!SubmitFFMAManualMarketOrder(direction, contracts, entryName, pos))
                     return;
-                }
-                {
-                    var _en966ap = entryName;
-                    var _p966ap = pos;
-                    Enqueue(ctx =>
-                    {
-                        ctx.activePositions[_en966ap] = _p966ap;
-                    });
-                }
-                {
-                    var _en966 = entryName;
-                    var _eo966 = entryOrder;
-                    Enqueue(ctx =>
-                    {
-                        ctx.entryOrders[_en966] = _eo966;
-                    });
-                }
 
-                Print(
-                    string.Format(
-                        "V12.27 FFMA_MANUAL_MARKET: {0} {1}@MARKET | Stop: {2:F2} (candle {3}) | Toward EMA9={4:F2}",
-                        direction,
-                        contracts,
-                        stopPrice,
-                        direction == MarketPosition.Long ? "low" : "high",
-                        ema9Value
-                    )
-                );
-                Print(
-                    string.Format(
-                        "V12.27 FFMA_MANUAL_MARKET TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2} | T4:{6}@{7:F2} | T5:{8}@{9:F2}",
-                        t1Qty,
-                        target1Price,
-                        t2Qty,
-                        target2Price,
-                        t3Qty,
-                        target3Price,
-                        t4Qty,
-                        target4Price,
-                        t5Qty,
-                        target5Price
-                    )
-                );
+                LogFFMAManualMarketEntry(pos, ema9Value);
 
                 if (EnableSIMA)
                 {
@@ -744,6 +645,187 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Print("ERROR ExecuteFFMAManualMarketEntry: " + ex.Message);
             }
+        }
+
+        // -- Block-A: stop price calculation + minimum-tick and zero-distance guards
+        private double CalcFFMAManualStopPrice(MarketPosition direction, double entryPrice)
+        {
+            double stopPrice = Instrument.MasterInstrument.RoundToTickSize(
+                direction == MarketPosition.Long ? Low[0] : High[0]
+            );
+            double stopDistance = Math.Min(Math.Abs(entryPrice - stopPrice), MaximumStop);
+
+            if (stopDistance < tickSize * 2)
+            {
+                Print(
+                    string.Format(
+                        "V12.27 FFMA_MANUAL_MARKET: Stop too tight ({0:F2}pts) - using 2 tick minimum",
+                        stopDistance
+                    )
+                );
+                stopPrice = Instrument.MasterInstrument.RoundToTickSize(
+                    direction == MarketPosition.Long ? entryPrice - (tickSize * 2) : entryPrice + (tickSize * 2)
+                );
+                stopDistance = tickSize * 2;
+            }
+
+            // V12.44: Final stop-distance guard -- prevent CalculatePositionSize(0) -> div-by-zero
+            if (stopDistance <= 0)
+            {
+                Print("[FFMA_MANUAL_MARKET REJECT] Stop distance is zero (doji candle?). Aborting entry.");
+                return double.NaN;
+            }
+
+            return stopPrice;
+        }
+
+        // -- Block-B: five-level target price ladder + quantity distribution
+        private void CalcFFMAManualTargetPrices(
+            MarketPosition direction,
+            double entryPrice,
+            int contracts,
+            out double t1Price,
+            out double t2Price,
+            out double t3Price,
+            out double t4Price,
+            out double t5Price,
+            out int t1Qty,
+            out int t2Qty,
+            out int t3Qty,
+            out int t4Qty,
+            out int t5Qty
+        )
+        {
+            t1Price = CalculateTargetPrice(direction, entryPrice, 1);
+            t2Price = CalculateTargetPrice(direction, entryPrice, 2);
+            t3Price = CalculateTargetPrice(direction, entryPrice, 3);
+            t4Price = CalculateTargetPrice(direction, entryPrice, 4);
+            t5Price = CalculateTargetPrice(direction, entryPrice, 5);
+            GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
+        }
+
+        // -- Block-C: PositionInfo 30-field factory -- pure construction, zero decisions
+        private PositionInfo BuildFFMAManualPositionInfo(
+            string entryName,
+            MarketPosition direction,
+            int contracts,
+            double entryPrice,
+            double stopPrice,
+            double target1Price,
+            double target2Price,
+            double target3Price,
+            double target4Price,
+            double target5Price,
+            int t1Qty,
+            int t2Qty,
+            int t3Qty,
+            int t4Qty,
+            int t5Qty
+        )
+        {
+            return new PositionInfo
+            {
+                SignalName = entryName,
+                Direction = direction,
+                TotalContracts = contracts,
+                T1Contracts = t1Qty,
+                T2Contracts = t2Qty,
+                T3Contracts = t3Qty,
+                T4Contracts = t4Qty,
+                T5Contracts = t5Qty,
+                RemainingContracts = contracts,
+                EntryPrice = entryPrice,
+                InitialStopPrice = stopPrice,
+                CurrentStopPrice = stopPrice,
+                Target1Price = target1Price,
+                Target2Price = target2Price,
+                Target3Price = target3Price,
+                Target4Price = target4Price,
+                Target5Price = target5Price,
+                EntryFilled = false,
+                T1Filled = false,
+                T2Filled = false,
+                T3Filled = false,
+                BracketSubmitted = false,
+                ExtremePriceSinceEntry = entryPrice,
+                CurrentTrailLevel = 0,
+                EntryOrderType = OrderType.Market,
+                IsRMATrade = false,
+                IsFFMATrade = true,
+                OcoGroupId = "V12_" + GetStableHash(entryName),
+            };
+        }
+
+        // -- Block-E: market order submission + null-abort + FSM state enqueue
+        private bool SubmitFFMAManualMarketOrder(
+            MarketPosition direction,
+            int contracts,
+            string entryName,
+            PositionInfo pos
+        )
+        {
+            Order entryOrder =
+                direction == MarketPosition.Long
+                    ? SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Market, contracts, 0, 0, "", entryName)
+                    : SubmitOrderUnmanaged(0, OrderAction.SellShort, OrderType.Market, contracts, 0, 0, "", entryName);
+
+            // A1-1/A2-1: Null-abort rollback (Build 960 audit fix)
+            if (entryOrder == null)
+            {
+                Print(
+                    "[ENTRY_ABORT] FFMA_MANUAL_MARKET SubmitOrderUnmanaged returned null for "
+                        + entryName
+                        + ". Rolling back."
+                );
+                return false;
+            }
+
+            var en966ap = entryName;
+            var p966ap = pos;
+            Enqueue(ctx =>
+            {
+                ctx.activePositions[en966ap] = p966ap;
+            });
+
+            var en966 = entryName;
+            var eo966 = entryOrder;
+            Enqueue(ctx =>
+            {
+                ctx.entryOrders[en966] = eo966;
+            });
+
+            return true;
+        }
+
+        // -- Block-D: diagnostic Print log calls -- cold path, no decisions
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void LogFFMAManualMarketEntry(PositionInfo pos, double ema9Value)
+        {
+            Print(
+                string.Format(
+                    "V12.27 FFMA_MANUAL_MARKET: {0} {1}@MARKET | Stop: {2:F2} (candle {3}) | Toward EMA9={4:F2}",
+                    pos.Direction,
+                    pos.TotalContracts,
+                    pos.InitialStopPrice,
+                    pos.Direction == MarketPosition.Long ? "low" : "high",
+                    ema9Value
+                )
+            );
+            Print(
+                string.Format(
+                    "V12.27 FFMA_MANUAL_MARKET TARGETS: T1:{0}@{1:F2} | T2:{2}@{3:F2} | T3:{4}@{5:F2} | T4:{6}@{7:F2} | T5:{8}@{9:F2}",
+                    pos.T1Contracts,
+                    pos.Target1Price,
+                    pos.T2Contracts,
+                    pos.Target2Price,
+                    pos.T3Contracts,
+                    pos.Target3Price,
+                    pos.T4Contracts,
+                    pos.Target4Price,
+                    pos.T5Contracts,
+                    pos.Target5Price
+                )
+            );
         }
 
         #endregion
