@@ -34,6 +34,14 @@ namespace NinjaTrader.NinjaScript.Strategies
     {
         #region IPC Server
 
+        // IPC timing (ms)
+        private const int IPC_ACCEPT_POLL_MS = 100;
+        private const int IPC_DATA_POLL_MS = 50;
+        private const int IPC_THREAD_JOIN_MS = 500;
+
+        // IPC buffer sizes
+        private const int IPC_READ_BUFFER_SIZE = 4096;
+
         private string GetCurrentConfigMode()
         {
             if (isRMAModeActive)
@@ -88,7 +96,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     if (!ipcListener.Pending())
                     {
-                        Thread.Sleep(100);
+                        Thread.Sleep(IPC_ACCEPT_POLL_MS);
                         continue;
                     }
 
@@ -197,9 +205,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             TcpClient client = session.Client;
             NetworkStream stream = session.Stream;
             StringBuilder lineBuffer = new StringBuilder();
-            byte[] buffer = new byte[4096];
+            byte[] buffer = new byte[IPC_READ_BUFFER_SIZE];
             Decoder utf8Decoder = new UTF8Encoding(false, true).GetDecoder();
-            char[] charBuf = new char[4096];
+            char[] charBuf = new char[IPC_READ_BUFFER_SIZE];
 
             while (isIpcRunning && client.Connected)
             {
@@ -252,7 +260,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             if (!stream.DataAvailable)
             {
-                Thread.Sleep(50);
+                Thread.Sleep(IPC_DATA_POLL_MS);
                 return -1;
             }
 
@@ -474,7 +482,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (ipcThread == null)
                 return;
             if (ipcThread.IsAlive)
-                ipcThread.Join(500);
+                ipcThread.Join(IPC_THREAD_JOIN_MS);
         }
 
         private void CloseIpcClientSession(IpcClientSession session, string clientId)
