@@ -228,8 +228,9 @@ namespace NinjaTrader.NinjaScript.Strategies
             else if (orderState == OrderState.Cancelled)
                 return HandleOrderCancelled(order);
 
-            // Correctness by construction: throw for unhandled terminal states
-            throw new InvalidOperationException("Unhandled terminal state: " + orderState.ToString());
+            // Unhandled terminal state: log and return false (no hot-path throw)
+            NinjaTrader.Code.Output.Process("Error HandleOrderState_Terminal: unhandled terminal state " + orderState.ToString(), PrintTo.OutputTab1);
+            return false;
         }
 
         // [EPIC-CCN-10] Helper: Handle working order state
