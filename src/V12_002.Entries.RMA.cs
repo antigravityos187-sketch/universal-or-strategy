@@ -127,10 +127,30 @@ namespace NinjaTrader.NinjaScript.Strategies
         // M1-B Helper: Submit both bracket legs (Build 981 Protocol: direct stopOrders writes preserved)
         private TrendSplitBrackets SubmitTrendSplitBrackets(TrendSplitLevels levels)
         {
+            List<string> masterEntryNames = new List<string> { levels.Entry1Name };
+
+            var entryOrder1 = SubmitTrendE1LegOrder(levels, out var pos1, out int masterDeltaE1);
+            if (!CommitOrRollbackE1LegOrder(levels, entryOrder1, pos1, masterDeltaE1))
+                return null;
+
+            if (levels.Qty15 > 0)
+            {
+                var entryOrder2 = SubmitTrendE2LegOrder(levels, out var pos2, out int masterDeltaE2);
+                if (!CommitOrRollbackE2LegOrder(levels, entryOrder1, entryOrder2, pos2, masterDeltaE2))
+                    return null;
+                masterEntryNames.Add(levels.Entry2Name);
+            }
+
+            return new TrendSplitBrackets { MasterEntryNames = masterEntryNames };
+        }
+
+        // W9-L7-006 T1: Submit E1 leg order -- stop price, CreateTRENDPosition, delta enqueue, order submit
+        private Order SubmitTrendE1LegOrder(TrendSplitLevels levels, out PositionInfo pos1, out int masterDeltaE1)
+        {
             double stop1Price = Instrument.MasterInstrument.RoundToTickSize(
                 levels.Direction == MarketPosition.Long ? levels.E9 - levels.Stop9Dist : levels.E9 + levels.Stop9Dist
             );
-            PositionInfo pos1 = CreateTRENDPosition(
+            pos1 = CreateTRENDPosition(
                 levels.Entry1Name,
                 levels.Direction,
                 levels.E9,
@@ -140,151 +160,161 @@ namespace NinjaTrader.NinjaScript.Strategies
                 levels.TrendGroupId,
                 true
             );
-
-            List<string> masterEntryNames = new List<string> { levels.Entry1Name };
-
-            int masterDeltaE1 = (levels.Direction == MarketPosition.Long) ? levels.Qty9 : -levels.Qty9;
+            masterDeltaE1 = (levels.Direction == MarketPosition.Long) ? levels.Qty9 : -levels.Qty9;
             {
-                var _aek966 = ExpKey(Account.Name);
-                var _aed966 = (masterDeltaE1);
-                Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
+                var aek966 = ExpKey(Account.Name);
+                var aed966 = masterDeltaE1;
+                Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(aek966, aed966));
             }
+            return levels.Direction == MarketPosition.Long
+                ? SubmitOrderUnmanaged(
+                    0,
+                    OrderAction.Buy,
+                    OrderType.Limit,
+                    levels.Qty9,
+                    levels.E9,
+                    0,
+                    "",
+                    levels.Entry1Name
+                )
+                : SubmitOrderUnmanaged(
+                    0,
+                    OrderAction.SellShort,
+                    OrderType.Limit,
+                    levels.Qty9,
+                    levels.E9,
+                    0,
+                    "",
+                    levels.Entry1Name
+                );
+        }
 
-            Order entryOrder1 =
-                levels.Direction == MarketPosition.Long
-                    ? SubmitOrderUnmanaged(
-                        0,
-                        OrderAction.Buy,
-                        OrderType.Limit,
-                        levels.Qty9,
-                        levels.E9,
-                        0,
-                        "",
-                        levels.Entry1Name
-                    )
-                    : SubmitOrderUnmanaged(
-                        0,
-                        OrderAction.SellShort,
-                        OrderType.Limit,
-                        levels.Qty9,
-                        levels.E9,
-                        0,
-                        "",
-                        levels.Entry1Name
-                    );
-
-            // A1-1/A2-1: Null-abort + stateLock wrap for E1 (Build 960 audit fix)
+        // W9-L7-006 T2: Null-abort rollback or actor state commit for E1 (Build 960 audit fix)
+        private bool CommitOrRollbackE1LegOrder(
+            TrendSplitLevels levels,
+            Order entryOrder1,
+            PositionInfo pos1,
+            int masterDeltaE1
+        )
+        {
+            // A1-1/A2-1: Null-abort + stateLock wrap for E1
             if (entryOrder1 == null)
             {
                 {
-                    var _aek966 = ExpKey(Account.Name);
-                    var _aed966 = (-masterDeltaE1);
-                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
+                    var aek966 = ExpKey(Account.Name);
+                    var aed966 = (-masterDeltaE1);
+                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(aek966, aed966));
                 }
                 Print(
                     "[ENTRY_ABORT] TrendSplit E1 SubmitOrderUnmanaged returned null for "
                         + levels.Entry1Name
                         + ". Rolling back."
                 );
-                return null;
+                return false;
             }
             {
-                var _en966 = levels.Entry1Name;
-                var _p966 = pos1;
-                var _eo966 = entryOrder1;
+                var en966 = levels.Entry1Name;
+                var p966 = pos1;
+                var eo966 = entryOrder1;
                 Enqueue(ctx =>
                 {
-                    ctx.activePositions[_en966] = _p966;
-                    ctx.entryOrders[_en966] = _eo966;
+                    ctx.activePositions[en966] = p966;
+                    ctx.entryOrders[en966] = eo966;
                 });
             }
+            return true;
+        }
 
-            if (levels.Qty15 > 0)
+        // W9-L7-006 T3: Submit E2 leg order -- stop2, CreateTRENDPosition, partnership link, delta enqueue, order submit
+        private Order SubmitTrendE2LegOrder(TrendSplitLevels levels, out PositionInfo pos2, out int masterDeltaE2)
+        {
+            double stop2Price = Instrument.MasterInstrument.RoundToTickSize(
+                levels.Direction == MarketPosition.Long
+                    ? levels.E15 - levels.Stop15Dist
+                    : levels.E15 + levels.Stop15Dist
+            );
+            pos2 = CreateTRENDPosition(
+                levels.Entry2Name,
+                levels.Direction,
+                levels.E15,
+                stop2Price,
+                levels.Qty15,
+                false,
+                levels.TrendGroupId,
+                true
+            );
+            linkedTRENDEntries[levels.Entry1Name] = levels.Entry2Name;
+            linkedTRENDEntries[levels.Entry2Name] = levels.Entry1Name;
+            masterDeltaE2 = (levels.Direction == MarketPosition.Long) ? levels.Qty15 : -levels.Qty15;
             {
-                double stop2Price = Instrument.MasterInstrument.RoundToTickSize(
-                    levels.Direction == MarketPosition.Long
-                        ? levels.E15 - levels.Stop15Dist
-                        : levels.E15 + levels.Stop15Dist
-                );
-                PositionInfo pos2 = CreateTRENDPosition(
-                    levels.Entry2Name,
-                    levels.Direction,
-                    levels.E15,
-                    stop2Price,
-                    levels.Qty15,
-                    false,
-                    levels.TrendGroupId,
-                    true
-                );
-
-                linkedTRENDEntries[levels.Entry1Name] = levels.Entry2Name;
-                linkedTRENDEntries[levels.Entry2Name] = levels.Entry1Name;
-
-                int masterDeltaE2 = (levels.Direction == MarketPosition.Long) ? levels.Qty15 : -levels.Qty15;
-                {
-                    var _aek966 = ExpKey(Account.Name);
-                    var _aed966 = (masterDeltaE2);
-                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
-                }
-
-                Order entryOrder2 =
-                    levels.Direction == MarketPosition.Long
-                        ? SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.Buy,
-                            OrderType.Limit,
-                            levels.Qty15,
-                            levels.E15,
-                            0,
-                            "",
-                            levels.Entry2Name
-                        )
-                        : SubmitOrderUnmanaged(
-                            0,
-                            OrderAction.SellShort,
-                            OrderType.Limit,
-                            levels.Qty15,
-                            levels.E15,
-                            0,
-                            "",
-                            levels.Entry2Name
-                        );
-
-                // A1-1/A2-1: Null-abort + stateLock wrap for E2 (Build 960 audit fix)
-                if (entryOrder2 == null)
-                {
-                    {
-                        var _aek966 = ExpKey(Account.Name);
-                        var _aed966 = (-masterDeltaE2);
-                        Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
-                    }
-                    // Remove partnership references; HandleOrderCancelled will teardown E1 state naturally.
-                    string removedPartner;
-                    linkedTRENDEntries.TryRemove(levels.Entry1Name, out removedPartner);
-                    linkedTRENDEntries.TryRemove(levels.Entry2Name, out removedPartner);
-                    if (entryOrder1 != null && !IsOrderTerminal(entryOrder1.OrderState))
-                        CancelOrderSafe(entryOrder1, null);
-                    Print(
-                        "[ENTRY_ABORT] TrendSplit E2 NULL -- E1 cancel issued for "
-                            + levels.Entry1Name
-                            + "; teardown deferred to cancel callback."
-                    );
-                    return null;
-                }
-                {
-                    var _en966 = levels.Entry2Name;
-                    var _p966 = pos2;
-                    var _eo966 = entryOrder2;
-                    Enqueue(ctx =>
-                    {
-                        ctx.activePositions[_en966] = _p966;
-                        ctx.entryOrders[_en966] = _eo966;
-                    });
-                }
-                masterEntryNames.Add(levels.Entry2Name);
+                var aek966 = ExpKey(Account.Name);
+                var aed966 = masterDeltaE2;
+                Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(aek966, aed966));
             }
+            return levels.Direction == MarketPosition.Long
+                ? SubmitOrderUnmanaged(
+                    0,
+                    OrderAction.Buy,
+                    OrderType.Limit,
+                    levels.Qty15,
+                    levels.E15,
+                    0,
+                    "",
+                    levels.Entry2Name
+                )
+                : SubmitOrderUnmanaged(
+                    0,
+                    OrderAction.SellShort,
+                    OrderType.Limit,
+                    levels.Qty15,
+                    levels.E15,
+                    0,
+                    "",
+                    levels.Entry2Name
+                );
+        }
 
-            return new TrendSplitBrackets { MasterEntryNames = masterEntryNames };
+        // W9-L7-006 T4: Null-abort with partnership teardown + E1 cancel, or actor commit for E2
+        private bool CommitOrRollbackE2LegOrder(
+            TrendSplitLevels levels,
+            Order entryOrder1,
+            Order entryOrder2,
+            PositionInfo pos2,
+            int masterDeltaE2
+        )
+        {
+            // A1-1/A2-1: Null-abort + stateLock wrap for E2 (Build 960 audit fix)
+            if (entryOrder2 == null)
+            {
+                {
+                    var aek966 = ExpKey(Account.Name);
+                    var aed966 = (-masterDeltaE2);
+                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(aek966, aed966));
+                }
+                // Remove partnership references; HandleOrderCancelled will teardown E1 state naturally.
+                string removedPartner;
+                linkedTRENDEntries.TryRemove(levels.Entry1Name, out removedPartner);
+                linkedTRENDEntries.TryRemove(levels.Entry2Name, out removedPartner);
+                if (entryOrder1 != null && !IsOrderTerminal(entryOrder1.OrderState))
+                    CancelOrderSafe(entryOrder1, null);
+                Print(
+                    "[ENTRY_ABORT] TrendSplit E2 NULL -- E1 cancel issued for "
+                        + levels.Entry1Name
+                        + "; teardown deferred to cancel callback."
+                );
+                return false;
+            }
+            {
+                var en966 = levels.Entry2Name;
+                var p966 = pos2;
+                var eo966 = entryOrder2;
+                Enqueue(ctx =>
+                {
+                    ctx.activePositions[en966] = p966;
+                    ctx.entryOrders[en966] = eo966;
+                });
+            }
+            return true;
         }
 
         // M1-B Helper: Finalize entry with weighted calculation, logging, SIMA dispatch, and mode deactivation
