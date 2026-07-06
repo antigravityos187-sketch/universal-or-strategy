@@ -1,4 +1,5 @@
 // V12.44 MODULAR: UI Callbacks Module (Split from UI.cs)
+// W9-L5-013: Magic number constants extracted
 // Contains: Hotkey handlers, chart click handlers, target/runner action executors
 using System;
 using System.Collections.Concurrent;
@@ -32,6 +33,15 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        #region UI Callbacks -- Constants
+
+        private const double CHART_PRICE_AREA_RATIO = 0.667;
+        private const int CHART_HOVER_OVERLAY_ZINDEX = 9999;
+        private const int TRAIL_DISABLE_SENTINEL = 999;
+        private const double RUNNER_LOCK_HALF_PROFIT = 0.5;
+
+        #endregion
+
         #region UI
 
         // [Build 1108.002-HF1] Overlay rectangle for click-trader border warning (no layout reflow)
@@ -89,7 +99,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                         int rowSpan = Math.Max(1, parentGrid.RowDefinitions.Count);
                         Grid.SetColumnSpan(_chartHoverOverlay, colSpan);
                         Grid.SetRowSpan(_chartHoverOverlay, rowSpan);
-                        System.Windows.Controls.Panel.SetZIndex(_chartHoverOverlay, 9999);
+                        System.Windows.Controls.Panel.SetZIndex(_chartHoverOverlay, CHART_HOVER_OVERLAY_ZINDEX);
 
                         parentGrid.Children.Add(_chartHoverOverlay);
                         _chartOverlayParentGrid = parentGrid;
@@ -150,7 +160,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             )
                 return false;
 
-            double effectivePriceHeight = ChartPanel.H * 0.667;
+            double effectivePriceHeight = ChartPanel.H * CHART_PRICE_AREA_RATIO;
             return mouseInPanel.Y <= effectivePriceHeight;
         }
 
@@ -298,7 +308,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // CRITICAL: ChartPanel.H includes time axis at bottom
             // The actual price plotting area is approximately 67% of total panel height
-            double effectivePriceHeight = panelHeight * 0.667;
+            double effectivePriceHeight = panelHeight * CHART_PRICE_AREA_RATIO;
 
             // Coordinate conversion: clamp + linear interpolation (EPIC-W7-046 T2)
             double yInPanel = mouseInPanel.Y;
@@ -1257,8 +1267,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 pos.Direction == MarketPosition.Long ? currentPrice - pos.EntryPrice : pos.EntryPrice - currentPrice;
             double lock50Stop =
                 pos.Direction == MarketPosition.Long
-                    ? pos.EntryPrice + (unrealizedProfit * 0.5)
-                    : pos.EntryPrice - (unrealizedProfit * 0.5);
+                    ? pos.EntryPrice + (unrealizedProfit * RUNNER_LOCK_HALF_PROFIT)
+                    : pos.EntryPrice - (unrealizedProfit * RUNNER_LOCK_HALF_PROFIT);
             lock50Stop = Instrument.MasterInstrument.RoundToTickSize(lock50Stop);
             UpdateStopOrder(entryName, pos, lock50Stop, pos.CurrentTrailLevel);
             Print(
@@ -1274,7 +1284,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         private void ExecuteRunner_DisableTrail(string entryName, PositionInfo pos)
         {
             // Disable trailing - keep stop where it is
-            pos.CurrentTrailLevel = 999; // Set to high number to prevent further trailing
+            pos.CurrentTrailLevel = TRAIL_DISABLE_SENTINEL; // Set to high number to prevent further trailing
             Print(
                 string.Format("? RUNNER TRAILING DISABLED: {0} - Stop fixed @ {1:F2}", entryName, pos.CurrentStopPrice)
             );

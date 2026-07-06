@@ -329,9 +329,11 @@ namespace NinjaTrader.NinjaScript.Strategies
         private const int DRAW_ORBOX_THROTTLE_MS = 200;
 
         // V8.30: Adaptive throttling based on tick frequency
+        private const int ADAPTIVE_THROTTLE_MS_DEFAULT = 100;
+        private const int ACTOR_QUEUE_WARN_DEPTH = 100;
         private int tickCountInLastSecond = 0;
         private DateTime lastTickCountReset = DateTime.MinValue;
-        private int adaptiveThrottleMs = 100;
+        private int adaptiveThrottleMs = ADAPTIVE_THROTTLE_MS_DEFAULT;
 
         // V9.1.8 IPC Integration
         private TcpListener ipcListener;
@@ -583,7 +585,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             TouchStrategyHeartbeat();
             // Build 1109 [FREEZE-PROOF]: Early warning for queue saturation
             int _actorQd = _cmdQueue.Count;
-            if (_actorQd > 100)
+            if (_actorQd > ACTOR_QUEUE_WARN_DEPTH)
                 Print("[ACTOR_WARN] Queue depth=" + _actorQd + " -- possible backlog");
             BeginActorCycle();
             try
