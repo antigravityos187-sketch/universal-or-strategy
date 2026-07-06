@@ -254,6 +254,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private List<Account> GetFleetAccountsSnapshot()
         {
+            // not hot path -- LINQ acceptable
             return Account
                 .All.Where(a => IsFleetAccount(a))
                 .OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
@@ -292,6 +293,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             var accounts = GetFleetAccountsSnapshot();
 
             // Fast path: already a real account name
+            // not hot path -- LINQ acceptable
             var direct = accounts.FirstOrDefault(a =>
                 string.Equals(a.Name, identity, StringComparison.OrdinalIgnoreCase)
             );

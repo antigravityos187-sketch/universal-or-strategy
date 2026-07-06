@@ -185,6 +185,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             List<string> acctStates = new List<string>();
             foreach (Account acct in fleetAccounts)
             {
+                // not hot path -- LINQ acceptable
                 var bPos = acct.Positions.FirstOrDefault(p => p.Instrument.FullName == Instrument.FullName);
                 int act = 0;
                 if (bPos != null && bPos.MarketPosition != MarketPosition.Flat)
