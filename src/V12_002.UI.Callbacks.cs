@@ -1129,36 +1129,27 @@ namespace NinjaTrader.NinjaScript.Strategies
             return true;
         }
 
+        private double GetCurrentPrice() => lastKnownPrice > 0 ? lastKnownPrice : Close[0];
+
+        private static readonly Dictionary<
+            string,
+            Action<V12_002, string, PositionInfo, int, double>>
+            _runnerDispatch = new Dictionary<
+                string,
+                Action<V12_002, string, PositionInfo, int, double>>(StringComparer.Ordinal)
+            {
+                { "market",       (self, en, p, rc, cp) => self.ExecuteRunner_Market(en, p, rc)    },
+                { "stop1pt",      (self, en, p, rc, cp) => self.ExecuteRunner_StopOnePoint(en, p)  },
+                { "stop2pt",      (self, en, p, rc, cp) => self.ExecuteRunner_StopTwoPoint(en, p)  },
+                { "stopbe",       (self, en, p, rc, cp) => self.ExecuteRunner_Breakeven(en, p, cp) },
+                { "lock50",       (self, en, p, rc, cp) => self.ExecuteRunner_Lock50(en, p, cp)    },
+                { "disabletrail", (self, en, p, rc, cp) => self.ExecuteRunner_DisableTrail(en, p)  },
+            };
+
         private void DispatchRunnerAction(string action, string entryName, PositionInfo pos, int runnerContracts)
         {
-            double currentPrice = lastKnownPrice > 0 ? lastKnownPrice : Close[0];
-
-            switch (action)
-            {
-                case "market":
-                    ExecuteRunner_Market(entryName, pos, runnerContracts);
-                    break;
-
-                case "stop1pt":
-                    ExecuteRunner_StopOnePoint(entryName, pos);
-                    break;
-
-                case "stop2pt":
-                    ExecuteRunner_StopTwoPoint(entryName, pos);
-                    break;
-
-                case "stopbe":
-                    ExecuteRunner_Breakeven(entryName, pos, currentPrice);
-                    break;
-
-                case "lock50":
-                    ExecuteRunner_Lock50(entryName, pos, currentPrice);
-                    break;
-
-                case "disabletrail":
-                    ExecuteRunner_DisableTrail(entryName, pos);
-                    break;
-            }
+            if (_runnerDispatch.TryGetValue(action, out var handler))
+                handler(this, entryName, pos, runnerContracts, GetCurrentPrice());
         }
 
         private void ExecuteRunner_Market(string entryName, PositionInfo pos, int runnerContracts)
