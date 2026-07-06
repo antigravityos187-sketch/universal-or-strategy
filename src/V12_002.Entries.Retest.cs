@@ -107,147 +107,14 @@ namespace NinjaTrader.NinjaScript.Strategies
                 string signalName;
                 DetermineRetestDirection(currentPrice, out direction, out entryPrice, out signalName);
 
-                // Calculate stop and targets using ATR
-                double multToUse = isRetestRmaMode ? RMAStopATRMultiplier : RetestATRMultiplier;
-                Print(
-                    string.Format(
-                        "V12.20: RETEST Multiplier -> Mode={0} Using={1:F2}x",
-                        isRetestRmaMode ? "RMA" : "STD",
-                        multToUse
-                    )
-                );
-                double stopDistance = CalculateATRStopDistance(multToUse); // V12.30: Ceiling-rounded
-
-                // V12.Phase6 [TICK-01]: All prices rounded to valid tick increments
-                double stopPrice = CalculateRetestStopPrice(direction, entryPrice, stopDistance);
-
-                // Universal Ladder: T(n)Type dropdown drives all target pricing.
-                double target1Price = CalculateTargetPrice(direction, entryPrice, 1);
-                double target2Price = CalculateTargetPrice(direction, entryPrice, 2);
-                double target3Price = CalculateTargetPrice(direction, entryPrice, 3);
-                double target4Price = CalculateTargetPrice(direction, entryPrice, 4);
-                double target5Price = CalculateTargetPrice(direction, entryPrice, 5);
-
-                int t1Qty,
-                    t2Qty,
-                    t3Qty,
-                    t4Qty,
-                    t5Qty;
-                GetTargetDistribution(contracts, out t1Qty, out t2Qty, out t3Qty, out t4Qty, out t5Qty);
-
-                string timestamp = DateTime.UtcNow.ToString("HHmmssffff");
-                string entryName = signalName + "_" + timestamp;
-
-                PositionInfo pos = new PositionInfo
-                {
-                    SignalName = entryName,
-                    Direction = direction,
-                    TotalContracts = contracts,
-                    T1Contracts = t1Qty,
-                    T2Contracts = t2Qty,
-                    T3Contracts = t3Qty,
-                    T4Contracts = t4Qty,
-                    T5Contracts = t5Qty,
-                    RemainingContracts = contracts,
-                    EntryPrice = entryPrice,
-                    InitialStopPrice = stopPrice,
-                    CurrentStopPrice = stopPrice,
-                    Target1Price = target1Price,
-                    Target2Price = target2Price,
-                    Target3Price = target3Price,
-                    Target4Price = target4Price,
-                    Target5Price = target5Price,
-                    EntryFilled = false,
-                    T1Filled = false,
-                    T2Filled = false,
-                    T3Filled = false,
-                    BracketSubmitted = false,
-                    ExtremePriceSinceEntry = entryPrice,
-                    CurrentTrailLevel = 0,
-                    EntryOrderType = OrderType.Limit,
-                    IsRMATrade = isRetestRmaMode,
-                    IsTRENDTrade = false,
-                    IsRetestTrade = true, // V8.4: Mark as retest trade
-                    RetestTrailActivated = false, // V8.4: Trail not activated yet
-                    OcoGroupId = "V12_" + GetStableHash(entryName),
-                };
-                ApplyTargetLadderGuard(pos);
-
-                {
-                    var _en966 = entryName;
-                    var _p966 = pos;
-                    Enqueue(ctx =>
-                    {
-                        ctx.activePositions[_en966] = _p966;
-                    });
-                }
-
-                // Build 1102Y-V3 [MS-07]: Register Master expected BEFORE Limit entry.
-                int masterDeltaRetest = direction == MarketPosition.Long ? contracts : -contracts;
-                {
-                    var _aek966 = ExpKey(Account.Name);
-                    var _aed966 = (masterDeltaRetest);
-                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
-                }
-
-                // Submit LIMIT order at OR High/Low (NO buffer)
-                Order entryOrder = SubmitRetestLimitOrder(direction, contracts, entryPrice, entryName);
-
+                RetestLadder ladder = CalculateRetestPriceLadder(direction, entryPrice, contracts);
+                string entryName = BuildAndRegisterRetestPosition(direction, contracts, entryPrice, signalName, ladder);
+                Order entryOrder = SubmitRetestOrderWithRollback(direction, contracts, entryPrice, entryName);
                 if (entryOrder == null)
-                {
-                    {
-                        var _aek966 = ExpKey(Account.Name);
-                        var _aed966 = (-masterDeltaRetest);
-                        Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(_aek966, _aed966));
-                    }
-                    activePositions.TryRemove(entryName, out _); // [Build 956]: Clean pre-registered state on null submit.
-                    Print("[ERROR][1102Y-V3] RETEST SubmitOrderUnmanaged NULL for " + entryName + " -- rolled back.");
-                    return; // [Build 954]: Do not latch session or dispatch SIMA for a failed order.
-                }
+                    return;
 
-                {
-                    var _en966 = entryName;
-                    var _eo966 = entryOrder;
-                    Enqueue(ctx =>
-                    {
-                        ctx.entryOrders[_en966] = _eo966;
-                    });
-                }
                 retestFiredThisSession = true; // V12.1101E [B-2]: Arm latch -- no further RETEST entries this session
-
-                Print(
-                    string.Format(
-                        "RETEST ENTRY ORDER: {0} {1}@{2:F2} | ATR: {3:F2}",
-                        signalName,
-                        contracts,
-                        entryPrice,
-                        currentATR
-                    )
-                );
-                Print(
-                    string.Format(
-                        "RETEST STOP: {0:F2} ({1:F2}x ATR = {2:F2}pts)",
-                        stopPrice,
-                        RetestATRMultiplier,
-                        stopDistance
-                    )
-                );
-                Print(
-                    string.Format(
-                        "RETEST TARGETS: T1:{0}@{1:F2}(+{2:F2}pt) | T2:{3}@{4:F2} | T3:{5}@{6:F2} | T4:{7}@{8:F2} | T5:{9}@{10:F2} (Runner targets trail-only)",
-                        t1Qty,
-                        target1Price,
-                        target1Price - entryPrice,
-                        t2Qty,
-                        target2Price,
-                        t3Qty,
-                        target3Price,
-                        t4Qty,
-                        target4Price,
-                        t5Qty,
-                        target5Price
-                    )
-                );
+                LogRetestEntryConfirmation(signalName, contracts, entryPrice, ladder);
 
                 // V12.1: Smart Dispatch to SIMA Fleet
                 if (EnableSIMA)
@@ -269,6 +136,180 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 Print("ERROR ExecuteRetestEntry: " + ex.Message);
             }
+        }
+
+        // [W9-L7-004] Value bundle for auto-retest price ladder output.
+        private struct RetestLadder
+        {
+            public double StopPrice,
+                StopDistance,
+                T1Price,
+                T2Price,
+                T3Price,
+                T4Price,
+                T5Price;
+            public int T1Qty,
+                T2Qty,
+                T3Qty,
+                T4Qty,
+                T5Qty;
+        }
+
+        // [W9-L7-004] Computes stop and all five target prices plus qty distribution. CYC=3.
+        private RetestLadder CalculateRetestPriceLadder(MarketPosition direction, double entryPrice, int contracts)
+        {
+            double multToUse = isRetestRmaMode ? RMAStopATRMultiplier : RetestATRMultiplier;
+            Print(
+                string.Format(
+                    "V12.20: RETEST Multiplier -> Mode={0} Using={1:F2}x",
+                    isRetestRmaMode ? "RMA" : "STD",
+                    multToUse
+                )
+            );
+            RetestLadder lad;
+            lad.StopDistance = CalculateATRStopDistance(multToUse); // V12.30: Ceiling-rounded
+            // V12.Phase6 [TICK-01]: All prices rounded to valid tick increments
+            lad.StopPrice = CalculateRetestStopPrice(direction, entryPrice, lad.StopDistance);
+            // Universal Ladder: T(n)Type dropdown drives all target pricing.
+            lad.T1Price = CalculateTargetPrice(direction, entryPrice, 1);
+            lad.T2Price = CalculateTargetPrice(direction, entryPrice, 2);
+            lad.T3Price = CalculateTargetPrice(direction, entryPrice, 3);
+            lad.T4Price = CalculateTargetPrice(direction, entryPrice, 4);
+            lad.T5Price = CalculateTargetPrice(direction, entryPrice, 5);
+            GetTargetDistribution(contracts, out lad.T1Qty, out lad.T2Qty, out lad.T3Qty, out lad.T4Qty, out lad.T5Qty);
+            return lad;
+        }
+
+        // [W9-L7-004] Constructs PositionInfo and registers it in activePositions. Returns entryName. CYC=1.
+        private string BuildAndRegisterRetestPosition(
+            MarketPosition direction,
+            int contracts,
+            double entryPrice,
+            string signalName,
+            RetestLadder lad
+        )
+        {
+            string entryName = signalName + "_" + DateTime.UtcNow.ToString("HHmmssffff");
+            PositionInfo pos = new PositionInfo
+            {
+                SignalName = entryName,
+                Direction = direction,
+                TotalContracts = contracts,
+                T1Contracts = lad.T1Qty,
+                T2Contracts = lad.T2Qty,
+                T3Contracts = lad.T3Qty,
+                T4Contracts = lad.T4Qty,
+                T5Contracts = lad.T5Qty,
+                RemainingContracts = contracts,
+                EntryPrice = entryPrice,
+                InitialStopPrice = lad.StopPrice,
+                CurrentStopPrice = lad.StopPrice,
+                Target1Price = lad.T1Price,
+                Target2Price = lad.T2Price,
+                Target3Price = lad.T3Price,
+                Target4Price = lad.T4Price,
+                Target5Price = lad.T5Price,
+                EntryFilled = false,
+                T1Filled = false,
+                T2Filled = false,
+                T3Filled = false,
+                BracketSubmitted = false,
+                ExtremePriceSinceEntry = entryPrice,
+                CurrentTrailLevel = 0,
+                EntryOrderType = OrderType.Limit,
+                IsRMATrade = isRetestRmaMode,
+                IsTRENDTrade = false,
+                IsRetestTrade = true, // V8.4: Mark as retest trade
+                RetestTrailActivated = false, // V8.4: Trail not activated yet
+                OcoGroupId = "V12_" + GetStableHash(entryName),
+            };
+            ApplyTargetLadderGuard(pos);
+            {
+                var enKey966 = entryName;
+                var posVal966 = pos;
+                Enqueue(ctx =>
+                {
+                    ctx.activePositions[enKey966] = posVal966;
+                });
+            }
+            return entryName;
+        }
+
+        // [W9-L7-004] Registers master delta, submits limit order, rolls back on null. CYC=3.
+        private Order SubmitRetestOrderWithRollback(
+            MarketPosition direction,
+            int contracts,
+            double entryPrice,
+            string entryName
+        )
+        {
+            // Build 1102Y-V3 [MS-07]: Register Master expected BEFORE Limit entry.
+            int masterDeltaRetest = direction == MarketPosition.Long ? contracts : -contracts;
+            {
+                var aek966 = ExpKey(Account.Name);
+                var aed966 = masterDeltaRetest;
+                Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(aek966, aed966));
+            }
+            // Submit LIMIT order at OR High/Low (NO buffer)
+            Order entryOrder = SubmitRetestLimitOrder(direction, contracts, entryPrice, entryName);
+            if (entryOrder == null)
+            {
+                {
+                    var aek966Rb = ExpKey(Account.Name);
+                    var aed966Rb = -masterDeltaRetest;
+                    Enqueue(ctx => ctx.AddExpectedPositionDeltaLocked(aek966Rb, aed966Rb));
+                }
+                activePositions.TryRemove(entryName, out _); // [Build 956]: Clean pre-registered state on null submit.
+                Print("[ERROR][1102Y-V3] RETEST SubmitOrderUnmanaged NULL for " + entryName + " -- rolled back.");
+                return null; // [Build 954]: Do not latch session or dispatch SIMA for a failed order.
+            }
+            {
+                var enKey966b = entryName;
+                var eoVal966 = entryOrder;
+                Enqueue(ctx =>
+                {
+                    ctx.entryOrders[enKey966b] = eoVal966;
+                });
+            }
+            return entryOrder;
+        }
+
+        // [W9-L7-004] Logs three RETEST entry confirmation prints. CYC=1.
+        private void LogRetestEntryConfirmation(string signalName, int contracts, double entryPrice, RetestLadder lad)
+        {
+            Print(
+                string.Format(
+                    "RETEST ENTRY ORDER: {0} {1}@{2:F2} | ATR: {3:F2}",
+                    signalName,
+                    contracts,
+                    entryPrice,
+                    currentATR
+                )
+            );
+            Print(
+                string.Format(
+                    "RETEST STOP: {0:F2} ({1:F2}x ATR = {2:F2}pts)",
+                    lad.StopPrice,
+                    RetestATRMultiplier,
+                    lad.StopDistance
+                )
+            );
+            Print(
+                string.Format(
+                    "RETEST TARGETS: T1:{0}@{1:F2}(+{2:F2}pt) | T2:{3}@{4:F2} | T3:{5}@{6:F2} | T4:{7}@{8:F2} | T5:{9}@{10:F2} (Runner targets trail-only)",
+                    lad.T1Qty,
+                    lad.T1Price,
+                    lad.T1Price - entryPrice,
+                    lad.T2Qty,
+                    lad.T2Price,
+                    lad.T3Qty,
+                    lad.T3Price,
+                    lad.T4Qty,
+                    lad.T4Price,
+                    lad.T5Qty,
+                    lad.T5Price
+                )
+            );
         }
 
         // Extracted helper: auto-detect RETEST direction and entry price from current price vs OR mid.
