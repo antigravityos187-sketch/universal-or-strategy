@@ -899,7 +899,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     TriggerCustomEvent(o => ProcessAccountExecutionQueue(), null);
                 }
-                catch { }
+                catch (Exception ex) { NinjaTrader.Code.Output.Process("Error ResumeAccountExecutionQueuePump: " + ex.Message, PrintTo.OutputTab1); }
         }
 
         #endregion
