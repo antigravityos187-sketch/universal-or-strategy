@@ -252,7 +252,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     _photonMmioMirror.Dispose();
                 }
-                catch { }
+                catch (Exception ex) { NinjaTrader.Code.Output.Process("Error TeardownMmioMirror: " + ex.Message, PrintTo.OutputTab1); }
                 _photonMmioMirror = null;
             }
         }
