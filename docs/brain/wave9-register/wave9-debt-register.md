@@ -59,18 +59,18 @@ or: `Account.All.FirstOrDefault(...)` -> `Account.All.ToArray().FirstOrDefault(.
 
 | ID | File | Line | Code | Priority |
 |----|------|------|------|----------|
-| W9-L2-001 | src/V12_002.Orders.Callbacks.Propagation.cs | 741 | `Account.All.FirstOrDefault(a =>` | P2 |
-| W9-L2-002 | src/V12_002.Orders.Management.Cleanup.cs | 629 | `foreach (Account acct in Account.All)` | P2 |
-| W9-L2-003 | src/V12_002.REAPER.NakedStop.cs | 27 | `Account.All.FirstOrDefault(a => a.Name ==` | P2 |
-| W9-L2-004 | src/V12_002.SIMA.cs | 221 | `foreach (Account acct in Account.All)` | P2 |
-| W9-L2-005 | src/V12_002.SIMA.Execution.cs | 60 | `foreach (Account acct in Account.All)` | P2 |
-| W9-L2-006 | src/V12_002.SIMA.Execution.cs | 252 | `foreach (Account acct in Account.All)` | P2 |
-| W9-L2-007 | src/V12_002.SIMA.Execution.cs | 1064 | `foreach (Account acct in Account.All)` | P2 |
-| W9-L2-008 | src/V12_002.UI.Compliance.cs | 303 | `foreach (Account acct in Account.All)` | P2 |
-| W9-L2-009 | src/V12_002.UI.Compliance.cs | 347 | `Account.All.FirstOrDefault(a => a.Name ==` | P2 |
-| W9-L2-010 | src/V12_002.UI.IPC.Commands.Fleet.cs | 334 | `foreach (Account acct in Account.All)` | P2 |
-| W9-L2-011 | src/V12_002.UI.IPC.Commands.Fleet.cs | 409 | `foreach (Account acct in Account.All)` | P2 |
-| W9-L2-012 | src/V12_002.UI.IPC.Commands.Misc.cs | 141 | `foreach (Account acct in Account.All)` | P2 |
+| W9-L2-001 | src/V12_002.Orders.Callbacks.Propagation.cs | 741 | `Account.All.FirstOrDefault(a =>` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-002 | src/V12_002.Orders.Management.Cleanup.cs | 629 | `foreach (Account acct in Account.All)` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-003 | src/V12_002.REAPER.NakedStop.cs | 27 | `Account.All.FirstOrDefault(a => a.Name ==` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-004 | src/V12_002.SIMA.cs | 221 | `foreach (Account acct in Account.All)` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-005 | src/V12_002.SIMA.Execution.cs | 60 | `foreach (Account acct in Account.All)` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-006 | src/V12_002.SIMA.Execution.cs | 252 | `foreach (Account acct in Account.All)` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-007 | src/V12_002.SIMA.Execution.cs | 1064 | `foreach (Account acct in Account.All)` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-008 | src/V12_002.UI.Compliance.cs | 303 | `foreach (Account acct in Account.All)` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-009 | src/V12_002.UI.Compliance.cs | 347 | `Account.All.FirstOrDefault(a => a.Name ==` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-010 | src/V12_002.UI.IPC.Commands.Fleet.cs | 334 | `foreach (Account acct in Account.All)` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-011 | src/V12_002.UI.IPC.Commands.Fleet.cs | 409 | `foreach (Account acct in Account.All)` | P2 | resolved: wave9 42683dc7 |
+| W9-L2-012 | src/V12_002.UI.IPC.Commands.Misc.cs | 141 | `foreach (Account acct in Account.All)` | P2 | resolved: wave9 42683dc7 |
 
 ---
 
