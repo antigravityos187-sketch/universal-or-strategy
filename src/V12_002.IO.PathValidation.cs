@@ -20,7 +20,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// - Sandbox: All paths must resolve within MyDocuments\NinjaTrader 8
         /// - Canonicalization: Resolves .., symlinks, and relative paths via Path.GetFullPath()
         /// - TOCTOU Mitigation: Validation happens immediately before file operation
-        /// - Fail-Fast: SecurityException thrown on any violation
+        /// - Fail-Safe: Returns null and logs via Output.Process on any violation
         ///
         /// LIMITATIONS:
         /// - Does not prevent race conditions between validation and file operation
@@ -41,18 +41,20 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             /// <summary>
             /// Validates and canonicalizes a file path.
-            /// Throws SecurityException if path traversal is detected.
+            /// Returns null and logs via Output.Process if path is invalid, null/empty, or path traversal detected.
             /// </summary>
             /// <param name="path">Path to validate</param>
             /// <param name="operation">Operation name for logging (e.g., "WriteState", "ReadCSV")</param>
-            /// <returns>Canonicalized safe path</returns>
-            /// <exception cref="SecurityException">Path traversal detected</exception>
+            /// <returns>Canonicalized path string, or null if validation fails.</returns>
             public static string ValidateAndCanonicalize(string path, string operation)
             {
                 // Guard: Null/empty check
                 if (string.IsNullOrWhiteSpace(path))
                 {
-                    NinjaTrader.Code.Output.Process("[IO_VALIDATION] Path cannot be null/empty for operation: " + operation, PrintTo.OutputTab1);
+                    NinjaTrader.Code.Output.Process(
+                        "[IO_VALIDATION] Path cannot be null/empty for operation: " + operation,
+                        PrintTo.OutputTab1
+                    );
                     return null;
                 }
 
@@ -69,36 +71,16 @@ namespace NinjaTrader.NinjaScript.Strategies
                         && !canonical.Equals(_baseDir, StringComparison.OrdinalIgnoreCase)
                     )
                     {
-                        throw new SecurityException(
-                            string.Format(
-                                "[IO_VALIDATION] Path traversal blocked for operation '{0}': {1} (canonical: {2}) is outside allowed base: {3}",
-                                operation,
-                                path,
-                                canonical,
-                                _baseDir
-                            )
-                        );
+                        NinjaTrader.Code.Output.Process("[IO_VALIDATION] Path traversal detected for operation: " + operation + " path: " + path, PrintTo.OutputTab1);
+                        return null;
                     }
 
                     return canonical;
                 }
-                catch (SecurityException)
-                {
-                    // Re-throw security exceptions as-is
-                    throw;
-                }
                 catch (Exception ex)
                 {
-                    // Wrap other exceptions (e.g., invalid path characters)
-                    throw new SecurityException(
-                        string.Format(
-                            "[IO_VALIDATION] Path validation failed for operation '{0}': {1} - {2}",
-                            operation,
-                            path,
-                            ex.Message
-                        ),
-                        ex
-                    );
+                    NinjaTrader.Code.Output.Process("[IO_VALIDATION] Cannot resolve path for operation: " + operation + " - " + ex.Message, PrintTo.OutputTab1);
+                    return null;
                 }
             }
 

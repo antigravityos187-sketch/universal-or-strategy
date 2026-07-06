@@ -171,6 +171,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     // EPIC-7-QUALITY-010: Validate path before write
                     string validPath = PathValidation.ValidateAndCanonicalize(_csvPath, "WriteCSV");
+                    if (validPath == null)
+                        return;
 
                     // EPIC-7-QUALITY-011: Retry logic for transient I/O failures
                     RetryHelper.ExecuteWithRetry(
@@ -178,11 +180,6 @@ namespace NinjaTrader.NinjaScript.Strategies
                         RetryHelper.IsTransientIOError,
                         "WriteCSVHeader"
                     );
-                }
-                catch (SecurityException ex)
-                {
-                    Print(string.Format("[IO_SECURITY] {0}", ex.Message));
-                    // P0-3 FIX: Do NOT reset flag - prevents unbounded Task.Run spawn on persistent errors
                 }
                 catch (Exception ex)
                 {
@@ -232,6 +229,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     // EPIC-7-QUALITY-010: Validate path before append
                     string validPath = PathValidation.ValidateAndCanonicalize(pathCopy, "AppendCSV");
+                    if (validPath == null)
+                        return;
 
                     // EPIC-7-QUALITY-011: Retry logic for transient I/O failures
                     RetryHelper.ExecuteWithRetry(
@@ -998,12 +997,10 @@ namespace NinjaTrader.NinjaScript.Strategies
                     {
                         // EPIC-7-QUALITY-010: Validate compliance log path
                         string validPath = PathValidation.ValidateAndCanonicalize(path, "WriteComplianceLog");
+                        if (validPath == null)
+                            return;
                         System.IO.File.WriteAllText(validPath, jsonPayload);
                     }
-                }
-                catch (SecurityException ex)
-                {
-                    Print(string.Format("[IO_SECURITY] {0}", ex.Message));
                 }
                 catch
                 { /* swallow -- compliance log is best-effort */

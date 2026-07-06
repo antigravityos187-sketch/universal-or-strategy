@@ -117,7 +117,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // EPIC-7-QUALITY-010: Log security violations
                 TrackStateSecurityViolation();
                 Print(string.Format("[IO_SECURITY] {0}", ex.Message));
-                throw; // Re-throw to fail-fast
+                return false;
             }
             catch (Exception ex)
             {
@@ -207,7 +207,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 // EPIC-7-QUALITY-010: Log security violations
                 TrackStateSecurityViolation();
                 Print(string.Format("[IO_SECURITY] {0}", ex.Message));
-                throw; // Re-throw to fail-fast
+                return null;
             }
             catch (Exception ex)
             {
