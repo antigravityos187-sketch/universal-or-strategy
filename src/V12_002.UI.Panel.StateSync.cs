@@ -9,6 +9,16 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002
     {
+        #region Panel State Sync -- Constants
+
+        private const double CONSISTENCY_GREEN_THRESHOLD_PCT = 30.0;
+        private const double CONSISTENCY_YELLOW_THRESHOLD_PCT = 50.0;
+        private const double PAYOUT_GREEN_THRESHOLD_PCT = 100.0;
+        private const double PAYOUT_YELLOW_THRESHOLD_PCT = 50.0;
+        private const double PERCENT_MULTIPLIER = 100.0;
+
+        #endregion
+
         #region Panel State Sync
 
         private void UpdatePanelState()
@@ -316,13 +326,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                     + maxDrawdown.ToString("0");
             }
 
-            double consistencyPct = totalProfit > 0 ? Math.Abs(dailyProfit) / Math.Abs(totalProfit) * 100.0 : 0;
+            double consistencyPct = totalProfit > 0 ? Math.Abs(dailyProfit) / Math.Abs(totalProfit) * PERCENT_MULTIPLIER : 0;
             if (complianceConsistencyText != null)
             {
                 complianceConsistencyText.Text = "CONSISTENCY: " + consistencyPct.ToString("0") + "%";
                 complianceConsistencyText.Foreground =
-                    consistencyPct <= 30 ? GreenFg
-                    : consistencyPct <= 50 ? YellowFg
+                    consistencyPct <= CONSISTENCY_GREEN_THRESHOLD_PCT ? GreenFg
+                    : consistencyPct <= CONSISTENCY_YELLOW_THRESHOLD_PCT ? YellowFg
                     : RedFg;
             }
 
@@ -330,11 +340,11 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 if (compliance.PayoutMinProfit > 0)
                 {
-                    double payoutPct = totalProfit / compliance.PayoutMinProfit * 100.0;
+                    double payoutPct = totalProfit / compliance.PayoutMinProfit * PERCENT_MULTIPLIER;
                     compliancePayoutText.Text = "PAYOUT: " + payoutPct.ToString("0") + "%";
                     compliancePayoutText.Foreground =
-                        payoutPct >= 100 ? GreenFg
-                        : payoutPct >= 50 ? YellowFg
+                        payoutPct >= PAYOUT_GREEN_THRESHOLD_PCT ? GreenFg
+                        : payoutPct >= PAYOUT_YELLOW_THRESHOLD_PCT ? YellowFg
                         : TextMuted;
                 }
                 else
