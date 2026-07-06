@@ -31,6 +31,8 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        private const int ComplianceDailySummaryCheckIntervalSeconds = 30; // rate-limit for compliance daily summary
+
         #region OnBarUpdate
 
         /// <summary>
@@ -67,7 +69,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 return;
 
             DateTime nowInZone = GetComplianceNow();
-            if ((nowInZone - lastDailySummaryCheck).TotalSeconds < 30)
+            if ((nowInZone - lastDailySummaryCheck).TotalSeconds < ComplianceDailySummaryCheckIntervalSeconds)
                 return;
 
             List<Account> complianceAccounts = GetComplianceAccounts();
