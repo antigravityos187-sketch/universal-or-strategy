@@ -18,6 +18,9 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         private static class RetryHelper
         {
+            private const int IO_RETRY_MAX_ATTEMPTS = 3;
+            private const int IO_RETRY_BASE_DELAY_MS = 50;
+
             // Diagnostic counters (thread-safe)
             private static long _ioRetryAttempts = 0;
             private static long _ioRetrySuccesses = 0;
@@ -38,8 +41,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Func<T> operation,
                 Func<Exception, bool> isRetryable,
                 string operationName,
-                int maxAttempts = 3,
-                int baseDelayMs = 50
+                int maxAttempts = IO_RETRY_MAX_ATTEMPTS,
+                int baseDelayMs = IO_RETRY_BASE_DELAY_MS
             )
             {
                 try
@@ -65,8 +68,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Action operation,
                 Func<Exception, bool> isRetryable,
                 string operationName,
-                int maxAttempts = 3,
-                int baseDelayMs = 50
+                int maxAttempts = IO_RETRY_MAX_ATTEMPTS,
+                int baseDelayMs = IO_RETRY_BASE_DELAY_MS
             )
             {
                 ExecuteWithRetry<object>(

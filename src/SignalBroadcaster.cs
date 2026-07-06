@@ -9,6 +9,8 @@ namespace NinjaTrader.NinjaScript.Strategies
     /// </summary>
     public static class SignalBroadcaster
     {
+        private const long FANOUT_LATENCY_LOG_THRESHOLD_MICROS = 1000;
+
         #region Signal Data Classes
 
         /// <summary>
@@ -261,7 +263,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             probe = probe.Stop();
             // Log only if fan-out takes > 1ms to keep the output clean
             long micros = probe.ElapsedMicroseconds;
-            if (micros > 1000)
+            if (micros > FANOUT_LATENCY_LOG_THRESHOLD_MICROS)
             {
                 NinjaTrader.Code.Output.Process(
                     LogBuffer.Format(

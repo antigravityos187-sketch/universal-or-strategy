@@ -16,6 +16,19 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Panel column width constant (shared between PlacePanel inject path and DestroyPanel heuristic)
         private const double PanelColumnWidth = 210;
 
+        // UI layout pixel constants
+        private const double ANCHOR_BUTTON_WIDTH = 30;
+        private const int RMA_TOGGLE_BUTTON_WIDTH = 36;
+        private const int SUBMIT_BUTTON_WIDTH = 60;
+        private const int MKT_SYNC_BUTTON_WIDTH = 70;
+        private const double FLEET_POPUP_MIN_WIDTH = 180;
+        private const int TARGET_VALUE_TEXTBOX_WIDTH = 30;
+        private const int TARGET_TYPE_COMBO_WIDTH = 42;
+        private const int STOP_TYPE_COMBO_WIDTH = 40;
+        private const int STOP_VALUE_TEXTBOX_WIDTH = 33;
+        private const int MAX_RISK_TEXTBOX_WIDTH = 55;
+        private const int PANEL_PLACEMENT_RETRY_MS = 500;
+
         // Layout architecture
         private Grid rootContainer;
         private Border contentBody;
@@ -203,7 +216,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             floatingAnchor = new Button
             {
                 Content = "[^]",
-                Width = 30,
+                Width = ANCHOR_BUTTON_WIDTH,
                 Background = CyanBg,
                 Foreground = CyanFg,
                 BorderBrush = CyanBorder,
@@ -315,7 +328,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (_placementRetryTimer == null)
                 {
                     _placementRetryTimer = new System.Windows.Threading.DispatcherTimer();
-                    _placementRetryTimer.Interval = System.TimeSpan.FromMilliseconds(500);
+                    _placementRetryTimer.Interval = System.TimeSpan.FromMilliseconds(PANEL_PLACEMENT_RETRY_MS);
                     _placementRetryTimer.Tick += (s, e) =>
                     {
                         _placementRetryTimer.Stop();
@@ -652,7 +665,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(2),
                 Padding = new Thickness(4),
-                MinWidth = 180,
+                MinWidth = FLEET_POPUP_MIN_WIDTH,
             };
 
             StackPanel popupStack = new StackPanel();
@@ -789,7 +802,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             Grid.SetColumn(priceInput, 1);
             row.Children.Add(priceInput);
 
-            submitButton = CreateButton("SUBMIT", 60, GreenBg, GreenFg, GreenBorder);
+            submitButton = CreateButton("SUBMIT", SUBMIT_BUTTON_WIDTH, GreenBg, GreenFg, GreenBorder);
             submitButton.Height = 22;
             Grid.SetColumn(submitButton, 2);
             row.Children.Add(submitButton);
@@ -864,13 +877,13 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             execRetestRow = new Grid { Margin = new Thickness(0, 2, 0, 0) };
             execRetestRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            execRetestRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+            execRetestRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(RMA_TOGGLE_BUTTON_WIDTH) });
 
             retestButton = CreateButton("RETEST", 0, OrangeBg, OrangeFg, OrangeBorder);
             Grid.SetColumn(retestButton, 0);
             execRetestRow.Children.Add(retestButton);
 
-            retestRmaToggle = CreateButton("R", 36, BtnBg, PurpleFg, PurpleFg);
+            retestRmaToggle = CreateButton("R", RMA_TOGGLE_BUTTON_WIDTH, BtnBg, PurpleFg, PurpleFg);
             retestRmaToggle.Margin = new Thickness(2, 0, 0, 0);
             retestRmaToggle.Opacity = 0.5;
             Grid.SetColumn(retestRmaToggle, 1);
@@ -899,13 +912,13 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             execTrendRow = new Grid { Margin = new Thickness(0, 2, 0, 0) };
             execTrendRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            execTrendRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+            execTrendRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(RMA_TOGGLE_BUTTON_WIDTH) });
 
             trendButton = CreateButton("TREND", 0, BtnBg, TextPrimary, BtnBorder);
             Grid.SetColumn(trendButton, 0);
             execTrendRow.Children.Add(trendButton);
 
-            trendRmaToggle = CreateButton("R", 36, BtnBg, PurpleFg, PurpleFg);
+            trendRmaToggle = CreateButton("R", RMA_TOGGLE_BUTTON_WIDTH, BtnBg, PurpleFg, PurpleFg);
             trendRmaToggle.Margin = new Thickness(2, 0, 0, 0);
             trendRmaToggle.Opacity = 0.5;
             Grid.SetColumn(trendRmaToggle, 1);
@@ -1199,7 +1212,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             syncRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             syncRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            mktSyncButton = CreateButton("MKT SYNC", 70, CyanBg, CyanFg, CyanBorder);
+            mktSyncButton = CreateButton("MKT SYNC", MKT_SYNC_BUTTON_WIDTH, CyanBg, CyanFg, CyanBorder);
             mktSyncButton.Height = 24;
             mktSyncButton.FontSize = 9;
             Grid.SetColumn(mktSyncButton, 0);
@@ -1362,7 +1375,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Margin = new Thickness(0, 0, 2, 0),
                 }
             );
-            svT1Val = CreateTextBox(FormatPanelDouble(config.Target1Value), 30);
+            svT1Val = CreateTextBox(FormatPanelDouble(config.Target1Value), TARGET_VALUE_TEXTBOX_WIDTH);
             svT1Val.Height = 20;
             svT1Val.FontSize = 9;
             svRow1.Children.Add(svT1Val);
@@ -1383,7 +1396,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Margin = new Thickness(0, 0, 2, 0),
                 }
             );
-            svT2Val = CreateTextBox(FormatPanelDouble(config.Target2Value), 30);
+            svT2Val = CreateTextBox(FormatPanelDouble(config.Target2Value), TARGET_VALUE_TEXTBOX_WIDTH);
             svT2Val.Height = 20;
             svT2Val.FontSize = 9;
             svRow1.Children.Add(svT2Val);
@@ -1409,7 +1422,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Margin = new Thickness(0, 0, 2, 0),
                 }
             );
-            svT3Val = CreateTextBox(FormatPanelDouble(config.Target3Value), 30);
+            svT3Val = CreateTextBox(FormatPanelDouble(config.Target3Value), TARGET_VALUE_TEXTBOX_WIDTH);
             svT3Val.Height = 20;
             svT3Val.FontSize = 9;
             t3Row.Children.Add(svT3Val);
@@ -1441,7 +1454,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Margin = new Thickness(0, 0, 2, 0),
                 }
             );
-            svT4Val = CreateTextBox(FormatPanelDouble(config.Target4Value), 30);
+            svT4Val = CreateTextBox(FormatPanelDouble(config.Target4Value), TARGET_VALUE_TEXTBOX_WIDTH);
             svT4Val.Height = 20;
             svT4Val.FontSize = 9;
             t4Row.Children.Add(svT4Val);
@@ -1473,7 +1486,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     Margin = new Thickness(0, 0, 2, 0),
                 }
             );
-            svT5Val = CreateTextBox(FormatPanelDouble(config.Target5Value), 30);
+            svT5Val = CreateTextBox(FormatPanelDouble(config.Target5Value), TARGET_VALUE_TEXTBOX_WIDTH);
             svT5Val.Height = 20;
             svT5Val.FontSize = 9;
             t5Row.Children.Add(svT5Val);
@@ -1538,7 +1551,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             Grid.SetColumn(maxLabel, 2);
             riskRow.Children.Add(maxLabel);
 
-            maxVal = CreateTextBox(FormatPanelDouble(config.MaxRiskValue), 55);
+            maxVal = CreateTextBox(FormatPanelDouble(config.MaxRiskValue), MAX_RISK_TEXTBOX_WIDTH);
             maxVal.Height = 20;
             maxVal.FontSize = 9;
             maxVal.Foreground = OrangeFg;
@@ -1569,7 +1582,7 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             citVal = CreateTextBox(
                 string.IsNullOrEmpty(config.ChaseIfTouchPoints) ? "0" : config.ChaseIfTouchPoints,
-                55
+                MAX_RISK_TEXTBOX_WIDTH
             );
             citVal.Height = 20;
             citVal.FontSize = 10;

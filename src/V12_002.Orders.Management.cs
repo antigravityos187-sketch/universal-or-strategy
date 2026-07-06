@@ -33,6 +33,12 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        #region Orders Management -- Constants
+
+        private const int ORDER_SIG_TRIM_LENGTH = 40;
+
+        #endregion
+
         #region Order Submission & Stop Management
 
         private void SubmitBracketOrders(string entryName, PositionInfo pos)
@@ -289,7 +295,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (isFollowerSubmit)
             {
                 // [BUILD 924 - Fix B] Follower target: use ExecutingAccount API
-                string targetSig = SymmetryTrim("T" + targetNum + "_" + entryName, 40);
+                string targetSig = SymmetryTrim("T" + targetNum + "_" + entryName, ORDER_SIG_TRIM_LENGTH);
                 Order tOrd = pos.ExecutingAccount.CreateOrder(
                     Instrument,
                     bracketExitAction,
@@ -365,7 +371,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (isFollowerSubmit)
             {
                 // [BUILD 924 - Fix B] Follower stop: use ExecutingAccount API (not SubmitOrderUnmanaged which is master-local)
-                string stopSig = SymmetryTrim("Stop_" + entryName, 40);
+                string stopSig = SymmetryTrim("Stop_" + entryName, ORDER_SIG_TRIM_LENGTH);
                 Order sOrd = pos.ExecutingAccount.CreateOrder(
                     Instrument,
                     bracketExitAction,
