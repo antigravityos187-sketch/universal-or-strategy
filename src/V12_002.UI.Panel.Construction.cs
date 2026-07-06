@@ -1106,36 +1106,40 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             stack.Children.Add(CreateSectionHeader("SECTION 2: TELEMETRY"));
 
-            or5Text = new TextBlock
-            {
-                FontSize = 10,
-                FontFamily = ConsolasFont,
-                Margin = new Thickness(0, 3, 0, 1),
-            };
-            or5Text.Inlines.Add(
-                new System.Windows.Documents.Run("OR5: ") { Foreground = OrangeFg, FontWeight = FontWeights.Bold }
-            );
-            or5Text.Inlines.Add(new System.Windows.Documents.Run("--") { Foreground = OrangeFg });
-            or5Text.Inlines.Add(new System.Windows.Documents.Run(" | ") { Foreground = TextMuted });
-            or5Text.Inlines.Add(new System.Windows.Documents.Run("--") { Foreground = OrangeFg });
-            or5Text.Inlines.Add(new System.Windows.Documents.Run(" (R: --)") { Foreground = TextMuted });
+            or5Text = BuildOrTextBlock("OR5: ", 3, 1);
             stack.Children.Add(or5Text);
 
-            or15Text = new TextBlock
+            or15Text = BuildOrTextBlock("OR15: ", 0, 2);
+            stack.Children.Add(or15Text);
+
+            BuildEmaRows(stack);
+
+            stack.Children.Add(BuildSyncRow());
+
+            section.Child = stack;
+            return section;
+        }
+
+        private TextBlock BuildOrTextBlock(string labelText, double topMargin, double bottomMargin)
+        {
+            TextBlock tb = new TextBlock
             {
                 FontSize = 10,
                 FontFamily = ConsolasFont,
-                Margin = new Thickness(0, 0, 0, 2),
+                Margin = new Thickness(0, topMargin, 0, bottomMargin),
             };
-            or15Text.Inlines.Add(
-                new System.Windows.Documents.Run("OR15: ") { Foreground = OrangeFg, FontWeight = FontWeights.Bold }
+            tb.Inlines.Add(
+                new System.Windows.Documents.Run(labelText) { Foreground = OrangeFg, FontWeight = FontWeights.Bold }
             );
-            or15Text.Inlines.Add(new System.Windows.Documents.Run("--") { Foreground = OrangeFg });
-            or15Text.Inlines.Add(new System.Windows.Documents.Run(" | ") { Foreground = TextMuted });
-            or15Text.Inlines.Add(new System.Windows.Documents.Run("--") { Foreground = OrangeFg });
-            or15Text.Inlines.Add(new System.Windows.Documents.Run(" (R: --)") { Foreground = TextMuted });
-            stack.Children.Add(or15Text);
+            tb.Inlines.Add(new System.Windows.Documents.Run("--") { Foreground = OrangeFg });
+            tb.Inlines.Add(new System.Windows.Documents.Run(" | ") { Foreground = TextMuted });
+            tb.Inlines.Add(new System.Windows.Documents.Run("--") { Foreground = OrangeFg });
+            tb.Inlines.Add(new System.Windows.Documents.Run(" (R: --)") { Foreground = TextMuted });
+            return tb;
+        }
 
+        private void BuildEmaRows(StackPanel stack)
+        {
             StackPanel emaRow1 = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -1170,7 +1174,10 @@ namespace NinjaTrader.NinjaScript.Strategies
             emaRow2.Children.Add(ema200Text);
             emaRow2.Children.Add(atrText);
             stack.Children.Add(emaRow2);
+        }
 
+        private Grid BuildSyncRow()
+        {
             Grid syncRow = new Grid();
             syncRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             syncRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -1204,11 +1211,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             trendIndicator.Child = trendText;
             Grid.SetColumn(trendIndicator, 1);
             syncRow.Children.Add(trendIndicator);
-
-            stack.Children.Add(syncRow);
-
-            section.Child = stack;
-            return section;
+            return syncRow;
         }
 
         private Border CreateSection3_Config()
