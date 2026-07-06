@@ -244,7 +244,7 @@ Fix: replace if/else chains with static readonly Dictionary dispatch.
 | W9-L8-001 | ProcessOnStateChange | src/V12_002.Lifecycle.cs | if/else state chain | P2 | resolved: wave9 f37362a9
 | W9-L8-002 | ProcessBracketEvent | src/V12_002.Symmetry.BracketFSM.cs | switch/if FSM | P2 | resolved: wave9 6eb7f212
 | W9-L8-003 | RouteTargetActionToHandler | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 | resolved: wave9 e570657a
-| W9-L8-004 | DispatchRunnerAction | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 |
+| W9-L8-004 | DispatchRunnerAction | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 | resolved: wave9 d4fc98ae |
 
 ---
 
