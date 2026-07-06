@@ -59,7 +59,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     TriggerCustomEvent(o => ProcessApplySimaState(_defEnabled), null);
                 }
-                catch { }
+                catch (Exception ex) { NinjaTrader.Code.Output.Process("Error ProcessApplySimaState: " + ex.Message, PrintTo.OutputTab1); }
                 return;
             }
             try
@@ -1403,7 +1403,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                         CancelOrderOnAccount(ord, ord.Account);
                         trackedCancels++;
                     }
-                    catch { }
+                    catch (Exception ex) { NinjaTrader.Code.Output.Process("Error SweepTrackedOrders: " + ex.Message, PrintTo.OutputTab1); }
                 }
             }
             return trackedCancels;
@@ -1440,7 +1440,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     brokerCancels += SweepAccountOrders(acct, v12Prefixes, force);
                 }
-                catch { }
+                catch (Exception ex) { NinjaTrader.Code.Output.Process("Error SweepBrokerOrders: " + ex.Message, PrintTo.OutputTab1); }
             }
             return brokerCancels;
         }
@@ -1491,7 +1491,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                     acct.Cancel(new[] { ord });
                     count++;
                 }
-                catch { }
+                catch (Exception ex) { NinjaTrader.Code.Output.Process("Error SweepAccountOrders: " + ex.Message, PrintTo.OutputTab1); }
             }
             return count;
         }
