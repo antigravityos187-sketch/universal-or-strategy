@@ -159,7 +159,7 @@ Batched by file (wave9-scan enumerates exact lines per file):
 |----|------|-----------|-------------|----------|
 | W9-L5-001 | src/V12_002.UI.Panel.Brushes.cs | 38 | RGB int literals (e.g. 255, 128, 64) | P3 | resolved: wave9 ad31a5a4
 | W9-L5-002 | src/V12_002.LogicAudit.cs | 18 | audit thresholds (e.g. 3, 10, 100) | P2 | resolved: wave9 e27d32df
-| W9-L5-003 | src/V12_002.Perf.LatencyHistogram.cs | 18 | histogram bucket sizes | P2 |
+| W9-L5-003 | src/V12_002.Perf.LatencyHistogram.cs | 18 | histogram bucket sizes | P2 | resolved: wave9 826e2f8c |
 | W9-L5-004 | src/V12_002.Lifecycle.cs | 17 | strategy defaults, timeouts | P2 |
 | W9-L5-005 | src/V12_002.UI.Panel.Helpers.cs | 17 | UI dimensions, offsets | P3 |
 | W9-L5-006 | src/V12_002.SIMA.Execution.cs | 16 | execution parameters | P2 |
@@ -193,6 +193,9 @@ Non-hot-path throws: leave as-is (ArgumentException on validation, etc. are acce
 | W9-L6-001 through W9-L6-012 | Various src/ | wave9-scan enumerates exact files/lines | P2 |
 | W9-L6-001 | src/V12_002.IO.PathValidation.cs:56 | hot-path throw replaced with log+return null; null-guard added in EnsureDailySummaryCsv | resolved: wave9 8cbe00d7 |
 | W9-L6-002 | src/V12_002.IO.PathValidation.cs:75,96; src/V12_002.UI.Compliance.cs:173,234,1000; src/V12_002.StickyState.cs:120,210 | all SecurityException throws replaced with log+return null/false; dead catch blocks removed; null-guards added | resolved: wave9 a973504b |
+| W9-L6-003 | src/V12_002.IO.PathValidation.cs:95 | co-resolved by W9-L6-002 sweep — PathValidation.cs has 0 remaining throw new statements | resolved: wave9 a973504b |
+| W9-L6-004 | src/V12_002.Orders.Callbacks.cs:232 | InvalidOperationException throw replaced with log+return false in HandleOrderState_Terminal | resolved: wave9 2e6453a9 |
+
 
 *Note: wave9-scan uses grep for `throw new` in methods reachable from OnBarUpdate/OnOrderUpdate.*
 
@@ -207,7 +210,7 @@ Each extraction must keep CYC unchanged or reduce it. No new public API.
 | ID | Method | File | LOC | CYC | Priority |
 |----|--------|------|-----|-----|----------|
 | W9-L7-001 | ExecuteRetestManualEntry | src/V12_002.Entries.Retest.cs | 149 | 8 | P2 | resolved: wave9 aa0e5fc6 (LOC=30 CYC=5) |
-| W9-L7-002 | ExecuteFFMAManualMarketEntry | src/V12_002.Entries.FFMA.cs | 136 | 8 | P2 |
+| W9-L7-002 | ExecuteFFMAManualMarketEntry | src/V12_002.Entries.FFMA.cs | 136 | 8 | P2 | resolved: wave9 c3a131d7 (LOC=69 CYC=6) |
 | W9-L7-003 | ExecuteFFMALimitEntry | src/V12_002.Entries.FFMA.cs | 134 | 8 | P2 |
 | W9-L7-004 | ExecuteRetestEntry | src/V12_002.Entries.Retest.cs | 133 | 5 | P2 |
 | W9-L7-005 | ExecuteFFMAEntry | src/V12_002.Entries.FFMA.cs | 126 | 8 | P2 |
@@ -240,7 +243,7 @@ Fix: replace if/else chains with static readonly Dictionary dispatch.
 |----|--------|------|-----------------|----------|
 | W9-L8-001 | ProcessOnStateChange | src/V12_002.Lifecycle.cs | if/else state chain | P2 | resolved: wave9 f37362a9
 | W9-L8-002 | ProcessBracketEvent | src/V12_002.Symmetry.BracketFSM.cs | switch/if FSM | P2 | resolved: wave9 6eb7f212
-| W9-L8-003 | RouteTargetActionToHandler | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 |
+| W9-L8-003 | RouteTargetActionToHandler | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 | resolved: wave9 e570657a
 | W9-L8-004 | DispatchRunnerAction | src/V12_002.UI.Callbacks.cs | if/else dispatch | P3 |
 
 ---
