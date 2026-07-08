@@ -1,4 +1,4 @@
-﻿# PR #5 Forensics Report
+# PR #5 Forensics Report
 Generated: 2026-05-30 12:37:10
 
 ## Summary

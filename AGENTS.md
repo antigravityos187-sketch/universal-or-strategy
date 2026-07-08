@@ -1,6 +1,42 @@
 # AGENTS.md - Sovereign Agent Protocol
 
 Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repository. This environment is optimized for autonomous multi-agent development under the **Sovereign Droid Protocol (SDP)**.
+
+---
+
+## 🚨 STEP ZERO — RULES CATALOG GATE (V12.36) — RUNS BEFORE EVERYTHING ELSE
+
+**This is a hard blocker. No task starts until this gate passes.**
+
+Before writing a single line of code, before reading a spec, before planning anything:
+
+```
+1. READ docs/standards/jane-street/RULES_CATALOG.md
+2. CONFIRM it is UTF-8 readable (not garbled/UTF-16)
+3. CONFIRM zero P0 violations exist in any src/ file this task will touch
+```
+
+**Gate outcomes:**
+- ✅ PASS → proceed with task
+- 🛑 BLOCKED (P0 violation found) → output violation report, stop, wait for Director
+- 🛑 BLOCKED (catalog unreadable) → fix encoding per `.bob/rules/05-utf8-encoding.md`, stop, wait
+
+**P0 instant-stop violations (any of these = work stops):**
+
+| Rule | Pattern | Ban |
+|------|---------|-----|
+| JS-021 | `lock(` anywhere in src/ | lock() is BANNED |
+| JS-033 | `async void MethodName(` | async void is BANNED |
+| JS-001 | `throw new XxxException(` in business logic | exceptions banned on hot paths |
+| JS-002 | `return null;` for missing values | use Option<T> |
+
+**Hook**: `.bob/hooks/pre_task_rules_gate.py` enforces this automatically (exit 1 = blocked).
+**Rule file**: `.bob/rules/06-rules-catalog-gate.md`
+
+There is no override. There is no "fix it later". Work stops until the violation is resolved.
+
+---
+
 ## ⚠️ CRITICAL: CodeFactor Protocol
 **MANDATORY READING**: Before accepting ANY automated fixes from CodeFactor or similar tools, read `docs/protocol/CODEFACTOR_PROTOCOL.md`. 
 
@@ -195,6 +231,83 @@ powershell -File .\scripts\pre_push_validation.ps1 -SkipBuild -SkipTests
 - Treat Lizard warnings (CYC 9-13) as technical debt visibility, not blockers
 - Track in EPIC-CCN-10 backlog for future refactoring to CCN 10
 
+
+## 3.6. MCP Tool Routing Protocol (V12.37) — MANDATORY
+
+Every agent MUST follow this routing table on every tool call. Using the wrong tool
+wastes tokens, loses compression, and breaks session memory continuity.
+
+### Master Routing Table
+
+| Intent | REQUIRED Tool | NEVER Use |
+|--------|--------------|-----------|
+| Understand structure of a file before editing | `lean-ctx: ctx_read(mode=signatures)` | raw `read_file` |
+| Read full file body before editing | `lean-ctx: ctx_read(mode=full)` | raw `read_file` |
+| Orient to an unfamiliar area (replaces 3 reads) | `lean-ctx: ctx_compose` | chaining separate reads |
+| Find symbol/class/method by name | `jcodemunch: search_symbols` | lean-ctx ctx_symbol |
+| Search by content / pattern / regex | `jcodemunch: search_text` | lean-ctx ctx_search |
+| Blast radius / what breaks if I change X | `jcodemunch: get_blast_radius` | anything else |
+| Symbol relationships, call hierarchy | `jcodemunch: get_call_hierarchy` | anything else |
+| Run any shell command whose output you READ | `lean-ctx: ctx_shell("command")` | raw `execute_command` |
+| Run write-only / silent command (commit, sync) | `execute_command` | lean-ctx (no benefit) |
+| Persist a decision or fact across sessions | `lean-ctx: ctx_knowledge remember` | manual docs/brain write |
+| Recall facts from previous sessions | `lean-ctx: ctx_knowledge recall` | re-reading docs/brain |
+| Set current task context for a session | `lean-ctx: ctx_session task "description"` | nothing else |
+| Record a key finding mid-session | `lean-ctx: ctx_session finding "summary"` | nothing else |
+| Semantic Q&A about the codebase | `greptile` | — |
+| PR review comments / merge request data | `greptile: list_merge_request_comments` | — |
+| Multi-step planning with branching/revision | `sequential-thinking: sequentialthinking` | — |
+
+### ctx_shell Scope — MANDATORY for ALL output-bearing commands
+
+Every command whose output the agent reads MUST go through `ctx_shell`.
+This includes build output, test results, scan output, git status, git diff, gh CLI:
+
+```
+ctx_shell("dotnet build Linting.csproj")          -- not execute_command
+ctx_shell("dotnet test")                           -- not execute_command
+ctx_shell("git status")                            -- not execute_command
+ctx_shell("git diff HEAD")                         -- not execute_command
+ctx_shell("gh pr view 42")                         -- not execute_command
+ctx_shell("python scripts/complexity_audit.py")    -- not execute_command
+ctx_shell("Select-String -Path src/...  -Pattern") -- not execute_command
+ctx_shell("grep -r 'lock(' src/")                  -- not execute_command
+```
+
+Write-only/silent commands that produce no output the agent needs to read use `execute_command`:
+```
+execute_command("git commit -m 'msg'")             -- output not needed
+execute_command("git push")                        -- output not needed
+execute_command("powershell -File deploy-sync.ps1") -- write-only sync
+```
+
+### Session Memory Protocol — MANDATORY at Phase Boundaries
+
+Agents MUST write to lean-ctx knowledge at the END of every completed phase:
+
+```
+ctx_knowledge remember "B8 closed DW-B7-01 (multiplier) and DW-B7-03 (ATM mode). B9 targets ATR engine, click-trader, mirror mode." --category ptt-copier --key b8-summary
+ctx_knowledge remember "CopyEngine.cs:40 [Fact] tests passing. Wave workspace: c:\WSGTA\universal-or-strategy" --category ptt-copier --key test-baseline
+```
+
+Agents MUST read from lean-ctx knowledge at the START of every new session before touching docs/brain/:
+
+```
+ctx_knowledge recall --category ptt-copier
+```
+
+This supplements (does not replace) the `docs/brain/{epic}/` markdown artifacts.
+The lean-ctx knowledge store survives context compaction; markdown files require re-reading.
+
+### Anti-Patterns — BANNED
+
+- ❌ `read_file` for orientation → use `ctx_read(mode=signatures)` then expand with `lines:N-M`
+- ❌ chaining `search_text` → `read_file` → `read_file` → use `ctx_compose` instead
+- ❌ `execute_command("dotnet build")` and reading stdout → use `ctx_shell`
+- ❌ `execute_command("grep -r ...")` and reading output → use `ctx_shell`
+- ❌ writing phase decisions only to docs/brain → ALSO write to `ctx_knowledge`
+
+---
 
 ## 4. Communication & Context
 
@@ -902,3 +1015,10 @@ python scripts/query_kb.py "lock-free patterns"
 4. ✅ State "building-blocks(wave-X): no gaps identified" if no gaps found
 
 **Last Audit**: 2026-06-14 - Protocol created, awaiting first wave execution
+
+<!-- lean-ctx -->
+## lean-ctx
+
+lean-ctx is active — the MCP tools replace native equivalents.
+Full rules: LEAN-CTX.md (open on demand — do not auto-load).
+<!-- /lean-ctx -->

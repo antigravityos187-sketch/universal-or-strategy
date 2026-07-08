@@ -1,0 +1,902 @@
+[
+    {
+        "file":  "SignalBroadcaster.cs",
+        "method":  "GetSubscriberCounts",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.BarUpdate.cs",
+        "method":  "ProcessSessionReset",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.BarUpdate.cs",
+        "method":  "OnBarUpdate",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.DrawingHelpers.cs",
+        "method":  "DrawORBox",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Entries.FFMA.cs",
+        "method":  "CheckFFMAConditions",
+        "cyc":  16
+    },
+    {
+        "file":  "V12_002.Entries.FFMA.cs",
+        "method":  "ExecuteFFMAManualMarketEntry",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Entries.FFMA.cs",
+        "method":  "ExecuteFFMALimitEntry",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Entries.MOMO.cs",
+        "method":  "ExecuteMOMOEntry",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.Entries.OR.cs",
+        "method":  "EnterORPosition",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Entries.Retest.cs",
+        "method":  "ExecuteRetestEntry",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Entries.RMA.cs",
+        "method":  "MonitorRmaProximity",
+        "cyc":  17
+    },
+    {
+        "file":  "V12_002.Entries.Trend.cs",
+        "method":  "ExecuteTREND_Preflight",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.IPC.Hardening.cs",
+        "method":  "IsAllowlistBypassAttempt",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Lifecycle.cs",
+        "method":  "CleanupDictionaries",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Lifecycle.cs",
+        "method":  "ProcessOnStateChange",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.Lifecycle.cs",
+        "method":  "DrainQueuesForShutdown",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Lifecycle.cs",
+        "method":  "ProcessOnConnectionStatusUpdate",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "ProcessQueuedAccountOrder",
+        "cyc":  15
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "OnAccountOrderUpdate",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "HandleMatchedFollowerOrder",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "HandleMatchedFollower_StopReplacement",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "ProcessAccountOrderQueue",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "IsMasterReplaceCascadeCancellation",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "ProcessFollowerCancellationSafe",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "ProcessAccountOrder_UpdateMasterExpected",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "ProcessAccountOrder_UpdateFleetExpected",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "HandleMatchedFollower_PendingCancelReplace",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "ExecuteFollowerCascadeCleanup",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "ProcessFollowerCancellationUnconditional",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "HandleMatchedFollower_PendingCleanupPurge",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.cs",
+        "method":  "HandleSecondaryOrderFilled",
+        "cyc":  21
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.cs",
+        "method":  "ProcessOnOrderUpdate",
+        "cyc":  19
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.cs",
+        "method":  "RequestStopCancelLifecycleSafe",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.cs",
+        "method":  "HandleOrderRejected",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.cs",
+        "method":  "HandleOrderPriceOrQuantityChanged",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.cs",
+        "method":  "HandleOrderCancelled_ProcessStopReplacement",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Execution.cs",
+        "method":  "HandleFlatPosition_CleanupActivePositions",
+        "cyc":  17
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Execution.cs",
+        "method":  "ProcessOnExecutionUpdate",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Execution.cs",
+        "method":  "ProcessOnExecution_HandleStopFill",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Execution.cs",
+        "method":  "BroadcastSyncTargetState",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Execution.cs",
+        "method":  "ProcessOnExecution_HandleTargetFill",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Propagation.cs",
+        "method":  "PropagateMaster_IdentifyMove",
+        "cyc":  18
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Propagation.cs",
+        "method":  "PropagateMasterEntryMove",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Propagation.cs",
+        "method":  "IsValidTradeTypeToken",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Propagation.cs",
+        "method":  "ResolveFollowersViaScan_ProcessEntry",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Propagation.cs",
+        "method":  "ResolveMasterTradeType",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Propagation.cs",
+        "method":  "PropagateMaster_ApplyFollowerMove",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Orders.Callbacks.Propagation.cs",
+        "method":  "PropagateMasterTargetMove",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Orders.Management.Cleanup.cs",
+        "method":  "ValidateOrphanedMasterOrders",
+        "cyc":  19
+    },
+    {
+        "file":  "V12_002.Orders.Management.Cleanup.cs",
+        "method":  "BuildLiveBrokerOrderIndex",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.Orders.Management.Cleanup.cs",
+        "method":  "CleanupPosition",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Management.Cleanup.cs",
+        "method":  "PurgePositionIfEligible",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Orders.Management.Cleanup.cs",
+        "method":  "ClassifyOrphanReason",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Orders.Management.Cleanup.cs",
+        "method":  "PurgeGhostOrderReferences",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Orders.Management.Cleanup.cs",
+        "method":  "EvaluateZombiePurgeEligibility",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Orders.Management.cs",
+        "method":  "SubmitTargetOrdersLoop",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.Orders.Management.Flatten.cs",
+        "method":  "ManageCIT",
+        "cyc":  19
+    },
+    {
+        "file":  "V12_002.Orders.Management.Flatten.cs",
+        "method":  "FlattenSinglePosition",
+        "cyc":  16
+    },
+    {
+        "file":  "V12_002.Orders.Management.Flatten.cs",
+        "method":  "HasActiveOrPendingOrderForEntry",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Management.Flatten.cs",
+        "method":  "CancelAllBracketOrdersForPosition",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Orders.Management.StopSync.cs",
+        "method":  "SyncLimitTarget",
+        "cyc":  17
+    },
+    {
+        "file":  "V12_002.Orders.Management.StopSync.cs",
+        "method":  "RestoreCascadedTargets",
+        "cyc":  16
+    },
+    {
+        "file":  "V12_002.Orders.Management.StopSync.cs",
+        "method":  "RefreshActivePositionOrders",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Orders.Management.StopSync.cs",
+        "method":  "UpdateStopQuantity",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Orders.Management.StopSync.cs",
+        "method":  "ValidateStopPrice",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Perf.LogBuffer.cs",
+        "method":  "FormatInternal",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.REAPER.Audit.cs",
+        "method":  "AuditMaster_HandleNakedPosition",
+        "cyc":  15
+    },
+    {
+        "file":  "V12_002.REAPER.Audit.cs",
+        "method":  "AuditSingleFleetAccount",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.REAPER.Audit.cs",
+        "method":  "AuditMaster_CheckExpectedActual",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.REAPER.Audit.cs",
+        "method":  "AuditFleet_CalculateExpectedActual",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.REAPER.Audit.cs",
+        "method":  "AuditMaster_HandleDesyncFlatten",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.REAPER.Audit.cs",
+        "method":  "ProcessReaperFlatten_CancelWorkingOrders",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.REAPER.Audit.cs",
+        "method":  "AuditFleet_CheckWorkingStop",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.REAPER.Repair.cs",
+        "method":  "SubmitRepairOrderWithAuthorization",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.Safety.Watchdog.cs",
+        "method":  "CancelWatchdogWorkingOrders",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Safety.Watchdog.cs",
+        "method":  "OnWatchdogTimer",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Safety.Watchdog.cs",
+        "method":  "CancelDirectFallbackOrders",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.SIMA.cs",
+        "method":  "SetRmaAnchorFromIpc",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.SIMA.Dispatch.cs",
+        "method":  "Dispatch_PublishMarketBracketToPhoton",
+        "cyc":  21
+    },
+    {
+        "file":  "V12_002.SIMA.Dispatch.cs",
+        "method":  "Dispatch_ProcessFleetLoop",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.SIMA.Dispatch.cs",
+        "method":  "Dispatch_PublishLimitEntryToPhoton",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.SIMA.Execution.cs",
+        "method":  "ExecuteMultiAccountMarket",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.SIMA.Execution.cs",
+        "method":  "ProcessSingleFleetRMAAccount",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.SIMA.Execution.cs",
+        "method":  "ExecuteMultiAccountBracket",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.SIMA.Execution.cs",
+        "method":  "ExecuteRMAEntryV2",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.SIMA.Flatten.cs",
+        "method":  "ProcessFlattenWorkItem_CancelOrders",
+        "cyc":  18
+    },
+    {
+        "file":  "V12_002.SIMA.Flatten.cs",
+        "method":  "EmergencyFlattenSingleFleetAccount",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "ShouldSkipFleet_RunHealthCheck",
+        "cyc":  31
+    },
+    {
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "VerifyPhotonSlotIntegrity",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "InitializeFollowerBracketFSM",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "ProcessFleetSlot",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "SubmitAndRegisterFleetOrders",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "DrainAllDispatchQueuesOnAbort",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "AdoptFleetWorkingOrders",
+        "cyc":  17
+    },
+    {
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "ClassifyAndRouteFleetOrder",
+        "cyc":  16
+    },
+    {
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "SweepTrackedOrders",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "SweepBrokerOrders",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "DrainPhotonQueuesOnShutdown",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "ShouldProtectBracketOrder",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "AdoptMasterWorkingOrders",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "HydrateFSM_MapOrderStateToFsmState",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "HydrateFSMsFromWorkingOrders",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.SIMA.Shadow.cs",
+        "method":  "ShadowPropagateStopMoves",
+        "cyc":  20
+    },
+    {
+        "file":  "V12_002.SIMA.Shadow.cs",
+        "method":  "ShadowProcessFollowerStopUpdate",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.StickyState.cs",
+        "method":  "DeserializeSnapshot",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "ProcessBracketEvent",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "GetFsmExpectedPosition",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "HandleFsmFilled",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "ResolveFsm_ByScan",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "RemoveFsmOrderIdMappings",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Symmetry.cs",
+        "method":  "SymmetryGuardOnMasterFill",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.Symmetry.cs",
+        "method":  "SymmetryFindDispatchForMasterFill",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Symmetry.Follower.cs",
+        "method":  "SymmetryGuardTryResolveFollower",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Symmetry.Follower.cs",
+        "method":  "SymmetryGuardSubmitFollowerBracket",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Symmetry.Follower.cs",
+        "method":  "SymmetryGuardOnFollowerFill",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryGuardReplaceExistingFollowerTarget",
+        "cyc":  18
+    },
+    {
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryGuardTryResolveFollowersForDispatch",
+        "cyc":  18
+    },
+    {
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryGuardCascadeFollowerCleanup",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryGuardPruneDispatches",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryNormalizeTradeType",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.Trailing.Breakeven.cs",
+        "method":  "MoveStop_SinglePosition",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Trailing.Breakeven.cs",
+        "method":  "MoveSpecificTarget",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.Trailing.Breakeven.cs",
+        "method":  "FindTargetOrderForPosition",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Trailing.cs",
+        "method":  "ManageTrailingStops",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.Trailing.cs",
+        "method":  "FleetSync_SyncFollowersToLevel",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Trailing.cs",
+        "method":  "ManageTrail_RunPerTradeBranches",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Trailing.StopUpdate.cs",
+        "method":  "UpdateStopOrder",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.Trailing.StopUpdate.cs",
+        "method":  "InitiateStopReplacement",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.Trailing.StopUpdate.cs",
+        "method":  "CleanupStalePendingReplacements",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.Trailing.StopUpdate.cs",
+        "method":  "UpdateExistingPendingReplacement",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.Callbacks.cs",
+        "method":  "HandleChartClick_ConvertPrice",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.Callbacks.cs",
+        "method":  "OnKeyDown",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "IsOrderAllowed",
+        "cyc":  16
+    },
+    {
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "HandleFleetTargetFill",
+        "cyc":  16
+    },
+    {
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "CancelOrphanedTargets",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "ProcessQueuedExecution_HandleFleetOCO",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "ProcessQueuedExecution_SyncFlatPosition",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "LogApexPerformance",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "ProcessQueuedExecution_HandleFleetBrackets",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "TrackTradeEntry",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Config.cs",
+        "method":  "TryApplyConfigTarget_Value",
+        "cyc":  17
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Config.cs",
+        "method":  "HandleTrimCommand",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Config.cs",
+        "method":  "TryApplyConfigTarget_Type",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "TryHandleFleetCommand",
+        "cyc":  19
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "TryHandleFleet_CancelAll",
+        "cyc":  19
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "CancelAll_ProcessSingleFleetAccount",
+        "cyc":  18
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "TryHandleFleet_MoveTarget",
+        "cyc":  15
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "CancelAll_ProcessMasterAccount",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "TryHandleFleet_LongShort",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Misc.cs",
+        "method":  "SendResponseToRemote",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Misc.cs",
+        "method":  "FlattenSpecificTarget",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Mode.cs",
+        "method":  "TryHandleMode_SetMode",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.UI.IPC.Commands.Mode.cs",
+        "method":  "TryHandleRisk_Breakeven",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.UI.IPC.cs",
+        "method":  "IsSymbolMatch",
+        "cyc":  18
+    },
+    {
+        "file":  "V12_002.UI.IPC.cs",
+        "method":  "ProcessIpcCommands",
+        "cyc":  14
+    },
+    {
+        "file":  "V12_002.UI.IPC.cs",
+        "method":  "TryParseTargetMode",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.UI.IPC.cs",
+        "method":  "ProcessIpcCommandCore",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.UI.IPC.cs",
+        "method":  "IsAllowedIpcAction",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.UI.IPC.Server.cs",
+        "method":  "StopIpcServer",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.UI.IPC.Server.cs",
+        "method":  "ProcessClientStream",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.Panel.Construction.cs",
+        "method":  "DestroyPanel",
+        "cyc":  17
+    },
+    {
+        "file":  "V12_002.UI.Panel.Construction.cs",
+        "method":  "PlacePanel",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.UI.Panel.Construction.cs",
+        "method":  "CreateSection0_Identity",
+        "cyc":  13
+    },
+    {
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "ShowModeSpecificControls",
+        "cyc":  20
+    },
+    {
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "UpdateTargetVisibility",
+        "cyc":  19
+    },
+    {
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "AttachExecutionPanelHandlers",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "OnSubmitClick",
+        "cyc":  12
+    },
+    {
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "CollapseAllExecutionControls",
+        "cyc":  11
+    },
+    {
+        "file":  "V12_002.UI.Panel.Helpers.cs",
+        "method":  "FindChartTraderViaChartTab",
+        "cyc":  20
+    },
+    {
+        "file":  "V12_002.UI.Panel.Helpers.cs",
+        "method":  "DumpVisualTree",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.UI.Panel.Helpers.cs",
+        "method":  "FindChartTabGrid",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.UI.Panel.Helpers.cs",
+        "method":  "FindChartTraderBySiblingSearch",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.Panel.StateSync.cs",
+        "method":  "UpdatePanelState",
+        "cyc":  16
+    },
+    {
+        "file":  "V12_002.UI.Panel.StateSync.cs",
+        "method":  "SyncPanelConfigFromSnapshot",
+        "cyc":  15
+    },
+    {
+        "file":  "V12_002.UI.Panel.StateSync.cs",
+        "method":  "SyncLiveTargetRows",
+        "cyc":  10
+    },
+    {
+        "file":  "V12_002.UI.Panel.StateSync.cs",
+        "method":  "SyncModeChipVisuals",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.Sizing.cs",
+        "method":  "ShouldSyncPendingOrder",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.Snapshot.cs",
+        "method":  "FindMasterPosition",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.Snapshot.cs",
+        "method":  "PopulateTargetSnapshots",
+        "cyc":  9
+    },
+    {
+        "file":  "V12_002.UI.SnapshotPool.cs",
+        "method":  "UpdateLivePositionSnapshot",
+        "cyc":  14
+    }
+]

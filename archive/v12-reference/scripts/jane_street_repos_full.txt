@@ -1,0 +1,406 @@
+janestreet/emacs	Mirror of GNU Emacs	public, fork	2026-06-10T15:57:43Z
+janestreet/virtual_dom	OCaml bindings for the virtual-dom library	public	2026-06-10T03:44:02Z
+janestreet/spacemacs	Contains patches for Spacemacs used internally at Jane Street. Not designed to work outside of Jane Street's environment.	public, fork	2026-06-08T18:49:51Z
+janestreet/PS7CompatibilityRules	PSScriptAnalyzer rules to help migrating PowerShell 5.1 scripts to PowerShell 7	public	2026-06-04T12:29:15Z
+janestreet/evil	The extensible vi layer for Emacs.	public, fork	2026-06-02T16:38:04Z
+janestreet/magic-trace	magic-trace collects and displays high-resolution traces of what a process is doing	public	2026-05-29T17:12:35Z
+janestreet/ppxlib	Base library and tools for ppx rewriters	public, fork	2026-05-28T20:38:05Z
+janestreet/perfetto	Frontend for magic-trace; forks https://ui.perfetto.dev	public, fork	2026-05-28T20:30:53Z
+janestreet/ocaml-eglot	An overlay on Eglot for editing OCaml code using LSP	public, fork	2026-05-26T20:37:51Z
+janestreet/strace_ui	A Bonsai_term application for interactively viewing strace output	public	2026-05-26T16:02:47Z
+janestreet/proctopus	A Bonsai_term application for managing multiple processes	public	2026-05-26T16:01:20Z
+janestreet/vec	Growable array.	public	2026-05-18T11:39:34Z
+janestreet/vcaml	OCaml bindings for the Neovim API	public	2026-05-18T11:39:34Z
+janestreet/zarith_stubs_js	Javascripts stubs for the Zarith library	public	2026-05-18T11:39:34Z
+janestreet/unstring	Typeful, composable string parsers with explicit ambiguity handling	public	2026-05-18T11:39:33Z
+janestreet/unboxed_datatypes	OxCaml Unboxed Datatypes	public	2026-05-18T11:39:33Z
+janestreet/unsafe_clear	Utilities for data structures that use arrays for backing memory, e.g. [Vec]	public	2026-05-18T11:39:33Z
+janestreet/unique	Unique value containers for OxCaml	public	2026-05-18T11:39:33Z
+janestreet/xpath	A library for dealing with XPath 1.0.	public	2026-05-18T11:39:33Z
+janestreet/univ_map	Universal/heterogeneous maps, useful for storing values of arbitrary type in a single map.	public	2026-05-18T11:39:33Z
+janestreet/uri_parsing	A library for building composable URI parsers using ppx_typed_fields.	public	2026-05-18T11:39:33Z
+janestreet/versioned_polling_state_rpc	Helper functions for creating stable/versioned `Polling_state_rpc.t`s with babel.	public	2026-05-18T11:39:33Z
+janestreet/uopt	An [option]-like type that incurs no allocation, without requiring a reserved value in the underlying type	public	2026-05-18T11:39:33Z
+janestreet/username_kernel	An identifier for a user	public	2026-05-18T11:39:33Z
+janestreet/typerep	Runtime types for OCaml (beta version)	public	2026-05-18T11:39:33Z
+janestreet/variantslib	OCaml variants as first class values	public	2026-05-18T11:39:33Z
+janestreet/unboxed	Unboxed types for OxCaml	public	2026-05-18T11:39:32Z
+janestreet/time_ago	A library for turning elapsed or future times into human-readable strings.	public	2026-05-18T11:39:32Z
+janestreet/toplayer	OCaml bindings for the floating positioning library for 'toplevel' virtual dom components	public	2026-05-18T11:39:32Z
+janestreet/torch		public	2026-05-18T11:39:32Z
+janestreet/tilde_f	Provides a let-syntax for continuation-passing style.	public	2026-05-18T11:39:32Z
+janestreet/tracing	Tracing library	public	2026-05-18T11:39:32Z
+janestreet/timezone	Time-zone handling	public	2026-05-18T11:39:32Z
+janestreet/toplevel_backend	Module for setting up dependencies (like printers and liblinks) for toplevels	public	2026-05-18T11:39:32Z
+janestreet/time_now	Reports the current time	public	2026-05-18T11:39:32Z
+janestreet/textutils_kernel	The subset of textutils using only core_kernel and working in javascript	public	2026-05-18T11:39:32Z
+janestreet/topological_sort	Topological sort algorithm	public	2026-05-18T11:39:32Z
+janestreet/toplevel_expect_test	Toplevel expectation test	public	2026-05-18T11:39:32Z
+janestreet/skyline	A Bonsai web component library.	public	2026-05-18T11:39:31Z
+janestreet/sexp_type	Sexp type	public	2026-05-18T11:39:31Z
+janestreet/simple_xml	A library for representing XML documents based on XMLM.	public	2026-05-18T11:39:31Z
+janestreet/testable_timeout	An API like the browser's setTimeout, but driven by an overridable async time source.	public	2026-05-18T11:39:31Z
+janestreet/stored_reversed	A library for representing a list temporarily stored in reverse order.	public	2026-05-18T11:39:31Z
+janestreet/streamable	A collection of types suitable for incremental serialization.	public	2026-05-18T11:39:31Z
+janestreet/sexp_string_quickcheck	Quickcheck helpers for strings parsing to sexps	public	2026-05-18T11:39:31Z
+janestreet/sexp_select	A library to use CSS-style selectors to traverse sexp trees	public	2026-05-18T11:39:31Z
+janestreet/shell	Yet another implementation of fork&exec and related functionality	public	2026-05-18T11:39:31Z
+janestreet/string_dict	Efficient static string dictionaries	public	2026-05-18T11:39:31Z
+janestreet/sexplib0	Library containing the definition of S-expressions and some base converters	public	2026-05-18T11:39:31Z
+janestreet/splittable_random	PRNG that can be split into independent streams	public	2026-05-18T11:39:31Z
+janestreet/splay_tree	A splay tree implementation.	public	2026-05-18T11:39:31Z
+janestreet/stdio	Standard IO Library for OCaml	public	2026-05-18T11:39:31Z
+janestreet/shexp	Process library and s-expression based shell	public	2026-05-18T11:39:31Z
+janestreet/textutils		public	2026-05-18T11:39:31Z
+janestreet/sexplib	Automated S-expression conversion	public	2026-05-18T11:39:31Z
+janestreet/roundtrippable_command_param	A library for building Command.Param.t values that can roundtrip to command-line arguments	public	2026-05-18T11:39:30Z
+janestreet/regex_parser_intf	Interface shared by Re_parser and Re2.Parser	public	2026-05-18T11:39:30Z
+janestreet/semantic_version	Semantic versioning	public	2026-05-18T11:39:30Z
+janestreet/sexp_grammar	Helpers for manipulating [Sexplib.Sexp_grammar] values.	public	2026-05-18T11:39:30Z
+janestreet/redis-async	Redis client for Async applications	public	2026-05-18T11:39:30Z
+janestreet/sexp_diff	Code for computing the diff of two sexps	public	2026-05-18T11:39:30Z
+janestreet/sexp_macro	Sexp macros	public	2026-05-18T11:39:30Z
+janestreet/sexp	S-expression swiss knife	public	2026-05-18T11:39:30Z
+janestreet/resource_cache	General resource cache	public	2026-05-18T11:39:30Z
+janestreet/sequencer_table	A table of [Async.Sequencer]'s, indexed by key	public	2026-05-18T11:39:30Z
+janestreet/record_builder	A library which provides traversal of records with an applicative.	public	2026-05-18T11:39:30Z
+janestreet/sexp_pretty	S-expression pretty-printer	public	2026-05-18T11:39:30Z
+janestreet/rpc_parallel	Type-safe library for building parallel applications, built on top of Async's Rpc module.	public	2026-05-18T11:39:30Z
+janestreet/procfs	A parser for values in the Linux `/proc` filesystem.	public	2026-05-18T11:39:29Z
+janestreet/ppx_with	A ppx writer for consisely building scoped operations	public	2026-05-18T11:39:29Z
+janestreet/ppxlib_jane	Utilities for working with Jane Street AST constructs	public	2026-05-18T11:39:29Z
+janestreet/re_parser	Typed parsing using regular expressions.	public	2026-05-18T11:39:29Z
+janestreet/profunctor	A library providing a signature for simple profunctors and traversal of a record	public	2026-05-18T11:39:29Z
+janestreet/ppx_yojson_conv_lib	Runtime lib for ppx_yojson_conv	public	2026-05-18T11:39:29Z
+janestreet/ppx_yojson_conv	[@@ÔÇïderiving] plugin to generate Yojson conversion functions	public	2026-05-18T11:39:29Z
+janestreet/protocol_version_header	protocol aware version negotiation	public	2026-05-18T11:39:29Z
+janestreet/ppx_variants_conv	Generation of accessor and iteration functions for ocaml variant types	public	2026-05-18T11:39:29Z
+janestreet/ppx_typerep_conv	Generation of runtime types from type declarations	public	2026-05-18T11:39:29Z
+janestreet/ppx_xml_conv	Generate XML conversion functions from records	public	2026-05-18T11:39:29Z
+janestreet/re2	OCaml bindings for RE2	public	2026-05-18T11:39:29Z
+janestreet/ppx_sexp_digest	A ppx extension for hashing the sexp_grammar of a type.	public	2026-05-18T11:39:28Z
+janestreet/ppx_simple_xml_conv	A ppx deriver for simple_xml.	public	2026-05-18T11:39:28Z
+janestreet/ppx_var_name	Allows you to reference the OCaml variable name in RHS expressions	public	2026-05-18T11:39:28Z
+janestreet/ppx_shorthand	A grab-bag of small but useful AST transformations	public	2026-05-18T11:39:28Z
+janestreet/ppx_template	C++-style templates for kind and mode polymorphism	public	2026-05-18T11:39:28Z
+janestreet/ppx_string_conv	Ppx extension for generating of_string & to_string	public	2026-05-18T11:39:28Z
+janestreet/ppx_tydi	Let expressions, inferring pattern type from expression.	public	2026-05-18T11:39:28Z
+janestreet/ppx_stable_witness	Ppx extension for deriving a witness that a type is intended to be stable	public	2026-05-18T11:39:28Z
+janestreet/ppx_typed_fields	GADT-based field accessors and utilities	public	2026-05-18T11:39:28Z
+janestreet/ppx_string	ppx extension for string interpolation	public	2026-05-18T11:39:28Z
+janestreet/ppx_stable	Stable types conversions generator	public	2026-05-18T11:39:28Z
+janestreet/ppx_sexp_message	A ppx rewriter for easy construction of s-expressions	public	2026-05-18T11:39:28Z
+janestreet/ppx_sexp_value	A ppx rewriter that simplifies building s-expressions from ocaml values	public	2026-05-18T11:39:28Z
+janestreet/ppx_sexp_conv	Generation of S-expression conversion functions from type definitions	public	2026-05-18T11:39:28Z
+janestreet/ppx_loc	A ppx for referencing code locations and names.	public	2026-05-18T11:39:27Z
+janestreet/ppx_int63_literal	Syntax extension for writing int63 literals.	public	2026-05-18T11:39:27Z
+janestreet/ppx_portable	Syntactic help for writing portable code, especially Portable_lazy values.	public	2026-05-18T11:39:27Z
+janestreet/ppx_rope	Ppx extension for string interpolation using ropes	public	2026-05-18T11:39:27Z
+janestreet/ppx_quick_test	Spiritual equivalent of let%expect_test, but for property based tests as an ergonomic wrapper to write quickcheck tests.	public	2026-05-18T11:39:27Z
+janestreet/ppx_jsonaf_conv	[@ÔÇï@ÔÇïderiving] plugin to generate Jsonaf conversion functions	public	2026-05-18T11:39:27Z
+janestreet/ppx_ignore_instrumentation	Ignore Jane Street specific instrumentation extensions.	public	2026-05-18T11:39:27Z
+janestreet/ppx_log	Ppx_sexp_message-like extension nodes for lazily rendering log messages	public	2026-05-18T11:39:27Z
+janestreet/ppx_pattern_bind	A ppx for writing fast incremental bind nodes in a pattern match	public	2026-05-18T11:39:27Z
+janestreet/ppx_module_timer	Ppx rewriter that records top-level module startup times	public	2026-05-18T11:39:27Z
+janestreet/ppx_js_style	Code style checker for Jane Street Packages	public	2026-05-18T11:39:27Z
+janestreet/ppx_optional	Pattern matching on flat options	public	2026-05-18T11:39:27Z
+janestreet/ppx_let	Monadic let-bindings	public	2026-05-18T11:39:27Z
+janestreet/ppx_jane	Standard Jane Street ppx rewriters	public	2026-05-18T11:39:27Z
+janestreet/ppx_optcomp	Optional compilation for OCaml	public	2026-05-18T11:39:27Z
+janestreet/ppx_pipebang	A ppx rewriter that inlines reverse application operators |> and |!	public	2026-05-18T11:39:27Z
+janestreet/ppx_inline_test	Syntax extension for writing in-line tests in ocaml code	public	2026-05-18T11:39:27Z
+janestreet/ppx_fuelproof	Get better error messages and improve mode crossing for types	public	2026-05-18T11:39:26Z
+janestreet/ppx_helpers	Miscellaneous helpers for writing PPXes	public	2026-05-18T11:39:26Z
+janestreet/ppx_for_loop	For-loop syntax that supports unboxed numbers.	public	2026-05-18T11:39:26Z
+janestreet/ppx_html	PPX_HTML is a way of constructing Vdom.Node.t's using HTML syntax.	public	2026-05-18T11:39:26Z
+janestreet/ppx_embed_file	A PPX that allows embedding files directly into executables/libraries as strings or bytes	public	2026-05-18T11:39:26Z
+janestreet/ppx_globalize	A ppx rewriter that generates functions to copy local values to the global heap	public	2026-05-18T11:39:26Z
+janestreet/ppx_fixed_literal	Simpler notation for fixed point literals	public	2026-05-18T11:39:26Z
+janestreet/ppx_hardcaml	A plugin for the ppx_deriving rewriter that supports the Hardcaml syntax.	public	2026-05-18T11:39:26Z
+janestreet/ppx_hash	A ppx rewriter that generates hash functions from type expressions and definitions	public	2026-05-18T11:39:26Z
+janestreet/ppx_here	Expands [%here] into its location	public	2026-05-18T11:39:26Z
+janestreet/ppx_delta_types	A ppx for defining types by their differences from existing types.	public	2026-05-18T11:39:25Z
+janestreet/ppx_debug_assert	Ppx for debug assertions	public	2026-05-18T11:39:25Z
+janestreet/ppx_diff	A PPX rewriter that generates the implementation of [Ldiffable.S].	public	2026-05-18T11:39:25Z
+janestreet/ppx_demo	PPX that exposes the source code string of an expression/module structure.	public	2026-05-18T11:39:25Z
+janestreet/ppx_derive_at_runtime	Define a new ppx deriver by naming a runtime module.	public	2026-05-18T11:39:25Z
+janestreet/ppx_css	A ppx that takes in css strings and produces a module for accessing the unique names defined within.	public	2026-05-18T11:39:25Z
+janestreet/ppx_disable_unused_warnings	Expands [@disable_unused_warnings] into [@warning "-20-26-32-33-34-35-36-37-38-39-60-66-67"]	public	2026-05-18T11:39:25Z
+janestreet/ppx_expect	Cram like framework for OCaml	public	2026-05-18T11:39:25Z
+janestreet/ppx_enumerate	Generate a list containing all values of a finite type	public	2026-05-18T11:39:25Z
+janestreet/ppx_fields_conv	Generation of accessor and iteration functions for ocaml records	public	2026-05-18T11:39:25Z
+janestreet/ppx_csv_conv	Generate functions to read/write records in csv format	public	2026-05-18T11:39:25Z
+janestreet/ppx_conv_func	Deprecated	public	2026-05-18T11:39:25Z
+janestreet/ppx_custom_printf	Printf-style format-strings for user-defined string conversion	public	2026-05-18T11:39:25Z
+janestreet/portable_mpmc_queue	Portable MPMC queue for OxCaml	public	2026-05-18T11:39:24Z
+janestreet/portable_memo	Drop-in replacement for [Memo] in a multi-domain setting	public	2026-05-18T11:39:24Z
+janestreet/ppx_c_bindings	Easily write C bindings from within OCaml	public	2026-05-18T11:39:24Z
+janestreet/ppx_builtin	Elides unsupported [@@builtin] attributes.	public	2026-05-18T11:39:24Z
+janestreet/ppx_bin_and_sexp_digest	A ppx extension for hashing the sexp_grammar and bin_prot shape of a type.	public	2026-05-18T11:39:24Z
+janestreet/portable_lockfree_htbl	Portable lock-free hash table for OxCaml	public	2026-05-18T11:39:24Z
+janestreet/ppx_box	Boxes and unboxes product types.	public	2026-05-18T11:39:24Z
+janestreet/ppx_array_base	Defines array functions used in [Base.Array].	public	2026-05-18T11:39:24Z
+janestreet/ppx_array	Copies array functions for unboxed types so they can be compiled for the type's specific layout.	public	2026-05-18T11:39:24Z
+janestreet/ppx_anonymous_record	A ppx expander that expands anonymous records into (typed) tuples.	public	2026-05-18T11:39:24Z
+janestreet/portable_ws_deque	Portable work-stealing deque for OxCaml	public	2026-05-18T11:39:24Z
+janestreet/ppx_accessor	[@@ÔÇïderiving] plugin to generate accessors for use with the Accessor libraries	public	2026-05-18T11:39:24Z
+janestreet/postgres_async	OCaml/async implementation of the postgres protocol (i.e., does not use C-bindings to libpq)	public	2026-05-18T11:39:24Z
+janestreet/posixat	Binding to the posix *at functions	public	2026-05-18T11:39:24Z
+janestreet/ppx_base	Base set of ppx rewriters	public	2026-05-18T11:39:24Z
+janestreet/ppx_bench	Syntax extension for writing in-line benchmarks in ocaml code	public	2026-05-18T11:39:24Z
+janestreet/ppx_compare	Generation of comparison functions from types	public	2026-05-18T11:39:24Z
+janestreet/ppx_bin_prot	Generation of bin_prot readers and writers from types	public	2026-05-18T11:39:24Z
+janestreet/ppx_assert	Assert-like extension nodes that raise useful errors on failure	public	2026-05-18T11:39:24Z
+janestreet/pending_or_error	A type useful for representing asynchronous results.	public	2026-05-18T11:39:23Z
+janestreet/portable	Library for parallel programming in OCaml and OxCaml	public	2026-05-18T11:39:23Z
+janestreet/parallel	OxCaml Parallelism	public	2026-05-18T11:39:23Z
+janestreet/ocaml_simd	SIMD intrinsics supported by the OxCaml compiler.	public	2026-05-18T11:39:23Z
+janestreet/pipe_with_writer_error	Pipe that forces readers to consider errors from writers while reading	public	2026-05-18T11:39:23Z
+janestreet/parsexp_symbolic_automaton	S-expression symbolic automaton library	public	2026-05-18T11:39:23Z
+janestreet/parsexp_prefix	S-expression prefix parsing library	public	2026-05-18T11:39:23Z
+janestreet/polling_state_rpc	An RPC which tracks state on the client and server so it only needs to send diffs across the wire.	public	2026-05-18T11:39:23Z
+janestreet/ordinal_abbreviation	A minimal library for generating ordinal names of integers.	public	2026-05-18T11:39:23Z
+janestreet/parsexp_io	S-expression parsing library (IO functions)	public	2026-05-18T11:39:23Z
+janestreet/patience_diff	Tool and library implementing patience diff	public	2026-05-18T11:39:23Z
+janestreet/patdiff	File Diff using the Patience Diff algorithm. https://opensource.janestreet.com/patdiff/	public	2026-05-18T11:39:23Z
+janestreet/oxcaml_intrinsics	Intrinsics for OxCaml	public	2026-05-18T11:39:22Z
+janestreet/oklab	A library for the oklab color space	public	2026-05-18T11:39:22Z
+janestreet/ocaml_openapi_generator	An OpenAPI 3 to OCaml client generator.	public	2026-05-18T11:39:22Z
+janestreet/ocaml_intrinsics_kernel	Intrinsics	public	2026-05-18T11:39:22Z
+janestreet/of_json	A friendly applicative interface for Jsonaf.	public	2026-05-18T11:39:22Z
+janestreet/numeric_string	A comparison function for strings that sorts numeric fragments of strings according to their numeric value, so that e.g. "abc2" < "abc10".	public	2026-05-18T11:39:22Z
+janestreet/ocaml-probes	USDT probes for OCaml: command line tool	public	2026-05-18T11:39:22Z
+janestreet/ocaml_intrinsics	Provides functions to invoke amd64 instructions (such as clz,popcnt,rdtsc,rdpmc) when available, or compatible software implementation on other targets.	public	2026-05-18T11:39:22Z
+janestreet/pam	OCaml bindings for the Linux-PAM library	public	2026-05-18T11:39:22Z
+janestreet/parsexp	S-expression parsing library	public	2026-05-18T11:39:22Z
+janestreet/nonempty_list_type	Underlying type of `Base.Nonempty_list.t`.	public	2026-05-18T11:39:21Z
+janestreet/netlib	Functions for working with and formatting 48-bit MAC addresses.	public	2026-05-18T11:39:21Z
+janestreet/mmap	Memory-mapped buffers, using the mmap system call	public	2026-05-18T11:39:21Z
+janestreet/nonempty_interval_lib	An Interval_lib.Interval but with empty intervals disallowed.	public	2026-05-18T11:39:21Z
+janestreet/maybe_pushback	Small library for asynchronous pushback	public	2026-05-18T11:39:21Z
+janestreet/lsp_rpc	Library for building LSPs in OCaml	public	2026-05-18T11:39:21Z
+janestreet/man_in_the_middle_debugger	Man-in-the-middle debugging library	public	2026-05-18T11:39:21Z
+janestreet/js_of_ocaml_patches	Additions to js_of_ocaml's standard library that are required by Jane Street libraries.	public	2026-05-18T11:39:21Z
+janestreet/legacy_diffable	An interface for diffs.	public	2026-05-18T11:39:21Z
+janestreet/n_ary	A library for N-ary datatypes and operations.	public	2026-05-18T11:39:21Z
+janestreet/jsonaf	A library for parsing, manipulating, and serializing data structured as JSON.	public	2026-05-18T11:39:21Z
+janestreet/ocaml-embed-file	Files contents as module constants	public	2026-05-18T11:39:21Z
+janestreet/memtrace_viewer	Interactive memory profiler based on Memtrace	public	2026-05-18T11:39:21Z
+janestreet/memtrace	Streaming client for OCaml's Memprof	public	2026-05-18T11:39:21Z
+janestreet/jst-config	Compile-time configuration for Jane Street libraries	public	2026-05-18T11:39:21Z
+janestreet/notty_async	An Async driver for Notty	public	2026-05-18T11:39:21Z
+janestreet/line-up-words	a small cmd line tool to align words in a sequence of lines in a smart way	public	2026-05-18T11:39:21Z
+janestreet/netsnmp	An interface to the Net-SNMP client library	public	2026-05-18T11:39:21Z
+janestreet/mlt_parser	A parser of top-expect files	public	2026-05-18T11:39:21Z
+janestreet/janestreet_crc	Calculate CRC32 checksums	public	2026-05-18T11:39:20Z
+janestreet/insertion_ordered_map	A Core.Map with a notion of insertion order.	public	2026-05-18T11:39:20Z
+janestreet/janestreet_shims	Shims for Jane Street compiler extensions	public	2026-05-18T11:39:20Z
+janestreet/jane_rope	String representation with cheap concatenation.	public	2026-05-18T11:39:20Z
+janestreet/janestreet_lru_cache	An LRU Cache implementation.	public	2026-05-18T11:39:20Z
+janestreet/janestreet_csv	Tools for working with CSVs on the command line	public	2026-05-18T11:39:20Z
+janestreet/fzf	A library for running the fzf command line tool	public	2026-05-18T11:39:20Z
+janestreet/int_repr	Integers of various widths	public	2026-05-18T11:39:20Z
+janestreet/jane-street-headers	Jane Street header files	public	2026-05-18T11:39:20Z
+janestreet/incr_select	Handling of large set of incremental outputs from a single input	public	2026-05-18T11:39:20Z
+janestreet/incr_map	Helpers for incremental operations on map like data structures.	public	2026-05-18T11:39:20Z
+janestreet/heterogeneous_list	[Heterogeneous_list] is a list that can contain arbitrary, mixed types as elements. A bit like a Python list.	public	2026-05-18T11:39:19Z
+janestreet/hardcaml_xilinx_reports	Hardcaml Xilinx Reports	public	2026-05-18T11:39:19Z
+janestreet/indentation_buffer	A library for building strings with indentation	public	2026-05-18T11:39:19Z
+janestreet/hg_lib	A library that wraps the Mercurial command line interface.	public	2026-05-18T11:39:19Z
+janestreet/hex_encode	Hexadecimal encoding library	public	2026-05-18T11:39:19Z
+janestreet/higher_kinded	A library with an encoding of higher kinded types in OCaml	public	2026-05-18T11:39:19Z
+janestreet/incr_dom_interactive	A monad for composing chains of interactive UI elements	public	2026-05-18T11:39:19Z
+janestreet/incr_dom_sexp_form	A library for building forms that allow the user to edit complicated types	public	2026-05-18T11:39:19Z
+janestreet/incr_dom_partial_render	A library for simplifying rendering of large amounts of data	public	2026-05-18T11:39:19Z
+janestreet/incr_dom	A library for building dynamic webapps, using Js_of_ocaml.	public	2026-05-18T11:39:19Z
+janestreet/incremental	A library for incremental computations	public	2026-05-18T11:39:19Z
+janestreet/hardcaml_paper_demo	Hardcaml 1D Convolution Demo	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_lws	Lightweight scheduler for Hardcaml testbenches	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_computation_dsl	Hardcaml computation DSL.	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_hobby_boards_kernel	Support code for FPGA hobby boards.	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_hobby_boards_demos	Example projects using hardcaml_hobby_boards library.	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_template_project	Simple starter project for Hardcaml development	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_test_harness	A standardized test harness for Hardcaml	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_event_driven_sim	Hardcaml Event Driven Simulator	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_handshake	Hardcaml Handshake	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_fixed_point	Hardcaml fixed point arithmetic	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_xilinx_components	Hardcaml Xilinx component definitions	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_verilator	Hardcaml Verilator Simulation Backend	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_of_verilog	Convert Verilog to a Hardcaml design	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_xilinx	Hardcaml wrappers for Xilinx memory primitives	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_step_testbench	Hardcaml Testbench Monad	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_verify	Hardcaml Verification Tools	public	2026-05-18T11:39:18Z
+janestreet/hardcaml_waveterm	A terminal based digital waveform viewer for Hardcaml	public	2026-05-18T11:39:18Z
+janestreet/file_path_test	Tests of File_path	public	2026-05-18T11:39:17Z
+janestreet/expect_test_patterns	Pattern matching for expect test output	public	2026-05-18T11:39:17Z
+janestreet/flexible_sexp	A library for creating stable sexp serialization with forward compatibility.	public	2026-05-18T11:39:17Z
+janestreet/float_array	Mutable vector of floats with efficient operations	public	2026-05-18T11:39:17Z
+janestreet/handled_effect	Typed effects API for OxCaml	public	2026-05-18T11:39:17Z
+janestreet/filesystem	A library for filesystem operations with the file_path library.	public	2026-05-18T11:39:17Z
+janestreet/font_awesome_icons	An OCaml library for Font-Awesome SVG icons	public	2026-05-18T11:39:17Z
+janestreet/expectable	A library that makes it easier to print ASCII tables in tests. All you need is a sexp, and Expectable will take care of the rest!	public	2026-05-18T11:39:17Z
+janestreet/hardcaml_axi	Hardcaml AXI Interface Types	public	2026-05-18T11:39:17Z
+janestreet/fuzzy_match	A library for fuzzy string matching	public	2026-05-18T11:39:17Z
+janestreet/file_path	A library for typed manipulation of UNIX-style file paths.	public	2026-05-18T11:39:17Z
+janestreet/hardcaml_circuits	Hardcaml Circuits	public	2026-05-18T11:39:17Z
+janestreet/hardcaml_c	Hardcaml C Simulation Backend	public	2026-05-18T11:39:17Z
+janestreet/expect_test_helpers_core	Helpers for writing expectation tests	public	2026-05-18T11:39:17Z
+janestreet/hardcaml	Hardcaml is an OCaml library for designing hardware.	public	2026-05-18T11:39:17Z
+janestreet/fieldslib	OCaml record fields as first class values	public	2026-05-18T11:39:17Z
+janestreet/fastdom	A library that enables batching reads and writes in a way that prevents layout thrashing in the web	public	2026-05-18T11:39:16Z
+janestreet/expect_test_helpers_base	Helpers for writing expectation tests	public	2026-05-18T11:39:16Z
+janestreet/expectree	A utility library for pretty-printing sexps as trees.	public	2026-05-18T11:39:16Z
+janestreet/env_config	Helper library for retrieving configuration from an environment variable	public	2026-05-18T11:39:16Z
+janestreet/expect_test_helpers_async	Async helpers for writing expectation tests	public	2026-05-18T11:39:16Z
+janestreet/delimited_non_csv	Parsing of character-separated (without quoting) and fixed-width values	public	2026-05-18T11:39:15Z
+janestreet/curl_async	Curl for Async applications	public	2026-05-18T11:39:15Z
+janestreet/current_exe	A library for getting the path to the currently running executable, with support for overriding in special environments.	public	2026-05-18T11:39:15Z
+janestreet/concurrent	Abstract interface to concurrency in OxCaml	public	2026-05-18T11:39:15Z
+janestreet/command_nodejs	A library for running [Command.t]s in JS/Wasm executables running on Node.	public	2026-05-18T11:39:15Z
+janestreet/dedent	A library for improving redability of multi-line string constants in code.	public	2026-05-18T11:39:15Z
+janestreet/content_security_policy	A library for building content-security policies	public	2026-05-18T11:39:15Z
+janestreet/core_unix	Unix-specific portions of Core	public	2026-05-18T11:39:15Z
+janestreet/delimited_parsing	Parsing of character (e.g., comma) separated and fixed-width values	public	2026-05-18T11:39:15Z
+janestreet/csvfields	Runtime support for ppx_xml_conv and ppx_csv_conv	public	2026-05-18T11:39:15Z
+janestreet/ecaml	Writing Emacs plugin in OCaml	public	2026-05-18T11:39:15Z
+janestreet/command_rpc	Utilities for Versioned RPC communication with a child process over stdin and stdout	public	2026-05-18T11:39:15Z
+janestreet/core_profiler	Profiling library	public	2026-05-18T11:39:15Z
+janestreet/email_message	E-mail message parser	public	2026-05-18T11:39:15Z
+janestreet/core_kernel	Jane Street's standard library overlay (kernel)	public	2026-05-18T11:39:15Z
+janestreet/core_bench	Micro-benchmarking library for OCaml	public	2026-05-18T11:39:15Z
+janestreet/core_extended	Jane Street Capital's standard library overlay	public	2026-05-18T11:39:15Z
+janestreet/core	Jane Street Capital's standard library overlay	public	2026-05-18T11:39:15Z
+janestreet/browser	A library containing bindings to web APIs	public	2026-05-18T11:39:14Z
+janestreet/capsule0	The expert capsule api for the OxCaml mode ecosystem	public	2026-05-18T11:39:14Z
+janestreet/capsule	The capsule api for the OxCaml mode ecosystem	public	2026-05-18T11:39:14Z
+janestreet/bonsai_term_test	A library for building dynamic terminal apps, using bonsai	public	2026-05-18T11:39:14Z
+janestreet/bonsai_term_examples	Some examples for bonsai_term	public	2026-05-18T11:39:14Z
+janestreet/bonsai_term_components	A set of Terminal UI (TUI) component libraries for bonsai_term.	public	2026-05-18T11:39:14Z
+janestreet/bonsai_term	A library for building dynamic terminal apps, using bonsai	public	2026-05-18T11:39:14Z
+janestreet/bonsai_concrete	Shared dependencies of bonsai and incr_dom.	public	2026-05-18T11:39:14Z
+janestreet/bonsai_web_test	A library for testing dynamic bonsai webapps, using Js_of_ocaml	public	2026-05-18T11:39:14Z
+janestreet/bonsai_web_components	Examples for bonsai_web, a library for building dynamic webapps, using Js_of_ocaml	public	2026-05-18T11:39:14Z
+janestreet/bonsai_web	A library for building dynamic webapps, using Js_of_ocaml	public	2026-05-18T11:39:14Z
+janestreet/bonsai_test	A library for testing Bonsai state machines.	public	2026-05-18T11:39:14Z
+janestreet/bonsai_examples	Examples for bonsai_web, a library for building dynamic webapps, using Js_of_ocaml	public	2026-05-18T11:39:14Z
+janestreet/bonsai_bench	A library for benchmarking bonsai web applications	public	2026-05-18T11:39:14Z
+janestreet/bitset	A library for flat bitsets	public	2026-05-18T11:39:14Z
+janestreet/capitalization	Defines case conventions and functions to rename identifiers according to them	public	2026-05-18T11:39:14Z
+janestreet/cohttp_static_handler	A library for easily creating a cohttp handler for static files	public	2026-05-18T11:39:14Z
+janestreet/cohttp_async_websocket	Websocket library for use with cohttp and async	public	2026-05-18T11:39:14Z
+janestreet/bonsai	A library for building dynamic webapps, using Js_of_ocaml	public	2026-05-18T11:39:14Z
+janestreet/binable_and_sexpable	Combined [Binable] and [Sexpable] [Of_format] functors	public	2026-05-18T11:39:13Z
+janestreet/base	Standard library for OCaml	public	2026-05-18T11:39:13Z
+janestreet/bin_prot	Binary protocol generator	public	2026-05-18T11:39:13Z
+janestreet/basement_test	Tests for Basement	public	2026-05-18T11:39:12Z
+janestreet/base_yojson	Yojson with additional support for common Base idioms	public	2026-05-18T11:39:12Z
+janestreet/base_internalhash_types	Types and simple helpers for building up hash functions	public	2026-05-18T11:39:12Z
+janestreet/big_percent	An arbitrary-precision scale factor, not bounded between 0% and 100%.	public	2026-05-18T11:39:12Z
+janestreet/await	Low-level support for suspending and resuming fibers in OxCaml	public	2026-05-18T11:39:12Z
+janestreet/basement	Modules defined upstream of and reexported in Base	public	2026-05-18T11:39:12Z
+janestreet/base_trie	Trie data structure library	public	2026-05-18T11:39:12Z
+janestreet/bidirectional_map	A library for bidirectional maps and multimaps.	public	2026-05-18T11:39:12Z
+janestreet/babel	A library for defining Rpcs that can evolve over time without breaking backward compatibility.	public	2026-05-18T11:39:12Z
+janestreet/bigdecimal	Arbitrary-precision decimal based on Zarith	public	2026-05-18T11:39:12Z
+janestreet/async_udp	Jane Street Capital's asynchronous execution library (UDP)	public	2026-05-18T11:39:12Z
+janestreet/async_websocket	A library that implements the websocket protocol on top of Async	public	2026-05-18T11:39:12Z
+janestreet/base_bigstring	String type based on Bigarray, for use in I/O and C-bindings	public	2026-05-18T11:39:12Z
+janestreet/base_quickcheck	Randomized testing framework, designed for compatibility with Base	public	2026-05-18T11:39:12Z
+janestreet/bignum	Core-flavoured wrapper around zarith's arbitrary-precision rationals	public	2026-05-18T11:39:12Z
+janestreet/async_ssl	Async wrappers for ssl	public	2026-05-18T11:39:12Z
+janestreet/async_shell	Shell helpers for Async	public	2026-05-18T11:39:12Z
+janestreet/async_unix	Jane Street Capital's asynchronous execution library (unix)	public	2026-05-18T11:39:12Z
+janestreet/am_running_how_js	A library for determining the js_of_ocaml environment that an OCaml program is running in.	public	2026-05-18T11:39:11Z
+janestreet/async_iterator	An opinionated asynchronous stream-processing framework	public	2026-05-18T11:39:11Z
+janestreet/async_log	Logging library built on top of Async_unix	public	2026-05-18T11:39:11Z
+janestreet/abstract_algebra	A small library describing abstract algebra concepts.	public	2026-05-18T11:39:11Z
+janestreet/async_rpc_websocket	Library to serve and dispatch Async RPCs over websockets	public	2026-05-18T11:39:11Z
+janestreet/accessor_async	Accessors for Async types, for use with the Accessor library	public	2026-05-18T11:39:11Z
+janestreet/accessor	A library that makes it nicer to work with nested functional data structures	public	2026-05-18T11:39:11Z
+janestreet/accessor_base	Accessors for Base types, for use with the Accessor library	public	2026-05-18T11:39:11Z
+janestreet/accessor_core	Accessors for Core types, for use with the Accessor library	public	2026-05-18T11:39:11Z
+janestreet/async_sendfile	Thin wrapper around [Linux_ext.sendfile] to send full files.	public	2026-05-18T11:39:11Z
+janestreet/async_durable	Durable connections for use with async	public	2026-05-18T11:39:11Z
+janestreet/async_js	A small library that provide Async support for JavaScript platforms	public	2026-05-18T11:39:11Z
+janestreet/async_interactive	Utilities for building simple command-line based user interfaces	public	2026-05-18T11:39:11Z
+janestreet/async_rpc_kernel	Platform-independent core of Async RPC library	public	2026-05-18T11:39:11Z
+janestreet/async_inotify	Async wrapper for inotify	public	2026-05-18T11:39:11Z
+janestreet/async_find	Directory traversal with Async	public	2026-05-18T11:39:11Z
+janestreet/async_extra	Jane Street Capital's asynchronous execution library (extra)	public	2026-05-18T11:39:11Z
+janestreet/async_kernel	Jane Street Capital's asynchronous execution library (core)	public	2026-05-18T11:39:11Z
+janestreet/async	Jane Street Capital's asynchronous execution library	public	2026-05-18T11:39:11Z
+janestreet/yield_timer	Helpers for periodically yielding control to Async during long synchronous tasks	public	2026-05-15T15:53:30Z
+janestreet/tmux	Bindings for running a tmux session.	public	2026-05-15T15:53:28Z
+janestreet/jane_term_types	Types for interacting with the terminal.	public	2026-05-15T15:53:17Z
+janestreet/hardcaml_tools_config	Hardcaml EDA Tools Config	public	2026-05-15T15:53:15Z
+janestreet/hardcaml_agents_docs	Hardcaml Agents Docs	public	2026-05-15T15:53:13Z
+janestreet/opam-repository	Opam repository for the development version of Jane Street packages	public	2026-05-15T14:53:05Z
+janestreet/main-opam-repository	Main public package repository for OPAM, the source package manager of OCaml.	public, fork	2026-04-17T16:44:25Z
+janestreet/WindowsFirewall	PowerShell Module to manage the Windows Firewall	public	2026-04-14T04:49:19Z
+janestreet/zstandard	OCaml bindings to Zstandard	public	2026-04-06T16:41:04Z
+janestreet/ppx_cold	Expands [@cold] into [@inline never][@specialise never][@local never]	public	2026-04-06T16:40:57Z
+janestreet/janestreet_cpuid	A library for parsing CPU capabilities out of the `cpuid` instruction.	public	2026-04-06T16:40:54Z
+janestreet/async_smtp	SMTP client and server	public	2026-04-06T16:40:49Z
+janestreet/company-mode	Modular in-buffer completion framework for Emacs	public, fork	2026-03-25T16:04:58Z
+janestreet/gtc2026	Five Bottlenecks, Five Fixes: How We Avoid Leaving Training Performance on the Table	public	2026-03-13T19:52:15Z
+janestreet/ttyd	Share your terminal over the web	public, fork	2026-01-20T15:10:32Z
+janestreet/codicons	Icons from VS code	public	2026-01-15T21:34:39Z
+janestreet/hardcaml_hobby_boards	Support code for FPGA hobby boards.	public	2025-11-20T22:05:41Z
+janestreet/portable_async	Integration between Async and Parallel OxCaml	public	2025-10-01T20:40:22Z
+janestreet/VisualEffects	PowerShell module to manage Windows visual effects	public	2025-09-10T10:24:49Z
+janestreet/flycheck-pos-tip	Flycheck errors display in tooltip	public, fork	2025-03-12T20:08:09Z
+janestreet/ppx_python	ARCHIVED. [@@deriving] plugin to generate Python conversion functions	public, archived	2024-11-21T20:33:10Z
+janestreet/spawn	Spawning sub-processes	public	2024-11-11T23:46:40Z
+janestreet/saturn	Lock-free data structures for multicore OCaml with Jane Street extensions	public, fork	2024-11-05T09:32:42Z
+janestreet/utop	Universal toplevel for OCaml	public, fork	2024-10-23T19:06:31Z
+janestreet/pythonlib	A library to help writing wrappers around ocaml code for python	public, archived	2024-07-30T06:37:55Z
+janestreet/gel	A library to mark non-record fields global.	public	2024-05-07T18:46:22Z
+janestreet/ocaml-compiler-libs	compiler libraries repackaged	public	2024-01-04T17:54:47Z
+janestreet/ocaml_plugin	(Archived) Automatically build and dynlink ocaml source files	public, archived	2023-10-16T10:37:59Z
+janestreet/krb	(Archived) A library for using Kerberos for both Rpc and Tcp communication	public, archived	2023-09-28T10:25:13Z
+janestreet/tuareg	Emacs OCaml mode	public, fork	2023-05-15T16:47:14Z
+janestreet/ocp-indent	Indentation tool for OCaml, to be used from editors like Emacs and Vim.	public, fork	2023-05-09T20:41:30Z
+janestreet/fsharp_core_kernel	Extensions of the dotnet standard library	public	2023-04-04T10:05:05Z
+janestreet/fsharp_async_rpc	Reimplementation of our async_rpc library in F#	public	2023-04-04T10:05:05Z
+janestreet/fsharp_bin_prot	Reimplementation of our bin_prot library in F#	public	2023-03-23T18:15:28Z
+janestreet/ocaml-jst	OCaml plus Jane Street extensions	public, fork	2023-01-25T10:23:23Z
+janestreet/ppx_dotnet_bin_prot	Generation of F# bin_prot readers and writers from OCaml types	public	2022-10-13T10:06:45Z
+janestreet/learn-ocaml-workshop	Exercises and projects for Jane Street's OCaml Workshop	public	2022-04-04T20:26:05Z
+janestreet/core_compat	Compatibility for core 0.14	public, archived	2022-02-15T14:19:24Z
+janestreet/ppx_type_directed_value	Get [@@deriving]-style generation of type-directed values without writing a ppx	public	2022-02-15T14:19:24Z
+janestreet/ocaml	The core OCaml system: compilers, runtime system, base libraries	public, fork	2022-01-17T12:19:39Z
+janestreet/cinaps	Trivial Metaprogramming tool using the OCaml toplevel	public, fork	2021-08-02T17:10:13Z
+janestreet/incr_dom_keyboard	A library for Incr_dom keybinding and keyboard shortcut helpers	public	2021-07-30T16:30:35Z
+janestreet/re2_serializable		public	2021-03-05T20:20:06Z
+janestreet/sandmark	A benchmark suite for the OCaml compiler	public, fork	2021-02-22T13:51:45Z
+janestreet/re2_stable	Re2_stable adds an incomplete but stable serialization of Re2	public	2021-02-12T19:25:22Z
+janestreet/reversed_list	Explicitly build a list in reverse order	public	2021-01-14T12:07:09Z
+janestreet/memtrace_viewer_with_deps	Interactive memory profiler based on Memtrace	public, archived	2021-01-08T10:29:55Z
+janestreet/universe	Jane Street universe	public	2020-09-14T14:30:51Z
+janestreet/sexp_diff_kernel	Code for computing the diff of two sexps	public	2020-08-10T08:54:26Z
+janestreet/ppx_fail	Add location to calls to failwiths	public	2020-05-26T08:23:52Z
+janestreet/janestreet.github.com	Front page	public	2020-05-08T09:13:02Z
+janestreet/expect_test_helpers_kernel	Helpers for writing expectation tests	public	2020-03-30T08:59:57Z
+janestreet/expect_test_helpers	Async helpers for writing expectation tests	public	2020-03-17T10:42:25Z
+janestreet/result	Compat result type	public	2020-02-22T18:09:07Z
+janestreet/noise-wireguard-ocaml	An implementation of the Noise Protocol, intended to be used as the base for a Wireguard implementation in OCaml.	public	2020-02-11T15:35:48Z
+janestreet/iron	Jane Street code review system	public	2020-01-14T10:05:18Z
+janestreet/install-ocaml	Instructions for setting up an OCaml development environment	public, archived	2019-12-20T19:16:04Z
+janestreet/jane-street-build-server	Build served used for testing the public release of Jane Street packages	public	2019-12-03T15:00:59Z
+janestreet/incr_dom_widgets	A library of libraries and widgets for Incr_dom applications.	public	2019-11-18T15:08:49Z
+janestreet/animation		public	2019-10-30T16:55:11Z
+janestreet/configurator	Helper library for gathering system configuration	public	2019-09-05T22:52:56Z
+janestreet/camlp4-to-ppx	Convert from camlp4 + syntax extensions to regular OCaml + extension points and attributes	public	2019-09-01T03:39:17Z
+janestreet/ocaml-tls	TLS in pure OCaml	public, fork	2019-01-18T15:44:51Z
+janestreet/jenga	Build system	public, archived	2018-09-19T09:23:09Z
+janestreet/incremental_kernel	Library for incremental computations depending only on Core_kernel	public	2018-08-07T13:54:32Z
+janestreet/async_parallel	Distributed computing library	public	2018-08-07T13:54:32Z
+janestreet/ppx_optcomp_old	Old version of ppx_optcomp, with a cpp-like syntax	public	2018-04-19T09:04:39Z
+janestreet/findlib_top	Wrapper for findlib_top.cma	public	2018-03-19T10:31:48Z
+janestreet/jane-street-tests		public	2018-03-19T10:31:48Z
+janestreet/json-wheel_jane_street_overlay	json-wheel + sexp + bin_prot + ...	public	2017-12-08T17:17:19Z
+janestreet/opamcheck	scripts to test OCaml compiler changes on the whole OPAM repository	public	2017-10-05T11:00:54Z
+janestreet/typerep_extended	Runtime types for OCaml (Extended)	public	2017-06-01T12:40:11Z
+janestreet/async_http_js	A small library to perform http requests using Async_kernel on JavaScript platforms.	public	2016-09-02T10:02:10Z
+janestreet/postgresql-ocaml	OCaml-bindings for the PostgreSQL database	public, fork	2015-01-28T14:40:22Z
+janestreet/lwt-async	Lwt with async backend	public	2014-01-02T11:16:51Z

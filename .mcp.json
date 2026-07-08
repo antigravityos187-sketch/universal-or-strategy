@@ -1,8 +1,30 @@
 {
   "mcpServers": {
+    "lean-ctx": {
+      "type": "stdio",
+      "command": "C:\\Users\\Mohammed Khalid\\.local\\bin\\lean-ctx.exe",
+      "args": [],
+      "env": {
+        "PATH": "C:\\Program Files\\Git\\cmd;C:\\Program Files\\Git\\bin;C:\\Program Files\\GitHub CLI\\;C:\\Program Files\\dotnet\\;C:\\Program Files\\Go\\bin;C:\\Program Files\\nodejs\\;C:\\Program Files\\PowerShell\\7\\;C:\\Program Files\\WezTerm;C:\\Program Files\\Docker\\Docker\\resources\\bin;C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\Users\\Mohammed Khalid\\.local\\bin;C:\\Users\\Mohammed Khalid\\.dotnet\\tools;C:\\Users\\Mohammed Khalid\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\Mohammed Khalid\\AppData\\Local\\Programs\\Python\\Python312\\Scripts;C:\\Users\\Mohammed Khalid\\AppData\\Roaming\\npm;C:\\Users\\Mohammed Khalid\\AppData\\Local\\Programs\\IBM Bob\\bin;C:\\Program Files\\GitButler"
+      },
+      "alwaysAllow": [
+        "ctx_read",
+        "ctx_shell",
+        "shell",
+        "ctx_search",
+        "ctx_glob",
+        "ctx_tree",
+        "ctx_session",
+        "ctx_compose",
+        "ctx_callgraph",
+        "ctx_patch",
+        "ctx_call",
+        "ctx_expand"
+      ]
+    },
     "jcodemunch-mcp": {
       "type": "stdio",
-      "command": "/home/malhitticrypto/.local/bin/jcodemunch-mcp",
+      "command": "C:\\Users\\Mohammed Khalid\\.local\\bin\\jcodemunch-mcp.exe",
       "args": [],
       "alwaysAllow": [
         "resolve_repo",
@@ -51,13 +73,13 @@
     },
     "sequential-thinking": {
       "type": "stdio",
-      "command": "npx",
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
       "args": [
         "-y",
         "@modelcontextprotocol/server-sequential-thinking"
       ],
       "env": {
-        "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/home/malhitticrypto/.npm-global/bin:/home/malhitticrypto/.local/bin"
+        "PATH": "C:\\Program Files\\nodejs;C:\\Users\\Mohammed Khalid\\AppData\\Roaming\\npm;C:\\Users\\Mohammed Khalid\\.local\\bin"
       },
       "alwaysAllow": [
         "create_thought",

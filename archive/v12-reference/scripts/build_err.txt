@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+C:\WSGTA\universal-or-strategy\benchmarks\StandaloneBenchRun.cs(14,59): error CS0214: Pointers and fixed size buffers may only be used in an unsafe context [C:\WSGTA\universal-or-strategy\benchmarks\SpscRing.Benchmarks.csproj]
+C:\WSGTA\universal-or-strategy\benchmarks\StandaloneBenchRun.cs(27,22): error CS0625: 'SpscRingV148._cachedConsumer': instance field in types marked with StructLayout(LayoutKind.Explicit) must have a FieldOffset attribute [C:\WSGTA\universal-or-strategy\benchmarks\SpscRing.Benchmarks.csproj]
+
+Build FAILED.
+
+C:\WSGTA\universal-or-strategy\benchmarks\StandaloneBenchRun.cs(14,59): error CS0214: Pointers and fixed size buffers may only be used in an unsafe context [C:\WSGTA\universal-or-strategy\benchmarks\SpscRing.Benchmarks.csproj]
+C:\WSGTA\universal-or-strategy\benchmarks\StandaloneBenchRun.cs(27,22): error CS0625: 'SpscRingV148._cachedConsumer': instance field in types marked with StructLayout(LayoutKind.Explicit) must have a FieldOffset attribute [C:\WSGTA\universal-or-strategy\benchmarks\SpscRing.Benchmarks.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:01.60

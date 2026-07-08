@@ -1,4 +1,4 @@
-﻿# PR #21 Fix Queue
+# PR #21 Fix Queue
 Generated: 2026-06-02 11:00:10
 
 ## Instructions for v12-engineer

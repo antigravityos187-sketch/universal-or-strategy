@@ -1,0 +1,1624 @@
+[GODMODE] Using Jane Street strict threshold: CYC <= 8
+
+================================================================================
+V12 UNIVERSAL OR STRATEGY - GODMODE COMPLEXITY AUDIT
+JANE STREET STRICT THRESHOLD: CYC <= 8
+================================================================================
+
+=== FILE: SignalBroadcaster.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| GetSubscriberCounts                      |    10 |        9 |                | REFACTOR             |
+| BroadcastTradeSignal                     |     5 |        2 |                | OK                   |
+| BroadcastTrailUpdate                     |     5 |        2 |                | OK                   |
+| BroadcastTargetAction                    |     5 |        2 |                | OK                   |
+| BroadcastFlatten                         |     3 |        1 |                | OK                   |
+| BroadcastBreakeven                       |     3 |        1 |                | OK                   |
+| BroadcastStopUpdate                      |     8 |        1 |                | OK                   |
+| BroadcastEntryUpdate                     |     7 |        1 |                | OK                   |
+| BroadcastOrderCancel                     |     7 |        1 |                | OK                   |
+| BroadcastExternalCommand                 |     7 |        1 |                | OK                   |
+| ClearAllSubscribers                      |    10 |        1 |                | OK                   |
+
+=== FILE: V12_002.BarUpdate.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ProcessSessionReset                      |    32 |       11 |                | REFACTOR             |
+| OnBarUpdate                              |    51 |       10 |                | REFACTOR             |
+| UpdateORBoxDisplay                       |    15 |        8 |                | WATCH                |
+| ProcessORWindowBuilding                  |    25 |        5 |                | OK                   |
+| ProcessORCompletion                      |    28 |        4 |                | OK                   |
+| DrawMNLAnchorIfActive                    |    12 |        3 |                | OK                   |
+
+=== FILE: V12_002.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| EnsureStartupReady                       |    21 |        7 |                | WATCH                |
+| DrainActor                               |    24 |        7 |                | WATCH                |
+| Enqueue                                  |     8 |        3 |                | OK                   |
+| ScheduleActorDrain                       |    14 |        3 |                | OK                   |
+| TryYieldActorForTime                     |     7 |        3 |                | OK                   |
+| IsActorThread                            |     3 |        2 |                | OK                   |
+| TryDrain                                 |     4 |        2 |                | OK                   |
+| RequestActorYield                        |    17 |        2 |                | OK                   |
+| TryConsumeActorBrokerCall                |     7 |        2 |                | OK                   |
+| ExitFlattenScope                         |     7 |        2 |                | OK                   |
+| ResumeAccountOrderQueuePump              |     5 |        2 |                | OK                   |
+| ResumeAccountExecutionQueuePump          |     5 |        2 |                | OK                   |
+| RefreshActorOwnerThread                  |     2 |        1 |                | OK                   |
+| BeginActorCycle                          |     7 |        1 |                | OK                   |
+| GetActorBudgetQueueState                 |     8 |        1 |                | OK                   |
+| IpcClientSession                         |     4 |        1 |                | OK                   |
+| TryMarkClosed                            |     2 |        1 |                | OK                   |
+| EnterFlattenScope                        |     3 |        1 |                | OK                   |
+| ResumeBufferedAccountCallbackPumps       |     3 |        1 |                | OK                   |
+
+=== FILE: V12_002.DrawingHelpers.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| DrawORBox                                |    77 |       12 |                | REFACTOR             |
+| ConvertToSelectedTimeZone                |    25 |        7 |                | WATCH                |
+| GetDrawObject                            |     7 |        4 |                | OK                   |
+| GetStableHash                            |     7 |        3 |                | OK                   |
+| ResetOR                                  |    14 |        1 |                | OK                   |
+| RemoveDrawObjects                        |     3 |        1 |                | OK                   |
+
+=== FILE: V12_002.Entries.FFMA.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| CheckFFMAConditions                      |    50 |       16 |                | REFACTOR             |
+| ExecuteFFMAManualMarketEntry             |   162 |       12 |                | REFACTOR, LOC>80     |
+| ExecuteFFMALimitEntry                    |   146 |        9 |                | REFACTOR, LOC>80     |
+| ExecuteFFMAEntry                         |   126 |        8 |                | WATCH, LOC>80        |
+| DeactivateFFMAMode                       |     4 |        1 |                | OK                   |
+
+=== FILE: V12_002.Entries.MOMO.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ExecuteMOMOEntry                         |   166 |       10 |                | REFACTOR, LOC>80     |
+| ActivateMOMOMode                         |     4 |        2 |                | OK                   |
+| DeactivateMOMOMode                       |     3 |        1 |                | OK                   |
+
+=== FILE: V12_002.Entries.OR.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| EnterORPosition                          |   166 |       11 |                | REFACTOR, LOC>80     |
+| ExecuteLong                              |    23 |        7 |                | WATCH                |
+| ExecuteShort                             |    23 |        7 |                | WATCH                |
+| CalculateORStopDistance                  |     5 |        2 |                | OK                   |
+
+=== FILE: V12_002.Entries.Retest.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ExecuteRetestEntry                       |   199 |       12 |                | REFACTOR, LOC>80     |
+| ExecuteRetestManualEntry                 |   149 |        8 |                | WATCH, LOC>80        |
+| CalculateRetestStopDistance              |     3 |        1 |                | OK                   |
+| DeactivateRetestMode                     |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.Entries.RMA.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| MonitorRmaProximity                      |    67 |       17 |                | REFACTOR             |
+| ExecuteTrendSplitEntry                   |    17 |        7 |                | WATCH                |
+| SubmitTrendSplitBrackets                 |   126 |        6 |                | WATCH, LOC>80        |
+| CalculateTrendSplitLevels                |    33 |        4 |                | OK                   |
+| FinalizeTrendSplitEntry                  |    26 |        2 |                | OK                   |
+| DeactivateRMAMode                        |    23 |        1 |                | OK                   |
+
+=== FILE: V12_002.Entries.Trend.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ExecuteTREND_Preflight                   |    25 |        9 |                | REFACTOR             |
+| ExecuteTRENDEntry                        |    88 |        8 |                | WATCH, LOC>80        |
+| ExecuteTREND_ResolveDirection            |    42 |        5 |                | OK                   |
+| ExecuteTRENDManual_Preflight             |    17 |        5 |                | OK                   |
+| ExecuteTREND_SubmitLeg2                  |    57 |        4 |                | OK                   |
+| ExecuteTRENDManualEntry                  |    56 |        4 |                | OK                   |
+| ClampEntryQuantity                       |    21 |        3 |                | OK                   |
+| ExecuteTREND_CalculateLegs               |    84 |        2 |                | LOC>80               |
+| ExecuteTREND_SubmitLeg1                  |    46 |        2 |                | OK                   |
+| ExecuteTREND_DispatchSima                |    19 |        2 |                | OK                   |
+| ExecuteTRENDManual_SubmitEntry           |    37 |        2 |                | OK                   |
+| ExecuteTRENDManual_DispatchSima          |    16 |        2 |                | OK                   |
+| CalculateTRENDStopDistance               |     6 |        1 |                | OK                   |
+| CreateTRENDPosition                      |    55 |        1 |                | OK                   |
+| CreateTRENDPosition_CalculateTargets     |    32 |        1 |                | OK                   |
+| CreateTRENDPosition_BuildInfo            |    56 |        1 |                | OK                   |
+| DeactivateTRENDMode                      |     2 |        1 |                | OK                   |
+| ExecuteTRENDManual_BuildPosition         |    33 |        1 |                | OK                   |
+
+=== FILE: V12_002.IO.PathValidation.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ValidateAndCanonicalize                  |    33 |        6 |                | WATCH                |
+| ValidateDirectoryPath                    |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.IO.RetryHelper.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| IsTransientIOError                       |    15 |        7 |                | WATCH                |
+| ExecuteWithRetry                         |    17 |        1 |                | OK                   |
+| GetRetryMetrics                          |     4 |        1 |                | OK                   |
+| ResetMetrics                             |     4 |        1 |                | OK                   |
+
+=== FILE: V12_002.IPC.Hardening.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| IsAllowlistBypassAttempt                 |    19 |       11 |                | REFACTOR             |
+| ValidateIpcCommand                       |    15 |        5 |                | OK                   |
+| CleanupOldTimestamps                     |     7 |        4 |                | OK                   |
+| CheckCommandSyntax                       |    19 |        4 |                | OK                   |
+| TryReset                                 |    10 |        3 |                | OK                   |
+| TryAcquire                               |    10 |        2 |                | OK                   |
+| RecordFailure                            |     5 |        2 |                | OK                   |
+| RateLimiter                              |     3 |        1 |                | OK                   |
+| CircuitBreaker                           |     3 |        1 |                | OK                   |
+| RecordSuccess                            |     3 |        1 |                | OK                   |
+| InitializeIpcHardening                   |     5 |        1 |                | OK                   |
+| GetExpectedParameterCount                |     2 |        1 |                | OK                   |
+| SendBackpressureNack                     |     3 |        1 |                | OK                   |
+
+=== FILE: V12_002.Lifecycle.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| CleanupDictionaries                      |    22 |       13 |                | REFACTOR             |
+| ProcessOnStateChange                     |    11 |       10 |      YES       | REFACTOR             |
+| DrainQueuesForShutdown                   |    28 |        9 |                | REFACTOR             |
+| ProcessOnConnectionStatusUpdate          |    20 |        9 |                | REFACTOR             |
+| OnStateChangeConfigure                   |    65 |        6 |                | WATCH                |
+| Init_InstrumentConfig                    |    13 |        6 |                | WATCH                |
+| OnStateChangeRealtime                    |    34 |        6 |                | WATCH                |
+| ShutdownUiAndServices                    |    25 |        5 |                | OK                   |
+| OnMarketData                             |    16 |        4 |                | OK                   |
+| CleanupMmioAndEvents                     |    10 |        3 |                | OK                   |
+| Init_Indicators                          |    15 |        3 |                | OK                   |
+| OnStateChange                            |     5 |        2 |                | OK                   |
+| Init_TargetConfiguration                 |    19 |        2 |                | OK                   |
+| InitializeCommandDispatchers             |    80 |        2 |                | OK                   |
+| Init_Services                            |    13 |        2 |                | OK                   |
+| OnStateChangeTerminated                  |     7 |        2 |                | OK                   |
+| SetTerminatingAndStopWatchdog            |     3 |        1 |                | OK                   |
+| OnStateChangeSetDefaults                 |    98 |        1 |                | LOC>80               |
+| OnStateChangeDataLoaded                  |    10 |        1 |                | OK                   |
+| Init_SessionLogging                      |    73 |        1 |                | OK                   |
+| OnConnectionStatusUpdate                 |     7 |        1 |                | OK                   |
+
+=== FILE: V12_002.LogicAudit.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| AuditCase8_StopLossCoverage              |    29 |        8 |                | WATCH                |
+| AuditCase2_ContractSizing                |    30 |        5 |                | OK                   |
+| AuditCase5_TrendRmaSplit                 |    56 |        5 |                | OK                   |
+| AuditCase3b_UniversalLadder              |    22 |        4 |                | OK                   |
+| AuditCase9_ReaperDesync                  |    48 |        4 |                | OK                   |
+| AuditCase1_ATRRounding                   |    10 |        3 |                | OK                   |
+| AuditCase3_TargetDistribution            |    17 |        3 |                | OK                   |
+| AuditCase6_RetestOrBound                 |    42 |        3 |                | OK                   |
+| AuditCase7_SimaBroadcast                 |    11 |        3 |                | OK                   |
+| AuditCase4_SymmetrySlippage              |    19 |        2 |                | OK                   |
+| ExecuteRiskLogicAudit                    |    23 |        2 |                | OK                   |
+
+=== FILE: V12_002.MetadataGuard.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| MetadataGuardFsmEvent                    |    10 |        6 |                | WATCH                |
+| MetadataGuardDuplicate                   |    15 |        5 |                | OK                   |
+| MetadataGuardTimestamp                   |    22 |        4 |                | OK                   |
+| MetadataGuardEventAge                    |    22 |        4 |                | OK                   |
+| MetadataGuardStateCompatibility          |    22 |        4 |                | OK                   |
+| MetadataGuardRepairAuthorized            |    13 |        4 |                | OK                   |
+| MetadataGuardCommandTimestamp            |     8 |        2 |                | OK                   |
+
+=== FILE: V12_002.Orders.ArrayPool.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| Return                                   |     4 |        3 |                | OK                   |
+| OrderArrayPool                           |     3 |        2 |                | OK                   |
+| Rent                                     |     5 |        2 |                | OK                   |
+
+=== FILE: V12_002.Orders.Callbacks.AccountOrders.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ProcessQueuedAccountOrder                |    34 |       15 |                | REFACTOR             |
+| OnAccountOrderUpdate                     |    26 |       14 |                | REFACTOR             |
+| HandleMatchedFollowerOrder               |    65 |       14 |                | REFACTOR             |
+| HandleMatchedFollower_StopReplacement    |    23 |       14 |                | REFACTOR             |
+| ProcessAccountOrderQueue                 |    30 |       13 |                | REFACTOR             |
+| IsMasterReplaceCascadeCancellation       |    26 |       13 |                | REFACTOR             |
+| ProcessFollowerCancellationSafe          |    41 |       13 |                | REFACTOR             |
+| ProcessAccountOrder_UpdateMasterExpected |    21 |       12 |                | REFACTOR             |
+| ProcessAccountOrder_UpdateFleetExpected  |    23 |       12 |                | REFACTOR             |
+| HandleMatchedFollower_PendingCancelReplace |    61 |       12 |                | REFACTOR             |
+| ExecuteFollowerCascadeCleanup            |    60 |       12 |                | REFACTOR             |
+| ProcessFollowerCancellationUnconditional |    29 |       12 |                | REFACTOR             |
+| HandleMatchedFollower_PendingCleanupPurge |    16 |        9 |                | REFACTOR             |
+| TryFindOrderInPosition                   |    24 |        8 |                | WATCH                |
+| TryFindMasterEntryForOrder               |    17 |        8 |                | WATCH                |
+| ExecuteFollowerCascade_ResolveFollowers  |    20 |        8 |                | WATCH                |
+| ProcessAccountOrder_EnqueueTerminalUpdate |    13 |        6 |                | WATCH                |
+| TryGetDispatchFollowerEntries            |    14 |        6 |                | WATCH                |
+| HandleMatchedFollower_TargetReplaceCancel |    19 |        6 |                | WATCH                |
+| ExecuteFollowerCascade_CleanupUnfilled   |    38 |        5 |                | OK                   |
+| TryFindOrder_MatchesEntryStopOrT1        |     7 |        4 |                | OK                   |
+| OrdersMatchByRefOrId                     |     3 |        4 |                | OK                   |
+| HandleMatchedFollower_DeltaRollback      |    17 |        4 |                | OK                   |
+| TryFindOrder_MatchesT2ThroughT5          |     6 |        3 |                | OK                   |
+| ExecuteFollowerCascade_SuppressMasterReplace |    14 |        2 |                | OK                   |
+| ExecuteFollowerCascade_EmergencyFlattenFilled |    18 |        2 |                | OK                   |
+
+=== FILE: V12_002.Orders.Callbacks.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| HandleSecondaryOrderFilled               |    69 |       21 |                | REFACTOR             |
+| ProcessOnOrderUpdate                     |    48 |       19 |      YES       | REFACTOR             |
+| RequestStopCancelLifecycleSafe           |    22 |       12 |                | REFACTOR             |
+| HandleOrderRejected                      |    29 |       12 |                | REFACTOR             |
+| HandleOrderPriceOrQuantityChanged        |    37 |       11 |                | REFACTOR             |
+| HandleOrderCancelled_ProcessStopReplacement |    20 |       10 |                | REFACTOR             |
+| HandleEntryOrderFilled                   |    73 |        8 |                | WATCH                |
+| HandleOrderCancelled_RollbackUnfilledEntry |    10 |        8 |                | WATCH                |
+| HandleOrderCancelled_PurgePendingCleanup |    15 |        7 |                | WATCH                |
+| TryRemoveTargetReferenceByOrder          |    11 |        6 |                | WATCH                |
+| RemoveTargetReferenceOnTerminalFill      |    12 |        6 |                | WATCH                |
+| HandleOrderCancelled                     |    11 |        6 |                | WATCH                |
+| ApplyTargetFill                          |    30 |        5 |                | OK                   |
+| ExtractEntryNameFromStop                 |     7 |        3 |                | OK                   |
+| RollbackExpectedPosition                 |     6 |        2 |                | OK                   |
+| OnOrderUpdate                            |    22 |        1 |                | OK                   |
+
+=== FILE: V12_002.Orders.Callbacks.Execution.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| HandleFlatPosition_CleanupActivePositions |    30 |       17 |                | REFACTOR             |
+| ProcessOnExecutionUpdate                 |    31 |       13 |                | REFACTOR             |
+| ProcessOnExecution_HandleStopFill        |    28 |       13 |                | REFACTOR             |
+| BroadcastSyncTargetState                 |    11 |        9 |                | REFACTOR             |
+| ProcessOnExecution_HandleTargetFill      |    52 |        9 |                | REFACTOR             |
+| HasPendingEntryForAcct                   |    11 |        7 |                | WATCH                |
+| HandleFlatPosition_SyncExpected          |    19 |        6 |                | WATCH                |
+| HasUnfilledActivePositionForAcct         |     5 |        5 |                | OK                   |
+| ProcessOnExecution_Dedup                 |    22 |        4 |                | OK                   |
+| ProcessOnExecution_ExtractEntryName      |     8 |        4 |                | OK                   |
+| ProcessOnExecution_HandleTrimFill        |    30 |        4 |                | OK                   |
+| ProcessOnExecution_FinalizeFullClose     |     8 |        4 |                | OK                   |
+| OnPositionUpdate                         |     9 |        3 |                | OK                   |
+| OnExecutionUpdate                        |    20 |        3 |                | OK                   |
+| ProcessOnExecution_TrackCompliance       |     5 |        3 |                | OK                   |
+| HandleFlatPosition_ReconcileOrphans      |     6 |        2 |                | OK                   |
+| ProcessOnExecution_RunShadowCheck        |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.Orders.Callbacks.Propagation.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| PropagateMaster_IdentifyMove             |    40 |       18 |                | REFACTOR             |
+| PropagateMasterEntryMove                 |    60 |       14 |                | REFACTOR             |
+| IsValidTradeTypeToken                    |    20 |       13 |                | REFACTOR             |
+| ResolveFollowersViaScan_ProcessEntry     |    22 |       12 |                | REFACTOR             |
+| ResolveMasterTradeType                   |    16 |       11 |                | REFACTOR             |
+| PropagateMaster_ApplyFollowerMove        |    24 |       11 |                | REFACTOR             |
+| PropagateMasterTargetMove                |    60 |        9 |                | REFACTOR             |
+| SubmitFollowerReplacement_ReassertExpected |    35 |        7 |                | WATCH                |
+| SubmitFollowerReplacement_RegisterState  |    39 |        7 |                | WATCH                |
+| ResolveFollowersViaScan                  |    11 |        6 |                | WATCH                |
+| SubmitFollowerReplacement_SubmitEntry    |    23 |        6 |                | WATCH                |
+| PropagateMasterPriceMove                 |    35 |        5 |                | OK                   |
+| PropagateFollowerEntryReplace            |    52 |        5 |                | OK                   |
+| SubmitFollowerTargetReplacement          |    41 |        5 |                | OK                   |
+| PropagateMasterStopMove                  |    18 |        4 |                | OK                   |
+| PropagateMaster_ResolveFollowers         |     8 |        3 |                | OK                   |
+| SubmitFollowerReplacement                |    39 |        3 |                | OK                   |
+| SubmitFollowerReplacement_CreateEntry    |    21 |        1 |                | OK                   |
+
+=== FILE: V12_002.Orders.CancelGateway.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| CancelOrderSafe                          |     7 |        6 |                | WATCH                |
+| CancelOrderOnAccount                     |     7 |        5 |                | OK                   |
+| CancelOrderForReplace                    |     5 |        3 |                | OK                   |
+
+=== FILE: V12_002.Orders.Management.Cleanup.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ValidateOrphanedMasterOrders             |    32 |       19 |                | REFACTOR             |
+| BuildLiveBrokerOrderIndex                |    23 |       14 |                | REFACTOR             |
+| CleanupPosition                          |    36 |       12 |                | REFACTOR             |
+| PurgePositionIfEligible                  |    21 |       11 |                | REFACTOR             |
+| ClassifyOrphanReason                     |    33 |       11 |                | REFACTOR             |
+| PurgeGhostOrderReferences                |    42 |       11 |                | REFACTOR             |
+| EvaluateZombiePurgeEligibility           |    33 |        9 |                | REFACTOR             |
+| EvaluateFollowerRepairBlock              |    20 |        5 |                | OK                   |
+| RemoveGhostOrderRef                      |     8 |        5 |                | OK                   |
+| ReconcileOrphanedOrders                  |    13 |        5 |                | OK                   |
+
+=== FILE: V12_002.Orders.Management.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| SubmitTargetOrdersLoop                   |   104 |       10 |                | REFACTOR, LOC>80     |
+| AuditStopQuantityAndPrint                |    61 |        8 |                | WATCH                |
+| SubmitStopOrderSafe                      |    73 |        6 |                | WATCH                |
+| SubmitBracketOrders                      |    43 |        4 |                | OK                   |
+| ValidateBracketEntryGuard                |    19 |        3 |                | OK                   |
+| LogBracketSubmissionError                |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.Orders.Management.Flatten.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ManageCIT                                |    77 |       19 |                | REFACTOR             |
+| FlattenSinglePosition                    |    76 |       16 |                | REFACTOR             |
+| HasActiveOrPendingOrderForEntry          |    15 |       12 |                | REFACTOR             |
+| CancelAllBracketOrdersForPosition        |     9 |       11 |                | REFACTOR             |
+| CancelUnfilledMasterEntries              |    22 |        8 |                | WATCH                |
+| SubmitEmergencyFlattenOrder              |    44 |        8 |                | WATCH                |
+| CancelMasterEntryOrders                  |     8 |        7 |                | WATCH                |
+| FlattenAll                               |    20 |        6 |                | WATCH                |
+| SyncPositionState                        |     8 |        5 |                | OK                   |
+| HandleGhostPositionCleanup               |    21 |        5 |                | OK                   |
+| FlattenPositionByName                    |    10 |        5 |                | OK                   |
+| FlattenFilledMasterPositions             |     9 |        4 |                | OK                   |
+| IsOrderTerminal                          |     5 |        4 |                | OK                   |
+| ResetSyncStateAndPurgeFollowers          |     8 |        3 |                | OK                   |
+| DispatchFleetFlatten                     |     4 |        1 |                | OK                   |
+
+=== FILE: V12_002.Orders.Management.StopSync.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| SyncLimitTarget                          |   128 |       17 |                | REFACTOR, LOC>80     |
+| RestoreCascadedTargets                   |    90 |       16 |                | REFACTOR, LOC>80     |
+| RefreshActivePositionOrders              |    49 |       13 |                | REFACTOR             |
+| UpdateStopQuantity                       |    59 |       12 |                | REFACTOR             |
+| ValidateStopPrice                        |    32 |        9 |                | REFACTOR             |
+| SubmitStopOrderToBroker                  |    62 |        7 |                | WATCH                |
+| SyncRunnerTarget                         |    27 |        5 |                | OK                   |
+| CreateNewStopOrder                       |    55 |        5 |                | OK                   |
+| Validate_LongIsIllegalAdjust             |    32 |        4 |                | OK                   |
+| Validate_ShortIsIllegalAdjust            |    32 |        4 |                | OK                   |
+
+=== FILE: V12_002.Perf.LatencyHistogram.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| GetPercentile                            |    11 |        6 |                | WATCH                |
+| GetBucketIndex                           |     5 |        3 |                | OK                   |
+| ToAsciiString                            |    15 |        3 |                | OK                   |
+| Record                                   |     8 |        2 |                | OK                   |
+| GetSnapshot                              |    10 |        2 |                | OK                   |
+| Reset                                    |     5 |        2 |                | OK                   |
+| LatencyHistogram                         |     5 |        1 |                | OK                   |
+| HistogramSnapshot                        |     5 |        1 |                | OK                   |
+
+=== FILE: V12_002.Perf.LatencyProbe.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| Start                                    |     3 |        1 |                | OK                   |
+| Stop                                     |     2 |        1 |                | OK                   |
+| LatencyProbe                             |     3 |        1 |                | OK                   |
+
+=== FILE: V12_002.Perf.LogBuffer.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| FormatInternal                           |    27 |       13 |                | REFACTOR             |
+| Format                                   |     9 |        4 |                | OK                   |
+| ValidateThreadAffinity                   |     8 |        4 |                | OK                   |
+
+=== FILE: V12_002.Photon.MmioMirror.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| MmioDispatchMirror                       |    18 |        6 |                | WATCH                |
+| TryPublish                               |    11 |        2 |                | OK                   |
+| Dispose                                  |     9 |        2 |                | OK                   |
+| GetDiagnostics                           |     8 |        1 |                | OK                   |
+
+=== FILE: V12_002.Photon.Pool.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ContainsOrAdd                            |    30 |        8 |                | WATCH                |
+| ReleaseByIndex                           |    10 |        5 |                | OK                   |
+| TableRemove                              |    20 |        5 |                | OK                   |
+| Claim                                    |    12 |        3 |                | OK                   |
+| GetByIndex                               |     4 |        3 |                | OK                   |
+| FnvHash64                                |     9 |        3 |                | OK                   |
+| ExecutionIdRing                          |    15 |        3 |                | OK                   |
+| PhotonOrderPool                          |     8 |        2 |                | OK                   |
+| TableInsert                              |     7 |        2 |                | OK                   |
+| GetDiagnostics                           |     9 |        1 |                | OK                   |
+| GetDiagnostics                           |    10 |        1 |                | OK                   |
+| ComputeFleetDispatchShadow               |    14 |        1 |                | OK                   |
+
+=== FILE: V12_002.Photon.Ring.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| SPSCRing                                 |     7 |        3 |                | OK                   |
+| TryEnqueue                               |     9 |        2 |                | OK                   |
+| TryDequeue                               |    10 |        2 |                | OK                   |
+
+=== FILE: V12_002.PositionInfo.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ApplyTargetLadderGuard                   |    50 |        7 |                | WATCH                |
+| GetTargetMode                            |    14 |        6 |                | WATCH                |
+| GetConfiguredTargetMagnitude             |    14 |        6 |                | WATCH                |
+| CalculateTargetPrice                     |    24 |        6 |                | WATCH                |
+| GetTargetContracts                       |    14 |        6 |                | WATCH                |
+| GetTargetPrice                           |    14 |        6 |                | WATCH                |
+| IsTargetFilled                           |    14 |        6 |                | WATCH                |
+| MarkTargetFilled                         |    19 |        6 |                | WATCH                |
+| GetTargetFilledQuantity                  |    14 |        6 |                | WATCH                |
+| SetTargetFilledQuantity                  |    18 |        6 |                | WATCH                |
+| IsRunnerTarget                           |     2 |        1 |                | OK                   |
+| CalculateTargetPriceFromPos              |     7 |        1 |                | OK                   |
+
+=== FILE: V12_002.PureLogic.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| CalculatePositionSize                    |    21 |        6 |                | WATCH                |
+| GetTargetDistribution                    |    13 |        4 |                | OK                   |
+| CalculateATRStopDistance                 |     6 |        2 |                | OK                   |
+
+=== FILE: V12_002.REAPER.Audit.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| AuditMaster_HandleNakedPosition          |    38 |       15 |                | REFACTOR             |
+| AuditSingleFleetAccount                  |    48 |       13 |                | REFACTOR             |
+| AuditMaster_CheckExpectedActual          |    23 |       13 |                | REFACTOR             |
+| AuditFleet_CalculateExpectedActual       |    41 |       12 |                | REFACTOR             |
+| AuditMaster_HandleDesyncFlatten          |    20 |       10 |                | REFACTOR             |
+| ProcessReaperFlatten_CancelWorkingOrders |    19 |       10 |                | REFACTOR             |
+| AuditFleet_CheckWorkingStop              |     8 |        9 |                | REFACTOR             |
+| AuditApexPositions                       |    22 |        8 |                | WATCH                |
+| AuditFleet_HandleDesyncRepair            |    33 |        8 |                | WATCH                |
+| AuditFleet_CheckPositionPassGrace        |    24 |        7 |                | WATCH                |
+| EnqueueReaperRepairCandidate             |    27 |        7 |                | WATCH                |
+| AuditIpcHardeningMetrics                 |    10 |        6 |                | WATCH                |
+| AuditFleet_HandleCriticalDesyncFlatten   |    23 |        6 |                | WATCH                |
+| AuditMaster_CalculatePositionState       |    19 |        6 |                | WATCH                |
+| ProcessReaperFlatten_ClosePositions      |    32 |        6 |                | WATCH                |
+| AuditIpcCommandQueue                     |    13 |        5 |                | OK                   |
+| TerminateFsmsForAccount                  |     8 |        5 |                | OK                   |
+| ProcessReaperFlatten_FindAccount         |     9 |        5 |                | OK                   |
+| AuditFleet_HandleNakedPosition           |    33 |        4 |                | OK                   |
+| EnqueueReaperMasterNakedStop             |    25 |        4 |                | OK                   |
+| ProcessReaperFlattenQueue                |    16 |        4 |                | OK                   |
+| EnqueueReaperFlattenCandidate            |     8 |        3 |                | OK                   |
+| EnqueueReaperMasterFlatten               |     8 |        3 |                | OK                   |
+| AuditMasterAccountIfNeeded               |    17 |        1 |                | OK                   |
+| ProcessReaperFlatten_TerminateFsms       |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.REAPER.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| OnReaperTimerElapsed                     |     7 |        5 |                | OK                   |
+| IsReaperFillGraceActive                  |     5 |        4 |                | OK                   |
+| TryGetRepairDistanceLimitPoints          |     8 |        3 |                | OK                   |
+| StartReaperAudit                         |     8 |        2 |                | OK                   |
+| StopReaperAudit                          |     8 |        2 |                | OK                   |
+| StampAccountFillGrace                    |     2 |        1 |                | OK                   |
+| ClearNakedPositionGrace                  |     2 |        1 |                | OK                   |
+| ClearNakedStopInFlight                   |     2 |        1 |                | OK                   |
+| ClearOrphanFSMGrace                      |     2 |        1 |                | OK                   |
+| ClearOrphanRepairCount                   |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.REAPER.NakedPosition.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| CheckPendingStopReplace                  |    15 |        6 |                | WATCH                |
+| DetectNakedPosition                      |    22 |        5 |                | OK                   |
+| EvaluateNakedPositionGrace               |    15 |        3 |                | OK                   |
+| EnqueueEmergencyStop                     |    19 |        2 |                | OK                   |
+
+=== FILE: V12_002.REAPER.NakedStop.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ProcessReaperNakedStopQueue              |    39 |        4 |                | OK                   |
+
+=== FILE: V12_002.REAPER.OrphanSafety.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ValidateRepairEligibility_OrphanCheck    |    28 |        7 |                | WATCH                |
+| DetectOrphanFSM                          |    25 |        4 |                | OK                   |
+| ExecuteOrphanSelfHeal                    |     9 |        1 |                | OK                   |
+
+=== FILE: V12_002.REAPER.Repair.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| SubmitRepairOrderWithAuthorization       |    67 |       14 |                | REFACTOR             |
+| CalculateRepairOrderPrices               |    15 |        6 |                | WATCH                |
+| ValidateRepairRiskBounds                 |    31 |        6 |                | WATCH                |
+| ExecuteReaperRepair                      |    31 |        4 |                | OK                   |
+| ValidateRepairEligibility                |    16 |        3 |                | OK                   |
+| ProcessReaperRepairQueue                 |     4 |        2 |                | OK                   |
+
+=== FILE: V12_002.Safety.Watchdog.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| CancelWatchdogWorkingOrders              |    19 |       12 |                | REFACTOR             |
+| OnWatchdogTimer                          |    30 |       11 |                | REFACTOR             |
+| CancelDirectFallbackOrders               |    18 |       11 |                | REFACTOR             |
+| HasWatchdogLeadAccountPosition           |    13 |        8 |                | WATCH                |
+| HasWatchdogLeadAccountWorkingOrder       |    13 |        8 |                | WATCH                |
+| ExecuteWatchdogLeadAccountFlatten        |    20 |        8 |                | WATCH                |
+| FlattenWatchdogPositions                 |    37 |        7 |                | WATCH                |
+| FlattenDirectFallbackPositions           |    27 |        7 |                | WATCH                |
+| ExecuteWatchdogDirectFallback            |    14 |        5 |                | OK                   |
+| StopWatchdog                             |     7 |        2 |                | OK                   |
+| HasWatchdogLeadAccountExposure           |     2 |        2 |                | OK                   |
+| StartWatchdog                            |     6 |        1 |                | OK                   |
+
+=== FILE: V12_002.SIMA.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| SetRmaAnchorFromIpc                      |    17 |       13 |      YES       | REFACTOR             |
+| AddExpectedPositionDeltaLocked           |    16 |        5 |                | OK                   |
+| SetExpectedPositionLocked                |     9 |        5 |                | OK                   |
+| AddOrUpdateExpectedPositionLocked        |     4 |        4 |                | OK                   |
+| DeltaExpectedPositionLocked              |    22 |        4 |                | OK                   |
+| GetSortedAccountFleet                    |    12 |        3 |                | OK                   |
+| MarkDispatchSyncPending                  |     4 |        2 |                | OK                   |
+| ClearDispatchSyncPending                 |     4 |        2 |                | OK                   |
+| IsDispatchSyncPending                    |     4 |        2 |                | OK                   |
+| StampReaperMoveGrace                     |     2 |        1 |                | OK                   |
+| ExpKey                                   |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.SIMA.Dispatch.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| Dispatch_PublishMarketBracketToPhoton    |   189 |       21 |                | REFACTOR, LOC>80     |
+| Dispatch_ProcessFleetLoop                |   113 |       14 |                | REFACTOR, LOC>80     |
+| Dispatch_PublishLimitEntryToPhoton       |    95 |       11 |                | REFACTOR, LOC>80     |
+| RollbackCircuitBreakerState              |    25 |        7 |                | WATCH                |
+| Dispatch_FinalizeAndReport               |    35 |        6 |                | WATCH                |
+| Dispatch_ResolveFleetSnapshot            |    29 |        6 |                | WATCH                |
+| ExecuteSmartDispatchEntry                |    73 |        5 |                | OK                   |
+| Dispatch_BuildFollowerOrders             |   121 |        5 |                | LOC>80               |
+| TryIncrementDispatchCountWithCircuitBreaker |    46 |        5 |                | OK                   |
+| Dispatch_ValidatePreconditions           |    18 |        4 |                | OK                   |
+| Dispatch_InitializeLatencyTracking       |    16 |        1 |                | OK                   |
+
+=== FILE: V12_002.SIMA.Execution.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ExecuteMultiAccountMarket                |    78 |       13 |                | REFACTOR             |
+| ProcessSingleFleetRMAAccount             |   106 |       12 |                | REFACTOR, LOC>80     |
+| ExecuteMultiAccountBracket               |   107 |        9 |                | REFACTOR, LOC>80     |
+| ExecuteRMAEntryV2                        |   110 |        9 |                | REFACTOR, LOC>80     |
+| ValidateRMAEntryGuards                   |    24 |        5 |                | OK                   |
+| SubmitLocalRMAEntry                      |    61 |        3 |                | OK                   |
+| CalculateRMABracketPrices                |    28 |        1 |                | OK                   |
+
+=== FILE: V12_002.SIMA.Flatten.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ProcessFlattenWorkItem_CancelOrders      |    36 |       18 |                | REFACTOR             |
+| EmergencyFlattenSingleFleetAccount       |    67 |       13 |                | REFACTOR             |
+| ClosePositionsOnlyApexAccounts           |    40 |        8 |                | WATCH                |
+| FlattenAllApexAccounts                   |    41 |        7 |                | WATCH                |
+| ProcessFlattenWorkItem_ClosePositions    |    52 |        7 |                | WATCH                |
+| PumpFlattenOps                           |    26 |        5 |                | OK                   |
+| ChainNextFlattenOp                       |    10 |        3 |                | OK                   |
+
+=== FILE: V12_002.SIMA.Fleet.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ShouldSkipFleet_RunHealthCheck           |    57 |       31 |                | REFACTOR             |
+| VerifyPhotonSlotIntegrity                |    43 |       14 |                | REFACTOR             |
+| InitializeFollowerBracketFSM             |    34 |       13 |                | REFACTOR             |
+| ProcessFleetSlot                         |    37 |       11 |                | REFACTOR             |
+| SubmitAndRegisterFleetOrders             |    30 |       11 |                | REFACTOR             |
+| DrainAllDispatchQueuesOnAbort            |    23 |       11 |                | REFACTOR             |
+| PumpFleetDispatch                        |    29 |        8 |                | WATCH                |
+| UnsubscribeFromFleetAccounts             |    13 |        6 |                | WATCH                |
+| ValidateDispatchTimestamp                |    16 |        4 |                | OK                   |
+| TryResetCircuitBreakerIfBelow            |    11 |        4 |                | OK                   |
+| RollbackFleetDispatchState               |     9 |        3 |                | OK                   |
+| ProcessValidPhotonSlot                   |    14 |        3 |                | OK                   |
+| ShouldSkipFleet_IsConsistencyLockHit     |    11 |        3 |                | OK                   |
+| ShouldSkipFleetAccount                   |    11 |        2 |                | OK                   |
+
+=== FILE: V12_002.SIMA.Lifecycle.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| AdoptFleetWorkingOrders                  |    46 |       17 |                | REFACTOR             |
+| ClassifyAndRouteFleetOrder               |    42 |       16 |                | REFACTOR             |
+| SweepTrackedOrders                       |    34 |       12 |                | REFACTOR             |
+| SweepBrokerOrders                        |    38 |       12 |                | REFACTOR             |
+| DrainPhotonQueuesOnShutdown              |    21 |       11 |                | REFACTOR             |
+| ShouldProtectBracketOrder                |    16 |       10 |                | REFACTOR             |
+| AdoptMasterWorkingOrders                 |    37 |        9 |                | REFACTOR             |
+| HydrateFSM_MapOrderStateToFsmState       |    14 |        9 |                | REFACTOR             |
+| HydrateFSMsFromWorkingOrders             |    45 |        9 |                | REFACTOR             |
+| ProcessApplySimaState                    |    37 |        8 |                | WATCH                |
+| IsOrderStateAdoptable                    |    14 |        8 |                | WATCH                |
+| HydrateFSM_LinkBracketOrders             |    15 |        8 |                | WATCH                |
+| RecoverFSM_FindAccountWithPosition       |    16 |        8 |                | WATCH                |
+| HydrateFSM_RecoverFromOpenPositions      |    44 |        8 |                | WATCH                |
+| GetOrderDictionaryByName                 |    16 |        7 |                | WATCH                |
+| ReconstructMasterPositionFromBrackets    |    28 |        7 |                | WATCH                |
+| RecoverFSM_LinkRecoveredBrackets         |    17 |        7 |                | WATCH                |
+| EnumerateApexAccounts                    |    33 |        6 |                | WATCH                |
+| FindMasterPositionFromBroker             |    14 |        6 |                | WATCH                |
+| HydrateFSM_DetermineRemainingContracts   |    18 |        6 |                | WATCH                |
+| ValidatePositionForHydration             |    10 |        5 |                | OK                   |
+| RecoverFSM_ScanStopOrdersForKey          |    17 |        5 |                | OK                   |
+| IsOrderCancellable                       |     6 |        5 |                | OK                   |
+| HydrateExpectedPositionsFromBroker       |    11 |        4 |                | OK                   |
+| HydrateSingleAccountExpectedPosition     |    18 |        4 |                | OK                   |
+| RebuildActivePositionForFleetEntry       |    54 |        4 |                | OK                   |
+| BuildMasterPositionInfo                  |    51 |        4 |                | OK                   |
+| ClassifyMasterOrderByPrefix              |    13 |        3 |                | OK                   |
+| IsV12OrderPrefix                         |     5 |        3 |                | OK                   |
+| TryCancelBrokerOrder                     |     9 |        3 |                | OK                   |
+| ProcessInitializeSIMA                    |     5 |        2 |                | OK                   |
+| HydrateMasterAccountIfNeeded             |     4 |        2 |                | OK                   |
+| HydrateWorkingOrdersFromBroker           |    10 |        2 |                | OK                   |
+| LogHydrationCompletion                   |    10 |        2 |                | OK                   |
+| SyncExistingPositionMetadata             |    13 |        2 |                | OK                   |
+| RecoverFSM_BuildRecoveredFSM             |    17 |        2 |                | OK                   |
+| OrderPrefixMapping                       |     3 |        1 |                | OK                   |
+| ProcessShutdownSIMA                      |     6 |        1 |                | OK                   |
+| CalculateHydrationQuantity               |     2 |        1 |                | OK                   |
+| EnqueueExpectedPositionUpdate            |     4 |        1 |                | OK                   |
+| LogHydrationSuccess                      |    15 |        1 |                | OK                   |
+| CancelAllV12GtcOrders                    |    10 |        1 |                | OK                   |
+
+=== FILE: V12_002.SIMA.Shadow.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ShadowPropagateStopMoves                 |    32 |       20 |                | REFACTOR             |
+| ShadowProcessFollowerStopUpdate          |    31 |       12 |                | REFACTOR             |
+| ShadowPropagateLeaderFlatten             |    12 |        8 |                | WATCH                |
+| ShadowMoveFollowerStops                  |    16 |        6 |                | WATCH                |
+| ShadowEngineCheck                        |     7 |        5 |                | OK                   |
+| ShadowValidateDispatchContext            |    11 |        5 |                | OK                   |
+
+=== FILE: V12_002.StickyState.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| DeserializeSnapshot                      |    39 |        9 |                | REFACTOR             |
+| WriteSnapshotAtomic                      |    55 |        7 |                | WATCH                |
+| LoadStateSnapshot                        |    39 |        7 |                | WATCH                |
+| ParseJsonString                          |    14 |        7 |                | WATCH                |
+| RollbackToLastGoodState                  |    40 |        6 |                | WATCH                |
+| CaptureStateSnapshot                     |    12 |        3 |                | OK                   |
+| ValidateSnapshotIntegrity                |    25 |        3 |                | OK                   |
+| RestoreFromSnapshot                      |    19 |        3 |                | OK                   |
+| LoadStickyState                          |     8 |        3 |                | OK                   |
+| SaveStickyState                          |     8 |        3 |                | OK                   |
+| SerializeSnapshot                        |    26 |        3 |                | OK                   |
+| EscapeJsonString                         |     4 |        2 |                | OK                   |
+| ParseJsonLong                            |     7 |        2 |                | OK                   |
+| ParseJsonBool                            |     7 |        2 |                | OK                   |
+| StateSnapshot                            |     4 |        1 |                | OK                   |
+| ComputeSHA256                            |     5 |        1 |                | OK                   |
+| ParseJsonInt                             |     2 |        1 |                | OK                   |
+| ApplyPendingStickyFleetToggles           |     2 |        1 |                | OK                   |
+| EnrichTrailStateFromSticky               |     2 |        1 |                | OK                   |
+| MarkStickyDirty                          |     2 |        1 |                | OK                   |
+| SnapshotCurrentConfig                    |    16 |        1 |                | OK                   |
+| HydrateFromProfile                       |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.StructuredLog.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| LogException                             |    10 |        2 |                | OK                   |
+| StructuredPrint                          |    11 |        1 |                | OK                   |
+| LogInfo                                  |     2 |        1 |                | OK                   |
+| LogWarn                                  |     2 |        1 |                | OK                   |
+| LogError                                 |     2 |        1 |                | OK                   |
+| LogDebug                                 |     1 |        1 |                | OK                   |
+| LogWithTrace                             |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.Symmetry.BracketFSM.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ProcessBracketEvent                      |    44 |       14 |      YES       | REFACTOR             |
+| GetFsmExpectedPosition                   |    25 |       14 |                | REFACTOR             |
+| HandleFsmFilled                          |    18 |       13 |                | REFACTOR             |
+| ResolveFsm_ByScan                        |    21 |       12 |                | REFACTOR             |
+| RemoveFsmOrderIdMappings                 |    14 |       11 |                | REFACTOR             |
+| ResolveFsm_BySignalName                  |    11 |        6 |                | WATCH                |
+| SetFsmReplacing                          |    10 |        5 |                | OK                   |
+| DrainAccountMailbox                      |    10 |        4 |                | OK                   |
+| TryTerminateFollowerBracket              |     8 |        3 |                | OK                   |
+| ResolveFsm_ByOrderId                     |     7 |        3 |                | OK                   |
+| ResolveFsmFromEvent                      |     9 |        3 |                | OK                   |
+
+=== FILE: V12_002.Symmetry.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| SymmetryGuardOnMasterFill                |    44 |       14 |                | REFACTOR             |
+| SymmetryFindDispatchForMasterFill        |    20 |        9 |                | REFACTOR             |
+| RemoveFollower                           |    15 |        7 |                | WATCH                |
+| SymmetryGuardBeginDispatch               |    43 |        7 |                | WATCH                |
+| AddFollower                              |    13 |        6 |                | WATCH                |
+| SymmetryGuardRollbackDispatch            |    19 |        5 |                | OK                   |
+| SymmetryGuardRegisterFollower            |     6 |        4 |                | OK                   |
+| SymmetryGuardRegisterMasterEntry         |     4 |        3 |                | OK                   |
+| AnchorSnapshot                           |     5 |        1 |                | OK                   |
+| TryPublishAnchor                         |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.Symmetry.Follower.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| SymmetryGuardTryResolveFollower          |    83 |       12 |                | REFACTOR, LOC>80     |
+| SymmetryGuardSubmitFollowerBracket       |   101 |       12 |                | REFACTOR, LOC>80     |
+| SymmetryGuardOnFollowerFill              |    47 |       11 |                | REFACTOR             |
+| SymmetryGuardProcessPendingFollowerFills |    17 |        6 |                | WATCH                |
+| SymmetryGuardIsAnchorPending             |     4 |        2 |                | OK                   |
+| SymmetryGuardApplyMasterAnchor           |    26 |        2 |                | OK                   |
+
+=== FILE: V12_002.Symmetry.Replace.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| SymmetryGuardReplaceExistingFollowerTarget |    49 |       18 |                | REFACTOR             |
+| SymmetryGuardTryResolveFollowersForDispatch |    33 |       18 |                | REFACTOR             |
+| SymmetryGuardCascadeFollowerCleanup      |    33 |       10 |                | REFACTOR             |
+| SymmetryGuardPruneDispatches             |    20 |       10 |                | REFACTOR             |
+| SymmetryNormalizeTradeType               |    17 |       10 |                | REFACTOR             |
+| SymmetryInferTradeType                   |    13 |        7 |                | WATCH                |
+| SymmetryGuardForgetEntry                 |     9 |        4 |                | OK                   |
+| SymmetryGuardSkipFollower                |    27 |        2 |                | OK                   |
+| SymmetryTrim                             |     4 |        2 |                | OK                   |
+| SymmetryGuardRetargetExistingFollowerBracket |     7 |        1 |                | OK                   |
+
+=== FILE: V12_002.Telemetry.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| End                                      |     5 |        2 |                | OK                   |
+| NewTraceId                               |     4 |        1 |                | OK                   |
+| ResetTelemetry                           |    13 |        1 |                | OK                   |
+| TrackFsmTransition                       |     2 |        1 |                | OK                   |
+| TrackSimaDispatch                        |     2 |        1 |                | OK                   |
+| TrackReaperAudit                         |     2 |        1 |                | OK                   |
+| TrackSymmetryReplace                     |     2 |        1 |                | OK                   |
+| TrackOrderSubmission                     |     2 |        1 |                | OK                   |
+| TrackIpcCommand                          |     2 |        1 |                | OK                   |
+| TrackStatePersistenceFailure             |     2 |        1 |                | OK                   |
+| TrackStateSecurityViolation              |     2 |        1 |                | OK                   |
+| TrackStateRetryAttempt                   |     2 |        1 |                | OK                   |
+| TrackStateRollback                       |     2 |        1 |                | OK                   |
+| TraceSpan                                |     4 |        1 |                | OK                   |
+| BeginSpan                                |     4 |        1 |                | OK                   |
+| EmitMetricsSummary                       |    26 |        1 |                | OK                   |
+
+=== FILE: V12_002.Trailing.Breakeven.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| MoveStop_SinglePosition                  |    63 |       13 |                | REFACTOR             |
+| MoveSpecificTarget                       |    41 |       12 |                | REFACTOR             |
+| FindTargetOrderForPosition               |    23 |        9 |                | REFACTOR             |
+| FindTargetOrderForAbsoluteMove           |    17 |        8 |                | WATCH                |
+| ExecuteTargetAbsoluteMove                |    63 |        8 |                | WATCH                |
+| MoveSpecificTargetAbsolute               |    16 |        7 |                | WATCH                |
+| MoveStopsToBreakevenWithOffset           |    13 |        6 |                | WATCH                |
+| ValidateTargetMoveAbsoluteRequest        |     8 |        6 |                | WATCH                |
+| ValidateMoveTargetRequest                |     9 |        5 |                | OK                   |
+| CalculateAndValidateNewTargetPrice       |    25 |        5 |                | OK                   |
+| ExecuteFollowerTargetMove                |    25 |        1 |                | OK                   |
+| ExecuteMasterTargetMove                  |    12 |        1 |                | OK                   |
+
+=== FILE: V12_002.Trailing.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ManageTrailingStops                      |    33 |       13 |                | REFACTOR             |
+| FleetSync_SyncFollowersToLevel           |    34 |        9 |                | REFACTOR             |
+| ManageTrail_RunPerTradeBranches          |     8 |        9 |                | REFACTOR             |
+| FleetSync_FindLeaderMaxLevels            |    15 |        8 |                | WATCH                |
+| ManageTrail_AdaptiveThrottleTick         |    23 |        8 |                | WATCH                |
+| ManageTrail_ApplyPointBasedCascade       |    29 |        8 |                | WATCH                |
+| ManageTrail_ShouldCheckPointBasedTrailing |     8 |        7 |                | WATCH                |
+| ManageTrail_TryApplyDirectionalStop      |    13 |        6 |                | WATCH                |
+| ManageTrail_ApplyBreakEvenCandidate      |    17 |        6 |                | WATCH                |
+| ManageTrail_RunFleetSymmetrySync         |    10 |        5 |                | OK                   |
+| TrailHandler_TREND_E1                    |    37 |        5 |                | OK                   |
+| ManageTrail_EvaluateManualBreakeven      |    33 |        5 |                | OK                   |
+| TrailHandler_RETEST                      |    38 |        4 |                | OK                   |
+| ManageTrail_RunPointBasedTrailing        |    14 |        3 |                | OK                   |
+| TrailHandler_TREND_E2                    |    21 |        2 |                | OK                   |
+| ManageTrail_ShouldUpdatePointBasedStop   |     4 |        2 |                | OK                   |
+| ManageTrail_CalculateProfitPoints        |     4 |        1 |                | OK                   |
+
+=== FILE: V12_002.Trailing.StopUpdate.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| UpdateStopOrder                          |    33 |       11 |                | REFACTOR             |
+| InitiateStopReplacement                  |    46 |       10 |                | REFACTOR             |
+| CleanupStalePendingReplacements          |    26 |        9 |                | REFACTOR             |
+| UpdateExistingPendingReplacement         |    46 |        9 |                | REFACTOR             |
+| CaptureTargetSnapshot                    |    19 |        7 |                | WATCH                |
+| RefreshTargetSnapshot                    |    19 |        7 |                | WATCH                |
+| CreateDirectStopOrder                    |    60 |        7 |                | WATCH                |
+| HandleUpdateException                    |    22 |        7 |                | WATCH                |
+| HandleStopSubmissionFailure              |    29 |        5 |                | OK                   |
+| CalculateStopForLevel                    |    21 |        5 |                | OK                   |
+| HandleStalePendingReplacement            |    19 |        2 |                | OK                   |
+
+=== FILE: V12_002.UI.Callbacks.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| HandleChartClick_ConvertPrice            |    54 |        9 |                | REFACTOR             |
+| OnKeyDown                                |    17 |        9 |                | REFACTOR             |
+| IsPointerInPriceArea                     |    13 |        7 |                | WATCH                |
+| OnChartClick                             |    16 |        7 |                | WATCH                |
+| HandleTargetAction                       |    20 |        7 |                | WATCH                |
+| HandleRunnerAction                       |    22 |        7 |                | WATCH                |
+| RouteTargetActionToHandler               |    32 |        7 |      YES       | WATCH                |
+| DispatchRunnerAction                     |    21 |        7 |      YES       | WATCH                |
+| AttachChartClickHandler                  |    26 |        6 |                | WATCH                |
+| HandleChartClick_ValidateMode            |     5 |        6 |                | WATCH                |
+| SubmitExitOrderForPosition               |    29 |        6 |                | WATCH                |
+| GetTargetOrdersDictionary                |    14 |        6 |                | WATCH                |
+| ExecuteRunnerAction                      |    12 |        6 |                | WATCH                |
+| DetachChartClickHandler                  |    14 |        5 |                | OK                   |
+| OnChartMouseMove                         |    12 |        5 |                | OK                   |
+| ClearClickTraderBorderIfActive           |    16 |        5 |                | OK                   |
+| ExecuteTargetActionForPosition           |    32 |        5 |                | OK                   |
+| ValidateTargetActionContext              |    34 |        5 |                | OK                   |
+| ExecuteTarget_Market                     |    37 |        5 |                | OK                   |
+| MoveTargetOrder                          |    31 |        5 |                | OK                   |
+| MoveTargetOrder_PrepareFollowerReplace   |    36 |        5 |                | OK                   |
+| TryParseTargetNumber                     |     8 |        5 |                | OK                   |
+| IsClickTraderArmed                       |     2 |        4 |                | OK                   |
+| ExecuteTarget_ValidateContext            |    30 |        4 |                | OK                   |
+| ExecuteTarget_Cancel                     |    20 |        4 |                | OK                   |
+| MoveTargetOrder_Validate                 |    17 |        4 |                | OK                   |
+| MoveTargetOrder_CancelExisting           |    10 |        4 |                | OK                   |
+| AttachHotkeys                            |     3 |        3 |                | OK                   |
+| DetachHotkeys                            |     3 |        3 |                | OK                   |
+| ExecuteTargetAction                      |     8 |        3 |                | OK                   |
+| ValidateRunnerPosition                   |    10 |        3 |                | OK                   |
+| OnChartMouseLeave                        |     5 |        2 |                | OK                   |
+| SetChartBorderWarning                    |     4 |        2 |                | OK                   |
+| ClearClickTraderBorderIfInactive         |     4 |        2 |                | OK                   |
+| HandleChartClick_ExecuteRma              |    10 |        2 |                | OK                   |
+| MoveTargetOrder_SubmitReplacement        |    17 |        2 |                | OK                   |
+| TryResolveTargetContext                  |    17 |        2 |                | OK                   |
+| ExecuteRunner_Market                     |    24 |        2 |                | OK                   |
+| ExecuteRunner_Breakeven                  |    30 |        2 |                | OK                   |
+| HandleChartClick_ExecuteMomo             |     6 |        1 |                | OK                   |
+| HandleChartClick_DeactivateRma           |     6 |        1 |                | OK                   |
+| ExecuteTarget_OnePoint                   |    13 |        1 |                | OK                   |
+| ExecuteTarget_TwoPoint                   |    13 |        1 |                | OK                   |
+| ExecuteTarget_MarketPrice                |    12 |        1 |                | OK                   |
+| ExecuteTarget_Breakeven                  |     5 |        1 |                | OK                   |
+| ExecuteRunner_StopOnePoint               |    12 |        1 |                | OK                   |
+| ExecuteRunner_StopTwoPoint               |    12 |        1 |                | OK                   |
+| ExecuteRunner_Lock50                     |    17 |        1 |                | OK                   |
+| ExecuteRunner_DisableTrail               |     5 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.Compliance.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| IsOrderAllowed                           |    43 |       16 |                | REFACTOR             |
+| HandleFleetTargetFill                    |    58 |       16 |                | REFACTOR             |
+| CancelOrphanedTargets                    |    20 |       14 |                | REFACTOR             |
+| ProcessQueuedExecution_HandleFleetOCO    |    17 |       13 |                | REFACTOR             |
+| ProcessQueuedExecution_SyncFlatPosition  |    36 |       13 |                | REFACTOR             |
+| LogApexPerformance                       |    72 |       13 |                | REFACTOR             |
+| ProcessQueuedExecution_HandleFleetBrackets |    18 |       10 |                | REFACTOR             |
+| TrackTradeEntry                          |    17 |        9 |                | REFACTOR             |
+| EnsureDailySummaryCsv                    |    30 |        8 |                | WATCH                |
+| ProcessAccountExecutionQueue             |    23 |        8 |                | WATCH                |
+| UpdateAccountMetricsFromAccount          |    13 |        6 |                | WATCH                |
+| MaybeFinalizeDailySummaries              |    16 |        6 |                | WATCH                |
+| GetComplianceAccounts                    |    10 |        5 |                | OK                   |
+| HandleFleetStopFill                      |    19 |        5 |                | OK                   |
+| ExtractEntryKeyFromStopName              |     8 |        4 |                | OK                   |
+| ProcessQueuedExecution                   |     9 |        4 |                | OK                   |
+| FinalizeStopFilledPosition               |    11 |        3 |                | OK                   |
+| EnsureAccountComplianceTracking          |    11 |        2 |                | OK                   |
+| GetUniqueTradingDays                     |     4 |        2 |                | OK                   |
+| AppendDailySummary                       |    39 |        2 |                | OK                   |
+| FinalizeDailySummaryForAccount           |    19 |        2 |                | OK                   |
+| OnAccountExecutionUpdate                 |     8 |        2 |                | OK                   |
+| GetComplianceNow                         |     2 |        1 |                | OK                   |
+| GetTradingDayKey                         |     2 |        1 |                | OK                   |
+| UpdateEquityDrawdown                     |     4 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.IPC.Commands.Config.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| TryApplyConfigTarget_Value               |    45 |       17 |      YES       | REFACTOR             |
+| HandleTrimCommand                        |    85 |       11 |                | REFACTOR, LOC>80     |
+| TryApplyConfigTarget_Type                |    22 |       11 |                | REFACTOR             |
+| TryApplyConfigRisk                       |    17 |        8 |                | WATCH                |
+| HandleConfigCommand                      |    23 |        7 |                | WATCH                |
+| TryApplyConfigTargets                    |     6 |        3 |                | OK                   |
+| TryApplyConfigTarget_Count               |     7 |        3 |                | OK                   |
+| TryApplyConfigMode                       |     8 |        3 |                | OK                   |
+| HandleToggleAccountCommand               |    12 |        3 |                | OK                   |
+| TryHandleDiagCommand                     |    12 |        3 |                | OK                   |
+
+=== FILE: V12_002.UI.IPC.Commands.Fleet.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| TryHandleFleetCommand                    |    42 |       19 |                | REFACTOR             |
+| TryHandleFleet_CancelAll                 |    41 |       19 |                | REFACTOR             |
+| CancelAll_ProcessSingleFleetAccount      |    31 |       18 |                | REFACTOR             |
+| TryHandleFleet_MoveTarget                |    33 |       15 |                | REFACTOR             |
+| CancelAll_ProcessMasterAccount           |    24 |       14 |                | REFACTOR             |
+| TryHandleFleet_LongShort                 |    47 |       11 |      YES       | REFACTOR             |
+| TryHandleFleet_FlattenOnly               |    33 |        7 |                | WATCH                |
+| TryHandleFleet_FfmaManualLimit           |    23 |        7 |                | WATCH                |
+| CancelAll_ProcessFleetOrders             |    13 |        6 |                | WATCH                |
+| TryHandleFleet_TrendManualLimit          |    21 |        6 |                | WATCH                |
+| TryHandleFleet_RetestManualLimit         |    21 |        6 |                | WATCH                |
+| TryHandleFleet_ResetMemory               |    13 |        5 |                | OK                   |
+| TryHandleFleet_OrLong                    |    16 |        5 |                | OK                   |
+| TryHandleFleet_OrShort                   |    16 |        5 |                | OK                   |
+| TryHandleFleet_FleetState                |    10 |        5 |                | OK                   |
+| TryHandleFleet_Flatten                   |    11 |        4 |                | OK                   |
+| TryHandleFleet_FfmaManualMarket          |    15 |        4 |                | OK                   |
+| TryHandleFleet_CloseTarget               |     7 |        4 |                | OK                   |
+| TryHandleFleet_SetShadow                 |     8 |        4 |                | OK                   |
+| TryHandleFleet_Trim                      |     5 |        3 |                | OK                   |
+| CancelAll_CleanupUnfilledPositions       |     5 |        3 |                | OK                   |
+| TryHandleFleet_Lock50                    |     6 |        2 |                | OK                   |
+| TryHandleFleet_ToggleAccount             |     5 |        2 |                | OK                   |
+| CancelAll_ProcessFleetAccounts           |     4 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.IPC.Commands.Misc.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| SendResponseToRemote                     |    26 |       10 |                | REFACTOR             |
+| FlattenSpecificTarget                    |    28 |        9 |                | REFACTOR             |
+| HandleFleet_RequestFleetState            |    21 |        7 |                | WATCH                |
+| FlattenSpecificTarget_CancelLimit        |    17 |        7 |                | WATCH                |
+| FlattenSpecificTarget_ResolveTarget      |    39 |        6 |                | WATCH                |
+| HandleFleetCommand                       |    10 |        5 |                | OK                   |
+| HandleFleet_DiagFleet                    |    21 |        5 |                | OK                   |
+| ToggleStrategyMode_PublishSnapshot       |    15 |        5 |                | OK                   |
+| TryHandleConfigCommand                   |    25 |        3 |                | OK                   |
+| HandleFleet_GetFleet                     |    12 |        3 |                | OK                   |
+| HandleFleet_SetSima                      |     8 |        3 |                | OK                   |
+| HandleFleet_SetLeader                    |     9 |        3 |                | OK                   |
+| ToggleStrategyMode_SetFlags              |     3 |        3 |                | OK                   |
+| ToggleStrategyMode_ExecuteModeAction     |     3 |        3 |                | OK                   |
+| FlattenSpecificTarget_SubmitMarketExit   |    31 |        2 |                | OK                   |
+| TryHandleComplianceCommand               |     2 |        1 |                | OK                   |
+| FlattenSpecificTarget_RequestStopCancel  |     3 |        1 |                | OK                   |
+| ToggleStrategyMode                       |     4 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.IPC.Commands.Mode.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| TryHandleMode_SetMode                    |    59 |       13 |      YES       | REFACTOR             |
+| TryHandleRisk_Breakeven                  |    16 |       12 |                | REFACTOR             |
+| TryHandleRiskCommand                     |    16 |        8 |                | WATCH                |
+| TryHandleRisk_SetTrail                   |    42 |        8 |                | WATCH                |
+| TryHandleModeCommand                     |    14 |        7 |                | WATCH                |
+| TryHandleMode_SetRmaMode                 |    20 |        4 |                | OK                   |
+| TryHandleMode_ToggleOrExecute            |     5 |        4 |                | OK                   |
+| TryHandleRisk_SetMaxRisk                 |    11 |        4 |                | OK                   |
+| TryHandleRisk_SetTargets                 |    19 |        4 |                | OK                   |
+| TryHandleRisk_SetManualPrice             |    21 |        4 |                | OK                   |
+| TryHandleMode_SyncMode                   |     8 |        3 |                | OK                   |
+| TryHandleRisk_SetCit                     |    10 |        3 |                | OK                   |
+| TryHandleRisk_SetAnchor                  |     8 |        3 |                | OK                   |
+| TryHandleMode_MktSync                    |     6 |        2 |                | OK                   |
+| TryHandleMode_SyncAll                    |     6 |        2 |                | OK                   |
+
+=== FILE: V12_002.UI.IPC.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| IsSymbolMatch                            |    19 |       18 |                | REFACTOR             |
+| ProcessIpcCommands                       |    27 |       14 |                | REFACTOR             |
+| TryParseTargetMode                       |    27 |       13 |                | REFACTOR             |
+| ProcessIpcCommandCore                    |    50 |       13 |      YES       | REFACTOR             |
+| IsAllowedIpcAction                       |    13 |       10 |                | REFACTOR             |
+| TryEnqueueIpcCommand                     |    20 |        7 |                | WATCH                |
+| ProcessIpc_ParseAction                   |    17 |        7 |                | WATCH                |
+| GetIpcFleetIdentity                      |     6 |        5 |                | OK                   |
+| ResolveAccountName                       |    15 |        5 |                | OK                   |
+| ProcessIpc_DrainOneCommand               |    10 |        4 |                | OK                   |
+| ProcessIpc_MatchSymbol                   |    15 |        4 |                | OK                   |
+| ValidateIpcMultiplier                    |     9 |        3 |                | OK                   |
+| BuildFleetAliasMap                       |     7 |        3 |                | OK                   |
+| ProcessIpc_ValidateAllowlist             |     6 |        2 |                | OK                   |
+| GetPhotonDispatchRingDepth               |     2 |        2 |                | OK                   |
+| ToIpcTargetMode                          |     2 |        1 |                | OK                   |
+| GetFleetAccountsSnapshot                 |     5 |        1 |                | OK                   |
+| ProcessIpc_EnqueueCore                   |     5 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.IPC.Server.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| StopIpcServer                            |    29 |       12 |                | REFACTOR             |
+| ProcessClientStream                      |    26 |        9 |                | REFACTOR             |
+| HandleClient                             |    22 |        8 |                | WATCH                |
+| GetCurrentConfigMode                     |    12 |        6 |                | WATCH                |
+| ProcessClientStream_ExtractLines         |    27 |        5 |                | OK                   |
+| ListenForRemote                          |    15 |        4 |                | OK                   |
+| HandleIncomingIpcLine                    |    11 |        4 |                | OK                   |
+| StartIpcServer                           |    15 |        3 |                | OK                   |
+| ListenForRemote_SendInitialState         |    14 |        3 |                | OK                   |
+| ListenForRemote_StopListener             |     7 |        3 |                | OK                   |
+| ProcessClientStream_ReadChunk            |     5 |        2 |                | OK                   |
+| ProcessClientStream_DecodeUtf8           |    17 |        2 |                | OK                   |
+| HandleIncomingIpcLine_RespondLayout      |    62 |        2 |                | OK                   |
+| HandleIncomingIpcLine_TryEnqueueCommand  |     6 |        2 |                | OK                   |
+| HandleIncomingIpcLine_TriggerProcessing  |     6 |        2 |                | OK                   |
+| ListenForRemote_StartLoopback            |     3 |        1 |                | OK                   |
+| ListenForRemote_AcceptClient             |     7 |        1 |                | OK                   |
+| ProcessClientStream_DispatchLine         |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.Panel.Brushes.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| PanelBrush                               |     4 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.Panel.Construction.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| DestroyPanel                             |   149 |       17 |                | REFACTOR, LOC>80     |
+| PlacePanel                               |    56 |       13 |                | REFACTOR             |
+| CreateSection0_Identity                  |   154 |       13 |                | REFACTOR, LOC>80     |
+| SetComboSelection                        |    11 |        6 |                | WATCH                |
+| UpdateFleetButtonText                    |    11 |        6 |                | WATCH                |
+| GetPanelTargetModeText                   |    12 |        5 |                | OK                   |
+| CreatePanel                              |    58 |        4 |                | OK                   |
+| CreateSection3_Config                    |   277 |        2 |                | LOC>80               |
+| CreateSection1_Execution                 |   181 |        1 |                | LOC>80               |
+| CreateSection1_5_RiskManager             |    51 |        1 |                | OK                   |
+| CreateSection2_Telemetry                 |    95 |        1 |                | LOC>80               |
+| CreateSectionBorder                      |     9 |        1 |                | OK                   |
+| CreateSectionHeader                      |    10 |        1 |                | OK                   |
+| FormatPanelDouble                        |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.Panel.Handlers.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ShowModeSpecificControls                 |    42 |       20 |                | REFACTOR             |
+| UpdateTargetVisibility                   |    36 |       19 |                | REFACTOR             |
+| AttachExecutionPanelHandlers             |    46 |       12 |                | REFACTOR             |
+| OnSubmitClick                            |    30 |       12 |                | REFACTOR             |
+| CollapseAllExecutionControls             |    21 |       11 |                | REFACTOR             |
+| AttachConfigModeHandlers                 |    13 |        7 |                | WATCH                |
+| ToggleLayout_Click                       |    15 |        7 |                | WATCH                |
+| OnRetestClick                            |    24 |        7 |                | WATCH                |
+| ExtractTargetConfiguration               |    40 |        7 |                | WATCH                |
+| ResetExecutionMode                       |    20 |        7 |                | WATCH                |
+| AttachTargetButtonHandlers               |    11 |        6 |                | WATCH                |
+| AttachActionButtonHandlers               |    20 |        6 |                | WATCH                |
+| AttachTargetCountHandlers                |    11 |        6 |                | WATCH                |
+| PanelCommand                             |    18 |        6 |                | WATCH                |
+| AttachMiscellaneousHandlers              |    10 |        5 |                | OK                   |
+| AttachLiveTargetPriceHandler             |    10 |        5 |                | OK                   |
+| CommitLiveTargetPrice                    |    13 |        5 |                | OK                   |
+| SelectConfigMode                         |    26 |        4 |                | OK                   |
+| SelectTargetCount                        |    15 |        4 |                | OK                   |
+| AttachSyncButtonHandlers                 |     5 |        3 |                | OK                   |
+| ResolveEffectiveSyncMode                 |     7 |        3 |                | OK                   |
+| PopulateDirectionCombo                   |    11 |        3 |                | OK                   |
+| UpdateRmaButtonVisual                    |    13 |        3 |                | OK                   |
+| DetachPanelHandlers                      |     3 |        2 |                | OK                   |
+| OnRetestRmaToggleClick                   |     5 |        2 |                | OK                   |
+| OnRmaClick                               |    10 |        2 |                | OK                   |
+| OnTrendRmaToggleClick                    |     5 |        2 |                | OK                   |
+| OnBeClick                                |     6 |        2 |                | OK                   |
+| OnTrailClick                             |     6 |        2 |                | OK                   |
+| AttachTargetDropdown                     |    55 |        2 |                | OK                   |
+| AttachPanelHandlers                      |    12 |        1 |                | OK                   |
+| InitKeyCommandRegistry                   |    14 |        1 |                | OK                   |
+| OnTrendClick                             |     4 |        1 |                | OK                   |
+| OnSyncAllClick                           |     6 |        1 |                | OK                   |
+| BuildConfigString                        |    17 |        1 |                | OK                   |
+| UpdateContextualUI                       |     7 |        1 |                | OK                   |
+| AttachLiveTargetHandlers                 |     6 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.Panel.Helpers.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| FindChartTraderViaChartTab               |    54 |       20 |                | REFACTOR             |
+| DumpVisualTree                           |    48 |       10 |                | REFACTOR             |
+| FindChartTabGrid                         |    23 |       10 |                | REFACTOR             |
+| FindChartTraderBySiblingSearch           |    16 |        9 |                | REFACTOR             |
+| FindChartTraderByButton                  |    17 |        8 |                | WATCH                |
+| HandleTextBoxKeyInput                    |    16 |        7 |                | WATCH                |
+| CreateLiveTargetRow                      |    64 |        7 |                | WATCH                |
+| FindChartTraderViaOwnerChart             |    22 |        7 |                | WATCH                |
+| FindChartTrader                          |    27 |        7 |                | WATCH                |
+| TryMapSpecialCharacter                   |    12 |        6 |                | WATCH                |
+| FindDescendantGrid                       |    12 |        6 |                | WATCH                |
+| FindChildElementByTypeName               |    12 |        6 |                | WATCH                |
+| FindAllButtonsByText                     |    12 |        6 |                | WATCH                |
+| TryMapNumericKey                         |     9 |        5 |                | OK                   |
+| FindChartTraderByTypeName                |    12 |        5 |                | OK                   |
+| TryHandleBackspace                       |     7 |        4 |                | OK                   |
+| CreateCombo                              |    17 |        4 |                | OK                   |
+| TryHandleNavigationKey                   |     2 |        3 |                | OK                   |
+| TryHandleDelete                          |     7 |        3 |                | OK                   |
+| CreateButton                             |    24 |        2 |                | OK                   |
+| CreateTextBoxBase                        |    16 |        2 |                | OK                   |
+| CreateDashedButton                       |    14 |        1 |                | OK                   |
+| CreateTextBox                            |     4 |        1 |                | OK                   |
+| ApplyTextBoxKeyboardHandlers             |     5 |        1 |                | OK                   |
+| CreateModeChip                           |    15 |        1 |                | OK                   |
+| CreateCountChip                          |     7 |        1 |                | OK                   |
+| CreateEmaLabel                           |    10 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.Panel.Lifecycle.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| StartPanelRefresh                        |    20 |        6 |                | WATCH                |
+| OnPanelRefreshElapsed                    |    16 |        5 |                | OK                   |
+| InitGlowTimer                            |    11 |        3 |                | OK                   |
+| TriggerGlow                              |     7 |        3 |                | OK                   |
+| StopPanelRefresh                         |     8 |        2 |                | OK                   |
+| StopGlowTimer                            |     4 |        2 |                | OK                   |
+
+=== FILE: V12_002.UI.Panel.StateSync.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| UpdatePanelState                         |    51 |       16 |                | REFACTOR             |
+| SyncPanelConfigFromSnapshot              |    37 |       15 |                | REFACTOR             |
+| SyncLiveTargetRows                       |    21 |       10 |                | REFACTOR             |
+| SyncModeChipVisuals                      |    39 |        9 |                | REFACTOR             |
+| SetConfigTargetButtonsVisible            |    14 |        7 |                | WATCH                |
+| SetLiveTargetRowsVisible                 |    12 |        7 |                | WATCH                |
+| SetLiveTargetRowVisible                  |    22 |        7 |                | WATCH                |
+| GetLiveTargetPriceBox                    |    14 |        6 |                | WATCH                |
+| GetLiveTargetCtsBlock                    |    14 |        6 |                | WATCH                |
+| UpdateComplianceDisplay                  |    41 |        6 |                | WATCH                |
+| UpdateTrendIndicator                     |    16 |        6 |                | WATCH                |
+| UpdateHubStatusLed                       |    10 |        5 |                | OK                   |
+| UpdateTelemetryDisplay                   |    17 |        4 |                | OK                   |
+| SyncCountChipVisuals                     |    10 |        3 |                | OK                   |
+| GetPriceText                             |     4 |        3 |                | OK                   |
+| UpdateOrText                             |    13 |        2 |                | OK                   |
+| UpdateEmaText                            |     6 |        2 |                | OK                   |
+
+=== FILE: V12_002.UI.Sizing.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| ShouldSyncPendingOrder                   |    15 |        9 |                | REFACTOR             |
+| SyncPendingOrders                        |    28 |        7 |                | WATCH                |
+| CalculateSyncParameters                  |    36 |        5 |                | OK                   |
+| GetATRMultiplierForPosition              |    10 |        5 |                | OK                   |
+| ExecuteOrderSync                         |    17 |        3 |                | OK                   |
+| GetTargetDistribution                    |    19 |        2 |                | OK                   |
+| CalculatePositionSize                    |    18 |        2 |                | OK                   |
+| CalculateATRStopDistance                 |     2 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.Snapshot.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| FindMasterPosition                       |    15 |        9 |                | REFACTOR             |
+| PopulateTargetSnapshots                  |    21 |        9 |                | REFACTOR             |
+| BuildUiStatusMessage                     |    10 |        6 |                | WATCH                |
+| PopulateStopSnapshot                     |     7 |        4 |                | OK                   |
+| PublishUiSnapshot                        |    39 |        4 |                | OK                   |
+| SafeEmaValue                             |     7 |        2 |                | OK                   |
+| BuildUiLivePositionSnapshot              |    12 |        2 |                | OK                   |
+| GetUiSnapshot                            |     3 |        1 |                | OK                   |
+| TouchStrategyHeartbeat                   |     2 |        1 |                | OK                   |
+| BumpUiConfigRevision                     |     2 |        1 |                | OK                   |
+| GetCurrentPanelMode                      |     3 |        1 |                | OK                   |
+| BuildUiConfigSnapshot                    |    18 |        1 |                | OK                   |
+| BuildUiComplianceSnapshot                |    12 |        1 |                | OK                   |
+
+=== FILE: V12_002.UI.SnapshotPool.cs ===
+| Method                                   |   LOC | Est. CYC | M5 Candidate?  | Action               |
+|------------------------------------------|-------|----------|----------------|----------------------|
+| UpdateLivePositionSnapshot               |    43 |       14 |                | REFACTOR             |
+| ReturnPooledSnapshot                     |     9 |        3 |                | OK                   |
+| GetPooledSnapshot                        |     7 |        2 |                | OK                   |
+| PreWarmSnapshotPool                      |     5 |        2 |                | OK                   |
+| ClearSnapshotForReuse                    |    21 |        1 |                | OK                   |
+| UpdateConfigSnapshot                     |    16 |        1 |                | OK                   |
+| UpdateComplianceSnapshot                 |    10 |        1 |                | OK                   |
+| GetPoolHealthMetrics                     |    13 |        1 |                | OK                   |
+
+================================================================================
+=== GODMODE AUDIT REPORT ===
+================================================================================
+Total methods audited: 901
+
+CYC > 8 (BLOCKING): 180
+  - SignalBroadcaster.cs::GetSubscriberCounts (CYC=9, LOC=10)
+  - V12_002.BarUpdate.cs::ProcessSessionReset (CYC=11, LOC=32)
+  - V12_002.BarUpdate.cs::OnBarUpdate (CYC=10, LOC=51)
+  - V12_002.DrawingHelpers.cs::DrawORBox (CYC=12, LOC=77)
+  - V12_002.Entries.FFMA.cs::CheckFFMAConditions (CYC=16, LOC=50)
+  - V12_002.Entries.FFMA.cs::ExecuteFFMAManualMarketEntry (CYC=12, LOC=162)
+  - V12_002.Entries.FFMA.cs::ExecuteFFMALimitEntry (CYC=9, LOC=146)
+  - V12_002.Entries.MOMO.cs::ExecuteMOMOEntry (CYC=10, LOC=166)
+  - V12_002.Entries.OR.cs::EnterORPosition (CYC=11, LOC=166)
+  - V12_002.Entries.Retest.cs::ExecuteRetestEntry (CYC=12, LOC=199)
+  - V12_002.Entries.RMA.cs::MonitorRmaProximity (CYC=17, LOC=67)
+  - V12_002.Entries.Trend.cs::ExecuteTREND_Preflight (CYC=9, LOC=25)
+  - V12_002.IPC.Hardening.cs::IsAllowlistBypassAttempt (CYC=11, LOC=19)
+  - V12_002.Lifecycle.cs::CleanupDictionaries (CYC=13, LOC=22)
+  - V12_002.Lifecycle.cs::ProcessOnStateChange (CYC=10, LOC=11)
+  - V12_002.Lifecycle.cs::DrainQueuesForShutdown (CYC=9, LOC=28)
+  - V12_002.Lifecycle.cs::ProcessOnConnectionStatusUpdate (CYC=9, LOC=20)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::ProcessQueuedAccountOrder (CYC=15, LOC=34)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::OnAccountOrderUpdate (CYC=14, LOC=26)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::HandleMatchedFollowerOrder (CYC=14, LOC=65)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::HandleMatchedFollower_StopReplacement (CYC=14, LOC=23)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::ProcessAccountOrderQueue (CYC=13, LOC=30)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::IsMasterReplaceCascadeCancellation (CYC=13, LOC=26)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::ProcessFollowerCancellationSafe (CYC=13, LOC=41)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::ProcessAccountOrder_UpdateMasterExpected (CYC=12, LOC=21)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::ProcessAccountOrder_UpdateFleetExpected (CYC=12, LOC=23)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::HandleMatchedFollower_PendingCancelReplace (CYC=12, LOC=61)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::ExecuteFollowerCascadeCleanup (CYC=12, LOC=60)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::ProcessFollowerCancellationUnconditional (CYC=12, LOC=29)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::HandleMatchedFollower_PendingCleanupPurge (CYC=9, LOC=16)
+  - V12_002.Orders.Callbacks.cs::HandleSecondaryOrderFilled (CYC=21, LOC=69)
+  - V12_002.Orders.Callbacks.cs::ProcessOnOrderUpdate (CYC=19, LOC=48)
+  - V12_002.Orders.Callbacks.cs::RequestStopCancelLifecycleSafe (CYC=12, LOC=22)
+  - V12_002.Orders.Callbacks.cs::HandleOrderRejected (CYC=12, LOC=29)
+  - V12_002.Orders.Callbacks.cs::HandleOrderPriceOrQuantityChanged (CYC=11, LOC=37)
+  - V12_002.Orders.Callbacks.cs::HandleOrderCancelled_ProcessStopReplacement (CYC=10, LOC=20)
+  - V12_002.Orders.Callbacks.Execution.cs::HandleFlatPosition_CleanupActivePositions (CYC=17, LOC=30)
+  - V12_002.Orders.Callbacks.Execution.cs::ProcessOnExecutionUpdate (CYC=13, LOC=31)
+  - V12_002.Orders.Callbacks.Execution.cs::ProcessOnExecution_HandleStopFill (CYC=13, LOC=28)
+  - V12_002.Orders.Callbacks.Execution.cs::BroadcastSyncTargetState (CYC=9, LOC=11)
+  - V12_002.Orders.Callbacks.Execution.cs::ProcessOnExecution_HandleTargetFill (CYC=9, LOC=52)
+  - V12_002.Orders.Callbacks.Propagation.cs::PropagateMaster_IdentifyMove (CYC=18, LOC=40)
+  - V12_002.Orders.Callbacks.Propagation.cs::PropagateMasterEntryMove (CYC=14, LOC=60)
+  - V12_002.Orders.Callbacks.Propagation.cs::IsValidTradeTypeToken (CYC=13, LOC=20)
+  - V12_002.Orders.Callbacks.Propagation.cs::ResolveFollowersViaScan_ProcessEntry (CYC=12, LOC=22)
+  - V12_002.Orders.Callbacks.Propagation.cs::ResolveMasterTradeType (CYC=11, LOC=16)
+  - V12_002.Orders.Callbacks.Propagation.cs::PropagateMaster_ApplyFollowerMove (CYC=11, LOC=24)
+  - V12_002.Orders.Callbacks.Propagation.cs::PropagateMasterTargetMove (CYC=9, LOC=60)
+  - V12_002.Orders.Management.Cleanup.cs::ValidateOrphanedMasterOrders (CYC=19, LOC=32)
+  - V12_002.Orders.Management.Cleanup.cs::BuildLiveBrokerOrderIndex (CYC=14, LOC=23)
+  - V12_002.Orders.Management.Cleanup.cs::CleanupPosition (CYC=12, LOC=36)
+  - V12_002.Orders.Management.Cleanup.cs::PurgePositionIfEligible (CYC=11, LOC=21)
+  - V12_002.Orders.Management.Cleanup.cs::ClassifyOrphanReason (CYC=11, LOC=33)
+  - V12_002.Orders.Management.Cleanup.cs::PurgeGhostOrderReferences (CYC=11, LOC=42)
+  - V12_002.Orders.Management.Cleanup.cs::EvaluateZombiePurgeEligibility (CYC=9, LOC=33)
+  - V12_002.Orders.Management.cs::SubmitTargetOrdersLoop (CYC=10, LOC=104)
+  - V12_002.Orders.Management.Flatten.cs::ManageCIT (CYC=19, LOC=77)
+  - V12_002.Orders.Management.Flatten.cs::FlattenSinglePosition (CYC=16, LOC=76)
+  - V12_002.Orders.Management.Flatten.cs::HasActiveOrPendingOrderForEntry (CYC=12, LOC=15)
+  - V12_002.Orders.Management.Flatten.cs::CancelAllBracketOrdersForPosition (CYC=11, LOC=9)
+  - V12_002.Orders.Management.StopSync.cs::SyncLimitTarget (CYC=17, LOC=128)
+  - V12_002.Orders.Management.StopSync.cs::RestoreCascadedTargets (CYC=16, LOC=90)
+  - V12_002.Orders.Management.StopSync.cs::RefreshActivePositionOrders (CYC=13, LOC=49)
+  - V12_002.Orders.Management.StopSync.cs::UpdateStopQuantity (CYC=12, LOC=59)
+  - V12_002.Orders.Management.StopSync.cs::ValidateStopPrice (CYC=9, LOC=32)
+  - V12_002.Perf.LogBuffer.cs::FormatInternal (CYC=13, LOC=27)
+  - V12_002.REAPER.Audit.cs::AuditMaster_HandleNakedPosition (CYC=15, LOC=38)
+  - V12_002.REAPER.Audit.cs::AuditSingleFleetAccount (CYC=13, LOC=48)
+  - V12_002.REAPER.Audit.cs::AuditMaster_CheckExpectedActual (CYC=13, LOC=23)
+  - V12_002.REAPER.Audit.cs::AuditFleet_CalculateExpectedActual (CYC=12, LOC=41)
+  - V12_002.REAPER.Audit.cs::AuditMaster_HandleDesyncFlatten (CYC=10, LOC=20)
+  - V12_002.REAPER.Audit.cs::ProcessReaperFlatten_CancelWorkingOrders (CYC=10, LOC=19)
+  - V12_002.REAPER.Audit.cs::AuditFleet_CheckWorkingStop (CYC=9, LOC=8)
+  - V12_002.REAPER.Repair.cs::SubmitRepairOrderWithAuthorization (CYC=14, LOC=67)
+  - V12_002.Safety.Watchdog.cs::CancelWatchdogWorkingOrders (CYC=12, LOC=19)
+  - V12_002.Safety.Watchdog.cs::OnWatchdogTimer (CYC=11, LOC=30)
+  - V12_002.Safety.Watchdog.cs::CancelDirectFallbackOrders (CYC=11, LOC=18)
+  - V12_002.SIMA.cs::SetRmaAnchorFromIpc (CYC=13, LOC=17)
+  - V12_002.SIMA.Dispatch.cs::Dispatch_PublishMarketBracketToPhoton (CYC=21, LOC=189)
+  - V12_002.SIMA.Dispatch.cs::Dispatch_ProcessFleetLoop (CYC=14, LOC=113)
+  - V12_002.SIMA.Dispatch.cs::Dispatch_PublishLimitEntryToPhoton (CYC=11, LOC=95)
+  - V12_002.SIMA.Execution.cs::ExecuteMultiAccountMarket (CYC=13, LOC=78)
+  - V12_002.SIMA.Execution.cs::ProcessSingleFleetRMAAccount (CYC=12, LOC=106)
+  - V12_002.SIMA.Execution.cs::ExecuteMultiAccountBracket (CYC=9, LOC=107)
+  - V12_002.SIMA.Execution.cs::ExecuteRMAEntryV2 (CYC=9, LOC=110)
+  - V12_002.SIMA.Flatten.cs::ProcessFlattenWorkItem_CancelOrders (CYC=18, LOC=36)
+  - V12_002.SIMA.Flatten.cs::EmergencyFlattenSingleFleetAccount (CYC=13, LOC=67)
+  - V12_002.SIMA.Fleet.cs::ShouldSkipFleet_RunHealthCheck (CYC=31, LOC=57)
+  - V12_002.SIMA.Fleet.cs::VerifyPhotonSlotIntegrity (CYC=14, LOC=43)
+  - V12_002.SIMA.Fleet.cs::InitializeFollowerBracketFSM (CYC=13, LOC=34)
+  - V12_002.SIMA.Fleet.cs::ProcessFleetSlot (CYC=11, LOC=37)
+  - V12_002.SIMA.Fleet.cs::SubmitAndRegisterFleetOrders (CYC=11, LOC=30)
+  - V12_002.SIMA.Fleet.cs::DrainAllDispatchQueuesOnAbort (CYC=11, LOC=23)
+  - V12_002.SIMA.Lifecycle.cs::AdoptFleetWorkingOrders (CYC=17, LOC=46)
+  - V12_002.SIMA.Lifecycle.cs::ClassifyAndRouteFleetOrder (CYC=16, LOC=42)
+  - V12_002.SIMA.Lifecycle.cs::SweepTrackedOrders (CYC=12, LOC=34)
+  - V12_002.SIMA.Lifecycle.cs::SweepBrokerOrders (CYC=12, LOC=38)
+  - V12_002.SIMA.Lifecycle.cs::DrainPhotonQueuesOnShutdown (CYC=11, LOC=21)
+  - V12_002.SIMA.Lifecycle.cs::ShouldProtectBracketOrder (CYC=10, LOC=16)
+  - V12_002.SIMA.Lifecycle.cs::AdoptMasterWorkingOrders (CYC=9, LOC=37)
+  - V12_002.SIMA.Lifecycle.cs::HydrateFSM_MapOrderStateToFsmState (CYC=9, LOC=14)
+  - V12_002.SIMA.Lifecycle.cs::HydrateFSMsFromWorkingOrders (CYC=9, LOC=45)
+  - V12_002.SIMA.Shadow.cs::ShadowPropagateStopMoves (CYC=20, LOC=32)
+  - V12_002.SIMA.Shadow.cs::ShadowProcessFollowerStopUpdate (CYC=12, LOC=31)
+  - V12_002.StickyState.cs::DeserializeSnapshot (CYC=9, LOC=39)
+  - V12_002.Symmetry.BracketFSM.cs::ProcessBracketEvent (CYC=14, LOC=44)
+  - V12_002.Symmetry.BracketFSM.cs::GetFsmExpectedPosition (CYC=14, LOC=25)
+  - V12_002.Symmetry.BracketFSM.cs::HandleFsmFilled (CYC=13, LOC=18)
+  - V12_002.Symmetry.BracketFSM.cs::ResolveFsm_ByScan (CYC=12, LOC=21)
+  - V12_002.Symmetry.BracketFSM.cs::RemoveFsmOrderIdMappings (CYC=11, LOC=14)
+  - V12_002.Symmetry.cs::SymmetryGuardOnMasterFill (CYC=14, LOC=44)
+  - V12_002.Symmetry.cs::SymmetryFindDispatchForMasterFill (CYC=9, LOC=20)
+  - V12_002.Symmetry.Follower.cs::SymmetryGuardTryResolveFollower (CYC=12, LOC=83)
+  - V12_002.Symmetry.Follower.cs::SymmetryGuardSubmitFollowerBracket (CYC=12, LOC=101)
+  - V12_002.Symmetry.Follower.cs::SymmetryGuardOnFollowerFill (CYC=11, LOC=47)
+  - V12_002.Symmetry.Replace.cs::SymmetryGuardReplaceExistingFollowerTarget (CYC=18, LOC=49)
+  - V12_002.Symmetry.Replace.cs::SymmetryGuardTryResolveFollowersForDispatch (CYC=18, LOC=33)
+  - V12_002.Symmetry.Replace.cs::SymmetryGuardCascadeFollowerCleanup (CYC=10, LOC=33)
+  - V12_002.Symmetry.Replace.cs::SymmetryGuardPruneDispatches (CYC=10, LOC=20)
+  - V12_002.Symmetry.Replace.cs::SymmetryNormalizeTradeType (CYC=10, LOC=17)
+  - V12_002.Trailing.Breakeven.cs::MoveStop_SinglePosition (CYC=13, LOC=63)
+  - V12_002.Trailing.Breakeven.cs::MoveSpecificTarget (CYC=12, LOC=41)
+  - V12_002.Trailing.Breakeven.cs::FindTargetOrderForPosition (CYC=9, LOC=23)
+  - V12_002.Trailing.cs::ManageTrailingStops (CYC=13, LOC=33)
+  - V12_002.Trailing.cs::FleetSync_SyncFollowersToLevel (CYC=9, LOC=34)
+  - V12_002.Trailing.cs::ManageTrail_RunPerTradeBranches (CYC=9, LOC=8)
+  - V12_002.Trailing.StopUpdate.cs::UpdateStopOrder (CYC=11, LOC=33)
+  - V12_002.Trailing.StopUpdate.cs::InitiateStopReplacement (CYC=10, LOC=46)
+  - V12_002.Trailing.StopUpdate.cs::CleanupStalePendingReplacements (CYC=9, LOC=26)
+  - V12_002.Trailing.StopUpdate.cs::UpdateExistingPendingReplacement (CYC=9, LOC=46)
+  - V12_002.UI.Callbacks.cs::HandleChartClick_ConvertPrice (CYC=9, LOC=54)
+  - V12_002.UI.Callbacks.cs::OnKeyDown (CYC=9, LOC=17)
+  - V12_002.UI.Compliance.cs::IsOrderAllowed (CYC=16, LOC=43)
+  - V12_002.UI.Compliance.cs::HandleFleetTargetFill (CYC=16, LOC=58)
+  - V12_002.UI.Compliance.cs::CancelOrphanedTargets (CYC=14, LOC=20)
+  - V12_002.UI.Compliance.cs::ProcessQueuedExecution_HandleFleetOCO (CYC=13, LOC=17)
+  - V12_002.UI.Compliance.cs::ProcessQueuedExecution_SyncFlatPosition (CYC=13, LOC=36)
+  - V12_002.UI.Compliance.cs::LogApexPerformance (CYC=13, LOC=72)
+  - V12_002.UI.Compliance.cs::ProcessQueuedExecution_HandleFleetBrackets (CYC=10, LOC=18)
+  - V12_002.UI.Compliance.cs::TrackTradeEntry (CYC=9, LOC=17)
+  - V12_002.UI.IPC.Commands.Config.cs::TryApplyConfigTarget_Value (CYC=17, LOC=45)
+  - V12_002.UI.IPC.Commands.Config.cs::HandleTrimCommand (CYC=11, LOC=85)
+  - V12_002.UI.IPC.Commands.Config.cs::TryApplyConfigTarget_Type (CYC=11, LOC=22)
+  - V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleetCommand (CYC=19, LOC=42)
+  - V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_CancelAll (CYC=19, LOC=41)
+  - V12_002.UI.IPC.Commands.Fleet.cs::CancelAll_ProcessSingleFleetAccount (CYC=18, LOC=31)
+  - V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_MoveTarget (CYC=15, LOC=33)
+  - V12_002.UI.IPC.Commands.Fleet.cs::CancelAll_ProcessMasterAccount (CYC=14, LOC=24)
+  - V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_LongShort (CYC=11, LOC=47)
+  - V12_002.UI.IPC.Commands.Misc.cs::SendResponseToRemote (CYC=10, LOC=26)
+  - V12_002.UI.IPC.Commands.Misc.cs::FlattenSpecificTarget (CYC=9, LOC=28)
+  - V12_002.UI.IPC.Commands.Mode.cs::TryHandleMode_SetMode (CYC=13, LOC=59)
+  - V12_002.UI.IPC.Commands.Mode.cs::TryHandleRisk_Breakeven (CYC=12, LOC=16)
+  - V12_002.UI.IPC.cs::IsSymbolMatch (CYC=18, LOC=19)
+  - V12_002.UI.IPC.cs::ProcessIpcCommands (CYC=14, LOC=27)
+  - V12_002.UI.IPC.cs::TryParseTargetMode (CYC=13, LOC=27)
+  - V12_002.UI.IPC.cs::ProcessIpcCommandCore (CYC=13, LOC=50)
+  - V12_002.UI.IPC.cs::IsAllowedIpcAction (CYC=10, LOC=13)
+  - V12_002.UI.IPC.Server.cs::StopIpcServer (CYC=12, LOC=29)
+  - V12_002.UI.IPC.Server.cs::ProcessClientStream (CYC=9, LOC=26)
+  - V12_002.UI.Panel.Construction.cs::DestroyPanel (CYC=17, LOC=149)
+  - V12_002.UI.Panel.Construction.cs::PlacePanel (CYC=13, LOC=56)
+  - V12_002.UI.Panel.Construction.cs::CreateSection0_Identity (CYC=13, LOC=154)
+  - V12_002.UI.Panel.Handlers.cs::ShowModeSpecificControls (CYC=20, LOC=42)
+  - V12_002.UI.Panel.Handlers.cs::UpdateTargetVisibility (CYC=19, LOC=36)
+  - V12_002.UI.Panel.Handlers.cs::AttachExecutionPanelHandlers (CYC=12, LOC=46)
+  - V12_002.UI.Panel.Handlers.cs::OnSubmitClick (CYC=12, LOC=30)
+  - V12_002.UI.Panel.Handlers.cs::CollapseAllExecutionControls (CYC=11, LOC=21)
+  - V12_002.UI.Panel.Helpers.cs::FindChartTraderViaChartTab (CYC=20, LOC=54)
+  - V12_002.UI.Panel.Helpers.cs::DumpVisualTree (CYC=10, LOC=48)
+  - V12_002.UI.Panel.Helpers.cs::FindChartTabGrid (CYC=10, LOC=23)
+  - V12_002.UI.Panel.Helpers.cs::FindChartTraderBySiblingSearch (CYC=9, LOC=16)
+  - V12_002.UI.Panel.StateSync.cs::UpdatePanelState (CYC=16, LOC=51)
+  - V12_002.UI.Panel.StateSync.cs::SyncPanelConfigFromSnapshot (CYC=15, LOC=37)
+  - V12_002.UI.Panel.StateSync.cs::SyncLiveTargetRows (CYC=10, LOC=21)
+  - V12_002.UI.Panel.StateSync.cs::SyncModeChipVisuals (CYC=9, LOC=39)
+  - V12_002.UI.Sizing.cs::ShouldSyncPendingOrder (CYC=9, LOC=15)
+  - V12_002.UI.Snapshot.cs::FindMasterPosition (CYC=9, LOC=15)
+  - V12_002.UI.Snapshot.cs::PopulateTargetSnapshots (CYC=9, LOC=21)
+  - V12_002.UI.SnapshotPool.cs::UpdateLivePositionSnapshot (CYC=14, LOC=43)
+
+CYC 6-8 (watch list): 183
+  - V12_002.BarUpdate.cs::UpdateORBoxDisplay (CYC=8, LOC=15)
+  - V12_002.cs::EnsureStartupReady (CYC=7, LOC=21)
+  - V12_002.cs::DrainActor (CYC=7, LOC=24)
+  - V12_002.DrawingHelpers.cs::ConvertToSelectedTimeZone (CYC=7, LOC=25)
+  - V12_002.Entries.FFMA.cs::ExecuteFFMAEntry (CYC=8, LOC=126)
+  - V12_002.Entries.OR.cs::ExecuteLong (CYC=7, LOC=23)
+  - V12_002.Entries.OR.cs::ExecuteShort (CYC=7, LOC=23)
+  - V12_002.Entries.Retest.cs::ExecuteRetestManualEntry (CYC=8, LOC=149)
+  - V12_002.Entries.RMA.cs::ExecuteTrendSplitEntry (CYC=7, LOC=17)
+  - V12_002.Entries.RMA.cs::SubmitTrendSplitBrackets (CYC=6, LOC=126)
+  - V12_002.Entries.Trend.cs::ExecuteTRENDEntry (CYC=8, LOC=88)
+  - V12_002.IO.PathValidation.cs::ValidateAndCanonicalize (CYC=6, LOC=33)
+  - V12_002.IO.RetryHelper.cs::IsTransientIOError (CYC=7, LOC=15)
+  - V12_002.Lifecycle.cs::OnStateChangeConfigure (CYC=6, LOC=65)
+  - V12_002.Lifecycle.cs::Init_InstrumentConfig (CYC=6, LOC=13)
+  - V12_002.Lifecycle.cs::OnStateChangeRealtime (CYC=6, LOC=34)
+  - V12_002.LogicAudit.cs::AuditCase8_StopLossCoverage (CYC=8, LOC=29)
+  - V12_002.MetadataGuard.cs::MetadataGuardFsmEvent (CYC=6, LOC=10)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::TryFindOrderInPosition (CYC=8, LOC=24)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::TryFindMasterEntryForOrder (CYC=8, LOC=17)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::ExecuteFollowerCascade_ResolveFollowers (CYC=8, LOC=20)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::ProcessAccountOrder_EnqueueTerminalUpdate (CYC=6, LOC=13)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::TryGetDispatchFollowerEntries (CYC=6, LOC=14)
+  - V12_002.Orders.Callbacks.AccountOrders.cs::HandleMatchedFollower_TargetReplaceCancel (CYC=6, LOC=19)
+  - V12_002.Orders.Callbacks.cs::HandleEntryOrderFilled (CYC=8, LOC=73)
+  - V12_002.Orders.Callbacks.cs::HandleOrderCancelled_RollbackUnfilledEntry (CYC=8, LOC=10)
+  - V12_002.Orders.Callbacks.cs::HandleOrderCancelled_PurgePendingCleanup (CYC=7, LOC=15)
+  - V12_002.Orders.Callbacks.cs::TryRemoveTargetReferenceByOrder (CYC=6, LOC=11)
+  - V12_002.Orders.Callbacks.cs::RemoveTargetReferenceOnTerminalFill (CYC=6, LOC=12)
+  - V12_002.Orders.Callbacks.cs::HandleOrderCancelled (CYC=6, LOC=11)
+  - V12_002.Orders.Callbacks.Execution.cs::HasPendingEntryForAcct (CYC=7, LOC=11)
+  - V12_002.Orders.Callbacks.Execution.cs::HandleFlatPosition_SyncExpected (CYC=6, LOC=19)
+  - V12_002.Orders.Callbacks.Propagation.cs::SubmitFollowerReplacement_ReassertExpected (CYC=7, LOC=35)
+  - V12_002.Orders.Callbacks.Propagation.cs::SubmitFollowerReplacement_RegisterState (CYC=7, LOC=39)
+  - V12_002.Orders.Callbacks.Propagation.cs::ResolveFollowersViaScan (CYC=6, LOC=11)
+  - V12_002.Orders.Callbacks.Propagation.cs::SubmitFollowerReplacement_SubmitEntry (CYC=6, LOC=23)
+  - V12_002.Orders.CancelGateway.cs::CancelOrderSafe (CYC=6, LOC=7)
+  - V12_002.Orders.Management.cs::AuditStopQuantityAndPrint (CYC=8, LOC=61)
+  - V12_002.Orders.Management.cs::SubmitStopOrderSafe (CYC=6, LOC=73)
+  - V12_002.Orders.Management.Flatten.cs::CancelUnfilledMasterEntries (CYC=8, LOC=22)
+  - V12_002.Orders.Management.Flatten.cs::SubmitEmergencyFlattenOrder (CYC=8, LOC=44)
+  - V12_002.Orders.Management.Flatten.cs::CancelMasterEntryOrders (CYC=7, LOC=8)
+  - V12_002.Orders.Management.Flatten.cs::FlattenAll (CYC=6, LOC=20)
+  - V12_002.Orders.Management.StopSync.cs::SubmitStopOrderToBroker (CYC=7, LOC=62)
+  - V12_002.Perf.LatencyHistogram.cs::GetPercentile (CYC=6, LOC=11)
+  - V12_002.Photon.MmioMirror.cs::MmioDispatchMirror (CYC=6, LOC=18)
+  - V12_002.Photon.Pool.cs::ContainsOrAdd (CYC=8, LOC=30)
+  - V12_002.PositionInfo.cs::ApplyTargetLadderGuard (CYC=7, LOC=50)
+  - V12_002.PositionInfo.cs::GetTargetMode (CYC=6, LOC=14)
+  - V12_002.PositionInfo.cs::GetConfiguredTargetMagnitude (CYC=6, LOC=14)
+  - V12_002.PositionInfo.cs::CalculateTargetPrice (CYC=6, LOC=24)
+  - V12_002.PositionInfo.cs::GetTargetContracts (CYC=6, LOC=14)
+  - V12_002.PositionInfo.cs::GetTargetPrice (CYC=6, LOC=14)
+  - V12_002.PositionInfo.cs::IsTargetFilled (CYC=6, LOC=14)
+  - V12_002.PositionInfo.cs::MarkTargetFilled (CYC=6, LOC=19)
+  - V12_002.PositionInfo.cs::GetTargetFilledQuantity (CYC=6, LOC=14)
+  - V12_002.PositionInfo.cs::SetTargetFilledQuantity (CYC=6, LOC=18)
+  - V12_002.PureLogic.cs::CalculatePositionSize (CYC=6, LOC=21)
+  - V12_002.REAPER.Audit.cs::AuditApexPositions (CYC=8, LOC=22)
+  - V12_002.REAPER.Audit.cs::AuditFleet_HandleDesyncRepair (CYC=8, LOC=33)
+  - V12_002.REAPER.Audit.cs::AuditFleet_CheckPositionPassGrace (CYC=7, LOC=24)
+  - V12_002.REAPER.Audit.cs::EnqueueReaperRepairCandidate (CYC=7, LOC=27)
+  - V12_002.REAPER.Audit.cs::AuditIpcHardeningMetrics (CYC=6, LOC=10)
+  - V12_002.REAPER.Audit.cs::AuditFleet_HandleCriticalDesyncFlatten (CYC=6, LOC=23)
+  - V12_002.REAPER.Audit.cs::AuditMaster_CalculatePositionState (CYC=6, LOC=19)
+  - V12_002.REAPER.Audit.cs::ProcessReaperFlatten_ClosePositions (CYC=6, LOC=32)
+  - V12_002.REAPER.NakedPosition.cs::CheckPendingStopReplace (CYC=6, LOC=15)
+  - V12_002.REAPER.OrphanSafety.cs::ValidateRepairEligibility_OrphanCheck (CYC=7, LOC=28)
+  - V12_002.REAPER.Repair.cs::CalculateRepairOrderPrices (CYC=6, LOC=15)
+  - V12_002.REAPER.Repair.cs::ValidateRepairRiskBounds (CYC=6, LOC=31)
+  - V12_002.Safety.Watchdog.cs::HasWatchdogLeadAccountPosition (CYC=8, LOC=13)
+  - V12_002.Safety.Watchdog.cs::HasWatchdogLeadAccountWorkingOrder (CYC=8, LOC=13)
+  - V12_002.Safety.Watchdog.cs::ExecuteWatchdogLeadAccountFlatten (CYC=8, LOC=20)
+  - V12_002.Safety.Watchdog.cs::FlattenWatchdogPositions (CYC=7, LOC=37)
+  - V12_002.Safety.Watchdog.cs::FlattenDirectFallbackPositions (CYC=7, LOC=27)
+  - V12_002.SIMA.Dispatch.cs::RollbackCircuitBreakerState (CYC=7, LOC=25)
+  - V12_002.SIMA.Dispatch.cs::Dispatch_FinalizeAndReport (CYC=6, LOC=35)
+  - V12_002.SIMA.Dispatch.cs::Dispatch_ResolveFleetSnapshot (CYC=6, LOC=29)
+  - V12_002.SIMA.Flatten.cs::ClosePositionsOnlyApexAccounts (CYC=8, LOC=40)
+  - V12_002.SIMA.Flatten.cs::FlattenAllApexAccounts (CYC=7, LOC=41)
+  - V12_002.SIMA.Flatten.cs::ProcessFlattenWorkItem_ClosePositions (CYC=7, LOC=52)
+  - V12_002.SIMA.Fleet.cs::PumpFleetDispatch (CYC=8, LOC=29)
+  - V12_002.SIMA.Fleet.cs::UnsubscribeFromFleetAccounts (CYC=6, LOC=13)
+  - V12_002.SIMA.Lifecycle.cs::ProcessApplySimaState (CYC=8, LOC=37)
+  - V12_002.SIMA.Lifecycle.cs::IsOrderStateAdoptable (CYC=8, LOC=14)
+  - V12_002.SIMA.Lifecycle.cs::HydrateFSM_LinkBracketOrders (CYC=8, LOC=15)
+  - V12_002.SIMA.Lifecycle.cs::RecoverFSM_FindAccountWithPosition (CYC=8, LOC=16)
+  - V12_002.SIMA.Lifecycle.cs::HydrateFSM_RecoverFromOpenPositions (CYC=8, LOC=44)
+  - V12_002.SIMA.Lifecycle.cs::GetOrderDictionaryByName (CYC=7, LOC=16)
+  - V12_002.SIMA.Lifecycle.cs::ReconstructMasterPositionFromBrackets (CYC=7, LOC=28)
+  - V12_002.SIMA.Lifecycle.cs::RecoverFSM_LinkRecoveredBrackets (CYC=7, LOC=17)
+  - V12_002.SIMA.Lifecycle.cs::EnumerateApexAccounts (CYC=6, LOC=33)
+  - V12_002.SIMA.Lifecycle.cs::FindMasterPositionFromBroker (CYC=6, LOC=14)
+  - V12_002.SIMA.Lifecycle.cs::HydrateFSM_DetermineRemainingContracts (CYC=6, LOC=18)
+  - V12_002.SIMA.Shadow.cs::ShadowPropagateLeaderFlatten (CYC=8, LOC=12)
+  - V12_002.SIMA.Shadow.cs::ShadowMoveFollowerStops (CYC=6, LOC=16)
+  - V12_002.StickyState.cs::WriteSnapshotAtomic (CYC=7, LOC=55)
+  - V12_002.StickyState.cs::LoadStateSnapshot (CYC=7, LOC=39)
+  - V12_002.StickyState.cs::ParseJsonString (CYC=7, LOC=14)
+  - V12_002.StickyState.cs::RollbackToLastGoodState (CYC=6, LOC=40)
+  - V12_002.Symmetry.BracketFSM.cs::ResolveFsm_BySignalName (CYC=6, LOC=11)
+  - V12_002.Symmetry.cs::RemoveFollower (CYC=7, LOC=15)
+  - V12_002.Symmetry.cs::SymmetryGuardBeginDispatch (CYC=7, LOC=43)
+  - V12_002.Symmetry.cs::AddFollower (CYC=6, LOC=13)
+  - V12_002.Symmetry.Follower.cs::SymmetryGuardProcessPendingFollowerFills (CYC=6, LOC=17)
+  - V12_002.Symmetry.Replace.cs::SymmetryInferTradeType (CYC=7, LOC=13)
+  - V12_002.Trailing.Breakeven.cs::FindTargetOrderForAbsoluteMove (CYC=8, LOC=17)
+  - V12_002.Trailing.Breakeven.cs::ExecuteTargetAbsoluteMove (CYC=8, LOC=63)
+  - V12_002.Trailing.Breakeven.cs::MoveSpecificTargetAbsolute (CYC=7, LOC=16)
+  - V12_002.Trailing.Breakeven.cs::MoveStopsToBreakevenWithOffset (CYC=6, LOC=13)
+  - V12_002.Trailing.Breakeven.cs::ValidateTargetMoveAbsoluteRequest (CYC=6, LOC=8)
+  - V12_002.Trailing.cs::FleetSync_FindLeaderMaxLevels (CYC=8, LOC=15)
+  - V12_002.Trailing.cs::ManageTrail_AdaptiveThrottleTick (CYC=8, LOC=23)
+  - V12_002.Trailing.cs::ManageTrail_ApplyPointBasedCascade (CYC=8, LOC=29)
+  - V12_002.Trailing.cs::ManageTrail_ShouldCheckPointBasedTrailing (CYC=7, LOC=8)
+  - V12_002.Trailing.cs::ManageTrail_TryApplyDirectionalStop (CYC=6, LOC=13)
+  - V12_002.Trailing.cs::ManageTrail_ApplyBreakEvenCandidate (CYC=6, LOC=17)
+  - V12_002.Trailing.StopUpdate.cs::CaptureTargetSnapshot (CYC=7, LOC=19)
+  - V12_002.Trailing.StopUpdate.cs::RefreshTargetSnapshot (CYC=7, LOC=19)
+  - V12_002.Trailing.StopUpdate.cs::CreateDirectStopOrder (CYC=7, LOC=60)
+  - V12_002.Trailing.StopUpdate.cs::HandleUpdateException (CYC=7, LOC=22)
+  - V12_002.UI.Callbacks.cs::IsPointerInPriceArea (CYC=7, LOC=13)
+  - V12_002.UI.Callbacks.cs::OnChartClick (CYC=7, LOC=16)
+  - V12_002.UI.Callbacks.cs::HandleTargetAction (CYC=7, LOC=20)
+  - V12_002.UI.Callbacks.cs::HandleRunnerAction (CYC=7, LOC=22)
+  - V12_002.UI.Callbacks.cs::RouteTargetActionToHandler (CYC=7, LOC=32)
+  - V12_002.UI.Callbacks.cs::DispatchRunnerAction (CYC=7, LOC=21)
+  - V12_002.UI.Callbacks.cs::AttachChartClickHandler (CYC=6, LOC=26)
+  - V12_002.UI.Callbacks.cs::HandleChartClick_ValidateMode (CYC=6, LOC=5)
+  - V12_002.UI.Callbacks.cs::SubmitExitOrderForPosition (CYC=6, LOC=29)
+  - V12_002.UI.Callbacks.cs::GetTargetOrdersDictionary (CYC=6, LOC=14)
+  - V12_002.UI.Callbacks.cs::ExecuteRunnerAction (CYC=6, LOC=12)
+  - V12_002.UI.Compliance.cs::EnsureDailySummaryCsv (CYC=8, LOC=30)
+  - V12_002.UI.Compliance.cs::ProcessAccountExecutionQueue (CYC=8, LOC=23)
+  - V12_002.UI.Compliance.cs::UpdateAccountMetricsFromAccount (CYC=6, LOC=13)
+  - V12_002.UI.Compliance.cs::MaybeFinalizeDailySummaries (CYC=6, LOC=16)
+  - V12_002.UI.IPC.Commands.Config.cs::TryApplyConfigRisk (CYC=8, LOC=17)
+  - V12_002.UI.IPC.Commands.Config.cs::HandleConfigCommand (CYC=7, LOC=23)
+  - V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_FlattenOnly (CYC=7, LOC=33)
+  - V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_FfmaManualLimit (CYC=7, LOC=23)
+  - V12_002.UI.IPC.Commands.Fleet.cs::CancelAll_ProcessFleetOrders (CYC=6, LOC=13)
+  - V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_TrendManualLimit (CYC=6, LOC=21)
+  - V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_RetestManualLimit (CYC=6, LOC=21)
+  - V12_002.UI.IPC.Commands.Misc.cs::HandleFleet_RequestFleetState (CYC=7, LOC=21)
+  - V12_002.UI.IPC.Commands.Misc.cs::FlattenSpecificTarget_CancelLimit (CYC=7, LOC=17)
+  - V12_002.UI.IPC.Commands.Misc.cs::FlattenSpecificTarget_ResolveTarget (CYC=6, LOC=39)
+  - V12_002.UI.IPC.Commands.Mode.cs::TryHandleRiskCommand (CYC=8, LOC=16)
+  - V12_002.UI.IPC.Commands.Mode.cs::TryHandleRisk_SetTrail (CYC=8, LOC=42)
+  - V12_002.UI.IPC.Commands.Mode.cs::TryHandleModeCommand (CYC=7, LOC=14)
+  - V12_002.UI.IPC.cs::TryEnqueueIpcCommand (CYC=7, LOC=20)
+  - V12_002.UI.IPC.cs::ProcessIpc_ParseAction (CYC=7, LOC=17)
+  - V12_002.UI.IPC.Server.cs::HandleClient (CYC=8, LOC=22)
+  - V12_002.UI.IPC.Server.cs::GetCurrentConfigMode (CYC=6, LOC=12)
+  - V12_002.UI.Panel.Construction.cs::SetComboSelection (CYC=6, LOC=11)
+  - V12_002.UI.Panel.Construction.cs::UpdateFleetButtonText (CYC=6, LOC=11)
+  - V12_002.UI.Panel.Handlers.cs::AttachConfigModeHandlers (CYC=7, LOC=13)
+  - V12_002.UI.Panel.Handlers.cs::ToggleLayout_Click (CYC=7, LOC=15)
+  - V12_002.UI.Panel.Handlers.cs::OnRetestClick (CYC=7, LOC=24)
+  - V12_002.UI.Panel.Handlers.cs::ExtractTargetConfiguration (CYC=7, LOC=40)
+  - V12_002.UI.Panel.Handlers.cs::ResetExecutionMode (CYC=7, LOC=20)
+  - V12_002.UI.Panel.Handlers.cs::AttachTargetButtonHandlers (CYC=6, LOC=11)
+  - V12_002.UI.Panel.Handlers.cs::AttachActionButtonHandlers (CYC=6, LOC=20)
+  - V12_002.UI.Panel.Handlers.cs::AttachTargetCountHandlers (CYC=6, LOC=11)
+  - V12_002.UI.Panel.Handlers.cs::PanelCommand (CYC=6, LOC=18)
+  - V12_002.UI.Panel.Helpers.cs::FindChartTraderByButton (CYC=8, LOC=17)
+  - V12_002.UI.Panel.Helpers.cs::HandleTextBoxKeyInput (CYC=7, LOC=16)
+  - V12_002.UI.Panel.Helpers.cs::CreateLiveTargetRow (CYC=7, LOC=64)
+  - V12_002.UI.Panel.Helpers.cs::FindChartTraderViaOwnerChart (CYC=7, LOC=22)
+  - V12_002.UI.Panel.Helpers.cs::FindChartTrader (CYC=7, LOC=27)
+  - V12_002.UI.Panel.Helpers.cs::TryMapSpecialCharacter (CYC=6, LOC=12)
+  - V12_002.UI.Panel.Helpers.cs::FindDescendantGrid (CYC=6, LOC=12)
+  - V12_002.UI.Panel.Helpers.cs::FindChildElementByTypeName (CYC=6, LOC=12)
+  - V12_002.UI.Panel.Helpers.cs::FindAllButtonsByText (CYC=6, LOC=12)
+  - V12_002.UI.Panel.Lifecycle.cs::StartPanelRefresh (CYC=6, LOC=20)
+  - V12_002.UI.Panel.StateSync.cs::SetConfigTargetButtonsVisible (CYC=7, LOC=14)
+  - V12_002.UI.Panel.StateSync.cs::SetLiveTargetRowsVisible (CYC=7, LOC=12)
+  - V12_002.UI.Panel.StateSync.cs::SetLiveTargetRowVisible (CYC=7, LOC=22)
+  - V12_002.UI.Panel.StateSync.cs::GetLiveTargetPriceBox (CYC=6, LOC=14)
+  - V12_002.UI.Panel.StateSync.cs::GetLiveTargetCtsBlock (CYC=6, LOC=14)
+  - V12_002.UI.Panel.StateSync.cs::UpdateComplianceDisplay (CYC=6, LOC=41)
+  - V12_002.UI.Panel.StateSync.cs::UpdateTrendIndicator (CYC=6, LOC=16)
+  - V12_002.UI.Sizing.cs::SyncPendingOrders (CYC=7, LOC=28)
+  - V12_002.UI.Snapshot.cs::BuildUiStatusMessage (CYC=6, LOC=10)
+
+M5 dispatch candidates: 10
+  - V12_002.Lifecycle.cs::ProcessOnStateChange
+  - V12_002.Orders.Callbacks.cs::ProcessOnOrderUpdate
+  - V12_002.SIMA.cs::SetRmaAnchorFromIpc
+  - V12_002.Symmetry.BracketFSM.cs::ProcessBracketEvent
+  - V12_002.UI.Callbacks.cs::RouteTargetActionToHandler
+  - V12_002.UI.Callbacks.cs::DispatchRunnerAction
+  - V12_002.UI.IPC.Commands.Config.cs::TryApplyConfigTarget_Value
+  - V12_002.UI.IPC.Commands.Fleet.cs::TryHandleFleet_LongShort
+  - V12_002.UI.IPC.Commands.Mode.cs::TryHandleMode_SetMode
+  - V12_002.UI.IPC.cs::ProcessIpcCommandCore
+
+LOC > 80: 29
+  - V12_002.Entries.FFMA.cs::ExecuteFFMAManualMarketEntry (LOC=162)
+  - V12_002.Entries.FFMA.cs::ExecuteFFMALimitEntry (LOC=146)
+  - V12_002.Entries.FFMA.cs::ExecuteFFMAEntry (LOC=126)
+  - V12_002.Entries.MOMO.cs::ExecuteMOMOEntry (LOC=166)
+  - V12_002.Entries.OR.cs::EnterORPosition (LOC=166)
+  - V12_002.Entries.Retest.cs::ExecuteRetestEntry (LOC=199)
+  - V12_002.Entries.Retest.cs::ExecuteRetestManualEntry (LOC=149)
+  - V12_002.Entries.RMA.cs::SubmitTrendSplitBrackets (LOC=126)
+  - V12_002.Entries.Trend.cs::ExecuteTRENDEntry (LOC=88)
+  - V12_002.Entries.Trend.cs::ExecuteTREND_CalculateLegs (LOC=84)
+  - V12_002.Lifecycle.cs::OnStateChangeSetDefaults (LOC=98)
+  - V12_002.Orders.Management.cs::SubmitTargetOrdersLoop (LOC=104)
+  - V12_002.Orders.Management.StopSync.cs::SyncLimitTarget (LOC=128)
+  - V12_002.Orders.Management.StopSync.cs::RestoreCascadedTargets (LOC=90)
+  - V12_002.SIMA.Dispatch.cs::Dispatch_PublishMarketBracketToPhoton (LOC=189)
+  - V12_002.SIMA.Dispatch.cs::Dispatch_ProcessFleetLoop (LOC=113)
+  - V12_002.SIMA.Dispatch.cs::Dispatch_PublishLimitEntryToPhoton (LOC=95)
+  - V12_002.SIMA.Dispatch.cs::Dispatch_BuildFollowerOrders (LOC=121)
+  - V12_002.SIMA.Execution.cs::ProcessSingleFleetRMAAccount (LOC=106)
+  - V12_002.SIMA.Execution.cs::ExecuteMultiAccountBracket (LOC=107)
+  - V12_002.SIMA.Execution.cs::ExecuteRMAEntryV2 (LOC=110)
+  - V12_002.Symmetry.Follower.cs::SymmetryGuardTryResolveFollower (LOC=83)
+  - V12_002.Symmetry.Follower.cs::SymmetryGuardSubmitFollowerBracket (LOC=101)
+  - V12_002.UI.IPC.Commands.Config.cs::HandleTrimCommand (LOC=85)
+  - V12_002.UI.Panel.Construction.cs::DestroyPanel (LOC=149)
+  - V12_002.UI.Panel.Construction.cs::CreateSection0_Identity (LOC=154)
+  - V12_002.UI.Panel.Construction.cs::CreateSection3_Config (LOC=277)
+  - V12_002.UI.Panel.Construction.cs::CreateSection1_Execution (LOC=181)
+  - V12_002.UI.Panel.Construction.cs::CreateSection2_Telemetry (LOC=95)
+
+[CODEBASE-AUDIT-COMPLETE]
