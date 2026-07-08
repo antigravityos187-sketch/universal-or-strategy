@@ -1,4 +1,4 @@
-﻿# PR #22 Forensics Report
+# PR #22 Forensics Report
 Generated: 2026-06-02 12:31:10
 
 ## Summary

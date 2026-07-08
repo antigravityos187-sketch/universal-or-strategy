@@ -1,4 +1,4 @@
-﻿# NinjaScript V12 Project Standards (Codex Mirror)
+# NinjaScript V12 Project Standards (Codex Mirror)
 
 - **Language**: C# 8.0 / .NET Framework 4.8 (NinjaTrader 8).
 - **No Internal Locks**: `lock(stateLock)` is **BANNED**. All state mutations MUST use `Enqueue(ctx => ...)` by default. Exception: Build 981 direct-write for `stopOrders` during bracket submission.

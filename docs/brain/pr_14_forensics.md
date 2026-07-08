@@ -1,4 +1,4 @@
-﻿# PR #14 Forensics Report
+# PR #14 Forensics Report
 Generated: 2026-06-01 19:17:36
 
 ## Summary

@@ -1,0 +1,470 @@
+[
+    {
+        "epic":  "EPIC-CCN-001",
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryGuardReplaceExistingFollowerTarget",
+        "cyc":  18
+    },
+    {
+        "epic":  "EPIC-CCN-002",
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryGuardTryResolveFollowersForDispatch",
+        "cyc":  18
+    },
+    {
+        "epic":  "EPIC-CCN-003",
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "IsOrderAllowed",
+        "cyc":  16
+    },
+    {
+        "epic":  "EPIC-CCN-004",
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "HandleFleetTargetFill",
+        "cyc":  16
+    },
+    {
+        "epic":  "EPIC-CCN-005",
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "ClassifyAndRouteFleetOrder",
+        "cyc":  16
+    },
+    {
+        "epic":  "EPIC-CCN-006",
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "AdoptFleetWorkingOrders",
+        "cyc":  17
+    },
+    {
+        "epic":  "EPIC-CCN-007",
+        "file":  "V12_002.SIMA.Shadow.cs",
+        "method":  "ShadowPropagateStopMoves",
+        "cyc":  20
+    },
+    {
+        "epic":  "EPIC-CCN-008",
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "UpdateTargetVisibility",
+        "cyc":  19
+    },
+    {
+        "epic":  "EPIC-CCN-009",
+        "file":  "V12_002.UI.Panel.Helpers.cs",
+        "method":  "FindChartTraderViaChartTab",
+        "cyc":  20
+    },
+    {
+        "epic":  "EPIC-CCN-010",
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "ShowModeSpecificControls",
+        "cyc":  20
+    },
+    {
+        "epic":  "EPIC-CCN-011",
+        "file":  "V12_002.UI.Panel.Construction.cs",
+        "method":  "DestroyPanel",
+        "cyc":  17
+    },
+    {
+        "epic":  "EPIC-CCN-012",
+        "file":  "V12_002.UI.Panel.StateSync.cs",
+        "method":  "SyncPanelConfigFromSnapshot",
+        "cyc":  15
+    },
+    {
+        "epic":  "EPIC-CCN-013",
+        "file":  "V12_002.UI.Panel.StateSync.cs",
+        "method":  "UpdatePanelState",
+        "cyc":  16
+    },
+    {
+        "epic":  "EPIC-CCN-014",
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "TryHandleFleetCommand",
+        "cyc":  19
+    },
+    {
+        "epic":  "EPIC-CCN-015",
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "CancelAll_ProcessSingleFleetAccount",
+        "cyc":  18
+    },
+    {
+        "epic":  "EPIC-CCN-016",
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "TryHandleFleet_CancelAll",
+        "cyc":  19
+    },
+    {
+        "epic":  "EPIC-CCN-017",
+        "file":  "V12_002.UI.IPC.Commands.Config.cs",
+        "method":  "TryApplyConfigTarget_Value",
+        "cyc":  17
+    },
+    {
+        "epic":  "EPIC-CCN-018",
+        "file":  "V12_002.UI.IPC.cs",
+        "method":  "IsSymbolMatch",
+        "cyc":  18
+    },
+    {
+        "epic":  "EPIC-CCN-019",
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs",
+        "method":  "TryHandleFleet_MoveTarget",
+        "cyc":  15
+    },
+    {
+        "epic":  "EPIC-CCN-020",
+        "file":  "V12_002.Orders.Callbacks.cs",
+        "method":  "HandleSecondaryOrderFilled",
+        "cyc":  21
+    },
+    {
+        "epic":  "EPIC-CCN-021",
+        "file":  "V12_002.Orders.Callbacks.cs",
+        "method":  "ProcessOnOrderUpdate",
+        "cyc":  19
+    },
+    {
+        "epic":  "EPIC-CCN-022",
+        "file":  "V12_002.Orders.Callbacks.Propagation.cs",
+        "method":  "PropagateMaster_IdentifyMove",
+        "cyc":  18
+    },
+    {
+        "epic":  "EPIC-CCN-023",
+        "file":  "V12_002.Orders.Callbacks.Execution.cs",
+        "method":  "HandleFlatPosition_CleanupActivePositions",
+        "cyc":  17
+    },
+    {
+        "epic":  "EPIC-CCN-025",
+        "file":  "V12_002.Entries.FFMA.cs",
+        "method":  "CheckFFMAConditions",
+        "cyc":  16
+    },
+    {
+        "epic":  "EPIC-CCN-026",
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs",
+        "method":  "ProcessQueuedAccountOrder",
+        "cyc":  15
+    },
+    {
+        "epic":  "EPIC-CCN-028",
+        "file":  "V12_002.SIMA.Flatten.cs",
+        "method":  "ProcessFlattenWorkItem_CancelOrders",
+        "cyc":  18
+    },
+    {
+        "epic":  "EPIC-CCN-029",
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "ShouldSkipFleet_RunHealthCheck",
+        "cyc":  31
+    },
+    {
+        "epic":  "EPIC-CCN-030",
+        "file":  "V12_002.Orders.Management.Cleanup.cs",
+        "method":  "ValidateOrphanedMasterOrders",
+        "cyc":  19
+    },
+    {
+        "epic":  "EPIC-CCN-031",
+        "file":  "V12_002.REAPER.Audit.cs",
+        "method":  "AuditMaster_HandleNakedPosition",
+        "cyc":  15
+    },
+    {
+        "epic":  "EPIC-CCN-032",
+        "file":  "V12_002.Orders.Management.StopSync.cs",
+        "method":  "RestoreCascadedTargets",
+        "cyc":  16
+    },
+    {
+        "epic":  "EPIC-CCN-033",
+        "file":  "V12_002.Orders.Management.Flatten.cs",
+        "method":  "FlattenSinglePosition",
+        "cyc":  16
+    },
+    {
+        "epic":  "EPIC-CCN-034",
+        "file":  "V12_002.Orders.Management.Flatten.cs",
+        "method":  "ManageCIT",
+        "cyc":  19
+    },
+    {
+        "epic":  "EPIC-CCN-035",
+        "file":  "V12_002.Orders.Management.StopSync.cs",
+        "method":  "SyncLimitTarget",
+        "cyc":  17
+    },
+    {
+        "epic":  "EPIC-CCN-036",
+        "file":  "V12_002.Trailing.Breakeven.cs",
+        "method":  "MoveStop_SinglePosition",
+        "cyc":  13
+    },
+    {
+        "epic":  "EPIC-CCN-037",
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryNormalizeTradeType",
+        "cyc":  10
+    },
+    {
+        "epic":  "EPIC-CCN-038",
+        "file":  "V12_002.Trailing.Breakeven.cs",
+        "method":  "MoveSpecificTarget",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-039",
+        "file":  "V12_002.Trailing.cs",
+        "method":  "ManageTrailingStops",
+        "cyc":  13
+    },
+    {
+        "epic":  "EPIC-CCN-040",
+        "file":  "V12_002.Trailing.Breakeven.cs",
+        "method":  "FindTargetOrderForPosition",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-041",
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryGuardPruneDispatches",
+        "cyc":  10
+    },
+    {
+        "epic":  "EPIC-CCN-042",
+        "file":  "V12_002.Symmetry.Follower.cs",
+        "method":  "SymmetryGuardOnFollowerFill",
+        "cyc":  11
+    },
+    {
+        "epic":  "EPIC-CCN-043",
+        "file":  "V12_002.Symmetry.Follower.cs",
+        "method":  "SymmetryGuardSubmitFollowerBracket",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-044",
+        "file":  "V12_002.Symmetry.Replace.cs",
+        "method":  "SymmetryGuardCascadeFollowerCleanup",
+        "cyc":  10
+    },
+    {
+        "epic":  "EPIC-CCN-045",
+        "file":  "V12_002.UI.Callbacks.cs",
+        "method":  "OnKeyDown",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-046",
+        "file":  "V12_002.UI.Callbacks.cs",
+        "method":  "HandleChartClick_ConvertPrice",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-047",
+        "file":  "V12_002.UI.Compliance.cs",
+        "method":  "CancelOrphanedTargets",
+        "cyc":  14
+    },
+    {
+        "epic":  "EPIC-CCN-048",
+        "file":  "V12_002.Trailing.StopUpdate.cs",
+        "method":  "UpdateExistingPendingReplacement",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-049",
+        "file":  "V12_002.Trailing.cs",
+        "method":  "ManageTrail_RunPerTradeBranches",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-050",
+        "file":  "V12_002.Trailing.cs",
+        "method":  "FleetSync_SyncFollowersToLevel",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-051",
+        "file":  "V12_002.Trailing.StopUpdate.cs",
+        "method":  "UpdateStopOrder",
+        "cyc":  11
+    },
+    {
+        "epic":  "EPIC-CCN-052",
+        "file":  "V12_002.Trailing.StopUpdate.cs",
+        "method":  "CleanupStalePendingReplacements",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-053",
+        "file":  "V12_002.Trailing.StopUpdate.cs",
+        "method":  "InitiateStopReplacement",
+        "cyc":  10
+    },
+    {
+        "epic":  "EPIC-CCN-054",
+        "file":  "V12_002.Symmetry.Follower.cs",
+        "method":  "SymmetryGuardTryResolveFollower",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-055",
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "DrainPhotonQueuesOnShutdown",
+        "cyc":  11
+    },
+    {
+        "epic":  "EPIC-CCN-056",
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "SweepBrokerOrders",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-057",
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "ShouldProtectBracketOrder",
+        "cyc":  10
+    },
+    {
+        "epic":  "EPIC-CCN-058",
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "HydrateFSM_MapOrderStateToFsmState",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-059",
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "AdoptMasterWorkingOrders",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-060",
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "SweepTrackedOrders",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-061",
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "SubmitAndRegisterFleetOrders",
+        "cyc":  11
+    },
+    {
+        "epic":  "EPIC-CCN-062",
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "ProcessFleetSlot",
+        "cyc":  11
+    },
+    {
+        "epic":  "EPIC-CCN-063",
+        "file":  "V12_002.SIMA.Fleet.cs",
+        "method":  "DrainAllDispatchQueuesOnAbort",
+        "cyc":  11
+    },
+    {
+        "epic":  "EPIC-CCN-064",
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "ResolveFsm_ByScan",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-065",
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "HandleFsmFilled",
+        "cyc":  13
+    },
+    {
+        "epic":  "EPIC-CCN-066",
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "RemoveFsmOrderIdMappings",
+        "cyc":  11
+    },
+    {
+        "epic":  "EPIC-CCN-067",
+        "file":  "V12_002.Symmetry.cs",
+        "method":  "SymmetryFindDispatchForMasterFill",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-068",
+        "file":  "V12_002.Symmetry.cs",
+        "method":  "SymmetryGuardOnMasterFill",
+        "cyc":  14
+    },
+    {
+        "epic":  "EPIC-CCN-069",
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "GetFsmExpectedPosition",
+        "cyc":  14
+    },
+    {
+        "epic":  "EPIC-CCN-070",
+        "file":  "V12_002.SIMA.Lifecycle.cs",
+        "method":  "HydrateFSMsFromWorkingOrders",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-071",
+        "file":  "V12_002.SIMA.Shadow.cs",
+        "method":  "ShadowProcessFollowerStopUpdate",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-072",
+        "file":  "V12_002.Symmetry.BracketFSM.cs",
+        "method":  "ProcessBracketEvent",
+        "cyc":  14
+    },
+    {
+        "epic":  "EPIC-CCN-073",
+        "file":  "V12_002.StickyState.cs",
+        "method":  "DeserializeSnapshot",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-074",
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "AttachExecutionPanelHandlers",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-075",
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "OnSubmitClick",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-076",
+        "file":  "V12_002.UI.Panel.Handlers.cs",
+        "method":  "CollapseAllExecutionControls",
+        "cyc":  11
+    },
+    {
+        "epic":  "EPIC-CCN-077",
+        "file":  "V12_002.UI.IPC.Server.cs",
+        "method":  "ProcessClientStream",
+        "cyc":  9
+    },
+    {
+        "epic":  "EPIC-CCN-078",
+        "file":  "V12_002.UI.IPC.Server.cs",
+        "method":  "StopIpcServer",
+        "cyc":  12
+    },
+    {
+        "epic":  "EPIC-CCN-079",
+        "file":  "V12_002.UI.Panel.Construction.cs",
+        "method":  "CreateSection0_Identity",
+        "cyc":  13
+    },
+    {
+        "epic":  "EPIC-CCN-080",
+        "file":  "V12_002.UI.Panel.Construction.cs",
+        "method":  "PlacePanel",
+        "cyc":  13
+    }
+]

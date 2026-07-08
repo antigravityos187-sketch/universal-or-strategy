@@ -1,0 +1,48 @@
+{
+  "epic": "PTT-COPIER-B10-UI-01",
+  "spec": "specs/002-trade-copier-spec.html",
+  "phase": "pending",
+  "tickets": {},
+  "lamport_events": [
+    {
+      "clock": 1,
+      "phase": "architect",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-08T21:48:39.498172+00:00",
+      "result": "PLAN_COMPLETE"
+    },
+    {
+      "clock": 2,
+      "phase": "plan_review",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-08T21:51:58.389192+00:00",
+      "result": "REVIEW_PASS"
+    },
+    {
+      "clock": 3,
+      "phase": "tickets",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-08T21:54:27.857867+00:00",
+      "result": "TICKETS_COMPLETE"
+    },
+    {
+      "clock": 4,
+      "phase": "ticket_review",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-08T21:57:34.802243+00:00",
+      "result": "TICKET_REVIEW_PASS"
+    },
+    {
+      "clock": 5,
+      "phase": "engineer_T1",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-08T22:07:56.437006+00:00",
+      "result": "BUILD_PASS"
+    }
+  ]
+}

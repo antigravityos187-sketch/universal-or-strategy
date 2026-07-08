@@ -1,4 +1,4 @@
-﻿# Greptile Cleanup Report: Slash Commands
+# Greptile Cleanup Report: Slash Commands
 
 **Date**: 2026-06-20 19:44:26
 **Script**: `scripts/cleanup_greptile_in_commands.ps1`
