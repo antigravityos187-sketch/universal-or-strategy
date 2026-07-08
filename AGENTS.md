@@ -37,6 +37,44 @@ There is no override. There is no "fix it later". Work stops until the violation
 
 ---
 
+## NT8 NinjaScript Compiler Gate (PTT Work Only)
+
+**MANDATORY for ANY agent touching `.cs` files in `src/PropTraderTools/`.**
+
+```
+STEP NT8-0 — NT8 COMPILER GATE (runs before any .cs edit in PropTraderTools):
+  [ ] READ docs/standards/NT8_COMPILER_RULES.md  (30 rules, all discovered by hitting the actual NT8 compiler)
+  [ ] CHECK your planned code against the INDEX TABLE — 30 rules, each with SCAN pattern
+  [ ] CONFIRM no NT8-P0 rule violation exists in new code before writing it
+  [ ] UPDATE docs/standards/NT8_COMPILER_RULES.md if you discover a NEW compiler error or runtime crash:
+        - Assign next NT8-NNN ID
+        - Fill in ERROR, CAUSE, BANNED, SAFE, SCAN fields
+        - Append row to INDEX TABLE
+        - Update version date at file top
+  [ ] UPDATE docs/standards/NT8_ADDON_KNOWLEDGE.md with the block summary (e.g. "## B11 Discoveries")
+```
+
+**Why this gate exists**: NT8 uses .NET Framework 4.8 with a pre-C#9 Roslyn build hosted
+inside NinjaTrader's process. Dozens of standard C# and .NET features are silently unavailable
+or behave differently. Agents re-discover the same errors every block without this knowledge base.
+
+**Top 5 instant build-killers** (agents hit these most often):
+| Rule | Ban | Fix |
+|------|-----|-----|
+| NT8-001 | `{ get; init; }` | `{ get; private set; }` + constructor |
+| NT8-002 | `abstract record` / `sealed record` | `abstract class` + `sealed class` |
+| NT8-003 | `volatile double` | Remove volatile; plain `double` |
+| NT8-004 | `ImmutableDictionary` / `System.Collections.Immutable` | `Dictionary<K,V>` written once |
+| NT8-007 | `CreateOrder` arg 12 as `string` | `(NinjaTrader.Cbi.CustomOrder)null` |
+
+**Post-session audit (mandatory)**:
+After any PTT session that hits a NEW NT8 compiler error or runtime crash:
+1. Add the rule to `docs/standards/NT8_COMPILER_RULES.md`
+2. Append the block summary to `docs/standards/NT8_ADDON_KNOWLEDGE.md`
+3. State `nt8-rules(BXX): no new rules` if nothing new was discovered
+
+---
+
 ## ⚠️ CRITICAL: CodeFactor Protocol
 **MANDATORY READING**: Before accepting ANY automated fixes from CodeFactor or similar tools, read `docs/protocol/CODEFACTOR_PROTOCOL.md`. 
 

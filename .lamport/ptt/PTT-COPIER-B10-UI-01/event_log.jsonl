@@ -3,3 +3,10 @@
 {"clock": 3, "event_type": "phase_complete", "epic_id": "PTT-COPIER-B10-UI-01", "phase": "tickets", "status": "completed", "result": "TICKETS_COMPLETE", "state_hash": "bb342b879f9df0ac", "timestamp": "2026-07-08T21:54:27.855860+00:00"}
 {"clock": 4, "event_type": "phase_complete", "epic_id": "PTT-COPIER-B10-UI-01", "phase": "ticket_review", "status": "completed", "result": "TICKET_REVIEW_PASS", "state_hash": "46071db75c594a9f", "timestamp": "2026-07-08T21:57:34.787023+00:00"}
 {"clock": 5, "event_type": "phase_complete", "epic_id": "PTT-COPIER-B10-UI-01", "phase": "engineer_T1", "status": "completed", "result": "BUILD_PASS", "state_hash": "ca7979794557e13c", "timestamp": "2026-07-08T22:07:56.436000+00:00"}
+{"clock": 6, "event_type": "phase_complete", "epic_id": "PTT-COPIER-B10-UI-01", "phase": "verifier_T1", "status": "completed", "result": "VERIFY_PASS", "state_hash": "e880553b2e40aefd", "timestamp": "2026-07-08T22:17:22.923572+00:00"}
+{"clock": 7, "event_type": "phase_complete", "epic_id": "PTT-COPIER-B10-UI-01", "phase": "engineer_T2", "status": "completed", "result": "BUILD_PASS", "state_hash": "0434d023326c7d2d", "timestamp": "2026-07-08T22:17:36.908315+00:00"}
+
+{"clock": 8, "event_type": "phase_complete", "epic_id": "PTT-COPIER-B10-UI-01", "phase": "engineer_T3", "status": "completed", "result": "BUILD_PASS", "state_hash": "c677772523b2a969", "timestamp": "2026-07-08T22:17:36.954721+00:00"}
+{"clock": 9, "event_type": "phase_complete", "epic_id": "PTT-COPIER-B10-UI-01", "phase": "verifier_T3", "status": "completed", "result": "VERIFY_PASS", "state_hash": "f2f1baf9150c0f63", "timestamp": "2026-07-08T22:17:36.966522+00:00"}
+{"clock":10,"event_type":"phase_complete","epic_id":"PTT-COPIER-B10-UI-01","phase":"verifier_T2","status":"completed","result":"VERIFY_PASS","state_hash":"n/a-stub","timestamp":"2026-07-08T15:18:39Z"}
+{"clock": 10, "event_type": "phase_complete", "epic_id": "PTT-COPIER-B10-UI-01", "phase": "final_review", "status": "completed", "result": "FINAL_PASS", "state_hash": "5fa0a89deb71f973", "timestamp": "2026-07-08T22:23:26.308188+00:00"}

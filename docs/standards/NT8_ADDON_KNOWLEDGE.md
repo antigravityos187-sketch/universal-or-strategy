@@ -244,3 +244,194 @@ FIX5: Chart (Window) → visual tree → ChartTrader → Content as Grid → add
 
 **Total iterations to solve:** 5 fixes across this session.
 **Key insight:** The diagnostic MessageBox (FIX5) revealed `Content type: System.Windows.Controls.Grid` which made the solution obvious.
+
+---
+
+## B8 Discoveries — Hard Compiler Errors + Runtime Facts
+
+### C# Language Constraints Added (B8)
+
+| Error | Banned pattern | Safe replacement | Rule |
+|-------|---------------|-----------------|------|
+| CS0518 IsExternalInit | `{ get; init; }` | `{ get; private set; }` + explicit constructor | NT8-001 |
+| CS0518 IsExternalInit | `abstract record` / `sealed record` with positional params | `abstract class` + `sealed class` + explicit constructors | NT8-002 |
+| CS0677 | `volatile double` | Remove volatile; add comment explaining x64 atomic double | NT8-003 |
+| CS0246 | `ImmutableDictionary` / `using System.Collections.Immutable` | `Dictionary<K,V>` written-once (logically immutable) | NT8-004 |
+| CS8341 | `readonly struct` with `{ get; private set; }` auto-property | Use `readonly` field instead | NT8-005 |
+| CS1061 | `ConcurrentBag<T>.Any()` without `using System.Linq` | Add `using System.Linq;` or use `.Count > 0` | NT8-006 |
+| CS1503 | `Account.CreateOrder` arg 12 as `string` | `(NinjaTrader.Cbi.CustomOrder)null` at arg 12 | NT8-007 |
+| CS1061 | `chart.ChartControl` (property does not exist) | `FindVisualChild<ChartControl>(chart)` | NT8-008 |
+| CS1061 | `chartControl.GetValueByY(y)` (method absent in this NT8 build) | Stub to `0.0`; document deferred work item | NT8-009 |
+
+### `ImmutableDictionary.SetItem()` — Copy-On-Write Replacement
+
+B8 used `dict.SetItem(key, value)` to produce a new dictionary leaving the original intact.
+When `ImmutableDictionary` is replaced with plain `Dictionary<K,V>` (NT8-004), copy-on-write
+must be done manually:
+
+```csharp
+// ImmutableDictionary.SetItem equivalent using plain Dictionary:
+private Dictionary<K,V> CopyWith(Dictionary<K,V> source, K key, V value)
+{
+    var next = new Dictionary<K,V>(source);   // copy
+    next[key] = value;                        // mutate copy
+    return next;                              // return new dict; source unchanged
+}
+```
+
+### `FollowerAtmMode` — Record → Abstract Class Migration (B8)
+
+B7 specced `public abstract record FollowerAtmMode` with nested sealed records.
+B8 hit CS0518 in NT8 (IsExternalInit). The entire hierarchy was converted to abstract class:
+
+```csharp
+// BANNED in NT8 (CS0518):
+public abstract record FollowerAtmMode { private FollowerAtmMode() {} }
+public sealed record Inherit() : FollowerAtmMode;
+
+// SAFE in NT8:
+public abstract class FollowerAtmMode
+{
+    private FollowerAtmMode() {}
+    public sealed class Inherit : FollowerAtmMode { public Inherit() : base() {} }
+    public sealed class Market  : FollowerAtmMode { public Market()  : base() {} }
+    public sealed class Named   : FollowerAtmMode
+    {
+        public string TemplateName { get; private set; }
+        public Named(string t) : base() { TemplateName = t; }
+    }
+}
+// is/pattern-matching still works: if (mode is FollowerAtmMode.Named n) { ... }
+```
+
+### `PositionState` / `FollowerBinding` — readonly struct with init → readonly fields (B8)
+
+B7 used `{ get; init; }` on readonly structs. B8 hit CS8341 + CS0518.
+Safe form uses `readonly` fields set in the constructor:
+
+```csharp
+// SAFE:
+internal readonly struct PositionState
+{
+    internal readonly bool HasOpenPosition;
+    internal readonly bool HasWorkingEntries;
+    internal PositionState(bool open, bool working)
+    {
+        HasOpenPosition   = open;
+        HasWorkingEntries = working;
+    }
+}
+```
+
+---
+
+## B9 Discoveries — Indicator Subclass + Cross-Thread State
+
+### `AtrSizingEngine` — Indicator Subclass Rules (B9)
+
+1. **Class must NOT be sealed** (NT8-015) — NT8 Indicator infrastructure may subclass internally.
+2. **`State.XXX` must be fully qualified** (NT8-010):
+   ```csharp
+   // BANNED:
+   if (State == State.SetDefaults) {}
+   // SAFE:
+   if (State == NinjaTrader.NinjaScript.State.SetDefaults) {}
+   ```
+3. **`Add(ATR(Period))` in OnStateChange DataLoaded is INVALID for headless Indicator** (NT8-011):
+   ```csharp
+   // BANNED:
+   if (State == NinjaTrader.NinjaScript.State.DataLoaded) Add(ATR(Period));
+   // SAFE: call directly per bar:
+   protected override void OnBarUpdate() { double v = ATR(Period)[0]; }
+   ```
+4. **`volatile double` banned** — compiler error CS0677 (NT8-003). Use plain double field with
+   comment explaining x64 atomic double reads.
+
+### Cross-Thread State in AddOn Context (B9)
+
+Fields written by UI thread and read by OnOrderUpdate/OnBarUpdate/MarketData threads
+MUST be `volatile int` or `volatile bool` (never `volatile double`):
+
+```csharp
+private volatile bool _atrEnabled    = false;   // UI writes, order thread reads
+private volatile int  _copyModeValue = 0;       // UI writes, order thread reads
+private volatile bool _clickArmed    = false;   // UI writes, mouse event reads
+private volatile bool _clickBuy      = true;    // UI writes, click handler reads
+```
+
+### NT8 Chart Attachment API for Indicator — UNRESOLVED (DW-B9-02)
+
+B9 `StartAtrEngine` has a comment: `// IMPL-NOTE-1: NT8 Indicator attachment deferred`.
+The correct API to attach a headless Indicator to a Chart's bar data is NOT yet confirmed.
+Candidates to try at B10 T4:
+- `chart.NinjaScripts.Add(engine)` — most likely
+- `chart.Indicators.Add(engine)` — alternative NT8 collection name
+- Event-based fallback: subscribe to `chart.BarsArray[0].Bars.BarUpdate` and manually
+  call `engine.OnBarUpdate()` — avoids chart attachment entirely
+
+**Do NOT implement any of these paths until B10 T4 tests on Sim101.**
+
+---
+
+## B10 Discoveries — WPF DataTemplate Grid + Trailing Stop API
+
+### `FrameworkElementFactory` Cannot Add `ColumnDefinitions` (B10-UI-01) (NT8-012)
+
+WPF `FrameworkElementFactory` builds a template tree at definition time. `Grid.ColumnDefinitions`
+is a run-time collection — it cannot be populated via the factory API. Use a `Loaded` event:
+
+```csharp
+var gridFactory = new FrameworkElementFactory(typeof(Grid));
+gridFactory.AddHandler(FrameworkElement.LoadedEvent, new RoutedEventHandler(OnRowGridLoaded));
+
+private void OnRowGridLoaded(object sender, RoutedEventArgs e)
+{
+    var grid = (Grid)sender;
+    if (grid.ColumnDefinitions.Count > 0) return;   // idempotency guard
+    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+    // set Grid.Column on each child after columns exist:
+    Grid.SetColumn((FrameworkElement)grid.Children[0], 0);
+}
+```
+
+### Trailing Stop Order Detection (B9/B10) (NT8-026)
+
+NT8 trailing stop orders are `OrderType.StopMarket` orders with `order.TrailPrice > 0`.
+Calling `acc.Change(new Order[] { order })` on such an order with only `StopPrice` modified
+has UNDEFINED effect on the trail watermark — the trail may freeze.
+
+```csharp
+// Detect trailing stop:
+bool isTrailing = order.TrailPrice > 0;
+
+// Safe handling for BE button (cancel + replace path):
+if (isTrailing)
+{
+    bool alreadyAtBe = isLong ? order.StopPrice >= newStop : order.StopPrice <= newStop;
+    if (alreadyAtBe) continue;   // trail already past BE — no action needed
+    acc.Cancel(new Order[] { order });
+    acc.CreateOrder(instr, action, OrderType.StopMarket, OrderEntry.Manual,
+                    TimeInForce.Day, order.Quantity, 0, newStop, null,
+                    "PTT-BE-Stop", DateTime.MaxValue, (NinjaTrader.Cbi.CustomOrder)null);
+}
+else
+{
+    order.StopPrice = newStop;
+    acc.Change(new Order[] { order });
+}
+```
+
+### `Instrument.MarketData.MarketDataUpdate` from AddOn — PENDING VERIFICATION (NT8-027)
+
+As of B10 start, it is unconfirmed whether
+`NinjaTrader.Data.Instrument.GetInstrument(name).MarketData.MarketDataUpdate`
+fires correctly when subscribed from an `AddOnBase` subclass (no `OnBarUpdate` / `OnStateChange`).
+
+GAP-002 Sim101 test wired in `TradeCopierAddOn.RunGap002Test()`.
+**Update this section once GAP-002 test result is recorded in
+`docs/brain/PTT-COPIER-B9/GAP-002-pending-be-and-trailing-stop-compatibility.md`.**
+
+Expected outcomes:
+- Fires correctly → use `Instrument.MarketData` subscription (Option A for DW-B10-GAP-002a)
+- Fires Bid/Ask only → add `if (e.MarketDataType != MarketDataType.Last) return` filter
+- Does not fire → use `Account.AccountItemUpdate` P&L proxy (Option B fallback)
