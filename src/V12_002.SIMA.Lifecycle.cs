@@ -502,17 +502,31 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         // Lookup table for prefix-based order classification (EPIC-W7-112).
         // Static readonly: initialized once at CLR type-load, zero per-call allocation, no lock() required.
-        private static readonly (string Prefix, string Token)[] _orderPrefixMap =
+        // NT8 C# compat: value-tuple syntax replaced with private struct (no C# 7 required).
+        private struct OrderPrefixEntry
         {
-            ("Stop_", "stop"),
-            ("S_", "stop"),
-            ("T1_", "target1"),
-            ("T2_", "target2"),
-            ("T3_", "target3"),
-            ("T4_", "target4"),
-            ("T5_", "target5"),
-            ("Fleet_", "entry"),
+            internal string Prefix;
+            internal string Token;
+            internal OrderPrefixEntry(string prefix, string token) { Prefix = prefix; Token = token; }
+        }
+        private static readonly OrderPrefixEntry[] _orderPrefixMap =
+        {
+            new OrderPrefixEntry("Stop_",  "stop"),
+            new OrderPrefixEntry("S_",     "stop"),
+            new OrderPrefixEntry("T1_",    "target1"),
+            new OrderPrefixEntry("T2_",    "target2"),
+            new OrderPrefixEntry("T3_",    "target3"),
+            new OrderPrefixEntry("T4_",    "target4"),
+            new OrderPrefixEntry("T5_",    "target5"),
+            new OrderPrefixEntry("Fleet_", "entry"),
         };
+        // NT8 C# compat: StopResult struct replaces (string Key, Order Stop) tuple return.
+        private struct StopResult
+        {
+            internal string Key;
+            internal Order  Stop;
+            internal StopResult(string key, Order stop) { Key = key; Stop = stop; }
+        }
 
         /// <summary>
         /// Factory method to construct FollowerBracketFSM instance.
@@ -666,7 +680,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 Position acctPos = FindOpenPositionForInstrument(acct);
                 if (acctPos == null)
                     continue;
-                (string recoveredKey, Order recoveredStop) = FindStopOrderForAccount(stopOrders, acct);
+                StopResult recovered = FindStopOrderForAccount(stopOrders, acct);
+                string recoveredKey   = recovered.Key;
+                Order  recoveredStop  = recovered.Stop;
                 if (recoveredKey == null)
                 {
                     LogMissingStopForAccount(acct);
@@ -723,7 +739,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             return null;
         }
 
-        private (string Key, Order Stop) FindStopOrderForAccount(
+        private StopResult FindStopOrderForAccount(
             ConcurrentDictionary<string, Order> stopOrders,
             Account acct
         )
@@ -736,9 +752,9 @@ namespace NinjaTrader.NinjaScript.Strategies
                 if (stopCand.Account == null)
                     continue;
                 if (string.Equals(stopCand.Account.Name, acct.Name, StringComparison.OrdinalIgnoreCase))
-                    return (stopKvp.Key, stopCand);
+                    return new StopResult(stopKvp.Key, stopCand);
             }
-            return (null, null);
+            return new StopResult(null, null);
         }
 
         private void LogMissingStopForAccount(Account acct)
@@ -1346,10 +1362,10 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// <summary>Scan _orderPrefixMap and return the token for the first matching prefix.</summary>
         private static string GetTokenForOrderName(string orderName)
         {
-            foreach ((string prefix, string token) in _orderPrefixMap)
+            foreach (OrderPrefixEntry entry in _orderPrefixMap)
             {
-                if (orderName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                    return token;
+                if (orderName.StartsWith(entry.Prefix, StringComparison.OrdinalIgnoreCase))
+                    return entry.Token;
             }
             return null;
         }
