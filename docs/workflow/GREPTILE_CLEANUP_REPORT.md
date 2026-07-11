@@ -1,4 +1,4 @@
-﻿# Greptile Reference Cleanup Report
+# Greptile Reference Cleanup Report
 
 **Date**: 2026-06-20 19:32:20
 **Status**: EXECUTED

@@ -1,4 +1,4 @@
-﻿# PR #22 Fix Queue (Jane Street Audited)
+# PR #22 Fix Queue (Jane Street Audited)
 Generated: 2026-06-02 19:33:00
 
 ## Instructions for v12-engineer

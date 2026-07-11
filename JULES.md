@@ -1,4 +1,4 @@
-﻿# NinjaScript V12 Project Standards (Jules CLI Mirror)
+# NinjaScript V12 Project Standards (Jules CLI Mirror)
 
 # Jules CLI = BACKUP ENGINEER #2 (identical twin to Gemini CLI)
 

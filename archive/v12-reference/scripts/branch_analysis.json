@@ -1,0 +1,439 @@
+[
+  {
+    "tier": "Tier 2",
+    "branch": "feature/infra-epic-ccn-loop-execution-plan",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 2",
+    "branch": "feature/infra-epic-ccn-10-backlog",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 2",
+    "branch": "feature/infra-pr-loop-v2",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 2",
+    "branch": "feature/infra-codacy-phase2-errorprone",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 2",
+    "branch": "feature/infra-epic-posinfo-phase4",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 2",
+    "branch": "feature/infra-epic-posinfo-phase3",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 2",
+    "branch": "feature/infra-epic-posinfo-phase2",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 2",
+    "branch": "feature/infra-epic-posinfo-phase1",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 3",
+    "branch": "feature/infra-epic-ccn-10-docs",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 3",
+    "branch": "feature/infra-epic-ccn-10-plan",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 3",
+    "branch": "feature/infra-epic-ccn-10-intake",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 3",
+    "branch": "feature/infra-epic-ccn-10-validate",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/infra-epic-ccn-10-tickets",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/infra-epic-ccn-10-scan",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/infra-epic-ccn-10-arch",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/src-epic-ccn-10",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/src-epic-ccn-51-reaper",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/src-epic-ccn-51-reaper-fix",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/src-epic-ccn-51-reaper-final",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/src-epic-ccn-51-reaper-clean",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/src-epic-ccn-51-reaper-minimal",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/src-epic-ccn-51-reaper-surgical",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 4",
+    "branch": "feature/src-epic-ccn-51-reaper-atomic",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/src-epic-ccn-51-reaper-restore",
+    "ahead": 2,
+    "behind": 33,
+    "age_days": 0,
+    "commit_date": "2026-06-06T13:26:14-07:00",
+    "strategy": "NEEDS_PR",
+    "files": {
+      "total": 1,
+      "cs": 1,
+      "docs": 0,
+      "bob": 0,
+      "scripts": 0,
+      "config": 0,
+      "other": 0
+    },
+    "sample_files": {
+      "cs": [
+        "src/V12_002.cs"
+      ],
+      "docs": [],
+      "bob": []
+    }
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-epic-ccn-10-scope",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-complexity",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-style",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-security",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-docs",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-plan",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-intake",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-validate",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-tickets",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-scan",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-codacy-phase2-arch",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-epic-posinfo-phase1.5",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-epic-posinfo-phase1.5-plan",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-epic-posinfo-phase1.5-intake",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-epic-posinfo-phase1.5-validate",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-epic-posinfo-phase1.5-tickets",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-epic-posinfo-phase1.5-scan",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 5",
+    "branch": "feature/infra-epic-posinfo-phase1.5-arch",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 6",
+    "branch": "epic-quality-p0-currentbar-guards",
+    "ahead": 1,
+    "behind": 161,
+    "age_days": 10,
+    "commit_date": "2026-05-27T18:35:06-07:00",
+    "strategy": "SKIP_OBSOLETE_SRC",
+    "files": {
+      "total": 2,
+      "cs": 2,
+      "docs": 0,
+      "bob": 0,
+      "scripts": 0,
+      "config": 0,
+      "other": 0
+    },
+    "sample_files": {
+      "cs": [
+        "src/V12_002.BarUpdate.cs",
+        "src/V12_002.Lifecycle.cs"
+      ],
+      "docs": [],
+      "bob": []
+    }
+  },
+  {
+    "tier": "Tier 6",
+    "branch": "epic-ccn-14-src-only",
+    "ahead": 1,
+    "behind": 53,
+    "age_days": 2,
+    "commit_date": "2026-06-04T14:14:20-07:00",
+    "strategy": "NEEDS_PR",
+    "files": {
+      "total": 2,
+      "cs": 2,
+      "docs": 0,
+      "bob": 0,
+      "scripts": 0,
+      "config": 0,
+      "other": 0
+    },
+    "sample_files": {
+      "cs": [
+        "src/V12_002.Orders.Callbacks.Propagation.cs",
+        "src/V12_002.cs"
+      ],
+      "docs": [],
+      "bob": []
+    }
+  },
+  {
+    "tier": "Tier 6",
+    "branch": "epic-ccn-14-propagate-master",
+    "ahead": 1,
+    "behind": 53,
+    "age_days": 2,
+    "commit_date": "2026-06-04T13:48:32-07:00",
+    "strategy": "NEEDS_PR",
+    "files": {
+      "total": 90,
+      "cs": 2,
+      "docs": 14,
+      "bob": 3,
+      "scripts": 1,
+      "config": 30,
+      "other": 42
+    },
+    "sample_files": {
+      "cs": [
+        "src/V12_002.Orders.Callbacks.Propagation.cs",
+        "src/V12_002.cs"
+      ],
+      "docs": [
+        "docs/brain/AUTONOMOUS_REFACTOR_GAP_ANALYSIS.md",
+        "docs/brain/AUTONOMOUS_REFACTOR_MODES_ANALYSIS.md",
+        "docs/brain/EPIC-CCN-13/00-scope.md"
+      ],
+      "bob": [
+        ".bob/commands/autonomous-refactor.md",
+        ".bob/hooks/pre_task_jane_street_kb.py",
+        ".bob/settings.json"
+      ]
+    }
+  },
+  {
+    "tier": "Tier 6",
+    "branch": "infra/epic-posinfo-phase1.5-docs",
+    "ahead": 1,
+    "behind": 92,
+    "age_days": 4,
+    "commit_date": "2026-06-01T20:34:55-07:00",
+    "strategy": "DIRECT_MERGE",
+    "files": {
+      "total": 8,
+      "cs": 0,
+      "docs": 5,
+      "bob": 1,
+      "scripts": 0,
+      "config": 3,
+      "other": 0
+    },
+    "sample_files": {
+      "cs": [],
+      "docs": [
+        "docs/brain/EPIC-POSINFO/00-scope.md",
+        "docs/brain/EPIC-POSINFO/01-pattern-analysis.md",
+        "docs/brain/EPIC-POSINFO/phase1.5-complete.md"
+      ],
+      "bob": [
+        ".bob/custom_modes.yaml"
+      ]
+    }
+  },
+  {
+    "tier": "Tier 6",
+    "branch": "v12-memory-plane",
+    "error": "Branch not found or error"
+  },
+  {
+    "tier": "Tier 6",
+    "branch": "pr-8-clean",
+    "ahead": 1,
+    "behind": 176,
+    "age_days": 10,
+    "commit_date": "2026-05-26T20:24:35-07:00",
+    "strategy": "SKIP_OBSOLETE_SRC",
+    "files": {
+      "total": 47,
+      "cs": 47,
+      "docs": 0,
+      "bob": 0,
+      "scripts": 0,
+      "config": 0,
+      "other": 0
+    },
+    "sample_files": {
+      "cs": [
+        "src/V12_002.Atm.cs",
+        "src/V12_002.Constants.cs",
+        "src/V12_002.Data.cs"
+      ],
+      "docs": [],
+      "bob": []
+    }
+  },
+  {
+    "tier": "Tier 6",
+    "branch": "docs/jane-street-deviations-3-4",
+    "ahead": 2,
+    "behind": 156,
+    "age_days": 8,
+    "commit_date": "2026-05-29T12:58:49-07:00",
+    "strategy": "SKIP_OBSOLETE_SRC",
+    "files": {
+      "total": 20,
+      "cs": 6,
+      "docs": 12,
+      "bob": 1,
+      "scripts": 0,
+      "config": 1,
+      "other": 0
+    },
+    "sample_files": {
+      "cs": [
+        "src/SignalBroadcaster.cs",
+        "src/V12_002.Lifecycle.cs",
+        "src/V12_002.Orders.Management.Flatten.cs"
+      ],
+      "docs": [
+        "docs/brain/bob_model_configuration_final.md",
+        "docs/brain/bob_model_settings_review.md",
+        "docs/brain/pr_3_iteration_2_categorization.md"
+      ],
+      "bob": [
+        ".bob/notes/pending-notes.txt"
+      ]
+    }
+  },
+  {
+    "tier": "Tier 6",
+    "branch": "codacy-phase2-errorprone-clean",
+    "ahead": 2,
+    "behind": 160,
+    "age_days": 9,
+    "commit_date": "2026-05-28T16:22:45-07:00",
+    "strategy": "SKIP_OBSOLETE_SRC",
+    "files": {
+      "total": 33,
+      "cs": 33,
+      "docs": 0,
+      "bob": 0,
+      "scripts": 0,
+      "config": 0,
+      "other": 0
+    },
+    "sample_files": {
+      "cs": [
+        "src/SignalBroadcaster.cs",
+        "src/V12_002.BarUpdate.cs",
+        "src/V12_002.DrawingHelpers.cs"
+      ],
+      "docs": [],
+      "bob": []
+    }
+  }
+]

@@ -1,52 +1,75 @@
-# Universal OR Strategy V12: Project Command Center
+# Universal OR Strategy Director
 
-Welcome, Director. This repository contains the hardened **Universal OR Strategy V12 (Modular)** codebase and its supporting infrastructure.
+**Active Project**: NinjaTrader 8 Trade Copier  
+**Spec**: [`specs/002-trade-copier-spec.html`](specs/002-trade-copier-spec.html)  
+**Stack**: C# / NinjaTrader 8 / Rithmic / Apex
 
-> [!IMPORTANT]
-> **AGENT DIRECTIVE**: This repository has evolved from the legacy "Opening Range Breakout (ORB)" monolith into the modular **Universal OR Strategy V12**. The term "ORB" now refers exclusively to a *sub-mode* within the universal engine. All agents must use the **Photon Kernel** and **Morpheus Substrate** architectural patterns defined in `docs/architecture.md`.
+---
 
-## 🏗️ Architecture: The Dual-Plane Engine
-- **V12 Photon Kernel**: Modularized, high-fidelity execution within NinjaTrader 8 using the FSM/Actor `Enqueue` model. (Targeting .NET 4.8 / C# 8.0).
-- **Morpheus Substrate**: A cross-process, lock-free architecture for autonomous scaling, telemetry, and advanced broker integrations. (Targeting .NET 8.0).
+## What This Is
 
-## 📁 Directory Structure
+A NinjaTrader 8 trade copier that replicates brackets from 1 Master account to up to 18 Follower accounts (Apex/Rithmic fleet) with full lifecycle mirroring — entries, stops, targets, cancels, modifications, and trailing stops.
 
-| Folder     | Purpose                                                             |
-| ---------- | ------------------------------------------------------------------- |
-| `src/`     | **The Alpha**: Core C# strategy and modularized kernel logic.       |
-| `bin/`     | Executables and binary tools (Auditors, CLI).                       |
-| `docs/`    | Architecture maps, risk reports, audit logs, and Handoff Protocols. |
-| `scripts/` | Automation tools for deployment, testing, and forensic audits.       |
+Architecture: Actor Mailbox pattern with per-follower FSMs and lock-free `ConcurrentQueue<AccountEvent>` as the mailbox. Designed for skip-and-protect resilience on Rithmic connection flickers (500ms–2s).
 
-## 🧠 Shared AI Memory (The "Joint Brain")
+Design reference: [`docs/copy_trader_design.md`](docs/copy_trader_design.md)
 
-To prevent AI "blindspots" between platforms (Claude Code, Cursor, Codex, Gemini), always refer to the project-local memory in `docs/brain/`:
+---
 
-- **Roadmap**: [task.md](docs/brain/task.md) — The single source of truth for mission progress.
-- **Status State**: [phase6_closeout_state.md](docs/brain/memory/phase6_closeout_state.md) — Handoff for Phase 7.
-- **Current Plan**: [implementation_plan.md](docs/brain/implementation_plan.md) — Active surgical steps.
-- **PR Report**: [pr_report.md](docs/brain/pr_report.md) — Pull request analysis and findings.
+## Active Specs
 
-## 📜 Project Governance
+| Spec | Status | Description |
+|------|--------|-------------|
+| [`specs/002-trade-copier-spec.html`](specs/002-trade-copier-spec.html) | **Active** | NT8 Trade Copier — full UI + engine spec |
+| [`specs/001-agent-arena-platform/`](specs/001-agent-arena-platform/) | Backlog | Agent Arena Platform — AI agent competition infrastructure |
 
-- **Workflow DNA**: [Institutional Workflow DNA](docs/protocol/INSTITUTIONAL_WORKFLOW_DNA.md) — The "Zero-Trust" psychology for all operations.
-- **Local Terminal First**: Prioritize running agents (Codex, Claude) in the local terminal. See [IDE_GUIDE.md](IDE_GUIDE.md) for setup.
-- **Handoff Protocol**: [MASTER_HANDOFF_PROTOCOL.md](docs/protocol/MASTER_HANDOFF_PROTOCOL.md) — Follow this for all agent transitions.
+---
 
-## 🚀 Key Commands
+## Repository Structure
 
-### Deployment
-Synchronize the repository with your NinjaTrader 8 environment:
-```powershell
-./deploy-sync.ps1
 ```
-
-### Auditing
-Run the executive audit scan to discover logic risks:
-```powershell
-./scripts/audit_scan.ps1
+.bob/                    # Bob IDE modes, skills, hooks, commands
+specs/
+  002-trade-copier-spec.html   # NT8 Trade Copier spec (primary)
+  001-agent-arena-platform/    # Agent Arena Platform spec (backlog)
+  assets/                      # Competitor research, roadmap, screenshots
+docs/
+  copy_trader_design.md        # Actor Mailbox architecture design
+  standards/jane-street/       # Jane Street coding standards (OKF)
+  intel/jane-street/           # Jane Street engineering patterns
+  protocol/                    # Development protocols
+  brain/                       # Active session docs (non-epic)
+scripts/                 # Active utility scripts
+archive/
+  v12-reference/         # V12 OR Strategy source — reference only
+  wave-scripts/          # Wave 1–7 execution scripts — reference only
+  morpheus/              # Morpheus agent — back burner
 ```
 
 ---
 
-_Status: Build 1111.006 (Phase 6 Structural Hardening COMPLETE - Platinum Pass)_
+## Reference Archive
+
+The V12 Universal OR Strategy source code is preserved at [`archive/v12-reference/src/`](archive/v12-reference/src/) for architectural reference. All wave execution scripts (Waves 1–7, 689+ shell scripts) are at [`archive/wave-scripts/`](archive/wave-scripts/).
+
+**V12 is a reference implementation — not the active project.**
+
+---
+
+## Standards
+
+All code follows Jane Street rules per [`docs/standards/jane-street/RULES_CATALOG.md`](docs/standards/jane-street/RULES_CATALOG.md):
+
+- Lock-free Actor/Enqueue pattern (no `lock()`)
+- CYC ≤ 8 per function
+- xUnit only for tests
+- No `async void`, no `return null`, no heap alloc on hot path
+
+---
+
+## Agent Config
+
+- **Modes**: `.bob/custom_modes.yaml`
+- **Skills**: `.bob/skills/`
+- **Hooks**: `.bob/hooks/`
+- **MCP**: `.mcp.json`

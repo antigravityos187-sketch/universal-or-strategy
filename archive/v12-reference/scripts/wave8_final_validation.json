@@ -1,0 +1,12 @@
+{
+    "wave6_phase0_complete":  80,
+    "special_cases":  {
+                          "epic_003_local":  true
+                      },
+    "wave7_methods":  100,
+    "wave8_total":  180,
+    "validation_passed":  true,
+    "baseline_methods":  180,
+    "wave6_epics":  80,
+    "wave6_phase1_complete":  1
+}

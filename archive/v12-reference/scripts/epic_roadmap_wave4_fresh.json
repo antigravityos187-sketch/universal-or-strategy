@@ -1,0 +1,722 @@
+[
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-001",
+        "cyclomatic":  18,
+        "method":  "SymmetryGuardReplaceExistingFollowerTarget",
+        "tier":  1,
+        "loc":  49,
+        "file":  "V12_002.Symmetry.Replace.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-002",
+        "cyclomatic":  18,
+        "method":  "SymmetryGuardTryResolveFollowersForDispatch",
+        "tier":  1,
+        "loc":  33,
+        "file":  "V12_002.Symmetry.Replace.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-003",
+        "cyclomatic":  16,
+        "method":  "IsOrderAllowed",
+        "tier":  1,
+        "loc":  43,
+        "file":  "V12_002.UI.Compliance.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-004",
+        "cyclomatic":  16,
+        "method":  "HandleFleetTargetFill",
+        "tier":  1,
+        "loc":  58,
+        "file":  "V12_002.UI.Compliance.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-005",
+        "cyclomatic":  16,
+        "method":  "ClassifyAndRouteFleetOrder",
+        "tier":  1,
+        "loc":  42,
+        "file":  "V12_002.SIMA.Lifecycle.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-006",
+        "cyclomatic":  17,
+        "method":  "AdoptFleetWorkingOrders",
+        "tier":  1,
+        "loc":  46,
+        "file":  "V12_002.SIMA.Lifecycle.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-007",
+        "cyclomatic":  20,
+        "method":  "ShadowPropagateStopMoves",
+        "tier":  1,
+        "loc":  32,
+        "file":  "V12_002.SIMA.Shadow.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-008",
+        "cyclomatic":  19,
+        "method":  "UpdateTargetVisibility",
+        "tier":  1,
+        "loc":  36,
+        "file":  "V12_002.UI.Panel.Handlers.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-009",
+        "cyclomatic":  20,
+        "method":  "FindChartTraderViaChartTab",
+        "tier":  1,
+        "loc":  54,
+        "file":  "V12_002.UI.Panel.Helpers.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-010",
+        "cyclomatic":  20,
+        "method":  "ShowModeSpecificControls",
+        "tier":  1,
+        "loc":  42,
+        "file":  "V12_002.UI.Panel.Handlers.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-011",
+        "cyclomatic":  17,
+        "method":  "DestroyPanel",
+        "tier":  1,
+        "loc":  149,
+        "file":  "V12_002.UI.Panel.Construction.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-012",
+        "cyclomatic":  15,
+        "method":  "SyncPanelConfigFromSnapshot",
+        "tier":  1,
+        "loc":  37,
+        "file":  "V12_002.UI.Panel.StateSync.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-013",
+        "cyclomatic":  16,
+        "method":  "UpdatePanelState",
+        "tier":  1,
+        "loc":  51,
+        "file":  "V12_002.UI.Panel.StateSync.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-014",
+        "cyclomatic":  19,
+        "method":  "TryHandleFleetCommand",
+        "tier":  1,
+        "loc":  42,
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-015",
+        "cyclomatic":  18,
+        "method":  "CancelAll_ProcessSingleFleetAccount",
+        "tier":  1,
+        "loc":  31,
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-016",
+        "cyclomatic":  19,
+        "method":  "TryHandleFleet_CancelAll",
+        "tier":  1,
+        "loc":  41,
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-017",
+        "cyclomatic":  17,
+        "method":  "TryApplyConfigTarget_Value",
+        "tier":  1,
+        "loc":  45,
+        "file":  "V12_002.UI.IPC.Commands.Config.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-018",
+        "cyclomatic":  18,
+        "method":  "IsSymbolMatch",
+        "tier":  1,
+        "loc":  19,
+        "file":  "V12_002.UI.IPC.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-019",
+        "cyclomatic":  15,
+        "method":  "TryHandleFleet_MoveTarget",
+        "tier":  1,
+        "loc":  33,
+        "file":  "V12_002.UI.IPC.Commands.Fleet.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-020",
+        "cyclomatic":  21,
+        "method":  "HandleSecondaryOrderFilled",
+        "tier":  1,
+        "loc":  69,
+        "file":  "V12_002.Orders.Callbacks.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-021",
+        "cyclomatic":  19,
+        "method":  "ProcessOnOrderUpdate",
+        "tier":  1,
+        "loc":  48,
+        "file":  "V12_002.Orders.Callbacks.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-022",
+        "cyclomatic":  18,
+        "method":  "PropagateMaster_IdentifyMove",
+        "tier":  1,
+        "loc":  40,
+        "file":  "V12_002.Orders.Callbacks.Propagation.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-023",
+        "cyclomatic":  17,
+        "method":  "HandleFlatPosition_CleanupActivePositions",
+        "tier":  1,
+        "loc":  30,
+        "file":  "V12_002.Orders.Callbacks.Execution.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-024",
+        "cyclomatic":  17,
+        "method":  "MonitorRmaProximity",
+        "tier":  1,
+        "loc":  67,
+        "file":  "V12_002.Entries.RMA.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-025",
+        "cyclomatic":  16,
+        "method":  "CheckFFMAConditions",
+        "tier":  1,
+        "loc":  50,
+        "file":  "V12_002.Entries.FFMA.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-026",
+        "cyclomatic":  15,
+        "method":  "ProcessQueuedAccountOrder",
+        "tier":  1,
+        "loc":  34,
+        "file":  "V12_002.Orders.Callbacks.AccountOrders.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-027",
+        "cyclomatic":  21,
+        "method":  "Dispatch_PublishMarketBracketToPhoton",
+        "tier":  1,
+        "loc":  189,
+        "file":  "V12_002.SIMA.Dispatch.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-028",
+        "cyclomatic":  18,
+        "method":  "ProcessFlattenWorkItem_CancelOrders",
+        "tier":  1,
+        "loc":  36,
+        "file":  "V12_002.SIMA.Flatten.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-029",
+        "cyclomatic":  31,
+        "method":  "ShouldSkipFleet_RunHealthCheck",
+        "tier":  1,
+        "loc":  57,
+        "file":  "V12_002.SIMA.Fleet.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-030",
+        "cyclomatic":  19,
+        "method":  "ValidateOrphanedMasterOrders",
+        "tier":  1,
+        "loc":  32,
+        "file":  "V12_002.Orders.Management.Cleanup.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-031",
+        "cyclomatic":  15,
+        "method":  "AuditMaster_HandleNakedPosition",
+        "tier":  1,
+        "loc":  38,
+        "file":  "V12_002.REAPER.Audit.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-032",
+        "cyclomatic":  16,
+        "method":  "RestoreCascadedTargets",
+        "tier":  1,
+        "loc":  90,
+        "file":  "V12_002.Orders.Management.StopSync.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-033",
+        "cyclomatic":  16,
+        "method":  "FlattenSinglePosition",
+        "tier":  1,
+        "loc":  76,
+        "file":  "V12_002.Orders.Management.Flatten.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-034",
+        "cyclomatic":  19,
+        "method":  "ManageCIT",
+        "tier":  1,
+        "loc":  77,
+        "file":  "V12_002.Orders.Management.Flatten.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-035",
+        "cyclomatic":  17,
+        "method":  "SyncLimitTarget",
+        "tier":  1,
+        "loc":  128,
+        "file":  "V12_002.Orders.Management.StopSync.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-036",
+        "cyclomatic":  13,
+        "method":  "MoveStop_SinglePosition",
+        "tier":  2,
+        "loc":  63,
+        "file":  "V12_002.Trailing.Breakeven.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-037",
+        "cyclomatic":  10,
+        "method":  "SymmetryNormalizeTradeType",
+        "tier":  2,
+        "loc":  17,
+        "file":  "V12_002.Symmetry.Replace.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-038",
+        "cyclomatic":  12,
+        "method":  "MoveSpecificTarget",
+        "tier":  2,
+        "loc":  41,
+        "file":  "V12_002.Trailing.Breakeven.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-039",
+        "cyclomatic":  13,
+        "method":  "ManageTrailingStops",
+        "tier":  2,
+        "loc":  33,
+        "file":  "V12_002.Trailing.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-040",
+        "cyclomatic":  9,
+        "method":  "FindTargetOrderForPosition",
+        "tier":  2,
+        "loc":  23,
+        "file":  "V12_002.Trailing.Breakeven.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-041",
+        "cyclomatic":  10,
+        "method":  "SymmetryGuardPruneDispatches",
+        "tier":  2,
+        "loc":  20,
+        "file":  "V12_002.Symmetry.Replace.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-042",
+        "cyclomatic":  11,
+        "method":  "SymmetryGuardOnFollowerFill",
+        "tier":  2,
+        "loc":  47,
+        "file":  "V12_002.Symmetry.Follower.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-043",
+        "cyclomatic":  12,
+        "method":  "SymmetryGuardSubmitFollowerBracket",
+        "tier":  2,
+        "loc":  101,
+        "file":  "V12_002.Symmetry.Follower.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-044",
+        "cyclomatic":  10,
+        "method":  "SymmetryGuardCascadeFollowerCleanup",
+        "tier":  2,
+        "loc":  33,
+        "file":  "V12_002.Symmetry.Replace.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-045",
+        "cyclomatic":  9,
+        "method":  "OnKeyDown",
+        "tier":  2,
+        "loc":  17,
+        "file":  "V12_002.UI.Callbacks.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-046",
+        "cyclomatic":  9,
+        "method":  "HandleChartClick_ConvertPrice",
+        "tier":  2,
+        "loc":  54,
+        "file":  "V12_002.UI.Callbacks.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-047",
+        "cyclomatic":  14,
+        "method":  "CancelOrphanedTargets",
+        "tier":  2,
+        "loc":  20,
+        "file":  "V12_002.UI.Compliance.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-048",
+        "cyclomatic":  9,
+        "method":  "UpdateExistingPendingReplacement",
+        "tier":  2,
+        "loc":  46,
+        "file":  "V12_002.Trailing.StopUpdate.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-049",
+        "cyclomatic":  9,
+        "method":  "ManageTrail_RunPerTradeBranches",
+        "tier":  2,
+        "loc":  8,
+        "file":  "V12_002.Trailing.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-050",
+        "cyclomatic":  9,
+        "method":  "FleetSync_SyncFollowersToLevel",
+        "tier":  2,
+        "loc":  34,
+        "file":  "V12_002.Trailing.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-051",
+        "cyclomatic":  11,
+        "method":  "UpdateStopOrder",
+        "tier":  2,
+        "loc":  33,
+        "file":  "V12_002.Trailing.StopUpdate.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-052",
+        "cyclomatic":  9,
+        "method":  "CleanupStalePendingReplacements",
+        "tier":  2,
+        "loc":  26,
+        "file":  "V12_002.Trailing.StopUpdate.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-053",
+        "cyclomatic":  10,
+        "method":  "InitiateStopReplacement",
+        "tier":  2,
+        "loc":  46,
+        "file":  "V12_002.Trailing.StopUpdate.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-054",
+        "cyclomatic":  12,
+        "method":  "SymmetryGuardTryResolveFollower",
+        "tier":  2,
+        "loc":  83,
+        "file":  "V12_002.Symmetry.Follower.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-055",
+        "cyclomatic":  11,
+        "method":  "DrainPhotonQueuesOnShutdown",
+        "tier":  2,
+        "loc":  21,
+        "file":  "V12_002.SIMA.Lifecycle.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-056",
+        "cyclomatic":  12,
+        "method":  "SweepBrokerOrders",
+        "tier":  2,
+        "loc":  38,
+        "file":  "V12_002.SIMA.Lifecycle.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-057",
+        "cyclomatic":  10,
+        "method":  "ShouldProtectBracketOrder",
+        "tier":  2,
+        "loc":  16,
+        "file":  "V12_002.SIMA.Lifecycle.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-058",
+        "cyclomatic":  9,
+        "method":  "HydrateFSM_MapOrderStateToFsmState",
+        "tier":  2,
+        "loc":  14,
+        "file":  "V12_002.SIMA.Lifecycle.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-059",
+        "cyclomatic":  9,
+        "method":  "AdoptMasterWorkingOrders",
+        "tier":  2,
+        "loc":  37,
+        "file":  "V12_002.SIMA.Lifecycle.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-060",
+        "cyclomatic":  12,
+        "method":  "SweepTrackedOrders",
+        "tier":  2,
+        "loc":  34,
+        "file":  "V12_002.SIMA.Lifecycle.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-061",
+        "cyclomatic":  11,
+        "method":  "SubmitAndRegisterFleetOrders",
+        "tier":  2,
+        "loc":  30,
+        "file":  "V12_002.SIMA.Fleet.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-062",
+        "cyclomatic":  11,
+        "method":  "ProcessFleetSlot",
+        "tier":  2,
+        "loc":  37,
+        "file":  "V12_002.SIMA.Fleet.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-063",
+        "cyclomatic":  11,
+        "method":  "DrainAllDispatchQueuesOnAbort",
+        "tier":  2,
+        "loc":  23,
+        "file":  "V12_002.SIMA.Fleet.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-064",
+        "cyclomatic":  12,
+        "method":  "ResolveFsm_ByScan",
+        "tier":  2,
+        "loc":  21,
+        "file":  "V12_002.Symmetry.BracketFSM.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-065",
+        "cyclomatic":  13,
+        "method":  "HandleFsmFilled",
+        "tier":  2,
+        "loc":  18,
+        "file":  "V12_002.Symmetry.BracketFSM.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-066",
+        "cyclomatic":  11,
+        "method":  "RemoveFsmOrderIdMappings",
+        "tier":  2,
+        "loc":  14,
+        "file":  "V12_002.Symmetry.BracketFSM.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-067",
+        "cyclomatic":  9,
+        "method":  "SymmetryFindDispatchForMasterFill",
+        "tier":  2,
+        "loc":  20,
+        "file":  "V12_002.Symmetry.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-068",
+        "cyclomatic":  14,
+        "method":  "SymmetryGuardOnMasterFill",
+        "tier":  2,
+        "loc":  44,
+        "file":  "V12_002.Symmetry.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-069",
+        "cyclomatic":  14,
+        "method":  "GetFsmExpectedPosition",
+        "tier":  2,
+        "loc":  25,
+        "file":  "V12_002.Symmetry.BracketFSM.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-070",
+        "cyclomatic":  9,
+        "method":  "HydrateFSMsFromWorkingOrders",
+        "tier":  2,
+        "loc":  45,
+        "file":  "V12_002.SIMA.Lifecycle.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-071",
+        "cyclomatic":  12,
+        "method":  "ShadowProcessFollowerStopUpdate",
+        "tier":  2,
+        "loc":  31,
+        "file":  "V12_002.SIMA.Shadow.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-072",
+        "cyclomatic":  14,
+        "method":  "ProcessBracketEvent",
+        "tier":  2,
+        "loc":  44,
+        "file":  "V12_002.Symmetry.BracketFSM.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-073",
+        "cyclomatic":  9,
+        "method":  "DeserializeSnapshot",
+        "tier":  2,
+        "loc":  39,
+        "file":  "V12_002.StickyState.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-074",
+        "cyclomatic":  12,
+        "method":  "AttachExecutionPanelHandlers",
+        "tier":  2,
+        "loc":  46,
+        "file":  "V12_002.UI.Panel.Handlers.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-075",
+        "cyclomatic":  12,
+        "method":  "OnSubmitClick",
+        "tier":  2,
+        "loc":  30,
+        "file":  "V12_002.UI.Panel.Handlers.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-076",
+        "cyclomatic":  11,
+        "method":  "CollapseAllExecutionControls",
+        "tier":  2,
+        "loc":  21,
+        "file":  "V12_002.UI.Panel.Handlers.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-077",
+        "cyclomatic":  9,
+        "method":  "ProcessClientStream",
+        "tier":  2,
+        "loc":  26,
+        "file":  "V12_002.UI.IPC.Server.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-078",
+        "cyclomatic":  12,
+        "method":  "StopIpcServer",
+        "tier":  2,
+        "loc":  29,
+        "file":  "V12_002.UI.IPC.Server.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-079",
+        "cyclomatic":  13,
+        "method":  "CreateSection0_Identity",
+        "tier":  2,
+        "loc":  154,
+        "file":  "V12_002.UI.Panel.Construction.cs"
+    },
+    {
+        "status":  "pending",
+        "epic_number":  "EPIC-CCN-080",
+        "cyclomatic":  13,
+        "method":  "PlacePanel",
+        "tier":  2,
+        "loc":  56,
+        "file":  "V12_002.UI.Panel.Construction.cs"
+    }
+]

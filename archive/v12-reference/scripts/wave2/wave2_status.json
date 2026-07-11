@@ -1,0 +1,44 @@
+[
+    {
+        "Epic":  "EPIC-CCN-107",
+        "Status":  "[?] UNKNOWN",
+        "LastTicket":  "ticket-6-verification.md",
+        "Verdict":  "UNKNOWN"
+    },
+    {
+        "Epic":  "EPIC-CCN-108",
+        "Status":  "[?] UNKNOWN",
+        "LastTicket":  "ticket-2-verification.md",
+        "Verdict":  "UNKNOWN"
+    },
+    {
+        "Epic":  "EPIC-CCN-109",
+        "Status":  "[OK] COMPLETE",
+        "LastTicket":  "ticket-4-verification.md",
+        "Verdict":  "PARTIAL PASS WITH REQUIRED CORRECTIONS"
+    },
+    {
+        "Epic":  "EPIC-CCN-111",
+        "Status":  "[?] UNKNOWN",
+        "LastTicket":  "ticket-3-verification.md",
+        "Verdict":  "UNKNOWN"
+    },
+    {
+        "Epic":  "EPIC-CCN-112",
+        "Status":  "[?] UNKNOWN",
+        "LastTicket":  "ticket-4-verification.md",
+        "Verdict":  "UNKNOWN"
+    },
+    {
+        "Epic":  "EPIC-CCN-113",
+        "Status":  "[?] UNKNOWN",
+        "LastTicket":  "ticket-5-verification.md",
+        "Verdict":  "UNKNOWN"
+    },
+    {
+        "Epic":  "EPIC-CCN-114",
+        "Status":  "[?] UNKNOWN",
+        "LastTicket":  "ticket-1-verification.md",
+        "Verdict":  "UNKNOWN"
+    }
+]
