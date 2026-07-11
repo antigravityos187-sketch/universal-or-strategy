@@ -2,7 +2,7 @@
   "mcpServers": {
     "jcodemunch-mcp": {
       "type": "stdio",
-      "command": "/home/malhitticrypto/.local/bin/jcodemunch-mcp",
+      "command": "C:\\Users\\Mohammed Khalid\\.local\\bin\\jcodemunch-mcp.exe",
       "args": [],
       "alwaysAllow": [
         "resolve_repo",
@@ -51,13 +51,13 @@
     },
     "sequential-thinking": {
       "type": "stdio",
-      "command": "npx",
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
       "args": [
         "-y",
         "@modelcontextprotocol/server-sequential-thinking"
       ],
       "env": {
-        "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/home/malhitticrypto/.npm-global/bin:/home/malhitticrypto/.local/bin"
+        "PATH": "C:\\Program Files\\nodejs;C:\\Users\\Mohammed Khalid\\AppData\\Roaming\\npm;C:\\Users\\Mohammed Khalid\\.local\\bin"
       },
       "alwaysAllow": [
         "create_thought",
