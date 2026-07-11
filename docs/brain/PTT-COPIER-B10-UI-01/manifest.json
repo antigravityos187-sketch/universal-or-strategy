@@ -1,8 +1,14 @@
 {
   "epic": "PTT-COPIER-B10-UI-01",
   "spec": "specs/002-trade-copier-spec.html",
-  "phase": "pending",
-  "tickets": {},
+  "phase": "complete",
+  "tickets": {
+    "T1": {
+      "feature": "BuildCheckItemTemplate: StackPanel -> Grid row factory with OnRowGridLoaded",
+      "status": "complete",
+      "result": "BUILD_PASS + VERIFY_PASS"
+    }
+  },
   "lamport_events": [
     {
       "clock": 1,
@@ -81,8 +87,17 @@
       "phase": "final_review",
       "event_type": "phase_complete",
       "status": "completed",
-      "timestamp": "2026-07-08T22:23:26.308188+00:00",
+      "timestamp": "2026-07-08T22:23:26.308222+00:00",
       "result": "FINAL_PASS"
+    },
+    {
+      "clock": 11,
+      "phase": "production_verified",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-09T00:00:00.000000+00:00",
+      "result": "SCREENSHOT_VERIFIED",
+      "notes": "NT8 restart required after compile to flush WPF item container pool. 17 accounts confirmed pixel-perfect alignment across all 6 columns. Spec HTML updated. GAP-001d and GAP-002 Sim101 tests still pending (gate B10 T1 and T2)."
     }
   ]
 }
