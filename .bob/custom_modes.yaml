@@ -7555,10 +7555,16 @@ customModes:
           ctx_shell("grep -r 'lock(' src/PropTraderTools/")  -- never execute_command
           ctx_shell("Select-String -Path src/... -Pattern")  -- never execute_command
           ctx_shell("python scripts/complexity_audit.py")    -- never execute_command
-        LSP QUERIES (use BEFORE writing each method -- verify NT8 base class signatures live):
-          execute_lsp(operation="hover", uri="{File}.cs", line={N}, character={N})     -- exact return type + params for any NT8 base method
-          execute_lsp(operation="definition", uri="{File}.cs", line={N}, character={N}) -- navigate to NT8 source before overriding
-          execute_lsp(operation="document_symbols", uri="{File}.cs")                   -- post-write: confirm all ticket methods present by name
+        LSP QUERIES (REQUIRES Arena.code-workspace open in Bob IDE -- see PTT_WORKSPACE_PROTOCOL.md):
+          ⚠ LSP (port 9527) is Bob IDE scoped. If Bob is open on Director folder only,
+            all LSP calls return [] -- Wave C# symbols are invisible. Fix: open
+            c:\WSGTA\universal-or-strategy\Arena.code-workspace before starting.
+          ⚠ If LSP returns [] fallback: use ctx_read(src/PropTraderTools/{File}.cs, mode=full)
+            + ctx_shell grep scans. DO NOT retry LSP in a loop -- it will keep returning [].
+          execute_lsp(operation="hover", uri="c:/WSGTA/universal-or-strategy/src/PropTraderTools/{File}.cs", line={N}, character={N})
+          execute_lsp(operation="definition", uri="c:/WSGTA/universal-or-strategy/src/PropTraderTools/{File}.cs", line={N}, character={N})
+          execute_lsp(operation="document_symbols", uri="c:/WSGTA/universal-or-strategy/src/PropTraderTools/{File}.cs")
+          ALWAYS use absolute Wave path in uri -- relative paths resolve to Director and return [].
         SYMBOL SEARCH: jcodemunch search_symbols  -- never ctx_symbol
         SESSION END (after BUILD_PASS):
           ctx_knowledge remember "{epic} ticket-{N} BUILD_PASS. Methods: {list}. Tests: {count} [Fact]." --category ptt-copier --key {epic}-t{N}-build
@@ -7701,11 +7707,17 @@ customModes:
           ctx_shell("Select-String -Path src/PropTraderTools/*.cs -Pattern 'DateTime\\.Now[^U]'")
           ctx_shell("Select-String -Path src/PropTraderTools/*.cs -Pattern '\\block\\s*\\('")
           All via ctx_shell  -- never execute_command
-        LSP QUERIES (run INDEPENDENTLY -- compiler-accurate verification):
-          execute_lsp(operation="document_symbols", uri="{File}.cs")                   -- confirm all ticket methods are present by exact name
-          execute_lsp(operation="workspace_symbols", query="lock")                     -- SCAN-01 compiler-accurate supplement
-          execute_lsp(operation="references", uri="{File}.cs", line={N}, character={N}) -- confirm every public method is wired up
-          execute_lsp(operation="incoming_calls", uri="{File}.cs", line={N}, character={N}) -- real call graph, confirms no orphaned methods
+        LSP QUERIES (REQUIRES Arena.code-workspace open -- see PTT_WORKSPACE_PROTOCOL.md):
+          ⚠ LSP (port 9527) is Bob IDE scoped. If Bob opened Director folder, LSP returns []
+            for all Wave C# queries. Fix: open Arena.code-workspace. If still []: skip LSP,
+            use ctx_shell grep scans as authoritative Layer 3 -- they are equally valid.
+          ⚠ NEVER retry LSP in a loop when it returns []. Accept [] = workspace mismatch,
+            fall back to ctx_shell immediately. Do NOT report VERIFY_FAIL due to LSP [] alone.
+          execute_lsp(operation="document_symbols", uri="c:/WSGTA/universal-or-strategy/src/PropTraderTools/{File}.cs")
+          execute_lsp(operation="workspace_symbols", query="lock")
+          execute_lsp(operation="references", uri="c:/WSGTA/universal-or-strategy/src/PropTraderTools/{File}.cs", line={N}, character={N})
+          execute_lsp(operation="incoming_calls", uri="c:/WSGTA/universal-or-strategy/src/PropTraderTools/{File}.cs", line={N}, character={N})
+          ALWAYS use absolute Wave path in uri -- relative paths return [].
         SYMBOL SEARCH: jcodemunch search_symbols  -- never ctx_symbol
         SESSION END:
           ctx_knowledge remember "{epic} ticket-{N} {VERIFY_PASS|VERIFY_FAIL}. Violations: {list|none}." --category ptt-copier --key {epic}-t{N}-verify

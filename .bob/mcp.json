@@ -1,11 +1,14 @@
 {
+  "_comment": "WORKSPACE PROTOCOL: This mcp.json lives in the Director workspace but lean-ctx roots at Wave so agents can read src/PropTraderTools/ directly. LSP (port 9527) is Bob IDE -- must open Arena.code-workspace (c:\\WSGTA\\universal-or-strategy\\Arena.code-workspace) for LSP to resolve Wave C# symbols.",
   "mcpServers": {
     "lean-ctx": {
       "type": "stdio",
       "command": "C:\\Users\\Mohammed Khalid\\.local\\bin\\lean-ctx.exe",
       "args": [],
       "env": {
-        "PATH": "C:\\Program Files\\Git\\cmd;C:\\Program Files\\Git\\bin;C:\\Program Files\\GitHub CLI\\;C:\\Program Files\\dotnet\\;C:\\Program Files\\Go\\bin;C:\\Program Files\\nodejs\\;C:\\Program Files\\PowerShell\\7\\;C:\\Program Files\\WezTerm;C:\\Program Files\\Docker\\Docker\\resources\\bin;C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\Users\\Mohammed Khalid\\.local\\bin;C:\\Users\\Mohammed Khalid\\.dotnet\\tools;C:\\Users\\Mohammed Khalid\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\Mohammed Khalid\\AppData\\Local\\Programs\\Python\\Python312\\Scripts;C:\\Users\\Mohammed Khalid\\AppData\\Roaming\\npm;C:\\Users\\Mohammed Khalid\\AppData\\Local\\Programs\\IBM Bob\\bin;C:\\Program Files\\GitButler"
+        "PATH": "C:\\Program Files\\Git\\cmd;C:\\Program Files\\Git\\bin;C:\\Program Files\\GitHub CLI\\;C:\\Program Files\\dotnet\\;C:\\Program Files\\Go\\bin;C:\\Program Files\\nodejs\\;C:\\Program Files\\PowerShell\\7\\;C:\\Program Files\\WezTerm;C:\\Program Files\\Docker\\Docker\\resources\\bin;C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\Users\\Mohammed Khalid\\.local\\bin;C:\\Users\\Mohammed Khalid\\.dotnet\\tools;C:\\Users\\Mohammed Khalid\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\Mohammed Khalid\\AppData\\Local\\Programs\\Python\\Python312\\Scripts;C:\\Users\\Mohammed Khalid\\AppData\\Roaming\\npm;C:\\Users\\Mohammed Khalid\\AppData\\Local\\Programs\\IBM Bob\\bin;C:\\Program Files\\GitButler",
+        "LEAN_CTX_ROOTS": "C:\\WSGTA\\universal-or-strategy;C:\\WSGTA\\universal-or-strategy-director",
+        "LEAN_CTX_ROOT": "C:\\WSGTA\\universal-or-strategy"
       },
       "alwaysAllow": [
         "ctx_read",

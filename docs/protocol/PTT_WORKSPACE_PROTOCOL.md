@@ -1,7 +1,34 @@
 # PTT Workspace Protocol
-**Version:** 1.0  
-**Effective:** 2026-07-06  
+**Version:** 1.1
+**Effective:** 2026-07-06 | **Updated:** 2026-07-12
 **Applies to:** All Prop Trader Tools (PTT) NinjaTrader build work
+
+---
+
+## MANDATORY: Open Arena.code-workspace (Not a Folder)
+
+**Bob IDE MUST be opened with the dual-root workspace file, not a single folder.**
+
+```
+Open: c:\WSGTA\universal-or-strategy\Arena.code-workspace
+```
+
+**Why this matters:** Bob's LSP server (port 9527) scopes to whatever workspace root Bob
+has open. If Bob opens the Director folder directly, LSP returns `[]` for all Wave C#
+symbol queries -- `document_symbols`, `workspace_symbols`, `incoming_calls` all fail.
+Opening `Arena.code-workspace` gives LSP visibility into BOTH roots simultaneously:
+- `Wave -- C# Source (main)` → `c:\WSGTA\universal-or-strategy` (LSP resolves `.cs` files here)
+- `Director -- Docs/Spec/Brain (PTT)` → `c:\WSGTA\universal-or-strategy-director` (docs/specs)
+
+**lean-ctx root:** `LEAN_CTX_ROOT=c:\WSGTA\universal-or-strategy` (set in `.bob/mcp.json`)
+so `ctx_read`, `ctx_shell`, and `ctx_compose` resolve relative paths against Wave by default.
+Director paths must always be passed as absolute paths to lean-ctx.
+
+**Impact if wrong workspace is open:**
+- LSP `document_symbols` → `[]` (no symbols found, agent falls back to raw file reads)
+- LSP `workspace_symbols` → `[]` (SCAN-01 lock check misses)
+- lean-ctx `ctx_read` of `src/PropTraderTools/*.cs` → file not found
+- All agents waste tokens on fallback reads, inflating costs 3-5x
 
 ---
 
