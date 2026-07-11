@@ -435,3 +435,89 @@ Expected outcomes:
 - Fires correctly → use `Instrument.MarketData` subscription (Option A for DW-B10-GAP-002a)
 - Fires Bid/Ask only → add `if (e.MarketDataType != MarketDataType.Last) return` filter
 - Does not fire → use `Account.AccountItemUpdate` P&L proxy (Option B fallback)
+
+---
+
+## B11 Discoveries (2026-07-09)
+
+### NT8-K-003 — ATM template read time — OPEN (Sim101 gate: DW-B11-TEMPLATE-WRITER-01)
+
+**Question:** Does NT8 read the ATM template XML at dropdown-selection time, or cache all templates at startup?
+
+**Impact:** Determines whether `AtrTemplateWriter.Write()` (Path 2) works standalone.
+If read at selection time → Path 2 sufficient.
+If cached at startup → Path 3 (UI control write) also required.
+
+**Test:** Write modified `PTT_ATR_LIVE.xml`. Switch ChartTrader dropdown away, then back. Confirm new values load.
+
+**Official docs:** https://developer.ninjatrader.com/docs/desktop/add_on
+
+---
+
+### NT8-K-004 — Account.Change() on entry order Quantity (DECREASE) — CONFIRMED (7/10/2026)
+
+**Source:** NinjaTrader Log 7/10/2026 9:48 AM, Sim101, MES SEP26.
+
+**Confirmed:** `Account.Change()` successfully modifies Quantity DOWNWARD on a Working limit entry order.
+State cycle identical to stop price change: `Change submitted → Accepted → Working` at new qty. Same order ID preserved.
+
+**Key test sequence:**
+- Order `78907a` placed at Qty=10, Working
+- `Change submitted` → Qty=9, Accepted, Working on same order ID
+
+**Copier implication:** Cancel+resubmit (Option B) selected as architecture — see NT8-K-006.
+
+---
+
+### NT8-K-005 — ATM bracket EntryQuantity after resubmit — OPEN (Sim101 gate: DW-B11-SIM-K005-01)
+
+**Question:** After cancel+resubmit with updated ATM template XML (Path 2 AtrTemplateWriter rewrite):
+does the ATM bracket spawn at correct qty when the entry fills?
+
+**Why lower risk than before:** The resubmit path writes a fresh XML *before* `CreateOrder()`,
+so the template is always current at submission time. Still needs a Sim101 fill test.
+
+**Test:** DW-B11-SIM-K005-01 — resubmit with modified template EntryQuantity, let fill, verify bracket stop qty matches.
+
+---
+
+### NT8-K-006 — ChartTrader qty management is ASYMMETRIC — CONFIRMED (7/10/2026)
+
+**Source:** NinjaTrader Log 7/10/2026, 3 sessions (9:48, 10:01, 10:08), Sim101, MES SEP26.
+
+**Confirmed rules:**
+
+**Decrease (any amount):**
+- If delta order exists: `Change submitted` on delta order first (reduces it)
+- If delta would go to 0: cancel delta order, then modify original
+- If no delta order: modify original directly
+- Result: same or fewer order IDs, total qty reduced
+
+**Increase (any amount):**
+- ALWAYS creates a new order for the exact delta (newTotal − currentTotal)
+- Original order is NEVER modified on increase
+- Each increase adds another order to the stack
+- Result: N+1 order IDs
+
+**Full evidence table (9 test sequences):**
+
+| Session | Action | Before | After | NT8 response |
+|---------|--------|--------|-------|--------------|
+| 9:48 | ↓ 10→9 | 78907a Q=10 | 78907a Q=9 | Change submitted same ID |
+| 9:48 | ↑ 9→12 | 78907a Q=9 | 78907a Q=9 + e0bdec Q=3 | New order delta=3 |
+| 10:01 | ↑ 10→13 | 8cce47 Q=10 | 8cce47 Q=10 + cbdf38 Q=3 | New order delta=3 |
+| 10:01 | ↓ 13→11 | 8cce47 Q=10 + cbdf38 Q=3 | 8cce47 Q=10 + cbdf38 Q=1 | Change on delta (3→1) |
+| 10:01 | ↓ 11→8 | 8cce47 Q=10 + cbdf38 Q=1 | 8cce47 Q=8 | cbdf38 cancelled, 8cce47 modified 10→8 |
+| 10:01 | ↓ 8→6 | 8cce47 Q=8 | 8cce47 Q=6 | Change submitted same ID |
+| 10:01 | ↑ 6→10 | 8cce47 Q=6 | 8cce47 Q=6 + b3357c Q=4 | New order delta=4 |
+| 10:08 | ↑ 8→10 | f05032 Q=8 | f05032 Q=8 + 71dae2 Q=2 | New order delta=2 |
+| 10:08 | ↑ 10→13 | f05032 Q=8 + 71dae2 Q=2 | +6d9189 Q=3 | New order delta=3, stack=3 |
+
+**Root cause:** This is 100% ChartTrader UI-layer logic. `Account.Change()` only operates on individual orders.
+ChartTrader manages the aggregate qty view. The NT8 engine has no concept of "total qty across pending orders."
+
+**Copier architecture consequence:** `SyncPendingEntry()` MUST use Option B (cancel+resubmit).
+`Account.Change()` on a single order cannot fix total qty when a stack of orders exists.
+`CancelPendingEntries(acc, instr)` already cancels ALL working entries in one call — reuse it directly.
+
+---

@@ -143,3 +143,95 @@ Rules are not just in RULES_CATALOG.md — they are IN the agent.
 This means violations are caught by agent reasoning, not just by grep scans.
 The catalog file is still read at each phase for full traceability and rule lookups,
 but the critical rules are also enforced at the agent decision level.
+
+---
+
+## PTT Pipeline Team Map
+
+Every PTT agent knows its own phase. This section gives every agent the full picture so no one makes decisions based on incomplete context.
+
+```
+Tier 1 Director         copier-spec mode
+                          Pre-flight checks. Emits Tier 2 prompt. Never writes .cs.
+
+Tier 2 Orchestrator     ptt-orchestrator mode
+                          Drives all start_subtask chains. Owns Lamport clock.
+                          Never writes .cs or tickets directly.
+
+Phase 1 -- Architect    ptt-architect
+                          Reads spec + prior backlog. Writes 02-architecture-plan.md.
+                          Must run 8+ sequential thoughts before writing.
+
+Phase 2 -- Plan Review  ptt-plan-reviewer
+                          Plan vs spec + RULES_CATALOG. REVIEW_PASS unlocks Phase 3.
+                          REVIEW_FAIL sends back to architect (max 2 cycles).
+
+Phase 3 -- Tickets      ptt-architect
+                          Writes 04-tickets.md from REVIEW_PASS plan.
+                          Each ticket MUST include spec IDs, signatures, [Fact] tests,
+                          and the 7-scan checklist (SCAN-01 through SCAN-07).
+
+Phase 3.5 -- Tkt Review ptt-ticket-reviewer
+                          Tickets vs plan + spec + RULES_CATALOG.
+                          TICKET_REVIEW_PASS unlocks Phase 4a.
+                          TICKET_REVIEW_FAIL sends back to architect (max 2 cycles).
+
+Phase 4a -- Engineer    ptt-engineer
+                          Implements C# in Wave workspace from the reviewed ticket.
+                          Runs all 7 scans (Layer 2). Reports in ticket-N-completion.md.
+                          BUILD_PASS requires all 7 scans at zero.
+
+Phase 4b -- Verifier    ptt-verifier
+                          Independently re-runs all 7 scans (Layer 3).
+                          Cross-checks against engineer Layer 2 report.
+                          VERIFY_PASS required before next ticket or Phase 5.
+
+Phase 5 -- Final Review ptt-plan-reviewer
+                          Cross-file coherence. All 7 scans zero across full src/.
+                          Writes 05-final-review.md (Section K required).
+                          Writes 06-deferred-backlog.md (FINAL_PASS blocked without it).
+```
+
+---
+
+## Per-Ticket 7-Scan Checklist SOP
+
+**This is a mandatory non-negotiable workflow element. Read before questioning it.**
+
+The 7-scan checklist appears in three places per ticket on purpose. This is **defense in depth**, not redundancy. Each layer serves a distinct purpose:
+
+| Layer | Where | Who | Purpose |
+|-------|-------|-----|---------|
+| **Layer 1** | Inside each ticket in `04-tickets.md` | Architect writes it | Engineer's contract — defines exactly what scans must pass before BUILD_PASS |
+| **Layer 2** | Inside `ticket-N-completion.md` | Engineer self-reports | Engineer's attestation — proves scans were run in the correct workspace |
+| **Layer 3** | Inside `ticket-N-verification.md` | Verifier runs independently | Integrity check — cross-checks Layer 2 against independent execution |
+
+### Why each layer is required
+
+**Layer 1 (per-ticket checklist in tickets):**
+Without this, the engineer has no explicit contract to fulfill. They may run fewer scans, run them against the wrong path, or assume the orchestrator handles them. The checklist in the ticket is the only document the engineer is guaranteed to read before implementing.
+
+**Layer 2 (engineer self-report in completion):**
+Without this, the verifier has nothing to cross-check. The verifier's job is to compare their own scan results against what the engineer reported. If the engineer never reported, the verifier cannot detect a false negative. This is the attestation layer.
+
+**Layer 3 (verifier independent run):**
+Without this, the engineer's self-report is unverified. The verifier is the independent audit that makes the attestation meaningful. Layer 3 only works if Layer 1 first established what "zero" means for this ticket.
+
+### Gate behavior
+
+| Agent | Action required | Failure behavior |
+|-------|----------------|-----------------|
+| `ptt-ticket-reviewer` | FAIL any ticket missing SCAN-01 through SCAN-07 | `TICKET_REVIEW_FAIL` → re-architect tickets |
+| `ptt-engineer` | Run all 7 scans to zero, report all in completion.md | `BUILD_FAIL` → retry up to 2x |
+| `ptt-verifier` | Re-run all 7 scans independently, cross-check Layer 2 | `VERIFY_FAIL` → engineer retry up to 3x |
+| `ptt-orchestrator` | Enforce gate ordering via Lamport clock | Block next phase if any scan layer missing |
+
+### What NOT to do
+
+- **Never** consolidate per-ticket scan checklists into a single shared checklist at the end of `04-tickets.md`.
+- **Never** flag per-ticket scan checklists as "redundant" or "unnecessary overhead".
+- **Never** accept `TICKET_REVIEW_PASS` from a session that did not check for per-ticket scan checklists.
+- **Never** return `BUILD_PASS` with any scan un-run or any scan showing results > 0.
+- **Never** return `VERIFY_PASS` without running all 7 scans independently via `ctx_shell`.
+
+---

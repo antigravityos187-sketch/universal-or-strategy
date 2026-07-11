@@ -342,9 +342,27 @@ The verifier reads `src/` from Wave (read-only) and writes its report to Directo
 
 ## SCAN REFERENCE (7 mandatory — run by engineer AND independently by verifier)
 
+### Defense-in-Depth: 3-Layer Scan Chain
+
+The 7 scans appear **three times** in every ticket's lifecycle. This is intentional defense in depth, not redundancy:
+
+| Layer | Document | Who | Purpose |
+|-------|----------|-----|---------|
+| **Layer 1** | `04-tickets.md` (per ticket) | Architect writes it | Engineer's contract — explicit list of what must pass before BUILD_PASS |
+| **Layer 2** | `ticket-N-completion.md` | Engineer self-reports | Attestation — proves scans were run in the correct Wave workspace |
+| **Layer 3** | `ticket-N-verification.md` | Verifier re-runs independently | Cross-check — compares Layer 3 results against Layer 2 report |
+
+**`ptt-ticket-reviewer` (Phase 3.5) enforces Layer 1:** Every ticket in `04-tickets.md` MUST include SCAN-01 through SCAN-07 as a checklist. Missing any scan from any ticket = `TICKET_REVIEW_FAIL`. This is non-negotiable and must never be flagged as redundant.
+
+**`ptt-engineer` (Phase 4a) fulfills Layer 2:** Run all 7 scans to zero. Report every result in `ticket-N-completion.md`. Never return `BUILD_PASS` with any scan un-run.
+
+**`ptt-verifier` (Phase 4b) runs Layer 3:** Re-run all 7 scans independently via `ctx_shell`. Compare against Layer 2. Any discrepancy = `VERIFY_FAIL`. Never trust engineer results.
+
+### The 7 Scans
+
 | # | Scan | Command | Expected |
 |---|---|---|---|
-| SCAN-01 | No `lock(` | `grep -r "lock(" src/PropTraderTools/` | 0 results |
+| SCAN-01 | No `lock(` | `execute_lsp(workspace_symbols, query="lock")` (compiler-accurate) + `grep -r "lock(" src/PropTraderTools/` | 0 results both |
 | SCAN-02 | ASCII-only | `Get-Content src/PropTraderTools/*.cs \| Where-Object {$_ -match '[^\x00-\x7F]'}` | 0 results |
 | SCAN-03 | No FontFamily | `Select-String -Path src/PropTraderTools/*.cs -Pattern "FontFamily"` | 0 results |
 | SCAN-04 | No hardcoded hex | `Select-String -Path src/PropTraderTools/*.cs -Pattern "#[0-9A-Fa-f]{6}"` | 0 results |
@@ -353,6 +371,56 @@ The verifier reads `src/` from Wave (read-only) and writes its report to Directo
 | SCAN-07 | No lock pattern | `Select-String -Path src/PropTraderTools/*.cs -Pattern "\block\s*\("` | 0 results |
 
 Any scan with hits > 0 = immediate BUILD_FAIL / VERIFY_FAIL.
+
+### Pipeline Team Map (quick reference for all phases)
+
+```
+Tier 1 Director   (copier-spec)       Pre-flight. Emits this prompt. Never writes .cs.
+Tier 2 Orch       (ptt-orchestrator)  Drives start_subtask chain. Never writes .cs.
+Phase 1           ptt-architect       Writes 02-architecture-plan.md
+Phase 2           ptt-plan-reviewer   Plan vs spec+rules -> REVIEW_PASS gate
+Phase 3           ptt-architect       Writes 04-tickets.md (each ticket: spec IDs +
+                                        signatures + [Fact] tests + 7-scan checklist)
+Phase 3.5         ptt-ticket-reviewer Tickets vs plan+spec+rules -> TICKET_REVIEW_PASS gate
+                                        FAILS any ticket missing SCAN-01..07 checklist
+Phase 4a          ptt-engineer        Implements C# in Wave. Runs Layer 2 scans.
+Phase 4b          ptt-verifier        Re-runs Layer 3 scans independently. Cross-checks.
+Phase 5           ptt-plan-reviewer   Final coherence. Writes deferred backlog.
+```
+
+## LSP MCP — ENGINEER AND VERIFIER USAGE
+
+The `lsp-server` MCP is always available. All workers use `execute_lsp` via the single tool.
+
+**Engineer (Phase 4a) — BEFORE writing each method:**
+```
+execute_lsp(operation="hover", uri="c:/WSGTA/universal-or-strategy/src/PropTraderTools/{File}.cs", line=N, character=N)
+  → get exact NT8 base class method signature before overriding
+execute_lsp(operation="definition", uri="...", line=N, character=N)
+  → navigate to NT8 source to confirm API contract
+execute_lsp(operation="document_symbols", uri="...", line=1, character=1)
+  → POST-WRITE: confirm all ticket method names are present in the compiled file
+```
+
+**Verifier (Phase 4b) — INDEPENDENTLY, never trusting engineer results:**
+```
+execute_lsp(operation="document_symbols", uri="...")
+  → confirm all ticket-required methods are present by exact name
+execute_lsp(operation="workspace_symbols", query="lock")
+  → compiler-accurate SCAN-01 supplement (0 results = clean)
+execute_lsp(operation="incoming_calls", uri="...", line=N, character=N)
+  → real call graph — confirms no orphaned methods, no unexpected callers
+execute_lsp(operation="references", uri="...", line=N, character=N)
+  → confirm every new public method is wired up somewhere
+```
+
+**Architect (Phase 1, Thought 7) — NT8 API surface, never from memory:**
+```
+execute_lsp(operation="workspace_symbols", query="NinjaTrader")
+  → enumerate available NT8 types before designing against them
+execute_lsp(operation="hover", uri="...", line=N, character=N)
+  → live signature for Account.All, CreateOrder, Positions
+```
 
 ---
 
