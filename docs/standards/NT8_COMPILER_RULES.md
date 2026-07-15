@@ -1,6 +1,6 @@
 # NT8-COMPILER-RULES — NinjaTrader 8 NinjaScript Compiler Constraints
-# Version: 1.4
-# Source: PTT Trade Copier blocks B1-B21 (hard compiler errors, runtime crashes, confirmed workarounds)
+# Version: 1.5
+# Source: PTT Trade Copier blocks B1-B23 (hard compiler errors, runtime crashes, confirmed workarounds)
 # Audience: AGENTS ONLY — every rule here was discovered by hitting the actual NT8 Roslyn compiler
 # Format: NT8-NNN | SEVERITY | ONE-LINE BAN | DO / DONT | FIX
 # Update protocol: append a new rule block whenever a new compiler error or runtime crash is
@@ -777,6 +777,60 @@ SCAN: GetProperty.*Charts
 
 ---
 
+### NT8-042 | P0 | `Dispatcher.InvokeAsync` FROM AddOn CONTEXT IS NOT AVAILABLE IN NT8
+CONFIRMED: B23 (CS0117, CS1061 -- all 3 known dispatcher paths fail)
+ERROR: CS0117 "'Globals' does not contain a definition for 'Application'"
+       CS1061 "'GeneralOptions' does not contain a definition for 'Dispatcher'"
+       CS1061 "'Dispatcher' does not contain a definition for 'InvokeAsync'" (System.Windows variant)
+CAUSE: NT8 NinjaScript AddOn runs inside NT8's process under a restricted Roslyn build.
+       None of the three dispatcher paths compile:
+         (1) NinjaTrader.Core.Globals.GeneralOptions.Dispatcher  -- CS1061 (no Dispatcher on GeneralOptions)
+         (2) NinjaTrader.Core.Globals.Application.Dispatcher     -- CS0117 (no Application on Globals)
+         (3) System.Windows.Application.Current.Dispatcher.InvokeAsync() -- CS1061 (InvokeAsync absent)
+       The WPF Dispatcher type in NT8's .NET 4.8 host does not expose InvokeAsync from AddOn context.
+
+BANNED:
+  NinjaTrader.Core.Globals.GeneralOptions.Dispatcher.InvokeAsync(() => { ... });
+  NinjaTrader.Core.Globals.Application.Dispatcher.InvokeAsync(() => { ... });
+  System.Windows.Application.Current.Dispatcher.InvokeAsync(() => { ... });
+
+SAFE:
+  // Wrap the call in try/catch -- NT8 catches the NullRef and logs it.
+  // UI-thread marshaling from AddOn context requires Dispatcher.BeginInvoke (not InvokeAsync)
+  // via System.Windows.Threading.Dispatcher -- UNCONFIRMED, pending B24 research.
+  try
+  {
+      follower.CreateOrder( ... );
+      return true;
+  }
+  catch (Exception ex)
+  {
+      StatusUpdate?.Invoke("PTT-Copy error: " + ex.Message);
+      return false;
+  }
+
+SCAN: \.Dispatcher\.InvokeAsync|Globals\.Application|GeneralOptions\.Dispatcher
+
+---
+
+### NT8-043 | P0 | NULL-CONDITIONAL COMPOUND ASSIGNMENT (`?.` with `-=`) IS BANNED IN NT8
+CONFIRMED: B23 (CS8370 / parse error)
+ERROR: error CS8370: Feature 'null-conditional assignment' is not available in C# 7.3.
+       Please use language version 9.0 or greater.
+CAUSE: NT8 compiles under C# 7.3 (pre-Roslyn null-conditional assignment). The `?.` operator
+       on the LEFT side of `-=` or `+=` requires C# 9.0+. NT8's host is locked at 7.3.
+
+BANNED:
+  acc?.AccountItemUpdate -= OnPendingBeAccountUpdate;   // CS8370
+
+SAFE:
+  if (acc != null)
+      acc.AccountItemUpdate -= OnPendingBeAccountUpdate;
+
+SCAN: \?\.\w+\s*[-+]=
+
+---
+
 ## CATEGORY: AGENT UPDATE PROTOCOL
 
 ### HOW TO ADD A NEW RULE
@@ -830,3 +884,5 @@ When a new NT8 compiler error or runtime crash is confirmed in a PTT block:
 | NT8-031 | P0 | `OrderState.PendingSubmit` does not exist in NT8 — use `Initialized` only | B18 |
 | NT8-032 | P1 | `MarketData.Ask/.Bid/.Last` are `MarketDataEventArgs` — always use `.Price`; full null-guard chain required | B12/B19 |
 | NT8-041 | P2 | `ChartControl.Charts` NOT accessible via Reflection -- use FindVisualChild<Chart> | B17 |
+| NT8-042 | P0 | `Dispatcher.InvokeAsync` not available in NT8 AddOn context -- all 3 paths fail CS0117/CS1061 | B23 |
+| NT8-043 | P0 | Null-conditional compound assignment (`acc?.Event -= handler`) banned -- C# 7.3 limit | B23 |
