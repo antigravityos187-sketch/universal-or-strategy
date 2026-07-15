@@ -1,6 +1,10 @@
 ---
 name: mcp-loop
-description: '# /mcp-loop - MCP Quality Loop (Pre-Push Semantic Review)'
+description: >-
+  MCP Quality Loop (Pre-Push Semantic Review). Runs jcodemunch and Cubic semantic
+  checks AFTER /local-loop and BEFORE pushing to GitHub, targeting 5/5 on both
+  tools in ~3 minutes. Use when the user runs /mcp-loop, asks for semantic review,
+  or is progressing through Phase 5 ticket execution after /local-loop passes.
 metadata:
   user-invocable: true
   disable-model-invocation: true

@@ -1,14 +1,16 @@
 ---
 name: sync
-description: '# sync'
+description: >-
+  Automate VM-to-local backup synchronization. Creates a timestamped backup
+  archive on the VM, verifies its contents, and generates a ready-to-paste
+  prompt for local integration. Use when the user runs /sync, asks to back up
+  the VM, or needs to transfer wave/epic artifacts from the GCP VM to local.
 metadata:
   user-invocable: true
   disable-model-invocation: true
 ---
 
 # sync
-
-description: Automate VM-to-local backup synchronization. Creates backup archive, verifies contents, and generates ready-to-paste prompt for local integration.
 
 ## Usage
 

@@ -1,6 +1,10 @@
 ---
 name: local-loop
-description: '# /local-loop - Local Quality Loop (Pre-Push MCP Review)'
+description: >-
+  Local Quality Loop (Pre-Push MCP Review). Runs CodeAnt and complexity audit
+  locally before pushing to GitHub, achieving 5/5 scores in ~8 minutes with
+  zero API cost. Use when the user runs /local-loop, asks to run local quality
+  checks, wants to validate code before pushing, or is in Phase 5 ticket execution.
 metadata:
   user-invocable: true
   disable-model-invocation: true

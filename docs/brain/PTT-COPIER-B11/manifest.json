@@ -1,11 +1,128 @@
 {
-    "phase":  "pending",
-    "spec":  "specs/002-trade-copier-spec.html",
-    "tickets":  {
-
-                },
-    "epic":  "PTT-COPIER-B11",
-    "lamport_events":  [
-
-                       ]
+  "phase": "pending",
+  "spec": "specs/002-trade-copier-spec.html",
+  "tickets": {},
+  "epic": "PTT-COPIER-B11",
+  "lamport_events": [
+    {
+      "clock": 1,
+      "phase": "architect",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T06:54:06.820513+00:00",
+      "result": "PLAN_COMPLETE"
+    },
+    {
+      "clock": 2,
+      "phase": "plan_review",
+      "event_type": "phase_failed",
+      "status": "failed",
+      "timestamp": "2026-07-11T06:57:41.894633+00:00",
+      "reason": "REVIEW_FAIL: V1=FlattenAll method name mismatch, V2=_sim101KeyDiag delegate leak in UnhookKeyShortcut"
+    },
+    {
+      "clock": 3,
+      "phase": "architect",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T06:59:22.545088+00:00",
+      "result": "PLAN_COMPLETE"
+    },
+    {
+      "clock": 4,
+      "phase": "plan_review",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T07:03:25.641534+00:00",
+      "result": "REVIEW_PASS"
+    },
+    {
+      "clock": 5,
+      "phase": "tickets",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T07:09:41.196715+00:00",
+      "result": "TICKETS_COMPLETE"
+    },
+    {
+      "clock": 6,
+      "phase": "ticket_review",
+      "event_type": "phase_failed",
+      "status": "failed",
+      "timestamp": "2026-07-11T07:29:47.195645+00:00",
+      "reason": "TICKET_REVIEW_FAIL: DW-B12-BUFFERED-BUTTONS-01 spec conflict \u2014 Key.F shortcut uses market order but spec requires Limit@bid+buffer. Plan must explicitly defer to B12 with backlog item."
+    },
+    {
+      "clock": 7,
+      "phase": "tickets",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T07:31:26.274897+00:00",
+      "result": "TICKETS_COMPLETE"
+    },
+    {
+      "clock": 8,
+      "phase": "ticket_review",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T07:45:36.730998+00:00",
+      "result": "TICKET_REVIEW_PASS"
+    },
+    {
+      "clock": 9,
+      "phase": "engineer_T1",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T07:53:59.996943+00:00",
+      "result": "BUILD_PASS"
+    },
+    {
+      "clock": 10,
+      "phase": "verifier_T1",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T08:16:08.608570+00:00",
+      "result": "VERIFY_PASS"
+    },
+    {
+      "clock": 11,
+      "phase": "engineer_T2",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T08:26:10.194496+00:00",
+      "result": "BUILD_PASS"
+    },
+    {
+      "clock": 12,
+      "phase": "verifier_T2",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T08:31:33.088469+00:00",
+      "result": "VERIFY_PASS"
+    },
+    {
+      "clock": 13,
+      "phase": "engineer_T3",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T08:35:17.288766+00:00",
+      "result": "N/A-2-TICKET-BLOCK"
+    },
+    {
+      "clock": 14,
+      "phase": "verifier_T3",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T08:35:20.961335+00:00",
+      "result": "N/A-2-TICKET-BLOCK"
+    },
+    {
+      "clock": 15,
+      "phase": "final_review",
+      "event_type": "phase_complete",
+      "status": "completed",
+      "timestamp": "2026-07-11T08:35:25.946047+00:00",
+      "result": "FINAL_PASS"
+    }
+  ]
 }

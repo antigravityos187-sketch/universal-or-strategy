@@ -7277,9 +7277,21 @@ customModes:
       Wave workspace: c:\WSGTA\universal-or-strategy
       Never cross-pollinate workspaces. C# source goes to Wave only.
       Run all 7 scans to zero before any BUILD_PASS return.
-      TOOL ROUTING: ctx_shell for all scan output. ctx_read for all file reads. ctx_knowledge for phase state.
+      TOOL ROUTING: ctx_shell for all scan output SEQUENTIALLY (one call per scan, wait for result before next) -- never batch scans. ctx_read for all file reads. ctx_knowledge for phase state.
       SRC CODE GATE: ONLY ptt-engineer may write .cs files. Orchestrator is READ-ONLY for src/.
       Direct .cs edits from any other mode = protocol violation. Escalate to Director.
+      PARALLEL LANE PROTOCOL (when running multiple lanes simultaneously):
+        LANE ISOLATION: Before spawning any parallel lane, verify its write-set (.cs files) does NOT overlap with any other active lane.
+          Two lanes writing to the same .cs file = merge conflict. Merge them into one sequential lane first.
+          Doc-only lanes (.md files) have zero .cs contention -- always safe to run in parallel.
+        STAGGER STARTS: Wait 15 seconds between spawning each parallel lane.
+          This prevents ctx_session task writes from colliding at the exact same instant.
+        UNIQUE KEYS: Each lane must use a unique ctx_knowledge key.
+          Pattern: --key {epic}-lane{A|B|C}-{phase}-{status}
+          Never use the same key in two concurrent lanes.
+        MAX 3 PARALLEL: Do not exceed 3 lanes at once. Beyond 3, track each lane's status separately.
+        CTX SCAN FALLBACK: If any lane's agent reports looping on ctx_shell scans, tell it:
+          "Stop. Switch that scan to execute_command. Do not retry ctx_shell for the same scan."
     groups:
       - read
       - edit
@@ -7302,7 +7314,7 @@ customModes:
           3. ctx_read(c:/WSGTA/universal-or-strategy-director/specs/002-trade-copier-spec.html, mode=map)   -- never read_file
           4. ctx_read(c:/WSGTA/universal-or-strategy-director/docs/standards/jane-street/RULES_CATALOG.md, mode=signatures)
         READING FILES: ctx_read(path, mode=signatures|map|full)  -- never read_file
-        SHELL OUTPUT:  ctx_shell("command")  -- never execute_command for readable output
+        SHELL OUTPUT:  ctx_shell("command") SEQUENTIALLY (one call per command, wait for result) -- never execute_command, never batch
         SYMBOL LOOKUP: jcodemunch search_symbols  -- never ctx_symbol
         PLANNING:      sequential-thinking sequentialthinking (required, 8+ thoughts)
         LSP QUERIES (use during Thought 7 -- NT8 API surface verification):
@@ -7416,7 +7428,7 @@ customModes:
           3. ctx_read(docs/brain/{epic}/02-architecture-plan.md, mode=full)
           4. ctx_read(c:/WSGTA/universal-or-strategy-director/docs/standards/jane-street/RULES_CATALOG.md, mode=signatures)
         READING FILES: ctx_read(path, mode=full)  -- never read_file
-        SHELL SCANS:   ctx_shell("Select-String ...") and ctx_shell("grep ...")  -- never execute_command
+        SHELL SCANS:   ctx_shell("Select-String ...") and ctx_shell("grep ...") SEQUENTIALLY (one scan per call, wait for result before next) -- never execute_command, never batch
         LSP QUERIES (use for compiler-accurate plan validation):
           execute_lsp(operation="workspace_symbols", query="lock")                      -- SCAN-01 compiler-accurate, 0 results required
           execute_lsp(operation="document_symbols", uri="{File}.cs")                   -- verify all planned methods are present by exact name
@@ -7674,8 +7686,20 @@ customModes:
       Run ALL 7 scans via ctx_shell. Any single scan with hits > 0 = BUILD_FAIL, fix and re-scan.
       Do NOT return BUILD_PASS until all 7 scans are zero.
       Your DNA block above replaces internet defaults. Write Jane Street code.
-      TOOL ROUTING: ctx_shell for ALL scan and build output. ctx_read for ALL file reads.
+      TOOL ROUTING: ctx_shell for ALL scan and build output SEQUENTIALLY (one call per scan, wait for result before next) -- never batch. ctx_read for ALL file reads.
       ctx_knowledge for phase state persistence. jcodemunch for symbol search.
+      CTX SCAN FALLBACK (MANDATORY -- prevents infinite loop in parallel lanes):
+        TWO ERROR TYPES -- handle differently:
+        (A) MCP/transport error: ctx_shell returns NO output at all, or an MCP error code.
+            This is a SQLite WAL lock collision from another parallel lane session.
+            Fix: call execute_command with the exact same command. Do NOT retry ctx_shell.
+            execute_command bypasses the SQLite store -- always produces output.
+            Continue remaining scans with ctx_shell normally.
+        (B) Command output error: ctx_shell ran fine but the command returned a failure
+            (build error, grep hit, test failure, dotnet error).
+            This is a legitimate code problem. Read the output, understand it, fix the code.
+            Do NOT fall back to execute_command -- the tool worked, the code has a problem.
+        Never loop on a single scan. Maximum 2 total attempts (ctx_shell + execute_command fallback).
     groups:
       - read
       - edit
@@ -7706,7 +7730,7 @@ customModes:
           ctx_shell("Select-String -Path src/PropTraderTools/*.cs -Pattern '#[0-9A-Fa-f]{6}'")
           ctx_shell("Select-String -Path src/PropTraderTools/*.cs -Pattern 'DateTime\\.Now[^U]'")
           ctx_shell("Select-String -Path src/PropTraderTools/*.cs -Pattern '\\block\\s*\\('")
-          All via ctx_shell  -- never execute_command
+          All via ctx_shell SEQUENTIALLY (one scan per call, wait for result before next) -- never execute_command, never batch scans in one tool call
         LSP QUERIES (REQUIRES Arena.code-workspace open -- see PTT_WORKSPACE_PROTOCOL.md):
           ⚠ LSP (port 9527) is Bob IDE scoped. If Bob opened Director folder, LSP returns []
             for all Wave C# queries. Fix: open Arena.code-workspace. If still []: skip LSP,
@@ -7825,13 +7849,20 @@ customModes:
       Independent verification - never trust engineer self-reported scan results.
     customInstructions: |-
       READ-ONLY for src/ in Wave workspace. Do NOT modify any C# files.
-      Run every scan yourself using ctx_shell (NOT execute_command).
-      Any scan result > 0 = VERIFY_FAIL. Cite exact file and line number.
+      Run every scan yourself via ctx_shell first. Any scan result > 0 = VERIFY_FAIL. Cite exact file and line number.
       Any missing method or wrong class name = VERIFY_FAIL.
       Any DNA rule violation (lock, throw in dispatch, null return, magic string,
         mutable struct, unsealed brush, wrong DateTime, hex color, no PTT- prefix) = VERIFY_FAIL.
       Be strict - the engineer gets max 3 retry cycles before escalation.
-      TOOL ROUTING: ctx_shell for ALL scans. ctx_read for ALL file reads. ctx_knowledge for state.
+      TOOL ROUTING: ctx_shell for ALL scans SEQUENTIALLY (one call per scan, wait for result before next) -- never batch scans. ctx_read for ALL file reads. ctx_knowledge for state.
+      CTX SCAN FALLBACK (MANDATORY -- prevents infinite loop in parallel lanes):
+        TWO ERROR TYPES -- handle differently:
+        (A) MCP/transport error: ctx_shell returns NO output at all, or an MCP error code.
+            This is a SQLite WAL lock collision. Fix: execute_command fallback for that scan only.
+            Do NOT retry ctx_shell. Continue remaining scans with ctx_shell normally.
+        (B) Command output error: ctx_shell ran and returned a failure (grep hit, build error).
+            This is a real code violation. Fix the code. Do NOT switch to execute_command.
+        Maximum 2 total attempts per scan (ctx_shell then execute_command). Never loop.
     groups:
       - read
       - execute
@@ -7897,7 +7928,7 @@ customModes:
           4. ctx_read(docs/brain/{epic}/02-architecture-plan.md, mode=map)
           5. ctx_read(c:/WSGTA/universal-or-strategy-director/docs/standards/jane-street/RULES_CATALOG.md, mode=signatures)
         READING FILES: ctx_read(path, mode=full|map)  -- never read_file
-        SHELL OUTPUT:  ctx_shell("command")  -- never execute_command for readable output
+        SHELL OUTPUT:  ctx_shell("command") SEQUENTIALLY (one call per command, wait for result) -- never execute_command, never batch
         SESSION END:
           ctx_knowledge remember "{epic} ticket-review {TICKET_REVIEW_PASS|FAIL}. Violations: {list|none}." --category ptt-copier --key {epic}-ticket-review
 

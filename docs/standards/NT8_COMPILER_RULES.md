@@ -1,6 +1,6 @@
 # NT8-COMPILER-RULES — NinjaTrader 8 NinjaScript Compiler Constraints
-# Version: 1.0
-# Source: PTT Trade Copier blocks B1-B10 (hard compiler errors, runtime crashes, confirmed workarounds)
+# Version: 1.4
+# Source: PTT Trade Copier blocks B1-B21 (hard compiler errors, runtime crashes, confirmed workarounds)
 # Audience: AGENTS ONLY — every rule here was discovered by hitting the actual NT8 Roslyn compiler
 # Format: NT8-NNN | SEVERITY | ONE-LINE BAN | DO / DONT | FIX
 # Update protocol: append a new rule block whenever a new compiler error or runtime crash is
@@ -696,6 +696,87 @@ SCAN: `OnWindowCreated` — verify idempotency guard present before any state mu
 
 ---
 
+
+### NT8-031 | P0 | `OrderState.PendingSubmit` DOES NOT EXIST IN NT8
+CONFIRMED: B18 (CS0117 — F5 gate failure)
+ERROR: CS0117 "'OrderState' does not contain a definition for 'PendingSubmit'"
+CAUSE: NT8's `OrderState` enum does not include `PendingSubmit`. Standard .NET/NinjaTrader 7
+       docs may list it but NT8 Roslyn build host does not expose it. Only `Initialized`,
+       `Working`, `Cancelled`, `Filled`, `PartFilled`, `Rejected`, `Unknown` exist in NT8.
+
+BANNED:
+  if (order.OrderState != OrderState.Working &&
+      order.OrderState != OrderState.Initialized &&
+      order.OrderState != OrderState.PendingSubmit)   // CS0117 — PendingSubmit does not exist
+      continue;
+
+SAFE:
+  if (order.OrderState != OrderState.Working &&
+      order.OrderState != OrderState.Initialized)     // Initialized covers pre-ack state
+      continue;
+
+NOTE: `Initialized` is the NT8 pre-acknowledgement state that covers what `PendingSubmit`
+      represents in other platforms. Using `Initialized` alone is sufficient.
+
+SCAN: `OrderState\.PendingSubmit`
+
+---
+
+
+### NT8-032 | P1 | `MarketData.Ask` / `MarketData.Bid` / `MarketData.Last` ARE `MarketDataEventArgs` — USE `.Price`
+CONFIRMED: B12 (B19 documentation pass — usage confirmed working in CopyEngine.cs:1179-1180)
+ERROR: No compiler error — type confusion causes CS1061 "does not contain a definition for 'Price'"
+       if the field is treated as a raw double instead of a MarketDataEventArgs object.
+CAUSE: `Instrument.MarketData.Ask`, `.Bid`, and `.Last` all return `MarketDataEventArgs` objects
+       (same type). The actual double price is the `.Price` property of the returned object.
+       The object reference itself may be null if data has not yet populated the field
+       (pre-market, stale subscription, or instrument not yet active in a chart session).
+
+BANNED:
+  double ask = instrument.MarketData.Ask;              // CS1061 — Ask is MarketDataEventArgs, not double
+  if (instrument.MarketData.Ask > 0) ...               // CS0019 — cannot compare object to double
+
+SAFE:
+  // Always use the full null-guard chain before accessing .Price:
+  var md  = instrument.MarketData;
+  if (md == null) return 0.0;
+  var ask = md.Ask;
+  if (ask == null) return 0.0;
+  return ask.Price;                                    // double — confirmed working pattern
+
+  // Pattern confirmed in CopyEngine.cs (B12) — existing production code at ~line 1179-1180:
+  //   instrument.MarketData.Bid.Price
+  //   instrument.MarketData.Ask.Price
+  // Used from UI thread (OnTrimClick, OnFlattenClick, DispatchShortcut) — synchronous snapshot read.
+  // No subscription required for snapshot reads; field is populated once instrument is active.
+
+SCAN: `MarketData\.(Ask|Bid|Last)[^.]` — catches missing .Price (direct use of object without .Price)
+
+---
+
+### NT8-041 | P2 | `ChartControl.Charts` NOT ACCESSIBLE VIA REFLECTION IN NT8
+CONFIRMED: B17 (runtime -- reflection returns null)
+ERROR: ChartControl.Charts property NOT FOUND via Reflection at runtime.
+       GetType().GetProperty("Charts") returns null.
+CAUSE: NT8 .NET 4.8 does not expose Charts as a public reflection-visible property on
+       ChartControl in the AddOn compilation context.
+       GetType().GetProperty("Charts") returns null.
+
+BANNED:
+  // Attempting to enumerate Charts via reflection:
+  var chartsProp = chartControl.GetType().GetProperty("Charts");
+  var charts = chartsProp?.GetValue(chartControl);   // chartsProp is null -- NullReferenceException
+
+SAFE:
+  // Use visual tree walk -- always available in AddOnBase context:
+  var chart = FindVisualChild<Chart>(visualTreeRoot);
+  // Or to find all charts: walk all top-level NT8 windows and cast to Chart.
+  // FindVisualChild<T> is in TradeCopierAddOn.cs (the depth-first helper).
+
+SCAN: GetProperty.*Charts
+
+---
+
 ## CATEGORY: AGENT UPDATE PROTOCOL
 
 ### HOW TO ADD A NEW RULE
@@ -746,3 +827,6 @@ When a new NT8 compiler error or runtime crash is confirmed in a PTT block:
 | NT8-028 | P1 | Hex color string literals banned — use `MakeBrush(r,g,b)` | B7 |
 | NT8-029 | P1 | Tick alignment mandatory on all stop/limit prices | B4 |
 | NT8-030 | P0 | `OnWindowCreated` fires for every NT8 window — guard with volatile bool | B6 |
+| NT8-031 | P0 | `OrderState.PendingSubmit` does not exist in NT8 — use `Initialized` only | B18 |
+| NT8-032 | P1 | `MarketData.Ask/.Bid/.Last` are `MarketDataEventArgs` — always use `.Price`; full null-guard chain required | B12/B19 |
+| NT8-041 | P2 | `ChartControl.Charts` NOT accessible via Reflection -- use FindVisualChild<Chart> | B17 |

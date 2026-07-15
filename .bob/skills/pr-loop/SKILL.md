@@ -1,6 +1,18 @@
-# pr-loop
+---
+name: pr-loop
+description: >-
+  PR Review & Repair Loop V5. Iteratively triages bot findings, repairs confirmed
+  issues, and verifies until all bots are green. Uses poll_all_bots.py for
+  OKF-filtered 8-bot signal extraction. Use when the user runs /pr-loop, submits
+  a PR number for review, or needs bot findings triaged and repaired automatically.
+  Also the inner loop of Phase 7 wave-orch-phase7-lane workers.
+metadata:
+  user-invocable: true
+  disable-model-invocation: false
+  argument-hint: <PR_NUMBER>
+---
 
-description: PR Review & Repair Loop V5. Iteratively triages bot findings, repairs confirmed issues, and verifies until all bots are green. Uses poll_all_bots.py for OKF-filtered 8-bot signal extraction. Used both manually (single PR) and as the inner loop of Phase 7 wave-orch-phase7-lane workers.
+# pr-loop
 
 ## Usage
 

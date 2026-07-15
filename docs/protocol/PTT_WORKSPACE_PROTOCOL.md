@@ -1,6 +1,6 @@
 # PTT Workspace Protocol
-**Version:** 1.1
-**Effective:** 2026-07-06 | **Updated:** 2026-07-12
+**Version:** 1.2
+**Effective:** 2026-07-06 | **Updated:** 2026-07-13 (V1.2 -- Phase 5.5 Hard Link Gate)
 **Applies to:** All Prop Trader Tools (PTT) NinjaTrader build work
 
 ---
@@ -217,6 +217,12 @@ Phase 5 -- Final Review ptt-plan-reviewer
                           Cross-file coherence. All 7 scans zero across full src/.
                           Writes 05-final-review.md (Section K required).
                           Writes 06-deferred-backlog.md (FINAL_PASS blocked without it).
+
+Phase 5.5 -- Hard Link Gate  ptt-orchestrator (MANDATORY -- see NT8_HARD_LINK_PROTOCOL.md)
+                          Run AFTER Phase 5 FINAL_PASS, BEFORE directing user to F5.
+                          powershell -File scripts\verify_links.ps1
+                          On FAIL: powershell -File scripts\verify_links.ps1 -Fix
+                          F5 compile is BLOCKED until audit reports PASS.
 ```
 
 ---
@@ -260,5 +266,66 @@ Without this, the engineer's self-report is unverified. The verifier is the inde
 - **Never** accept `TICKET_REVIEW_PASS` from a session that did not check for per-ticket scan checklists.
 - **Never** return `BUILD_PASS` with any scan un-run or any scan showing results > 0.
 - **Never** return `VERIFY_PASS` without running all 7 scans independently via `ctx_shell`.
+
+---
+
+## Phase 5.5 -- NT8 Hard Link Gate (MANDATORY)
+
+**Why this exists (B13 incident):** After B13 FINAL_PASS, NinjaTrader compiled
+successfully from a STALE deploy. TradeCopierPanel.cs in NT8 had a broken hard link
+and was 673 bytes smaller than Wave source -- running the B12 stub GetRefPrice()
+(returns 0.0) instead of the B13 live-price implementation. The build appeared green
+because the stub compiles. Only the runtime behaviour was wrong. No gate existed to
+catch this before the user hit F5.
+
+**The fix:** Phase 5.5 is a mandatory orchestrator-owned gate between FINAL_PASS and
+the F5 instruction. It takes under 5 seconds and cannot be skipped.
+
+### Procedure
+
+```powershell
+# Step 1: Audit
+powershell -File scripts\verify_links.ps1
+# Expected output: 5x OK (hard-linked), 1x SKIP (CopyEngineTests.cs), exit 0
+
+# Step 2: If any DESYNC or MISSING -- repair
+powershell -File scripts\verify_links.ps1 -Fix
+# Expected output: all FIXED or OK, exit 0
+
+# Step 3: Re-audit to confirm
+powershell -File scripts\verify_links.ps1
+# Must return exit 0 before F5 is authorised
+```
+
+### What the script checks
+
+| Check | What it looks for |
+|-------|-------------------|
+| DESYNC | SHA256 hash mismatch between Wave src and NT8 copy (stale deploy) |
+| MISSING | File present in Wave but absent from NT8 (link never created) |
+| copy-only | Link count = 1 (plain copy, not hard link -- drifts on next write) |
+| SKIP | Test files (CopyEngineTests.cs) -- excluded from deploy, never flagged missing |
+
+### Hard link vs copy
+
+| State | Link count | Risk |
+|-------|-----------|------|
+| Hard-linked | 2 | Zero -- writes to either path update both instantly |
+| Copy-only | 1 | Drift on next write -- must re-run -Fix after any wave |
+| Missing | 0 | NT8 runs old binary until manually fixed |
+
+### Gate position in pipeline
+
+```
+Phase 5 FINAL_PASS
+  --> 06-deferred-backlog.md confirmed written
+  --> Phase 5.5: powershell -File scripts\verify_links.ps1  [GATE]
+        PASS  --> "F5 compile in NinjaTrader now"
+        FAIL  --> powershell -File scripts\verify_links.ps1 -Fix --> re-audit --> PASS --> F5
+  --> User confirms green F5 build
+  --> PIPELINE_COMPLETE
+```
+
+**Full protocol:** `docs/protocol/NT8_HARD_LINK_PROTOCOL.md`
 
 ---
