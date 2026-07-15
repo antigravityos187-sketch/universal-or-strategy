@@ -752,8 +752,8 @@ namespace PropTraderTools
                 // B23 T1 (DW-B22-NULLREF-01): marshal to NT8 UI dispatcher -- non-active-chart
                 // accounts throw NullRef when CreateOrder is called on background thread.
                 // Fire-and-forget via InvokeAsync: no await, no async void (JS-033 compliant).
-                // NT8 compiler: use NinjaTrader.Core.Globals.Application.Dispatcher (not GeneralOptions.Dispatcher).
-                NinjaTrader.Core.Globals.Application.Dispatcher.InvokeAsync(() =>
+                // NT8 compiler: System.Windows.Application.Current.Dispatcher is the correct WPF dispatcher.
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                     follower.CreateOrder(
                         instrument,
                         signal.Action,
