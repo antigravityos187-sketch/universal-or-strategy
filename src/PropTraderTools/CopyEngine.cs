@@ -752,7 +752,8 @@ namespace PropTraderTools
                 // B23 T1 (DW-B22-NULLREF-01): marshal to NT8 UI dispatcher -- non-active-chart
                 // accounts throw NullRef when CreateOrder is called on background thread.
                 // Fire-and-forget via InvokeAsync: no await, no async void (JS-033 compliant).
-                NinjaTrader.Core.Globals.GeneralOptions.Dispatcher.InvokeAsync(() =>
+                // NT8 compiler: use NinjaTrader.Core.Globals.Application.Dispatcher (not GeneralOptions.Dispatcher).
+                NinjaTrader.Core.Globals.Application.Dispatcher.InvokeAsync(() =>
                     follower.CreateOrder(
                         instrument,
                         signal.Action,
@@ -1391,7 +1392,8 @@ namespace PropTraderTools
             var acc   = _pendingBeAccount;
             var instr = _pendingBeInstrument;
             var buf   = _pendingBeBufferTicks;
-            acc?.AccountItemUpdate -= OnPendingBeAccountUpdate;                // null-conditional (no CYC branch)
+            if (acc != null)
+                acc.AccountItemUpdate -= OnPendingBeAccountUpdate;
             _pendingBeAccount    = null;
             _pendingBeInstrument = null;
             BreakEven(instr, buf);
