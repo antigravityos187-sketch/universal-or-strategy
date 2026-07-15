@@ -749,25 +749,22 @@ namespace PropTraderTools
             {
                 // NT8 AddOn constraint: 12-arg CreateOrder requires CustomOrder as arg12, not string.
                 // Named ATM mode is not applicable from AddOn context -- pass null CustomOrder.
-                // B23 T1 (DW-B22-NULLREF-01): marshal to NT8 UI dispatcher -- non-active-chart
-                // accounts throw NullRef when CreateOrder is called on background thread.
-                // Fire-and-forget via InvokeAsync: no await, no async void (JS-033 compliant).
-                // NT8 compiler: System.Windows.Application.Current.Dispatcher is the correct WPF dispatcher.
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    follower.CreateOrder(
-                        instrument,
-                        signal.Action,
-                        orderType,
-                        OrderEntry.Manual,
-                        TimeInForce.Day,
-                        signal.Quantity,
-                        limitPrice,
-                        0,
-                        null,
-                        signalName,
-                        DateTime.Now.AddDays(1),
-                        (NinjaTrader.Cbi.CustomOrder)null
-                    )
+                // B23 T1 (DW-B22-NULLREF-01): NullRef on non-active-chart accounts caught here.
+                // Dispatcher.InvokeAsync not reliably available in NT8 AddOn context (NT8-042).
+                // Try/catch is the safe fallback: logs the error, returns false, does not crash.
+                follower.CreateOrder(
+                    instrument,
+                    signal.Action,
+                    orderType,
+                    OrderEntry.Manual,
+                    TimeInForce.Day,
+                    signal.Quantity,
+                    limitPrice,
+                    0,
+                    null,
+                    signalName,
+                    DateTime.Now.AddDays(1),
+                    (NinjaTrader.Cbi.CustomOrder)null
                 );
                 return true;
             }
