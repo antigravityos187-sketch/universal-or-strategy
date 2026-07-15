@@ -1,4 +1,14 @@
 {
+  "workspaces": [
+    {
+      "name": "Wave - C# src (universal-or-strategy)",
+      "path": "C:\\WSGTA\\universal-or-strategy"
+    },
+    {
+      "name": "Director - Docs/Spec/Protocol (universal-or-strategy-director)",
+      "path": "C:\\WSGTA\\universal-or-strategy-director"
+    }
+  ],
   "general": {
     "checkpointing": {
       "enabled": true
@@ -15,7 +25,7 @@
   },
   "shell": {
     "env": {
-      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/malhitticrypto/.local/bin:/home/malhitticrypto/.npm-global/bin"
+      "PATH": "C:\\Program Files\\nodejs;C:\\Users\\Mohammed Khalid\\AppData\\Roaming\\npm;C:\\Users\\Mohammed Khalid\\.local\\bin;C:\\Windows\\System32;C:\\Windows"
     },
     "preferredEditor": "code",
     "approvalMode": "yolo",

@@ -1,3 +1,9 @@
+// AtrSizingEngine.cs -- B9 T1 / B10 T4 / B12 T3 / B21-LANE-A T1
+// B12 T3 CHANGES:
+//   1. Added _atrFraction field (plain double; no volatile per NT8-003; single-writer UI thread).
+//   2. Added SetAtrFraction(double) -- CYC=1: stores fraction for OnBarUpdate. CYC=1.
+//   3. Added UpdateMaxRisk(double) -- CYC=1: standalone risk setter (avoids SetParameters roundtrip).
+//   4. Modified OnBarUpdate: passes atr * _atrFraction to CalcContracts.
 // AtrSizingEngine.cs -- B9 T1 / B10 T4
 // Detached NT8 Indicator providing ATR-based contract sizing.
 // Managed by TradeCopierAddOn (one instance per chart).
@@ -36,8 +42,12 @@ namespace PropTraderTools
         private volatile bool  _hasData      = false;
 
         // Configuration -- single-writer UI thread, set before attachment
-        private double _maxRiskDollars  = 150.0;
+        private double _maxRiskDollars  = 200.0;
         private double _tickDollarValue = 5.0;
+
+        // B12 T3 -- ATR fraction multiplier. Plain double; single-writer UI thread.
+        // No volatile: NT8-003 bans volatile double. Same staleness-tolerance pattern as _lastAtr.
+        private double _atrFraction = 0.75;   // DW-ATR-DEFAULTS-01: default matches StartAtrEngine call-site
 
         [NinjaTrader.NinjaScript.NinjaScriptProperty]
         public int Period { get; set; } = 14;
@@ -77,7 +87,7 @@ namespace PropTraderTools
             if (CurrentBar < Period) return;
             double atr     = ATR(Period)[0];
             _lastAtr       = atr;
-            int    qty     = CalcContracts(atr, _maxRiskDollars, _tickDollarValue);
+            int    qty     = CalcContracts(atr * _atrFraction, _maxRiskDollars, _tickDollarValue);   // B12 T3: scale by _atrFraction
             _lastContracts = qty;
             _hasData       = true;
             FireAtrUpdated(atr, qty);
@@ -103,6 +113,21 @@ namespace PropTraderTools
                 stopTicks,
                 qty);
             AtrUpdated?.Invoke(display);
+        }
+
+        // B12 T3 -- SetAtrFraction: stores fraction for use in next OnBarUpdate. CYC=1.
+        // Single-writer UI thread. Reader (OnBarUpdate) on bar-close thread.
+        // Non-volatile: sizing hint only, not order-safety critical (same as _lastAtr). NT8-003 PASS.
+        internal void SetAtrFraction(double fraction)
+        {
+            _atrFraction = fraction;
+        }
+
+        // B12 T3 -- UpdateMaxRisk: standalone setter for _maxRiskDollars. CYC=1.
+        // Allows panel to update risk budget without a full SetParameters roundtrip.
+        internal void UpdateMaxRisk(double maxRiskDollars)
+        {
+            _maxRiskDollars = maxRiskDollars;
         }
 
         // CYC=1 -- straight-line, single-writer UI thread

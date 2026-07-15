@@ -1,6 +1,6 @@
 # NT8-COMPILER-RULES — NinjaTrader 8 NinjaScript Compiler Constraints
-# Version: 1.0
-# Source: PTT Trade Copier blocks B1-B10 (hard compiler errors, runtime crashes, confirmed workarounds)
+# Version: 1.1
+# Source: PTT Trade Copier blocks B1-B18 (hard compiler errors, runtime crashes, confirmed workarounds)
 # Audience: AGENTS ONLY — every rule here was discovered by hitting the actual NT8 Roslyn compiler
 # Format: NT8-NNN | SEVERITY | ONE-LINE BAN | DO / DONT | FIX
 # Update protocol: append a new rule block whenever a new compiler error or runtime crash is
@@ -696,6 +696,33 @@ SCAN: `OnWindowCreated` — verify idempotency guard present before any state mu
 
 ---
 
+
+### NT8-031 | P0 | `OrderState.PendingSubmit` DOES NOT EXIST IN NT8
+CONFIRMED: B18 (CS0117 — F5 gate failure)
+ERROR: CS0117 "'OrderState' does not contain a definition for 'PendingSubmit'"
+CAUSE: NT8's `OrderState` enum does not include `PendingSubmit`. Standard .NET/NinjaTrader 7
+       docs may list it but NT8 Roslyn build host does not expose it. Only `Initialized`,
+       `Working`, `Cancelled`, `Filled`, `PartFilled`, `Rejected`, `Unknown` exist in NT8.
+
+BANNED:
+  if (order.OrderState != OrderState.Working &&
+      order.OrderState != OrderState.Initialized &&
+      order.OrderState != OrderState.PendingSubmit)   // CS0117 — PendingSubmit does not exist
+      continue;
+
+SAFE:
+  if (order.OrderState != OrderState.Working &&
+      order.OrderState != OrderState.Initialized)     // Initialized covers pre-ack state
+      continue;
+
+NOTE: `Initialized` is the NT8 pre-acknowledgement state that covers what `PendingSubmit`
+      represents in other platforms. Using `Initialized` alone is sufficient.
+
+SCAN: `OrderState\.PendingSubmit`
+
+---
+
+
 ## CATEGORY: AGENT UPDATE PROTOCOL
 
 ### HOW TO ADD A NEW RULE
@@ -746,3 +773,45 @@ When a new NT8 compiler error or runtime crash is confirmed in a PTT block:
 | NT8-028 | P1 | Hex color string literals banned — use `MakeBrush(r,g,b)` | B7 |
 | NT8-029 | P1 | Tick alignment mandatory on all stop/limit prices | B4 |
 | NT8-030 | P0 | `OnWindowCreated` fires for every NT8 window — guard with volatile bool | B6 |
+| NT8-031 | P0 | `OrderState.PendingSubmit` does not exist in NT8 — use `Initialized` only | B18 |
+| NT8-032 | P2 | `CopyEngineTests.cs` must stay co-located in PropTraderTools assembly — no separate test runner .csproj | B19 |
+
+
+### NT8-032 | P2 | `CopyEngineTests.cs` MUST REMAIN CO-LOCATED IN SAME ASSEMBLY AS `CopyEngine.cs`
+CONFIRMED: B19 (engineer attempted to create separate test runner — deleted after failure)
+ERROR: CS0246 "The type or namespace name 'CopyRule' could not be found" when compiling
+       a separate test runner `.csproj` that references `CopyEngineTests.cs`.
+CAUSE: `CopyEngineTests.cs` casts `fi.GetValue(_engine)` directly to `ConcurrentBag<CopyRule>`
+       where `CopyRule` is a `private readonly struct` nested inside `CopyEngine`. This is only
+       valid when both files compile as the same assembly. Any separate runner `.csproj` will
+       fail CS0246 on `CopyRule` because private nested types are inaccessible from outside
+       the declaring assembly.
+
+       Additionally, `CopyEngineTests.cs` uses `System.Collections.Immutable.ImmutableDictionary`
+       and `System.Reflection.NullabilityInfoContext` — both .NET 6+ only, incompatible with net48.
+       A separate runner targeting net48 would also fail for this reason.
+
+BANNED:
+  // Creating a separate .csproj to run CopyEngineTests.cs:
+  CopyEngineTests.Runner.csproj   (any project file separate from PropTraderTools.csproj)
+  NT8StubForTests.cs              (stub shim to fake NT8 types in a test project)
+
+SAFE:
+  // CopyEngineTests.cs stays inside src/PropTraderTools/ — compiled by PropTraderTools.csproj.
+  // Test contract is verified via source scan, NOT via dotnet test:
+
+  // CORRECT — count [Fact] tests by source grep:
+  Select-String -Path "src\PropTraderTools\CopyEngineTests.cs" -Pattern "\[Fact\]" | Measure-Object | Select-Object -ExpandProperty Count
+
+  // CORRECT — verify specific test method names exist:
+  Select-String -Path "src\PropTraderTools\CopyEngineTests.cs" -Pattern "MyTestMethodName"
+
+  // WRONG — do not run these for PTT test verification:
+  // dotnet test src/PropTraderTools/          -- net48 target, no Test.Sdk
+  // dotnet test tests/V12_Performance.Tests/  -- 331 unrelated V12 complexity tests
+
+NOTE: The [Fact] count is a SOURCE CONTRACT ASSERTION — counted by grep, verified by F5 in NT8.
+      Baseline: 111 before B19. After B19 Lane 1: 113. After B19 Lane 2: 116.
+
+SCAN: Any new `.csproj` file under `src/PropTraderTools/` other than `PropTraderTools.csproj`
+      Any `NT8Stub*.cs` or `*ForTests.cs` file in `src/PropTraderTools/`

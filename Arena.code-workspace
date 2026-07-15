@@ -1,11 +1,11 @@
 {
 	"folders": [
 		{
-			"name": "Strategy -- Wave Work (main)",
+			"name": "Wave -- C# Source (main)",
 			"path": "."
 		},
 		{
-			"name": "Director -- Docs/Spec/Protocol (director)",
+			"name": "Director -- Docs/Spec/Brain (PTT)",
 			"path": "../universal-or-strategy-director"
 		}
 	],
@@ -24,6 +24,16 @@
 			"**/.hg/store/**": true,
 			"**/bin/**": true,
 			"**/obj/**": true
-		}
+		},
+		"omnisharp.workspaceModels": true,
+		"omnisharp.enableEditorConfigSupport": true,
+		"omnisharp.enableRoslynAnalyzers": true,
+		"omnisharp.projectSystem.includeProjectsNotInSolution": true,
+		"omnisharp.projectFilesExcludePattern": [
+			"**/archive/**",
+			"**/obj/**",
+			"**/bin/**"
+		],
+		"dotnet.defaultSolution": "src/PropTraderTools/PropTraderTools.csproj"
 	}
 }

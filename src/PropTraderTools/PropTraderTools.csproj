@@ -1,0 +1,97 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- ============================================================
+       PropTraderTools.csproj
+       PURPOSE: OmniSharp / LSP reference project ONLY.
+       NT8 compiles these files internally via its own Roslyn host.
+       This .csproj is never built by MSBuild in production.
+       It exists so the language server can resolve NT8 types:
+         NinjaTrader.Core.dll  → Account, Instrument, Order, etc.
+         NinjaTrader.Gui.dll   → ChartControl, ChartTrader, Chart, etc.
+       WITHOUT this file: hover, go-to-def, find-refs all return empty
+       for every NT8 type.  WITH this file: full IntelliSense.
+       ============================================================
+       TFM: net48 — matches NT8 runtime (.NET Framework 4.8).
+       NT8 DLL path: C:\Program Files\NinjaTrader 8\bin\
+       ============================================================ -->
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Suppress build output — this project is for LSP only -->
+    <OutputType>Library</OutputType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Allow LSP to open files even if NT8 DLLs are absent on a new machine -->
+    <NoWarn>MSB3245;MSB3246;CS0012</NoWarn>
+    <AssemblyName>PropTraderTools</AssemblyName>
+    <RootNamespace>PropTraderTools</RootNamespace>
+    <!-- Prevent NETSDK1022 duplicate Compile items (explicit list below) -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <!-- ── NT8 DLL references ─────────────────────────────────────
+       Path: C:\Program Files\NinjaTrader 8\bin\
+       These are the assemblies NT8's internal Roslyn host provides.
+       HintPath points at the standard NT8 install location.
+       If NT8 is installed elsewhere, update the paths below.
+       ────────────────────────────────────────────────────────── -->
+  <ItemGroup>
+    <Reference Include="NinjaTrader.Core">
+      <HintPath>C:\Program Files\NinjaTrader 8\bin\NinjaTrader.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="NinjaTrader.Gui">
+      <HintPath>C:\Program Files\NinjaTrader 8\bin\NinjaTrader.Gui.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="NinjaTrader.Client">
+      <HintPath>C:\Program Files\NinjaTrader 8\bin\NinjaTrader.Client.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- ── Standard WPF / .NET 4.8 framework references ──────────
+       NT8 NinjaScript files use WPF (Window, UserControl, Grid,
+       Dispatcher, etc.) from the standard .NET Framework 4.8 GAC.
+       ────────────────────────────────────────────────────────── -->
+  <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime" />
+  </ItemGroup>
+
+  <!-- ── xUnit for CopyEngineTests.cs ──────────────────────────
+       CopyEngineTests.cs is in this folder and uses xUnit.
+       PackageReference lets OmniSharp resolve [Fact] etc.
+       ────────────────────────────────────────────────────────── -->
+  <ItemGroup>
+    <PackageReference Include="xunit" Version="2.6.6" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.7">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- ── Source files ───────────────────────────────────────────
+       Explicitly list all .cs files in this directory.
+       CopyEngineTests.cs is included for LSP but excluded from
+       the NT8 deploy list (verify_links.ps1 already handles this).
+       ────────────────────────────────────────────────────────── -->
+  <ItemGroup>
+    <Compile Include="AtrSizingEngine.cs" />
+    <Compile Include="CopyEngine.cs" />
+    <Compile Include="CopyEngineTests.cs" />
+    <Compile Include="TradeCopierAddOn.cs" />
+    <Compile Include="TradeCopierPanel.cs" />
+    <Compile Include="TradeCopierWindow.cs" />
+  </ItemGroup>
+
+</Project>
