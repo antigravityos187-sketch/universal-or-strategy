@@ -1,3 +1,19 @@
+// PTT-COPIER-B14-T1 -- CopyEngine.cs
+// B14 T1 CHANGES:
+//   1. Added _trailBeState, _trailBeBufferTicks, _trailBeLastPnl (volatile int/long), _trailBeAccount, _trailBeInstrument.
+//   2. Added ArmTrailBe(Instrument, Account, int) -- CYC=4.
+//   3. Added DisarmTrailBe() -- CYC=2.
+//   4. Added OnTrailBeAccountUpdate -- CYC=5, fires on NT8 account bg thread.
+// PTT-COPIER-B12-T3 -- CopyEngine.cs
+// B12 T3 CHANGES:
+//   1. Added UpdateMaxRisk(double) -- pass-through to _atrEngine. CYC=2.
+//   2. Added UpdateAtrFraction(double) -- pass-through to _atrEngine.SetAtrFraction. CYC=2.
+// PTT-COPIER-B12-T1 -- CopyEngine.cs
+// B12 T1 CHANGES:
+//   1. Added Trim(Instrument, int, double) overload -- limit exit ceil(qty/2). "PTT-TrimLimit".
+//   2. Added Flatten(Instrument, int, double) overload -- limit exit full qty. "PTT-FlattenLimit".
+//   3. Added PTT-prefix Gate 0.5 at top of DispatchCopy -- prevents cascade copy of PTT- signals.
+//      CYC: 7 -> 8 (AT LIMIT; PASS).
 // PTT-COPIER-B10-T3 -- CopyEngine.cs
 // Pure logic singleton. Zero UI references. Both surfaces share this instance.
 // Jane Street rules: JS-001, JS-003, JS-008, JS-010, JS-021, JS-023, JS-025
@@ -8,6 +24,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Xml.Serialization;
 using NinjaTrader.Cbi;
 using NinjaTrader.NinjaScript;
@@ -82,6 +99,15 @@ namespace PropTraderTools
         private          Account    _pendingBeAccount    = null; // single-writer UI thread
         private          Instrument _pendingBeInstrument = null; // single-writer UI thread
 
+        // B14 T1 -- Auto-trail BE fields (volatile int state machine; JS-023; NT8-003).
+        // Pattern: mirrors ArmPendingBe/DisarmPendingBe release-fence protocol.
+        // _trailBeLastPnl: plain long (NT8-003: volatile banned on 64-bit types; Interlocked.Read/CAS provide barrier).
+        private volatile int    _trailBeState        = 0;  // 0=Off, 1=Active
+        private volatile int    _trailBeBufferTicks   = 2;
+        private          long   _trailBeLastPnl       = 0L; // Interlocked.Read/CompareExchange provide memory barrier
+        private          Account    _trailBeAccount    = null; // single-writer UI thread
+        private          Instrument _trailBeInstrument = null; // single-writer UI thread
+
         // V01: order map for follower bracket lookup
         // JS-025: ConcurrentDictionary (atomic GetOrAdd) + ConcurrentBag (lock-free Add/iterate)
         // JS-021: NO lock keyword anywhere
@@ -97,6 +123,11 @@ namespace PropTraderTools
 
         // B10 T2 -- Pending BE fired notification (fires on NT8 account bg thread; Panel marshals to UI)
         internal event Action<string> PendingBeFired;
+
+        // B20-LANE-A T2: Copy ON/OFF sync event (DW-B17-SYNC-01)
+        // Plain delegate field -- NOT lock-guarded (JS-021). Fired from SetEnabled on every toggle.
+        // Lane C wires TradeCopierPanel and TradeCopierWindow subscribers.
+        public event Action<bool> CopyEnabledChanged;
 
         // --- Nested structs ---
 
@@ -206,6 +237,7 @@ namespace PropTraderTools
         {
             _isCopyEnabled = enabled;
             StatusUpdate?.Invoke("Copy " + (enabled ? "ON" : "OFF"));
+            CopyEnabledChanged?.Invoke(enabled);
         }
 
         // Change 5: SetDailyCapFloor added immediately after SetEnabled
@@ -219,6 +251,20 @@ namespace PropTraderTools
         {
             _atrEngine  = engine;
             _atrEnabled = enabled;
+        }
+
+        // B12 T3 -- UpdateMaxRisk: pass-through to _atrEngine. Null-guarded. CYC=2.
+        internal void UpdateMaxRisk(double maxRiskDollars)
+        {
+            if (_atrEngine == null) return;            // (1)
+            _atrEngine.UpdateMaxRisk(maxRiskDollars);  // (2)
+        }
+
+        // B12 T3 -- UpdateAtrFraction: pass-through to _atrEngine.SetAtrFraction. Null-guarded. CYC=2.
+        internal void UpdateAtrFraction(double fraction)
+        {
+            if (_atrEngine == null) return;            // (1)
+            _atrEngine.SetAtrFraction(fraction);       // (2)
         }
 
         // B9 T3: CYC=1 -- straight-line cast and assign
@@ -264,7 +310,9 @@ namespace PropTraderTools
         }
 
         // B8 T1: new 5-arg overload -- adds multipliers + ATM map at apply time
-        // JS-021: no lock -- ConcurrentBag.Add is lock-free
+        // B23 T1 (DW-B22-ADDRULE-ACCUMULATE-01): replace-not-append for same (instrument, leader).
+        // ConcurrentBag rebuild pattern -- no lock (JS-021). Same pattern as SetFollowerMultiplier.
+        // CYC=4: foreach(1) + string == (2) + name == (3) + continue(4 -- implicit else branch).
         internal void AddRule(
             string instrument,
             Account master,
@@ -272,6 +320,14 @@ namespace PropTraderTools
             int[] multipliers,
             Dictionary<string, FollowerAtmMode> atmMap)
         {
+            var snapshot = new List<CopyRule>(_rules);
+            _rules = new ConcurrentBag<CopyRule>();
+            foreach (var r in snapshot)
+            {
+                if (r.Instrument == instrument && r.MasterAccount?.Name == master?.Name)
+                    continue;
+                _rules.Add(r);
+            }
             _rules.Add(CopyRule.Create(instrument, master, followers, true, multipliers, atmMap));
         }
 
@@ -338,7 +394,7 @@ namespace PropTraderTools
             CopyRule? matchedRule = null;
             foreach (var rule in _rules)
             {
-                if (e.Order.Instrument.FullName == rule.Instrument && e.Order.Account == rule.MasterAccount)
+                if (e.Order.Instrument.FullName == rule.Instrument && e.Order.Account.Name == rule.MasterAccount?.Name)
                 {
                     matchedRule = rule;
                     break;
@@ -429,6 +485,9 @@ namespace PropTraderTools
         // JS-001: no throw in hot path. JS-021: no lock.
         private void DispatchCopy(Order order, CopyRule rule)
         {
+            // Gate 0.5: PTT-prefix guard -- prevents cascade copy of our own PTT- signals. CYC: 7->8.
+            if (order.Name != null && order.Name.StartsWith("PTT-")) return;
+
             // Gate 3: must be Submitted state
             if (order.OrderState != OrderState.Submitted)
                 return;
@@ -494,11 +553,14 @@ namespace PropTraderTools
         }
 
         // B10 T1 -- IsTrailingStop: trailing stop detection predicate.
-        // CYC=1: single return expression. NT8-026: order.TrailPrice > 0 = trailing stop (confirmed fact).
+        // CYC=1: single return expression.
+        // NT8: Order.TrailPrice does not exist (CS1061). Use OrderType.StopMarket as proxy.
         // Callers guard order != null before calling (IsStopAlreadyAtBe already has null guard; loop filters).
         private static bool IsTrailingStop(Order order)
         {
-            return order.TrailPrice > 0;
+            // NT8: Order.TrailPrice does not exist. Trailing stops are StopMarket orders;
+            // downstream logic (TightenStop cancel+replace path) handles trail correctly.
+            return order.OrderType == OrderType.StopMarket;
         }
 
         // B10 T1 -- IsStopAlreadyAtBe: idempotency guard.
@@ -610,7 +672,7 @@ namespace PropTraderTools
                 fromEntrySignalName,
                 _ => new ConcurrentBag<FollowerBinding>());
             // Dedup guard: prevent accumulating duplicate bindings on repeated Working state events
-            if (!bag.Any(b => b.FollowerAccount == followerAccount))         // (1) branch
+            if (!bag.Any(b => b.FollowerAccount?.Name == followerAccount?.Name))         // (1) branch
                 bag.Add(new FollowerBinding(followerAccount, fromEntrySignalName));
         }
 
@@ -665,6 +727,7 @@ namespace PropTraderTools
         // For Named mode the ATM template name is passed as the final 'atm' parameter of CreateOrder.
         // JS-001: catch logs and returns false -- no throw in dispatch path.
         // JS-002: mode=null treated as Inherit (no null return, no throw).
+        // B23 T1: Dispatcher marshal added
         private bool SendCopy(Account follower, Instrument instrument, in CopySignal signal, FollowerAtmMode mode)
         {
             OrderType orderType  = signal.Type;
@@ -686,19 +749,24 @@ namespace PropTraderTools
             {
                 // NT8 AddOn constraint: 12-arg CreateOrder requires CustomOrder as arg12, not string.
                 // Named ATM mode is not applicable from AddOn context -- pass null CustomOrder.
-                follower.CreateOrder(
-                    instrument,
-                    signal.Action,
-                    orderType,
-                    OrderEntry.Manual,
-                    TimeInForce.Day,
-                    signal.Quantity,
-                    limitPrice,
-                    0,
-                    null,
-                    signalName,
-                    DateTime.MaxValue,
-                    (NinjaTrader.Cbi.CustomOrder)null
+                // B23 T1 (DW-B22-NULLREF-01): marshal to NT8 UI dispatcher -- non-active-chart
+                // accounts throw NullRef when CreateOrder is called on background thread.
+                // Fire-and-forget via InvokeAsync: no await, no async void (JS-033 compliant).
+                NinjaTrader.Core.Globals.GeneralOptions.Dispatcher.InvokeAsync(() =>
+                    follower.CreateOrder(
+                        instrument,
+                        signal.Action,
+                        orderType,
+                        OrderEntry.Manual,
+                        TimeInForce.Day,
+                        signal.Quantity,
+                        limitPrice,
+                        0,
+                        null,
+                        signalName,
+                        DateTime.Now.AddDays(1),
+                        (NinjaTrader.Cbi.CustomOrder)null
+                    )
                 );
                 return true;
             }
@@ -841,6 +909,96 @@ namespace PropTraderTools
             }
         }
 
+        // B19 T1 -- ComputeLimitPx: pure-arithmetic price anchor helper.
+        // Long exits (Sell Limit) post above ask; short exits (BuyToCover) post below bid.
+        // CYC=1: single ternary. No NT8 deps, no state, no nulls.
+        // internal static -- CopyEngineTests.cs calls CopyEngine.ComputeLimitPx(...) directly.
+        internal static double ComputeLimitPx(bool isLong, double ask, double bid, int exitBuffer, double tickSize)
+            => isLong
+                ? ask + exitBuffer * tickSize
+                : bid - exitBuffer * tickSize;
+
+        // B19 T1 -- Trim 4-arg: exit half position at limit price anchored to ask (long) or bid (short).
+        // Long: Sell Limit @ ask + exitBuffer*tick.   Short: BuyToCover @ bid - exitBuffer*tick.
+        // NT8-007: arg 12 = (NinjaTrader.Cbi.CustomOrder)null.
+        // NT8-014: signal name = "PTT-TrimLimit".
+        // NT8-032: ask/bid are MarketDataEventArgs.Price doubles (callers obtain via GetAsk()/GetBid()).
+        // CYC=6: (1+2) compound ask/bid guard, (3) exitBuffer guard, (4) foreach, (5+6) pos null||qty guard.
+        // JS-001: try/catch wraps acc.CreateOrder -- no rethrow.
+        internal void Trim(Instrument instrument, int exitBuffer, double ask, double bid)
+        {
+            if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Trim(instrument); return; }
+            double tickSize = instrument.MasterInstrument.TickSize;
+            foreach (var acc in AllAccounts(instrument))
+            {
+                var pos = FindPosition(acc, instrument);
+                if (pos == null || pos.Quantity == 0)
+                {
+                    StatusUpdate?.Invoke(acc.Name + ": flat skip");
+                    continue;
+                }
+                int trimQty = (int)Math.Ceiling(pos.Quantity / 2.0);
+                bool isLong = pos.MarketPosition == MarketPosition.Long;
+                var action  = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+                double limitPx = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
+                try
+                {
+                    acc.CreateOrder(
+                        instrument, action, OrderType.Limit,
+                        OrderEntry.Manual, TimeInForce.Day,
+                        trimQty, limitPx, 0, null,
+                        "PTT-TrimLimit",
+                        DateTime.MaxValue,
+                        (NinjaTrader.Cbi.CustomOrder)null);
+                    StatusUpdate?.Invoke(acc.Name + ": trim-limit " + trimQty + " @ " + limitPx);
+                }
+                catch (Exception ex)
+                {
+                    StatusUpdate?.Invoke("PTT-TrimLimit error: " + ex.Message);
+                }
+            }
+        }
+
+        // B19 T1 -- Flatten 4-arg: exit full position at limit price anchored to ask (long) or bid (short).
+        // Long: Sell Limit @ ask + exitBuffer*tick.   Short: BuyToCover @ bid - exitBuffer*tick.
+        // NT8-007: arg 12 = (NinjaTrader.Cbi.CustomOrder)null.
+        // NT8-014: signal name = "PTT-FlattenLimit".
+        // NT8-032: ask/bid are MarketDataEventArgs.Price doubles (callers obtain via GetAsk()/GetBid()).
+        // CYC=6: same branch structure as Trim; no trimQty calculation.
+        // JS-001: try/catch wraps acc.CreateOrder -- no rethrow.
+        internal void Flatten(Instrument instrument, int exitBuffer, double ask, double bid)
+        {
+            if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Flatten(instrument); return; }
+            double tickSize = instrument.MasterInstrument.TickSize;
+            foreach (var acc in AllAccounts(instrument))
+            {
+                var pos = FindPosition(acc, instrument);
+                if (pos == null || pos.Quantity == 0)
+                {
+                    StatusUpdate?.Invoke(acc.Name + ": flat skip");
+                    continue;
+                }
+                bool isLong = pos.MarketPosition == MarketPosition.Long;
+                var action  = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+                double limitPx = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
+                try
+                {
+                    acc.CreateOrder(
+                        instrument, action, OrderType.Limit,
+                        OrderEntry.Manual, TimeInForce.Day,
+                        pos.Quantity, limitPx, 0, null,
+                        "PTT-FlattenLimit",
+                        DateTime.MaxValue,
+                        (NinjaTrader.Cbi.CustomOrder)null);
+                    StatusUpdate?.Invoke(acc.Name + ": flatten-limit " + pos.Quantity + " @ " + limitPx);
+                }
+                catch (Exception ex)
+                {
+                    StatusUpdate?.Invoke("PTT-FlattenLimit error: " + ex.Message);
+                }
+            }
+        }
+
         internal void CancelPendingEntries(Instrument instrument)
         {
             foreach (var acc in AllAccounts(instrument))
@@ -849,7 +1007,12 @@ namespace PropTraderTools
                 {
                     if (order.Instrument != instrument)
                         continue;
-                    if (order.OrderState != OrderState.Working)
+                    // B18 T3: DW-B18-CANCEL-01 -- also cancel Initialized orders.
+                    // Follower copy orders start as Initialized before sim engine acknowledges them.
+                    // Skipping caused orders stuck as Cancel pending with no way to clear.
+                    // Note: OrderState.PendingSubmit does not exist in NT8 -- Initialized is sufficient.
+                    if (order.OrderState != OrderState.Working &&
+                        order.OrderState != OrderState.Initialized)
                         continue;
                     if (IsBracketLeg(order))
                         continue;
@@ -1036,10 +1199,13 @@ namespace PropTraderTools
                 if (IsFlat(pos))                                                        // (3)
                     continue;
                 bool isLong = pos.MarketPosition == MarketPosition.Long;
-                double bid = instrument.MarketData?.Bid ?? 0;
-                double ask = instrument.MarketData?.Ask ?? 0;
-                double currentPrice = bid > 0 && ask > 0
-                    ? (isLong ? ask : bid)
+                // NT8: instrument.MarketData.Bid/.Ask return MarketDataEventArgs objects, not doubles.
+                // NT8-032: use .Bid.Price / .Ask.Price for the double value, or use pos.AveragePrice
+                // as the reference price for tighten-stop offset calculation (safe fallback).
+                double bidPrice = instrument.MarketData.Bid.Price;
+                double askPrice = instrument.MarketData.Ask.Price;
+                double currentPrice = bidPrice > 0 && askPrice > 0
+                    ? (isLong ? askPrice : bidPrice)
                     : pos.AveragePrice;     // fallback if MarketData unavailable
                 double targetPrice = isLong
                     ? currentPrice - ticks * tickSize
@@ -1059,10 +1225,9 @@ namespace PropTraderTools
         }
 
         // B10 T3 -- TightenOneStop: applies tighten to a single stop order.
-        // CYC=4: null guard(1), alreadyTighter(2), TrailPrice>0 cancel+replace(3), try block(0).
-        // JS-001: try/catch wraps acc.Cancel/acc.Change/acc.CreateOrder -- no throw in hot path.
-        // NT8-007: arg 12 of CreateOrder = (NinjaTrader.Cbi.CustomOrder)null.
-        // PTT- prefix: "PTT-Tighten-Stop" (SCAN-05 compliant).
+        // CYC=3: null guard(1), alreadyTighter(2), try block(0).
+        // JS-001: try/catch wraps acc.Change -- no throw in hot path.
+        // DW-B16-02: cancel+replace removed.
         private void TightenOneStop(Account acc, Instrument instr,
             Order order, double targetPrice, double tickSize)
         {
@@ -1076,30 +1241,11 @@ namespace PropTraderTools
                 return;
             try
             {
-                if (IsTrailingStop(order))                                              // (3) cancel+replace for trailing
-                {
-                    acc.Cancel(new Order[] { order });
-                    acc.CreateOrder(
-                        instr,
-                        order.OrderAction,
-                        OrderType.StopMarket,
-                        OrderEntry.Manual,
-                        TimeInForce.Day,
-                        order.Quantity,
-                        0,
-                        targetPrice,
-                        null,
-                        "PTT-Tighten-Stop",
-                        DateTime.MaxValue,
-                        (NinjaTrader.Cbi.CustomOrder)null);    // NT8-007: arg 12 = (CustomOrder)null
-                    StatusUpdate?.Invoke(acc.Name + ": tighten trail cancel+replace -> " + targetPrice);
-                }
-                else                                                                   // fixed stop: acc.Change()
-                {
-                    order.StopPrice = targetPrice;
-                    acc.Change(new Order[] { order });
-                    StatusUpdate?.Invoke(acc.Name + ": tighten stop -> " + targetPrice);
-                }
+                // DW-B16-02: all stop types use acc.Change() -- GAP-001d CONFIRMED safe.
+                // cancel+replace branch removed (was nuking ATM bracket + trail watermark).
+                order.StopPrice = targetPrice;
+                acc.Change(new Order[] { order });
+                StatusUpdate?.Invoke(acc.Name + ": tighten stop -> " + targetPrice);
             }
             catch (Exception ex)
             {
@@ -1143,30 +1289,112 @@ namespace PropTraderTools
             _pendingBeInstrument = null;
         }
 
-        // B10 T2 -- OnPendingBeAccountUpdate: AccountItemUpdate callback.
+        // B14 T1 -- ArmTrailBe: arms the continuous trail watcher using acc.AccountItemUpdate.
+        // CYC=4: instr null(1), acc null(2), pos flat(3), arm write(4).
+        // Called on UI thread (from TradeCopierPanel.OnBeConnected via Dispatcher).
+        // _trailBeState volatile write (=1) is the release fence; plain ref writes precede it.
+        // JS-021: no lock -- Interlocked used in OnTrailBeAccountUpdate for PnL CAS.
+        // NT8-003: _trailBeLastPnl is plain long (volatile banned on 64-bit); Interlocked provides barrier.
+        internal void ArmTrailBe(Instrument instr, Account masterAcc, int bufferTicks)
+        {
+            if (instr == null)                                    // (1)
+                return;
+            if (masterAcc == null)                                // (2)
+                return;
+            var pos = FindPosition(masterAcc, instr);
+            if (IsFlat(pos))                                      // (3)
+                return;
+            double currentPnl = masterAcc.Get(AccountItem.UnrealizedProfitLoss, Currency.UsDollar);
+            if (currentPnl == double.MinValue) currentPnl = 0.0;
+            _trailBeBufferTicks   = bufferTicks;
+            _trailBeLastPnl       = BitConverter.DoubleToInt64Bits(currentPnl);
+            _trailBeInstrument    = instr;
+            _trailBeAccount       = masterAcc;
+            masterAcc.AccountItemUpdate += OnTrailBeAccountUpdate;
+            _trailBeState         = 1;                            // (4) volatile int write -- release fence
+        }
+
+        // B14 T1 -- DisarmTrailBe: disarms the trail watcher atomically.
+        // CYC=2: active CAS check(1), acc null guard(2).
+        // JS-021: no lock -- Interlocked.CompareExchange for atomic disarm.
+        // Idempotent: safe to call when already Off.
+        internal void DisarmTrailBe()
+        {
+            if (Interlocked.CompareExchange(ref _trailBeState, 0, 1) != 1) // (1) only if Active
+                return;
+            var acc = _trailBeAccount;
+            if (acc != null)                                      // (2)
+                acc.AccountItemUpdate -= OnTrailBeAccountUpdate;
+            _trailBeAccount    = null;
+            _trailBeInstrument = null;
+        }
+
+        // B14 T1 -- OnTrailBeAccountUpdate: continuous AccountItemUpdate callback for auto-trail.
         // Fires on NT8 account background thread -- NO UI calls inside this method.
-        // CYC=5: state check(1), item type filter(2), pnl threshold(3), CAS disarm(4), fire(5).
-        // JS-021: no lock -- Interlocked.CompareExchange ensures exactly one callback wins disarm.
-        // Architecture plan Sec 5.2: trigger condition is UnrealizedProfitLoss >= 0.
+        // CYC=5: state check(1), item filter(2), pnl improvement check(3),
+        //        CAS update _trailBeLastPnl(4), advance buffer + BreakEven(5).
+        // JS-021: no lock -- Interlocked.Exchange for atomic PnL high-water update.
+        // JS-001: BreakEven internally wraps acc.Change() in try/catch; no rethrow here.
+        // NT8-003: _trailBeLastPnl is plain long (volatile banned on 64-bit); BitConverter + Interlocked CAS.
+        // STAYS SUBSCRIBED until DisarmTrailBe() is called -- unlike OnPendingBeAccountUpdate (one-shot).
+        private void OnTrailBeAccountUpdate(object sender, NinjaTrader.Cbi.AccountItemEventArgs e)
+        {
+            if (_trailBeState != 1)                                         // (1) volatile int read
+                return;
+            if (e.AccountItem != AccountItem.UnrealizedProfitLoss)         // (2) filter
+                return;
+            double newPnl = e.Value;
+            double oldPnl = BitConverter.Int64BitsToDouble(
+                Interlocked.Read(ref _trailBeLastPnl));
+            if (newPnl <= oldPnl)                                           // (3)
+                return;
+            long newBits = BitConverter.DoubleToInt64Bits(newPnl);
+            long oldBits = BitConverter.DoubleToInt64Bits(oldPnl);
+            if (Interlocked.CompareExchange(ref _trailBeLastPnl, newBits, oldBits) != oldBits) // (4)
+                return;
+            int newBuffer = Interlocked.Increment(ref _trailBeBufferTicks);                    // (5)
+            var instr = _trailBeInstrument;
+            if (instr != null)
+                BreakEven(instr, newBuffer);
+        }
+
+        // B23 T1 (DW-B22-BE-TRIGGER-01): price-based trigger replaces dollar-PnL trigger.
+        // Dollar PnL unreliable on PA accounts -- commission deducted at entry makes UPnL
+        // negative even when price is past entry + buffer. Price comparison is immune to fees.
+        // CYC=8: state(1), item filter(2), pos flat(3), tickSize(4), last<=0(5), triggered(6), CAS(7).
+        // acc?.AccountItemUpdate null-conditional is NOT a CYC branch (same convention as ternaries).
         private void OnPendingBeAccountUpdate(object sender, NinjaTrader.Cbi.AccountItemEventArgs e)
         {
             if (_pendingBeState != 1)                                          // (1) volatile int read
                 return;
             if (e.AccountItem != AccountItem.UnrealizedProfitLoss)            // (2) filter
                 return;
-            if (e.Value < 0)                                                   // (3) threshold
+            // (3-6) Price-based trigger: fire when Last.Price reaches entry + bufferTicks * tickSize.
+            var pos = FindPosition(_pendingBeAccount, _pendingBeInstrument);
+            if (IsFlat(pos))                                                   // (3)
                 return;
-            // (4) CAS disarm: only ONE concurrent callback wins the Armed->Inactive transition
-            if (Interlocked.CompareExchange(ref _pendingBeState, 0, 1) != 1)
+            double tickSize = _pendingBeInstrument?.MasterInstrument?.TickSize ?? 0.0;
+            if (tickSize <= 0.0)                                               // (4)
+                return;
+            double last = _pendingBeInstrument?.MarketData?.Last?.Price ?? 0.0;
+            if (last <= 0.0)                                                   // (5)
+                return;
+            bool isLong  = pos.MarketPosition == MarketPosition.Long;
+            double target = pos.AveragePrice
+                + (isLong ? 1.0 : -1.0) * _pendingBeBufferTicks * tickSize;
+            bool triggered = isLong ? (last >= target) : (last <= target);
+            if (!triggered)                                                    // (6)
+                return;
+            // (7) CAS disarm: only ONE concurrent callback wins the Armed->Inactive transition
+            if (Interlocked.CompareExchange(ref _pendingBeState, 0, 1) != 1)  // (7)
                 return;
             var acc   = _pendingBeAccount;
             var instr = _pendingBeInstrument;
             var buf   = _pendingBeBufferTicks;
-            if (acc != null)
-                acc.AccountItemUpdate -= OnPendingBeAccountUpdate;
+            acc?.AccountItemUpdate -= OnPendingBeAccountUpdate;                // null-conditional (no CYC branch)
             _pendingBeAccount    = null;
             _pendingBeInstrument = null;
-            BreakEven(instr, buf);                                            // (5) fire BE via acc.Change()
+            BreakEven(instr, buf);
             PendingBeFired?.Invoke(instr?.FullName ?? string.Empty);
         }
 

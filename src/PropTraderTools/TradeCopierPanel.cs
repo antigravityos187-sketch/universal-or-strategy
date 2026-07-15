@@ -1,4 +1,52 @@
-// PTT-COPIER-B10-T3 -- TradeCopierPanel.cs
+// PTT-COPIER-B17-T1 -- TradeCopierPanel.cs
+// B17 T1 CHANGES:
+//   1. Added _b17DiagDone volatile bool field (fire-once diagnostic gate).
+//   2. Added EnumerateAllChartPanels(ChartControl cc): walks visual tree, probes Charts via Reflection, shows MessageBox.
+//   3. Modified OnChartMouseDown: calls EnumerateAllChartPanels once via _b17DiagDone gate.
+//   4. Added GetRefPrice() fallback for rawPrice when ClickTrader price returns 0.
+//   [AMEND] TradeCopierAddOn.cs: MouseDown -> PreviewMouseDown (Director auth, DW-B17-02).
+
+// PTT-COPIER-B15-T2 -- TradeCopierPanel.cs
+// B15 T2 CHANGES:
+//   1. Removed _chartDiagDone volatile bool field (T1 diagnostic cleanup).
+//   2. Removed DumpReflectionPath(ChartControl cc, StringBuilder sb) method (T1 diagnostic cleanup).
+//   3. Removed DumpVisualTree(ChartControl cc, StringBuilder sb) method (T1 diagnostic cleanup).
+//   4. Removed DumpChartControlTree(ChartControl cc) method (T1 diagnostic cleanup).
+//   5. Reverted SetChart(Chart chart) to CYC=1 (removed DumpChartControlTree call).
+//   6. Added GetPriceAtY(ChartControl cc, double y) private static method (CYC=4).
+//   7. Modified OnChartMouseDown: replaced 0.0 stub + suppression line with real lookup.
+//      Final CYC=6. Click-trader Y-to-price lookup CLOSED (B15-T2).
+// PTT-COPIER-B15-T1 -- TradeCopierPanel.cs (CLEANUP -- diagnostic removed in T2)
+// PTT-COPIER-B14-T1 -- TradeCopierPanel.cs
+// B14 T1 CHANGES:
+//   1. Modified OnBeConnected: added ArmTrailBe call after BreakEven (CYC=3).
+//   2. Modified OnBeClick Connected case: added DisarmTrailBe alongside DisarmPendingBe.
+//   3. Modified Detach(): added DisarmTrailBe alongside DisarmPendingBe (cleanup path).
+// PTT-COPIER-B12-T3 -- TradeCopierPanel.cs
+// B12 T3 CHANGES:
+//   1. Added _maxRiskDollars, _atrFraction (plain double), _riskDollarsBox, _atrFractionBox fields.
+//   2. Added BuildRiskAtrRow() -- Risk $ + ATR % spinners inside _contentPanel (last row).
+//   3. Added OnRiskUp/Down, OnRiskTextLostFocus, OnAtrFractionUp/Down, OnAtrFractionTextLostFocus.
+//   4. Added NotifyRiskChanged(), NotifyAtrFractionChanged().
+//   5. Modified BuildUI() to call BuildRiskAtrRow at end of _contentPanel.
+// PTT-COPIER-B12-T1 -- TradeCopierPanel.cs
+// B12 T1 CHANGES:
+//   1. Added _trimBuffer, _flattenBuffer, _beBuffer (plain int), _beState (BeState), new Button refs.
+//   2. Added BeState enum (Idle/Armed/Connected) -- 3-state FSM.
+//   3. Added BrushConnected frozen brush (blue, RGB 59/130/246).
+//   4. Added BuildBufferedButtonsRow() -- 3-row buffered button section inside _contentPanel.
+//   5. Added FormatBuffer() static helper.
+//   6. Added OnTrimUp/Down/Click, OnFlattenUp/Down/Click, OnBeUp/Down/Click handlers.
+//   7. Added UpdateBeLabel(), UpdateBeVisuals(BeState), OnBeConnected(string), GetRefPrice().
+//   8. Added OnCopyToggle, OnCancel2.
+//   9. Removed _beArmBtn/_beArmState/_beArmBufferBox; removed BuildBeArmRow/OnBEArmClick/
+//      UpdateBEArmVisuals/FlashBeFired; replaced OnPendingBeFiredDispatch target.
+//  10. Modified BuildUI() to wrap rows in _contentPanel; adds BufferedButtonsRow at [4.0].
+//  11. Modified DispatchShortcut Key.T/Key.F to pass GetRefPrice() and buffer.
+//  12. Added _isCollapsed, _collapseToggleBtn, _contentPanel (T2 fields, declared here for T2).
+//      NOTE: _contentPanel referenced by T2 (BuildCollapsibleHeader/OnCollapseClick) -- T2 fields
+//      are declared here so that T1 can wrap rows in _contentPanel.
+// PTT-COPIER-B11-T1 -- TradeCopierPanel.cs
 // ChartTrader row injection surface. UserControl embedded in ChartTrader Grid (B7).
 // Zero order creation. All order flow through CopyEngine.
 // Jane Street rules: JS-001, JS-021, JS-023 -- no lock, Dispatcher.InvokeAsync only.
@@ -43,9 +91,16 @@
 //   7. OnChartMouseDown: fires limit order on chart click when armed (CYC=4).
 //   8. OnBuyToggleClick / OnSellToggleClick: set _clickBuy volatile flag.
 //   9. Detach(): unregisters click trader on panel teardown.
+//
+// B11 T1 CHANGES:
+//   1. SetStatusText(): internal helper for SIM101 diag text display.
+//   2. OnChartKeyDown(): PreviewKeyDown handler for Ctrl+Shift shortcut dispatch.
+//   3. DispatchShortcut(): switch-based dispatch to engine methods (T/F/C/B).
+//   4. Removed BuildDiagRow, OnDiagGap001d, OnDiagGap002 (DW-B10-01 CLOSED).
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -88,14 +143,42 @@ namespace PropTraderTools
         private RadioButton _signalModeBtn = null;
         private RadioButton _mirrorModeBtn = null;
 
-        // B10 T2 -- Pending BE arm fields (UI-thread-only; plain types, no volatile)
-        private Button  _beArmBtn       = null;
-        private bool    _beArmState     = false;
-        private TextBox _beArmBufferBox = null;
-
         // B10 T3 -- Tighten Stop fields (UI-thread-only)
         private Button  _tightenBtn      = null;
         private TextBox _tightenTicksBox = null;
+
+        // B12 T1 -- Buffered button state (plain int; UI-thread-only; no volatile per NT8-003)
+        private int  _trimBuffer     = 1;
+        private int  _flattenBuffer  = 1;
+        private int  _beBuffer       = 1;
+
+        // B12 T1 -- BE 3-state FSM (UI-thread-only; no volatile)
+        private BeState _beState = BeState.Idle;
+
+        // B12 T1 -- Button refs for buffered section
+        private Button  _trimBtn2;
+        private Button  _flattenBtn2;
+        private Button  _beBtn2;
+        private Button  _cancelBtn2;
+        private Button  _copyToggleBtn2;
+
+        // B12 T2 -- Collapse state and refs (plain bool; UI-thread-only; no volatile per NT8-003)
+        private bool       _isCollapsed        = false;
+        private Button     _collapseToggleBtn;
+        private StackPanel _contentPanel;
+
+        // B12 T3 -- Risk/ATR spinners (plain double; UI-thread-only; no volatile per NT8-003)
+        private double  _maxRiskDollars = 200.0;
+        private double  _atrFraction    = 0.75;
+        private TextBox _riskDollarsBox;
+        private TextBox _atrFractionBox;
+
+        // B20-LANE-C T5 -- ATR display label (owned by Panel; set in BuildRiskAtrRow; nulled on GC after purge)
+        private TextBlock _atrDisplayLabel;
+
+        // B12 T1 -- Frozen semantic brush for BE CONNECTED border (MakeBrush = Freeze()d, JS-008)
+        // RGB (59, 130, 246) = blue. No hex string literal (JS-008).
+        private static readonly SolidColorBrush BrushConnected = MakeBrush(59, 130, 246);
 
         // -- frozen semantic brushes (JS-008: MakeBrush calls Freeze()) --
         private static SolidColorBrush MakeBrush(byte r, byte g, byte b)
@@ -173,7 +256,18 @@ namespace PropTraderTools
                 DailyPnlColor = value > 0 ? BrushPos : value < 0 ? BrushNeg : (Brush)BrushDim;
             }
 
-            public override string ToString() => Account?.Name ?? "";
+            // B20-LANE-C T3 -- DW-B17-ACCOUNT-NAME-01: strip !<suffix> at display layer only.
+            // Raw Account.Name is never modified. ?[0] guards null propagation when Account or Name
+            // is null. Split("!")[0] without ?[0] is UNSAFE (NullReferenceException). CYC=1.
+            public override string ToString() => Account?.Name?.Split('!')?[0] ?? "";
+        }
+
+        // B12 T1 -- BE 3-state FSM enum. UI-thread-only; no volatile backing needed.
+        private enum BeState
+        {
+            Idle,       // BE button shows "BE +N" -- inactive
+            Armed,      // After first click; engine.ArmPendingBe called; amber border
+            Connected   // After engine fires pending BE; blue border; live repricing active
         }
 
         // -- construction ---------------------------------------------------------
@@ -193,6 +287,94 @@ namespace PropTraderTools
         {
             _currentChart = chart;
         }
+
+        // B17 T2: Linear interpolation via ChartPanel.MaxValue / MinValue / ActualHeight.
+        // B17 fix: FindPriceCanvasPanel replaces FindVisualChild<ChartPanel> (DFS first-match
+        // returned ChartTrader sidebar: Width~139, MaxValue=0 -> rawPrice=0 -> no order placed).
+        // FindPriceCanvasPanel selects widest ChartPanel with MaxValue>0 = price canvas.
+        // CORRECTION_FACTOR = 1.0 (B16 T1 confirmed ContentPresenter.ActualHeight = ChartPanel.ActualHeight).
+        // NT8-029 replacement: RoundToTickSize absent -- AlignToTick via Math.Round AwayFromZero.
+        // CYC=5: cc null(1), panel null(2), height<=0(3), raw<=0(4), instrument null(5).
+        private static double GetPriceAtY(ChartControl cc, double y, Instrument instrument)
+        {
+            if (cc == null) return 0.0;                                        // guard (1)
+
+            var panel = FindPriceCanvasPanel(cc);    // B17 T2: heuristic selects widest ChartPanel with MaxValue>0
+            if (panel == null) return 0.0;                                     // guard (2)
+
+            double panelH = panel.ActualHeight;
+            if (panelH <= 0.0) return 0.0;                                     // guard (3): no divide by zero
+
+            // CORRECTION_FACTOR = 1.0: T1 confirmed ContentPresenter fills full ChartPanel height.
+            const double CORRECTION_FACTOR = 1.0;
+
+            double maxVal   = panel.MaxValue;
+            double minVal   = panel.MinValue;
+            double yRatio   = y / (panelH * CORRECTION_FACTOR);
+            double rawPrice = maxVal - yRatio * (maxVal - minVal);
+
+            if (rawPrice <= 0.0) return 0.0;                                   // guard (4): sanity
+
+            if (instrument == null) return 0.0;                                // guard (5)
+            return AlignToTick(rawPrice, instrument.MasterInstrument.TickSize);
+        }
+
+        // B16 T2: Pure-math linear Y-to-price interpolation helper.
+        // Internal static for xUnit test access via Reflection.
+        // Formula: rawPrice = maxVal - (y / (panelH * correctionFactor)) * (maxVal - minVal)
+        // CYC=2: height guard(1), raw guard(2).
+        internal static double LinearYToPrice(
+            double y, double panelH, double maxVal, double minVal, double correctionFactor)
+        {
+            if (panelH <= 0.0) return 0.0;                                     // guard (1)
+            double yRatio   = y / (panelH * correctionFactor);
+            double rawPrice = maxVal - yRatio * (maxVal - minVal);
+            if (rawPrice <= 0.0) return 0.0;                                   // guard (2)
+            return rawPrice;
+        }
+
+        // B16 T2: Pure-math tick alignment helper.
+        // Mirrors NT8-native RoundToTickSize semantics via Math.Round AwayFromZero.
+        // Internal static for xUnit test access via Reflection.
+        // CYC=2: tickSize guard(1), straight-line(2).
+        internal static double AlignToTick(double raw, double tickSize)
+        {
+            if (tickSize <= 0.0) return raw;                                    // guard (1)
+            return Math.Round(raw / tickSize, MidpointRounding.AwayFromZero) * tickSize;
+        }
+
+        // B17 T2 Option A: Walk full visual tree under root; return the ChartPanel with
+        // MaxValue > 0 and largest ActualWidth. Reliably selects the price canvas panel
+        // rather than the ChartTrader sidebar (Width~139, MaxValue=0 -- DFS first-match victim).
+        // T1 F5 confirmed: only one ChartPanel exists (W=931.33, Max=7633.34) -- returns it directly.
+        // CYC=5: root null(1), while loop(2), type+predicate(3), for loop(4), child null(5).
+        private static ChartPanel FindPriceCanvasPanel(DependencyObject root)
+        {
+            if (root == null) return null;                                 // guard (1)
+            ChartPanel best  = null;
+            double     bestW = 0.0;
+            var        stack = new Stack<DependencyObject>();
+            stack.Push(root);
+
+            while (stack.Count > 0)                                        // branch (2): loop
+            {
+                var node = stack.Pop();
+                var cp = node as ChartPanel;
+                if (cp != null && cp.MaxValue > 0 && cp.ActualWidth > bestW)  // branch (3): predicate
+                {
+                    best  = cp;
+                    bestW = cp.ActualWidth;
+                }
+                int n = VisualTreeHelper.GetChildrenCount(node);
+                for (int i = 0; i < n; i++)                                // branch (4): child loop
+                {
+                    var child = VisualTreeHelper.GetChild(node, i) as DependencyObject;
+                    if (child != null) stack.Push(child);                  // branch (5): null guard
+                }
+            }
+            return best;
+        }
+
 
         public void SetInstrument(Instrument instrument)
         {
@@ -217,19 +399,23 @@ namespace PropTraderTools
             foreach (var item in _followerItems)
                 if (item.Account != null)
                     item.Account.AccountItemUpdate -= OnAccountItemUpdate;
+            _engine.DisarmPendingBe();
+            _engine.DisarmTrailBe();   // B14 T1
+            _engine.CopyEnabledChanged -= OnCopyEnabledChanged;
             _instrument    = null;
             _leaderAccount = null;
         }
 
         // -- Layer 3 live state (V04) -- called on UI thread only -----------------
+        // B12 T1: updated to use new _copyToggleBtn2, _flattenBtn2, _cancelBtn2, _trimBtn2, _beBtn2.
         // CYC=5: 5 ternary branches, no control flow.
         private void UpdateButtonColors(bool hasPosition, bool hasEntries)
         {
-            _copyToggleBtn.Background = _copyEnabled ? BrushActive   : BrushInactive;
-            _flattenBtn.Background    = hasPosition  ? BrushDanger   : BrushInactive;
-            _cancelBtn.Background     = hasEntries   ? BrushDanger   : BrushInactive;
-            _trimBtn.Background       = hasPosition  ? BrushCaution  : BrushInactive;
-            _beBtn.Background         = hasPosition  ? BrushActive   : BrushInactive;
+            if (_copyToggleBtn2 != null) _copyToggleBtn2.Background = _copyEnabled ? BrushActive   : BrushInactive;
+            if (_flattenBtn2    != null) _flattenBtn2.Background    = hasPosition  ? BrushDanger   : BrushInactive;
+            if (_cancelBtn2     != null) _cancelBtn2.Background     = hasEntries   ? BrushDanger   : BrushInactive;
+            if (_trimBtn2       != null) _trimBtn2.Background       = hasPosition  ? BrushCaution  : BrushInactive;
+            if (_beBtn2         != null) _beBtn2.Background         = hasPosition  ? BrushActive   : BrushInactive;
         }
 
         // CYC=1: single null+instrument filter guard.
@@ -257,6 +443,12 @@ namespace PropTraderTools
             if (_followersDropDown != null)
                 _followersDropDown.ItemsSource = _followerItems;
             UpdateDropDownHeader();
+            // B13 T2: push initial panel values to AtrSizingEngine at startup.
+            // CopyEngine.UpdateAtrFraction / UpdateMaxRisk are null-guarded;
+            // if _atrEngine is null (not yet attached) they are silent no-ops.
+            NotifyRiskChanged();
+            NotifyAtrFractionChanged();
+            _engine.CopyEnabledChanged += OnCopyEnabledChanged;
         }
 
         // -- live P&L push from NT8 -----------------------------------------------
@@ -276,12 +468,13 @@ namespace PropTraderTools
         }
 
         // -- UI construction -------------------------------------------------------
+        // B12 T1: restructured -- rows wrapped in _contentPanel; buffered buttons at [4.0];
+        //         old 4-column actionGrid and _copyToggleBtn removed.
         private void BuildUI()
         {
             var root = new StackPanel { Margin = new Thickness(2) };
 
-            // --- Followers checkmark dropdown ---
-            // Header text is always live state: "0 selected" / "2 selected"
+            // --- Followers checkmark dropdown (stays above _contentPanel) ---
             _followersDropDown = new ComboBox
             {
                 Margin     = new Thickness(0, 0, 0, 2),
@@ -291,7 +484,7 @@ namespace PropTraderTools
             _followersDropDown.ItemTemplate = BuildCheckItemTemplate();
             root.Children.Add(_followersDropDown);
 
-            // --- Apply Rule button (non-color-coded -- keeps NTButtonStyle) ---
+            // --- Apply Rule button ---
             var applyBtn = new Button { Content = "Apply Rule", Margin = new Thickness(0, 2, 0, 2) };
             applyBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             applyBtn.Click += OnApplyRule;
@@ -303,71 +496,27 @@ namespace PropTraderTools
             sep.BorderThickness = new Thickness(0, 1, 0, 0);
             root.Children.Add(sep);
 
-            // --- Copy toggle (color-coded -- no NTButtonStyle) ---
-            _copyToggleBtn = new Button
-            {
-                Content    = "Copy OFF",
-                Margin     = new Thickness(0, 2, 0, 2),
-                Background = BrushInactive
-            };
-            _copyToggleBtn.Click += OnToggle;
-            root.Children.Add(_copyToggleBtn);
+            // B12 T2: Collapse header row (above _contentPanel; always visible)
+            BuildCollapsibleHeader(root);
 
-            // --- Action buttons: Trim | Flatten | Cancel | BE cluster ---
-            var actionGrid = new UniformGrid { Columns = 4, Margin = new Thickness(0, 2, 0, 2) };
+            // B12 T1/T2: _contentPanel wraps all collapsible content rows
+            _contentPanel = new StackPanel();
 
-            // Color-coded action buttons: no NTButtonStyle (prevents Background override)
-            _trimBtn = new Button { Content = "Trim 1/2", Background = BrushInactive };
-            _trimBtn.Click += OnTrim;
-            actionGrid.Children.Add(_trimBtn);
+            // [4.0] B12 T1: Buffered button section (Trim | Flatten | Cancel | BE | Copy toggle)
+            BuildBufferedButtonsRow(_contentPanel);
 
-            _flattenBtn = new Button { Content = "Flatten", Background = BrushInactive };
-            _flattenBtn.Click += OnFlatten;
-            actionGrid.Children.Add(_flattenBtn);
-
-            _cancelBtn = new Button { Content = "Cancel", Background = BrushInactive };
-            _cancelBtn.Click += OnCancel;
-            actionGrid.Children.Add(_cancelBtn);
-
-            var beCluster = new StackPanel { Orientation = Orientation.Horizontal };
-            _beBtn = new Button { Content = "BE", Margin = new Thickness(0, 0, 2, 0), Background = BrushInactive };
-            _beBtn.Click += OnBreakEven;
-            _beBufferBox = new TextBox
-            {
-                Text = "2",
-                Width = 28,
-                VerticalContentAlignment = VerticalAlignment.Center
-            };
-            var tksLabel = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2, 0, 0, 0)
-            };
-            tksLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
-            beCluster.Children.Add(_beBtn);
-            beCluster.Children.Add(_beBufferBox);
-            beCluster.Children.Add(tksLabel);
-            actionGrid.Children.Add(beCluster);
-
-            root.Children.Add(actionGrid);
-
-            // --- Status line (live state, always visible) ---
+            // --- Status line ---
             _statusText = new TextBlock { Text = "No instrument", Margin = new Thickness(0, 2, 0, 0) };
             _statusText.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
-            root.Children.Add(_statusText);
+            _contentPanel.Children.Add(_statusText);
 
-            // B9 T2: Click Trader row -- appended last so it sits below status line
-            BuildClickTraderRow(root);
+            // B9 T2: Click Trader row
+            BuildClickTraderRow(_contentPanel);
 
             // B9 T3: Copy mode row (Signal / Mirror radio buttons)
-            BuildModeRow(root);
-
-            // B10 T2: Arm BE row (pending BE arm/disarm + buffer ticks TextBox)
-            BuildBeArmRow(root);
+            BuildModeRow(_contentPanel);
 
             // B10 T3: Tighten Stop cluster (button + ticks TextBox)
-            // _tightenTicksBox default 5 ticks; button content "~" is ASCII (ticket spec T3).
             var tightenRow = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -381,7 +530,7 @@ namespace PropTraderTools
             };
             _tightenBtn = new Button
             {
-                Content    = "~",
+                Content    = "Tighten",
                 Margin     = new Thickness(0, 0, 4, 0),
                 Background = BrushInactive
             };
@@ -397,14 +546,15 @@ namespace PropTraderTools
             tightenRow.Children.Add(_tightenBtn);
             tightenRow.Children.Add(_tightenTicksBox);
             tightenRow.Children.Add(tightenLabel);
-            root.Children.Add(tightenRow);
+            _contentPanel.Children.Add(tightenRow);
 
-            // DIAG -- GAP-001d + GAP-002 Sim101 test buttons (REMOVE AFTER TESTS)
-            BuildDiagRow(root);
+            // B12 T3: Risk $ + ATR % spinner row (last row in _contentPanel)
+            BuildRiskAtrRow(_contentPanel);
 
+            root.Children.Add(_contentPanel);
             Content = root;
 
-            // V04: ensure consistent initial state (all action buttons start grey)
+            // V04: ensure consistent initial state
             UpdateButtonColors(false, false);
         }
 
@@ -455,93 +605,345 @@ namespace PropTraderTools
             root.Children.Add(row);
         }
 
-        // B10 T2 -- BuildBeArmRow: builds "Arm BE" row with button + buffer ticks TextBox.
-        // CYC=1: straight-line widget construction, no branches.
-        // _beArmBtn uses color-coded brushes (BrushCaution=armed, BrushInactive=inactive).
-        private void BuildBeArmRow(StackPanel root)
-        {
-            var row = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin      = new Thickness(0, 4, 0, 0)
-            };
-            _beArmBufferBox = new TextBox
-            {
-                Text  = "2",
-                Width = 30,
-                VerticalContentAlignment = VerticalAlignment.Center
-            };
-            _beArmBtn = new Button
-            {
-                Content    = "Arm BE",
-                Margin     = new Thickness(0, 0, 4, 0),
-                Background = BrushInactive
-            };
-            _beArmBtn.Click += OnBEArmClick;
-            row.Children.Add(_beArmBtn);
-            row.Children.Add(_beArmBufferBox);
-            root.Children.Add(row);
-        }
-
-        // B10 T2 -- OnBEArmClick: toggles arm/disarm by calling engine methods.
-        // CYC=3: instrument null(1), account null(2), armed toggle(3).
-        private void OnBEArmClick(object sender, RoutedEventArgs e)
-        {
-            if (_instrument == null)                           // (1)
-                return;
-            if (_leaderAccount == null)                        // (2)
-                return;
-            if (!_beArmState)                                  // (3)
-            {
-                int buf = int.TryParse(_beArmBufferBox.Text, out var b) ? b : 2;
-                _engine.ArmPendingBe(_instrument, _leaderAccount, buf);
-                _beArmState = true;
-                UpdateBEArmVisuals(armed: true);
-            }
-            else
-            {
-                _engine.DisarmPendingBe();
-                _beArmState = false;
-                UpdateBEArmVisuals(armed: false);
-            }
-        }
-
-        // B10 T2 -- UpdateBEArmVisuals: updates _beArmBtn background and label for 2 states.
-        // CYC=2: null guard(1), state branch(2).
-        private void UpdateBEArmVisuals(bool armed)
-        {
-            if (_beArmBtn == null)                             // (1)
-                return;
-            _beArmBtn.Content    = armed ? "BE Armed" : "Arm BE";  // (2)
-            _beArmBtn.Background = armed ? BrushCaution : BrushInactive;
-        }
-
-        // B10 T2 -- OnPendingBeFiredDispatch: marshals PendingBeFired from NT8 account bg thread to UI.
+        // B12 T1 -- OnPendingBeFiredDispatch: marshals PendingBeFired from NT8 account bg thread to UI.
+        // B12 T1: replaced FlashBeFired call with OnBeConnected call.
         // CYC=1: straight-line Dispatcher.InvokeAsync, no branches.
         // Called on NT8 account background thread -- never touch UI directly here.
         private void OnPendingBeFiredDispatch(string instr)
         {
-            Dispatcher.InvokeAsync(() => FlashBeFired(instr));
+            Dispatcher.InvokeAsync(() => OnBeConnected(instr));
         }
 
-        // B10 T2 -- FlashBeFired: briefly flashes the Arm BE button green when BE fires.
-        // CYC=2: null guard(1), await scheduling(2).
-        // async void: UI event handler invoked via Dispatcher.InvokeAsync (explicitly allowed per arch plan Sec 5.6).
-        private async void FlashBeFired(string instr)
+        // B12 T1 -- BuildBufferedButtonsRow: builds 3-row buffered button section inside _contentPanel.
+        // CYC=1: straight-line construction, no branches.
+        // Row 1: Trim cluster | Flatten cluster
+        // Row 2: Cancel | BE cluster
+        // Row 3: Copy toggle (full width)
+        private void BuildBufferedButtonsRow(StackPanel root)
         {
-            if (_beArmBtn == null)                             // (1)
-                return;
-            _beArmBtn.Content    = "BE Fired!";
-            _beArmBtn.Background = BrushActive;               // green -- transient flash state
-            _beArmState = false;
-            await System.Threading.Tasks.Task.Delay(800);     // (2) 800ms flash duration
-            _beArmBtn.Content    = "Arm BE";
-            _beArmBtn.Background = BrushInactive;             // grey -- back to inactive
+            // Row 1: Trim | Flatten
+            var row1 = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 2) };
+
+            // Col 0: Trim cluster
+            var trimCluster = new DockPanel { LastChildFill = true };
+            var trimArrows = new Grid();
+            trimArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            trimArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var trimUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Width = 18, Height = 12 };
+            var trimDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Width = 18, Height = 12 };
+            trimUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            trimDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            trimUp.Click += OnTrimUp;
+            trimDn.Click += OnTrimDown;
+            Grid.SetRow(trimUp, 0);
+            Grid.SetRow(trimDn, 1);
+            trimArrows.Children.Add(trimUp);
+            trimArrows.Children.Add(trimDn);
+            DockPanel.SetDock(trimArrows, Dock.Right);
+            _trimBtn2 = new Button { Content = FormatBuffer("Trim", _trimBuffer), Background = BrushInactive };
+            _trimBtn2.Click += OnTrimClick;
+            trimCluster.Children.Add(trimArrows);
+            trimCluster.Children.Add(_trimBtn2);
+            row1.Children.Add(trimCluster);
+
+            // Col 1: Flatten cluster
+            var flatCluster = new DockPanel { LastChildFill = true };
+            var flatArrows = new Grid();
+            flatArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            flatArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var flatUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Width = 18, Height = 12 };
+            var flatDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Width = 18, Height = 12 };
+            flatUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            flatDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            flatUp.Click += OnFlattenUp;
+            flatDn.Click += OnFlattenDown;
+            Grid.SetRow(flatUp, 0);
+            Grid.SetRow(flatDn, 1);
+            flatArrows.Children.Add(flatUp);
+            flatArrows.Children.Add(flatDn);
+            DockPanel.SetDock(flatArrows, Dock.Right);
+            _flattenBtn2 = new Button { Content = FormatBuffer("Flatten", _flattenBuffer), Background = BrushInactive };
+            _flattenBtn2.Click += OnFlattenClick;
+            flatCluster.Children.Add(flatArrows);
+            flatCluster.Children.Add(_flattenBtn2);
+            row1.Children.Add(flatCluster);
+
+            root.Children.Add(row1);
+
+            // Row 2: Cancel | BE cluster
+            var row2 = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 2) };
+
+            // Col 0: Cancel
+            _cancelBtn2 = new Button { Content = "Cancel", Background = BrushInactive };
+            _cancelBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _cancelBtn2.Click += OnCancel2;
+            row2.Children.Add(_cancelBtn2);
+
+            // Col 1: BE cluster
+            var beCluster = new DockPanel { LastChildFill = true };
+            var beArrows = new Grid();
+            beArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            beArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var beUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Width = 18, Height = 12 };
+            var beDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Width = 18, Height = 12 };
+            beUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            beDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            beUp.Click += OnBeUp;
+            beDn.Click += OnBeDown;
+            Grid.SetRow(beUp, 0);
+            Grid.SetRow(beDn, 1);
+            beArrows.Children.Add(beUp);
+            beArrows.Children.Add(beDn);
+            DockPanel.SetDock(beArrows, Dock.Right);
+            _beBtn2 = new Button { Content = FormatBuffer("BE", _beBuffer), Background = BrushInactive };
+            _beBtn2.Click += OnBeClick;
+            beCluster.Children.Add(beArrows);
+            beCluster.Children.Add(_beBtn2);
+            row2.Children.Add(beCluster);
+
+            root.Children.Add(row2);
+
+            // Row 3: Copy toggle (full width)
+            _copyToggleBtn2 = new Button
+            {
+                Content    = "\u25CF COPY OFF",
+                Background = BrushInactive,
+                Margin     = new Thickness(0, 2, 0, 2)
+            };
+            _copyToggleBtn2.Click += OnCopyToggle;
+            root.Children.Add(_copyToggleBtn2);
+        }
+
+        // B12 T1 -- FormatBuffer: formats buffer label for display on a button. CYC=1. Static, no state.
+        // Example: FormatBuffer("Trim", 1) -> "Trim +1"
+        private static string FormatBuffer(string name, int ticks)
+        {
+            return name + " +" + ticks;
+        }
+
+        // B12 T1 -- OnTrimUp: increment _trimBuffer, clamp, update label. CYC=1.
+        private void OnTrimUp(object sender, RoutedEventArgs e)
+        {
+            _trimBuffer = Math.Max(Math.Min(_trimBuffer + 1, 20), 0);   // no Math.Clamp (NT8 .NET 4.8)
+            if (_trimBtn2 != null) _trimBtn2.Content = FormatBuffer("Trim", _trimBuffer);
+        }
+
+        // B12 T1 -- OnTrimDown: decrement _trimBuffer, clamp, update label. CYC=1.
+        private void OnTrimDown(object sender, RoutedEventArgs e)
+        {
+            _trimBuffer = Math.Max(Math.Min(_trimBuffer - 1, 20), 0);
+            if (_trimBtn2 != null) _trimBtn2.Content = FormatBuffer("Trim", _trimBuffer);
+        }
+
+        // B19 T1 -- OnTrimClick: calls engine Trim overload with ask+bid anchors or market fallback. CYC=4.
+        private void OnTrimClick(object sender, RoutedEventArgs e)
+        {
+            if (_instrument == null) return;                                               // (1)
+            double ask = GetAsk();
+            double bid = GetBid();
+            if (ask <= 0 || bid <= 0 || _trimBuffer == 0)                                 // (2)(3)
+                _engine.Trim(_instrument);
+            else                                                                           // (4)
+                _engine.Trim(_instrument, _trimBuffer, ask, bid);
+        }
+
+        // B12 T1 -- OnFlattenUp: increment _flattenBuffer, clamp, update label. CYC=1.
+        private void OnFlattenUp(object sender, RoutedEventArgs e)
+        {
+            _flattenBuffer = Math.Max(Math.Min(_flattenBuffer + 1, 20), 0);
+            if (_flattenBtn2 != null) _flattenBtn2.Content = FormatBuffer("Flatten", _flattenBuffer);
+        }
+
+        // B12 T1 -- OnFlattenDown: decrement _flattenBuffer, clamp, update label. CYC=1.
+        private void OnFlattenDown(object sender, RoutedEventArgs e)
+        {
+            _flattenBuffer = Math.Max(Math.Min(_flattenBuffer - 1, 20), 0);
+            if (_flattenBtn2 != null) _flattenBtn2.Content = FormatBuffer("Flatten", _flattenBuffer);
+        }
+
+        // B19 T1 -- OnFlattenClick: calls engine Flatten overload with ask+bid anchors or market fallback. CYC=4.
+        private void OnFlattenClick(object sender, RoutedEventArgs e)
+        {
+            if (_instrument == null) return;                                               // (1)
+            double ask = GetAsk();
+            double bid = GetBid();
+            if (ask <= 0 || bid <= 0 || _flattenBuffer == 0)                              // (2)(3)
+                _engine.Flatten(_instrument);
+            else                                                                           // (4)
+                _engine.Flatten(_instrument, _flattenBuffer, ask, bid);
+        }
+
+        // B12 T1 -- OnBeUp: increment _beBuffer, clamp, live reprice if Connected. CYC=2.
+        private void OnBeUp(object sender, RoutedEventArgs e)
+        {
+            _beBuffer = Math.Max(Math.Min(_beBuffer + 1, 20), 0);       // no Math.Clamp
+            UpdateBeLabel();
+            if (_beState == BeState.Connected && _instrument != null)   // (2)
+                _engine.BreakEven(_instrument, _beBuffer);
+        }
+
+        // B12 T1 -- OnBeDown: decrement _beBuffer, clamp, live reprice if Connected. CYC=2.
+        private void OnBeDown(object sender, RoutedEventArgs e)
+        {
+            _beBuffer = Math.Max(Math.Min(_beBuffer - 1, 20), 0);
+            UpdateBeLabel();
+            if (_beState == BeState.Connected && _instrument != null)
+                _engine.BreakEven(_instrument, _beBuffer);
+        }
+
+        // B12 T1 -- OnBeClick: 3-state FSM transition. CYC=5.
+        private void OnBeClick(object sender, RoutedEventArgs e)
+        {
+            if (_instrument == null)    return;   // (1)
+            if (_leaderAccount == null) return;   // (2)
+            switch (_beState)
+            {
+                case BeState.Idle:                // (3)
+                    _engine.ArmPendingBe(_instrument, _leaderAccount, _beBuffer);
+                    _beState = BeState.Armed;
+                    UpdateBeVisuals(BeState.Armed);
+                    break;
+                case BeState.Armed:               // (4)
+                    _engine.DisarmPendingBe();
+                    _beState = BeState.Idle;
+                    UpdateBeVisuals(BeState.Idle);
+                    break;
+                case BeState.Connected:           // (5)
+                    _engine.DisarmPendingBe();
+                    _engine.DisarmTrailBe();          // B14 T1 -- disarm continuous trail
+                    _beState = BeState.Idle;
+                    UpdateBeVisuals(BeState.Idle);
+                    break;
+            }
+        }
+
+        // B12 T1 -- UpdateBeLabel: sets _beBtn2 label. CYC=1.
+        private void UpdateBeLabel()
+        {
+            if (_beBtn2 != null) _beBtn2.Content = FormatBuffer("BE", _beBuffer);
+        }
+
+        // B12 T1 -- UpdateBeVisuals: sets BE button border and content per state. CYC=3.
+        private void UpdateBeVisuals(BeState state)
+        {
+            if (_beBtn2 == null) return;
+            switch (state)
+            {
+                case BeState.Idle:                                                    // (1)
+                    _beBtn2.Content         = FormatBuffer("BE", _beBuffer);
+                    _beBtn2.BorderBrush     = null;
+                    _beBtn2.BorderThickness = new Thickness(0);
+                    break;
+                case BeState.Armed:                                                   // (2)
+                    _beBtn2.Content         = "BE Armed";
+                    _beBtn2.BorderBrush     = BrushCaution;
+                    _beBtn2.BorderThickness = new Thickness(2);
+                    break;
+                case BeState.Connected:                                               // (3)
+                    _beBtn2.Content         = "BE Live";
+                    _beBtn2.BorderBrush     = BrushConnected;
+                    _beBtn2.BorderThickness = new Thickness(2);
+                    break;
+            }
+        }
+
+        // B14 T1 -- extended: arm continuous trail watcher after initial BE placement.
+        // CYC=3: _beBtn2 null(1), _instrument null(2), _leaderAccount null(3-inline with _instrument check).
+        private void OnBeConnected(string instr)
+        {
+            if (_beBtn2 == null) return;                                              // (1)
+            _beState = BeState.Connected;                                             // (2)
+            UpdateBeVisuals(BeState.Connected);
+            if (_instrument != null)
+            {
+                _engine.BreakEven(_instrument, _beBuffer);
+                if (_leaderAccount != null)
+                    _engine.ArmTrailBe(_instrument, _leaderAccount, _beBuffer);      // B14 T1
+            }
+        }
+
+        // B19 T1 -- GetAsk: returns current ask price from _instrument.MarketData.Ask.Price.
+        // NT8-032: MarketData.Ask is MarketDataEventArgs; .Price is the double value.
+        // Replaces GetRefPrice() (which used md.Last.Price -- wrong anchor). CYC=4.
+        private double GetAsk()
+        {
+            if (_instrument == null) return 0.0;                   // (1) guard
+            var md = _instrument.MarketData;
+            if (md == null)   return 0.0;                          // (2) guard
+            var ask = md.Ask;
+            if (ask == null)  return 0.0;                          // (3) guard
+            return ask.Price;                                      // (4) double
+        }
+
+        // B19 T1 -- GetBid: returns current bid price from _instrument.MarketData.Bid.Price.
+        // NT8-032: MarketData.Bid is MarketDataEventArgs; .Price is the double value.
+        // Mirrors GetAsk() null-guard chain exactly. CYC=4.
+        private double GetBid()
+        {
+            if (_instrument == null) return 0.0;                   // (1) guard
+            var md = _instrument.MarketData;
+            if (md == null)   return 0.0;                          // (2) guard
+            var bid = md.Bid;
+            if (bid == null)  return 0.0;                          // (3) guard
+            return bid.Price;                                      // (4) double
+        }
+
+        // B12 T1 -- OnCopyToggle: toggles _copyEnabled. CYC=2.
+        private void OnCopyToggle(object sender, RoutedEventArgs e)
+        {
+            _copyEnabled = !_copyEnabled;                                             // (1)
+            _engine.SetEnabled(_copyEnabled);
+            if (_copyToggleBtn2 == null) return;
+            _copyToggleBtn2.Content    = _copyEnabled ? "\u25CF COPY ON" : "\u25CF COPY OFF";  // (2)
+            _copyToggleBtn2.Background = _copyEnabled ? BrushActive : BrushInactive;
+        }
+
+        // B20-LANE-C T3 -- OnCopyEnabledChanged: syncs Panel copy state from engine event.
+        // CYC=2: null guard (1) + Dispatcher.InvokeAsync UI update (2).
+        // JS-021: no lock. JS-023: Dispatcher.InvokeAsync for UI thread marshaling.
+        private void OnCopyEnabledChanged(bool enabled)
+        {
+            _copyEnabled = enabled;
+            if (_copyToggleBtn2 == null) return;
+            Dispatcher.InvokeAsync(() =>
+            {
+                _copyToggleBtn2.Content    = enabled ? "\u25CF COPY ON" : "\u25CF COPY OFF";
+                _copyToggleBtn2.Background = enabled ? BrushActive : BrushInactive;
+            });
+        }
+
+        // B12 T1 -- OnCancel2: cancels pending entries. CYC=1.
+        private void OnCancel2(object sender, RoutedEventArgs e)
+        {
+            if (_instrument != null) _engine.CancelPendingEntries(_instrument);
+        }
+
+        // B12 T2 -- BuildCollapsibleHeader: builds collapse header row. CYC=1.
+        private void BuildCollapsibleHeader(StackPanel root)
+        {
+            _collapseToggleBtn = new Button
+            {
+                Content = "\u25BC PTT",
+                Margin  = new Thickness(0, 0, 0, 2)
+            };
+            _collapseToggleBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _collapseToggleBtn.Click += OnCollapseClick;
+            root.Children.Add(_collapseToggleBtn);
+        }
+
+        // B12 T2 -- OnCollapseClick: toggles _isCollapsed and sets _contentPanel.Visibility. CYC=2.
+        private void OnCollapseClick(object sender, RoutedEventArgs e)
+        {
+            _isCollapsed = !_isCollapsed;                                              // (1)
+            if (_contentPanel != null)                                                 // (2)
+                _contentPanel.Visibility = _isCollapsed ? Visibility.Collapsed : Visibility.Visible;
+            if (_collapseToggleBtn != null)
+                _collapseToggleBtn.Content = _isCollapsed ? "\u25B2 PTT" : "\u25BC PTT";
         }
 
         // B10 T3 -- OnTightenStop: tighten stop button click handler.
         // CYC=3: instrument null(1), parse fallback(2), engine call(3).
-        // NT8-003: no Math.Clamp (banned in .NET 4.8). Math.Max/Min used instead.
+        // NT8-034: no Math.Clamp (.NET 4.8 version constraint -- not the NT8-003 volatile ban).
         // JS-021: no lock -- _engine.TightenStop iterates ConcurrentBag (lock-free).
         private void OnTightenStop(object sender, RoutedEventArgs e)
         {
@@ -805,7 +1207,10 @@ namespace PropTraderTools
                 : MakeBrush(28, 33, 51);    // dark surface color
         }
 
-        // CYC=4 -- four null/type guards; try/catch does NOT add CYC.
+        // CYC=6 -- five guards + ternary; try/catch does NOT add CYC.
+        // B17 T2: FindPriceCanvasPanel selects price canvas (MaxValue>0, widest panel).
+        // B17 Amendment: PreviewMouseDown wired in TradeCopierAddOn (tunnel phase -- NT8 suppresses MouseDown).
+        // F5 confirmed 2026-07-15: order placed at exact Y-pixel price (7491.00). GetPriceAtY correct.
         // JS-023: _clickArmed / _clickBuy are volatile reads (no lock needed).
         // NT8 constraint: "PTT-Click" signal name starts with "PTT-".
         internal void OnChartMouseDown(object sender, MouseButtonEventArgs e)
@@ -816,14 +1221,14 @@ namespace PropTraderTools
             var chartControl = sender as ChartControl;
             if (chartControl   == null) return;         // guard (4)
 
-            // NT8 constraint: ChartControl.GetValueByY does not exist in this NT8 version.
-            // DW-B8-04 (click trader) deferred -- price lookup via visual tree / scale panel pending.
-            // Temporary: use 0.0 so file compiles; click-trader will not fire valid orders until fixed.
-            double price  = 0.0;
-            _ = e.GetPosition(chartControl); // suppress unused-variable warning
-            bool   isBuy  = _clickBuy;                  // volatile read
-            int    qty    = CopyEngine.Instance.GetSuggestedQty(_instrument);
-            var    action = isBuy ? OrderAction.Buy : OrderAction.SellShort;
+            Point  mousePos  = e.GetPosition(chartControl);
+            double rawPrice  = GetPriceAtY(chartControl, mousePos.Y, _instrument);
+            if (rawPrice <= 0.0) return;                                 // guard (5): no valid price
+            double tickSize  = _instrument.MasterInstrument.TickSize;
+            double price     = Math.Round(rawPrice / tickSize) * tickSize;
+            bool   isBuy     = _clickBuy;                  // volatile read
+            int    qty       = CopyEngine.Instance.GetSuggestedQty(_instrument);
+            var    action    = isBuy ? OrderAction.Buy : OrderAction.SellShort;
 
             try
             {
@@ -833,9 +1238,9 @@ namespace PropTraderTools
                     OrderEntry.Manual,
                     TimeInForce.Day,
                     qty, price, 0, null,
-                    "PTT-Click",          // signal name -- starts with "PTT-" (NT8 constraint)
+                    "PTT-Click",
                     DateTime.MaxValue,
-                    null);
+                    (NinjaTrader.Cbi.CustomOrder)null);
             }
             catch (Exception ex)
             {
@@ -970,89 +1375,216 @@ namespace PropTraderTools
             });
         }
 
-        // -- DIAG: GAP-001d + GAP-002 Sim101 test row (REMOVE AFTER TESTS) --
-        // Two buttons that delegate to TradeCopierAddOn diagnostic methods.
-        // No permanent state. No effect on copy logic.
-        private void BuildDiagRow(StackPanel root)
+        // B11 T1: SIM101 temporary status text helper.
+        // Called from TradeCopierAddOn.OnChartKeyDiag via Dispatcher.InvokeAsync.
+        // Sets _statusText.Text directly on the UI thread.
+        // CYC=1: null guard only.
+        internal void SetStatusText(string text)
         {
-            var row = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin      = new Thickness(0, 6, 0, 0)
-            };
+            if (_statusText == null) return;
+            _statusText.Text = text;
+        }
 
-            var lbl = new TextBlock
+        // B11 T1: chart.PreviewKeyDown handler wired by TradeCopierAddOn.HookKeyShortcut().
+        // Fires on WPF UI thread -- no Dispatcher needed.
+        // CYC=3: instrument null guard (1), modifier guard (2), delegate to DispatchShortcut (3).
+        // Jane Street: guard-early, zero branches in the hot dispatch path.
+        internal void OnChartKeyDown(object sender, KeyEventArgs e)
+        {
+            if (_instrument == null) return;                   // guard (1)
+            if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift))
+                != (ModifierKeys.Control | ModifierKeys.Shift)) return;  // guard (2)
+            DispatchShortcut(e.Key);                           // guard (3): delegate
+        }
+
+        // B11 T1: Jane Street switch preferred over if/else chain.
+        // Cases: T=Trim, F=Flatten, C=CancelPendingEntries, B=BreakEven.
+        // B19 T1 -- DispatchShortcut: keyboard shortcuts dispatch to engine methods.
+        // Calls EXISTING CopyEngine public methods -- no new CopyEngine code added.
+        // CYC=5: switch entry (1) + 4 case arms (2,3,4,5).
+        // BE path reads _beBufferBox.Text for buffer ticks (UI-thread-safe; PreviewKeyDown is on UI thread).
+        // Key.T: Trim limit @ ask + buffer*tick (long) or bid - buffer*tick (short). Falls back to market on zero ask/bid.
+        // Key.F: Flatten limit @ ask + buffer*tick (long) or bid - buffer*tick (short). Same fallback.
+        private void DispatchShortcut(Key key)
+        {
+            switch (key)
             {
-                Text              = "Diag:",
+                case Key.T: _engine.Trim(_instrument, _trimBuffer, GetAsk(), GetBid());       break;
+                case Key.F: _engine.Flatten(_instrument, _flattenBuffer, GetAsk(), GetBid()); break;
+                case Key.C: _engine.CancelPendingEntries(_instrument);               break;
+                case Key.B:
+                    int buf = 2;
+                    int.TryParse(_beBufferBox.Text, out buf);
+                    _engine.BreakEven(_instrument, buf);
+                    break;
+            }
+        }
+
+        // B12 T3 -- BuildRiskAtrRow: builds Risk $ + ATR % spinner row. CYC=1: straight-line construction.
+        // Called from BuildUI() at end of _contentPanel.
+        private void BuildRiskAtrRow(StackPanel root)
+        {
+            var grid = new UniformGrid { Columns = 2, Margin = new Thickness(0, 4, 0, 0) };
+
+            // Col 0 -- Risk $ spinner
+            var col0 = new StackPanel { Orientation = Orientation.Horizontal };
+            var riskLabel = new TextBlock
+            {
+                Text              = "Risk $",
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin            = new Thickness(0, 0, 4, 0)
             };
-            lbl.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
-            row.Children.Add(lbl);
-
-            // GAP-001d button: tests acc.Change() on trailing stop
-            var gap001Btn = new Button
+            riskLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
+            _riskDollarsBox = new TextBox
             {
-                Content = "GAP-001d",
-                Width   = 68,
-                Height  = 22,
-                Margin  = new Thickness(0, 0, 4, 0)
+                Text  = _maxRiskDollars.ToString("F0"),
+                Width = 55,
+                VerticalContentAlignment = VerticalAlignment.Center
             };
-            gap001Btn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            gap001Btn.Click += OnDiagGap001d;
-            row.Children.Add(gap001Btn);
+            _riskDollarsBox.SetResourceReference(Control.StyleProperty, "NTTextBoxStyle");
+            _riskDollarsBox.LostFocus += OnRiskTextLostFocus;
+            var riskArrows = new Grid();
+            riskArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            riskArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var riskUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Height = 12 };
+            var riskDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Height = 12 };
+            riskUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            riskDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            riskUp.Click += OnRiskUp;
+            riskDn.Click += OnRiskDown;
+            Grid.SetRow(riskUp, 0);
+            Grid.SetRow(riskDn, 1);
+            riskArrows.Children.Add(riskUp);
+            riskArrows.Children.Add(riskDn);
+            col0.Children.Add(riskLabel);
+            col0.Children.Add(_riskDollarsBox);
+            col0.Children.Add(riskArrows);
+            grid.Children.Add(col0);
 
-            // GAP-002 button: tests Instrument.MarketData subscription in AddOn context
-            var gap002Btn = new Button
+            // Col 1 -- ATR % spinner
+            var col1 = new StackPanel { Orientation = Orientation.Horizontal };
+            var atrLabel = new TextBlock
             {
-                Content = "GAP-002",
-                Width   = 64,
-                Height  = 22
+                Text              = "ATR %",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin            = new Thickness(0, 0, 4, 0)
             };
-            gap002Btn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            gap002Btn.Click += OnDiagGap002;
-            row.Children.Add(gap002Btn);
+            atrLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
+            _atrFractionBox = new TextBox
+            {
+                Text  = _atrFraction.ToString("F2"),
+                Width = 55,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            _atrFractionBox.SetResourceReference(Control.StyleProperty, "NTTextBoxStyle");
+            _atrFractionBox.LostFocus += OnAtrFractionTextLostFocus;
+            var atrArrows = new Grid();
+            atrArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            atrArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var atrUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Height = 12 };
+            var atrDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Height = 12 };
+            atrUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            atrDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            atrUp.Click += OnAtrFractionUp;
+            atrDn.Click += OnAtrFractionDown;
+            Grid.SetRow(atrUp, 0);
+            Grid.SetRow(atrDn, 1);
+            atrArrows.Children.Add(atrUp);
+            atrArrows.Children.Add(atrDn);
+            col1.Children.Add(atrLabel);
+            col1.Children.Add(_atrFractionBox);
+            col1.Children.Add(atrArrows);
+            grid.Children.Add(col1);
 
-            root.Children.Add(row);
+            root.Children.Add(grid);
+
+            var atrRow = new Border
+            {
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(2),
+                Padding         = new Thickness(4, 2, 4, 2),
+                Margin          = new Thickness(2)
+            };
+            _atrDisplayLabel = new TextBlock { Text = "ATR=-.-- pts -> stopTicks=-- -> qty=--" };
+            atrRow.Child = _atrDisplayLabel;
+            root.Children.Add(atrRow);
         }
 
-        // CYC=3: instrument guard (1) + Account.All loop (2) + null diagAcc guard (3)
-        private void OnDiagGap001d(object sender, RoutedEventArgs e)
+        // B20-LANE-C T5 -- SetAtrText: updates ATR display label from UpdateAtrOverlay via Dispatcher.InvokeAsync.
+        // CYC=2: null guard (1) + Text assignment (2). Runs on UI thread only (caller uses InvokeAsync).
+        // JS-021: no lock. Caller (TradeCopierAddOn.UpdateAtrOverlay) dispatches to UI thread before calling.
+        public void SetAtrText(string display)
         {
-            if (_instrument == null)
-            {
-                if (_statusText != null)
-                    _statusText.Text = "GAP-001d: need instrument -- open a chart first";
-                return;
-            }
-            NinjaTrader.Cbi.Account diagAcc = null;
-            foreach (var a in NinjaTrader.Cbi.Account.All)
-                if (a.Name.IndexOf("Sim", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                    { diagAcc = a; break; }
-            if (diagAcc == null)
-            {
-                if (_statusText != null)
-                    _statusText.Text = "GAP-001d: no Sim account found in Account.All";
-                return;
-            }
-            TradeCopierAddOn.RunGap001dTest(diagAcc, _instrument);
-            if (_statusText != null)
-                _statusText.Text = "GAP-001d: test started -- watch for MessageBox";
+            if (_atrDisplayLabel == null) return;
+            _atrDisplayLabel.Text = display;
         }
 
-        // CYC=2: null guard (1) + delegate to AddOn (2)
-        private void OnDiagGap002(object sender, RoutedEventArgs e)
+        // B12 T3 -- OnRiskUp: increment _maxRiskDollars, clamp, push. CYC=1.
+        private void OnRiskUp(object sender, RoutedEventArgs e)
         {
-            if (_instrument == null)
-            {
-                if (_statusText != null)
-                    _statusText.Text = "GAP-002: need instrument first";
-                return;
-            }
-            TradeCopierAddOn.RunGap002Test(_instrument);
-            if (_statusText != null)
-                _statusText.Text = "GAP-002: test started -- watch NT8 Output window";
+            _maxRiskDollars = Math.Max(Math.Min(_maxRiskDollars + 25.0, 1000.0), 10.0);  // no Math.Clamp (NT8 .NET 4.8)
+            if (_riskDollarsBox != null) _riskDollarsBox.Text = _maxRiskDollars.ToString("F0");
+            NotifyRiskChanged();
         }
-        // -- END DIAG --
+
+        // B12 T3 -- OnRiskDown: decrement _maxRiskDollars, clamp, push. CYC=1.
+        private void OnRiskDown(object sender, RoutedEventArgs e)
+        {
+            _maxRiskDollars = Math.Max(Math.Min(_maxRiskDollars - 25.0, 1000.0), 10.0);  // no Math.Clamp
+            if (_riskDollarsBox != null) _riskDollarsBox.Text = _maxRiskDollars.ToString("F0");
+            NotifyRiskChanged();
+        }
+
+        // B12 T3 -- OnRiskTextLostFocus: parse + clamp + push. CYC=3.
+        private void OnRiskTextLostFocus(object sender, RoutedEventArgs e)
+        {
+            double v;
+            if (!double.TryParse(_riskDollarsBox?.Text, out v)) return;              // (1) parse guard
+            v = Math.Max(Math.Min(v, 1000.0), 10.0);                                 // (2) clamp
+            _maxRiskDollars = v;
+            if (_riskDollarsBox != null) _riskDollarsBox.Text = v.ToString("F0");   // normalise display
+            NotifyRiskChanged();                                                      // (3) push
+        }
+
+        // B12 T3 -- OnAtrFractionUp: increment _atrFraction, clamp, push. CYC=1.
+        private void OnAtrFractionUp(object sender, RoutedEventArgs e)
+        {
+            _atrFraction = Math.Max(Math.Min(_atrFraction + 0.05, 3.00), 0.25);     // no Math.Clamp
+            if (_atrFractionBox != null) _atrFractionBox.Text = _atrFraction.ToString("F2");
+            NotifyAtrFractionChanged();
+        }
+
+        // B12 T3 -- OnAtrFractionDown: decrement _atrFraction, clamp, push. CYC=1.
+        private void OnAtrFractionDown(object sender, RoutedEventArgs e)
+        {
+            _atrFraction = Math.Max(Math.Min(_atrFraction - 0.05, 3.00), 0.25);     // no Math.Clamp
+            if (_atrFractionBox != null) _atrFractionBox.Text = _atrFraction.ToString("F2");
+            NotifyAtrFractionChanged();
+        }
+
+        // B12 T3 -- OnAtrFractionTextLostFocus: parse + clamp + push. CYC=3.
+        private void OnAtrFractionTextLostFocus(object sender, RoutedEventArgs e)
+        {
+            double v;
+            if (!double.TryParse(_atrFractionBox?.Text, out v)) return;             // (1) parse guard
+            v = Math.Max(Math.Min(v, 3.00), 0.25);                                  // (2) clamp
+            _atrFraction = v;
+            if (_atrFractionBox != null) _atrFractionBox.Text = v.ToString("F2");  // normalise display
+            NotifyAtrFractionChanged();                                              // (3) push
+        }
+
+        // B12 T3 -- NotifyRiskChanged: delegates to CopyEngine.UpdateMaxRisk. CYC=2.
+        private void NotifyRiskChanged()
+        {
+            if (_engine == null) return;             // (1)
+            _engine.UpdateMaxRisk(_maxRiskDollars);  // (2)
+        }
+
+        // B12 T3 -- NotifyAtrFractionChanged: delegates to CopyEngine.UpdateAtrFraction. CYC=2.
+        private void NotifyAtrFractionChanged()
+        {
+            if (_engine == null) return;              // (1)
+            _engine.UpdateAtrFraction(_atrFraction);  // (2)
+        }
     }
 }

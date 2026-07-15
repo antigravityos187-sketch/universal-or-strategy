@@ -1,3 +1,9 @@
+// PTT-COPIER-B11-T2 -- TradeCopierWindow.cs
+// B11 T2 CHANGES:
+//   1. Added _armBeBtns List<Button> field (DW-B10-03).
+//   2. OnRuleArmBe(): Arm BE click handler for rule rows. CYC=4.
+//   3. BuildRuleRow(): added Col 11 -- [Arm BE] button + buffer TextBox + "tks" label.
+//   4. BuildDynamicRuleRow(): added Col 11 -- same cluster as BuildRuleRow.
 // PTT-COPIER-B10-T3 -- TradeCopierWindow.cs
 // Plain WPF Window Add-On surface. Rule management, status log, global on/off.
 // FIX: Account.All removed from constructor/BuildUI -- only bound in Loaded handler.
@@ -9,8 +15,10 @@
 // V08: canonical RGB per PTT_DESIGN_PILLAR. MakeWinBrush(r,g,b) -- no hex literals.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using NinjaTrader.Cbi;
 using NinjaTrader.NinjaScript;
@@ -39,6 +47,8 @@ namespace PropTraderTools
         private readonly List<Button> _beBtns       = new List<Button>();
         // B10 T3: tighten stop button tracking -- not position-state-colored; tracked for cleanup.
         private readonly List<Button> _tightenBtns  = new List<Button>();
+        // B11 T2: Arm BE button tracking (DW-B10-03) -- accessed exclusively on UI thread (JS-021 compliant).
+        private readonly List<Button> _armBeBtns    = new List<Button>();
 
         // -- frozen semantic brushes (JS-008: MakeWinBrush calls Freeze()) --------
         // "Win" prefix avoids collision with potential Window base-class members
@@ -103,6 +113,7 @@ namespace PropTraderTools
                 _engine.PositionStateChanged  += OnPositionStateChanged;
                 _engine.Subscribe();
                 CopyEngine.Instance.LoadRules();
+                _engine.CopyEnabledChanged += OnCopyEnabledChanged;
             }
             catch (Exception ex)
             {
@@ -114,6 +125,7 @@ namespace PropTraderTools
         private void OnWindowClosed(object sender, EventArgs e)
         {
             _engine.PositionStateChanged -= OnPositionStateChanged;
+            _engine.CopyEnabledChanged -= OnCopyEnabledChanged;
         }
 
         protected override void OnClosed(EventArgs e)
@@ -240,7 +252,7 @@ namespace PropTraderTools
         {
             var grid = new Grid { Margin = new Thickness(2) };
 
-            // Cols: instr | leader | follower | [1/2] | [=] | [x] | [ON] | Apply | BE-cluster | ATM
+            // Cols: instr | leader | follower | [1/2] | [=] | [x] | [ON] | Apply | BE-cluster | ATM | Tighten | ArmBE
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(45) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -252,6 +264,7 @@ namespace PropTraderTools
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // B8 T2: ATM ComboBox
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // B10 T3: Tighten cluster
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // B11 T2: Arm BE cluster
 
             // Col 0: instrument label
             var instrLabel = new TextBlock
@@ -266,25 +279,26 @@ namespace PropTraderTools
             // Col 1: leader ComboBox -- ItemsSource set in Loaded
             var leaderCb = new ComboBox { Margin = new Thickness(2) };
             _leaderBoxes.Add(leaderCb);
+            leaderCb.ItemTemplate = BuildAccountDisplayTemplate();
             Grid.SetColumn(leaderCb, 1);
             grid.Children.Add(leaderCb);
 
             // Col 2: follower ListBox -- ItemsSource set in Loaded
+            // B18 T2: fix DW-B18-ACCOUNTS-01 -- outer ScrollViewer removed; Height=100 fixed.
+            // B18 T2b: NT8 WPF host suppresses ListBox internal scrollbar by default.
+            // Fix: disable virtualization (so all items are measured) + force scrollbar Visible.
             var followerLb = new ListBox
             {
                 SelectionMode = SelectionMode.Extended,
-                MaxHeight     = 80,
+                Height        = 100,
                 Margin        = new Thickness(2)
             };
+            VirtualizingStackPanel.SetIsVirtualizing(followerLb, false);
+            ScrollViewer.SetVerticalScrollBarVisibility(followerLb, ScrollBarVisibility.Visible);
+            followerLb.ItemTemplate = BuildAccountDisplayTemplate();
             _followerBoxes.Add(followerLb);
-            var followerScroll = new ScrollViewer
-            {
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                MaxHeight = 80,
-                Content   = followerLb
-            };
-            Grid.SetColumn(followerScroll, 2);
-            grid.Children.Add(followerScroll);
+            Grid.SetColumn(followerLb, 2);
+            grid.Children.Add(followerLb);
 
             // Col 3: Trim (color-coded -- no NTButtonStyle)
             var trimBtn = new Button { Content = "[1/2]", Tag = instrumentName, Margin = new Thickness(2), Background = WBrushInactive };
@@ -376,6 +390,24 @@ namespace PropTraderTools
             Grid.SetColumn(tightenCluster10, 10);
             grid.Children.Add(tightenCluster10);
 
+            // B11 T2: Col 11 -- Arm BE cluster ([Arm BE] button + buffer TextBox + "tks" label).
+            // Tag = new object[] { instrumentName (string), leaderCb, bufferTextBox }.
+            // OnRuleArmBe reads instr from tag[0] (string), leader from tag[1], ticks from tag[2].
+            var armBeCluster = new StackPanel { Orientation = Orientation.Horizontal };
+            var armBeBox     = new TextBox { Text = "2", Width = 30,
+                VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(2) };
+            var armBeBtn     = new Button { Content = "[Arm BE]", Margin = new Thickness(2), Background = WBrushInactive };
+            var armBeTksLbl  = new TextBlock { Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 0, 2, 0) };
+            armBeBtn.Tag     = new object[] { instrumentName, leaderCb, armBeBox };
+            armBeBtn.Click  += OnRuleArmBe;
+            _armBeBtns.Add(armBeBtn);
+            armBeCluster.Children.Add(armBeBtn);
+            armBeCluster.Children.Add(armBeBox);
+            armBeCluster.Children.Add(armBeTksLbl);
+            Grid.SetColumn(armBeCluster, 11);
+            grid.Children.Add(armBeCluster);
+
             return grid;
         }
 
@@ -394,6 +426,7 @@ namespace PropTraderTools
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // B8 T2: ATM ComboBox
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // B10 T3: Tighten cluster
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });  // B11 T2: Arm BE cluster
 
             // Col 0: instrument TextBox
             var instrTextBox = new TextBox
@@ -407,25 +440,26 @@ namespace PropTraderTools
 
             // Col 1: leader ComboBox -- ItemsSource bound immediately (window is already loaded)
             var leaderCb = new ComboBox { ItemsSource = Account.All, Margin = new Thickness(2) };
+            leaderCb.ItemTemplate = BuildAccountDisplayTemplate();
             Grid.SetColumn(leaderCb, 1);
             grid.Children.Add(leaderCb);
 
             // Col 2: follower ListBox -- bound immediately
+            // B18 T2: fix DW-B18-ACCOUNTS-01 -- outer ScrollViewer removed; Height=100 fixed.
+            // B18 T2b: NT8 WPF host suppresses ListBox internal scrollbar by default.
+            // Fix: disable virtualization (so all items are measured) + force scrollbar Visible.
             var followerLb = new ListBox
             {
                 SelectionMode = SelectionMode.Extended,
                 ItemsSource   = Account.All,
-                MaxHeight     = 80,
+                Height        = 100,
                 Margin        = new Thickness(2)
             };
-            var followerScroll = new ScrollViewer
-            {
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                MaxHeight = 80,
-                Content   = followerLb
-            };
-            Grid.SetColumn(followerScroll, 2);
-            grid.Children.Add(followerScroll);
+            VirtualizingStackPanel.SetIsVirtualizing(followerLb, false);
+            ScrollViewer.SetVerticalScrollBarVisibility(followerLb, ScrollBarVisibility.Visible);
+            followerLb.ItemTemplate = BuildAccountDisplayTemplate();
+            Grid.SetColumn(followerLb, 2);
+            grid.Children.Add(followerLb);
 
             // Col 3: Trim (color-coded)
             var trimBtn = new Button { Content = "[1/2]", Tag = instrTextBox, Margin = new Thickness(2), Background = WBrushInactive };
@@ -514,6 +548,24 @@ namespace PropTraderTools
             Grid.SetColumn(tightenClusterDyn, 10);
             grid.Children.Add(tightenClusterDyn);
 
+            // B11 T2: Col 11 -- Arm BE cluster for dynamic rows.
+            // Tag = new object[] { instrTextBox, leaderCb, armBeBox }.
+            // OnRuleArmBe reads instr from tag[0] (TextBox), leader from tag[1], ticks from tag[2].
+            var armBeClusterDyn = new StackPanel { Orientation = Orientation.Horizontal };
+            var armBeBoxDyn     = new TextBox { Text = "2", Width = 30,
+                VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(2) };
+            var armBeBtnDyn     = new Button { Content = "[Arm BE]", Margin = new Thickness(2), Background = WBrushInactive };
+            var armBeTksLblDyn  = new TextBlock { Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 0, 2, 0) };
+            armBeBtnDyn.Tag     = new object[] { instrTextBox, leaderCb, armBeBoxDyn };
+            armBeBtnDyn.Click  += OnRuleArmBe;
+            _armBeBtns.Add(armBeBtnDyn);
+            armBeClusterDyn.Children.Add(armBeBtnDyn);
+            armBeClusterDyn.Children.Add(armBeBoxDyn);
+            armBeClusterDyn.Children.Add(armBeTksLblDyn);
+            Grid.SetColumn(armBeClusterDyn, 11);
+            grid.Children.Add(armBeClusterDyn);
+
             return grid;
         }
 
@@ -532,6 +584,57 @@ namespace PropTraderTools
             _engine.SetEnabled(_copyEnabled);
             _globalToggleBtn.Content    = _copyEnabled ? "Copy All ON" : "Copy All OFF";
             _globalToggleBtn.Background = _copyEnabled ? WBrushActive  : WBrushInactive;
+        }
+
+        // B20-LANE-C T3 -- OnCopyEnabledChanged: syncs Window copy state from engine event.
+        // CYC=1: straight-line Dispatcher.InvokeAsync (constructor guarantee: _globalToggleBtn != null).
+        // JS-021: no lock. JS-023: Dispatcher.InvokeAsync for UI thread marshaling.
+        private void OnCopyEnabledChanged(bool enabled)
+        {
+            _copyEnabled = enabled;
+            Dispatcher.InvokeAsync(() =>
+            {
+                _globalToggleBtn.Content    = enabled ? "Copy All ON" : "Copy All OFF";
+                _globalToggleBtn.Background = enabled ? WBrushActive  : WBrushInactive;
+            });
+        }
+
+        // B20-LANE-C T3 -- AccountDisplayConverter: strips !<broker-suffix> for display.
+        // IValueConverter.Convert: "Acct!Apex!Apex" -> "Acct". CYC=1.
+        // IValueConverter.ConvertBack: one-way binding only; never called by WPF.
+        private sealed class AccountDisplayConverter : IValueConverter
+        {
+            public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                return (value as string)?.Split('!')?[0] ?? value?.ToString() ?? string.Empty;
+            }
+
+            public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                throw new NotImplementedException("AccountDisplayConverter is one-way only");
+            }
+        }
+
+        private static readonly AccountDisplayConverter _accountDisplayConverter = new AccountDisplayConverter();
+
+        // B20-LANE-C T3 -- BuildAccountDisplayTemplate: builds the shared DataTemplate that
+        // strips !<suffix> from Account.Name for display in ComboBox and ListBox items.
+        // Uses FrameworkElementFactory (code-only WPF; no XAML in this codebase).
+        // CYC=1: straight-line, no branches.
+        // JS-021: no lock. JS-033: not async.
+        private static DataTemplate BuildAccountDisplayTemplate()
+        {
+            var template    = new DataTemplate(typeof(Account));
+            var tbFactory   = new FrameworkElementFactory(typeof(TextBlock));
+            var binding     = new System.Windows.Data.Binding("Name")
+            {
+                Mode      = System.Windows.Data.BindingMode.OneWay,
+                Converter = _accountDisplayConverter
+            };
+            tbFactory.SetBinding(TextBlock.TextProperty, binding);
+            tbFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+            template.VisualTree = tbFactory;
+            return template;
         }
 
         private void OnAddRule(object sender, RoutedEventArgs e)
@@ -586,6 +689,34 @@ namespace PropTraderTools
                     ticks = parsed;
             var instr = FindInstrument(name);
             if (instr != null) _engine.BreakEven(instr, ticks);
+        }
+
+        // B11 T2 -- OnRuleArmBe: Arm BE click handler for rule rows in TradeCopierWindow.
+        // Tag layout: object[] { instrumentNameOrTextBox, leaderComboBox, bufferTextBox }
+        // Calls engine.ArmPendingBe(instr, leaderAcc, bufferTicks).
+        // CYC=4: tag null(1), name empty(2), instr null(3), leader null(4).
+        // JS-021: no lock. JS-002: no return null (uses guard-return pattern).
+        private void OnRuleArmBe(object sender, RoutedEventArgs e)
+        {
+            var tag = (sender as Button)?.Tag as object[];
+            if (tag == null) return;                              // guard (1): tag null
+
+            string name = tag[0] is TextBox tb ? tb.Text
+                        : tag[0] as string ?? string.Empty;
+            if (string.IsNullOrEmpty(name)) return;             // guard (2): name empty
+
+            var instr = FindInstrument(name);
+            if (instr == null) return;                           // guard (3): instr null
+
+            var leaderCb  = tag[1] as ComboBox;
+            var leaderAcc = leaderCb?.SelectedItem as Account;
+            if (leaderAcc == null) return;                       // guard (4): leader null
+
+            int buf = 2;
+            var bufBox = tag[2] as TextBox;
+            if (bufBox != null) int.TryParse(bufBox.Text, out buf);
+
+            _engine.ArmPendingBe(instr, leaderAcc, buf);
         }
 
         // B10 T3 -- OnRuleTightenStop: tighten stop click handler for rule rows.
