@@ -15,6 +15,7 @@
 //   Fallback: if named panel not found, wrap Chart.Content in a DockPanel.
 //
 // Jane Street rules: JS-021 (no lock), JS-023 (volatile bool for menu guard)
+using System;
 using System.Linq;
 using System.Collections.Concurrent;
 using System.Windows;
@@ -439,7 +440,7 @@ namespace PropTraderTools
         // Fallback: if no account selected yet (all SelectedItems null), use index=1 (Account ComboBox
         // is always the second ComboBox in ChartTrader visual tree). NT8-023: lambda captures only
         // accountCombo + panel (same visual tree lifetime -- safe).
-        // CYC=4: null guard(1) + primary find(2) + fallback find(3) + SelectionChanged sub(4).
+        // CYC=6: null guard(1) + primary find(2) + fallback find(3) + text-fallback guard(4) + FirstOrDefault predicate(5) + SelectionChanged sub(6).
         private static void WireLeaderAccount(ChartTrader chartTrader, TradeCopierPanel panel)
         {
             // Primary: find by SelectedItem type (works when account already selected)
@@ -453,6 +454,10 @@ namespace PropTraderTools
 
             // Set immediately from current selection
             var current = accountCombo.SelectedItem as NinjaTrader.Cbi.Account;
+            if (current == null && accountCombo.Text != null)
+                current = Account.All.FirstOrDefault(
+                    a => string.Equals(a.Name, accountCombo.Text,
+                                       StringComparison.OrdinalIgnoreCase));
             if (current != null) panel.SetLeaderAccount(current);
 
             // Keep live as user switches accounts in ChartTrader
