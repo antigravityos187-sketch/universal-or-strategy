@@ -399,8 +399,8 @@ namespace PropTraderTools
             foreach (var item in _followerItems)
                 if (item.Account != null)
                     item.Account.AccountItemUpdate -= OnAccountItemUpdate;
-            _engine.DisarmPendingBe();
-            _engine.DisarmTrailBe();   // B14 T1
+            _engine.DisarmPendingBe(_leaderAccount);
+            _engine.DisarmTrailBe(_leaderAccount);   // B14 T1
             _engine.CopyEnabledChanged -= OnCopyEnabledChanged;
             _instrument    = null;
             _leaderAccount = null;
@@ -779,7 +779,7 @@ namespace PropTraderTools
             _beBuffer = Math.Max(Math.Min(_beBuffer + 1, 20), 0);       // no Math.Clamp
             UpdateBeLabel();
             if (_beState == BeState.Connected && _instrument != null)   // (2)
-                _engine.BreakEven(_instrument, _beBuffer);
+                _engine.BreakEven(_leaderAccount, _instrument, _beBuffer);
         }
 
         // B12 T1 -- OnBeDown: decrement _beBuffer, clamp, live reprice if Connected. CYC=2.
@@ -788,7 +788,7 @@ namespace PropTraderTools
             _beBuffer = Math.Max(Math.Min(_beBuffer - 1, 20), 0);
             UpdateBeLabel();
             if (_beState == BeState.Connected && _instrument != null)
-                _engine.BreakEven(_instrument, _beBuffer);
+                _engine.BreakEven(_leaderAccount, _instrument, _beBuffer);
         }
 
         // B12 T1 -- OnBeClick: 3-state FSM transition. CYC=5.
@@ -804,13 +804,13 @@ namespace PropTraderTools
                     UpdateBeVisuals(BeState.Armed);
                     break;
                 case BeState.Armed:               // (4)
-                    _engine.DisarmPendingBe();
+                    _engine.DisarmPendingBe(_leaderAccount);
                     _beState = BeState.Idle;
                     UpdateBeVisuals(BeState.Idle);
                     break;
                 case BeState.Connected:           // (5)
-                    _engine.DisarmPendingBe();
-                    _engine.DisarmTrailBe();          // B14 T1 -- disarm continuous trail
+                    _engine.DisarmPendingBe(_leaderAccount);
+                    _engine.DisarmTrailBe(_leaderAccount);          // B14 T1 -- disarm continuous trail
                     _beState = BeState.Idle;
                     UpdateBeVisuals(BeState.Idle);
                     break;
@@ -856,7 +856,7 @@ namespace PropTraderTools
             UpdateBeVisuals(BeState.Connected);
             if (_instrument != null)
             {
-                _engine.BreakEven(_instrument, _beBuffer);
+                _engine.BreakEven(_leaderAccount, _instrument, _beBuffer);
                 if (_leaderAccount != null)
                     _engine.ArmTrailBe(_instrument, _leaderAccount, _beBuffer);      // B14 T1
             }
@@ -1296,7 +1296,7 @@ namespace PropTraderTools
             int ticks = 2;
             if (int.TryParse(_beBufferBox?.Text?.Trim(), out int parsed) && parsed >= 0)
                 ticks = parsed;
-            _engine.BreakEven(_instrument, ticks);
+            _engine.BreakEven(_leaderAccount, _instrument, ticks);
         }
 
         private Account[] GetSelectedFollowers()
@@ -1415,7 +1415,7 @@ namespace PropTraderTools
                 case Key.B:
                     int buf = 2;
                     int.TryParse(_beBufferBox.Text, out buf);
-                    _engine.BreakEven(_instrument, buf);
+                    _engine.BreakEven(_leaderAccount, _instrument, buf);
                     break;
             }
         }
