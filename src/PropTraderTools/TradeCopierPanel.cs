@@ -118,11 +118,6 @@ namespace PropTraderTools
         private CopyEngine  _engine;
         private Instrument  _instrument;
         private Account     _leaderAccount;   // Set by TradeCopierAddOn from ChartTrader.Account
-        private Button      _copyToggleBtn;
-        private Button      _flattenBtn;
-        private Button      _cancelBtn;
-        private Button      _trimBtn;
-        private Button      _beBtn;
         private TextBlock   _statusText;
         private bool        _copyEnabled;
         private TextBox     _beBufferBox;
@@ -415,7 +410,7 @@ namespace PropTraderTools
             if (_flattenBtn2    != null) _flattenBtn2.Background    = hasPosition  ? BrushDanger   : BrushInactive;
             if (_cancelBtn2     != null) _cancelBtn2.Background     = hasEntries   ? BrushDanger   : BrushInactive;
             if (_trimBtn2       != null) _trimBtn2.Background       = hasPosition  ? BrushCaution  : BrushInactive;
-            if (_beBtn2         != null) _beBtn2.Background         = hasPosition  ? BrushActive   : BrushInactive;
+            if (_beBtn2         != null && _beState == BeState.Idle) _beBtn2.Background = hasPosition ? BrushActive : BrushInactive;
         }
 
         // CYC=1: single null+instrument filter guard.
@@ -469,7 +464,7 @@ namespace PropTraderTools
 
         // -- UI construction -------------------------------------------------------
         // B12 T1: restructured -- rows wrapped in _contentPanel; buffered buttons at [4.0];
-        //         old 4-column actionGrid and _copyToggleBtn removed.
+        //         old 4-column actionGrid and dead toggle buttons removed.
         private void BuildUI()
         {
             var root = new StackPanel { Margin = new Thickness(2) };
@@ -609,9 +604,9 @@ namespace PropTraderTools
         // B12 T1: replaced FlashBeFired call with OnBeConnected call.
         // CYC=1: straight-line Dispatcher.InvokeAsync, no branches.
         // Called on NT8 account background thread -- never touch UI directly here.
-        private void OnPendingBeFiredDispatch(string instr)
+        private void OnPendingBeFiredDispatch(string instr, string accountName)
         {
-            Dispatcher.InvokeAsync(() => OnBeConnected(instr));
+            Dispatcher.InvokeAsync(() => OnBeConnected(instr, accountName));
         }
 
         // B12 T1 -- BuildBufferedButtonsRow: builds 3-row buffered button section inside _contentPanel.
@@ -830,28 +825,27 @@ namespace PropTraderTools
             switch (state)
             {
                 case BeState.Idle:                                                    // (1)
-                    _beBtn2.Content         = FormatBuffer("BE", _beBuffer);
-                    _beBtn2.BorderBrush     = null;
-                    _beBtn2.BorderThickness = new Thickness(0);
+                    _beBtn2.Content    = FormatBuffer("BE", _beBuffer);
+                    _beBtn2.Background = BrushInactive;
                     break;
                 case BeState.Armed:                                                   // (2)
-                    _beBtn2.Content         = "BE Armed";
-                    _beBtn2.BorderBrush     = BrushCaution;
-                    _beBtn2.BorderThickness = new Thickness(2);
+                    _beBtn2.Content    = "BE Armed";
+                    _beBtn2.Background = BrushCaution;
                     break;
                 case BeState.Connected:                                               // (3)
-                    _beBtn2.Content         = "BE Live";
-                    _beBtn2.BorderBrush     = BrushConnected;
-                    _beBtn2.BorderThickness = new Thickness(2);
+                    _beBtn2.Content    = "BE Live";
+                    _beBtn2.Background = BrushConnected;
                     break;
             }
         }
 
         // B14 T1 -- extended: arm continuous trail watcher after initial BE placement.
         // CYC=3: _beBtn2 null(1), _instrument null(2), _leaderAccount null(3-inline with _instrument check).
-        private void OnBeConnected(string instr)
+        private void OnBeConnected(string instr, string accountName)
         {
             if (_beBtn2 == null) return;                                              // (1)
+            if (_leaderAccount == null || _leaderAccount.Name != accountName) return;
+            // DW-B26-02: only update state for the panel whose account fired BE
             _beState = BeState.Connected;                                             // (2)
             UpdateBeVisuals(BeState.Connected);
             if (_instrument != null)
@@ -1267,14 +1261,6 @@ namespace PropTraderTools
                 _followersDropDown.Text = count + " selected";
         }
 
-        private void OnToggle(object sender, RoutedEventArgs e)
-        {
-            _copyEnabled = !_copyEnabled;
-            _engine.SetEnabled(_copyEnabled);
-            _copyToggleBtn.Content    = _copyEnabled ? "Copy ON" : "Copy OFF";
-            _copyToggleBtn.Background = _copyEnabled ? BrushActive : BrushInactive;
-        }
-
         private void OnTrim(object sender, RoutedEventArgs e)
         {
             if (_instrument != null) _engine.Trim(_instrument);
@@ -1288,15 +1274,6 @@ namespace PropTraderTools
         private void OnCancel(object sender, RoutedEventArgs e)
         {
             if (_instrument != null) _engine.CancelPendingEntries(_instrument);
-        }
-
-        private void OnBreakEven(object sender, RoutedEventArgs e)
-        {
-            if (_instrument == null) return;
-            int ticks = 2;
-            if (int.TryParse(_beBufferBox?.Text?.Trim(), out int parsed) && parsed >= 0)
-                ticks = parsed;
-            _engine.BreakEven(_leaderAccount, _instrument, ticks);
         }
 
         private Account[] GetSelectedFollowers()

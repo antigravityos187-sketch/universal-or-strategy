@@ -127,7 +127,7 @@ namespace PropTraderTools
         public event Action<string, PositionState> PositionStateChanged;
 
         // B10 T2 -- Pending BE fired notification (fires on NT8 account bg thread; Panel marshals to UI)
-        internal event Action<string> PendingBeFired;
+        internal event Action<string, string> PendingBeFired;
 
         // B20-LANE-A T2: Copy ON/OFF sync event (DW-B17-SYNC-01)
         // Plain delegate field -- NOT lock-guarded (JS-021). Fired from SetEnabled on every toggle.
@@ -1419,7 +1419,7 @@ namespace PropTraderTools
             int newBuffer = Interlocked.Increment(ref _trailBeBufferTicks);                    // (5)
             var instr = _trailBeInstrument;
             if (instr != null)
-                BreakEven(instr, newBuffer);
+                BreakEven(acc, instr, newBuffer);
         }
 
         // B23 T1 (DW-B22-BE-TRIGGER-01): price-based trigger replaces dollar-PnL trigger.
@@ -1460,7 +1460,7 @@ namespace PropTraderTools
             _pendingBeAccount    = null;
             _pendingBeInstrument = null;
             BreakEven(acc, instr, buf);
-            PendingBeFired?.Invoke(instr?.FullName ?? string.Empty);
+            PendingBeFired?.Invoke(instr?.FullName ?? string.Empty, acc?.Name ?? string.Empty);
         }
 
         // -- B6: Persistence field -------------------------------------------
