@@ -765,3 +765,48 @@ NT8-042 | CopyEngineTests.cs co-located with CopyEngine.cs (same assembly requir
 ```
 
 ### nt8-rules B19 Session: 1 new rule (NT8-042 above)
+
+## B24 — PTT Deployment Command (deploy-sync.ps1 is V12-ONLY)
+
+### Rule (PERMANENT — all PTT blocks)
+
+`deploy-sync.ps1` is the V12/wave refactoring sync script. It re-synchronizes NT8 hard links
+for the V12 codebase in `c:\WSGTA\universal-or-epic-cluster-*`. It does NOT exist in the
+Wave workspace (`c:\WSGTA\universal-or-strategy`) and must NEVER be referenced for PTT work.
+
+### Correct PTT Deploy Command
+
+After any `.cs` file edit to `src/PropTraderTools/`, run:
+
+```powershell
+# Audit (check only — no changes)
+powershell -File "c:\WSGTA\universal-or-strategy\scripts\verify_links.ps1"
+
+# Fix (repair broken/missing hard links — run this after any edit)
+powershell -File "c:\WSGTA\universal-or-strategy\scripts\verify_links.ps1" -Fix
+```
+
+### What it does
+
+`verify_links.ps1` audits and repairs NTFS hard links between the Wave workspace source files
+and NinjaTrader 8's AddOns directory:
+
+- **SRC**: `c:\WSGTA\universal-or-strategy\src\PropTraderTools\*.cs`
+- **NT8**: `C:\Users\Mohammed Khalid\Documents\NinjaTrader 8\bin\Custom\AddOns\PropTraderTools\`
+- **Excluded from deploy**: `CopyEngineTests.cs` (test file — never deployed to NT8)
+- **Hard-linked files**: `CopyEngine.cs`, `TradeCopierPanel.cs`, `TradeCopierWindow.cs`, `TradeCopierAddOn.cs`, `AtrSizingEngine.cs`
+
+Because NT8 loads source files directly from the AddOns directory, a hard link ensures the
+same inode is shared — any write to the Wave workspace is instantly visible to NT8 with no
+copy step. If the hard link is broken (DESYNC or MISSING), the NT8 file will be stale and
+F5 will compile the wrong version.
+
+### PTT Pipeline Orchestrator Template Fix
+
+The orchestrator role definition currently says:
+> "Run `powershell -File .\deploy-sync.ps1` to re-synchronize NinjaTrader hard links."
+
+This is WRONG for PTT. The correct instruction for all future PTT block summaries is:
+> "Run `powershell -File scripts\verify_links.ps1 -Fix` to re-synchronize NT8 hard links."
+
+### nt8-rules B24: 1 new knowledge entry (deploy command clarification above)
