@@ -1423,3 +1423,39 @@ To enumerate ALL open chart windows: iterate all top-level NT8 windows and cast 
 
 **Rule added**: NT8-041 (P2) in NT8_COMPILER_RULES.md.
 **Scan pattern**: grep for `GetProperty.*Charts` or `"Charts"` as a reflection argument.
+
+---
+
+## B24 Discoveries — NT8-044: `using System;` Required for `StringComparison`
+
+**Block**: PTT-COPIER-B24-LANE-A
+**Defect fixed**: DW-B24-LEADER-CASTNULL-01 — `WireLeaderAccount()` cast-null at inject time
+**New compiler rule**: NT8-044 (P0)
+
+### What was attempted
+
+Added `Account.All.FirstOrDefault(a => string.Equals(a.Name, accountCombo.Text, StringComparison.OrdinalIgnoreCase))` as a text-fallback in `WireLeaderAccount()` when the `SelectedItem` cast returns null at NT8 inject time.
+
+### What failed at F5
+
+```
+CS0103: The name 'StringComparison' does not exist in the current context
+  File: TradeCopierAddOn.cs  Line: 459  Column: 40
+```
+
+### Root cause
+
+`StringComparison` lives in the `System` namespace. NT8's NinjaScript compiler does **not** auto-inject `using System;`. The Linting.csproj (dotnet build) passes because the SDK auto-includes `System` globally — masking the gap. F5 in the NT8 NinjaScript Editor fails because NinjaScript only injects `NinjaTrader.*` namespaces, not `System.*`.
+
+### Fix
+
+```csharp
+// Add as first using directive:
+using System;
+```
+
+### Rule added
+
+NT8-044 (P0) in NT8_COMPILER_RULES.md.
+
+**Key lesson for all agents**: Any file using `StringComparison`, `Math`, `Environment`, `Convert`, `EventArgs`, `Exception`, or any other `System.*` type must have `using System;` explicitly declared. Linting.csproj passing does NOT guarantee NT8 F5 will pass on System-namespace types.

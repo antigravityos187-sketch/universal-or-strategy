@@ -1,6 +1,6 @@
 # NT8-COMPILER-RULES — NinjaTrader 8 NinjaScript Compiler Constraints
-# Version: 1.5
-# Source: PTT Trade Copier blocks B1-B23 (hard compiler errors, runtime crashes, confirmed workarounds)
+# Version: 1.6
+# Source: PTT Trade Copier blocks B1-B24 (hard compiler errors, runtime crashes, confirmed workarounds)
 # Audience: AGENTS ONLY — every rule here was discovered by hitting the actual NT8 Roslyn compiler
 # Format: NT8-NNN | SEVERITY | ONE-LINE BAN | DO / DONT | FIX
 # Update protocol: append a new rule block whenever a new compiler error or runtime crash is
@@ -831,6 +831,34 @@ SCAN: \?\.\w+\s*[-+]=
 
 ---
 
+### NT8-044 | P0 | `StringComparison` REQUIRES `using System;` IN NT8 NINJASCRIPT
+CONFIRMED: B24 (CS0103 at F5 compile)
+ERROR: CS0103 "The name 'StringComparison' does not exist in the current context"
+CAUSE: `StringComparison` is in the `System` namespace. NT8's NinjaScript compiler does NOT
+       auto-inject `using System;` the way a full SDK project does. Any use of
+       `StringComparison.OrdinalIgnoreCase`, `StringComparison.Ordinal`, etc. requires an
+       explicit `using System;` at the top of the file. The same applies to other common
+       System-namespace types: `Math`, `Environment`, `Convert`, `Console`, etc.
+
+BANNED (without using System at top of file):
+  string.Equals(a.Name, text, StringComparison.OrdinalIgnoreCase)  // CS0103
+
+SAFE:
+  // Add at top of file (before all other using statements):
+  using System;
+
+  // Then all StringComparison values resolve:
+  string.Equals(a.Name, text, StringComparison.OrdinalIgnoreCase)  // OK
+  string.Equals(a.Name, text, StringComparison.Ordinal)            // OK
+
+NOTE: NT8 NinjaScript files auto-include NinjaTrader.* namespaces but NOT System.*.
+      Always add `using System;` explicitly whenever you use:
+        StringComparison, Math, Environment, Convert, EventArgs, Exception, etc.
+
+SCAN: `StringComparison` without `using System;` in file preamble
+
+---
+
 ## CATEGORY: AGENT UPDATE PROTOCOL
 
 ### HOW TO ADD A NEW RULE
@@ -886,3 +914,4 @@ When a new NT8 compiler error or runtime crash is confirmed in a PTT block:
 | NT8-041 | P2 | `ChartControl.Charts` NOT accessible via Reflection -- use FindVisualChild<Chart> | B17 |
 | NT8-042 | P0 | `Dispatcher.InvokeAsync` not available in NT8 AddOn context -- all 3 paths fail CS0117/CS1061 | B23 |
 | NT8-043 | P0 | Null-conditional compound assignment (`acc?.Event -= handler`) banned -- C# 7.3 limit | B23 |
+| NT8-044 | P0 | `StringComparison` requires explicit `using System;` -- NT8 does not auto-inject System namespace | B24 |
