@@ -151,7 +151,10 @@ After any PTT session that hits a NEW NT8 compiler error or runtime crash:
 - **ASCII-Only Compliance**: NEVER use Unicode, emoji, or curly quotes in C# string literals.
 - **Jane Street Alignment (V12.17)**: ALL agents (Bob, Codex, Qwen, Antigravity, Jules, Rovo Dev, Cursor, etc.) MUST load and apply the ingested Jane Street Intel from `docs/intel/jane-street/` for every architectural decision.
 - **Test Framework Mandate (V12.32)**: ALL agents MUST generate xUnit tests ONLY. NEVER use NUnit or MSTest. See `docs/protocol/TEST_FRAMEWORK_PROTOCOL.md` for complete requirements.
-- **Hard-Link Integrity**: Every `src/` modification MUST be followed by `powershell -File .\deploy-sync.ps1` to re-synchronize NinjaTrader hard links.
+- **Hard-Link Integrity**: Every `src/` modification MUST be followed by the appropriate hard-link sync:
+  * **V12 codebase** (`universal-or-epic-cluster-*`): `powershell -File .\deploy-sync.ps1`
+  * **PTT codebase** (`universal-or-strategy\src\PropTraderTools\`): `powershell -File scripts\verify_links.ps1 -Fix`
+  * `deploy-sync.ps1` does NOT exist in the Wave workspace and must NEVER be used for PTT work.
 - **Branch Strategy Mandate (V12.24)**:
   * PRIMARY: GitButler virtual branches ONLY (`but branch new <name>`). All work on `gitbutler/workspace` physical branch.
   * ALTERNATIVE: Git worktrees for true isolation (`git worktree add`).
@@ -316,7 +319,8 @@ Write-only/silent commands that produce no output the agent needs to read use `e
 ```
 execute_command("git commit -m 'msg'")             -- output not needed
 execute_command("git push")                        -- output not needed
-execute_command("powershell -File deploy-sync.ps1") -- write-only sync
+execute_command("powershell -File deploy-sync.ps1")                -- V12 write-only sync (epic-cluster only)
+execute_command("powershell -File scripts\verify_links.ps1 -Fix")  -- PTT write-only sync (Wave workspace)
 ```
 
 ### Session Memory Protocol — MANDATORY at Phase Boundaries
@@ -378,7 +382,10 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 - Do NOT "improve" adjacent code, comments, or formatting.
 - **WHITESPACE MUTATION BANNED**: Never mutate whitespace, line endings, or indentation across files. This creates bloated diffs that obscure logic and break CI limits.
 - **STRICT DIFF LIMIT**: Pull Request diffs MUST target less than 10,000 characters of source code changes (in `src/`). Split larger epics into smaller, focused PRs.
-- **DIFF PRE-CHECK**: Before pushing, run `powershell -File .\deploy-sync.ps1`. If the **DIFF GUARD** fails, you must isolate the logic changes and revert whitespace/artifact bloat.
+- **DIFF PRE-CHECK**: Before pushing, run the appropriate sync for your workspace:
+  * **V12**: `powershell -File .\deploy-sync.ps1` (epic-cluster workspaces only)
+  * **PTT**: `powershell -File scripts\verify_links.ps1 -Fix` (Wave workspace)
+  If the **DIFF GUARD** fails, you must isolate the logic changes and revert whitespace/artifact bloat.
 - If unrelated dead code is noticed, REPORT it -- do not act on it.
 - Every changed line must trace directly to the Mission Brief.
 
@@ -694,7 +701,7 @@ epic-review-final EPIC-CCN-X
 - ✅ All phases status = `completed`
 - ✅ All tickets verified
 - ✅ Final review passed
-- ✅ `deploy-sync.ps1` executed successfully
+- ✅ Hard-link sync executed successfully (`deploy-sync.ps1` for V12; `scripts\verify_links.ps1 -Fix` for PTT)
 - ✅ F5 in NinjaTrader successful (see F5 Gate below)
 
 ### F5 Compilation Gate (MANDATORY -- BLOCKING)
