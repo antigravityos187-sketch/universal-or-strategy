@@ -1,8 +1,8 @@
 // PTT-COPIER-B14-T1 -- CopyEngine.cs
 // B14 T1 CHANGES:
-//   1. Added _trailBeState, _trailBeBufferTicks, _trailBeLastPnl (volatile int/long), _trailBeAccount, _trailBeInstrument.
+//   1. Added _trailBeStates (ConcurrentDictionary), _trailBeBufferTicks, _trailBeLastPnl (volatile int/long), _trailBeAccount, _trailBeInstrument.
 //   2. Added ArmTrailBe(Instrument, Account, int) -- CYC=4.
-//   3. Added DisarmTrailBe() -- CYC=2.
+//   3. Added DisarmTrailBe(Account) -- CYC=4.
 //   4. Added OnTrailBeAccountUpdate -- CYC=5, fires on NT8 account bg thread.
 // PTT-COPIER-B12-T3 -- CopyEngine.cs
 // B12 T3 CHANGES:
@@ -93,16 +93,21 @@ namespace PropTraderTools
         private ConcurrentBag<CopyRule> _rules = new ConcurrentBag<CopyRule>(); // Change 1: removed readonly
         private double _dailyCapFloor = -500.0; // Change 4
 
-        // B10 T2 -- Pending BE fields (volatile int state machine per architecture plan Sec 5.4)
-        private volatile int    _pendingBeState        = 0;  // 0=Inactive, 1=Armed
+        // B10 T2 -- Pending BE fields
+        // DW-B25-02: per-account state slots (was singleton volatile int -- shared by all panels).
+        // NT8-004: ConcurrentDictionary is safe (ImmutableDictionary BANNED in NT8).
+        // JS-021: ConcurrentDictionary is lock-free. Key = account.Name.
+        private readonly ConcurrentDictionary<string, int> _pendingBeStates = new ConcurrentDictionary<string, int>();
         private volatile int    _pendingBeBufferTicks   = 2;
         private          Account    _pendingBeAccount    = null; // single-writer UI thread
         private          Instrument _pendingBeInstrument = null; // single-writer UI thread
 
-        // B14 T1 -- Auto-trail BE fields (volatile int state machine; JS-023; NT8-003).
-        // Pattern: mirrors ArmPendingBe/DisarmPendingBe release-fence protocol.
+        // B14 T1 -- Auto-trail BE fields (JS-023; NT8-003).
+        // DW-B25-02: per-account state slots (was singleton volatile int -- shared by all panels).
+        // NT8-004: ConcurrentDictionary is safe (ImmutableDictionary BANNED in NT8).
+        // JS-021: ConcurrentDictionary is lock-free. Key = account.Name.
         // _trailBeLastPnl: plain long (NT8-003: volatile banned on 64-bit types; Interlocked.Read/CAS provide barrier).
-        private volatile int    _trailBeState        = 0;  // 0=Off, 1=Active
+        private readonly ConcurrentDictionary<string, int> _trailBeStates   = new ConcurrentDictionary<string, int>();
         private volatile int    _trailBeBufferTicks   = 2;
         private          long   _trailBeLastPnl       = 0L; // Interlocked.Read/CompareExchange provide memory barrier
         private          Account    _trailBeAccount    = null; // single-writer UI thread
@@ -763,7 +768,7 @@ namespace PropTraderTools
                     0,
                     null,
                     signalName,
-                    DateTime.Now.AddDays(1),
+                    DateTime.MaxValue,
                     (NinjaTrader.Cbi.CustomOrder)null
                 );
                 return true;
@@ -1087,9 +1092,14 @@ namespace PropTraderTools
             return pos == null || pos.Quantity == 0;
         }
 
+        // B25 T1 -- DW-B25-01: ATM bracket stops use name format "12s Buy STP".
+        // FromEntrySignal is null for ATM orders. No "Stop" prefix. STP suffix is the only discriminator.
+        // CYC: 2 + 1 (STP clause) = 3. OrdinalIgnoreCase: consistent with WireLeaderAccount (B24 Lane A).
         private bool IsStopLeg(Order order)
         {
-            return order.FromEntrySignal != null || (order.Name != null && order.Name.StartsWith("Stop"));
+            return order.FromEntrySignal != null
+                || (order.Name != null && order.Name.StartsWith("Stop"))
+                || (order.Name != null && order.Name.EndsWith("STP", StringComparison.OrdinalIgnoreCase));
         }
 
         // Static version of IsBracketLeg for use in static method IsWorkingBracket
@@ -1149,7 +1159,11 @@ namespace PropTraderTools
                     continue;
                 if (order.OrderState != OrderState.Working)                                // (4)
                     continue;
-                if (order.OrderType != OrderType.StopMarket)                               // (5)
+                // DW-B25-01: accept StopLimit (ATM bracket) as well as StopMarket (direct).
+                // Precedent: TightenStop L1234-1235 uses this exact two-type pattern.
+                // acc.Change() on StopLimit is safe -- NT8 recalculates LimitPrice from original offset.
+                if (order.OrderType != OrderType.StopMarket &&                             // (5)
+                    order.OrderType != OrderType.StopLimit)
                     continue;
                 if (!IsStopLeg(order))                                                     // (6)
                     continue;
@@ -1162,6 +1176,8 @@ namespace PropTraderTools
                     // Both trailing and fixed stops use this same path.
                     if (IsTrailingStop(order))
                         StatusUpdate?.Invoke(acc.Name + ": MoveStopToBreakEven: trailing stop detected, using acc.Change path");
+                    if (order.OrderType == OrderType.StopLimit)
+                        StatusUpdate?.Invoke(acc.Name + ": MoveStopToBreakEven: StopLimit bracket stop -> acc.Change");
                     order.StopPrice = newStop;
                     acc.Change(new Order[] { order });
                     StatusUpdate?.Invoke(acc.Name + ": BE moved to " + newStop);
@@ -1178,6 +1194,25 @@ namespace PropTraderTools
             foreach (var acc in AllAccounts(instrument))
                 MoveStopToBreakEven(acc, instrument, bufferTicks);
         }
+
+        // B24 T1 -- BreakEven(Account,Instrument,int): fires leader directly, no rule needed.
+        // CYC=4: null guard(1), MoveStop leader(no branch), foreach acc(2), acc==leader skip(3).
+        // JS-021: no lock. JS-002: null leader fires StatusUpdate + early return.
+        internal void BreakEven(Account leader, Instrument instrument, int bufferTicks)
+        {
+            if (leader == null)                                      // (1) null guard
+            {
+                StatusUpdate?.Invoke("PTT-BE: leader null -- BE skipped");
+                return;
+            }
+            MoveStopToBreakEven(leader, instrument, bufferTicks);   // leader direct, no rule needed
+            foreach (var acc in AllAccounts(instrument))            // (2) follower fan-out
+            {
+                if (acc == leader) continue;                        // (3) skip duplicate
+                MoveStopToBreakEven(acc, instrument, bufferTicks);
+            }
+        }
+
 
 
         // B10 T3 -- TightenStop: moves all working stops on follower accounts to currentPrice +/- N ticks.
@@ -1254,9 +1289,8 @@ namespace PropTraderTools
 
         // B10 T2 -- ArmPendingBe: arms the pending BE watcher using acc.AccountItemUpdate.
         // CYC=4: instr null(1), acc null(2), pos flat(3), armed write(4).
-        // Called on UI thread. _pendingBeState volatile write provides release fence for
-        // _pendingBeAccount and _pendingBeInstrument plain refs (architecture plan Sec 5.4).
-        // JS-021: no lock -- Interlocked used in OnPendingBeAccountUpdate for CAS disarm.
+        // DW-B25-02: dict indexer write provides release fence for companion ref writes.
+        // JS-021: no lock -- ConcurrentDictionary used in OnPendingBeAccountUpdate for TryRemove.
         internal void ArmPendingBe(Instrument instr, Account masterAcc, int bufferTicks)
         {
             if (instr == null)                                  // (1)
@@ -1266,31 +1300,48 @@ namespace PropTraderTools
             var pos = FindPosition(masterAcc, instr);
             if (IsFlat(pos))                                    // (3)
                 return;
-            _pendingBeBufferTicks   = bufferTicks;              // volatile int write
-            _pendingBeInstrument    = instr;                    // plain ref write (UI thread)
-            _pendingBeAccount       = masterAcc;                // plain ref write (UI thread)
+            _pendingBeBufferTicks   = bufferTicks;
+            _pendingBeInstrument    = instr;
+            _pendingBeAccount       = masterAcc;
             masterAcc.AccountItemUpdate += OnPendingBeAccountUpdate;
-            _pendingBeState         = 1;                        // (4) volatile int write -- release fence
+            _pendingBeStates[masterAcc.Name] = 1;               // (4) DW-B25-02: per-account slot write
         }
 
         // B10 T2 -- DisarmPendingBe: disarms the pending BE watcher atomically.
-        // CYC=3: armed CAS check(1), acc null guard(2), unsubscribe(3).
-        // JS-021: no lock -- Interlocked.CompareExchange for atomic disarm.
-        internal void DisarmPendingBe()
+        // CYC=4: leader null guard(1), TryRemove check(2), acc null guard(3).
+        // DW-B25-02: Account leader param added -- per-account state slot disarm.
+        // JS-021: no lock -- ConcurrentDictionary.TryRemove is atomic.
+        // NT8-043: no ?.Event -= -- explicit if (acc != null) guard.
+        internal void DisarmPendingBe(Account leader)
         {
-            if (Interlocked.CompareExchange(ref _pendingBeState, 0, 1) != 1) // (1) only if Armed
+            if (leader == null)                                              // (1) null guard
+            {
+                StatusUpdate?.Invoke("DisarmPendingBe: leader null -- no-op");
+                return;
+            }
+            if (!_pendingBeStates.TryRemove(leader.Name, out int removedState)) // (2) only if Armed
                 return;
             var acc = _pendingBeAccount;
-            if (acc != null)                                    // (2)
-                acc.AccountItemUpdate -= OnPendingBeAccountUpdate;  // (3)
+            if (acc != null)                                                 // (3)
+                acc.AccountItemUpdate -= OnPendingBeAccountUpdate;
             _pendingBeAccount    = null;
             _pendingBeInstrument = null;
         }
 
+        // DW-B25-02: per-account BE state guards for callback methods (CYC=1 each, expression-body).
+        // Called from OnPendingBeAccountUpdate and OnTrailBeAccountUpdate respectively.
+        // F1 fix: absorbs the null + TryGetValue + state==1 compound guard so
+        // OnPendingBeAccountUpdate stays CYC=8.
+        // NT8-043: pure bool evaluation -- no event subscribe/unsubscribe. PASS.
+        private bool IsPendingBeArmed(Account acc)
+            => acc != null
+            && _pendingBeStates.TryGetValue(acc.Name, out int st)
+            && st == 1;
+
         // B14 T1 -- ArmTrailBe: arms the continuous trail watcher using acc.AccountItemUpdate.
         // CYC=4: instr null(1), acc null(2), pos flat(3), arm write(4).
         // Called on UI thread (from TradeCopierPanel.OnBeConnected via Dispatcher).
-        // _trailBeState volatile write (=1) is the release fence; plain ref writes precede it.
+        // DW-B25-02: dict indexer write provides release fence; plain ref writes precede it.
         // JS-021: no lock -- Interlocked used in OnTrailBeAccountUpdate for PnL CAS.
         // NT8-003: _trailBeLastPnl is plain long (volatile banned on 64-bit); Interlocked provides barrier.
         internal void ArmTrailBe(Instrument instr, Account masterAcc, int bufferTicks)
@@ -1309,23 +1360,37 @@ namespace PropTraderTools
             _trailBeInstrument    = instr;
             _trailBeAccount       = masterAcc;
             masterAcc.AccountItemUpdate += OnTrailBeAccountUpdate;
-            _trailBeState         = 1;                            // (4) volatile int write -- release fence
+            _trailBeStates[masterAcc.Name] = 1;                   // (4) DW-B25-02: per-account slot write
         }
 
         // B14 T1 -- DisarmTrailBe: disarms the trail watcher atomically.
-        // CYC=2: active CAS check(1), acc null guard(2).
-        // JS-021: no lock -- Interlocked.CompareExchange for atomic disarm.
-        // Idempotent: safe to call when already Off.
-        internal void DisarmTrailBe()
+        // CYC=4: leader null guard(1), TryRemove check(2), acc null guard(3).
+        // DW-B25-02: Account leader param added -- per-account state slot disarm.
+        // JS-021: no lock -- ConcurrentDictionary.TryRemove is atomic.
+        // NT8-043: no ?.Event -= -- explicit if (acc != null) guard.
+        // Idempotent: safe to call when already Off or with null leader.
+        internal void DisarmTrailBe(Account leader)
         {
-            if (Interlocked.CompareExchange(ref _trailBeState, 0, 1) != 1) // (1) only if Active
+            if (leader == null)                                              // (1) null guard
+            {
+                StatusUpdate?.Invoke("DisarmTrailBe: leader null -- no-op");
+                return;
+            }
+            if (!_trailBeStates.TryRemove(leader.Name, out int removedState)) // (2) only if Active
                 return;
             var acc = _trailBeAccount;
-            if (acc != null)                                      // (2)
+            if (acc != null)                                                 // (3)
                 acc.AccountItemUpdate -= OnTrailBeAccountUpdate;
             _trailBeAccount    = null;
             _trailBeInstrument = null;
         }
+
+        // IsTrailBeArmed -- called only from OnTrailBeAccountUpdate.
+        // CYC = 1. NT8-043: pure bool evaluation. PASS.
+        private bool IsTrailBeArmed(Account acc)
+            => acc != null
+            && _trailBeStates.TryGetValue(acc.Name, out int st)
+            && st == 1;
 
         // B14 T1 -- OnTrailBeAccountUpdate: continuous AccountItemUpdate callback for auto-trail.
         // Fires on NT8 account background thread -- NO UI calls inside this method.
@@ -1337,7 +1402,8 @@ namespace PropTraderTools
         // STAYS SUBSCRIBED until DisarmTrailBe() is called -- unlike OnPendingBeAccountUpdate (one-shot).
         private void OnTrailBeAccountUpdate(object sender, NinjaTrader.Cbi.AccountItemEventArgs e)
         {
-            if (_trailBeState != 1)                                         // (1) volatile int read
+            var acc = _trailBeAccount;                                      // capture for TOCTOU safety
+            if (!IsTrailBeArmed(acc))                                       // (1) DW-B25-02: per-account check
                 return;
             if (e.AccountItem != AccountItem.UnrealizedProfitLoss)         // (2) filter
                 return;
@@ -1363,12 +1429,13 @@ namespace PropTraderTools
         // acc?.AccountItemUpdate null-conditional is NOT a CYC branch (same convention as ternaries).
         private void OnPendingBeAccountUpdate(object sender, NinjaTrader.Cbi.AccountItemEventArgs e)
         {
-            if (_pendingBeState != 1)                                          // (1) volatile int read
+            var acc = _pendingBeAccount;                                       // capture for TOCTOU safety
+            if (!IsPendingBeArmed(acc))                                        // (1) DW-B25-02: per-account check
                 return;
             if (e.AccountItem != AccountItem.UnrealizedProfitLoss)            // (2) filter
                 return;
             // (3-6) Price-based trigger: fire when Last.Price reaches entry + bufferTicks * tickSize.
-            var pos = FindPosition(_pendingBeAccount, _pendingBeInstrument);
+            var pos = FindPosition(acc, _pendingBeInstrument);
             if (IsFlat(pos))                                                   // (3)
                 return;
             double tickSize = _pendingBeInstrument?.MasterInstrument?.TickSize ?? 0.0;
@@ -1383,17 +1450,16 @@ namespace PropTraderTools
             bool triggered = isLong ? (last >= target) : (last <= target);
             if (!triggered)                                                    // (6)
                 return;
-            // (7) CAS disarm: only ONE concurrent callback wins the Armed->Inactive transition
-            if (Interlocked.CompareExchange(ref _pendingBeState, 0, 1) != 1)  // (7)
+            // (7) DW-B25-02: per-account atomic disarm: only ONE concurrent callback wins TryRemove
+            if (!_pendingBeStates.TryRemove(acc.Name, out int removedSt))     // (7)
                 return;
-            var acc   = _pendingBeAccount;
             var instr = _pendingBeInstrument;
             var buf   = _pendingBeBufferTicks;
             if (acc != null)
                 acc.AccountItemUpdate -= OnPendingBeAccountUpdate;
             _pendingBeAccount    = null;
             _pendingBeInstrument = null;
-            BreakEven(instr, buf);
+            BreakEven(acc, instr, buf);
             PendingBeFired?.Invoke(instr?.FullName ?? string.Empty);
         }
 
