@@ -2535,5 +2535,29 @@ namespace PropTraderTools
         }
 
 
+        // =====================================================================
+        // B30-LaneB: TryResolveLeaderAccount structural contract (DW-B30-03)
+        // Verifies the method exists on TradeCopierPanel with correct visibility and signature.
+        // Pure reflection test -- no NT8 runtime required, no panel construction.
+        // JS-002: return type is Account (nullable -- callers treat null as no-op).
+        // =====================================================================
+
+        [Fact]
+        public void TryResolveLeaderAccount_MethodExists_IsPrivate()
+        {
+            // TryResolveLeaderAccount must be private (panel-internal late-resolve helper).
+            var mi = typeof(TradeCopierPanel).GetMethod(
+                "TryResolveLeaderAccount",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(mi);
+
+            // Return type must be Account (JS-002: returns null on miss, not throw).
+            Assert.Equal(typeof(NinjaTrader.Cbi.Account), mi.ReturnType);
+
+            // No parameters -- uses stored _accountCombo field (no chartTrader dependency).
+            Assert.Equal(0, mi.GetParameters().Length);
+        }
+
+
     }
 }

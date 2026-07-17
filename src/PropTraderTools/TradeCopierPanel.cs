@@ -118,6 +118,8 @@ namespace PropTraderTools
         private CopyEngine  _engine;
         private Instrument  _instrument;
         private Account     _leaderAccount;   // Set by TradeCopierAddOn from ChartTrader.Account
+        private ComboBox    _accountCombo;    // B30-B: stored at WireAccountCombo for Detach unsubscribe
+        private EventHandler _accountComboSelectionChanged;  // B30-B: named handler for leak-free Detach
         private TextBlock   _statusText;
         private bool        _copyEnabled;
         private TextBox     _beBufferBox;
@@ -383,6 +385,28 @@ namespace PropTraderTools
             _leaderAccount = account;
         }
 
+        // B30-B: WireAccountCombo -- called by TradeCopierAddOn.WireLeaderAccount instead of
+        // anonymous lambda. Stores the ComboBox ref and named handler so Detach() can unsubscribe.
+        // Fixes memory leak DW-B30-03: anonymous lambda captured panel, preventing GC.
+        // CYC=1 (straight-line assignment + subscription, no branches). JS-021: no lock.
+        public void WireAccountCombo(ComboBox combo)
+        {
+            _accountCombo = combo;
+            _accountComboSelectionChanged = (s, e) =>
+                _leaderAccount = _accountCombo.SelectedItem as NinjaTrader.Cbi.Account;
+            combo.SelectionChanged += _accountComboSelectionChanged;
+        }
+
+        // B30-B: TryResolveLeaderAccount -- late-resolve the leader account when _leaderAccount
+        // was null at inject time (ComboBox not yet populated). Uses stored _accountCombo ref.
+        // CYC=2: null-conditional combo check(1), pattern-match Account cast(2).
+        // JS-002: returns null (not throw) -- callers use null as a no-op sentinel.
+        private NinjaTrader.Cbi.Account TryResolveLeaderAccount()
+        {
+            if (_accountCombo?.SelectedItem is NinjaTrader.Cbi.Account acc) return acc;
+            return null;
+        }
+
         public void Detach()
         {
             // B9 T2: unregister click trader before clearing state
@@ -397,6 +421,11 @@ namespace PropTraderTools
             _engine.DisarmPendingBe(_leaderAccount);
             _engine.DisarmTrailBe(_leaderAccount);   // B14 T1
             _engine.CopyEnabledChanged -= OnCopyEnabledChanged;
+            // B30-B: unsubscribe ComboBox SelectionChanged to prevent memory leak (DW-B30-03).
+            if (_accountCombo != null && _accountComboSelectionChanged != null)
+                _accountCombo.SelectionChanged -= _accountComboSelectionChanged;
+            _accountCombo = null;
+            _accountComboSelectionChanged = null;
             _instrument    = null;
             _leaderAccount = null;
         }
@@ -731,15 +760,17 @@ namespace PropTraderTools
         }
 
         // B19 T1 -- OnTrimClick: calls engine Trim overload with ask+bid anchors or market fallback. CYC=4.
+        // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnTrimClick(object sender, RoutedEventArgs e)
         {
             if (_instrument == null) return;                                               // (1)
+            var leader = _leaderAccount ?? TryResolveLeaderAccount();                      // B30-B
             double ask = GetAsk();
             double bid = GetBid();
             if (ask <= 0 || bid <= 0 || _trimBuffer == 0)                                 // (2)(3)
-                _engine.Trim(_instrument);
+                _engine.Trim(leader, _instrument);
             else                                                                           // (4)
-                _engine.Trim(_instrument, _trimBuffer, ask, bid);
+                _engine.Trim(leader, _instrument, _trimBuffer, ask, bid);
         }
 
         // B12 T1 -- OnFlattenUp: increment _flattenBuffer, clamp, update label. CYC=1.
@@ -757,15 +788,17 @@ namespace PropTraderTools
         }
 
         // B19 T1 -- OnFlattenClick: calls engine Flatten overload with ask+bid anchors or market fallback. CYC=4.
+        // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnFlattenClick(object sender, RoutedEventArgs e)
         {
             if (_instrument == null) return;                                               // (1)
+            var leader = _leaderAccount ?? TryResolveLeaderAccount();                      // B30-B
             double ask = GetAsk();
             double bid = GetBid();
             if (ask <= 0 || bid <= 0 || _flattenBuffer == 0)                              // (2)(3)
-                _engine.Flatten(_instrument);
+                _engine.Flatten(leader, _instrument);
             else                                                                           // (4)
-                _engine.Flatten(_instrument, _flattenBuffer, ask, bid);
+                _engine.Flatten(leader, _instrument, _flattenBuffer, ask, bid);
         }
 
         // B12 T1 -- OnBeUp: increment _beBuffer, clamp, live reprice if Connected. CYC=2.
@@ -787,25 +820,27 @@ namespace PropTraderTools
         }
 
         // B12 T1 -- OnBeClick: 3-state FSM transition. CYC=5.
+        // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnBeClick(object sender, RoutedEventArgs e)
         {
-            if (_instrument == null)    return;   // (1)
-            if (_leaderAccount == null) return;   // (2)
+            if (_instrument == null) return;                                               // (1)
+            var leader = _leaderAccount ?? TryResolveLeaderAccount();                      // B30-B
+            if (leader == null) return;                                                    // (2)
             switch (_beState)
             {
                 case BeState.Idle:                // (3)
-                    _engine.ArmPendingBe(_instrument, _leaderAccount, _beBuffer);
+                    _engine.ArmPendingBe(_instrument, leader, _beBuffer);
                     _beState = BeState.Armed;
                     UpdateBeVisuals(BeState.Armed);
                     break;
                 case BeState.Armed:               // (4)
-                    _engine.DisarmPendingBe(_leaderAccount);
+                    _engine.DisarmPendingBe(leader);
                     _beState = BeState.Idle;
                     UpdateBeVisuals(BeState.Idle);
                     break;
                 case BeState.Connected:           // (5)
-                    _engine.DisarmPendingBe(_leaderAccount);
-                    _engine.DisarmTrailBe(_leaderAccount);          // B14 T1 -- disarm continuous trail
+                    _engine.DisarmPendingBe(leader);
+                    _engine.DisarmTrailBe(leader);          // B14 T1 -- disarm continuous trail
                     _beState = BeState.Idle;
                     UpdateBeVisuals(BeState.Idle);
                     break;
@@ -906,10 +941,13 @@ namespace PropTraderTools
             });
         }
 
-        // B12 T1 -- OnCancel2: cancels pending entries. CYC=1.
+        // B12 T1 -- OnCancel2: cancels pending entries. CYC=2.
+        // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnCancel2(object sender, RoutedEventArgs e)
         {
-            if (_instrument != null) _engine.CancelPendingEntries(_instrument);
+            if (_instrument == null) return;                                               // (1)
+            var leader = _leaderAccount ?? TryResolveLeaderAccount();                      // B30-B
+            if (leader != null) _engine.CancelPendingEntries(leader, _instrument);        // (2)
         }
 
         // B12 T2 -- BuildCollapsibleHeader: builds collapse header row. CYC=1.
@@ -936,17 +974,22 @@ namespace PropTraderTools
         }
 
         // B10 T3 -- OnTightenStop: tighten stop button click handler.
-        // CYC=3: instrument null(1), parse fallback(2), engine call(3).
+        // CYC=4: instrument null(1), parse fallback(2), leader null branch(3), engine overload(4).
+        // B30-B: uses leader overload when leader is available; falls back to all-accounts overload.
         // NT8-034: no Math.Clamp (.NET 4.8 version constraint -- not the NT8-003 volatile ban).
         // JS-021: no lock -- _engine.TightenStop iterates ConcurrentBag (lock-free).
         private void OnTightenStop(object sender, RoutedEventArgs e)
         {
             if (_instrument == null)                               // (1)
                 return;
+            var leader = _leaderAccount ?? TryResolveLeaderAccount();  // B30-B: late resolve
             int ticks = int.TryParse(_tightenTicksBox?.Text, out var t)  // (2)
                 ? Math.Max(1, Math.Min(500, t))   // clamp 1-500: no Math.Clamp (.NET 4.8 ban)
                 : 5;
-            _engine.TightenStop(_instrument, ticks);              // (3)
+            if (leader != null)                                    // (3)
+                _engine.TightenStop(leader, _instrument, ticks);   // B30-A leader overload (4)
+            else
+                _engine.TightenStop(_instrument, ticks);           // fallback: all accounts
         }
 
 
@@ -1263,17 +1306,17 @@ namespace PropTraderTools
 
         private void OnTrim(object sender, RoutedEventArgs e)
         {
-            if (_instrument != null) _engine.Trim(_instrument);
+            if (_instrument != null) _engine.Trim(_leaderAccount, _instrument);
         }
 
         private void OnFlatten(object sender, RoutedEventArgs e)
         {
-            if (_instrument != null) _engine.Flatten(_instrument);
+            if (_instrument != null) _engine.Flatten(_leaderAccount, _instrument);
         }
 
         private void OnCancel(object sender, RoutedEventArgs e)
         {
-            if (_instrument != null) _engine.CancelPendingEntries(_instrument);
+            if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrument);
         }
 
         private Account[] GetSelectedFollowers()
@@ -1386,9 +1429,9 @@ namespace PropTraderTools
         {
             switch (key)
             {
-                case Key.T: _engine.Trim(_instrument, _trimBuffer, GetAsk(), GetBid());       break;
-                case Key.F: _engine.Flatten(_instrument, _flattenBuffer, GetAsk(), GetBid()); break;
-                case Key.C: _engine.CancelPendingEntries(_instrument);               break;
+                case Key.T: _engine.Trim(_leaderAccount, _instrument, _trimBuffer, GetAsk(), GetBid());       break;
+                case Key.F: _engine.Flatten(_leaderAccount, _instrument, _flattenBuffer, GetAsk(), GetBid()); break;
+                case Key.C: _engine.CancelPendingEntries(_leaderAccount, _instrument);               break;
                 case Key.B:
                     int buf = 2;
                     int.TryParse(_beBufferBox.Text, out buf);

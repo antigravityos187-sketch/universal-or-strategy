@@ -438,9 +438,10 @@ namespace PropTraderTools
         // B18 T1: Fix DW-B17-LEADER-01 -- FindVisualChild<ComboBox> returned Instrument ComboBox
         // (DFS first-match). Now: FindAccountComboBox picks first ComboBox whose SelectedItem is Account.
         // Fallback: if no account selected yet (all SelectedItems null), use index=1 (Account ComboBox
-        // is always the second ComboBox in ChartTrader visual tree). NT8-023: lambda captures only
-        // accountCombo + panel (same visual tree lifetime -- safe).
-        // CYC=6: null guard(1) + primary find(2) + fallback find(3) + text-fallback guard(4) + FirstOrDefault predicate(5) + SelectionChanged sub(6).
+        // is always the second ComboBox in ChartTrader visual tree).
+        // B30-B: SelectionChanged subscription moved to panel.WireAccountCombo (leak fix --
+        // anonymous lambda could not be unsubscribed; named handler stored in panel.Detach).
+        // CYC=5: null guard(1) + primary find(2) + fallback find(3) + text-fallback guard(4) + FirstOrDefault predicate(5).
         private static void WireLeaderAccount(ChartTrader chartTrader, TradeCopierPanel panel)
         {
             // Primary: find by SelectedItem type (works when account already selected)
@@ -460,12 +461,9 @@ namespace PropTraderTools
                                        StringComparison.OrdinalIgnoreCase));
             if (current != null) panel.SetLeaderAccount(current);
 
-            // Keep live as user switches accounts in ChartTrader
-            accountCombo.SelectionChanged += (s, e) =>
-            {
-                var acc = accountCombo.SelectedItem as NinjaTrader.Cbi.Account;
-                panel.SetLeaderAccount(acc);
-            };
+            // B30-B: Wire SelectionChanged via panel method so panel.Detach can unsubscribe.
+            // Replaces anonymous lambda (was never unsubscribed -- memory leak DW-B30-03).
+            panel.WireAccountCombo(accountCombo);
         }
 
         // --- Visual tree helpers (CYC=1 each) ---
@@ -489,7 +487,8 @@ namespace PropTraderTools
         // the Instrument ComboBox (DFS first-match) and reach the Account ComboBox.
         // CYC=4: null guard(1) + count loop(2) + type+cast check(3) + recursive call(4).
         // JS-021: no lock. JS-002: returns null only on null parent (guard pattern).
-        private static ComboBox FindAccountComboBox(DependencyObject parent)
+        // B30-B: internal (was private) so TradeCopierPanel.TryResolveLeaderAccount can call it.
+        internal static ComboBox FindAccountComboBox(DependencyObject parent)
         {
             if (parent == null) return null;
             int count = VisualTreeHelper.GetChildrenCount(parent);
@@ -509,7 +508,8 @@ namespace PropTraderTools
         // NT8 ChartTrader: index 0 = Instrument ComboBox, index 1 = Account ComboBox.
         // CYC=2: delegates to internal helper (guards + loop there).
         // JS-021: no lock. JS-002: returns null only when not found.
-        private static T FindVisualChildByIndex<T>(DependencyObject parent, int targetIndex)
+        // B30-B: internal (was private) so TradeCopierPanel can call it if needed.
+        internal static T FindVisualChildByIndex<T>(DependencyObject parent, int targetIndex)
             where T : DependencyObject
         {
             int found = 0;
