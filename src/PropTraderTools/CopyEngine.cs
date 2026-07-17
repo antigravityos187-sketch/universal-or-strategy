@@ -1463,7 +1463,8 @@ namespace PropTraderTools
         }
 
         // B27 -- ArmPendingBe: arms the pending BE watcher using acc.AccountItemUpdate.
-        // CYC=4: instr null(1), acc null(2), pos flat(3), slot upsert(4).
+        // CYC=4: instr null(1), acc null+emit(2), pos flat+emit(3), slot upsert(4).
+        // DW-B30-05: StatusUpdate on null-leader and flat-position paths (previously silent).
         // DW-B27-01: slot dict replaces four singleton fields -- per-account, no data races.
         // JS-021: no lock -- ConcurrentDictionary indexer write is lock-free.
         internal void ArmPendingBe(Instrument instr, Account masterAcc, int bufferTicks)
@@ -1471,10 +1472,16 @@ namespace PropTraderTools
             if (instr == null)                                  // (1)
                 return;
             if (masterAcc == null)                              // (2)
+            {
+                StatusUpdate?.Invoke("PTT-BE: leader null -- skipped");
                 return;
+            }
             var pos = FindPosition(masterAcc, instr);
             if (IsFlat(pos))                                    // (3)
+            {
+                StatusUpdate?.Invoke("PTT-BE: no open position for " + masterAcc.Name);
                 return;
+            }
             _pendingBeSlots[masterAcc.Name] = new PendingBeSlot(masterAcc, instr, bufferTicks); // (4)
             masterAcc.AccountItemUpdate += OnPendingBeAccountUpdate;
         }

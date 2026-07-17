@@ -377,7 +377,7 @@ namespace PropTraderTools
         {
             _instrument = instrument;
             if (_statusText != null && instrument != null)
-                _statusText.Text = "Ready: " + instrument.FullName;
+                _statusText.Text = "Ready: " + instrument.FullName + " -- select followers to copy";
         }
 
         public void SetLeaderAccount(Account account)
@@ -509,7 +509,7 @@ namespace PropTraderTools
             root.Children.Add(_followersDropDown);
 
             // --- Apply Rule button ---
-            var applyBtn = new Button { Content = "Apply Rule", Margin = new Thickness(0, 2, 0, 2) };
+            var applyBtn = new Button { Content = "Add Followers", Margin = new Thickness(0, 2, 0, 2) };
             applyBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             applyBtn.Click += OnApplyRule;
             root.Children.Add(applyBtn);
@@ -530,7 +530,7 @@ namespace PropTraderTools
             BuildBufferedButtonsRow(_contentPanel);
 
             // --- Status line ---
-            _statusText = new TextBlock { Text = "No instrument", Margin = new Thickness(0, 2, 0, 0) };
+            _statusText = new TextBlock { Text = "Open chart -- Trim/Flatten/Cancel/BE ready", Margin = new Thickness(0, 2, 0, 0) };
             _statusText.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
             _contentPanel.Children.Add(_statusText);
 
@@ -955,7 +955,7 @@ namespace PropTraderTools
         {
             _collapseToggleBtn = new Button
             {
-                Content = "\u25BC PTT",
+                Content = "\u25BC Position Tools",
                 Margin  = new Thickness(0, 0, 0, 2)
             };
             _collapseToggleBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
@@ -970,7 +970,7 @@ namespace PropTraderTools
             if (_contentPanel != null)                                                 // (2)
                 _contentPanel.Visibility = _isCollapsed ? Visibility.Collapsed : Visibility.Visible;
             if (_collapseToggleBtn != null)
-                _collapseToggleBtn.Content = _isCollapsed ? "\u25B2 PTT" : "\u25BC PTT";
+                _collapseToggleBtn.Content = _isCollapsed ? "\u25B2 Position Tools" : "\u25BC Position Tools";
         }
 
         // B10 T3 -- OnTightenStop: tighten stop button click handler.
