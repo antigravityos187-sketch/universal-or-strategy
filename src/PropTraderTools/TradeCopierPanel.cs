@@ -145,8 +145,8 @@ namespace PropTraderTools
         private TextBox _tightenTicksBox = null;
 
         // B12 T1 -- Buffered button state (plain int; UI-thread-only; no volatile per NT8-003)
-        private int  _trimBuffer     = 1;
-        private int  _flattenBuffer  = 1;
+        private int  _trimBuffer     = 0;   // HOTFIX-F5: default market (0 ticks), not limit (+1)
+        private int  _flattenBuffer  = 0;   // HOTFIX-F5: default market (0 ticks), not limit (+1)
         private int  _beBuffer       = 1;
 
         // B12 T1 -- BE 3-state FSM (UI-thread-only; no volatile)
@@ -399,11 +399,20 @@ namespace PropTraderTools
 
         // B30-B: TryResolveLeaderAccount -- late-resolve the leader account when _leaderAccount
         // was null at inject time (ComboBox not yet populated). Uses stored _accountCombo ref.
-        // CYC=2: null-conditional combo check(1), pattern-match Account cast(2).
+        // HOTFIX-B30-F1: NT8 ComboBox.SelectedItem is sometimes a string (account name) when
+        // data-bound -- Account cast returns null even though an account IS selected.
+        // Fallback: match by name against Account.All.
+        // CYC=4: combo null(1), Account cast(2), string name empty(3), Account.All loop(4).
         // JS-002: returns null (not throw) -- callers use null as a no-op sentinel.
         private NinjaTrader.Cbi.Account TryResolveLeaderAccount()
         {
-            if (_accountCombo?.SelectedItem is NinjaTrader.Cbi.Account acc) return acc;
+            if (_accountCombo == null) return null;                                        // (1)
+            if (_accountCombo.SelectedItem is NinjaTrader.Cbi.Account acc) return acc;    // (2)
+            var name = _accountCombo.SelectedItem as string ?? _accountCombo.Text;        // NT8 string fallback
+            if (string.IsNullOrEmpty(name)) return null;                                  // (3)
+            foreach (var a in NinjaTrader.Cbi.Account.All)                                // (4)
+                if (string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return a;
             return null;
         }
 
@@ -433,13 +442,21 @@ namespace PropTraderTools
         // -- Layer 3 live state (V04) -- called on UI thread only -----------------
         // B12 T1: updated to use new _copyToggleBtn2, _flattenBtn2, _cancelBtn2, _trimBtn2, _beBtn2.
         // CYC=5: 5 ternary branches, no control flow.
+        // HOTFIX-F3: when position goes flat, force BE FSM back to Idle regardless of prior state.
+        // Previously Armed/Connected states were never cleared by PositionStateChanged -- button
+        // stayed amber/blue after ATM or native Close flattened the position.
         private void UpdateButtonColors(bool hasPosition, bool hasEntries)
         {
             if (_copyToggleBtn2 != null) _copyToggleBtn2.Background = _copyEnabled ? BrushActive   : BrushInactive;
             if (_flattenBtn2    != null) _flattenBtn2.Background    = hasPosition  ? BrushDanger   : BrushInactive;
             if (_cancelBtn2     != null) _cancelBtn2.Background     = hasEntries   ? BrushDanger   : BrushInactive;
             if (_trimBtn2       != null) _trimBtn2.Background       = hasPosition  ? BrushCaution  : BrushInactive;
-            if (_beBtn2         != null && _beState == BeState.Idle) _beBtn2.Background = hasPosition ? BrushActive : BrushInactive;
+            if (!hasPosition && _beState != BeState.Idle)           // HOTFIX-F3: reset BE on flat
+            {
+                _beState = BeState.Idle;
+                UpdateBeVisuals(BeState.Idle);
+            }
+            if (_beBtn2 != null && _beState == BeState.Idle) _beBtn2.Background = hasPosition ? BrushActive : BrushInactive;
         }
 
         // CYC=1: single null+instrument filter guard.

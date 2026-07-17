@@ -1067,12 +1067,42 @@ namespace PropTraderTools
             }
         }
 
+        // HOTFIX-F4 -- CancelStaleExitOrders: cancels any working PTT limit exit orders by signal name.
+        // Called by TrimOneAccountLimit and FlattenOneAccountLimit before posting a new limit.
+        // Prevents stale PTT-TrimLimit/PTT-FlattenLimit orders competing with ATM Close or
+        // a second button click, which caused "Close operation timed out" popup in NT8.
+        // CYC=3: foreach(1), name filter(2), try/catch(3). JS-021: ToList() snapshot.
+        private void CancelStaleExitOrders(Account acc, Instrument instrument, string signalName)
+        {
+            foreach (var order in acc.Orders.ToList())
+            {
+                if (order.Instrument != instrument) continue;                        // (1)
+                if (order.Name != signalName) continue;                              // (2)
+                if (order.OrderState != OrderState.Working &&
+                    order.OrderState != OrderState.Initialized) continue;
+                try                                                                  // (3)
+                {
+                    acc.Cancel(new Order[] { order });
+                    StatusUpdate?.Invoke(acc.Name + ": stale exit pulled " + order.Name);
+                }
+                catch (Exception ex)
+                {
+                    StatusUpdate?.Invoke("PTT-CancelStale error: " + ex.Message);
+                }
+            }
+        }
+
+
+
         // B28 T1 -- TrimOneAccountLimit: per-account limit trim helper. CYC=3.
         // (1) pos null/qty guard, (2) isLong ternary, (3) try/catch CreateOrder.
         // NT8-007: arg12 = (NinjaTrader.Cbi.CustomOrder)null.
+        // HOTFIX-F4: cancel any stale PTT-TrimLimit orders before posting new one.
+        // Stale limits from a prior click stay live on the book and compete with ATM Close.
         private void TrimOneAccountLimit(Account acc, Instrument instrument,
             int exitBuffer, double ask, double bid)
         {
+            CancelStaleExitOrders(acc, instrument, "PTT-TrimLimit");    // HOTFIX-F4
             var pos = FindPosition(acc, instrument);
             if (pos == null || pos.Quantity == 0)
             {
@@ -1101,9 +1131,12 @@ namespace PropTraderTools
         // B28 T1 -- FlattenOneAccountLimit: per-account limit flatten helper. CYC=3.
         // (1) pos null/qty guard, (2) isLong ternary, (3) try/catch CreateOrder.
         // NT8-007: arg12 = (NinjaTrader.Cbi.CustomOrder)null.
+        // HOTFIX-F4: cancel any stale PTT-FlattenLimit orders before posting new one.
+        // Stale limits from a prior click stay live on the book and compete with ATM Close.
         private void FlattenOneAccountLimit(Account acc, Instrument instrument,
             int exitBuffer, double ask, double bid)
         {
+            CancelStaleExitOrders(acc, instrument, "PTT-FlattenLimit"); // HOTFIX-F4
             var pos = FindPosition(acc, instrument);
             if (pos == null || pos.Quantity == 0)
             {
@@ -1600,12 +1633,19 @@ namespace PropTraderTools
             double tickSize = instr?.MasterInstrument?.TickSize ?? 0.0;
             if (tickSize <= 0.0)                                                             // (4)
                 return;
-            double last = instr?.MarketData?.Last?.Price ?? 0.0;
-            if (last <= 0.0)                                                                 // (5)
+            // HOTFIX-F2: Last.Price is 0 on Sim accounts and stale on reconnect.
+            // Use Bid for long (price must reach entry from below) and Ask for short.
+            // Falls back to Ask/Bid respectively if primary is 0 -- never blocks on 0.
+            bool isLong   = pos.MarketPosition == MarketPosition.Long;
+            double refBid = instr?.MarketData?.Bid?.Price ?? 0.0;
+            double refAsk = instr?.MarketData?.Ask?.Price ?? 0.0;
+            double refPx  = isLong
+                ? (refBid > 0 ? refBid : refAsk)   // long: use bid; fallback ask
+                : (refAsk > 0 ? refAsk : refBid);   // short: use ask; fallback bid
+            if (refPx <= 0.0)                                                                // (5)
                 return;
-            bool isLong  = pos.MarketPosition == MarketPosition.Long;
             double target = pos.AveragePrice + (isLong ? 1.0 : -1.0) * buf * tickSize;
-            bool triggered = isLong ? (last >= target) : (last <= target);
+            bool triggered = isLong ? (refPx >= target) : (refPx <= target);
             if (!triggered)                                                                  // (6)
                 return;
             if (!_pendingBeSlots.TryRemove(accName, out var removed))                       // (7) atomic claim
