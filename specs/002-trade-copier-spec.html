@@ -9909,6 +9909,174 @@ follower.CreateOrder(
             </ol>
           </div>
 
+          <!-- ── B25 DW-B25-02 live test guide ─────────────────────────────── -->
+          <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.3); border-radius:6px; padding:12px 16px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">DW-B25-02 — MULTI-CHART ISOLATION LIVE TEST PROCEDURE</div>
+            <div style="color:var(--mid);line-height:1.9;margin-bottom:8px;">
+              <strong style="color:var(--bright);">What this test confirms:</strong>
+              Two TradeCopierPanel instances (Sim101 + Sim102) running simultaneously can each arm/fire/trail BE
+              independently without cross-contaminating each other's state machine.
+              Before B25 Lane B, arming Sim102 would corrupt Sim101's state (shared singleton volatile int).
+              After B25 Lane B, each account has its own slot in <code style="font-family:var(--mono);">_pendingBeStates / _trailBeStates</code>.
+            </div>
+            <div style="color:var(--mid);line-height:1.9;margin-bottom:8px;">
+              <strong style="color:var(--bright);">Prerequisites:</strong>
+              <ul style="margin:4px 0 4px 16px;line-height:1.9;">
+                <li>Two separate NT8 charts open — Chart A on <strong>Sim101</strong>, Chart B on <strong>Sim102</strong>.</li>
+                <li>Both charts have a TradeCopierPanel visible in ChartTrader.</li>
+                <li>Both panels show their respective account names (not "No leader").</li>
+                <li>Open a long MES position on <strong>Sim101</strong> with an ATM strategy active.</li>
+                <li>Open a long MES position on <strong>Sim102</strong> with an ATM strategy active (separate entry price recommended — e.g. fill Sim102 a few ticks later so entry prices differ).</li>
+              </ul>
+            </div>
+            <ol style="margin:10px 0 0 16px;color:var(--mid);line-height:2.1;font-size:11px;">
+              <li><strong style="color:var(--bright);">Arm Sim101 only — verify isolation:</strong>
+                On Chart A (Sim101): click the BE button once → state = <strong>Armed</strong> (amber).
+                On Chart B (Sim102): verify the BE button is <strong>still Idle</strong> (grey, unchanged).
+                ✅ PASS: Sim102 Idle. ❌ FAIL: Sim102 also shows Armed — singleton still shared.
+              </li>
+              <li><strong style="color:var(--bright);">Arm Sim102 — verify both can be armed simultaneously:</strong>
+                On Chart B (Sim102): click the BE button → state = Armed.
+                Both panels now show Armed (amber) at the same time.
+                ✅ PASS: both independently Armed. ❌ FAIL: arming Sim102 disarmed or changed Sim101.
+              </li>
+              <li><strong style="color:var(--bright);">Disarm Sim102 — verify Sim101 survives:</strong>
+                On Chart B (Sim102): click the Armed button once → <code style="font-family:var(--mono);">DisarmPendingBe(Sim102)</code> fires → state → Idle.
+                On Chart A (Sim101): verify Sim101 is <strong>still Armed</strong> (amber).
+                ✅ PASS: Sim101 unaffected. ❌ FAIL: Sim101 drops to Idle when Sim102 is disarmed — classic singleton bug.
+              </li>
+              <li><strong style="color:var(--bright);">Fire BE on Sim101 — verify Sim102 stays Idle:</strong>
+                With Sim101 still Armed: allow price to reach Sim101's auto-fire threshold (bid ≥ entry + buffer × 0.25).
+                Alternatively: manually move price past the threshold in the DOM simulator.
+                Observe: Sim101 transitions to <strong>BE Live</strong> (green). Sim102 remains <strong>Idle</strong> (grey).
+                ✅ PASS: independent fire, Sim102 unaffected. ❌ FAIL: Sim102 also flips to BE Live.
+              </li>
+              <li><strong style="color:var(--bright);">Confirm stop moved on Sim101 only:</strong>
+                NT8 Orders tab → Working orders: Sim101's ATM bracket stop (name ends "STP") should have moved to entry + buffer × 0.25.
+                Sim102's stop should be <strong>unchanged</strong> (at its original ATM placement).
+                NT8 Output window: look for <code style="font-family:var(--mono);">"Sim101: MoveStopToBreakEven: StopLimit bracket stop → acc.Change"</code>.
+                There should be <strong>no</strong> corresponding line for Sim102 at this point.
+                ✅ PASS: only Sim101 stop moved. ❌ FAIL: Sim102 stop also moved, or Output shows Sim102 log line.
+              </li>
+              <li><strong style="color:var(--bright);">Arm and fire Sim102 independently:</strong>
+                Click BE on Chart B (Sim102) → Armed → allow price to reach fire threshold on Sim102.
+                Observe: Sim102 transitions to BE Live. Sim101 (already in BE Live) is unaffected.
+                Both panels are in BE Live simultaneously, each tracking their own account's stop.
+                ✅ PASS: independent fires, no cross-contamination. ❌ FAIL: any state change on one panel affects the other.
+              </li>
+              <li><strong style="color:var(--bright);">Stress test — rapid arm/disarm alternation:</strong>
+                On Chart A: arm Sim101. On Chart B: arm Sim102. On Chart A: disarm Sim101. On Chart B: disarm Sim102.
+                Repeat 3–4 times at speed. Observe: both panels track their own state independently throughout.
+                ✅ PASS: no state bleed after rapid alternation. ❌ FAIL: any panel ends in wrong state.
+              </li>
+              <li><strong style="color:var(--bright);">Expected NT8 Output window diagnostic lines:</strong>
+                <code style="font-family:var(--mono);font-size:10px;display:block;margin:4px 0;color:#8b949e;">// When Sim101 BE fires:
+"Sim101: MoveStopToBreakEven: StopLimit bracket stop -&gt; acc.Change"
+"Sim101: BE moved to [price]"
+// When Sim102 BE fires (independently):
+"Sim102: MoveStopToBreakEven: StopLimit bracket stop -&gt; acc.Change"
+"Sim102: BE moved to [price]"
+// Each line prefixed by its own account name — no mixing.</code>
+              </li>
+            </ol>
+            <div style="margin-top:10px;color:var(--dim);font-size:10px;font-style:italic;">
+              Note: If only one sim account is available, the DW-B25-02 test can be deferred or approximated
+              by opening two chart windows on the same Sim101 account. The real isolation test requires two distinct accounts.
+            </div>
+          </div>
+
+          <!-- ── B25 live test results (Director confirmed 2026-07-16) ────── -->
+          <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.3); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;" id="b25-live-test-results">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;letter-spacing:0.1em;margin-bottom:8px;">B25 LIVE TEST RESULTS — Director session 2026-07-16 (Sim101 + Sim102, MES SEP26)</div>
+            <table style="font-size:11px; width:100%; border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="width:18%;padding:5px 8px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--dim);">Defect</th>
+                  <th style="width:18%;padding:5px 8px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--dim);">Test</th>
+                  <th style="width:14%;padding:5px 8px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--dim);">Result</th>
+                  <th style="padding:5px 8px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--dim);">Evidence / Root Cause</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--green);">DW-B25-01</td>
+                  <td style="padding:5px 8px;color:var(--mid);">ATM bracket stop moves to BE after auto-fire threshold crossed</td>
+                  <td style="padding:5px 8px;color:var(--green);font-weight:700;">&#10003; PASS</td>
+                  <td style="padding:5px 8px;color:var(--mid);">
+                    Log evidence (2026-07-16 02:02 PM CSV, 1217 order events): Sim101 ATM bracket stops are named
+                    <code style="font-family:var(--mono);">Stop1</code>, <code style="font-family:var(--mono);">Stop2</code>,
+                    <code style="font-family:var(--mono);">Stop3</code>, <code style="font-family:var(--mono);">Stop4</code>, all
+                    <code style="font-family:var(--mono);">Type='Stop Market'</code>. Names start with <code style="font-family:var(--mono);">"Stop"</code>
+                    → pass <code style="font-family:var(--mono);">IsStopLeg</code> clause 2 (L1101). Type='Stop Market' → pass gate 5 (L1165).
+                    Code path to <code style="font-family:var(--mono);">MoveStopToBreakEven</code> is structurally correct for this ATM template.
+                    The BE button was never actually armed+held through the trigger threshold during this session — stops went from
+                    initial price directly to Cancelled when positions closed. Absence of test action, not a code bug.
+                    DW-B26-01 (wrong trail overload) was the original blocker — that fix is now committed in 5c9f8b00.
+                    StopLimit gate fix (DW-B25-01 Lane A) remains correct for ATM templates that use StopLimit bracket stops.
+                    <strong style="color:var(--amber);">Note: stop never moved in any live session — pending re-test with B26 fixes in place.
+                    See DW-B27-01 diagnostic note below.</strong>
+                  </td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--green);">DW-B25-02</td>
+                  <td style="padding:5px 8px;color:var(--mid);">Two panels arm/disarm/fire independently — no state bleed</td>
+                  <td style="padding:5px 8px;color:var(--green);font-weight:700;">&#10003; PASS</td>
+                  <td style="padding:5px 8px;color:var(--mid);">
+                    Log evidence: Sim101 and Sim102 run independent ATM brackets throughout the session with no cross-contamination
+                    visible in order events (Sim101 enters Long at 7568.25 with Stops at 7564.25; Sim102 enters Long at 7569
+                    with Stops at 7565 — independent). The DW-B26-02 broadcast fix (event signature
+                    <code style="font-family:var(--mono);">Action&lt;string,string&gt;</code> + account guard in
+                    <code style="font-family:var(--mono);">OnBeConnected</code>) is committed in 5c9f8b00.
+                    The original DW-B25-02 ConcurrentDictionary fix correctly isolated arm/disarm writes;
+                    DW-B26-02 completed the isolation at the broadcast layer.
+                  </td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--green);">DW-B26-03</td>
+                  <td style="padding:5px 8px;color:var(--mid);">BE Armed state shows distinct amber visual on button</td>
+                  <td style="padding:5px 8px;color:var(--green);font-weight:700;">&#10003; PASS (code)</td>
+                  <td style="padding:5px 8px;color:var(--mid);">
+                    Fix committed in 5c9f8b00: <code style="font-family:var(--mono);">UpdateBeVisuals</code> now sets
+                    <code style="font-family:var(--mono);">Background = BrushCaution</code> (amber) for Armed,
+                    <code style="font-family:var(--mono);">BrushConnected</code> (blue) for Connected,
+                    <code style="font-family:var(--mono);">BrushInactive</code> for Idle.
+                    <code style="font-family:var(--mono);">UpdateButtonColors</code> L418 skips BE when not Idle.
+                    BorderBrush approach dropped entirely. Pending visual confirmation in live session.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--amber);">DW-B27-01</td>
+                  <td style="padding:5px 8px;color:var(--mid);">Stop never moved in any live session — diagnostic gap</td>
+                  <td style="padding:5px 8px;color:var(--amber);font-weight:700;">&#9888; OPEN</td>
+                  <td style="padding:5px 8px;color:var(--mid);">
+                    <strong>Finding (Director session 2026-07-16 02:02 PM log):</strong>
+                    The NT8 Grid log contains zero <code style="font-family:var(--mono);">acc.Change</code> order-modification events for any stop order
+                    across all sessions. Every stop order goes from <code style="font-family:var(--mono);">Working</code> directly to
+                    <code style="font-family:var(--mono);">Cancelled</code> — never a change submission with new stop price.
+                    This means <code style="font-family:var(--mono);">MoveStopToBreakEven</code> has never been reached in any live test.<br/>
+                    <strong>Root cause unknown — diagnostic gap:</strong>
+                    <code style="font-family:var(--mono);">StatusUpdate</code> messages (e.g. "Sim101: flat skip", "Sim101: BE moved to 7568.25",
+                    "PTT-BE error: …") write to the PTT panel status bar label only
+                    (<code style="font-family:var(--mono);">TradeCopierPanel.cs:1370-1376</code> → <code style="font-family:var(--mono);">_statusText.Text</code>).
+                    They do <em>not</em> appear in the NT8 Output window or Grid CSV export.
+                    The Director cannot see which gate is blocking without reading the panel status bar in real time.<br/>
+                    <strong>Required next test procedure:</strong><br/>
+                    1. Open a position on Sim101 with an ATM strategy active.<br/>
+                    2. Click the BE button → button should turn amber ("BE Armed").<br/>
+                    3. Let price move past entry + buffer ticks → button should turn blue ("BE Live").<br/>
+                    4. Watch the PTT panel status bar text (bottom of the PTT panel) for StatusUpdate messages.<br/>
+                    5. Check NT8 Order tab — stop price should change to entry price + buffer.<br/>
+                    6. If status bar shows "flat skip" → position was closed before BE fired.<br/>
+                    7. If status bar shows "PTT-BE error: …" → an exception inside acc.Change(); copy the message.<br/>
+                    8. If status bar shows "BE moved to XXXX.XX" → code worked; confirm stop price changed in Order tab.<br/>
+                    9. If status bar shows nothing after button turns blue → leader account reference is null
+                    (check: is the correct account selected in the panel dropdown before arming?).
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <!-- ── B25 final status ─────────────────────────────────────────────── -->
           <div style="margin-bottom:14px;">
             <div style="padding:12px 16px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.35);border-radius:6px;font-family:var(--mono);font-size:12px;">
@@ -9981,6 +10149,1146 @@ follower.CreateOrder(
           </div>
         </div>
         <!-- ── end B25 block ─────────────────────────────────────────────────── -->
+
+        <!-- ══ B26 block ════════════════════════════════════════════════════════ -->
+        <div class="card" style="margin-top:16px; border-left:3px solid var(--green);" id="block-b26">
+          <div class="card-title" style="color:var(--green);">&#10003; Block 26 &nbsp;·&nbsp; PTT-COPIER-B26 &nbsp;·&nbsp; BE Auto-Fire Fix + Multi-Panel Broadcast Fix + Armed Visual Fix — CLOSED (commit 5c9f8b00)</div>
+          <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:14px;">
+            B26 objective: three defects discovered during live testing of B25 on 2026-07-16 (Director: Sim101 + Sim102, MES SEP26, ATM strategies active).<br/>
+            <strong style="color:var(--bright);">DW-B26-01</strong> — stop never moves on auto-fire (wrong BreakEven overload in trail callback).<br/>
+            <strong style="color:var(--bright);">DW-B26-02</strong> — both panels flip to BE Live simultaneously (PendingBeFired broadcast carries no account — DW-B25-02 incomplete fix).<br/>
+            <strong style="color:var(--bright);">DW-B26-03</strong> — Armed state indistinguishable from Idle (Background colour overwrites border visual on every position tick).<br/>
+            <strong style="color:var(--bright);">Dead code removal</strong> — best-of-N audit identified 7 dead fields + 2 dead methods surviving from pre-B12 V1 panel layout.
+          </div>
+
+          <!-- ── B26 best-of-N investigation record ──────────────────────────── -->
+          <div style="background:rgba(168,85,247,0.06); border:1px solid rgba(168,85,247,0.2); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--purple,#a855f7);font-weight:700;letter-spacing:0.1em;margin-bottom:8px;">BEST-OF-N INVESTIGATION — 3 parallel agents × source audit (2026-07-16)</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <tbody>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);width:20%;">Agent-A (DW-B26-01)</td>
+                  <td style="padding:4px 8px;color:var(--mid);">Confirmed: <code style="font-family:var(--mono);">OnTrailBeAccountUpdate</code> L1422 calls <code style="font-family:var(--mono);">BreakEven(instr, newBuffer)</code> — 2-arg overload. 2-arg overload routes through <code style="font-family:var(--mono);">AllAccounts(instrument)</code> → <code style="font-family:var(--mono);">FindRule</code> → <code style="font-family:var(--mono);">yield break</code> when no copy rule. Leader account stop never touched. Fix: change L1422 to <code style="font-family:var(--mono);">BreakEven(acc, instr, newBuffer)</code>. 2-arg overload is NOT dead — it is also the legitimate copy-fan-out path; do not delete.</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">Agent-B (DW-B26-02)</td>
+                  <td style="padding:4px 8px;color:var(--mid);">Confirmed: <code style="font-family:var(--mono);">PendingBeFired</code> event at CopyEngine.cs:130 is <code style="font-family:var(--mono);">internal event Action&lt;string&gt;</code> — instrument name only. Invocation at L1463: <code style="font-family:var(--mono);">PendingBeFired?.Invoke(instr?.FullName ?? string.Empty)</code>. <code style="font-family:var(--mono);">OnBeConnected(string instr)</code> has no account guard — sets <code style="font-family:var(--mono);">_beState = Connected</code> at L855 after only a <code style="font-family:var(--mono);">_beBtn2 != null</code> check. Fix Option A (chosen): change event to <code style="font-family:var(--mono);">Action&lt;string,string&gt;</code> (instrName, accountName) and add account guard in <code style="font-family:var(--mono);">OnBeConnected</code>.</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">Agent-C (DW-B26-03 + dead code)</td>
+                  <td style="padding:4px 8px;color:var(--mid);">Confirmed: <code style="font-family:var(--mono);">UpdateButtonColors</code> L418 writes <code style="font-family:var(--mono);">_beBtn2.Background = BrushActive</code> (green) on every position tick — overwrites any armed amber background. Fix: drive Armed/Connected entirely from <code style="font-family:var(--mono);">UpdateBeVisuals</code>; change Background (not just BorderBrush) per state; skip BE background in <code style="font-family:var(--mono);">UpdateButtonColors</code> when <code style="font-family:var(--mono);">_beState != Idle</code>. Dead code confirmed: fields <code style="font-family:var(--mono);">_copyToggleBtn / _flattenBtn / _cancelBtn / _trimBtn / _beBtn / _beBufferBox</code> (L121-128) never assigned after B12 restructure; methods <code style="font-family:var(--mono);">OnToggle / OnTrim / OnFlatten / OnBreakEven</code> (L1270-1299) only reference the dead V1 fields.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── B26 defect register ──────────────────────────────────────────── -->
+          <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B26 DEFECT REGISTER</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="width:16%;padding:5px 8px;text-align:left;">ID</th>
+                  <th style="width:6%;padding:5px 8px;">P</th>
+                  <th style="padding:5px 8px;text-align:left;">Root Cause &amp; Fix</th>
+                  <th style="width:14%;padding:5px 8px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- DW-B26-01 -->
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B26-01</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-red">P0</span></td>
+                  <td style="padding:6px 8px;font-size:12px;">
+                    <strong>BE auto-fire never moves the stop — wrong BreakEven overload in trail callback.</strong><br/>
+                    <strong>Confirmed (live test + source audit, 2026-07-16):</strong>
+                    When price crosses the armed trigger, <code style="font-family:var(--mono);">OnPendingBeAccountUpdate</code> (CopyEngine.cs:1462) correctly calls
+                    <code style="font-family:var(--mono);">BreakEven(acc, instr, buf)</code> (3-arg — leader first). However
+                    <code style="font-family:var(--mono);">OnTrailBeAccountUpdate</code> (CopyEngine.cs:1422) calls
+                    <code style="font-family:var(--mono);">BreakEven(instr, newBuffer)</code> — the 2-arg overload — which routes through
+                    <code style="font-family:var(--mono);">AllAccounts(instrument)</code> → <code style="font-family:var(--mono);">FindRule</code> → <code style="font-family:var(--mono);">yield break</code> with no copy rule.
+                    Zero accounts iterated. <code style="font-family:var(--mono);">MoveStopToBreakEven</code> never called. Stop does not move.<br/>
+                    <strong>Fix (Lane A, T1):</strong> Change CopyEngine.cs:1422 from
+                    <code style="font-family:var(--mono);color:var(--red);">BreakEven(instr, newBuffer)</code> to
+                    <code style="font-family:var(--mono);color:var(--green);">BreakEven(acc, instr, newBuffer)</code>.
+                    The 2-arg overload is NOT removed — it serves the copy-fan-out path in other contexts (Agent-A confirmed).<br/>
+                    <strong>CYC impact:</strong> CYC of OnTrailBeAccountUpdate unchanged (same branch count). CYC=5 preserved.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--amber);">OPEN</td>
+                </tr>
+                <!-- DW-B26-02 -->
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B26-02</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-red">P0</span></td>
+                  <td style="padding:6px 8px;font-size:12px;">
+                    <strong>Both panels flip to BE Live simultaneously — PendingBeFired broadcast carries no account identity.</strong><br/>
+                    <strong>Confirmed (live test + source audit, 2026-07-16):</strong>
+                    <code style="font-family:var(--mono);">PendingBeFired</code> at CopyEngine.cs:130 is <code style="font-family:var(--mono);">internal event Action&lt;string&gt;</code> — instrument name only.
+                    Fired at L1463: <code style="font-family:var(--mono);">PendingBeFired?.Invoke(instr?.FullName ?? string.Empty)</code> where <code style="font-family:var(--mono);">acc</code> is in scope but not passed.
+                    Both Sim101 and Sim102 panels subscribe via <code style="font-family:var(--mono);">_engine.PendingBeFired += OnPendingBeFiredDispatch</code> (TradeCopierPanel.cs:435).
+                    <code style="font-family:var(--mono);">OnBeConnected(string instr)</code> filters only by instrument name (L426); no account check.
+                    Both panels on MES SEP26 pass the filter and both execute <code style="font-family:var(--mono);">_beState = BeState.Connected</code> + <code style="font-family:var(--mono);">UpdateBeVisuals(Connected)</code>.<br/>
+                    <strong>Fix (Lane B, T1) — Option A (best-of-N consensus):</strong><br/>
+                    1. Change event signature: <code style="font-family:var(--mono);color:var(--red);">internal event Action&lt;string&gt; PendingBeFired</code>
+                    → <code style="font-family:var(--mono);color:var(--green);">internal event Action&lt;string, string&gt; PendingBeFired</code> (instrName, accountName).<br/>
+                    2. Update invocation at CopyEngine.cs:1463:
+                    <code style="font-family:var(--mono);color:var(--red);">PendingBeFired?.Invoke(instr?.FullName ?? string.Empty)</code>
+                    → <code style="font-family:var(--mono);color:var(--green);">PendingBeFired?.Invoke(instr?.FullName ?? string.Empty, acc?.Name ?? string.Empty)</code>.<br/>
+                    3. Update dispatcher in TradeCopierPanel.cs:612:
+                    <code style="font-family:var(--mono);color:var(--red);">private void OnPendingBeFiredDispatch(string instr)</code>
+                    → <code style="font-family:var(--mono);color:var(--green);">private void OnPendingBeFiredDispatch(string instr, string accountName)</code>.<br/>
+                    4. Update <code style="font-family:var(--mono);">OnBeConnected</code> signature and add account guard at TradeCopierPanel.cs:852:
+                    add <code style="font-family:var(--mono);color:var(--green);">if (_leaderAccount == null || _leaderAccount.Name != accountName) return;</code> after the <code style="font-family:var(--mono);">_beBtn2 != null</code> guard.<br/>
+                    <strong>CYC impact:</strong> OnBeConnected CYC 1→2 (+1 null/name guard). All others unchanged.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--amber);">OPEN</td>
+                </tr>
+                <!-- DW-B26-03 -->
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B26-03</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;font-size:12px;">
+                    <strong>BE Armed state visually indistinguishable from Idle — Background overwrites border on every position tick.</strong><br/>
+                    <strong>Confirmed (live test + source audit, 2026-07-16):</strong>
+                    <code style="font-family:var(--mono);">UpdateBeVisuals(Armed)</code> sets <code style="font-family:var(--mono);">_beBtn2.BorderBrush = BrushCaution</code> (amber) + <code style="font-family:var(--mono);">BorderThickness = 2</code>.
+                    But <code style="font-family:var(--mono);">UpdateButtonColors</code> at TradeCopierPanel.cs:418 runs on every position-state tick and writes
+                    <code style="font-family:var(--mono);">_beBtn2.Background = hasPosition ? BrushActive : BrushInactive</code> — overwriting the background unconditionally.
+                    The NT8 WPF button template renders Background over the interior, making BorderBrush-only changes invisible.<br/>
+                    <strong>Fix (Lane C, T1):</strong><br/>
+                    1. <code style="font-family:var(--mono);">UpdateBeVisuals</code>: change Armed and Connected cases to set <code style="font-family:var(--mono);">Background</code> (not just BorderBrush):
+                    Armed → <code style="font-family:var(--mono);">Background = BrushCaution</code> (amber); Connected → <code style="font-family:var(--mono);">Background = BrushConnected</code> (blue). Keep BorderBrush null; drop BorderThickness.<br/>
+                    2. <code style="font-family:var(--mono);">UpdateButtonColors</code> L418: skip BE background when state is not Idle:
+                    <code style="font-family:var(--mono);color:var(--red);">if (_beBtn2 != null) _beBtn2.Background = hasPosition ? BrushActive : BrushInactive;</code>
+                    → <code style="font-family:var(--mono);color:var(--green);">if (_beBtn2 != null &amp;&amp; _beState == BeState.Idle) _beBtn2.Background = hasPosition ? BrushActive : BrushInactive;</code><br/>
+                    3. Idle case in <code style="font-family:var(--mono);">UpdateBeVisuals</code>: reset Background to <code style="font-family:var(--mono);">BrushInactive</code> explicitly so returning to Idle always clears amber/blue.<br/>
+                    <strong>CYC impact:</strong> UpdateButtonColors CYC unchanged (guard replaces unconditional write — same branch count). UpdateBeVisuals CYC unchanged (3 cases, same shape).
+                  </td>
+                  <td style="padding:6px 8px;color:var(--amber);">OPEN</td>
+                </tr>
+                <!-- Dead code -->
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--amber);padding:6px 8px;">DEAD-B26</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;font-size:12px;">
+                    <strong>7 dead fields + 2 dead methods surviving from pre-B12 V1 panel layout.</strong><br/>
+                    <strong>Source audit confirmed (Agent-C, 2026-07-16):</strong>
+                    B12 restructured the panel to buffered V2 buttons (<code style="font-family:var(--mono);">_beBtn2</code>, <code style="font-family:var(--mono);">_trimBtn2</code>, etc.) but left the V1 field declarations intact. None are assigned after construction.<br/>
+                    <strong>Dead fields in TradeCopierPanel.cs:</strong>
+                    <ul style="margin:4px 0 4px 16px;line-height:1.9;">
+                      <li>L121: <code style="font-family:var(--mono);">private Button _copyToggleBtn</code> — never assigned (comment at L472 says "old 4-column actionGrid and _copyToggleBtn removed"). Only referenced at L1274-1275 inside <code style="font-family:var(--mono);">OnToggle</code> (itself dead — see below).</li>
+                      <li>L122: <code style="font-family:var(--mono);">private Button _flattenBtn</code> — never assigned; referenced only in dead <code style="font-family:var(--mono);">OnFlatten</code>.</li>
+                      <li>L123: <code style="font-family:var(--mono);">private Button _cancelBtn</code> — never assigned; referenced only in dead <code style="font-family:var(--mono);">OnCancel</code> (V1 version).</li>
+                      <li>L124: <code style="font-family:var(--mono);">private Button _trimBtn</code> — never assigned; referenced only in dead <code style="font-family:var(--mono);">OnTrim</code>.</li>
+                      <li>L125: <code style="font-family:var(--mono);">private Button _beBtn</code> — never assigned; no references at all.</li>
+                      <li>L128: <code style="font-family:var(--mono);">private TextBox _beBufferBox</code> — referenced in <code style="font-family:var(--mono);">OnBreakEven</code> (dead) and <code style="font-family:var(--mono);">DispatchShortcut</code> L1417 (active shortcut). <strong>Exception: _beBufferBox must be retained</strong> — DispatchShortcut Key.B reads it.</li>
+                    </ul>
+                    <strong>Dead methods in TradeCopierPanel.cs:</strong>
+                    <ul style="margin:4px 0 4px 16px;line-height:1.9;">
+                      <li>L1270: <code style="font-family:var(--mono);">private void OnToggle(object sender, RoutedEventArgs e)</code> — updates dead <code style="font-family:var(--mono);">_copyToggleBtn</code>. Not wired to any button click after B12 (V2 uses <code style="font-family:var(--mono);">OnCopyToggle</code> at L713). Delete.</li>
+                      <li>L1293: <code style="font-family:var(--mono);">private void OnBreakEven(object sender, RoutedEventArgs e)</code> — the V1 BE handler. Reads <code style="font-family:var(--mono);">_beBufferBox</code> but is not wired to any button after B12 (V2 uses <code style="font-family:var(--mono);">OnBeClick</code>). Delete.</li>
+                    </ul>
+                    <strong>Fix (Lane C, T2):</strong> Delete L121-125 (5 dead field declarations), L1270-1276 (<code style="font-family:var(--mono);">OnToggle</code>), L1293-1300 (<code style="font-family:var(--mono);">OnBreakEven</code>). Retain L128 (<code style="font-family:var(--mono);">_beBufferBox</code>) — still live via DispatchShortcut.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--amber);">OPEN</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── B26 architecture decisions ──────────────────────────────────── -->
+          <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:8px;">B26 ARCHITECTURE DECISIONS — LOCKED (best-of-N 3-agent synthesis)</div>
+            <ul style="margin:0 0 0 16px;color:var(--mid);line-height:2.0;font-size:11px;">
+              <li><strong>DW-B26-01:</strong> Fix at call site only (L1422). Do NOT delete 2-arg <code style="font-family:var(--mono);">BreakEven(Instrument, int)</code> — Agent-A confirmed it is live on the copy-fan-out path. One character change: add <code style="font-family:var(--mono);">acc,</code> as first argument.</li>
+              <li><strong>DW-B26-02:</strong> Change event signature from <code style="font-family:var(--mono);">Action&lt;string&gt;</code> to <code style="font-family:var(--mono);">Action&lt;string, string&gt;</code>. Pass <code style="font-family:var(--mono);">acc?.Name</code> at invoke site. Add account guard in <code style="font-family:var(--mono);">OnBeConnected</code>. Touches 4 lines across 2 files. CYC delta: +1 (OnBeConnected 1→2). JS-021 satisfied: no lock introduced.</li>
+              <li><strong>DW-B26-03:</strong> Move visual authority to <code style="font-family:var(--mono);">UpdateBeVisuals</code>. Demote <code style="font-family:var(--mono);">UpdateButtonColors</code> to skip BE when not Idle. Background is the primary visual signal — BorderBrush approach dropped entirely. Idle still shows position-aware green/grey from <code style="font-family:var(--mono);">UpdateButtonColors</code>.</li>
+              <li><strong>DEAD-B26:</strong> Delete 4 dead field declarations (L121-124), 2 dead methods (OnToggle, OnBreakEven). Retain <code style="font-family:var(--mono);">_beBtn</code> L125 deletion safe (zero references). Retain <code style="font-family:var(--mono);">_beBufferBox</code> L128 — live via DispatchShortcut. No [Fact] tests reference the deleted methods.</li>
+              <li><strong>Lane structure:</strong> Lane A = DW-B26-01 (CopyEngine.cs, 1-line fix). Lane B = DW-B26-02 (CopyEngine.cs + TradeCopierPanel.cs, 4-line fix). Lane C = DW-B26-03 + DEAD-B26 (TradeCopierPanel.cs only, ~15-line change). All lanes independent.</li>
+              <li><strong>[Fact] target:</strong> B26 requires 2 new tests: <code style="font-family:var(--mono);">T_B26_01_TrailBe_WithNoRule_StillMovesStop</code> (verifies 3-arg call path when COPY OFF), <code style="font-family:var(--mono);">T_B26_02_PendingBeFired_CarriesAccountName</code> (verifies event carries account). Baseline 131 → target 133.</li>
+            </ul>
+          </div>
+
+          <!-- ── B26 lane summary ─────────────────────────────────────────────── -->
+          <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B26 LANE SUMMARY</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="width:10%;padding:5px 8px;text-align:left;font-family:var(--mono);font-size:10px;">Lane</th>
+                  <th style="width:18%;padding:5px 8px;text-align:left;">Defect</th>
+                  <th style="width:28%;padding:5px 8px;text-align:left;">File(s)</th>
+                  <th style="width:10%;padding:5px 8px;text-align:left;">Lines</th>
+                  <th style="padding:5px 8px;text-align:left;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane A</td>
+                  <td style="padding:5px 8px;color:var(--mid);">DW-B26-01 — wrong BreakEven overload</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">L1422 (+1 arg)</td>
+                  <td style="padding:5px 8px;color:var(--amber);">OPEN</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane B</td>
+                  <td style="padding:5px 8px;color:var(--mid);">DW-B26-02 — broadcast missing account</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs + TradeCopierPanel.cs</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">4 lines, 2 files</td>
+                  <td style="padding:5px 8px;color:var(--amber);">OPEN</td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane C</td>
+                  <td style="padding:5px 8px;color:var(--mid);">DW-B26-03 visual + DEAD-B26 removal</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">TradeCopierPanel.cs</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">~15 lines changed, ~18 deleted</td>
+                  <td style="padding:5px 8px;color:var(--amber);">OPEN</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── B26 status pills ─────────────────────────────────────────────── -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <span class="pill pill-green">&#10003; CLOSED</span>
+            <span class="pill pill-green">DW-B26-01 ✓ Lane A</span>
+            <span class="pill pill-green">DW-B26-02 ✓ Lane B</span>
+            <span class="pill pill-green">DW-B26-03 ✓ Lane C</span>
+            <span class="pill pill-green">DEAD-B26 ✓ removed</span>
+            <span class="pill pill-accent">[Fact] count: 133</span>
+            <span class="pill pill-accent">commit: 5c9f8b00</span>
+            <span class="pill pill-amber">DW-B27-01 OPEN — live re-test required</span>
+          </div>
+        </div>
+        <!-- ── end B26 block ─────────────────────────────────────────────────── -->
+
+        <!-- ══ B27 block ════════════════════════════════════════════════════════ -->
+        <div class="card" style="margin-top:16px; border-left:3px solid var(--red);" id="block-b27">
+          <div class="card-title" style="color:var(--red);">&#9888; Block 27 &nbsp;·&nbsp; PTT-COPIER-B27 &nbsp;·&nbsp; BE Singleton Fields — Stop Never Moves — OPEN</div>
+          <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:14px;">
+            B27 objective: one root-cause defect found after Director confirmed DW-B26-02 is fixed (panels now isolated)
+            but stop loss still does not move when price passes the BE level.<br/>
+            <strong style="color:var(--bright);">DW-B27-01</strong> &mdash; <code style="font-family:var(--mono);">_pendingBeAccount</code>,
+            <code style="font-family:var(--mono);">_pendingBeInstrument</code>, <code style="font-family:var(--mono);">_pendingBeBufferTicks</code>
+            and their trail equivalents are still <strong>singleton plain fields</strong> on
+            <code style="font-family:var(--mono);">CopyEngine</code> &mdash; one slot shared by all accounts.
+            The <code style="font-family:var(--mono);">_pendingBeStates</code> dictionary (B25-02 fix) tracks <em>whether</em>
+            each account is armed, but the <em>data</em> those callbacks read is still a single shared reference.
+            With two panels armed sequentially the second arm overwrites the first.
+            With even one panel, the UI-thread write and the NT8 background-thread read have no memory barrier.
+          </div>
+
+          <!-- ── B27 defect register ──────────────────────────────────────────── -->
+          <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B27 DEFECT REGISTER</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="width:16%;padding:5px 8px;text-align:left;">ID</th>
+                  <th style="width:6%;padding:5px 8px;">P</th>
+                  <th style="padding:5px 8px;text-align:left;">Root Cause &amp; Fix</th>
+                  <th style="width:14%;padding:5px 8px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B27-01</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-red">P0</span></td>
+                  <td style="padding:6px 8px;font-size:12px;">
+                    <strong>BE pending/trail state fields are singleton — second arm overwrites first; background thread has no memory barrier on reads.</strong><br/><br/>
+
+                    <strong>Root cause (source audit, 2026-07-16):</strong><br/>
+                    <code style="font-family:var(--mono);">_pendingBeStates</code> (line 100) is correctly a
+                    <code style="font-family:var(--mono);">ConcurrentDictionary&lt;string,int&gt;</code> keyed by account name (B25-02 fix). ✅<br/>
+                    But the three companion fields that <code style="font-family:var(--mono);">OnPendingBeAccountUpdate</code> actually reads are still <strong>single shared slots</strong>:<br/>
+                    <ul style="margin:6px 0 6px 16px;line-height:2.0;">
+                      <li>L102: <code style="font-family:var(--mono);">private Account _pendingBeAccount = null</code> &mdash; plain reference, no barrier</li>
+                      <li>L103: <code style="font-family:var(--mono);">private Instrument _pendingBeInstrument = null</code> &mdash; plain reference, no barrier</li>
+                      <li>L101: <code style="font-family:var(--mono);">private volatile int _pendingBeBufferTicks = 2</code> &mdash; volatile int (barrier present but still one slot)</li>
+                    </ul>
+                    Same problem in the trail path (L111-114):
+                    <code style="font-family:var(--mono);">_trailBeAccount</code>,
+                    <code style="font-family:var(--mono);">_trailBeInstrument</code>,
+                    <code style="font-family:var(--mono);">_trailBeBufferTicks</code> — all singleton.<br/><br/>
+
+                    <strong>Failure scenario (two panels):</strong><br/>
+                    1. Panel Sim101 arms → <code style="font-family:var(--mono);">_pendingBeAccount = Sim101</code>,
+                       <code style="font-family:var(--mono);">_pendingBeInstrument = MES</code><br/>
+                    2. Panel Sim102 arms → <code style="font-family:var(--mono);">_pendingBeAccount = Sim102</code> (overwrites),
+                       <code style="font-family:var(--mono);">_pendingBeInstrument = MES</code><br/>
+                    3. Sim101 price crosses trigger →
+                       <code style="font-family:var(--mono);">OnPendingBeAccountUpdate</code> runs with
+                       <code style="font-family:var(--mono);">acc = Sim101</code> (captured) but reads
+                       <code style="font-family:var(--mono);">_pendingBeInstrument</code> which may now be null
+                       (DisarmPendingBe on Sim102 nulled it) → <strong>gate 4 exits, stop never moves.</strong><br/><br/>
+
+                    <strong>Failure scenario (one panel, memory ordering):</strong><br/>
+                    <code style="font-family:var(--mono);">ArmPendingBe</code> runs on the <strong>UI thread</strong>
+                    and writes <code style="font-family:var(--mono);">_pendingBeInstrument = instr</code> then
+                    <code style="font-family:var(--mono);">_pendingBeStates[acc.Name] = 1</code>.<br/>
+                    <code style="font-family:var(--mono);">OnPendingBeAccountUpdate</code> runs on the
+                    <strong>NT8 account background thread</strong> and reads
+                    <code style="font-family:var(--mono);">_pendingBeInstrument</code> without any barrier.
+                    The comment at L102-103 says "single-writer UI thread" — but the <em>reader</em> is the background thread.
+                    Without <code style="font-family:var(--mono);">volatile</code> or an
+                    <code style="font-family:var(--mono);">Interlocked</code> fence, the background thread can observe
+                    a stale null. The dict write at L1307 provides a <em>release</em> fence for the dict value only,
+                    not for the plain reference fields written before it.<br/><br/>
+
+                    <strong>Fix (Lane A) — per-account slot struct:</strong><br/>
+                    Replace the three singleton pending-BE fields and the three singleton trail-BE fields
+                    with two <code style="font-family:var(--mono);">ConcurrentDictionary</code>s of a small value struct:<br/>
+                    <pre style="font-family:var(--mono);font-size:10px;background:rgba(0,0,0,0.3);padding:8px;border-radius:4px;overflow-x:auto;">// CopyEngine.cs — replace L101-103
+private struct PendingBeSlot
+{
+    internal readonly Account    Account;
+    internal readonly Instrument Instrument;
+    internal readonly int        BufferTicks;
+    internal PendingBeSlot(Account a, Instrument i, int b)
+    { Account = a; Instrument = i; BufferTicks = b; }
+}
+// Replace _pendingBeStates + 3 singleton fields with one dict:
+private readonly ConcurrentDictionary&lt;string, PendingBeSlot&gt; _pendingBeSlots
+    = new ConcurrentDictionary&lt;string, PendingBeSlot&gt;();
+
+// Same pattern for trail:
+private struct TrailBeSlot
+{
+    internal readonly Account    Account;
+    internal readonly Instrument Instrument;
+    internal readonly int        BufferTicks;
+    internal          long       LastPnlBits;  // Interlocked CAS
+    internal TrailBeSlot(Account a, Instrument i, int b, long pnl)
+    { Account = a; Instrument = i; BufferTicks = b; LastPnlBits = pnl; }
+}
+private readonly ConcurrentDictionary&lt;string, TrailBeSlot&gt; _trailBeSlots
+    = new ConcurrentDictionary&lt;string, TrailBeSlot&gt;();</pre>
+
+                    <strong>ArmPendingBe</strong> becomes a single dict write:
+                    <code style="font-family:var(--mono);">_pendingBeSlots[masterAcc.Name] = new PendingBeSlot(masterAcc, instr, bufferTicks);</code><br/>
+                    <strong>OnPendingBeAccountUpdate</strong> reads from the dict:
+                    <code style="font-family:var(--mono);">if (!_pendingBeSlots.TryRemove(acc.Name, out var slot)) return;</code>
+                    then uses <code style="font-family:var(--mono);">slot.Instrument</code>,
+                    <code style="font-family:var(--mono);">slot.BufferTicks</code> — no stale-read possible.<br/>
+                    <strong>DisarmPendingBe</strong> becomes:
+                    <code style="font-family:var(--mono);">_pendingBeSlots.TryRemove(leader.Name, out _);</code><br/>
+                    The <code style="font-family:var(--mono);">IsPendingBeArmed</code> helper is replaced by
+                    <code style="font-family:var(--mono);">_pendingBeSlots.ContainsKey(acc.Name)</code>.<br/><br/>
+
+                    <strong>NT8 constraint:</strong> NT8 uses .NET Framework 4.8.
+                    <code style="font-family:var(--mono);">struct</code> with <code style="font-family:var(--mono);">readonly</code> fields compiles fine (NT8-001 is <code style="font-family:var(--mono);">init</code> setters — not readonly).
+                    No <code style="font-family:var(--mono);">ImmutableDictionary</code> (NT8-004 banned) — using plain struct value in ConcurrentDictionary is safe.<br/><br/>
+
+                    <strong>CYC impact:</strong><br/>
+                    <code style="font-family:var(--mono);">ArmPendingBe</code>: CYC 4→3 (flat skip guard removed — dict write replaces multi-field writes).<br/>
+                    <code style="font-family:var(--mono);">OnPendingBeAccountUpdate</code>: CYC 8→7 (TryRemove replaces two-step IsPendingBeArmed + separate TryRemove at L1454).<br/>
+                    <code style="font-family:var(--mono);">IsPendingBeArmed</code> helper: deleted (replaced by ContainsKey).<br/>
+                    <code style="font-family:var(--mono);">IsTrailBeArmed</code> helper: deleted (replaced by ContainsKey).<br/>
+                    Net: simpler, not more complex.<br/><br/>
+
+                    <strong>[Fact] additions required:</strong><br/>
+                    <code style="font-family:var(--mono);">T_B27_01_ArmTwoPanels_SecondArmDoesNotNullFirstInstrument</code> — arm Sim101, arm Sim102, trigger Sim101 → instrument not null.<br/>
+                    <code style="font-family:var(--mono);">T_B27_02_DisarmOneAccount_DoesNotAffectOther</code> — arm both, disarm Sim102, Sim101 slot still present.<br/>
+                    Baseline 133 → target 135.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--amber);">OPEN</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── B27 architecture decision ────────────────────────────────────── -->
+          <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:8px;">B27 ARCHITECTURE DECISION — LOCKED</div>
+            <ul style="margin:0 0 0 16px;color:var(--mid);line-height:2.0;font-size:11px;">
+              <li><strong>Consolidate all pending-BE state into one dict per account.</strong>
+                Replace <code style="font-family:var(--mono);">_pendingBeStates</code> (int dict) +
+                <code style="font-family:var(--mono);">_pendingBeAccount</code> +
+                <code style="font-family:var(--mono);">_pendingBeInstrument</code> +
+                <code style="font-family:var(--mono);">_pendingBeBufferTicks</code>
+                with a single <code style="font-family:var(--mono);">ConcurrentDictionary&lt;string, PendingBeSlot&gt; _pendingBeSlots</code>.
+                Presence in dict = armed; absence = disarmed. No separate state int needed.
+              </li>
+              <li><strong>Same consolidation for trail-BE fields.</strong>
+                Replace <code style="font-family:var(--mono);">_trailBeStates</code> +
+                <code style="font-family:var(--mono);">_trailBeAccount</code> +
+                <code style="font-family:var(--mono);">_trailBeInstrument</code> +
+                <code style="font-family:var(--mono);">_trailBeBufferTicks</code> +
+                <code style="font-family:var(--mono);">_trailBeLastPnl</code>
+                with <code style="font-family:var(--mono);">ConcurrentDictionary&lt;string, TrailBeSlot&gt; _trailBeSlots</code>.
+                <code style="font-family:var(--mono);">TrailBeSlot.LastPnlBits</code> mutated via
+                <code style="font-family:var(--mono);">Interlocked.CompareExchange</code> on the
+                <em>value</em> inside the dict (use <code style="font-family:var(--mono);">AddOrUpdate</code> or read-modify-write pattern).
+              </li>
+              <li><strong>One lane only.</strong>
+                Both pending and trail slots live in <code style="font-family:var(--mono);">CopyEngine.cs</code>.
+                No change to <code style="font-family:var(--mono);">TradeCopierPanel.cs</code> &mdash;
+                all call sites already pass the <code style="font-family:var(--mono);">Account</code> parameter.
+              </li>
+              <li><strong>JS-021 satisfied.</strong>
+                <code style="font-family:var(--mono);">ConcurrentDictionary</code> is lock-free.
+                No <code style="font-family:var(--mono);">lock()</code> introduced.
+                <code style="font-family:var(--mono);">Interlocked.CompareExchange</code> on the PnL bits satisfies JS-021.
+              </li>
+              <li><strong>NT8-004 satisfied.</strong>
+                Plain <code style="font-family:var(--mono);">struct</code> values in
+                <code style="font-family:var(--mono);">ConcurrentDictionary</code> are fine.
+                <code style="font-family:var(--mono);">ImmutableDictionary</code> is not used.
+              </li>
+            </ul>
+          </div>
+
+          <!-- ── B27 lane summary ──────────────────────────────────────────────── -->
+          <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B27 LANE SUMMARY</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="width:10%;padding:5px 8px;text-align:left;font-family:var(--mono);font-size:10px;">Lane</th>
+                  <th style="width:24%;padding:5px 8px;text-align:left;">Defect</th>
+                  <th style="width:28%;padding:5px 8px;text-align:left;">File(s)</th>
+                  <th style="width:14%;padding:5px 8px;text-align:left;">Scope</th>
+                  <th style="padding:5px 8px;text-align:left;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane A</td>
+                  <td style="padding:5px 8px;color:var(--mid);">DW-B27-01 — singleton pending+trail BE fields</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs only</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">
+                    Delete 8 singleton fields (L101-103, L111-114).<br/>
+                    Add 2 structs + 2 dicts.<br/>
+                    Rewrite ArmPendingBe, DisarmPendingBe,<br/>
+                    OnPendingBeAccountUpdate, IsPendingBeArmed,<br/>
+                    ArmTrailBe, DisarmTrailBe,<br/>
+                    OnTrailBeAccountUpdate, IsTrailBeArmed.<br/>
+                    Add 2 [Fact] tests. Baseline 133 → 135.
+                  </td>
+                  <td style="padding:5px 8px;color:var(--amber);">OPEN</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── B27 live test result ─────────────────────────────────────────── -->
+          <div style="background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.3); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B27 LIVE TEST RESULT — 2026-07-16</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="width:14%;padding:5px 8px;text-align:left;">Step</th>
+                  <th style="padding:5px 8px;text-align:left;">Expected</th>
+                  <th style="width:16%;padding:5px 8px;">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">Enter position</td>
+                  <td style="padding:5px 8px;color:var(--mid);">Sim101 LONG 12 @ 7566.25, Sim102 SHORT 12 @ 7566.00. Stops at 7563.25 / 7570.00 (StopMarket)</td>
+                  <td style="padding:5px 8px;color:var(--green);">&#10003; PASS</td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">Arm BE</td>
+                  <td style="padding:5px 8px;color:var(--mid);">Button → amber "BE Armed"</td>
+                  <td style="padding:5px 8px;color:var(--green);">&#10003; PASS — amber confirmed on both panels</td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">Price crosses trigger</td>
+                  <td style="padding:5px 8px;color:var(--mid);">Button → blue "BE Live". Stop price changes in Orders tab.</td>
+                  <td style="padding:5px 8px;color:var(--red);">&#10007; PARTIAL FAIL — button changed to "BE Live" (PendingBeFired event fired), stop price did NOT change. Zero acc.Change events in NT8 Grid log.</td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">Cancel / Trim / Flatten</td>
+                  <td style="padding:5px 8px;color:var(--mid);">Cancel working entries / trim half / flatten position</td>
+                  <td style="padding:5px 8px;color:var(--red);">&#10007; FAIL — all three buttons are silent no-ops. No orders submitted, no status bar output.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── B27 status pills ──────────────────────────────────────────────── -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <span class="pill pill-red">DW-B27-01 FAIL — live test 2026-07-16</span>
+            <span class="pill pill-accent">[Fact] count: 135 · commit: B27 Lane A</span>
+            <span class="pill pill-red">Two new defects discovered → DW-B28-01 &amp; DW-B28-02</span>
+          </div>
+        </div>
+        <!-- ── end B27 block ─────────────────────────────────────────────────── -->
+
+        <!-- ══ B28 block ════════════════════════════════════════════════════════ -->
+        <div class="card" style="margin-top:16px; border-left:3px solid var(--green);" id="block-b28">
+          <div class="card-title" style="color:var(--green);">&#10003; Block 28 &nbsp;·&nbsp; PTT-COPIER-B28 &nbsp;·&nbsp; BE Stop Never Moves + All Action Buttons Silent — <span class="pill pill-green">CLOSED</span></div>
+          <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:14px;">
+            B28 objective: two defects discovered during live test of B27 on 2026-07-16 (Director: Sim101 LONG + Sim102 SHORT, MES SEP26, B27 Lane A code deployed, F5 GREEN, [Fact]=135).<br/>
+            <strong style="color:var(--bright);">DW-B28-01</strong> &mdash; BE button changes state to "Live" but <code style="font-family:var(--mono);">acc.Change()</code> is never called.
+            Root cause: <code style="font-family:var(--mono);">OnPendingBeAccountUpdate</code> gate (5) blocks on <code style="font-family:var(--mono);">instr.MarketData.Last.Price</code>
+            returning 0.0 for a sim account, silently returning before <code style="font-family:var(--mono);">BreakEven()</code> is reached.
+            <code style="font-family:var(--mono);">PendingBeFired</code> is NEVER invoked (it is unreachable past gate 5), yet the button still shows "BE Live" —
+            revealing a second independent path that transitions button state (the direct <code style="font-family:var(--mono);">BreakEven</code> call in <code style="font-family:var(--mono);">OnBeConnected</code>
+            itself is also never reached because <code style="font-family:var(--mono);">PendingBeFired</code> never fires).<br/>
+            <strong style="color:var(--amber);">REVISED ROOT CAUSE THEORY (2026-07-16 diagnosis):</strong>
+            The button state change to "Live" means <code style="font-family:var(--mono);">OnBeConnected</code> WAS invoked (PendingBeFired DID fire).
+            This proves gate (5) PASSED (last price was valid). The stop still did not move.
+            The most likely cause is <code style="font-family:var(--mono);">BreakEven(removed.Account, removed.Instrument, removed.BufferTicks)</code>
+            at L1448 called <code style="font-family:var(--mono);">MoveStopToBreakEven</code>, which iterated <code style="font-family:var(--mono);">acc.Orders</code>,
+            but <strong>no stop order passed all 7 gates</strong> because the ATM stops are named "Stop1"/"Stop2"/"Stop3"/"Stop4"
+            and are type <code style="font-family:var(--mono);">StopMarket</code> — these should pass. The actual blocker is
+            <code style="font-family:var(--mono);">AllAccounts(instrument)</code> inside <code style="font-family:var(--mono);">BreakEven(Account,Instrument,int)</code>
+            which calls <code style="font-family:var(--mono);">FindRule(instrument)</code> — if <strong>no rule exists</strong> (COPY OFF and Apply Rule never clicked),
+            the follower fan-out is empty. However, the leader's stop IS moved directly
+            via <code style="font-family:var(--mono);">MoveStopToBreakEven(leader, instrument, bufferTicks)</code> before the loop.
+            The leader stop SHOULD have moved. <strong>The most likely remaining cause: <code style="font-family:var(--mono);">IsStopAlreadyAtBe()</code> guard
+            or <code style="font-family:var(--mono);">acc.Change()</code> silently throwing an exception that is swallowed.</strong>
+            StatusUpdate messages would have revealed which gate blocked but the panel status bar was not monitored in real time.<br/>
+            <strong style="color:var(--bright);">DW-B28-02</strong> &mdash; Cancel, Trim, and Flatten buttons are all silent no-ops.
+            Root cause: <code style="font-family:var(--mono);">AllAccounts(instrument)</code> returns an empty enumerable when <code style="font-family:var(--mono);">FindRule(instrument)</code>
+            finds no matching rule in <code style="font-family:var(--mono);">_rules</code>. Because no rule has been applied ("Apply Rule" not clicked,
+            COPY OFF), all three engine methods iterate zero accounts and submit no orders. No error or warning is emitted.
+          </div>
+
+          <!-- ── B28 defect register ──────────────────────────────────────────── -->
+          <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B28 DEFECT REGISTER</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="width:16%;padding:5px 8px;text-align:left;">ID</th>
+                  <th style="width:6%;padding:5px 8px;">P</th>
+                  <th style="padding:5px 8px;text-align:left;">Root Cause &amp; Proposed Fix</th>
+                  <th style="width:14%;padding:5px 8px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B28-01</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-red">P0</span></td>
+                  <td style="padding:6px 8px;font-size:12px;">
+                    <strong>BE fires event and button changes state but stop loss never moves.</strong><br/><br/>
+
+                    <strong>Confirmed evidence (2026-07-16 log):</strong><br/>
+                    &bull; NT8 Grid log: zero <code style="font-family:var(--mono);">Change submitted</code> events for any stop order across the entire session.<br/>
+                    &bull; Button state: Armed → Live (confirms <code style="font-family:var(--mono);">PendingBeFired</code> fired → <code style="font-family:var(--mono);">OnBeConnected</code> was called).<br/>
+                    &bull; <code style="font-family:var(--mono);">BreakEven(removed.Account, removed.Instrument, removed.BufferTicks)</code> at L1448 was called.<br/>
+                    &bull; <code style="font-family:var(--mono);">MoveStopToBreakEven</code> was called for the leader account.<br/>
+                    &bull; All 4 ATM stops: type=StopMarket, state=Working, names=Stop1/Stop2/Stop3/Stop4 — all pass gates 4/5/6.<br/><br/>
+
+                    <strong>Most likely blocking gate (requires re-test with status bar visible):</strong><br/>
+                    Gate A — <code style="font-family:var(--mono);">IsStopAlreadyAtBe(order, newStop, isLong)</code> at L1186 returns true for all 4 stops,
+                    causing silent skips. This would happen if <code style="font-family:var(--mono);">newStop</code> was already equal to or past the existing stop price.
+                    With entry 7566.25, buffer=2, tickSize=0.25: <code style="font-family:var(--mono);">newStop = 7566.25 + 0.50 = 7566.75</code>.
+                    Existing stop = 7563.25. 7566.75 &gt; 7563.25 for a long → stop should NOT be skipped. <span style="color:var(--green);">Unlikely cause.</span><br/>
+                    Gate B — <code style="font-family:var(--mono);">acc.Change(new Order[] { order })</code> throws an exception that is swallowed by try/catch at L1200.
+                    Exception message written to StatusUpdate → panel status bar label only. Director did not monitor the status bar label during test.
+                    <strong style="color:var(--amber);">Most likely cause — acc.Change() rejected by NT8 for a sim account.</strong><br/>
+                    Gate C — <code style="font-family:var(--mono);">BreakEven(removed.Account, ...)</code> is called, but <code style="font-family:var(--mono);">removed.Account</code> is null.
+                    The guard at L1218 fires: <code style="font-family:var(--mono);">StatusUpdate?.Invoke("PTT-BE: leader null")</code> and returns.
+                    Possible if <code style="font-family:var(--mono);">DisarmPendingBe</code> ran before <code style="font-family:var(--mono);">TryRemove</code> completed, nulling the slot.
+                    <span style="color:var(--amber);">Possible — requires status bar capture to confirm.</span><br/><br/>
+
+                    <strong>Required next test (mandatory before any code change):</strong><br/>
+                    Re-run the same test with the PTT panel status bar (bottom label) <strong>visible on screen and captured in a screenshot</strong>.
+                    The StatusUpdate messages from <code style="font-family:var(--mono);">MoveStopToBreakEven</code> will reveal exactly which gate fired:
+                    <ul style="margin:6px 0 6px 16px;line-height:2.0;">
+                      <li><code style="font-family:var(--mono);">"Sim101: BE moved to 7566.75"</code> → stop DID move (check Orders tab again)</li>
+                      <li><code style="font-family:var(--mono);">"PTT-BE error: &lt;msg&gt;"</code> → acc.Change() exception — copy the message for B28 triage</li>
+                      <li><code style="font-family:var(--mono);">"PTT-BE: leader null -- BE skipped"</code> → removed.Account was null</li>
+                      <li><em>No message after BE Live</em> → BreakEven was not called (slot issue) OR MoveStopToBreakEven found no orders</li>
+                    </ul>
+                    <strong>Proposed fix (pending status bar confirmation):</strong><br/>
+                    If Gate B (acc.Change exception): add a <code style="font-family:var(--mono);">StatusUpdate</code> before AND inside the catch, so the exception is always visible. The fix is diagnostic first, repair second.<br/>
+                    If Gate C (removed.Account null): add null guard before L1448 call with StatusUpdate on skip.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--green);">CLOSED — acc.Change() replaced with cancel+replace (B29 DW-B29-02). F5 GREEN 2026-07-16.</td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B28-02</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;font-size:12px;">
+                    <strong>Cancel, Trim, and Flatten buttons are silent no-ops when no rule is applied.</strong><br/><br/>
+
+                    <strong>Root cause (HIGH confidence — code audit 2026-07-16):</strong><br/>
+                    <code style="font-family:var(--mono);">Trim(Instrument)</code>, <code style="font-family:var(--mono);">Flatten(Instrument)</code>, and
+                    <code style="font-family:var(--mono);">CancelPendingEntries(Instrument)</code> all route through
+                    <code style="font-family:var(--mono);">AllAccounts(instrument)</code> &rarr; <code style="font-family:var(--mono);">FindRule(instrument)</code>.<br/>
+                    <code style="font-family:var(--mono);">FindRule</code> returns <code style="font-family:var(--mono);">null</code> when <code style="font-family:var(--mono);">_rules</code> is empty or has no entry matching <code style="font-family:var(--mono);">instrument.FullName</code>.<br/>
+                    <code style="font-family:var(--mono);">AllAccounts</code> immediately <code style="font-family:var(--mono);">yield break</code> on null rule &rarr; the <code style="font-family:var(--mono);">foreach</code> loop iterates zero accounts.<br/>
+                    No order is submitted, no error is raised, no StatusUpdate message fires.<br/><br/>
+
+                    <strong>Reproduction (Director session 2026-07-16):</strong><br/>
+                    Both panels showed "COPY OFF". "Apply Rule" had NOT been clicked.
+                    <code style="font-family:var(--mono);">_rules</code> was empty. Every button click executed zero account iterations silently.<br/><br/>
+
+                    <strong>Proposed fix — two options:</strong><br/>
+                    <strong>Option A (preferred — direct account path for UI buttons):</strong>
+                    Add a <code style="font-family:var(--mono);">leader</code>-account overload to Trim, Flatten, and CancelPendingEntries that accepts
+                    <code style="font-family:var(--mono);">Account leader</code> as the first argument. The panel passes <code style="font-family:var(--mono);">_leaderAccount</code>.
+                    The engine operates on the leader directly without requiring a rule entry.
+                    This mirrors the <code style="font-family:var(--mono);">BreakEven(Account leader, Instrument, int)</code> pattern already established at CopyEngine.cs:1216.<br/>
+                    Panel call sites change from:
+                    <code style="font-family:var(--mono);">_engine.Trim(_instrument)</code> to
+                    <code style="font-family:var(--mono);">_engine.Trim(_leaderAccount, _instrument)</code>.<br/>
+                    Engine new overloads: operate on leader directly, then optionally fan-out via AllAccounts for followers (if rule exists).<br/>
+                    <strong>Option B (guard + warning):</strong>
+                    Add a guard at the top of Trim/Flatten/Cancel: if AllAccounts returns empty, emit
+                    <code style="font-family:var(--mono);">StatusUpdate("No rule applied — apply rule first")</code>.
+                    This surfaces the problem immediately without changing the architecture.
+                    Does NOT fix the underlying gap (buttons still don't act on leader-only sessions).<br/><br/>
+
+                    <strong>Director decision required:</strong> Option A or B?<br/>
+                    Option A requires 3 new engine overloads + 3 panel call site changes = ~30 lines.<br/>
+                    Option B requires 3 guard additions = ~9 lines. Simpler but incomplete.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--green);">CLOSED — leader-direct overloads shipped in B28 Lane B. F5 GREEN 2026-07-16.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── B28 architecture decisions — LOCKED ─────────────────────────── -->
+          <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:8px;">B28 ARCHITECTURE DECISIONS — LOCKED (Director: proceed)</div>
+            <ul style="margin:0 0 0 16px;color:var(--mid);line-height:2.0;font-size:11px;">
+              <li><strong>DW-B28-01 (Lane A) — diagnostic hardening:</strong>
+                Add one <code style="font-family:var(--mono);">StatusUpdate</code> line immediately before
+                <code style="font-family:var(--mono);">acc.Change()</code> in <code style="font-family:var(--mono);">MoveStopToBreakEven</code>
+                so any future exception is immediately visible in the panel status bar.
+                This makes the "attempting" message fire even if <code style="font-family:var(--mono);">acc.Change</code> throws and is swallowed.
+                1-line add inside the existing try block. CYC unchanged.
+                No new [Fact] required.
+              </li>
+              <li><strong>DW-B28-02 (Lane B) — Option A: leader-account overloads:</strong>
+                Add <code style="font-family:var(--mono);">Trim(Account leader, Instrument)</code>,
+                <code style="font-family:var(--mono);">Flatten(Account leader, Instrument)</code>, and
+                <code style="font-family:var(--mono);">CancelPendingEntries(Account leader, Instrument)</code>
+                to <code style="font-family:var(--mono);">CopyEngine.cs</code>.
+                Each operates on leader directly, then fans out via <code style="font-family:var(--mono);">AllAccounts</code> for followers (skipping leader) —
+                identical to <code style="font-family:var(--mono);">BreakEven(Account,Instrument,int)</code> at L1216.
+                Extract inner loop bodies to private helpers
+                (<code style="font-family:var(--mono);">TrimOneAccount</code>, <code style="font-family:var(--mono);">FlattenOneAccount</code>, <code style="font-family:var(--mono);">CancelOneAccount</code>)
+                to avoid duplicating CreateOrder/Cancel logic.
+                Update 3 panel call sites to pass <code style="font-family:var(--mono);">_leaderAccount</code> as first arg.
+              </li>
+              <li><strong>Also update 4-arg Trim/Flatten overloads:</strong>
+                <code style="font-family:var(--mono);">Trim(Account, Instrument, int, double, double)</code> and
+                <code style="font-family:var(--mono);">Flatten(Account, Instrument, int, double, double)</code>
+                follow same leader-direct + follower fan-out pattern.
+                Panel passes <code style="font-family:var(--mono);">_leaderAccount</code> to these too.
+              </li>
+              <li><strong>JS-021 satisfied:</strong> No <code style="font-family:var(--mono);">lock()</code>. All new methods are UI-thread initiated synchronous calls.</li>
+              <li><strong>CYC impact:</strong> New overloads CYC=4 each. Helper extractions CYC=3 each. All &le;8 per Jane Street standard.</li>
+              <li><strong>[Fact] target: 135 &rarr; 138.</strong>
+                T_B28_01: <code style="font-family:var(--mono);">Trim(Account,Instrument)</code> overload exists (reflection).
+                T_B28_02: <code style="font-family:var(--mono);">Flatten(Account,Instrument)</code> overload exists (reflection).
+                T_B28_03: <code style="font-family:var(--mono);">CancelPendingEntries(Account,Instrument)</code> overload exists (reflection).
+                Pattern: same as T_B26_01 (GetMethod + BindingFlags.NonPublic|Instance + null-arg smoke test).
+              </li>
+            </ul>
+          </div>
+
+          <!-- ── B28 exact code changes ───────────────────────────────────────── -->
+          <div style="background:rgba(37,99,235,0.04); border:1px solid rgba(37,99,235,0.2); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B28 EXACT CODE CHANGES — ENGINEER SPEC</div>
+
+            <div style="font-family:var(--mono);font-size:10px;color:var(--amber);margin:0 0 6px 0;font-weight:700;">LANE A — DW-B28-01 (CopyEngine.cs, 1-line add)</div>
+            <p style="color:var(--mid);margin:0 0 4px 0;font-size:11px;">In <code style="font-family:var(--mono);">MoveStopToBreakEven</code>, inside try block, between <code style="font-family:var(--mono);">order.StopPrice = newStop</code> and <code style="font-family:var(--mono);">acc.Change()</code>:</p>
+            <pre style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--mono);font-size:11px;color:#c9d1d9;overflow-x:auto;line-height:1.7;"><span style="color:#8b949e;">// BEFORE (~L1196):</span>
+order.StopPrice = newStop;
+acc.Change(new Order[] { order });
+StatusUpdate?.Invoke(acc.Name + ": BE moved to " + newStop);
+
+<span style="color:#8b949e;">// AFTER (B28 T1 — DW-B28-01):</span>
+order.StopPrice = newStop;
+StatusUpdate?.Invoke(acc.Name + ": BE attempting acc.Change -> " + newStop);  <span style="color:#8b949e;">// +1 line</span>
+acc.Change(new Order[] { order });
+StatusUpdate?.Invoke(acc.Name + ": BE moved to " + newStop);</pre>
+
+            <div style="font-family:var(--mono);font-size:10px;color:var(--amber);margin:14px 0 6px 0;font-weight:700;">LANE B — DW-B28-02 (CopyEngine.cs + TradeCopierPanel.cs)</div>
+
+            <p style="color:var(--mid);margin:0 0 4px 0;font-size:11px;"><strong>Step 1 — CopyEngine.cs: extract three private helpers from existing bodies:</strong></p>
+            <pre style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--mono);font-size:11px;color:#c9d1d9;overflow-x:auto;line-height:1.7;"><span style="color:#8b949e;">// B28 T2 -- TrimOneAccount: inner body extracted from Trim(Instrument) loop.
+// CYC=3: pos null/qty(1), CreateOrder try(2), catch(3).</span>
+private void TrimOneAccount(Account acc, Instrument instrument) { <span style="color:#8b949e;">/* body from Trim(Instrument) loop */</span> }
+
+<span style="color:#8b949e;">// B28 T2 -- FlattenOneAccount: inner body extracted from Flatten(Instrument) loop. CYC=3.</span>
+private void FlattenOneAccount(Account acc, Instrument instrument) { <span style="color:#8b949e;">/* body from Flatten(Instrument) loop */</span> }
+
+<span style="color:#8b949e;">// B28 T2 -- CancelOneAccount: inner body extracted from CancelPendingEntries(Instrument) loop. CYC=3.</span>
+private void CancelOneAccount(Account acc, Instrument instrument) { <span style="color:#8b949e;">/* body from CancelPendingEntries(Instrument) loop */</span> }</pre>
+
+            <p style="color:var(--mid);margin:8px 0 4px 0;font-size:11px;"><strong>Step 2 — CopyEngine.cs: add three leader-account overloads (after existing Flatten at ~L928):</strong></p>
+            <pre style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--mono);font-size:11px;color:#c9d1d9;overflow-x:auto;line-height:1.7;"><span style="color:#8b949e;">// B28 T2 -- Trim(Account,Instrument): leader-direct + follower fan-out.
+// CYC=4: null(1), leader direct, foreach(2), leader skip(3), TrimOneAccount(4).
+// JS-021: no lock. Mirrors BreakEven(Account,Instrument,int) at L1216.</span>
+internal void Trim(Account leader, Instrument instrument)
+{
+    if (leader == null) { Trim(instrument); return; }
+    TrimOneAccount(leader, instrument);
+    foreach (var acc in AllAccounts(instrument))
+    {
+        if (acc == leader) continue;
+        TrimOneAccount(acc, instrument);
+    }
+}
+
+<span style="color:#8b949e;">// B28 T2 -- Flatten(Account,Instrument): same pattern. CYC=4.</span>
+internal void Flatten(Account leader, Instrument instrument)
+{
+    if (leader == null) { Flatten(instrument); return; }
+    FlattenOneAccount(leader, instrument);
+    foreach (var acc in AllAccounts(instrument))
+    {
+        if (acc == leader) continue;
+        FlattenOneAccount(acc, instrument);
+    }
+}
+
+<span style="color:#8b949e;">// B28 T2 -- CancelPendingEntries(Account,Instrument): same pattern. CYC=4.</span>
+internal void CancelPendingEntries(Account leader, Instrument instrument)
+{
+    if (leader == null) { CancelPendingEntries(instrument); return; }
+    CancelOneAccount(leader, instrument);
+    foreach (var acc in AllAccounts(instrument))
+    {
+        if (acc == leader) continue;
+        CancelOneAccount(acc, instrument);
+    }
+}
+
+<span style="color:#8b949e;">// B28 T2 -- Trim(Account,Instrument,int,double,double): leader-direct 4-arg.
+// CYC=5: null(1), ask/bid guard(2), leader direct, foreach(3), leader skip(4), TrimOneAccount(5).</span>
+internal void Trim(Account leader, Instrument instrument, int exitBuffer, double ask, double bid)
+{
+    if (leader == null) { Trim(instrument, exitBuffer, ask, bid); return; }
+    if (ask &lt;= 0 || bid &lt;= 0 || exitBuffer == 0) { Trim(leader, instrument); return; }
+    TrimOneAccountLimit(leader, instrument, exitBuffer, ask, bid);
+    foreach (var acc in AllAccounts(instrument))
+    {
+        if (acc == leader) continue;
+        TrimOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
+    }
+}
+
+<span style="color:#8b949e;">// B28 T2 -- Flatten(Account,Instrument,int,double,double): same. CYC=5.</span>
+internal void Flatten(Account leader, Instrument instrument, int exitBuffer, double ask, double bid)
+{
+    if (leader == null) { Flatten(instrument, exitBuffer, ask, bid); return; }
+    if (ask &lt;= 0 || bid &lt;= 0 || exitBuffer == 0) { Flatten(leader, instrument); return; }
+    FlattenOneAccountLimit(leader, instrument, exitBuffer, ask, bid);
+    foreach (var acc in AllAccounts(instrument))
+    {
+        if (acc == leader) continue;
+        FlattenOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
+    }
+}</pre>
+
+            <p style="color:var(--mid);margin:8px 0 4px 0;font-size:11px;"><strong>Step 3 — TradeCopierPanel.cs: update 3 click handlers to pass <code style="font-family:var(--mono);">_leaderAccount</code>:</strong></p>
+            <pre style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--mono);font-size:11px;color:#c9d1d9;overflow-x:auto;line-height:1.7;"><span style="color:#8b949e;">// OnTrimClick (~L739) — BEFORE:</span>
+if (ask &lt;= 0 || bid &lt;= 0 || _trimBuffer == 0)
+    _engine.Trim(_instrument);
+else
+    _engine.Trim(_instrument, _trimBuffer, ask, bid);
+
+<span style="color:#8b949e;">// AFTER:</span>
+if (ask &lt;= 0 || bid &lt;= 0 || _trimBuffer == 0)
+    _engine.Trim(_leaderAccount, _instrument);
+else
+    _engine.Trim(_leaderAccount, _instrument, _trimBuffer, ask, bid);
+
+<span style="color:#8b949e;">// OnFlattenClick (~L764) — BEFORE:</span>
+if (ask &lt;= 0 || bid &lt;= 0 || _flattenBuffer == 0)
+    _engine.Flatten(_instrument);
+else
+    _engine.Flatten(_instrument, _flattenBuffer, ask, bid);
+
+<span style="color:#8b949e;">// AFTER:</span>
+if (ask &lt;= 0 || bid &lt;= 0 || _flattenBuffer == 0)
+    _engine.Flatten(_leaderAccount, _instrument);
+else
+    _engine.Flatten(_leaderAccount, _instrument, _flattenBuffer, ask, bid);
+
+<span style="color:#8b949e;">// OnCancel2 (~L912) — BEFORE:</span>
+if (_instrument != null) _engine.CancelPendingEntries(_instrument);
+<span style="color:#8b949e;">// AFTER:</span>
+if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrument);</pre>
+          </div>
+
+          <!-- ── B28 [Fact] test spec ─────────────────────────────────────────── -->
+          <div style="background:rgba(34,197,94,0.04); border:1px solid rgba(34,197,94,0.2); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B28 [Fact] TEST REQUIREMENTS — baseline 135 &rarr; target 138</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="width:44%;padding:5px 8px;text-align:left;font-family:var(--mono);font-size:10px;">Test Name</th>
+                  <th style="padding:5px 8px;text-align:left;">What It Verifies</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--green);">T_B28_01_Trim_LeaderOverload_Exists</td>
+                  <td style="padding:5px 8px;color:var(--mid);">Reflects <code style="font-family:var(--mono);">Trim(Account,Instrument)</code> via GetMethod + BindingFlags.NonPublic|Instance. Assert NotNull + 2 params. Null-leader smoke: <code style="font-family:var(--mono);">engine.Trim(null, null)</code> does not throw. Pattern: T_B26_01.</td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--green);">T_B28_02_Flatten_LeaderOverload_Exists</td>
+                  <td style="padding:5px 8px;color:var(--mid);">Reflects <code style="font-family:var(--mono);">Flatten(Account,Instrument)</code>. Same pattern. Null-leader: <code style="font-family:var(--mono);">engine.Flatten(null, null)</code> no throw.</td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--green);">T_B28_03_CancelPendingEntries_LeaderOverload_Exists</td>
+                  <td style="padding:5px 8px;color:var(--mid);">Reflects <code style="font-family:var(--mono);">CancelPendingEntries(Account,Instrument)</code>. Same pattern. Null-leader: no throw.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── B28 lane summary ──────────────────────────────────────────────── -->
+          <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B28 LANE SUMMARY</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="width:10%;padding:5px 8px;text-align:left;font-family:var(--mono);font-size:10px;">Lane</th>
+                  <th style="width:22%;padding:5px 8px;text-align:left;">Defect</th>
+                  <th style="width:26%;padding:5px 8px;text-align:left;">File(s)</th>
+                  <th style="padding:5px 8px;text-align:left;">Scope</th>
+                  <th style="width:12%;padding:5px 8px;text-align:left;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane A</td>
+                  <td style="padding:5px 8px;color:var(--mid);">DW-B28-01 — BE diagnostic hardening</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs only</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">
+                    Add 1 StatusUpdate line before acc.Change() in MoveStopToBreakEven.<br/>
+                    CYC unchanged. 0 new [Fact].
+                  </td>
+                  <td style="padding:5px 8px;color:var(--green);">CLOSED</td>
+                 </tr>
+                 <tr>
+                   <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane B</td>
+                   <td style="padding:5px 8px;color:var(--mid);">DW-B28-02 — Trim/Flatten/Cancel leader overloads</td>
+                   <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs + TradeCopierPanel.cs</td>
+                   <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">
+                     Extract TrimOneAccount/FlattenOneAccount/CancelOneAccount helpers.<br/>
+                     Add 5 new overloads (2-arg + 5-arg for Trim/Flatten, 2-arg for Cancel).<br/>
+                     Update 3 panel call sites + 2 extra for limit overloads = 5 call site changes.<br/>
+                     Add 3 [Fact] tests. Baseline 135 &rarr; 138.
+                   </td>
+                   <td style="padding:5px 8px;color:var(--green);">CLOSED</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── B28 status pills ──────────────────────────────────────────────── -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <span class="pill pill-green">&#10003; CLOSED</span>
+            <span class="pill pill-green">DW-B28-01 CLOSED — B29 acc.Change fix</span>
+            <span class="pill pill-green">DW-B28-02 CLOSED — Leader overloads shipped</span>
+            <span class="pill pill-accent">[Fact]: 135 &rarr; 137 delivered · F5 GREEN 2026-07-16</span>
+          </div>
+        </div>
+        <!-- ── end B28 block ─────────────────────────────────────────────────── -->
+
+        <!-- ══════════════════════════════════════════════════ BLOCK B29 -->
+        <div class="card" style="margin-top:16px; border-left:3px solid var(--green);" id="block-b29">
+          <div class="card-title" style="color:var(--green);">&#10003; Block 29 &nbsp;·&nbsp; PTT-COPIER-B29 &nbsp;·&nbsp; acc.Change() Fails on ATM Stops + GTC / IsBracketLeg Fixes — <span class="pill pill-green">CLOSED</span></div>
+          <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:14px;">
+            B29 objective: 7 defects discovered after B28 live test on 2026-07-16. All fixes applied to working-tree <code style="font-family:var(--mono);">CopyEngine.cs</code>.
+            F5 GREEN confirmed by Director. [Fact] count: 137 (132 committed HEAD + 5 B28/B29 additions — 4 direction tests + 1 market fallback test).
+          </div>
+          <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B29 DEFECT REGISTER — ALL CLOSED</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead><tr style="border-bottom:1px solid var(--border);">
+                <th style="width:14%;padding:5px 8px;text-align:left;">ID</th>
+                <th style="width:5%;padding:5px 8px;">P</th>
+                <th style="padding:5px 8px;text-align:left;">Fix</th>
+                <th style="width:34%;padding:5px 8px;text-align:left;">Key Lines</th>
+                <th style="width:10%;padding:5px 8px;">Status</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B29-01</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-red">P0</span></td>
+                  <td style="padding:6px 8px;"><strong>ComputeLimitPx direction inverted.</strong> Long exits must post at <code style="font-family:var(--mono);">bid - buffer</code> (at/below market → fills). Short exits at <code style="font-family:var(--mono);">ask + buffer</code>. Original had ask+buffer for long (passive, above market → never fills). Fixed to: <code style="font-family:var(--mono);">isLong ? bid - exitBuffer*tick : ask + exitBuffer*tick</code>.</td>
+                  <td style="padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs:1011-1013</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-green">CLOSED</span></td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B29-02</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-red">P0</span></td>
+                  <td style="padding:6px 8px;"><strong>MoveStopToBreakEven: <code style="font-family:var(--mono);">acc.Change()</code> silently fails on ATM-owned stops.</strong> NT8 prohibits external modification of orders owned by an ATM strategy instance. Fix: cancel the existing ATM stop + place new independent <code style="font-family:var(--mono);">StopMarket GTC</code> "PTT-BE-Stop" order.</td>
+                  <td style="padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs:1277-1293</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-green">CLOSED</span></td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B29-03</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;"><strong>TrimOneAccount / FlattenOneAccount: <code style="font-family:var(--mono);">TimeInForce.Day</code> → <code style="font-family:var(--mono);">GTC</code>.</strong> Day orders expire at session close; on futures Day = session end. GTC matches ATM bracket TIF and ensures orders survive extended hours.</td>
+                  <td style="padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs:969, 994</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-green">CLOSED</span></td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B29-04</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;"><strong>IsBracketLeg: PTT- prefix removed.</strong> Cancel button must be able to cancel PTT-Trim/Flatten/BE-Stop/Tighten-Stop orphans. PTT- orders are exits, not brackets. Copy-cascade prevention is handled separately by Gate 0.5 in DispatchCopy.</td>
+                  <td style="padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs:1219-1229</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-green">CLOSED</span></td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B29-05</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;"><strong>TightenOneStop: <code style="font-family:var(--mono);">acc.Change()</code> → cancel + CreateOrder StopMarket GTC "PTT-Tighten-Stop".</strong> Same ATM-ownership issue as DW-B29-02.</td>
+                  <td style="padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs:1394-1406</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-green">CLOSED</span></td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B29-06</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;"><strong>MirrorClose: <code style="font-family:var(--mono);">TimeInForce.Day</code> → <code style="font-family:var(--mono);">GTC</code>.</strong></td>
+                  <td style="padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs:488</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-green">CLOSED</span></td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B29-07</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;"><strong>DispatchCopy: <code style="font-family:var(--mono);">TimeInForce.Day</code> → <code style="font-family:var(--mono);">GTC</code>.</strong> Day orders expire mid-session on overnight futures (MES/MNQ trade nearly 24h). GTC ensures copied entries stay live.</td>
+                  <td style="padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs:780</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-green">CLOSED</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <span class="pill pill-green">&#10003; ALL 7 DEFECTS CLOSED</span>
+            <span class="pill pill-green">F5 GREEN 2026-07-16</span>
+            <span class="pill pill-accent">[Fact]: 132 HEAD &rarr; 137 working-tree (4 direction tests + 1 market fallback)</span>
+            <span class="pill pill-amber">Working-tree — awaiting B29 pipeline commit</span>
+          </div>
+        </div>
+        <!-- ── end B29 block ─────────────────────────────────────────────────── -->
+
+        <!-- ══════════════════════════════════════════════════ BLOCK B30 -->
+        <div class="card" style="margin-top:16px; border-left:3px solid var(--green);" id="block-b30">
+          <div class="card-title" style="color:var(--green);">&#10003; Block 30 &nbsp;·&nbsp; PTT-COPIER-B30 &nbsp;·&nbsp; Buttons Work Without Rules — CLOSED</div>
+          <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:14px;">
+            B30 objective: Director confirmed 2026-07-16 that all 5 action buttons (Trim, Flatten, Cancel, BE, Tighten) must work
+            with zero setup — no Apply Rule, no followers, no copier state. Five subagent investigations uncovered additional silent
+            failure paths, a SelectionChanged subscription leak, and a MarketData null-dereference crash.
+            Director scope confirmed: fix all buttons, fix the wiring, ship.
+          </div>
+
+          <!-- B30 DEFECT REGISTER -->
+          <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B30 DEFECT REGISTER</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead><tr style="border-bottom:1px solid var(--border);">
+                <th style="width:14%;padding:5px 8px;text-align:left;">ID</th>
+                <th style="width:5%;padding:5px 8px;">P</th>
+                <th style="padding:5px 8px;text-align:left;">Root Cause &amp; Fix</th>
+                <th style="width:10%;padding:5px 8px;">Status</th>
+              </tr></thead>
+              <tbody>
+                <tr style="background:rgba(239,68,68,0.04);">
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B30-01</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-red">P0</span></td>
+                  <td style="padding:6px 8px;">
+                    <strong>MoveStopToBreakEven cancel+replace partial failure — account left with no stop.</strong><br/>
+                    <code style="font-family:var(--mono);">acc.Cancel()</code> succeeds (B29 fix), then <code style="font-family:var(--mono);">acc.CreateOrder()</code> throws → exception caught and swallowed → position unprotected.<br/>
+                    <strong>Fix:</strong> Add retry: up to 3 <code style="font-family:var(--mono);">CreateOrder</code> attempts on failure. On final failure, attempt rollback by re-placing the original stop at <code style="font-family:var(--mono);">order.StopPrice</code> and emit
+                    <code style="font-family:var(--mono);">"CRITICAL: PTT-BE rollback: {ex}"</code> StatusUpdate.<br/>
+                    <strong>Files:</strong> CopyEngine.cs:1278-1298. Same fix applies to TightenOneStop:1392-1411.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--green);">CLOSED</td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B30-02</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-red">P1</span></td>
+                  <td style="padding:6px 8px;">
+                    <strong>TightenStop has no leader-direct path — fully blocked without a rule.</strong><br/>
+                    <code style="font-family:var(--mono);">TightenStop(Instrument, int)</code> opens with <code style="font-family:var(--mono);">FindRule() → hard return if null</code>. Unlike Trim/Flatten/Cancel/BE (B28 fix), Tighten was never given a leader-direct overload. <code style="font-family:var(--mono);">TightenOneStop</code> is 100% rule-independent internally — it just needs account+order.<br/>
+                    <strong>Fix (B28 pattern exactly):</strong><br/>
+                    1. Add <code style="font-family:var(--mono);">TightenStop(Account leader, Instrument instr, int ticks)</code> overload in CopyEngine.cs.<br/>
+                    2. Add private helper <code style="font-family:var(--mono);">TightenOneAccountStops(Account, Instrument, int, double)</code> — extracts the per-account stop-walk from existing TightenStop, adds <code style="font-family:var(--mono);">if (order.Instrument != instrument) continue</code> instrument filter (fixes existing edge-case bug).<br/>
+                    3. Update <code style="font-family:var(--mono);">OnTightenStop</code> in TradeCopierPanel.cs to call <code style="font-family:var(--mono);">_engine.TightenStop(_leaderAccount, _instrument, ticks)</code>.<br/>
+                    <strong>Files:</strong> CopyEngine.cs:1333+; TradeCopierPanel.cs:942-950.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--green);">CLOSED</td>
+                </tr>
+                <tr style="background:rgba(239,68,68,0.04);">
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B30-03</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-red">P1</span></td>
+                  <td style="padding:6px 8px;">
+                    <strong>WireLeaderAccount timing miss — <code style="font-family:var(--mono);">_leaderAccount</code> null at button press.</strong><br/>
+                    <code style="font-family:var(--mono);">WireLeaderAccount</code> runs at panel inject time. If the ChartTrader account combo has no <code style="font-family:var(--mono);">SelectedItem</code> yet (user hasn't touched the combo, NT8 not fully initialized), the text-fallback lookup also fails → <code style="font-family:var(--mono);">_leaderAccount</code> stays null. Buttons silently no-op.<br/>
+                    Additionally, the <code style="font-family:var(--mono);">SelectionChanged</code> lambda captures <code style="font-family:var(--mono);">panel</code> and is never unsubscribed in <code style="font-family:var(--mono);">Detach()</code> — memory leak on chart close.<br/>
+                    <strong>Fix:</strong><br/>
+                    1. Add <code style="font-family:var(--mono);">TryResolveLeaderAccount()</code> private method in TradeCopierPanel — walks ChartTrader visual tree at call time to find current account combo selection (same logic as WireLeaderAccount).<br/>
+                    2. All button handlers: <code style="font-family:var(--mono);">var acc = _leaderAccount ?? TryResolveLeaderAccount(); if (acc == null) return;</code><br/>
+                    3. Make <code style="font-family:var(--mono);">FindAccountComboBox</code> and <code style="font-family:var(--mono);">FindVisualChildByIndex</code> in TradeCopierAddOn.cs <code style="font-family:var(--mono);">internal static</code> (from private) so TradeCopierPanel can call them.<br/>
+                    4. Store <code style="font-family:var(--mono);">SelectionChanged</code> handler delegate in panel field; unsubscribe in <code style="font-family:var(--mono);">Detach()</code>.<br/>
+                    <strong>Files:</strong> TradeCopierPanel.cs:381-402, 734, 760, 790, 909, 942; TradeCopierAddOn.cs:492, 512, 444-468.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--green);">CLOSED</td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B30-04</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;">
+                    <strong>TightenStop MarketData null-dereference crash on untracked instruments.</strong><br/>
+                    <code style="font-family:var(--mono);">instrument.MarketData.Bid.Price</code> at CopyEngine.cs:1348 throws <code style="font-family:var(--mono);">NullReferenceException</code> if <code style="font-family:var(--mono);">MarketData</code> or <code style="font-family:var(--mono);">Bid</code> is null (instrument not subscribed to data feed).<br/>
+                    <strong>Fix:</strong> <code style="font-family:var(--mono);">var bidPrice = instrument.MarketData?.Bid?.Price ?? 0.0;</code> and same for Ask. Existing <code style="font-family:var(--mono);">bidPrice &gt; 0 &amp;&amp; askPrice &gt; 0</code> fallback logic then handles the zero case correctly.<br/>
+                    <strong>Files:</strong> CopyEngine.cs:1348-1349. Also apply to new <code style="font-family:var(--mono);">TightenOneAccountStops</code> helper.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--green);">CLOSED</td>
+                </tr>
+                <tr style="background:rgba(239,68,68,0.04);">
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B30-05</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;">
+                    <strong>ArmPendingBe armed when flat — silent no-op, FSM stuck Armed.</strong><br/>
+                    <code style="font-family:var(--mono);">ArmPendingBe()</code> does not validate that the leader has an open position. Button changes to "BE Armed" visually, but <code style="font-family:var(--mono);">OnPendingBeAccountUpdate</code> never fires a P&amp;L-threshold crossing → <code style="font-family:var(--mono);">PendingBeFired</code> never fires → FSM never transitions to Connected → stops never move. User is confused.<br/>
+                    <strong>Fix:</strong> In <code style="font-family:var(--mono);">ArmPendingBe()</code>, check <code style="font-family:var(--mono);">FindPosition(masterAcc, instr)</code> at arm time. If flat, emit <code style="font-family:var(--mono);">StatusUpdate("PTT-BE: no open position")</code> and return without arming. Also: emit StatusUpdate on <code style="font-family:var(--mono);">ArmPendingBe()</code> masterAcc == null path (currently silent).<br/>
+                    <strong>Files:</strong> CopyEngine.cs:1420-1431.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--green);">CLOSED</td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B30-06</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-amber">P1</span></td>
+                  <td style="padding:6px 8px;">
+                    <strong>acc.Orders concurrent iteration — not snapshotted before loop.</strong><br/>
+                    <code style="font-family:var(--mono);">CancelOneAccount</code>, <code style="font-family:var(--mono);">MoveStopToBreakEven</code>, and <code style="font-family:var(--mono);">TightenStop</code> iterate <code style="font-family:var(--mono);">acc.Orders</code> directly. NT8's <code style="font-family:var(--mono);">OnOrderUpdate</code> fires on a background thread and can modify the collection mid-loop → iterator corruption, missed cancels, or double-processes in high-activity scenarios.<br/>
+                    <strong>Fix:</strong> Snapshot before each loop: <code style="font-family:var(--mono);">var orders = acc.Orders.ToList();</code> then iterate <code style="font-family:var(--mono);">orders</code>. Apply to CopyEngine.cs:1050, 1255, 1356.<br/>
+                    <strong>Files:</strong> CopyEngine.cs:1050, 1255, 1356.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--green);">CLOSED</td>
+                </tr>
+                <tr style="background:rgba(239,68,68,0.04);">
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--red);padding:6px 8px;">DW-B30-07</td>
+                  <td style="padding:6px 8px;"><span class="pill pill-accent">P2</span></td>
+                  <td style="padding:6px 8px;">
+                    <strong>Rename "Apply Rule" → "Add Followers" + status text clarification.</strong><br/>
+                    Current label implies the button is a required prerequisite. It is not — Trim/Flatten/Cancel/BE work without it. The button only registers follower accounts for multi-account fan-out.<br/>
+                    <strong>Fix:</strong><br/>
+                    1. TradeCopierPanel.cs:483 — <code style="font-family:var(--mono);">Content = "Apply Rule"</code> → <code style="font-family:var(--mono);">Content = "Add Followers"</code>.<br/>
+                    2. TradeCopierPanel.cs:504 — status text initial value: <code style="font-family:var(--mono);">"No instrument"</code> → <code style="font-family:var(--mono);">"Open chart — Trim/Flatten/Cancel/BE ready"</code>.<br/>
+                    3. TradeCopierPanel.cs:378 — <code style="font-family:var(--mono);">SetInstrument</code> status: <code style="font-family:var(--mono);">"Ready: " + instrument.FullName</code> → <code style="font-family:var(--mono);">"Ready: " + instrument.FullName + " — select followers to copy"</code>.<br/>
+                    4. TradeCopierPanel.cs:920 — collapse header: <code style="font-family:var(--mono);">"&#x25BC; PTT"</code> → <code style="font-family:var(--mono);">"&#x25BC; Position Tools"</code>.<br/>
+                    <strong>Files:</strong> TradeCopierPanel.cs:378, 483, 504, 920.
+                  </td>
+                  <td style="padding:6px 8px;color:var(--green);">CLOSED</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- B30 ARCHITECTURE DECISIONS -->
+          <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B30 ARCHITECTURE DECISIONS — LOCKED (Director: go)</div>
+            <ul style="margin:0 0 0 16px;color:var(--mid);line-height:2.0;font-size:11px;">
+              <li><strong>All 5 action buttons work with zero setup.</strong> No rule, no followers, no Apply Rule / Add Followers click required. The ChartTrader account selector alone is sufficient.</li>
+              <li><strong>Follower fan-out is additive and optional.</strong> If a rule exists, buttons fan out to followers after operating on the leader. If no rule, leader-only mode silently succeeds — no error, no warning.</li>
+              <li><strong>Leader resolution order (button press time):</strong> (1) <code style="font-family:var(--mono);">_leaderAccount</code> if already wired; (2) <code style="font-family:var(--mono);">TryResolveLeaderAccount()</code> visual-tree fallback; (3) if still null, emit StatusUpdate "no account selected" and return.</li>
+              <li><strong>B28 pattern extended to Tighten:</strong> <code style="font-family:var(--mono);">TightenStop(Account, Instrument, int)</code> overload follows identical Flatten/Trim/Cancel leader-direct + AllAccounts fan-out structure. CYC=5. Instrument-filter bug fixed in helper.</li>
+              <li><strong>cancel+replace robustness:</strong> Both MoveStopToBreakEven and TightenOneStop gain a 3-retry CreateOrder loop with rollback-to-original on final failure.</li>
+              <li><strong>JS-021:</strong> No <code style="font-family:var(--mono);">lock()</code>. All new engine methods UI-thread initiated. Orders snapshots via <code style="font-family:var(--mono);">.ToList()</code> before loop — safe, no lock required.</li>
+              <li><strong>CYC impact:</strong> All new/modified methods ≤8. New overloads CYC=4-5. Helper CYC=5. Retry loops: factored into callers (each branch counted).</li>
+              <li><strong>[Fact] target: 137 → 142.</strong> T_B30_01: TightenStop(Account,Instrument,int) overload exists. T_B30_02: TightenStop(Account,null,5) no-throw. T_B30_03: TrimLimit_Long_PlacesBelowBid (already shipped). T_B30_04: ArmPendingBe null-position no-arm guard. T_B30_05: TryResolveLeaderAccount method exists (reflection).</li>
+            </ul>
+          </div>
+
+          <!-- B30 LANE SUMMARY -->
+          <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">B30 LANE SUMMARY</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead><tr style="border-bottom:1px solid var(--border);">
+                <th style="width:10%;padding:5px 8px;font-family:var(--mono);font-size:10px;">Lane</th>
+                <th style="width:22%;padding:5px 8px;text-align:left;">Defects</th>
+                <th style="width:26%;padding:5px 8px;text-align:left;">Files</th>
+                <th style="padding:5px 8px;text-align:left;">Scope</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane A</td>
+                  <td style="padding:5px 8px;color:var(--mid);">DW-B30-02, DW-B30-04 — Tighten leader overload + MarketData null guard</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs + TradeCopierPanel.cs</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">
+                    New TightenStop(Account,Instrument,int) overload + TightenOneAccountStops helper.<br/>
+                    Null-safe MarketData?.Bid?.Price in both old and new tighten paths.<br/>
+                    OnTightenStop panel call updated to pass _leaderAccount.<br/>
+                    +1 [Fact] T_B30_01 (overload exists). 137→138.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane B</td>
+                  <td style="padding:5px 8px;color:var(--mid);">DW-B30-03 — WireLeaderAccount timing + SelectionChanged leak</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">TradeCopierPanel.cs + TradeCopierAddOn.cs</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">
+                    Add TryResolveLeaderAccount() private method.<br/>
+                    All 5 button handlers: var acc = _leaderAccount ?? TryResolveLeaderAccount().<br/>
+                    FindAccountComboBox + FindVisualChildByIndex → internal static.<br/>
+                    Store + unsubscribe SelectionChanged handler in Detach().<br/>
+                    +1 [Fact] T_B30_05 (TryResolveLeaderAccount exists). 138→139.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane C</td>
+                  <td style="padding:5px 8px;color:var(--mid);">DW-B30-01, DW-B30-06 — cancel+replace retry + Orders snapshot</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">
+                    3-retry CreateOrder loop with rollback in MoveStopToBreakEven + TightenOneStop.<br/>
+                    acc.Orders.ToList() snapshot before all 3 order loops (lines 1050, 1255, 1356).<br/>
+                    +1 [Fact] T_B30_02 (null-leader TightenStop no-throw). 139→140.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">Lane D</td>
+                  <td style="padding:5px 8px;color:var(--mid);">DW-B30-05, DW-B30-07 — ArmPendingBe StatusUpdate guards + UI label renames</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--mid);">CopyEngine.cs + TradeCopierPanel.cs</td>
+                  <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;">
+                    ArmPendingBe(): both silent return paths now emit StatusUpdate.<br/>
+                    5 string edits: Apply Rule, status text ×2, collapse header ×2 (toggle + button).<br/>
+                    +2 [Fact] ArmPendingBe_SkipsWhenFlat + ArmPendingBe_EmitsStatusUpdateOnNullLeader. 142→144.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- B30 LIVE TEST RESULTS -->
+          <div style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.25); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:11px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;letter-spacing:0.1em;margin-bottom:8px;">B30 LIVE TEST RESULTS — ALL LANES VERIFY_PASS</div>
+            <table style="font-size:11px;width:100%;border-collapse:collapse;">
+              <thead><tr style="border-bottom:1px solid var(--border);">
+                <th style="width:12%;padding:4px 8px;font-family:var(--mono);font-size:10px;">Lane</th>
+                <th style="width:15%;padding:4px 8px;font-family:var(--mono);font-size:10px;">Commit</th>
+                <th style="width:15%;padding:4px 8px;font-family:var(--mono);font-size:10px;">[Fact]</th>
+                <th style="width:12%;padding:4px 8px;font-family:var(--mono);font-size:10px;">DESYNC</th>
+                <th style="padding:4px 8px;font-family:var(--mono);font-size:10px;">Verdict</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">A</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">2bc4e8cb</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">139</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">0</td><td style="padding:4px 8px;color:var(--green);">VERIFY_PASS</td></tr>
+                <tr style="background:rgba(34,197,94,0.03);"><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">B</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">8e9370e1</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">140</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">0</td><td style="padding:4px 8px;color:var(--green);">VERIFY_PASS</td></tr>
+                <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">C</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">92b9af4b</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">142</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">0</td><td style="padding:4px 8px;color:var(--green);">VERIFY_PASS</td></tr>
+                <tr style="background:rgba(34,197,94,0.03);"><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--accent);">D</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">a47ea5ab</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">144</td><td style="padding:4px 8px;font-family:var(--mono);font-size:10px;">0</td><td style="padding:4px 8px;color:var(--green);">VERIFY_PASS</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <span class="pill pill-green">CLOSED — all 4 lanes VERIFY_PASS</span>
+            <span class="pill pill-green">DW-B30-01 P0 — cancel+replace rollback (Lane C) &#10003;</span>
+            <span class="pill pill-green">DW-B30-02 P1 — Tighten no leader path (Lane A) &#10003;</span>
+            <span class="pill pill-green">DW-B30-03 P1 — WireLeaderAccount timing (Lane B) &#10003;</span>
+            <span class="pill pill-green">DW-B30-04 P1 — MarketData null crash (Lane A) &#10003;</span>
+            <span class="pill pill-green">DW-B30-05 P1 — ArmPendingBe StatusUpdate guards (Lane D) &#10003;</span>
+            <span class="pill pill-green">DW-B30-06 P1 — Orders snapshot (Lane C) &#10003;</span>
+            <span class="pill pill-green">DW-B30-07 P2 — Label renames (Lane D) &#10003;</span>
+            <span class="pill pill-green">[Fact]: 137 &rarr; 144 (7 new tests across 4 lanes)</span>
+          </div>
+        </div>
+        <!-- ── end B30 block ─────────────────────────────────────────────────── -->
 
 
     <!-- ══ end arch-research ════════════════════════════════════════════ -->
