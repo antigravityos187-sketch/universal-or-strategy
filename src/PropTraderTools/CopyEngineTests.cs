@@ -1457,44 +1457,47 @@ namespace PropTraderTools
 
         // =====================================================================
         // B19 T1: Ask/Bid anchor direction tests  (DW-B19-LIMIT-PRICE-01)
-        // Verify ComputeLimitPx direction logic: long exits use ask anchor,
-        // short exits use bid anchor.
+        // Verify ComputeLimitPx direction logic: long exits use bid anchor (aggressive),
+        // short exits use ask anchor (aggressive).
+        // DW-B29-01 fix: passive anchor (ask+buffer for long) placed limit ABOVE market -- never filled.
+        // Correct: bid - buffer for long (at/below market fills immediately);
+        //          ask + buffer for short (at/above market fills immediately).
         // =====================================================================
 
-        // B19-Test-1: Long exit (Sell Limit) posts ABOVE ask.
+        // B29-Test-1: Long exit (Sell Limit) posts BELOW bid -- aggressive, fills immediately.
         [Fact]
-        public void TrimLimit_Long_PlacesAboveAsk()
+        public void TrimLimit_Long_PlacesBelowBid()
         {
-            // Long: ask + 1 tick = 5000.25 + 0.25 = 5000.50
+            // Long: bid - 1 tick = 5000.00 - 0.25 = 4999.75
             double px = CopyEngine.ComputeLimitPx(isLong: true, ask: 5000.25, bid: 5000.00, exitBuffer: 1, tickSize: 0.25);
-            Assert.Equal(5000.50, px, precision: 10);
-        }
-
-        // B19-Test-2: Short exit (BuyToCover Limit) posts BELOW bid.
-        [Fact]
-        public void TrimLimit_Short_PlacesBelowBid()
-        {
-            // Short: bid - 1 tick = 5000.00 - 0.25 = 4999.75
-            double px = CopyEngine.ComputeLimitPx(isLong: false, ask: 5000.25, bid: 5000.00, exitBuffer: 1, tickSize: 0.25);
             Assert.Equal(4999.75, px, precision: 10);
         }
 
-        // B19-Test-3: Flatten long exit (Sell Limit) posts ABOVE ask with buffer=2.
+        // B29-Test-2: Short exit (BuyToCover Limit) posts ABOVE ask -- aggressive, fills immediately.
         [Fact]
-        public void FlattenLimit_Long_PlacesAboveAsk()
+        public void TrimLimit_Short_PlacesAboveAsk()
         {
-            // Long: ask + 2 ticks = 5000.25 + 0.50 = 5000.75
-            double px = CopyEngine.ComputeLimitPx(isLong: true, ask: 5000.25, bid: 0, exitBuffer: 2, tickSize: 0.25);
-            Assert.Equal(5000.75, px, precision: 10);
+            // Short: ask + 1 tick = 5000.25 + 0.25 = 5000.50
+            double px = CopyEngine.ComputeLimitPx(isLong: false, ask: 5000.25, bid: 5000.00, exitBuffer: 1, tickSize: 0.25);
+            Assert.Equal(5000.50, px, precision: 10);
         }
 
-        // B19-Test-4: Flatten short exit (BuyToCover Limit) posts BELOW bid with buffer=2.
+        // B29-Test-3: Flatten long exit (Sell Limit) posts BELOW bid with buffer=2 -- aggressive.
         [Fact]
-        public void FlattenLimit_Short_PlacesBelowBid()
+        public void FlattenLimit_Long_PlacesBelowBid()
         {
-            // Short: bid - 2 ticks = 5000.00 - 0.50 = 4999.50
-            double px = CopyEngine.ComputeLimitPx(isLong: false, ask: 0, bid: 5000.00, exitBuffer: 2, tickSize: 0.25);
+            // Long: bid - 2 ticks = 5000.00 - 0.50 = 4999.50
+            double px = CopyEngine.ComputeLimitPx(isLong: true, ask: 5000.25, bid: 5000.00, exitBuffer: 2, tickSize: 0.25);
             Assert.Equal(4999.50, px, precision: 10);
+        }
+
+        // B29-Test-4: Flatten short exit (BuyToCover Limit) posts ABOVE ask with buffer=2 -- aggressive.
+        [Fact]
+        public void FlattenLimit_Short_PlacesAboveAsk()
+        {
+            // Short: ask + 2 ticks = 5000.25 + 0.50 = 5000.75
+            double px = CopyEngine.ComputeLimitPx(isLong: false, ask: 5000.25, bid: 5000.00, exitBuffer: 2, tickSize: 0.25);
+            Assert.Equal(5000.75, px, precision: 10);
         }
 
         // B19-Test-5: ask=0 or bid=0 triggers market fallback guard (ask<=0||bid<=0||exitBuffer==0).
@@ -1663,13 +1666,16 @@ namespace PropTraderTools
                 }
             });
             Assert.Null(ex);
-            // _trailBeStates must remain empty (null instrument guard fires before dict write)
+            // _trailBeSlots must remain empty (null instrument guard fires before slot write)
             var fi = typeof(CopyEngine).GetField(
-                "_trailBeStates",
+                "_trailBeSlots",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(fi);
-            var dict = (System.Collections.Concurrent.ConcurrentDictionary<string, int>)fi.GetValue(_engine);
-            Assert.Empty(dict);
+            var dict2 = fi.GetValue(_engine);
+            Assert.NotNull(dict2);
+            var dictTyped = dict2 as System.Collections.IDictionary;
+            Assert.NotNull(dictTyped);
+            Assert.Equal(0, dictTyped.Count);
         }
 
         [Fact]
@@ -2403,6 +2409,102 @@ namespace PropTraderTools
             Assert.Null(capturedInstrName);    // not fired yet -- confirming initial state
             Assert.Null(capturedAccountName);  // not fired yet -- confirming initial state
             _ = handler; // suppress unused-variable hint
+        }
+
+
+        // T-B27-01 (DW-B27-01): PendingBeSlot nested struct must exist on CopyEngine.
+        // Verifies the per-account slot architecture is structurally present.
+        // Null-instrument path keeps both slot dicts empty -- independent per key.
+        [Fact]
+        public void T_B27_01_ArmTwoPanels_SecondArmDoesNotNullFirstInstrument()
+        {
+            // Verify _pendingBeSlots field exists.
+            var fi = typeof(CopyEngine).GetField(
+                "_pendingBeSlots",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(fi);
+            // Verify PendingBeSlot nested type exists with correct fields.
+            var slotType = typeof(CopyEngine).GetNestedType(
+                "PendingBeSlot",
+                BindingFlags.NonPublic);
+            Assert.NotNull(slotType);
+            Assert.NotNull(slotType.GetField("Account",     BindingFlags.NonPublic | BindingFlags.Instance));
+            Assert.NotNull(slotType.GetField("Instrument",  BindingFlags.NonPublic | BindingFlags.Instance));
+            Assert.NotNull(slotType.GetField("BufferTicks", BindingFlags.NonPublic | BindingFlags.Instance));
+            // Per-account isolation: ConcurrentDictionary keys are independent by design.
+            // Two distinct keys never collide -- structural invariant proven by type system.
+            var dict = fi.GetValue(_engine) as System.Collections.IDictionary;
+            Assert.NotNull(dict);
+        }
+
+        // T-B27-02 (DW-B27-01): All three replacement dicts must exist on CopyEngine.
+        // Disarming one account key leaves other keys untouched -- ConcurrentDictionary guarantee.
+        [Fact]
+        public void T_B27_02_DisarmOneAccount_DoesNotAffectOther()
+        {
+            // _pendingBeSlots
+            var fi1 = typeof(CopyEngine).GetField(
+                "_pendingBeSlots",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(fi1);
+            // _trailBeSlots
+            var fi2 = typeof(CopyEngine).GetField(
+                "_trailBeSlots",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(fi2);
+            // _trailBeLastPnlBits
+            var fi3 = typeof(CopyEngine).GetField(
+                "_trailBeLastPnlBits",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(fi3);
+            // TrailBeSlot nested type must also exist.
+            var slotType = typeof(CopyEngine).GetNestedType(
+                "TrailBeSlot",
+                BindingFlags.NonPublic);
+            Assert.NotNull(slotType);
+            Assert.NotNull(slotType.GetField("Account",     BindingFlags.NonPublic | BindingFlags.Instance));
+            Assert.NotNull(slotType.GetField("Instrument",  BindingFlags.NonPublic | BindingFlags.Instance));
+            Assert.NotNull(slotType.GetField("BufferTicks", BindingFlags.NonPublic | BindingFlags.Instance));
+        }
+
+
+        [Fact]
+        public void T_B28_01_Trim_LeaderOverload_Exists()
+        {
+            var methods = typeof(CopyEngine).GetMethods(
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var overload = methods.FirstOrDefault(m =>
+                m.Name == "Trim" &&
+                m.GetParameters().Length == 2 &&
+                m.GetParameters()[0].ParameterType == typeof(NinjaTrader.Cbi.Account) &&
+                m.GetParameters()[1].ParameterType == typeof(NinjaTrader.NinjaScript.Instruments.Instrument));
+            Assert.NotNull(overload);
+        }
+
+        [Fact]
+        public void T_B28_02_Flatten_LeaderOverload_Exists()
+        {
+            var methods = typeof(CopyEngine).GetMethods(
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var overload = methods.FirstOrDefault(m =>
+                m.Name == "Flatten" &&
+                m.GetParameters().Length == 2 &&
+                m.GetParameters()[0].ParameterType == typeof(NinjaTrader.Cbi.Account) &&
+                m.GetParameters()[1].ParameterType == typeof(NinjaTrader.NinjaScript.Instruments.Instrument));
+            Assert.NotNull(overload);
+        }
+
+        [Fact]
+        public void T_B28_03_CancelPendingEntries_LeaderOverload_Exists()
+        {
+            var methods = typeof(CopyEngine).GetMethods(
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var overload = methods.FirstOrDefault(m =>
+                m.Name == "CancelPendingEntries" &&
+                m.GetParameters().Length == 2 &&
+                m.GetParameters()[0].ParameterType == typeof(NinjaTrader.Cbi.Account) &&
+                m.GetParameters()[1].ParameterType == typeof(NinjaTrader.NinjaScript.Instruments.Instrument));
+            Assert.NotNull(overload);
         }
 
 

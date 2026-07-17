@@ -1,6 +1,6 @@
 // PTT-COPIER-B14-T1 -- CopyEngine.cs
 // B14 T1 CHANGES:
-//   1. Added _trailBeStates (ConcurrentDictionary), _trailBeBufferTicks, _trailBeLastPnl (volatile int/long), _trailBeAccount, _trailBeInstrument.
+//   1. Added trail BE fields (B27: replaced with _trailBeSlots + _trailBeLastPnlBits per DW-B27-01).
 //   2. Added ArmTrailBe(Instrument, Account, int) -- CYC=4.
 //   3. Added DisarmTrailBe(Account) -- CYC=4.
 //   4. Added OnTrailBeAccountUpdate -- CYC=5, fires on NT8 account bg thread.
@@ -93,25 +93,40 @@ namespace PropTraderTools
         private ConcurrentBag<CopyRule> _rules = new ConcurrentBag<CopyRule>(); // Change 1: removed readonly
         private double _dailyCapFloor = -500.0; // Change 4
 
-        // B10 T2 -- Pending BE fields
-        // DW-B25-02: per-account state slots (was singleton volatile int -- shared by all panels).
-        // NT8-004: ConcurrentDictionary is safe (ImmutableDictionary BANNED in NT8).
-        // JS-021: ConcurrentDictionary is lock-free. Key = account.Name.
-        private readonly ConcurrentDictionary<string, int> _pendingBeStates = new ConcurrentDictionary<string, int>();
-        private volatile int    _pendingBeBufferTicks   = 2;
-        private          Account    _pendingBeAccount    = null; // single-writer UI thread
-        private          Instrument _pendingBeInstrument = null; // single-writer UI thread
+        // B27 -- Per-account BE slot structs (DW-B27-01: replaces singleton fields).
+        // NT8-001: 'readonly' fields, NOT init setters. NT8-005: NOT 'readonly struct'.
+        // NT8-004: struct in ConcurrentDictionary<string,TSlot> confirmed safe in NT8.
+        private struct PendingBeSlot
+        {
+            internal readonly Account    Account;
+            internal readonly Instrument Instrument;
+            internal readonly int        BufferTicks;
+            internal PendingBeSlot(Account a, Instrument i, int b)
+            { Account = a; Instrument = i; BufferTicks = b; }
+        }
 
-        // B14 T1 -- Auto-trail BE fields (JS-023; NT8-003).
-        // DW-B25-02: per-account state slots (was singleton volatile int -- shared by all panels).
-        // NT8-004: ConcurrentDictionary is safe (ImmutableDictionary BANNED in NT8).
-        // JS-021: ConcurrentDictionary is lock-free. Key = account.Name.
-        // _trailBeLastPnl: plain long (NT8-003: volatile banned on 64-bit types; Interlocked.Read/CAS provide barrier).
-        private readonly ConcurrentDictionary<string, int> _trailBeStates   = new ConcurrentDictionary<string, int>();
-        private volatile int    _trailBeBufferTicks   = 2;
-        private          long   _trailBeLastPnl       = 0L; // Interlocked.Read/CompareExchange provide memory barrier
-        private          Account    _trailBeAccount    = null; // single-writer UI thread
-        private          Instrument _trailBeInstrument = null; // single-writer UI thread
+        private struct TrailBeSlot
+        {
+            internal readonly Account    Account;
+            internal readonly Instrument Instrument;
+            internal readonly int        BufferTicks;
+            internal TrailBeSlot(Account a, Instrument i, int b)
+            { Account = a; Instrument = i; BufferTicks = b; }
+        }
+
+        // B27 -- Pending BE slot dictionary (DW-B27-01: replaces 4 singleton fields).
+        // Key = account.Name. JS-021: TryGetValue/TryRemove/AddOrUpdate are lock-free.
+        private readonly ConcurrentDictionary<string, PendingBeSlot> _pendingBeSlots
+            = new ConcurrentDictionary<string, PendingBeSlot>();
+
+        // B27 -- Trail BE slot dictionary (DW-B27-01: replaces 5 singleton fields).
+        // LastPnlBits lives in _trailBeLastPnlBits (separate dict) because struct values
+        // in ConcurrentDictionary are value types -- Interlocked CAS requires a ref to a
+        // field, impossible on a boxed struct. NT8-003: no volatile on long.
+        private readonly ConcurrentDictionary<string, TrailBeSlot>   _trailBeSlots
+            = new ConcurrentDictionary<string, TrailBeSlot>();
+        private readonly ConcurrentDictionary<string, long>           _trailBeLastPnlBits
+            = new ConcurrentDictionary<string, long>();
 
         // V01: order map for follower bracket lookup
         // JS-025: ConcurrentDictionary (atomic GetOrAdd) + ConcurrentBag (lock-free Add/iterate)
@@ -470,7 +485,7 @@ namespace PropTraderTools
                 try
                 {
                     acc.CreateOrder(instr, action, OrderType.Market,
-                        OrderEntry.Manual, TimeInForce.Day,
+                        OrderEntry.Manual, TimeInForce.GTC,  // B29 fix: GTC matches ATM bracket TIF
                         pos.Quantity, 0, 0, null,
                         "PTT-Mirror-Close",    // signal name starts with "PTT-" (NT8 constraint)
                         DateTime.MaxValue, null);
@@ -762,7 +777,7 @@ namespace PropTraderTools
                     signal.Action,
                     orderType,
                     OrderEntry.Manual,
-                    TimeInForce.Day,
+                    TimeInForce.GTC,  // B29 fix: Day orders expire mid-session on overnight futures
                     signal.Quantity,
                     limitPrice,
                     0,
@@ -838,88 +853,164 @@ namespace PropTraderTools
         internal void Trim(Instrument instrument)
         {
             foreach (var acc in AllAccounts(instrument))
-            {
-                var pos = FindPosition(acc, instrument);
-                if (pos == null || pos.Quantity == 0)
-                {
-                    StatusUpdate?.Invoke(acc.Name + ": flat skip");
-                    continue;
-                }
-
-                int trimQty = (int)Math.Ceiling(pos.Quantity / 2.0);
-                var action = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
-
-                try
-                {
-                    acc.CreateOrder(
-                            instrument,
-                            action,
-                            OrderType.Market,
-                            OrderEntry.Manual,
-                            TimeInForce.Day,
-                            trimQty,
-                            0,
-                            0,
-                            null,
-                            "PTT-Trim",
-                            DateTime.MaxValue,
-                            null
-                        );
-                    StatusUpdate?.Invoke(acc.Name + ": trim " + trimQty);
-                }
-                catch (Exception ex)
-                {
-                    StatusUpdate?.Invoke("PTT-Trim error: " + ex.Message);
-                }
-            }
+                TrimOneAccount(acc, instrument);
         }
 
         internal void Flatten(Instrument instrument)
         {
             foreach (var acc in AllAccounts(instrument))
+                FlattenOneAccount(acc, instrument);
+        }
+
+        // B28 T1 -- Trim(Account,Instrument): leader-account overload. Fixes DW-B28-02.
+        // CYC=4: (1) leader null guard, (2) leader direct call, (3) foreach, (4) acc==leader skip.
+        internal void Trim(Account leader, Instrument instrument)
+        {
+            if (leader == null)
             {
-                var pos = FindPosition(acc, instrument);
-                if (pos == null || pos.Quantity == 0)
-                {
-                    StatusUpdate?.Invoke(acc.Name + ": flat skip");
-                    continue;
-                }
-
-                var action = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
-
-                try
-                {
-                    acc.CreateOrder(
-                            instrument,
-                            action,
-                            OrderType.Market,
-                            OrderEntry.Manual,
-                            TimeInForce.Day,
-                            pos.Quantity,
-                            0,
-                            0,
-                            null,
-                            "PTT-Flatten",
-                            DateTime.MaxValue,
-                            null
-                        );
-                    StatusUpdate?.Invoke(acc.Name + ": flatten " + pos.Quantity);
-                }
-                catch (Exception ex)
-                {
-                    StatusUpdate?.Invoke("PTT-Flatten error: " + ex.Message);
-                }
+                StatusUpdate?.Invoke("PTT-Trim: leader null -- skipping");
+                return;
+            }
+            TrimOneAccount(leader, instrument);
+            foreach (var acc in AllAccounts(instrument))
+            {
+                if (acc == leader) continue;
+                TrimOneAccount(acc, instrument);
             }
         }
 
-        // B19 T1 -- ComputeLimitPx: pure-arithmetic price anchor helper.
-        // Long exits (Sell Limit) post above ask; short exits (BuyToCover) post below bid.
+        // B28 T1 -- Flatten(Account,Instrument): leader-account overload. Fixes DW-B28-02.
+        // CYC=4: (1) leader null guard, (2) leader direct call, (3) foreach, (4) acc==leader skip.
+        internal void Flatten(Account leader, Instrument instrument)
+        {
+            if (leader == null)
+            {
+                StatusUpdate?.Invoke("PTT-Flatten: leader null -- skipping");
+                return;
+            }
+            FlattenOneAccount(leader, instrument);
+            foreach (var acc in AllAccounts(instrument))
+            {
+                if (acc == leader) continue;
+                FlattenOneAccount(acc, instrument);
+            }
+        }
+
+        // B28 T1 -- CancelPendingEntries(Account,Instrument): leader-account overload. Fixes DW-B28-02.
+        // CYC=4: (1) leader null guard, (2) leader direct call, (3) foreach, (4) acc==leader skip.
+        internal void CancelPendingEntries(Account leader, Instrument instrument)
+        {
+            if (leader == null)
+            {
+                StatusUpdate?.Invoke("PTT-Cancel: leader null -- skipping");
+                return;
+            }
+            CancelOneAccount(leader, instrument);
+            foreach (var acc in AllAccounts(instrument))
+            {
+                if (acc == leader) continue;
+                CancelOneAccount(acc, instrument);
+            }
+        }
+
+        // B28 T1 -- Trim(Account,Instrument,int,double,double): leader-account limit overload.
+        // CYC=5: (1) leader null guard, (2) ask/bid/buffer guard, (3) leader direct call, (4) foreach, (5) acc==leader skip.
+        internal void Trim(Account leader, Instrument instrument, int exitBuffer, double ask, double bid)
+        {
+            if (leader == null)
+            {
+                StatusUpdate?.Invoke("PTT-TrimLimit: leader null -- skipping");
+                return;
+            }
+            if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Trim(leader, instrument); return; }
+            TrimOneAccountLimit(leader, instrument, exitBuffer, ask, bid);
+            foreach (var acc in AllAccounts(instrument))
+            {
+                if (acc == leader) continue;
+                TrimOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
+            }
+        }
+
+        // B28 T1 -- Flatten(Account,Instrument,int,double,double): leader-account limit overload.
+        // CYC=5: (1) leader null guard, (2) ask/bid/buffer guard, (3) leader direct call, (4) foreach, (5) acc==leader skip.
+        internal void Flatten(Account leader, Instrument instrument, int exitBuffer, double ask, double bid)
+        {
+            if (leader == null)
+            {
+                StatusUpdate?.Invoke("PTT-FlattenLimit: leader null -- skipping");
+                return;
+            }
+            if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Flatten(leader, instrument); return; }
+            FlattenOneAccountLimit(leader, instrument, exitBuffer, ask, bid);
+            foreach (var acc in AllAccounts(instrument))
+            {
+                if (acc == leader) continue;
+                FlattenOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
+            }
+        }
+
+        // B28 T1 -- TrimOneAccount: per-account market trim helper. CYC=3.
+        // (1) pos null/qty guard, (2) action ternary, (3) try/catch CreateOrder.
+        // JS-001: no rethrow. JS-021: no lock. ASCII: PTT-Trim signal name.
+        private void TrimOneAccount(Account acc, Instrument instrument)
+        {
+            var pos = FindPosition(acc, instrument);
+            if (pos == null || pos.Quantity == 0)
+            {
+                StatusUpdate?.Invoke(acc.Name + ": flat skip");
+                return;
+            }
+            int trimQty = (int)Math.Ceiling(pos.Quantity / 2.0);
+            var action = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
+            try
+            {
+                acc.CreateOrder(
+                    instrument, action, OrderType.Market, OrderEntry.Manual,
+                    TimeInForce.GTC, trimQty, 0, 0, null, "PTT-Trim",
+                    DateTime.MaxValue, null);
+                StatusUpdate?.Invoke(acc.Name + ": trim " + trimQty);
+            }
+            catch (Exception ex)
+            {
+                StatusUpdate?.Invoke("PTT-Trim error: " + ex.Message);
+            }
+        }
+
+        // B28 T1 -- FlattenOneAccount: per-account market flatten helper. CYC=3.
+        // (1) pos null/qty guard, (2) action ternary, (3) try/catch CreateOrder.
+        private void FlattenOneAccount(Account acc, Instrument instrument)
+        {
+            var pos = FindPosition(acc, instrument);
+            if (pos == null || pos.Quantity == 0)
+            {
+                StatusUpdate?.Invoke(acc.Name + ": flat skip");
+                return;
+            }
+            var action = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
+            try
+            {
+                acc.CreateOrder(
+                    instrument, action, OrderType.Market, OrderEntry.Manual,
+                    TimeInForce.GTC, pos.Quantity, 0, 0, null, "PTT-Flatten",
+                    DateTime.MaxValue, null);
+                StatusUpdate?.Invoke(acc.Name + ": flatten " + pos.Quantity);
+            }
+            catch (Exception ex)
+            {
+                StatusUpdate?.Invoke("PTT-Flatten error: " + ex.Message);
+            }
+        }
+
+        // B29 fix -- ComputeLimitPx: aggressive exit anchor.
+        // Long exits (Sell Limit) post at bid - buffer (at/below market → fills immediately).
+        // Short exits (BuyToCover) post at ask + buffer (at/above market → fills immediately).
+        // DW-B29-01: original used ask+buffer for long, placing passive limit ABOVE market (never filled).
         // CYC=1: single ternary. No NT8 deps, no state, no nulls.
         // internal static -- CopyEngineTests.cs calls CopyEngine.ComputeLimitPx(...) directly.
         internal static double ComputeLimitPx(bool isLong, double ask, double bid, int exitBuffer, double tickSize)
             => isLong
-                ? ask + exitBuffer * tickSize
-                : bid - exitBuffer * tickSize;
+                ? bid - exitBuffer * tickSize
+                : ask + exitBuffer * tickSize;
 
         // B19 T1 -- Trim 4-arg: exit half position at limit price anchored to ask (long) or bid (short).
         // Long: Sell Limit @ ask + exitBuffer*tick.   Short: BuyToCover @ bid - exitBuffer*tick.
@@ -931,105 +1022,109 @@ namespace PropTraderTools
         internal void Trim(Instrument instrument, int exitBuffer, double ask, double bid)
         {
             if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Trim(instrument); return; }
-            double tickSize = instrument.MasterInstrument.TickSize;
             foreach (var acc in AllAccounts(instrument))
-            {
-                var pos = FindPosition(acc, instrument);
-                if (pos == null || pos.Quantity == 0)
-                {
-                    StatusUpdate?.Invoke(acc.Name + ": flat skip");
-                    continue;
-                }
-                int trimQty = (int)Math.Ceiling(pos.Quantity / 2.0);
-                bool isLong = pos.MarketPosition == MarketPosition.Long;
-                var action  = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
-                double limitPx = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
-                try
-                {
-                    acc.CreateOrder(
-                        instrument, action, OrderType.Limit,
-                        OrderEntry.Manual, TimeInForce.Day,
-                        trimQty, limitPx, 0, null,
-                        "PTT-TrimLimit",
-                        DateTime.MaxValue,
-                        (NinjaTrader.Cbi.CustomOrder)null);
-                    StatusUpdate?.Invoke(acc.Name + ": trim-limit " + trimQty + " @ " + limitPx);
-                }
-                catch (Exception ex)
-                {
-                    StatusUpdate?.Invoke("PTT-TrimLimit error: " + ex.Message);
-                }
-            }
+                TrimOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
         }
 
         // B19 T1 -- Flatten 4-arg: exit full position at limit price anchored to ask (long) or bid (short).
-        // Long: Sell Limit @ ask + exitBuffer*tick.   Short: BuyToCover @ bid - exitBuffer*tick.
         // NT8-007: arg 12 = (NinjaTrader.Cbi.CustomOrder)null.
         // NT8-014: signal name = "PTT-FlattenLimit".
-        // NT8-032: ask/bid are MarketDataEventArgs.Price doubles (callers obtain via GetAsk()/GetBid()).
-        // CYC=6: same branch structure as Trim; no trimQty calculation.
-        // JS-001: try/catch wraps acc.CreateOrder -- no rethrow.
         internal void Flatten(Instrument instrument, int exitBuffer, double ask, double bid)
         {
             if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Flatten(instrument); return; }
-            double tickSize = instrument.MasterInstrument.TickSize;
             foreach (var acc in AllAccounts(instrument))
-            {
-                var pos = FindPosition(acc, instrument);
-                if (pos == null || pos.Quantity == 0)
-                {
-                    StatusUpdate?.Invoke(acc.Name + ": flat skip");
-                    continue;
-                }
-                bool isLong = pos.MarketPosition == MarketPosition.Long;
-                var action  = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
-                double limitPx = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
-                try
-                {
-                    acc.CreateOrder(
-                        instrument, action, OrderType.Limit,
-                        OrderEntry.Manual, TimeInForce.Day,
-                        pos.Quantity, limitPx, 0, null,
-                        "PTT-FlattenLimit",
-                        DateTime.MaxValue,
-                        (NinjaTrader.Cbi.CustomOrder)null);
-                    StatusUpdate?.Invoke(acc.Name + ": flatten-limit " + pos.Quantity + " @ " + limitPx);
-                }
-                catch (Exception ex)
-                {
-                    StatusUpdate?.Invoke("PTT-FlattenLimit error: " + ex.Message);
-                }
-            }
+                FlattenOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
         }
 
         internal void CancelPendingEntries(Instrument instrument)
         {
             foreach (var acc in AllAccounts(instrument))
-            {
-                foreach (var order in acc.Orders)
-                {
-                    if (order.Instrument != instrument)
-                        continue;
-                    // B18 T3: DW-B18-CANCEL-01 -- also cancel Initialized orders.
-                    // Follower copy orders start as Initialized before sim engine acknowledges them.
-                    // Skipping caused orders stuck as Cancel pending with no way to clear.
-                    // Note: OrderState.PendingSubmit does not exist in NT8 -- Initialized is sufficient.
-                    if (order.OrderState != OrderState.Working &&
-                        order.OrderState != OrderState.Initialized)
-                        continue;
-                    if (IsBracketLeg(order))
-                        continue;
+                CancelOneAccount(acc, instrument);
+        }
 
-                    try
-                    {
-                        acc.Cancel(new Order[] { order });
-                        StatusUpdate?.Invoke(acc.Name + ": entry pulled " + order.OrderId);
-                    }
-                    catch (Exception ex)
-                    {
-                        StatusUpdate?.Invoke("PTT-Cancel error: " + ex.Message);
-                    }
+        // B28 T1 -- CancelOneAccount: per-account pending cancel helper. CYC=4.
+        // (1) foreach orders, (2) instrument filter, (3) OrderState guard, (4) IsBracketLeg guard.
+        // Preserves B18 T3 fix: also cancels Initialized orders (DW-B18-CANCEL-01).
+        private void CancelOneAccount(Account acc, Instrument instrument)
+        {
+            foreach (var order in acc.Orders)
+            {
+                if (order.Instrument != instrument) continue;
+                // B18 T3: DW-B18-CANCEL-01 -- also cancel Initialized orders.
+                if (order.OrderState != OrderState.Working &&
+                    order.OrderState != OrderState.Initialized)
+                    continue;
+                if (IsBracketLeg(order)) continue;
+                try
+                {
+                    acc.Cancel(new Order[] { order });
+                    StatusUpdate?.Invoke(acc.Name + ": entry pulled " + order.OrderId);
                 }
+                catch (Exception ex)
+                {
+                    StatusUpdate?.Invoke("PTT-Cancel error: " + ex.Message);
+                }
+            }
+        }
+
+        // B28 T1 -- TrimOneAccountLimit: per-account limit trim helper. CYC=3.
+        // (1) pos null/qty guard, (2) isLong ternary, (3) try/catch CreateOrder.
+        // NT8-007: arg12 = (NinjaTrader.Cbi.CustomOrder)null.
+        private void TrimOneAccountLimit(Account acc, Instrument instrument,
+            int exitBuffer, double ask, double bid)
+        {
+            var pos = FindPosition(acc, instrument);
+            if (pos == null || pos.Quantity == 0)
+            {
+                StatusUpdate?.Invoke(acc.Name + ": flat skip");
+                return;
+            }
+            int trimQty = (int)Math.Ceiling(pos.Quantity / 2.0);
+            bool isLong = pos.MarketPosition == MarketPosition.Long;
+            var action  = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+            double tickSize = instrument.MasterInstrument.TickSize;
+            double limitPx  = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
+            try
+            {
+                acc.CreateOrder(
+                    instrument, action, OrderType.Limit, OrderEntry.Manual,
+                    TimeInForce.GTC, trimQty, limitPx, 0, null, "PTT-TrimLimit",
+                    DateTime.MaxValue, (NinjaTrader.Cbi.CustomOrder)null);
+                StatusUpdate?.Invoke(acc.Name + ": trim-limit " + trimQty + " @ " + limitPx);
+            }
+            catch (Exception ex)
+            {
+                StatusUpdate?.Invoke("PTT-TrimLimit error: " + ex.Message);
+            }
+        }
+
+        // B28 T1 -- FlattenOneAccountLimit: per-account limit flatten helper. CYC=3.
+        // (1) pos null/qty guard, (2) isLong ternary, (3) try/catch CreateOrder.
+        // NT8-007: arg12 = (NinjaTrader.Cbi.CustomOrder)null.
+        private void FlattenOneAccountLimit(Account acc, Instrument instrument,
+            int exitBuffer, double ask, double bid)
+        {
+            var pos = FindPosition(acc, instrument);
+            if (pos == null || pos.Quantity == 0)
+            {
+                StatusUpdate?.Invoke(acc.Name + ": flat skip");
+                return;
+            }
+            bool isLong = pos.MarketPosition == MarketPosition.Long;
+            var action  = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+            double tickSize = instrument.MasterInstrument.TickSize;
+            double limitPx  = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
+            try
+            {
+                acc.CreateOrder(
+                    instrument, action, OrderType.Limit, OrderEntry.Manual,
+                    TimeInForce.GTC, pos.Quantity, limitPx, 0, null, "PTT-FlattenLimit",
+                    DateTime.MaxValue, (NinjaTrader.Cbi.CustomOrder)null);
+                StatusUpdate?.Invoke(acc.Name + ": flatten-limit " + pos.Quantity + " @ " + limitPx);
+            }
+            catch (Exception ex)
+            {
+                StatusUpdate?.Invoke("PTT-FlattenLimit error: " + ex.Message);
             }
         }
 
@@ -1116,6 +1211,11 @@ namespace PropTraderTools
                 );
         }
 
+        // B29 fix: removed "PTT-" from IsBracketLeg.
+        // IsBracketLeg is used by CancelOneAccount to skip bracket stops/targets.
+        // PTT- exit orders (PTT-Trim, PTT-Flatten, PTT-BE-Stop, PTT-Tighten-Stop) are NOT brackets --
+        // they should be cancelable by the Cancel button.
+        // Copy-cascade prevention for PTT- orders is handled separately by Gate 0.5 in DispatchCopy.
         private bool IsBracketLeg(Order order)
         {
             return order.FromEntrySignal != null
@@ -1124,7 +1224,6 @@ namespace PropTraderTools
                     && (
                         order.Name.StartsWith("Stop")
                         || order.Name.StartsWith("Target")
-                        || order.Name.StartsWith("PTT-")
                     )
                 );
         }
@@ -1170,21 +1269,32 @@ namespace PropTraderTools
                 // B10 T1: idempotency guard -- skip if stop is already at or past BE level
                 if (IsStopAlreadyAtBe(order, newStop, isLong))
                     continue;
+                // DW-B29-02: acc.Change() silently fails on ATM-strategy-owned stops.
+                // NT8 does not allow external modification of orders owned by an ATM strategy instance.
+                // Fix: cancel the ATM stop and place a new independent StopMarket order at newStop.
+                // This mirrors the NT8 cancel+replace pattern (safe per NT8 API docs).
+                var action = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+                StatusUpdate?.Invoke(acc.Name + ": BE attempting cancel+replace -> " + newStop);  // DW-B28-01 diagnostic
                 try
                 {
-                    // GAP-001d CONFIRMED: acc.Change() does NOT kill the trail.
-                    // Both trailing and fixed stops use this same path.
-                    if (IsTrailingStop(order))
-                        StatusUpdate?.Invoke(acc.Name + ": MoveStopToBreakEven: trailing stop detected, using acc.Change path");
-                    if (order.OrderType == OrderType.StopLimit)
-                        StatusUpdate?.Invoke(acc.Name + ": MoveStopToBreakEven: StopLimit bracket stop -> acc.Change");
-                    order.StopPrice = newStop;
-                    acc.Change(new Order[] { order });
-                    StatusUpdate?.Invoke(acc.Name + ": BE moved to " + newStop);
+                    acc.Cancel(new Order[] { order });
                 }
                 catch (Exception ex)
                 {
-                    StatusUpdate?.Invoke("PTT-BE error: " + ex.Message);
+                    StatusUpdate?.Invoke("PTT-BE cancel error: " + ex.Message);
+                    continue;
+                }
+                try
+                {
+                    acc.CreateOrder(
+                        instrument, action, OrderType.StopMarket, OrderEntry.Manual,
+                        TimeInForce.GTC, order.Quantity, 0, newStop, null, "PTT-BE-Stop",
+                        DateTime.MaxValue, null);
+                    StatusUpdate?.Invoke(acc.Name + ": BE stop placed @ " + newStop);
+                }
+                catch (Exception ex)
+                {
+                    StatusUpdate?.Invoke("PTT-BE place error: " + ex.Message);
                 }
             }
         }
@@ -1272,25 +1382,41 @@ namespace PropTraderTools
                 : order.StopPrice <= targetPrice;
             if (alreadyTighter)                                                         // (2)
                 return;
+            // B29 fix: same ATM-ownership issue as MoveStopToBreakEven.
+            // acc.Change() silently fails on ATM-strategy-owned stops.
+            // Use cancel+replace with a new independent StopMarket order.
+            var tightenAction = acc.Positions
+                .FirstOrDefault(p => p.Instrument == order.Instrument && p.Quantity > 0) is Position tightenPos
+                ? (tightenPos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover)
+                : OrderAction.Sell;
             try
             {
-                // DW-B16-02: all stop types use acc.Change() -- GAP-001d CONFIRMED safe.
-                // cancel+replace branch removed (was nuking ATM bracket + trail watermark).
-                order.StopPrice = targetPrice;
-                acc.Change(new Order[] { order });
+                acc.Cancel(new Order[] { order });
+            }
+            catch (Exception ex)
+            {
+                StatusUpdate?.Invoke("TightenOneStop cancel error: " + ex.Message);
+                return;
+            }
+            try
+            {
+                acc.CreateOrder(
+                    order.Instrument, tightenAction, OrderType.StopMarket, OrderEntry.Manual,
+                    TimeInForce.GTC, order.Quantity, 0, targetPrice, null, "PTT-Tighten-Stop",
+                    DateTime.MaxValue, null);
                 StatusUpdate?.Invoke(acc.Name + ": tighten stop -> " + targetPrice);
             }
             catch (Exception ex)
             {
-                StatusUpdate?.Invoke("TightenOneStop: " + ex.Message);
+                StatusUpdate?.Invoke("TightenOneStop place error: " + ex.Message);
             }
         }
 
 
-        // B10 T2 -- ArmPendingBe: arms the pending BE watcher using acc.AccountItemUpdate.
-        // CYC=4: instr null(1), acc null(2), pos flat(3), armed write(4).
-        // DW-B25-02: dict indexer write provides release fence for companion ref writes.
-        // JS-021: no lock -- ConcurrentDictionary used in OnPendingBeAccountUpdate for TryRemove.
+        // B27 -- ArmPendingBe: arms the pending BE watcher using acc.AccountItemUpdate.
+        // CYC=4: instr null(1), acc null(2), pos flat(3), slot upsert(4).
+        // DW-B27-01: slot dict replaces four singleton fields -- per-account, no data races.
+        // JS-021: no lock -- ConcurrentDictionary indexer write is lock-free.
         internal void ArmPendingBe(Instrument instr, Account masterAcc, int bufferTicks)
         {
             if (instr == null)                                  // (1)
@@ -1300,50 +1426,33 @@ namespace PropTraderTools
             var pos = FindPosition(masterAcc, instr);
             if (IsFlat(pos))                                    // (3)
                 return;
-            _pendingBeBufferTicks   = bufferTicks;
-            _pendingBeInstrument    = instr;
-            _pendingBeAccount       = masterAcc;
+            _pendingBeSlots[masterAcc.Name] = new PendingBeSlot(masterAcc, instr, bufferTicks); // (4)
             masterAcc.AccountItemUpdate += OnPendingBeAccountUpdate;
-            _pendingBeStates[masterAcc.Name] = 1;               // (4) DW-B25-02: per-account slot write
         }
 
-        // B10 T2 -- DisarmPendingBe: disarms the pending BE watcher atomically.
-        // CYC=4: leader null guard(1), TryRemove check(2), acc null guard(3).
-        // DW-B25-02: Account leader param added -- per-account state slot disarm.
+        // B27 -- DisarmPendingBe: disarms the pending BE watcher atomically.
+        // CYC=3: leader null guard(1), TryRemove check(2), acc null guard(3).
+        // DW-B27-01: reads Account from slot -- no stale singleton reference.
         // JS-021: no lock -- ConcurrentDictionary.TryRemove is atomic.
-        // NT8-043: no ?.Event -= -- explicit if (acc != null) guard.
+        // NT8-043: explicit if (acc != null) guard -- no ?.Event -= pattern.
         internal void DisarmPendingBe(Account leader)
         {
-            if (leader == null)                                              // (1) null guard
+            if (leader == null)                                                       // (1)
             {
                 StatusUpdate?.Invoke("DisarmPendingBe: leader null -- no-op");
                 return;
             }
-            if (!_pendingBeStates.TryRemove(leader.Name, out int removedState)) // (2) only if Armed
+            if (!_pendingBeSlots.TryRemove(leader.Name, out var slot))               // (2)
                 return;
-            var acc = _pendingBeAccount;
-            if (acc != null)                                                 // (3)
-                acc.AccountItemUpdate -= OnPendingBeAccountUpdate;
-            _pendingBeAccount    = null;
-            _pendingBeInstrument = null;
+            if (slot.Account != null)                                                 // (3)
+                slot.Account.AccountItemUpdate -= OnPendingBeAccountUpdate;
         }
 
-        // DW-B25-02: per-account BE state guards for callback methods (CYC=1 each, expression-body).
-        // Called from OnPendingBeAccountUpdate and OnTrailBeAccountUpdate respectively.
-        // F1 fix: absorbs the null + TryGetValue + state==1 compound guard so
-        // OnPendingBeAccountUpdate stays CYC=8.
-        // NT8-043: pure bool evaluation -- no event subscribe/unsubscribe. PASS.
-        private bool IsPendingBeArmed(Account acc)
-            => acc != null
-            && _pendingBeStates.TryGetValue(acc.Name, out int st)
-            && st == 1;
-
-        // B14 T1 -- ArmTrailBe: arms the continuous trail watcher using acc.AccountItemUpdate.
-        // CYC=4: instr null(1), acc null(2), pos flat(3), arm write(4).
-        // Called on UI thread (from TradeCopierPanel.OnBeConnected via Dispatcher).
-        // DW-B25-02: dict indexer write provides release fence; plain ref writes precede it.
-        // JS-021: no lock -- Interlocked used in OnTrailBeAccountUpdate for PnL CAS.
-        // NT8-003: _trailBeLastPnl is plain long (volatile banned on 64-bit); Interlocked provides barrier.
+        // B27 -- ArmTrailBe: arms the continuous trail watcher using acc.AccountItemUpdate.
+        // CYC=4: instr null(1), acc null(2), pos flat(3), slot upsert(4).
+        // DW-B27-01: slot dicts replace five singleton fields -- per-account, no data races.
+        // JS-021: no lock -- ConcurrentDictionary indexer writes are lock-free.
+        // NT8-003: BitConverter bits in ConcurrentDictionary<string,long>; AddOrUpdate provides barrier.
         internal void ArmTrailBe(Instrument instr, Account masterAcc, int bufferTicks)
         {
             if (instr == null)                                    // (1)
@@ -1355,112 +1464,101 @@ namespace PropTraderTools
                 return;
             double currentPnl = masterAcc.Get(AccountItem.UnrealizedProfitLoss, Currency.UsDollar);
             if (currentPnl == double.MinValue) currentPnl = 0.0;
-            _trailBeBufferTicks   = bufferTicks;
-            _trailBeLastPnl       = BitConverter.DoubleToInt64Bits(currentPnl);
-            _trailBeInstrument    = instr;
-            _trailBeAccount       = masterAcc;
+            long pnlBits = BitConverter.DoubleToInt64Bits(currentPnl);
+            _trailBeSlots[masterAcc.Name]       = new TrailBeSlot(masterAcc, instr, bufferTicks); // (4)
+            _trailBeLastPnlBits[masterAcc.Name] = pnlBits;
             masterAcc.AccountItemUpdate += OnTrailBeAccountUpdate;
-            _trailBeStates[masterAcc.Name] = 1;                   // (4) DW-B25-02: per-account slot write
         }
 
-        // B14 T1 -- DisarmTrailBe: disarms the trail watcher atomically.
-        // CYC=4: leader null guard(1), TryRemove check(2), acc null guard(3).
-        // DW-B25-02: Account leader param added -- per-account state slot disarm.
+        // B27 -- DisarmTrailBe: disarms the trail watcher atomically.
+        // CYC=3: leader null guard(1), TryRemove check(2), acc null guard(3).
+        // DW-B27-01: reads Account from slot -- no stale singleton reference.
         // JS-021: no lock -- ConcurrentDictionary.TryRemove is atomic.
-        // NT8-043: no ?.Event -= -- explicit if (acc != null) guard.
+        // NT8-043: explicit if (acc != null) guard -- no ?.Event -= pattern.
         // Idempotent: safe to call when already Off or with null leader.
         internal void DisarmTrailBe(Account leader)
         {
-            if (leader == null)                                              // (1) null guard
+            if (leader == null)                                                       // (1)
             {
                 StatusUpdate?.Invoke("DisarmTrailBe: leader null -- no-op");
                 return;
             }
-            if (!_trailBeStates.TryRemove(leader.Name, out int removedState)) // (2) only if Active
+            if (!_trailBeSlots.TryRemove(leader.Name, out var slot))                 // (2)
                 return;
-            var acc = _trailBeAccount;
-            if (acc != null)                                                 // (3)
-                acc.AccountItemUpdate -= OnTrailBeAccountUpdate;
-            _trailBeAccount    = null;
-            _trailBeInstrument = null;
+            if (slot.Account != null)                                                 // (3)
+                slot.Account.AccountItemUpdate -= OnTrailBeAccountUpdate;
+            _trailBeLastPnlBits.TryRemove(leader.Name, out _);
         }
 
-        // IsTrailBeArmed -- called only from OnTrailBeAccountUpdate.
-        // CYC = 1. NT8-043: pure bool evaluation. PASS.
-        private bool IsTrailBeArmed(Account acc)
-            => acc != null
-            && _trailBeStates.TryGetValue(acc.Name, out int st)
-            && st == 1;
-
-        // B14 T1 -- OnTrailBeAccountUpdate: continuous AccountItemUpdate callback for auto-trail.
+        // B27 -- OnTrailBeAccountUpdate: continuous AccountItemUpdate callback for auto-trail.
         // Fires on NT8 account background thread -- NO UI calls inside this method.
-        // CYC=5: state check(1), item filter(2), pnl improvement check(3),
-        //        CAS update _trailBeLastPnl(4), advance buffer + BreakEven(5).
-        // JS-021: no lock -- Interlocked.Exchange for atomic PnL high-water update.
+        // CYC=6: item filter(1), armed check(2), pnl improvement(3), CAS win(4), slot update+BreakEven(5).
+        // JS-021: no lock -- AddOrUpdate is lock-free CAS.
+        // NT8-003: ConcurrentDictionary AddOrUpdate provides CAS barrier (long bits, no forbidden keyword).
         // JS-001: BreakEven internally wraps acc.Change() in try/catch; no rethrow here.
-        // NT8-003: _trailBeLastPnl is plain long (volatile banned on 64-bit); BitConverter + Interlocked CAS.
         // STAYS SUBSCRIBED until DisarmTrailBe() is called -- unlike OnPendingBeAccountUpdate (one-shot).
         private void OnTrailBeAccountUpdate(object sender, NinjaTrader.Cbi.AccountItemEventArgs e)
         {
-            var acc = _trailBeAccount;                                      // capture for TOCTOU safety
-            if (!IsTrailBeArmed(acc))                                       // (1) DW-B25-02: per-account check
+            if (e.AccountItem != AccountItem.UnrealizedProfitLoss)                          // (1)
                 return;
-            if (e.AccountItem != AccountItem.UnrealizedProfitLoss)         // (2) filter
+            string accName = (sender as NinjaTrader.Cbi.Account)?.Name ?? string.Empty;
+            if (!_trailBeSlots.TryGetValue(accName, out var slot))                          // (2)
                 return;
             double newPnl = e.Value;
-            double oldPnl = BitConverter.Int64BitsToDouble(
-                Interlocked.Read(ref _trailBeLastPnl));
-            if (newPnl <= oldPnl)                                           // (3)
+            if (!_trailBeLastPnlBits.TryGetValue(accName, out long oldBits))                // (3a)
+                return;
+            double oldPnl = BitConverter.Int64BitsToDouble(oldBits);
+            if (newPnl <= oldPnl)                                                            // (3b)
                 return;
             long newBits = BitConverter.DoubleToInt64Bits(newPnl);
-            long oldBits = BitConverter.DoubleToInt64Bits(oldPnl);
-            if (Interlocked.CompareExchange(ref _trailBeLastPnl, newBits, oldBits) != oldBits) // (4)
+            long actual  = _trailBeLastPnlBits.AddOrUpdate(                                 // (4)
+                accName, newBits, (k, cur) => cur < newBits ? newBits : cur);
+            if (actual != newBits)                                                           // lost race
                 return;
-            int newBuffer = Interlocked.Increment(ref _trailBeBufferTicks);                    // (5)
-            var instr = _trailBeInstrument;
-            if (instr != null)
-                BreakEven(acc, instr, newBuffer);
+            _trailBeSlots.AddOrUpdate(                                                       // (5)
+                accName,
+                new TrailBeSlot(slot.Account, slot.Instrument, slot.BufferTicks + 1),
+                (k, old) => new TrailBeSlot(old.Account, old.Instrument, old.BufferTicks + 1));
+            BreakEven(slot.Account, slot.Instrument, slot.BufferTicks + 1);
         }
 
-        // B23 T1 (DW-B22-BE-TRIGGER-01): price-based trigger replaces dollar-PnL trigger.
-        // Dollar PnL unreliable on PA accounts -- commission deducted at entry makes UPnL
-        // negative even when price is past entry + buffer. Price comparison is immune to fees.
-        // CYC=8: state(1), item filter(2), pos flat(3), tickSize(4), last<=0(5), triggered(6), CAS(7).
-        // acc?.AccountItemUpdate null-conditional is NOT a CYC branch (same convention as ternaries).
+        // B27 -- OnPendingBeAccountUpdate: price-based trigger for pending BE (one-shot).
+        // Fires on NT8 account background thread -- NO UI calls inside this method.
+        // CYC=8: item filter(1), armed+slot(2), pos flat(3), tickSize(4), last<=0(5), triggered(6), CAS claim(7).
+        // JS-021: no lock -- TryGetValue/TryRemove are lock-free.
+        // NT8-003: no volatile. B23 T1 (DW-B22-BE-TRIGGER-01): price-based, immune to commission fees.
+        // sender is the NT8 Account object in AccountItemUpdate callbacks.
         private void OnPendingBeAccountUpdate(object sender, NinjaTrader.Cbi.AccountItemEventArgs e)
         {
-            var acc = _pendingBeAccount;                                       // capture for TOCTOU safety
-            if (!IsPendingBeArmed(acc))                                        // (1) DW-B25-02: per-account check
+            if (e.AccountItem != AccountItem.UnrealizedProfitLoss)                          // (1)
                 return;
-            if (e.AccountItem != AccountItem.UnrealizedProfitLoss)            // (2) filter
+            string accName = (sender as NinjaTrader.Cbi.Account)?.Name ?? string.Empty;
+            if (!_pendingBeSlots.TryGetValue(accName, out var slot))                        // (2)
                 return;
-            // (3-6) Price-based trigger: fire when Last.Price reaches entry + bufferTicks * tickSize.
-            var pos = FindPosition(acc, _pendingBeInstrument);
-            if (IsFlat(pos))                                                   // (3)
+            var acc   = slot.Account;
+            var instr = slot.Instrument;
+            var buf   = slot.BufferTicks;
+            var pos   = FindPosition(acc, instr);
+            if (IsFlat(pos))                                                                 // (3)
                 return;
-            double tickSize = _pendingBeInstrument?.MasterInstrument?.TickSize ?? 0.0;
-            if (tickSize <= 0.0)                                               // (4)
+            double tickSize = instr?.MasterInstrument?.TickSize ?? 0.0;
+            if (tickSize <= 0.0)                                                             // (4)
                 return;
-            double last = _pendingBeInstrument?.MarketData?.Last?.Price ?? 0.0;
-            if (last <= 0.0)                                                   // (5)
+            double last = instr?.MarketData?.Last?.Price ?? 0.0;
+            if (last <= 0.0)                                                                 // (5)
                 return;
             bool isLong  = pos.MarketPosition == MarketPosition.Long;
-            double target = pos.AveragePrice
-                + (isLong ? 1.0 : -1.0) * _pendingBeBufferTicks * tickSize;
+            double target = pos.AveragePrice + (isLong ? 1.0 : -1.0) * buf * tickSize;
             bool triggered = isLong ? (last >= target) : (last <= target);
-            if (!triggered)                                                    // (6)
+            if (!triggered)                                                                  // (6)
                 return;
-            // (7) DW-B25-02: per-account atomic disarm: only ONE concurrent callback wins TryRemove
-            if (!_pendingBeStates.TryRemove(acc.Name, out int removedSt))     // (7)
+            if (!_pendingBeSlots.TryRemove(accName, out var removed))                       // (7) atomic claim
                 return;
-            var instr = _pendingBeInstrument;
-            var buf   = _pendingBeBufferTicks;
-            if (acc != null)
-                acc.AccountItemUpdate -= OnPendingBeAccountUpdate;
-            _pendingBeAccount    = null;
-            _pendingBeInstrument = null;
-            BreakEven(acc, instr, buf);
-            PendingBeFired?.Invoke(instr?.FullName ?? string.Empty, acc?.Name ?? string.Empty);
+            if (removed.Account != null)
+                removed.Account.AccountItemUpdate -= OnPendingBeAccountUpdate;
+            BreakEven(removed.Account, removed.Instrument, removed.BufferTicks);
+            PendingBeFired?.Invoke(removed.Instrument?.FullName ?? string.Empty,
+                                   removed.Account?.Name ?? string.Empty);
         }
 
         // -- B6: Persistence field -------------------------------------------
