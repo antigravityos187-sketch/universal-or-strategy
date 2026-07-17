@@ -1103,7 +1103,10 @@ namespace PropTraderTools
             // Verify TightenStop exists with 2 parameters (Instrument, int).
             var mi = typeof(CopyEngine).GetMethod(
                 "TightenStop",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public,
+                null,
+                new[] { typeof(Instrument), typeof(int) },
+                null);
             Assert.NotNull(mi);
             Assert.Equal(2, mi.GetParameters().Length);
 
@@ -1303,6 +1306,30 @@ namespace PropTraderTools
                 int tightenTicks = (int)ttField.GetValue(cr);
                 Assert.Equal(5, tightenTicks);
             }
+        }
+
+        // T-B30-01: TightenStop(Account,Instrument,int) leader-direct overload. Fixes DW-B30-02.
+        // Verifies: 3-param overload exists; null leader emits StatusUpdate and returns cleanly.
+        [Fact]
+        public void TightenStop_LeaderDirect_SkipsFollowerAccounts()
+        {
+            // Verify the 3-param overload (Account, Instrument, int) exists.
+            var mi = typeof(CopyEngine).GetMethod(
+                "TightenStop",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public,
+                null,
+                new[] { typeof(Account), typeof(Instrument), typeof(int) },
+                null);
+            Assert.NotNull(mi);
+            Assert.Equal(3, mi.GetParameters().Length);
+
+            // Null leader -> StatusUpdate log -> returns cleanly (JS-002 guard path).
+            var messages = new System.Collections.Generic.List<string>();
+            _engine.StatusUpdate += messages.Add;
+            var ex = Record.Exception(() => _engine.TightenStop((Account)null, (Instrument)null, 5));
+            _engine.StatusUpdate -= messages.Add;
+            Assert.Null(ex);
+            Assert.Contains(messages, m => m.Contains("PTT-Tighten"));
         }
 
         // =====================================================================

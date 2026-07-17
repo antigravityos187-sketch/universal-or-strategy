@@ -1326,45 +1326,18 @@ namespace PropTraderTools
 
 
         // B10 T3 -- TightenStop: moves all working stops on follower accounts to currentPrice +/- N ticks.
-        // CYC=5: rule null(1), foreach acc(2), pos flat(3), foreach orders(4), stop type check(5).
         // JS-001: try/catch inside TightenOneStop -- no throw in hot path.
         // JS-021: no lock -- AllAccounts iterates ConcurrentBag (lock-free).
         // DW-B9-GAP-001c: T3 production implementation.
+        // B30: body delegated to TightenOneAccountStops (DW-B30-02, DW-B30-04).
+        // CYC=2: (1) rule null guard, (2) foreach.
         internal void TightenStop(Instrument instrument, int ticks)
         {
             var rule = FindRule(instrument);
-            if (rule == null)                                                           // (1)
+            if (rule == null)                                                               // (1)
                 return;
-            double tickSize = instrument.MasterInstrument.TickSize;
-            foreach (var acc in AllAccounts(instrument))                                // (2)
-            {
-                var pos = FindPosition(acc, instrument);
-                if (IsFlat(pos))                                                        // (3)
-                    continue;
-                bool isLong = pos.MarketPosition == MarketPosition.Long;
-                // NT8: instrument.MarketData.Bid/.Ask return MarketDataEventArgs objects, not doubles.
-                // NT8-032: use .Bid.Price / .Ask.Price for the double value, or use pos.AveragePrice
-                // as the reference price for tighten-stop offset calculation (safe fallback).
-                double bidPrice = instrument.MarketData.Bid.Price;
-                double askPrice = instrument.MarketData.Ask.Price;
-                double currentPrice = bidPrice > 0 && askPrice > 0
-                    ? (isLong ? askPrice : bidPrice)
-                    : pos.AveragePrice;     // fallback if MarketData unavailable
-                double targetPrice = isLong
-                    ? currentPrice - ticks * tickSize
-                    : currentPrice + ticks * tickSize;
-                foreach (var order in acc.Orders)                                       // (4)
-                {
-                    if (order.OrderState != OrderState.Working)
-                        continue;
-                    if (order.OrderType != OrderType.StopMarket &&                     // (5)
-                        order.OrderType != OrderType.StopLimit)
-                        continue;
-                    if (!IsStopLeg(order))
-                        continue;
-                    TightenOneStop(acc, instrument, order, targetPrice, tickSize);
-                }
-            }
+            foreach (var acc in AllAccounts(instrument))                                   // (2)
+                TightenOneAccountStops(acc, instrument, ticks);
         }
 
         // B10 T3 -- TightenOneStop: applies tighten to a single stop order.
@@ -1412,6 +1385,81 @@ namespace PropTraderTools
             }
         }
 
+        // B30 -- ShouldTightenOrder: order-filter predicate for TightenOneAccountStops.
+        // CYC=4: (1) Working check, (2) StopMarket||StopLimit, (3) instrument match, (4) IsStopLeg.
+        // JS-021: no lock. JS-001: no throw.
+        private static bool ShouldTightenOrder(Order order, Instrument instrument)
+        {
+            if (order.OrderState != OrderState.Working)
+                return false;                                                               // (1)
+            if (order.OrderType != OrderType.StopMarket &&
+                order.OrderType != OrderType.StopLimit)
+                return false;                                                               // (2)
+            if (order.Instrument != instrument)
+                return false;                                                               // (3)
+            if (!IsStopLeg(order))
+                return false;                                                               // (4)
+            return true;
+        }
+
+        // B30 -- GetRefPrice: resolves bid/ask reference price for tighten-stop calculation.
+        // CYC=4: (1) bid>0 &&, (2) ask>0, (3) outer ?:, (4) inner isLong ?:.
+        // DW-B30-04: NT8 null-conditional (?.) prevents NullReferenceException when MarketData unsubscribed.
+        private static double GetRefPrice(Instrument instrument, bool isLong)
+        {
+            double bid = instrument.MarketData?.Bid?.Price ?? 0.0;
+            double ask = instrument.MarketData?.Ask?.Price ?? 0.0;
+            return bid > 0 && ask > 0                                                      // (1)(2)
+                ? (isLong ? ask : bid)                                                     // (3)(4)
+                : 0.0;
+        }
+
+        // B30 -- TightenOneAccountStops: per-account stop-tighten helper. DW-B30-02.
+        // CYC=5: (1) IsFlat guard, (2) refPrice==0 guard, (3) isLong ternary (target dir), (4) foreach, (5) !ShouldTightenOrder.
+        // JS-021: no lock -- ToList() snapshot prevents iterator invalidation.
+        // JS-002: no return null -- log "PTT-Tighten: no market data" on zero price.
+        private void TightenOneAccountStops(Account acc, Instrument instrument, int tightenTicks)
+        {
+            var pos = FindPosition(acc, instrument);
+            if (IsFlat(pos))                                                               // (1)
+                return;
+            bool isLong = pos.MarketPosition == MarketPosition.Long;
+            double tickSize = instrument.MasterInstrument.TickSize;
+            double refPrice = GetRefPrice(instrument, isLong);
+            if (refPrice == 0.0)                                                           // (2)
+            {
+                StatusUpdate?.Invoke("PTT-Tighten: no market data -- " + acc.Name);
+                return;
+            }
+            double targetPrice = isLong                                                    // (3)
+                ? refPrice - tightenTicks * tickSize
+                : refPrice + tightenTicks * tickSize;
+            foreach (var order in acc.Orders.ToList())                                     // (4)
+            {
+                if (!ShouldTightenOrder(order, instrument))                                // (5)
+                    continue;
+                TightenOneStop(acc, instrument, order, targetPrice, tickSize);
+            }
+        }
+
+        // B30 -- TightenStop(Account,Instrument,int): leader-direct overload. Fixes DW-B30-02.
+        // CYC=4: (1) leader null guard, (2) leader direct call, (3) foreach, (4) acc==leader skip.
+        // Pattern: identical to Trim(Account,Instrument) / Flatten(Account,Instrument) from B28.
+        // JS-021: no lock. JS-002: no return null -- StatusUpdate log on null leader.
+        internal void TightenStop(Account leader, Instrument instrument, int tightenTicks)
+        {
+            if (leader == null)                                                            // (1)
+            {
+                StatusUpdate?.Invoke("PTT-Tighten: leader null -- skipping");
+                return;
+            }
+            TightenOneAccountStops(leader, instrument, tightenTicks);                     // (2)
+            foreach (var acc in AllAccounts(instrument))                                   // (3)
+            {
+                if (acc == leader) continue;                                               // (4)
+                TightenOneAccountStops(acc, instrument, tightenTicks);
+            }
+        }
 
         // B27 -- ArmPendingBe: arms the pending BE watcher using acc.AccountItemUpdate.
         // CYC=4: instr null(1), acc null(2), pos flat(3), slot upsert(4).
