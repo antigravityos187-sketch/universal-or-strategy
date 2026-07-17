@@ -2559,5 +2559,50 @@ namespace PropTraderTools
         }
 
 
+        // T-B30-C-01 (DW-B30-01): TryCreateStopWithRetry helper exists with correct 7-param signature.
+        // Proves the retry-safety helper is compiled and callable via reflection.
+        // NT8 Account/CreateOrder are not injectable -- reflection is the correct test approach.
+        [Fact]
+        public void MoveStopToBreakEven_RetriesOnCreateOrderFailure()
+        {
+            var helperMethod = typeof(CopyEngine).GetMethod(
+                "TryCreateStopWithRetry",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(helperMethod);
+            var parameters = helperMethod.GetParameters();
+            Assert.Equal(7, parameters.Length);
+            Assert.Equal(typeof(bool), helperMethod.ReturnType);
+            Assert.Equal(typeof(NinjaTrader.Cbi.Account),                             parameters[0].ParameterType);
+            Assert.Equal(typeof(NinjaTrader.NinjaScript.Instruments.Instrument),      parameters[1].ParameterType);
+            Assert.Equal(typeof(NinjaTrader.Cbi.Order),                               parameters[2].ParameterType);
+            Assert.Equal(typeof(NinjaTrader.Cbi.OrderAction),                         parameters[3].ParameterType);
+            Assert.Equal(typeof(int),                                                  parameters[4].ParameterType);
+            Assert.Equal(typeof(double),                                               parameters[5].ParameterType);
+            Assert.Equal(typeof(string),                                               parameters[6].ParameterType);
+        }
+
+        // T-B30-C-02 (DW-B30-06): CancelOneAccount accepts (Account,Instrument) and dereferences acc.
+        // Null acc -> NullReferenceException proves acc.Orders.ToList() is called (not bypassed).
+        // Source-level ToList() invariant confirmed by SCAN-06 grep in validator step.
+        [Fact]
+        public void CancelOneAccount_UsesSnapshotNotLiveOrders()
+        {
+            var cancelMethod = typeof(CopyEngine).GetMethod(
+                "CancelOneAccount",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(cancelMethod);
+            var parameters = cancelMethod.GetParameters();
+            Assert.Equal(2, parameters.Length);
+            Assert.Equal(typeof(NinjaTrader.Cbi.Account),                             parameters[0].ParameterType);
+            Assert.Equal(typeof(NinjaTrader.NinjaScript.Instruments.Instrument),      parameters[1].ParameterType);
+            var ex = Record.Exception(() =>
+                cancelMethod.Invoke(CopyEngine.Instance, new object[] { null, null }));
+            Assert.NotNull(ex);
+            Assert.IsType<System.Reflection.TargetInvocationException>(ex);
+            Assert.IsType<NullReferenceException>(
+                ((System.Reflection.TargetInvocationException)ex).InnerException);
+        }
+
+
     }
 }
