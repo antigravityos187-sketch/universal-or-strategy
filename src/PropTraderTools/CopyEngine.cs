@@ -485,7 +485,7 @@ namespace PropTraderTools
                 try
                 {
                     acc.CreateOrder(instr, action, OrderType.Market,
-                        OrderEntry.Manual, TimeInForce.GTC,  // B29 fix: GTC matches ATM bracket TIF
+                        OrderEntry.Manual, TimeInForce.Gtc,  // B29 fix: Gtc matches ATM bracket TIF
                         pos.Quantity, 0, 0, null,
                         "PTT-Mirror-Close",    // signal name starts with "PTT-" (NT8 constraint)
                         DateTime.MaxValue, null);
@@ -777,7 +777,7 @@ namespace PropTraderTools
                     signal.Action,
                     orderType,
                     OrderEntry.Manual,
-                    TimeInForce.GTC,  // B29 fix: Day orders expire mid-session on overnight futures
+                    TimeInForce.Gtc,  // B29 fix: Day orders expire mid-session on overnight futures
                     signal.Quantity,
                     limitPrice,
                     0,
@@ -966,7 +966,7 @@ namespace PropTraderTools
             {
                 acc.CreateOrder(
                     instrument, action, OrderType.Market, OrderEntry.Manual,
-                    TimeInForce.GTC, trimQty, 0, 0, null, "PTT-Trim",
+                    TimeInForce.Gtc, trimQty, 0, 0, null, "PTT-Trim",
                     DateTime.MaxValue, null);
                 StatusUpdate?.Invoke(acc.Name + ": trim " + trimQty);
             }
@@ -991,7 +991,7 @@ namespace PropTraderTools
             {
                 acc.CreateOrder(
                     instrument, action, OrderType.Market, OrderEntry.Manual,
-                    TimeInForce.GTC, pos.Quantity, 0, 0, null, "PTT-Flatten",
+                    TimeInForce.Gtc, pos.Quantity, 0, 0, null, "PTT-Flatten",
                     DateTime.MaxValue, null);
                 StatusUpdate?.Invoke(acc.Name + ": flatten " + pos.Quantity);
             }
@@ -1088,7 +1088,7 @@ namespace PropTraderTools
             {
                 acc.CreateOrder(
                     instrument, action, OrderType.Limit, OrderEntry.Manual,
-                    TimeInForce.GTC, trimQty, limitPx, 0, null, "PTT-TrimLimit",
+                    TimeInForce.Gtc, trimQty, limitPx, 0, null, "PTT-TrimLimit",
                     DateTime.MaxValue, (NinjaTrader.Cbi.CustomOrder)null);
                 StatusUpdate?.Invoke(acc.Name + ": trim-limit " + trimQty + " @ " + limitPx);
             }
@@ -1118,7 +1118,7 @@ namespace PropTraderTools
             {
                 acc.CreateOrder(
                     instrument, action, OrderType.Limit, OrderEntry.Manual,
-                    TimeInForce.GTC, pos.Quantity, limitPx, 0, null, "PTT-FlattenLimit",
+                    TimeInForce.Gtc, pos.Quantity, limitPx, 0, null, "PTT-FlattenLimit",
                     DateTime.MaxValue, (NinjaTrader.Cbi.CustomOrder)null);
                 StatusUpdate?.Invoke(acc.Name + ": flatten-limit " + pos.Quantity + " @ " + limitPx);
             }
@@ -1190,7 +1190,7 @@ namespace PropTraderTools
         // B25 T1 -- DW-B25-01: ATM bracket stops use name format "12s Buy STP".
         // FromEntrySignal is null for ATM orders. No "Stop" prefix. STP suffix is the only discriminator.
         // CYC: 2 + 1 (STP clause) = 3. OrdinalIgnoreCase: consistent with WireLeaderAccount (B24 Lane A).
-        private bool IsStopLeg(Order order)
+        private static bool IsStopLeg(Order order)
         {
             return order.FromEntrySignal != null
                 || (order.Name != null && order.Name.StartsWith("Stop"))
@@ -1262,7 +1262,7 @@ namespace PropTraderTools
                     }
                     acc.CreateOrder(
                         instr, action, OrderType.StopMarket, OrderEntry.Manual,
-                        TimeInForce.GTC, quantity, 0, stopPrice, null,
+                        TimeInForce.Gtc, quantity, 0, stopPrice, null,
                         signalName, DateTime.MaxValue, (NinjaTrader.Cbi.CustomOrder)null);
                     return true;
                 }

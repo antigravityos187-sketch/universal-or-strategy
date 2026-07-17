@@ -119,7 +119,7 @@ namespace PropTraderTools
         private Instrument  _instrument;
         private Account     _leaderAccount;   // Set by TradeCopierAddOn from ChartTrader.Account
         private ComboBox    _accountCombo;    // B30-B: stored at WireAccountCombo for Detach unsubscribe
-        private EventHandler _accountComboSelectionChanged;  // B30-B: named handler for leak-free Detach
+        private SelectionChangedEventHandler _accountComboSelectionChanged;  // B30-B: named handler for leak-free Detach
         private TextBlock   _statusText;
         private bool        _copyEnabled;
         private TextBox     _beBufferBox;
