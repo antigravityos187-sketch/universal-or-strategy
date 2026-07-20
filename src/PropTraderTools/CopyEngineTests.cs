@@ -2652,6 +2652,32 @@ namespace PropTraderTools
             Assert.NotNull(method); // placeholder -- engineer replaces with real assertion
         }
 
+        // T-B31-01: TryCreateStopWithRetry must not exist after B31 deletion.
+        [Fact]
+        public void TryCreateStopWithRetry_DoesNotExist()
+        {
+            var method = typeof(CopyEngine).GetMethod(
+                "TryCreateStopWithRetry",
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Instance);
+            Assert.Null(method);
+        }
+
+        // T-B31-02: MoveStopToBreakEven must not have OrderAction local (cancel+replace fingerprint).
+        [Fact]
+        public void MoveStopToBreakEven_DoesNotCallCancel()
+        {
+            var method = typeof(CopyEngine).GetMethod(
+                "MoveStopToBreakEven",
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(method);
+            var body = method.GetMethodBody();
+            Assert.NotNull(body);
+            bool hasOrderActionLocal = body.LocalVariables
+                .Any(lv => lv.LocalType == typeof(NinjaTrader.Cbi.OrderAction));
+            Assert.False(hasOrderActionLocal);
+        }
 
     }
 }

@@ -1268,54 +1268,8 @@ namespace PropTraderTools
             return null;
         }
 
-        // B30-C -- TryCreateStopWithRetry: cancel once, retry CreateOrder up to 3 times.
-        // CYC=5: while(1), !cancelled guard(2), try/catch(3), retries>=3(4), base(1).
-        // JS-001: no rethrow -- catch logs + continues or returns false.
-        // JS-021: no lock -- stopToCancel snapshot prevents live-list mutation during cancel.
-        // NT8-007: CreateOrder arg12 = (NinjaTrader.Cbi.CustomOrder)null.
-        private bool TryCreateStopWithRetry(
-            Account acc,
-            Instrument instr,
-            Order stopToCancel,
-            OrderAction action,
-            int quantity,
-            double stopPrice,
-            string signalName)
-        {
-            int retries = 0;
-            bool cancelled = false;
-            while (retries < 3)                                                          // (1) while
-            {
-                try
-                {
-                    if (!cancelled)                                                      // (2) cancel guard
-                    {
-                        acc.Cancel(new Order[] { stopToCancel });
-                        cancelled = true;
-                    }
-                    acc.CreateOrder(
-                        instr, action, OrderType.StopMarket, OrderEntry.Manual,
-                        TimeInForce.Gtc, quantity, 0, stopPrice, null,
-                        signalName, DateTime.MaxValue, (NinjaTrader.Cbi.CustomOrder)null);
-                    return true;
-                }
-                catch (Exception ex)                                                     // (3) catch
-                {
-                    retries++;
-                    if (retries >= 3)                                                    // (4) retries ceiling
-                    {
-                        StatusUpdate?.Invoke(
-                            acc.Name + ": " + signalName + " FAILED after 3 retries -- account may be naked: "
-                            + ex.Message);
-                        return false;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // B10 T1 -- MoveStopToBreakEven: adds IsStopAlreadyAtBe() guard; uses acc.Change() for ALL
-        // stop types (trailing + fixed). GAP-001d CONFIRMED: trail survives acc.Change().
+        // B31 -- MoveStopToBreakEven: order.StopPrice + acc.Change(new Order[]{order}) in-place.
+        // B31 CONFIRMED: order-level Change() preserves ATM OCO link (Director live test 2026-07-17).
         // CYC=6: IsFlat(1), tickSize guard(2), foreach(3), working(4), stop type(5), isStopLeg(6).
         // JS-001: try/catch around acc.Change() -- no throw in hot path.
         private void MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks)
@@ -1348,11 +1302,19 @@ namespace PropTraderTools
                 // B10 T1: idempotency guard -- skip if stop is already at or past BE level
                 if (IsStopAlreadyAtBe(order, newStop, isLong))
                     continue;
-                // DW-B29-02: acc.Change() silently fails on ATM-strategy-owned stops.
-                // Fix: cancel+replace with TryCreateStopWithRetry (3 retries, B30-C DW-B30-01).
-                var action = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
-                StatusUpdate?.Invoke(acc.Name + ": BE attempting cancel+replace -> " + newStop);
-                TryCreateStopWithRetry(acc, instrument, order, action, order.Quantity, newStop, "PTT-BE-Stop");
+                // B31: in-place move -- same pattern as SyncFollowerBracket (L621-624).
+                // NT8-046: property-set + single-array acc.Change() works on ATM-owned stops.
+                StatusUpdate?.Invoke(acc.Name + ": BE moving stop -> " + newStop);
+                try
+                {
+                    order.StopPrice = newStop;
+                    acc.Change(new Order[] { order });
+                    StatusUpdate?.Invoke(acc.Name + ": BE stop moved @ " + newStop);
+                }
+                catch (Exception ex)
+                {
+                    StatusUpdate?.Invoke(acc.Name + ": BE Change() failed -- " + ex.Message);
+                }
             }
         }
 
@@ -1398,8 +1360,8 @@ namespace PropTraderTools
         }
 
         // B10 T3 -- TightenOneStop: applies tighten to a single stop order.
-        // B30-C: cancel+replace delegated to TryCreateStopWithRetry (DW-B30-01).
-        // CYC=3: null guard(1), alreadyTighter(2), tightenAction ternary(3). try blocks removed.
+        // B31: in-place price move via order.StopPrice + acc.Change(new Order[]{order}).
+        // CYC=2: null guard(1), alreadyTighter(2). tightenAction ternary removed.
         private void TightenOneStop(Account acc, Instrument instr,
             Order order, double targetPrice, double tickSize)
         {
@@ -1411,12 +1373,16 @@ namespace PropTraderTools
                 : order.StopPrice <= targetPrice;
             if (alreadyTighter)                                                         // (2)
                 return;
-            // B30-C DW-B30-01: Use TryCreateStopWithRetry for safe cancel+replace with retry.
-            var tightenAction = acc.Positions
-                .FirstOrDefault(p => p.Instrument == order.Instrument && p.Quantity > 0) is Position tightenPos
-                ? (tightenPos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover)
-                : OrderAction.Sell;
-            TryCreateStopWithRetry(acc, order.Instrument, order, tightenAction, order.Quantity, targetPrice, "PTT-Tighten-Stop");
+            // B31 NT8-046: property-set + single-array acc.Change() -- preserves ATM OCO.
+            try
+            {
+                order.StopPrice = targetPrice;
+                acc.Change(new Order[] { order });
+            }
+            catch (Exception ex)
+            {
+                StatusUpdate?.Invoke(acc.Name + ": Tighten Change() failed -- " + ex.Message);
+            }
         }
 
         // B30 -- ShouldTightenOrder: order-filter predicate for TightenOneAccountStops.
