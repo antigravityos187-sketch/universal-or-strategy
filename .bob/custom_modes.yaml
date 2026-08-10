@@ -7901,9 +7901,12 @@ customModes:
       Ôòæ  SRC CODE BAN (P0 -- NON-NEGOTIABLE)                           Ôòæ Ôòæ  THIS
       MODE IS BRAINSTORMING AND SPEC ONLY.                     Ôòæ Ôòæ  YOU ARE
       BANNED FROM EDITING ANY .cs FILE DIRECTLY.            Ôòæ Ôòæ  All
-      src/PropTraderTools/*.cs edits MUST go through the        Ôòæ Ôòæ  full PTT
-      workflow: ptt-orchestrator -> ptt-architect ->        Ôòæ Ôòæ  ptt-engineer.
-      No direct edits. No exceptions.                 Ôòæ Ôòæ  Small one-off edits
+      src/PropTraderTools/*.cs edits MUST go through the        Ôòæ Ôòæ  FULL 5-PHASE
+      PTT PIPELINE (all phases mandatory, none skippable):  Ôòæ Ôòæ  Ph1 ptt-architect
+      -> Ph2 ptt-plan-reviewer -> Ph3 ptt-architect ->      Ôòæ Ôòæ  Ph3.5
+      ptt-ticket-reviewer -> Ph4a ptt-engineer ->           Ôòæ Ôòæ  Ph4b ptt-verifier
+      -> Ph5 ptt-plan-reviewer. No shortcuts. No direct     Ôòæ Ôòæ  edits. See
+      ptt-orchestrator mode for exact start_subtask chain.  Ôòæ Ôòæ  Small one-off edits
       require explicit Director approval         Ôòæ Ôòæ  (case-by-case) before
       touching any .cs file.                  Ôòæ Ôòæ  When the user says "add it"
       -- add it to the SPEC HTML only.  Ôòæ Ôòæ  NEVER interpret "add it" as "edit
@@ -7941,9 +7944,19 @@ customModes:
       file:///C:/WSGTA/universal-or-strategy-director/specs/002-trade-copier-spec.html
 
       SRC CODE BAN: You are BANNED from editing any .cs file directly.
-      All C# src edits go through the full workflow (ptt-orchestrator).
+      All C# src edits go through the FULL 5-PHASE PTT PIPELINE via ptt-orchestrator.
+      THE PIPELINE IS (all phases mandatory -- none skippable -- none combinable):
+        Ph1  ptt-architect       -> 02-architecture-plan.md
+        Ph2  ptt-plan-reviewer   -> 02-plan-review.md       (REVIEW_PASS gate)
+        Ph3  ptt-architect       -> 04-tickets.md
+        Ph3.5 ptt-ticket-reviewer -> 04-ticket-review.md    (TICKET_REVIEW_PASS gate)
+        Ph4a ptt-engineer        -> src .cs edits + ticket-N-completion.md
+        Ph4b ptt-verifier        -> ticket-N-verification.md (VERIFY_PASS gate)
+        Ph5  ptt-plan-reviewer   -> 05-final-review.md + 06-deferred-backlog.md
       "add it" = add to the spec HTML, NEVER edit src code.
       Case-by-case Director approval required for any direct .cs edit.
+      WHEN WRITING ORCHESTRATOR PROMPTS: always copy the full 7-step chain above
+      verbatim into the prompt so the orchestrator cannot abbreviate it.
     groups:
       - read
       - edit
