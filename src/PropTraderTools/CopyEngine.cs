@@ -1,3 +1,9 @@
+// PTT-COPIER-B57-T1 -- CopyEngine.cs
+// B57 T1 CHANGES:
+//   1. SendCopy: capture CreateOrder return value + call follower.Submit(new[]{order}).
+//      Root cause fix: AddOn CreateOrder leaves order at Initialized; Submit() sends to exchange.
+//      Pattern: same as SubmitBeStop (line ~400). DW-B57-01.
+// PTT-COPIER B57 | submit-after-create-order | 2026-08-10
 // PTT-COPIER-B56-LaneA-T1 -- CopyEngine.cs
 // B56 T1 CHANGES:
 //   1. Added IsDispatchTriggerState(OrderState) -- internal static predicate, CYC=2. (DW-B56-01 Gap 1)
@@ -915,7 +921,9 @@ namespace PropTraderTools
                 // B23 T1 (DW-B22-NULLREF-01): NullRef on non-active-chart accounts caught here.
                 // Dispatcher.InvokeAsync not reliably available in NT8 AddOn context (NT8-042).
                 // Try/catch is the safe fallback: logs the error, returns false, does not crash.
-                follower.CreateOrder(
+                // B57 fix (DW-B57-01): capture order and call Submit() -- CreateOrder alone leaves
+                // the order at Initialized state; Submit() sends it to the exchange (-> Working).
+                var order = follower.CreateOrder(
                     instrument,
                     signal.Action,
                     orderType,
@@ -929,6 +937,8 @@ namespace PropTraderTools
                     DateTime.MaxValue,
                     (NinjaTrader.Cbi.CustomOrder)null
                 );
+                if (order != null)
+                    follower.Submit(new[] { order });
                 return true;
             }
             catch (Exception ex)
