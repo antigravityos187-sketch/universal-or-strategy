@@ -413,9 +413,9 @@
         </div>
       </div>
       <div class="header-meta">
-        <span class="pill pill-green"><span class="status-dot dot-green"></span>B1–B55 LaneA COMPLETE &nbsp;&middot;&nbsp; B55-LaneB + B56 IN PROGRESS</span>
-        <span class="pill pill-accent">~6000 lines &middot; 6 files &middot; ~263 tests</span>
-        <span class="pill pill-red">B56: 4 bugs to fix (Gate 3 P0 + rules + Clone + dedup)</span>
+        <span class="pill pill-green"><span class="status-dot dot-green"></span>B1–B56 COMPLETE &nbsp;&middot;&nbsp; ~266 tests</span>
+        <span class="pill pill-accent">~6000 lines &middot; 6 files &middot; DW-B56-01/02/03 CLOSED</span>
+        <span class="pill pill-amber">DW-B54-01 P0 open (ATM API research) &nbsp;&middot;&nbsp; DW-B56-04 P2 diagnostic pending live test</span>
         <span class="pill pill-purple">Add-On + ChartTrader panel</span>
       </div>
     </header>
@@ -22789,9 +22789,9 @@ FINAL_PASS criteria:
          BLOCK 55  —  ATM TEMPLATE READ FIX  +  FindRule NULL CONTRACT
          ══════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-b55">
-      <div class="section-label" style="color:var(--amber);">&#9679; Block 55 &nbsp;◆&nbsp; PTT-COPIER-B55 &nbsp;◆&nbsp; ATM Template Read Fix + FindRule Null Contract &nbsp;◆&nbsp; <span class="pill pill-green">&#10003; LaneA PIPELINE_COMPLETE</span> &nbsp;<span class="pill pill-amber">LaneB IN PROGRESS</span></div>
+      <div class="section-label" style="color:var(--green);">&#9679; Block 55 &nbsp;◆&nbsp; PTT-COPIER-B55 &nbsp;◆&nbsp; ATM Template Read Fix + FindRule Null Contract &nbsp;◆&nbsp; <span class="pill pill-green">&#10003; LaneA PIPELINE_COMPLETE</span> &nbsp;<span class="pill pill-green">&#10003; LaneB PIPELINE_COMPLETE</span></div>
       <div class="card">
-        <div class="card-title" style="color:var(--amber);">&#9654; Block 55 &nbsp;◆&nbsp; PTT-COPIER-B55 &nbsp;◆&nbsp; LaneA PIPELINE_COMPLETE &mdash; LaneB working</div>
+        <div class="card-title" style="color:var(--green);">&#10003; Block 55 &nbsp;◆&nbsp; PTT-COPIER-B55 &nbsp;◆&nbsp; BOTH LANES PIPELINE_COMPLETE</div>
         <!-- B55 LaneA PIPELINE_COMPLETE banner -->
         <div style="margin-bottom:0.8rem;padding:10px 14px;background:rgba(34,197,94,0.08);border:1px solid var(--green);border-radius:6px;font-size:12px;line-height:1.8;">
           <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;letter-spacing:0.1em;margin-bottom:6px;">PIPELINE_COMPLETE: B55-LaneA &mdash; 2026-08-09</div>
@@ -22799,10 +22799,12 @@ FINAL_PASS criteria:
           <strong>Build tag:</strong> <code style="font-family:var(--mono);">PTT-COPIER B55 | atm-template-read-fix | 2026-08-09</code><br>
           <strong>Tests:</strong> T_B55A_01 PASS &nbsp;&middot;&nbsp; T_B43_04 PASS &nbsp;&middot;&nbsp; +1 delta (278&rarr;279) &nbsp;&middot;&nbsp; 7/7 scans zero &nbsp;&middot;&nbsp; Hard-link sync PASS
         </div>
-        <!-- B55 LaneB IN PROGRESS banner -->
-        <div style="margin-bottom:1rem;padding:10px 14px;background:var(--raised);border:1px solid var(--amber);border-radius:6px;font-size:12px;line-height:1.8;">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:700;letter-spacing:0.1em;margin-bottom:4px;">&#9654; IN PROGRESS: B55-LaneB &mdash; FindRule null contract (DW-B47-05 P2)</div>
-          Tickets written (04-tickets.md). Engineer execution in progress. Completion artifact pending.
+        <!-- B55 LaneB PIPELINE_COMPLETE banner -->
+        <div style="margin-bottom:1rem;padding:10px 14px;background:rgba(34,197,94,0.08);border:1px solid var(--green);border-radius:6px;font-size:12px;line-height:1.8;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;letter-spacing:0.1em;margin-bottom:4px;">&#10003; PIPELINE_COMPLETE: B55-LaneB &mdash; 2026-08-10 (THIRD PASS)</div>
+          <strong style="color:var(--green);">DW-B47-05 P2 CLOSED</strong> &mdash; FindRule XML doc comment + T_B55B_01 [Fact] test. All FindRule call sites guarded (SCAN-08 2/2).<br>
+          <strong>Build tag:</strong> <code style="font-family:var(--mono);">PTT-COPIER B55 | findrule-null-contract | 2026-08-10</code><br>
+          <strong>Tests:</strong> T_B55B_01 PASS &nbsp;&middot;&nbsp; +1 delta (279&rarr;280) &nbsp;&middot;&nbsp; 8/8 scans PASS &nbsp;&middot;&nbsp; Hard-link sync: 5 OK, 0 DESYNC
         </div>
 
         <div class="card-body">
@@ -23185,9 +23187,9 @@ FINAL_PASS criteria:
 
         <div class="card-footer pills">
           <span class="pill pill-green">&#10003; DW-B43-02 P1 CLOSED &mdash; LaneA PIPELINE_COMPLETE 2026-08-09 &nbsp;&middot;&nbsp; T_B55A_01 PASS</span>
-          <span class="pill pill-amber">DW-B47-05 P2 IN PROGRESS &mdash; LaneB: FindRule null contract (1 new [Fact])</span>
-          <span class="pill">After LaneA ships: Director runs DW-B50-01 live test (Clone ATM pre-population)</span>
-          <span class="pill pill-accent">~263 [Fact] tests after both lanes complete</span>
+          <span class="pill pill-green">&#10003; DW-B47-05 P2 CLOSED &mdash; LaneB PIPELINE_COMPLETE 2026-08-10 &nbsp;&middot;&nbsp; T_B55B_01 PASS &nbsp;&middot;&nbsp; 8/8 scans &nbsp;&middot;&nbsp; THIRD PASS</span>
+          <span class="pill">DW-B50-01 acceptance test: after B56-LaneA F5 — Clone ATM pre-population check</span>
+          <span class="pill pill-accent">280 [Fact] tests after B55 complete</span>
         </div>
       </div>
     </div>
@@ -23199,22 +23201,43 @@ FINAL_PASS criteria:
          (Discovered during Director live test 2026-08-09/10)
          ══════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-b56">
-      <div class="section-label" style="color:var(--red);">&#9679; Block 56 &nbsp;◆&nbsp; PTT-COPIER-B56 &nbsp;◆&nbsp; Critical Live-Test Bug Backlog &nbsp;◆&nbsp; <span class="pill pill-red">P0/P1 OPEN</span></div>
+      <div class="section-label" style="color:var(--green);">&#9679; Block 56 &nbsp;◆&nbsp; PTT-COPIER-B56 &nbsp;◆&nbsp; Live-Test Bug Fixes &nbsp;◆&nbsp; <span class="pill pill-green">&#10003; LaneA PIPELINE_COMPLETE</span> &nbsp;<span class="pill pill-green">&#10003; LaneB PIPELINE_COMPLETE</span></div>
       <div class="card">
-        <div class="card-title" style="color:var(--red);">&#9655; Block 56 &nbsp;◆&nbsp; PTT-COPIER-B56 &nbsp;◆&nbsp; Four bugs discovered in Director live testing — must fix before production</div>
+        <div class="card-title" style="color:var(--green);">&#10003; Block 56 &nbsp;◆&nbsp; PTT-COPIER-B56 &nbsp;◆&nbsp; LaneA + LaneB PIPELINE_COMPLETE &mdash; DW-B56-01/02/03 CLOSED</div>
+
+        <!-- B56 LaneA PIPELINE_COMPLETE banner -->
+        <div style="margin-bottom:0.8rem;padding:10px 14px;background:rgba(34,197,94,0.08);border:1px solid var(--green);border-radius:6px;font-size:12px;line-height:1.8;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;letter-spacing:0.1em;margin-bottom:6px;">PIPELINE_COMPLETE: B56-LaneA &mdash; 2026-08-10</div>
+          <strong style="color:var(--green);">DW-B56-01 P0 CLOSED</strong> &mdash; IsDispatchTriggerState predicate (Submitted || Accepted) + OnOrderUpdate Cancelled propagation.<br>
+          <strong>Build tag:</strong> <code style="font-family:var(--mono);">PTT-COPIER B56 | limit-order-gate3-fix + leader-cancel-propagation | 2026-08-09</code><br>
+          <strong>Tests:</strong> T_B56_01 PASS (6 OrderState assertions) &nbsp;&middot;&nbsp; +1 delta (280&rarr;281) &nbsp;&middot;&nbsp; 7/7 scans PASS &nbsp;&middot;&nbsp; Hard-link: 5 OK, 0 DESYNC &nbsp;&middot;&nbsp; OnOrderUpdate CYC=8 (at limit, PASS)
+        </div>
+        <!-- B56 LaneB PIPELINE_COMPLETE banner -->
+        <div style="margin-bottom:1rem;padding:10px 14px;background:rgba(34,197,94,0.08);border:1px solid var(--green);border-radius:6px;font-size:12px;line-height:1.8;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;letter-spacing:0.1em;margin-bottom:6px;">PIPELINE_COMPLETE: B56-LaneB &mdash; 2026-08-09</div>
+          <strong style="color:var(--green);">DW-B56-02 P1 CLOSED</strong> &mdash; GetRuleInstruments() + RefreshRuleRows() called from OnLoaded.<br>
+          <strong style="color:var(--green);">DW-B56-03 P1 CLOSED</strong> &mdash; CopyMode.Clone=2 in enum + "Clone" in Window ComboBox + index 2 handled.<br>
+          <strong>Build tag:</strong> <code style="font-family:var(--mono);">PTT-COPIER B56 | rules-refresh-clone-fix | 2026-08-09</code><br>
+          <strong>Tests:</strong> T_B56B_01 + T_B56B_02 PASS &nbsp;&middot;&nbsp; +2 delta (281&rarr;283) &nbsp;&middot;&nbsp; 7/7 scans PASS &nbsp;&middot;&nbsp; Hard-link: 5 OK, 0 DESYNC
+        </div>
+
 
         <div class="card-body">
 
           <!-- DISCOVERY CONTEXT -->
           <div style="margin-bottom:1.4rem;padding:12px 16px;background:var(--raised);border:1px solid var(--red);border-left:4px solid var(--red);border-radius:0 6px 6px 0;font-size:12px;line-height:1.8;">
-            <strong style="color:var(--red);">Live test findings &mdash; 2026-08-09/10</strong><br>
-            Director placed a limit order on leader (Sim101), canceled it, placed another. Three bugs observed simultaneously:<br>
+            <strong style="color:var(--red);">Live test findings &mdash; 2026-08-09/10 (confirmed in second test 2026-08-09)</strong><br>
+            Director placed a limit order on leader (Sim101), canceled it, placed another limit order. Same three bugs confirmed in second session:<br>
             <ol style="margin:8px 0 0 16px;">
-              <li>Follower (Sim102) orders stuck in <strong>"Initialized"</strong> state &mdash; not filling when leader fills, not canceling when leader order is closed.</li>
+              <li>Follower (Sim102) orders stuck in <strong>"Initialized"</strong> state &mdash; not filling when leader fills, not canceling when leader orders close. Old follower orders from prior test also remain stuck (cancel not propagated from prior session).</li>
               <li>Rule rows not showing in PTT Window or ChartTrader Panel.</li>
               <li>Clone mode missing from PTT Window Copy Mode ComboBox.</li>
             </ol>
-            Additionally: <code style="font-family:var(--mono);">CopyMode.Clone = 2</code> is missing from the engine enum, causing a compile-level inconsistency.
+            Additionally: <code style="font-family:var(--mono);">CopyMode.Clone = 2</code> is missing from the engine enum, causing a compile-level inconsistency.<br>
+            <strong style="color:var(--amber);">Note:</strong> B54 build tag confirmed in Output tab (<code style="font-family:var(--mono);">PTT-COPIER B54 | ui-live-truth-sync | 2026-08-09</code>).
+            Sim101 leader order shows <strong>Working</strong> (MES $200 SL4 ATM, Sell 10 @ 7787.50 Limit).
+            Sim102 follower shows four <strong>Initialized</strong> orders (two from this test + two lingering from canceled prior test &mdash; cancel never propagated).
+            This confirms both Gap 1 (Gate 3 Submitted-only) and Gap 2 (no Cancelled propagation handler).
           </div>
 
           <!-- ═══════════════════════════════════════════════════════
@@ -23436,25 +23459,331 @@ FINAL_PASS criteria:
             </table>
           </div>
 
-          <!-- BLOCK 56 ORCHESTRATOR PROMPTS placeholder -->
-          <div style="margin-top:1.6rem;padding:12px 16px;background:var(--raised);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.8;">
-            <div style="font-family:var(--mono);font-size:10px;color:var(--dim);font-weight:700;letter-spacing:0.1em;margin-bottom:6px;">LANES (to be generated when B55-LaneB completes)</div>
-            <strong>B56-LaneA (P0)</strong> &mdash; DW-B56-01: Gate 3 fix + follower cancel propagation &mdash;
-            <code style="font-family:var(--mono);">CopyEngine.cs</code> (IsDispatchTriggerState + OnOrderUpdate Cancelled handler) + 2 new [Fact]<br>
-            <strong>B56-LaneB (P1)</strong> &mdash; DW-B56-02 + DW-B56-03: Rules refresh + Clone enum/ComboBox fix &mdash;
-            <code style="font-family:var(--mono);">CopyEngine.cs</code> (enum + GetRuleInstruments) + <code style="font-family:var(--mono);">TradeCopierWindow.cs</code> (Clone item + OnCopyModeComboChanged + RefreshRuleRows) &mdash; can parallel with LaneA<br>
-            <strong>B56-LaneC (P2, optional)</strong> &mdash; DW-B56-04: dedup orderId log &mdash; diagnostic only, 1 StatusUpdate line in CopyEngine.cs
+          <!-- BLOCK 56 ORCHESTRATOR PROMPTS -->
+          <div style="margin-top:1.6rem;padding:0;background:transparent;">
+
+            <!-- ── B56 LANE MAP ── -->
+            <div style="margin-bottom:1rem;padding:10px 14px;background:var(--raised);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.8;">
+              <div style="font-family:var(--mono);font-size:10px;color:var(--dim);font-weight:700;letter-spacing:0.1em;margin-bottom:6px;">PIPELINE LANES</div>
+              <strong>B56-LaneA (P0)</strong> &mdash; DW-B56-01: Gate 3 + cancel propagation &mdash; <code style="font-family:var(--mono);">CopyEngine.cs</code> only. UNBLOCKED (runs immediately).<br>
+              <strong>B56-LaneB (P1)</strong> &mdash; DW-B56-02 + DW-B56-03: Rules refresh + Clone &mdash; <code style="font-family:var(--mono);">CopyEngine.cs</code> + <code style="font-family:var(--mono);">TradeCopierWindow.cs</code>. Can parallel with LaneA once B55-LaneB completes.<br>
+              <strong>B56-LaneC (P2, optional)</strong> &mdash; DW-B56-04: orderId log diagnostic only.
+            </div>
+
+            <!-- ── B56-LaneA ORCHESTRATOR PROMPT ── -->
+            <div style="margin-bottom:1.2rem;">
+              <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;letter-spacing:0.1em;margin-bottom:6px;">B56-LaneA ORCHESTRATOR PROMPT (P0 — paste into ptt-orchestrator session)</div>
+              <pre style="font-family:var(--mono);font-size:11px;line-height:1.7;background:var(--raised);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:0 6px 6px 0;padding:14px 16px;white-space:pre-wrap;overflow-wrap:break-word;">PTT-COPIER B56 LaneA — ptt-orchestrator
+
+You are the ptt-orchestrator for Block 56 LaneA.
+SRC CODE BAN: This is a spec-driven pipeline. Do NOT edit any .cs file directly.
+All src edits go through the full 4-stage pipeline only.
+
+OBJECTIVE: DW-B56-01 P0 — Fix two gaps in CopyEngine so that limit orders placed
+via AddOn Account.CreateOrder() are correctly copied to followers through fill,
+and follower entry orders are cancelled when the leader order is cancelled.
+
+CONFIRMED ROOT CAUSES (Director live test 2026-08-09):
+  GAP 1: DispatchCopy Gate 3 (~line 512): `if (order.OrderState != OrderState.Submitted) return;`
+  NT8 limit orders go Initialized → Accepted → Working → Filled (no Submitted state).
+  Gate 3 blocks every post-placement event for limit orders. Follower stuck in Initialized.
+
+  GAP 2: OnOrderUpdate has no handler for leader OrderState.Cancelled.
+  When leader is cancelled, nothing calls CancelOneAccount for follower accounts.
+  Old follower Initialized orders linger indefinitely.
+
+PREREQUISITE:
+  B55-LaneA FINAL_PASS confirmed (baseline: 279 total tests, 255 pass, 24 fail).
+  B55-LaneB may still be in pipeline — engineer must read current CopyEngine.cs
+  from disk before editing (incorporate any B55-LaneB doc-comment already committed).
+  B56-LaneA only touches method bodies — no doc comments — no structural conflict.
+
+WAVE WORKSPACE: C:\WSGTA\universal-or-strategy\src\PropTraderTools\
+SPEC: specs/002-trade-copier-spec.html  id="section-b56"
+BRAIN: docs/brain/B56-LaneA/  (01-mission-brief.md already written)
+
+PIPELINE — 4 STAGES, SEQUENTIAL, EACH IS A HARD STOP:
+
+  STAGE 1 — ptt-orchestrator
+    Read specs/002-trade-copier-spec.html section-b56 (DW-B56-01).
+    Read docs/brain/B56-LaneA/01-mission-brief.md (already written — review and confirm).
+    Confirm the change spec below matches mission brief. Write confirmation to
+    docs/brain/B56-LaneA/01-mission-brief-confirmed.md.
+    Output: "STAGE 1 COMPLETE — handing off to ptt-architect."
+    *** STOP. Do not proceed to Stage 2 in the same response. ***
+
+  STAGE 2 — ptt-architect
+    Read CopyEngine.cs in full. Locate:
+      - DispatchCopy() (around line 506–554). Confirm Gate 3 exact line.
+      - OnOrderUpdate() (around line 404). Confirm gate positions and insertion point
+        for Cancelled handler (BEFORE IsWorkingBracket check / Gate B).
+    Write numbered tickets. Write docs/brain/B56-LaneA/02-architecture-plan.md.
+    Output: "STAGE 2 COMPLETE — handing off to ptt-engineer."
+    *** STOP. Do not proceed to Stage 3 in the same response. ***
+
+  STAGE 3 — ptt-engineer
+    Execute tickets ONE AT A TIME. Read file → edit → confirm.
+    Run dotnet build after EACH ticket. Report BUILD_PASS per ticket.
+    Write docs/brain/B56-LaneA/03-engineer-report.md.
+    Write docs/brain/B56-LaneA/ticket-1-completion.md.
+    Output: "STAGE 3 COMPLETE — BUILD_PASS — handing off to ptt-verifier."
+    *** STOP. Do not proceed to Stage 4 in the same response. ***
+
+  STAGE 4 — ptt-verifier
+    Run ALL 7 scans independently from scratch. Read modified CopyEngine.cs and
+    confirm all invariants. Write docs/brain/B56-LaneA/ticket-1-verification.md.
+    Write docs/brain/B56-LaneA/05-final-review.md.
+    Output: "VERIFY_PASS" or "VERIFY_FAIL: [exact blocker]".
+    *** STOP. Lane complete. Report FINAL_PASS to Director. ***
+
+MERGING ANY TWO STAGES INTO ONE RESPONSE IS A PROTOCOL VIOLATION.
+ptt-orchestrator must not produce tickets. ptt-architect must not edit files.
+ptt-engineer must not run scans. ptt-verifier runs last and alone.
+
+MODIFIED FILES (1):
+  src/PropTraderTools/CopyEngine.cs
+
+CHANGE A — Add IsDispatchTriggerState private static bool method
+  Location: immediately above DispatchCopy() method
+  Code:
+    // CYC=2. True for states that trigger a new follower order placement.
+    // Market orders fire Submitted; AddOn limit orders fire Accepted (skip Submitted).
+    // JS-002: returns bool (not null). JS-021: no lock. NT8 confirmed state set.
+    private static bool IsDispatchTriggerState(Order order)
+        => order.OrderState == OrderState.Submitted   // market orders
+        || order.OrderState == OrderState.Accepted;   // limit orders (AddOn path)
+
+CHANGE B — Modify DispatchCopy Gate 3
+  BEFORE: if (order.OrderState != OrderState.Submitted) return;
+  AFTER:  if (!IsDispatchTriggerState(order)) return;
+
+CHANGE C — Add Cancelled propagation block in OnOrderUpdate
+  Location: AFTER Gate 2.5 (per-rule enable check), BEFORE Gate B (IsWorkingBracket check)
+  Code:
+    // B56 T1: propagate leader cancel to follower entry orders.
+    if (e.Order.OrderState == OrderState.Cancelled)
+    {
+        foreach (var acc in matchedRule.Value.FollowerAccounts)
+        {
+            if (acc == null) continue;
+            CancelOneAccount(acc, e.Order.Instrument);
+        }
+        return;
+    }
+
+NEW TESTS (1, in CopyEngineTests.cs):
+  T_B56_01: IsDispatchTriggerState_ReturnsTrueForSubmittedAndAccepted
+    - Assert.True  for Submitted, Accepted
+    - Assert.False for Initialized, Working, Filled, Cancelled
+    - Use reflection (private static method, same pattern as prior reflection tests)
+
+INVARIANTS (ptt-verifier confirms all):
+  INV-1: IsDispatchTriggerState(Submitted) == true
+  INV-2: IsDispatchTriggerState(Accepted)  == true
+  INV-3: IsDispatchTriggerState(Initialized) == false
+  INV-4: IsDispatchTriggerState(Working)   == false
+  INV-5: IsDispatchTriggerState(Filled)    == false
+  INV-6: IsDispatchTriggerState(Cancelled) == false
+  INV-7: DispatchCopy Gate 3 reads IsDispatchTriggerState (not raw == Submitted)
+  INV-8: Cancelled handler present in OnOrderUpdate BEFORE IsWorkingBracket check
+  INV-9: CancelOneAccount called for each non-null follower on leader Cancelled
+
+JS-021: no lock(). JS-002: bool return, no null. JS-033: no async void.
+NT8 rules: read docs/standards/NT8_COMPILER_RULES.md before any .cs edit.
+CYC: IsDispatchTriggerState CYC=2. Cancelled foreach block CYC=2. Both &lt;= 8.
+
+SCANS (7 required — ptt-verifier runs ALL independently before reporting VERIFY_PASS):
+  SCAN-01: Select-String "lock("       src/ -Recurse -Include *.cs  → 0 actual lock() calls
+  SCAN-02: Select-String "async void " src/ -Recurse -Include *.cs  → 0 async void decls
+  SCAN-03: Select-String "return null" src/ -Recurse -Include *.cs  → 0 new instances
+  SCAN-04: Select-String "throw new "  src/ -Recurse -Include *.cs  → 0 new instances
+  SCAN-05: python scripts/complexity_audit.py → IsDispatchTriggerState + Cancelled block CYC &lt;= 8
+  SCAN-06: dotnet build                       → 0 errors
+  SCAN-07: dotnet test                        → T_B56_01 PASS; total=280, 256 pass, 24 fail
+
+AFTER ALL SCANS PASS:
+  powershell -File scripts\verify_links.ps1 -Fix
+  Confirm hard-link sync: 0 DESYNC
+
+BUILD TAG: "PTT-COPIER B56 | limit-order-gate3-fix | {today-date}"
+
+FINAL_PASS criteria:
+  VERIFY_PASS on all 7 scans
+  IsDispatchTriggerState method present in CopyEngine.cs (private or internal static)
+  DispatchCopy Gate 3 calls IsDispatchTriggerState (not raw == Submitted)
+  Cancelled propagation block present in OnOrderUpdate BEFORE IsWorkingBracket call
+  T_B56_01 PASS — all 6 OrderState assertions correct
+  0 new lock(), 0 new async void, 0 new return null
+  Hard-link sync PASS
+  Build tag written</pre>
+            </div>
+
+            <!-- ── B56-LaneB ORCHESTRATOR PROMPT ── -->
+            <div style="margin-bottom:1.2rem;">
+              <div style="font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:700;letter-spacing:0.1em;margin-bottom:6px;">B56-LaneB ORCHESTRATOR PROMPT (P1 — paste into ptt-orchestrator session after B55-LaneB FINAL_PASS)</div>
+              <pre style="font-family:var(--mono);font-size:11px;line-height:1.7;background:var(--raised);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;padding:14px 16px;white-space:pre-wrap;overflow-wrap:break-word;">PTT-COPIER B56 LaneB — ptt-orchestrator
+
+You are the ptt-orchestrator for Block 56 LaneB.
+SRC CODE BAN: Do NOT edit any .cs file directly. All src edits go through the pipeline.
+
+PREREQUISITE: B55-LaneB FINAL_PASS confirmed before sending this lane.
+LaneA and LaneB can run in parallel (different concerns; CopyEngine.cs changes
+must not overlap — check git status before engineer edits each file).
+
+OBJECTIVE: Close DW-B56-02 (rules not showing in Window) and DW-B56-03 (Clone mode
+missing from Window ComboBox + CopyMode enum). Two defects, one lane, two modified files.
+
+CONFIRMED ROOT CAUSES:
+  DW-B56-02: TradeCopierWindow.cs line ~270 hardcodes BuildRuleRow("MES") at construction.
+    LoadRules() in OnLoaded populates CopyEngine._rules from XML but nothing rebuilds
+    _rulesPanel. The Window shows only the hardcoded MES row. Persisted rules are ignored.
+    Fix: add GetRuleInstruments() to CopyEngine (returns IEnumerable&lt;string&gt; of rule
+    instrument names from _rules ConcurrentBag) + RefreshRuleRows() to TradeCopierWindow
+    (clears _rulesPanel, rebuilds rows for each instrument from GetRuleInstruments())
+    called from OnLoaded after LoadRules().
+
+  DW-B56-03: CopyEngine.cs line 77: enum CopyMode { Signal = 0, Mirror = 1 } — Clone=2 missing.
+    TradeCopierWindow.cs lines ~212-213: ComboBox only has "Signal (default)" + "Mirror".
+    Fix: add Clone = 2 to enum. Add "Clone" item to Window ComboBox. Handle index 2
+    in OnCopyModeComboChanged. Optionally show/hide ATM template column based on mode.
+
+WAVE WORKSPACE: C:\WSGTA\universal-or-strategy\src\PropTraderTools\
+SPEC: specs/002-trade-copier-spec.html  id="section-b56"
+BRAIN: docs/brain/B56-LaneB/  (create this directory)
+
+PIPELINE — 4 STAGES, SEQUENTIAL, EACH IS A HARD STOP:
+
+  STAGE 1 — ptt-orchestrator
+    Read specs/002-trade-copier-spec.html section-b56 (DW-B56-02 + DW-B56-03).
+    Write docs/brain/B56-LaneB/01-mission-brief.md with objective, root causes,
+    change spec, test plan, and invariants.
+    Output: "STAGE 1 COMPLETE — handing off to ptt-architect."
+    *** STOP. Do not proceed to Stage 2 in the same response. ***
+
+  STAGE 2 — ptt-architect
+    Read CopyEngine.cs (locate _rules field, CopyMode enum, SetCopyMode/GetCopyMode).
+    Read TradeCopierWindow.cs (locate OnLoaded, _rulesPanel, BuildRuleRow, mode ComboBox).
+    Confirm exact insertion points. Verify Clone is not already defined elsewhere.
+    Write numbered tickets (T1: enum fix, T2: GetRuleInstruments, T3: Window refresh + Clone item).
+    Write docs/brain/B56-LaneB/02-architecture-plan.md.
+    Output: "STAGE 2 COMPLETE — handing off to ptt-engineer."
+    *** STOP. Do not proceed to Stage 3 in the same response. ***
+
+  STAGE 3 — ptt-engineer
+    Execute tickets ONE AT A TIME. Read file → edit → confirm.
+    Run dotnet build after EACH ticket. Report BUILD_PASS per ticket.
+    Write docs/brain/B56-LaneB/03-engineer-report.md.
+    Write docs/brain/B56-LaneB/ticket-1-completion.md.
+    Output: "STAGE 3 COMPLETE — BUILD_PASS — handing off to ptt-verifier."
+    *** STOP. Do not proceed to Stage 4 in the same response. ***
+
+  STAGE 4 — ptt-verifier
+    Run ALL 8 scans independently from scratch. Read modified files and confirm all invariants.
+    Write docs/brain/B56-LaneB/ticket-1-verification.md.
+    Write docs/brain/B56-LaneB/05-final-review.md.
+    Output: "VERIFY_PASS" or "VERIFY_FAIL: [exact blocker]".
+    *** STOP. Lane complete. Report FINAL_PASS to Director. ***
+
+MERGING ANY TWO STAGES INTO ONE RESPONSE IS A PROTOCOL VIOLATION.
+
+MODIFIED FILES (2):
+  src/PropTraderTools/CopyEngine.cs
+  src/PropTraderTools/TradeCopierWindow.cs
+
+CHANGE A — CopyMode enum (CopyEngine.cs)
+  Add Clone = 2 to CopyMode enum:
+    enum CopyMode { Signal = 0, Mirror = 1, Clone = 2 }
+  Confirm TradeCopierPanel.cs Clone radio already uses CopyMode.Clone — if it was
+  referencing a literal, update it to use the enum value.
+
+CHANGE B — GetRuleInstruments() (CopyEngine.cs)
+  Add public (or internal) method:
+    // Returns the instrument names for all currently loaded rules.
+    // CYC=1. JS-002: returns empty enumerable (not null) when no rules.
+    public IEnumerable&lt;string&gt; GetRuleInstruments()
+    {
+        foreach (var rule in _rules)
+            yield return rule.Instrument.FullName;
+    }
+  NOTE: Confirm the field name for instrument on CopyRule struct (may be .Instrument
+  or .InstrumentName — check the struct definition before writing this method).
+
+CHANGE C — TradeCopierWindow.cs
+  Add RefreshRuleRows() private method:
+    private void RefreshRuleRows()
+    {
+        _rulesPanel.Children.Clear();
+        foreach (var instrName in _engine.GetRuleInstruments())
+            BuildRuleRow(instrName);
+    }
+  In OnLoaded, after the LoadRules() call, add:
+    RefreshRuleRows();
+  Add "Clone" item to mode ComboBox (after "Mirror"):
+    modeCb.Items.Add("Clone");
+  Handle index 2 in OnCopyModeComboChanged:
+    case 2: _engine.SetCopyMode(CopyMode.Clone); break;
+
+NEW TESTS (2, in CopyEngineTests.cs):
+  T_B56_02: CopyMode_EnumHasCloneValue
+    Assert.Equal(2, (int)CopyMode.Clone)
+    Assert.Equal(3, Enum.GetValues(typeof(CopyMode)).Length)
+  T_B56_03: GetRuleInstruments_ReturnsEmpty_WhenNoRules (optional, per architect decision)
+
+INVARIANTS (ptt-verifier confirms all):
+  CopyMode.Clone == 2 present in enum
+  GetRuleInstruments() present in CopyEngine with yield return body
+  RefreshRuleRows() present in TradeCopierWindow
+  RefreshRuleRows() called from OnLoaded after LoadRules()
+  "Clone" item present in mode ComboBox in TradeCopierWindow
+  index 2 handled in OnCopyModeComboChanged
+  T_B56_02 PASS (enum value assertion)
+
+JS-021: no lock(). JS-002: GetRuleInstruments returns IEnumerable (not null).
+JS-033: no async void. JS-001: no throw.
+NT8 rules: read docs/standards/NT8_COMPILER_RULES.md before any .cs edit.
+CYC: GetRuleInstruments CYC=1. RefreshRuleRows CYC=1. Both &lt;= 8.
+
+SCANS (8 required — ptt-verifier runs ALL independently):
+  SCAN-01: Select-String "lock("       src/ -Recurse -Include *.cs  → 0 actual lock() calls
+  SCAN-02: Select-String "async void " src/ -Recurse -Include *.cs  → 0 async void decls
+  SCAN-03: Select-String "return null" src/ -Recurse -Include *.cs  → 0 new instances
+  SCAN-04: Select-String "throw new "  src/ -Recurse -Include *.cs  → 0 new instances
+  SCAN-05: python scripts/complexity_audit.py → GetRuleInstruments + RefreshRuleRows CYC &lt;= 8
+  SCAN-06: dotnet build                       → 0 errors
+  SCAN-07: dotnet test                        → T_B56_02 PASS; total ~281, 257 pass, 24 fail
+  SCAN-08: Select-String "CopyMode.Clone" src/ -Recurse -Include *.cs
+           → at minimum 2 hits (enum def + OnCopyModeComboChanged)
+           → confirm TradeCopierPanel.cs Clone radio uses CopyMode.Clone (not literal 2)
+
+AFTER ALL SCANS PASS:
+  powershell -File scripts\verify_links.ps1 -Fix
+  Confirm hard-link sync: 0 DESYNC
+
+BUILD TAG: "PTT-COPIER B56 | rules-refresh-clone-fix | {today-date}"
+
+FINAL_PASS criteria:
+  VERIFY_PASS on all 8 scans
+  CopyMode.Clone = 2 in enum
+  GetRuleInstruments() in CopyEngine
+  RefreshRuleRows() in TradeCopierWindow called from OnLoaded
+  "Clone" in mode ComboBox, index 2 handled
+  T_B56_02 PASS
+  0 new lock(), 0 new async void, 0 new return null
+  Hard-link sync PASS
+  Build tag written</pre>
+            </div>
+
           </div>
 
         </div>
 
         <div class="card-footer pills">
-          <span class="pill pill-red">DW-B56-01 P0 &mdash; Follower limit order stuck Initialized (Gate 3 Submitted-only bug)</span>
-          <span class="pill pill-red">DW-B56-02 P1 &mdash; Rules not shown in Window/Panel after F5 (no post-LoadRules refresh)</span>
-          <span class="pill pill-red">DW-B56-03 P1 &mdash; Clone mode missing from Window ComboBox + engine enum gap</span>
-          <span class="pill pill-amber">DW-B56-04 P2 &mdash; Dedup cache orderId recycle risk (diagnostic first)</span>
-          <span class="pill">B56 lanes depend on B55-LaneB FINAL_PASS. B56-LaneA is unblocked independently.</span>
-          <span class="pill pill-accent">B54-01 + B54-02 (ATM API) remain open separately &mdash; not part of B56</span>
+          <span class="pill pill-green">&#10003; DW-B56-01 P0 CLOSED &mdash; Gate 3 fix + Cancelled propagation &nbsp;&middot;&nbsp; T_B56_01 PASS &nbsp;&middot;&nbsp; LaneA PIPELINE_COMPLETE</span>
+          <span class="pill pill-green">&#10003; DW-B56-02 P1 CLOSED &mdash; GetRuleInstruments + RefreshRuleRows &nbsp;&middot;&nbsp; T_B56B_01 PASS &nbsp;&middot;&nbsp; LaneB PIPELINE_COMPLETE</span>
+          <span class="pill pill-green">&#10003; DW-B56-03 P1 CLOSED &mdash; CopyMode.Clone=2 + Window ComboBox + handler &nbsp;&middot;&nbsp; T_B56B_02 PASS &nbsp;&middot;&nbsp; LaneB PIPELINE_COMPLETE</span>
+          <span class="pill pill-amber">DW-B56-04 P2 &mdash; Dedup orderId diagnostic &mdash; pending Director live test confirmation</span>
+          <span class="pill pill-accent">DW-B54-01 P0 open &mdash; ATM API Director research &nbsp;&middot;&nbsp; DW-B54-02 blocked by DW-B54-01</span>
+          <span class="pill pill-accent">~283 [Fact] tests total after B56 complete</span>
         </div>
       </div>
     </div>
