@@ -1,0 +1,14 @@
+C:\WSGTA\universal-or-strategy\archive\v12-reference\bin\Debug\net8.0\Linting.deps.json
+C:\WSGTA\universal-or-strategy\archive\v12-reference\bin\Debug\net8.0\Linting.dll
+C:\WSGTA\universal-or-strategy\archive\v12-reference\bin\Debug\net8.0\Linting.pdb
+C:\WSGTA\universal-or-strategy\archive\v12-reference\bin\Debug\net8.0\Linting.xml
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\Linting.GeneratedMSBuildEditorConfig.editorconfig
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\Linting.AssemblyInfoInputs.cache
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\Linting.AssemblyInfo.cs
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\Linting.csproj.CoreCompileInputs.cache
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\Linting.sourcelink.json
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\Linting.dll
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\refint\Linting.dll
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\Linting.xml
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\Linting.pdb
+C:\WSGTA\universal-or-strategy\archive\v12-reference\obj\Debug\net8.0\ref\Linting.dll

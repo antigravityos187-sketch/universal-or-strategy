@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This specification defines the infrastructure requirements for a six-layer AI agent competition and monetization platform. The platform enables AI agents — built on any framework (LangGraph, AutoGen, CrewAI, Google ADK) — to compete in real video games, earn verifiable on-chain credentials, and be hired or licensed through a marketplace. A sixth layer provides investment vaults allowing capital holders to fund agent careers and earn yield from agent earnings. The platform operates as the world's first protocol-neutral, credential-portable, agent economy infrastructure.
+This specification defines the infrastructure requirements for a seven-layer AI agent competition and monetization platform. The platform enables AI agents — built on any framework (LangGraph, AutoGen, CrewAI, Google ADK) — to compete in real video games, earn verifiable on-chain credentials, and be hired or licensed through a marketplace. A sixth layer provides investment vaults allowing capital holders to fund agent careers and earn yield from agent earnings. A seventh layer is the **Builder Network**: the nexus of Instagram and GitHub — social media for AI builders where developers record and share their agent-building sessions, follow each other's work, fork and remix agents, earn tips and subscriptions, and expose machine-readable **AEO (Agent Engine Optimization)** endpoints so autonomous agents can discover and hire them without human mediation. One button captures screen, audio, and live agent output from any environment (web UI, local IDE, Claude Code, terminal) and publishes it as a structured, seekable Build Log. The platform operates as the world's first protocol-neutral, credential-portable, agent-readable agent economy infrastructure.
 
 ---
 
@@ -60,6 +60,19 @@ A cloud-native, multi-layer platform where:
 - **FR-012**: Infrastructure MUST provide a REST API (primary external interface) and an A2A protocol service card endpoint for framework-native agent discovery and task delegation
 - **FR-013**: Infrastructure MUST provide multi-chain smart contract deployment starting on a low-fee EVM chain, with contract bridges to additional chains in later phases
 - **FR-014**: Infrastructure MUST provide audit logging of all payment events, match results, credential issuances, and vault transactions for regulatory compliance
+- **FR-015**: Infrastructure MUST provide a one-click session recorder that captures screen, audio, and live agent output (stdout, logs, tool calls) from any builder environment — web UI, local IDE (VS Code, JetBrains), coding agent (Claude Code, Cursor), or raw terminal — and publishes the recording as a structured, seekable Build Log tied to the builder's profile
+- **FR-016**: Infrastructure MUST provide a builder social graph: follow/unfollow builders and agents, activity feed of build sessions, match results, and credential milestones, with algorithmic and chronological feed modes
+- **FR-017**: Infrastructure MUST provide a Fork & Remix Economy: any public agent config or benchmark can be forked; derivative agents carry an on-chain attribution chain; when a forked agent wins a credential, a configurable royalty routes back to the original author automatically
+- **FR-018**: Infrastructure MUST provide AEO (Agent Engine Optimization) endpoints: every builder profile, agent listing, project, and build log exposes a machine-readable profile card (JSON-LD structured data, A2A service card, MCP resource endpoint) so LLMs and autonomous agents can discover, query, and hire agents without human mediation
+- **FR-019**: Infrastructure MUST provide a creator monetization layer: tip economy on build logs, paid premium build log subscriptions, sponsored benchmark slots in the feed, and revenue sharing back to the builder
+- **FR-020**: Infrastructure MUST provide a Build Log Editor: post-production tools applied to a recorded session before or after publishing — trim (set in/out points), clip extraction (create a short-form derivative post from a time window, linked by attribution to the parent Build Log), chapter markers (named timeline waypoints with auto-suggestions derived from event-stream spikes), and segment redaction (permanently delete a time window from both video and NDJSON tracks for privacy/safety)
+- **FR-021**: Infrastructure MUST provide a Direct Messaging layer: builder-to-builder and builder-to-agent threaded DMs with standard unencrypted mode (server-stored, searchable, moderable) and an opt-in end-to-end encrypted mode (client-side key exchange via Signal Protocol / X3DH; server stores only ciphertext; platform cannot read content); E2E sessions display a verified key fingerprint; agents can send and receive DMs via AEO-exposed messaging endpoints
+- **FR-022**: Infrastructure MUST publish a machine-readable Agent Game Adapter Specification defining the exact protocol the agent must implement to connect to the arena: REST webhook (turn-based games — arena POSTs game state JSON to agent endpoint, agent returns move JSON synchronously), WebSocket session (real-time games — persistent connection for streaming frame→action), and A2A task wrapper (agents using A2A natively receive game state as a task); specification published as OpenAPI + JSON Schema; reference adapter library provided in Python and TypeScript
+- **FR-023**: Infrastructure MUST provide `arena-sim`, a local game simulator distributed as a CLI binary and Docker image, that runs the identical game protocol as the live arena with zero live connection required; supports all Phase 1 games; produces output identical in format to a live match (move log, latency per turn, sandbox warnings) so a Build Log recorded locally is structurally identical to one from a real competition; free to use, no account required
+- **FR-024**: Infrastructure MUST provide Practice Mode: authenticated but unranked cloud sessions where the agent runs against the real arena infrastructure (real sandboxing, real game engine, real network latency) with no ELO change, no entry fee, and no credential issued; session results visible only to the builder unless explicitly shared; purpose is validating live-infrastructure behaviour not replicable in arena-sim
+- **FR-025**: Infrastructure MUST provide a Private Benchmark API: builders can run any registered benchmark against their agent privately (results not published, no credential issued) via a `private=true` flag on the benchmark run endpoint; results returned to the caller only; pricing lower than public runs (no minting overhead); API supports a `min_score` threshold parameter enabling CI/CD gating — a webhook fires on completion and the endpoint returns a non-200 status if the threshold is not met, allowing builders to block agent deployments that regress below a quality floor
+- **FR-026**: Infrastructure MUST provide a Build-in-Public Post Format: a short-form structured content primitive distinct from Build Logs (full recorded sessions) and Clips (video extracts) — a "ship post" authored as text with structured metadata fields: `milestone_type` (enum: `shipped | debugging | learning | launched | open_for_hire | seeking_collaborators`), linked agent version (optional), linked Build Log or Clip (optional), and public roadmap item reference (optional); rendered in the activity feed as a rich card with reactions (emoji set: 🔥 👏 🤔 🌿) and threaded replies; publishable via web UI or CLI (`arena post "just shipped chess-v3 — ELO 1840"`); each post is AEO-indexed — its structured metadata is machine-readable so autonomous agents can follow a builder's shipping cadence, discover "open for hire" signals, and track capability evolution over time without human mediation
+- **FR-027**: Infrastructure MUST provide an Agent-Queryable Marketplace Search endpoint — a dual-audience search API exposing distinct interfaces for two client types: (1) human browser interface with standard faceted search (game, ELO range, framework, license type, price), and (2) an autonomous agent query endpoint that accepts either structured JSON capability queries (`{"capability": "chess", "min_elo": 1800, "license": "pay_per_use", "available_now": true}`) or free-text natural language task descriptions submitted by an LLM orchestrator; the agent query endpoint returns ranked agent listings with embedded A2A service card URLs, verified credential hashes, current pricing, and availability status; the endpoint is itself AEO-indexed and listed as a discoverable tool in the platform's MCP resource manifest so any MCP-aware agent can invoke it without prior platform knowledge; enables fully autonomous agent-hires-agent workflows — an orchestrator agent resolves capability needs to specific hirable agents in a single query with no human mediation required
 
 ### Non-Functional Requirements
 
@@ -188,6 +201,7 @@ A cloud-native, multi-layer platform where:
 | 4 | Benchmark Marketplace | Search index, listing store, licensing contract execution |
 | 5 | Agent-to-Agent Economy | A2A service card, AP2 payment routing, autonomous task delegation |
 | 6 | Agent Investment Vaults | ERC-4626 vault contracts, KYC service (Accredited Pool), yield distribution |
+| 7 | Builder Network | Session recorder (screen + audio + agent output), build log store, social graph, AEO endpoints, creator monetization, Build Log Editor, DM layer, Agent Game Adapter Spec, arena-sim, Practice Mode, Private Benchmark API, Build-in-Public Post Format, Agent-Queryable Marketplace Search |
 
 ---
 
@@ -215,6 +229,9 @@ A cloud-native, multi-layer platform where:
 - Enterprise private arenas (Phase 3)
 - DAO governance token (Phase 3)
 - CodeFactor, CodeRabbit, or V12 C# source code — this spec is Arena Platform only
+- Native IDE plugin/extension for VS Code / JetBrains (Phase 2 — Phase 1 uses browser-based screen capture via MediaRecorder API)
+- Mobile recorder app (Phase 3)
+- Live stream (Twitch-style) build sessions (Phase 2 — Phase 1 is record-and-publish only)
 
 ---
 
@@ -239,12 +256,13 @@ A cloud-native, multi-layer platform where:
 | OQ-3 | Does Agent Identity NFT include fractional revenue rights at launch? | Affects ERC-6551 vs plain ERC-721 decision for Phase 1 |
 | OQ-4 | A2A full task delegation Day 1, or REST-only with A2A discovery endpoint? | Affects A2A protocol integration depth and testing surface |
 | OQ-5 | Platform name | Affects domain, branding, and smart contract namespace |
+| OQ-6 | Agent-queryable search (FR-027): natural language endpoint powered by which LLM? Self-hosted embedding model, OpenAI, or Anthropic Claude API? | Affects cost, latency, data privacy, and whether query logs are sent to a third party |
 
 ---
 
 ## Notes
 
-- This spec covers all six layers as a single infrastructure specification. Sub-specs per layer (`002-battle-arena`, `003-nft-registry`, etc.) will be generated after OQ-1 through OQ-5 are answered.
+- This spec covers all seven layers as a single infrastructure specification. Sub-specs per layer (`002-battle-arena`, `003-nft-registry`, etc.) will be generated after OQ-1 through OQ-6 are answered. Layer 7 sub-spec will be `007-builder-network`.
 - The investment vault layer (Layer 6) is intentionally scoped to testnet / Open Pool only at launch. US Accredited Pool is Phase 2 pending legal setup.
 - All revenue-bearing features that do NOT require financial licensing are in scope for Phase 1: entry fees, NFT minting, marketplace commissions, benchmark fees.
 - Context Hub (`chub`) is installed at `/usr/local/bin/chub`. Run `chub get langgraph/package --lang py` before building the A2A connector layer.

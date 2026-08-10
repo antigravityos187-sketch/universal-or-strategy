@@ -15,8 +15,8 @@ namespace NinjaTrader.NinjaScript.Strategies
         private long _totalSamples;
         private long _invalidSamples;
 
-        // Bucket boundaries in microseconds
-        private static readonly long[] BucketBoundaries = { 10, 50, 100, 500, 1000, 5000 };
+        // Bucket boundaries in microseconds -- shared with HistogramSnapshot for dedup
+        internal static readonly long[] BucketBoundaries = { 10, 50, 100, 500, 1000, 5000 };
 
         public LatencyHistogram(string name)
         {
@@ -96,6 +96,12 @@ namespace NinjaTrader.NinjaScript.Strategies
     /// </summary>
     public sealed class HistogramSnapshot
     {
+        private const double PERCENTILE_MAX = 100.0;
+        private const double PERCENT_MULTIPLIER = 100.0;
+        private const int PERCENTILE_P50 = 50;
+        private const int PERCENTILE_P95 = 95;
+        private const int PERCENTILE_P99 = 99;
+
         public string Name { get; }
         public long[] Buckets { get; }
         public long TotalSamples { get; }
@@ -115,15 +121,18 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// </summary>
         public long GetPercentile(double percentile)
         {
-            if (TotalSamples == 0 || percentile < 0 || percentile > 100)
+            if (TotalSamples == 0 || percentile < 0 || percentile > PERCENTILE_MAX)
             {
                 return -1;
             }
 
-            long targetCount = (long)(TotalSamples * (percentile / 100.0));
+            long targetCount = (long)(TotalSamples * (percentile / PERCENT_MULTIPLIER));
             long cumulativeCount = 0;
 
-            long[] boundaries = { 10, 50, 100, 500, 1000, 5000, long.MaxValue };
+            long[] bb = LatencyHistogram.BucketBoundaries;
+            long[] boundaries = new long[bb.Length + 1];
+            Array.Copy(bb, boundaries, bb.Length);
+            boundaries[bb.Length] = long.MaxValue;
 
             for (int i = 0; i < Buckets.Length; i++)
             {
@@ -152,15 +161,15 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             for (int i = 0; i < Buckets.Length; i++)
             {
-                double pct = (Buckets[i] * 100.0) / TotalSamples;
+                double pct = (Buckets[i] * PERCENT_MULTIPLIER) / TotalSamples;
                 result += string.Format("  {0}: {1} ({2:F1}%)\n", labels[i], Buckets[i], pct);
             }
 
             result += string.Format(
                 "  p50: {0}us, p95: {1}us, p99: {2}us",
-                GetPercentile(50),
-                GetPercentile(95),
-                GetPercentile(99)
+                GetPercentile(PERCENTILE_P50),
+                GetPercentile(PERCENTILE_P95),
+                GetPercentile(PERCENTILE_P99)
             );
 
             return result;

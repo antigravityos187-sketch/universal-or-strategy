@@ -26,6 +26,41 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
     public partial class V12_002 : Strategy
     {
+        // -- OR Timeframe discriminants --
+        private const int OR_TIMEFRAME_15 = 15;
+        private const int OR_TIMEFRAME_30 = 30;
+
+        // -- Contract quantity bounds --
+        private const int MAX_CONTRACT_QTY = 100;
+
+        // -- Slippage cushion bound --
+        private const int MAX_SLIPPAGE_CUSHION_PTS = 10;
+
+        // -- Break-even offset ticks bound --
+        private const int MAX_BE_OFFSET_TICKS = 100;
+
+        // -- Display opacity byte range --
+        private const int OPACITY_MAX = 255;
+
+        // -- RSI bounds --
+        private const int RSI_MAX = 100;
+
+        // -- Reaper timing bounds --
+        private const int REAPER_INTERVAL_MIN_MS = 500;
+        private const int REAPER_INTERVAL_MAX_MS = 60000;
+
+        // -- Naked grace seconds bound --
+        private const int NAKED_GRACE_MAX_SEC = 10;
+
+        // -- Repair / fleet bounds --
+        private const int MAX_REPAIR_TICK_FENCE = 50;
+        private const int MAX_FLEET_PARITY_MULTIPLIER = 100;
+
+        // -- Compliance bounds --
+        private const int COMPLIANCE_PCT_MAX = 100;
+        private const int MIN_COMPLIANCE_DOLLAR_AMOUNT = 100;
+        private const int RMA_MAX_PROBE_COUNT_LIMIT = 20;
+
         #region Enums
 
         public enum ORTimeframeType
@@ -94,27 +129,27 @@ namespace NinjaTrader.NinjaScript.Strategies
         /// Ensures follower dollar risk stays <= MaxRiskAmount even if entry fills at a worse price than master.
         /// Default = 1.0 pt. Set to 0 to disable.</summary>
         [NinjaScriptProperty]
-        [Range(0, 10)]
+        [Range(0, MAX_SLIPPAGE_CUSHION_PTS)]
         [Display(Name = "Slippage Cushion (pts)", GroupName = "2. Risk", Order = 5)]
         public double SlippageCushionPoints { get; set; }
 
         [NinjaScriptProperty]
-        [Range(1, 100)]
+        [Range(1, MAX_CONTRACT_QTY)]
         [Display(Name = "MES Min Quantity", GroupName = "2. Risk", Order = 5)]
         public int MESMinimum { get; set; }
 
         [NinjaScriptProperty]
-        [Range(1, 100)]
+        [Range(1, MAX_CONTRACT_QTY)]
         [Display(Name = "MES Max Quantity", GroupName = "2. Risk", Order = 6)]
         public int MESMaximum { get; set; }
 
         [NinjaScriptProperty]
-        [Range(1, 100)]
+        [Range(1, MAX_CONTRACT_QTY)]
         [Display(Name = "MGC Min Quantity", GroupName = "2. Risk", Order = 7)]
         public int MGCMinimum { get; set; }
 
         [NinjaScriptProperty]
-        [Range(1, 100)]
+        [Range(1, MAX_CONTRACT_QTY)]
         [Display(Name = "MGC Max Quantity", GroupName = "2. Risk", Order = 8)]
         public int MGCMaximum { get; set; }
 
@@ -175,7 +210,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         public double BreakEvenTriggerPoints { get; set; }
 
         [NinjaScriptProperty]
-        [Range(0, 100)]
+        [Range(0, MAX_BE_OFFSET_TICKS)]
         [Display(Name = "Break Even Offset (Ticks)", GroupName = "5. Trailing", Order = 2)]
         public int BreakEvenOffsetTicks { get; set; } // Ticks above/below entry for BE stop
 
@@ -208,7 +243,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         public bool ShowMidLine { get; set; }
 
         [NinjaScriptProperty]
-        [Range(0, 255)]
+        [Range(0, OPACITY_MAX)]
         [Display(Name = "Box Opacity", GroupName = "6. Display", Order = 2)]
         public int BoxOpacity { get; set; }
 
@@ -262,12 +297,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         public double FFMAEMADistance { get; set; }
 
         [NinjaScriptProperty]
-        [Range(0, 100)]
+        [Range(0, RSI_MAX)]
         [Display(Name = "FFMA RSI Overbought", GroupName = "11. FFMA", Order = 3)]
         public int FFMARSIOverbought { get; set; }
 
         [NinjaScriptProperty]
-        [Range(0, 100)]
+        [Range(0, RSI_MAX)]
         [Display(Name = "FFMA RSI Oversold", GroupName = "11. FFMA", Order = 4)]
         public int FFMARSIOversold { get; set; }
 
@@ -319,7 +354,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         public bool ReaperAuditEnabled { get; set; }
 
         [NinjaScriptProperty]
-        [Range(500, 60000)]
+        [Range(REAPER_INTERVAL_MIN_MS, REAPER_INTERVAL_MAX_MS)]
         [Display(Name = "Reaper Interval (ms)", GroupName = "12. SIMA", Order = 10)]
         public int ReaperIntervalMs { get; set; }
 
@@ -327,7 +362,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         // Build 1104.1 enforces a runtime minimum of 5 seconds to absorb follower bracket lag.
         // Stored values below 5 are clamped by REAPER at runtime.
         [NinjaScriptProperty]
-        [Range(0, 10)]
+        [Range(0, NAKED_GRACE_MAX_SEC)]
         [Display(
             Name = "Naked Position Grace (sec)",
             Description = "Seconds REAPER waits before declaring a no-stop position a true emergency. Minimum: 5 (enforced). Prevents false EF_ during bracket confirmation lag.",
@@ -337,12 +372,12 @@ namespace NinjaTrader.NinjaScript.Strategies
         public int NakedPositionGraceSec { get; set; }
 
         [NinjaScriptProperty]
-        [Range(1, 50)]
+        [Range(1, MAX_REPAIR_TICK_FENCE)]
         [Display(Name = "Repair Tick Fence", GroupName = "12. SIMA", Order = 11)]
         public int RepairTickFence { get; set; }
 
         [NinjaScriptProperty]
-        [Range(1, 100)]
+        [Range(1, MAX_FLEET_PARITY_MULTIPLIER)]
         [Display(
             Name = "Fleet Parity Multiplier",
             Description = "Lot-size scaling for followers (e.g. 10 for ES->MES)",
@@ -365,7 +400,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         public bool EnableComplianceHub { get; set; }
 
         [NinjaScriptProperty]
-        [Range(1, 100)]
+        [Range(1, COMPLIANCE_PCT_MAX)]
         [Display(Name = "Consistency Threshold (%)", GroupName = "13. Compliance", Order = 2)]
         public int ConsistencyThreshold { get; set; }
 
@@ -374,22 +409,22 @@ namespace NinjaTrader.NinjaScript.Strategies
         public bool EnableConsistencyLock { get; set; }
 
         [NinjaScriptProperty]
-        [Range(100, int.MaxValue)]
+        [Range(MIN_COMPLIANCE_DOLLAR_AMOUNT, int.MaxValue)]
         [Display(Name = "Daily Profit Cap ($)", GroupName = "13. Compliance", Order = 4)]
         public double MaxDailyProfitCap { get; set; }
 
         [NinjaScriptProperty]
-        [Range(1, 100)]
+        [Range(1, COMPLIANCE_PCT_MAX)]
         [Display(Name = "Min Trading Days", GroupName = "13. Compliance", Order = 5)]
         public int PayoutMinTradingDays { get; set; }
 
         [NinjaScriptProperty]
-        [Range(100, int.MaxValue)]
+        [Range(MIN_COMPLIANCE_DOLLAR_AMOUNT, int.MaxValue)]
         [Display(Name = "Min Profit Payout ($)", GroupName = "13. Compliance", Order = 6)]
         public double PayoutMinProfit { get; set; }
 
         [NinjaScriptProperty]
-        [Range(100, int.MaxValue)]
+        [Range(MIN_COMPLIANCE_DOLLAR_AMOUNT, int.MaxValue)]
         [Display(Name = "Trailing Drawdown Limit ($)", GroupName = "13. Compliance", Order = 7)]
         public double TrailingDrawdownLimit { get; set; }
 
@@ -414,7 +449,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         public int RmaCancellationTicks { get; set; }
 
         [NinjaScriptProperty]
-        [Range(1, 20)]
+        [Range(1, RMA_MAX_PROBE_COUNT_LIMIT)]
         [Display(
             Name = "Max Probe Count",
             Description = "Probe-and-retreat cycles before exhaustion cancellation.",

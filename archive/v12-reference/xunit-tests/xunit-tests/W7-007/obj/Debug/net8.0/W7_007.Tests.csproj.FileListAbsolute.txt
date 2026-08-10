@@ -1,0 +1,6 @@
+C:\WSGTA\universal-or-strategy\archive\v12-reference\xunit-tests\xunit-tests\W7-007\obj\Debug\net8.0\W7_007.Tests.csproj.AssemblyReference.cache
+C:\WSGTA\universal-or-strategy\archive\v12-reference\xunit-tests\xunit-tests\W7-007\obj\Debug\net8.0\W7_007.Tests.GeneratedMSBuildEditorConfig.editorconfig
+C:\WSGTA\universal-or-strategy\archive\v12-reference\xunit-tests\xunit-tests\W7-007\obj\Debug\net8.0\W7_007.Tests.AssemblyInfoInputs.cache
+C:\WSGTA\universal-or-strategy\archive\v12-reference\xunit-tests\xunit-tests\W7-007\obj\Debug\net8.0\W7_007.Tests.AssemblyInfo.cs
+C:\WSGTA\universal-or-strategy\archive\v12-reference\xunit-tests\xunit-tests\W7-007\obj\Debug\net8.0\W7_007.Tests.csproj.CoreCompileInputs.cache
+C:\WSGTA\universal-or-strategy\archive\v12-reference\xunit-tests\xunit-tests\W7-007\obj\Debug\net8.0\W7_007.Tests.sourcelink.json

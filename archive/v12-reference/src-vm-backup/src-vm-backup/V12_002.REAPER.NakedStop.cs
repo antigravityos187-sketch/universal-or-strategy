@@ -24,8 +24,7 @@ namespace NinjaTrader.NinjaScript.Strategies
             {
                 try
                 {
-                    // not hot path -- LINQ acceptable
-                    Account acct = Account.All.ToArray().FirstOrDefault(a => a.Name == item.AccountName);
+                    Account acct = Account.All.FirstOrDefault(a => a.Name == item.AccountName);
                     if (acct == null)
                     {
                         Print(

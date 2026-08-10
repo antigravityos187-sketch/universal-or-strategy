@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "1qJKilGJ7qQ=",
+  "success": true,
+  "projectFilePath": "C:\\WSGTA\\universal-or-strategy\\archive\\v12-reference\\Linting.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\stylecop.analyzers\\1.2.0-beta.556\\stylecop.analyzers.1.2.0-beta.556.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\stylecop.analyzers.unstable\\1.2.0.556\\stylecop.analyzers.unstable.1.2.0.556.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.27\\microsoft.netcore.app.ref.8.0.27.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.27\\microsoft.windowsdesktop.app.ref.8.0.27.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.27\\microsoft.aspnetcore.app.ref.8.0.27.nupkg.sha512"
+  ],
+  "logs": []
+}

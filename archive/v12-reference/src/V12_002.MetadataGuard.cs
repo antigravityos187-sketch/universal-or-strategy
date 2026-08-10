@@ -165,6 +165,7 @@ namespace NinjaTrader.NinjaScript.Strategies
         {
             try
             {
+                // not hot path -- LINQ acceptable
                 bool hasActiveFsm = _followerBrackets.Values.Any(f =>
                     f != null && f.AccountName == accountName && f.State == FollowerBracketState.Active
                 );
