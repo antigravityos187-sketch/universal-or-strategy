@@ -2067,7 +2067,189 @@ footer {
   .dm-split { grid-template-columns: 1fr; }
   .clip-vs-log { grid-template-columns: 1fr; }
   .editor-toolbar { flex-direction: column; }
+  .ship-post-anatomy { flex-direction: column; }
+  .dual-audience-split { grid-template-columns: 1fr; }
+  .aeo-client-grid { grid-template-columns: repeat(2,1fr); }
 }
+
+/* ── Section 15: Build in Public ── */
+:root {
+  --bip-amber: #c98a3a;
+  --bip-amber-dim: rgba(201,138,58,0.10);
+  --bip-amber-border: rgba(201,138,58,0.28);
+}
+
+/* Ship Post card */
+.ship-post-card {
+  background: var(--light);
+  border: 1.5px solid var(--light-gray);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s;
+}
+.ship-post-card:hover { box-shadow: var(--shadow-md); }
+.spc-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.spc-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--bip-amber));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.spc-name { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--dark); }
+.spc-time { font-family: var(--font-head); font-size: 10px; color: var(--mid-gray); margin-left: auto; }
+.spc-milestone-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-head); font-size: 9px; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px;
+  border: 1.5px solid;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.spc-mb-shipped { background: rgba(120,140,93,0.12); color: var(--green); border-color: rgba(120,140,93,0.3); }
+.spc-mb-debugging { background: rgba(217,119,87,0.10); color: var(--orange); border-color: rgba(217,119,87,0.28); }
+.spc-mb-hire { background: var(--purple-dim); color: var(--purple); border-color: rgba(138,93,184,0.3); }
+.spc-mb-learning { background: rgba(106,155,204,0.12); color: var(--blue); border-color: rgba(106,155,204,0.3); }
+.spc-mb-launched { background: var(--bip-amber-dim); color: var(--bip-amber); border-color: var(--bip-amber-border); }
+.spc-body { font-family: var(--font-body); font-size: 13px; color: #3a3835; line-height: 1.65; margin-bottom: 10px; }
+.spc-meta-row {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+}
+.spc-meta-chip {
+  font-family: var(--font-head); font-size: 9px; color: var(--mid-gray);
+  background: var(--light-gray); border-radius: 6px; padding: 2px 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+.spc-meta-chip a { color: var(--blue); text-decoration: none; font-weight: 600; }
+.spc-reactions {
+  display: flex; gap: 6px; padding-top: 10px;
+  border-top: 1px solid var(--light-gray);
+}
+.spc-reaction {
+  font-family: var(--font-head); font-size: 10px; font-weight: 600;
+  background: var(--light-gray); border-radius: 8px; padding: 3px 9px;
+  cursor: pointer; user-select: none; color: #4a4845;
+  transition: background 0.12s;
+}
+.spc-reaction:hover { background: rgba(217,119,87,0.12); }
+.spc-reaction.active { background: rgba(217,119,87,0.15); color: var(--orange); }
+
+/* Ship Post anatomy diagram */
+.ship-post-anatomy {
+  display: flex; gap: 0; margin: 16px 0 24px;
+  border: 1.5px solid var(--bip-amber-border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.spa-section {
+  flex: 1; padding: 12px 14px;
+  border-right: 1px solid var(--bip-amber-border);
+  background: var(--bip-amber-dim);
+}
+.spa-section:last-child { border-right: none; }
+.spa-label { font-family: var(--font-head); font-size: 9px; font-weight: 700; color: var(--bip-amber); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.spa-val { font-family: var(--font-head); font-size: 11px; color: var(--dark); font-weight: 600; margin-bottom: 2px; }
+.spa-note { font-family: var(--font-body); font-size: 10px; color: var(--mid-gray); font-style: italic; }
+
+/* CLI post mock */
+.bip-cli-mock {
+  background: #1a1918; border-radius: var(--radius); padding: 14px 18px;
+  font-family: monospace; font-size: 12px; margin: 12px 0 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.bip-cli-prompt { color: #aab8a0; }
+.bip-cli-cmd { color: #d4e8c2; }
+.bip-cli-flag { color: var(--aeo-teal); }
+.bip-cli-str { color: #f0c080; }
+.bip-cli-out { color: #888; margin-top: 6px; font-size: 11px; }
+
+/* Dual-audience marketplace */
+.dual-audience-split {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0 24px;
+}
+.da-card {
+  border-radius: var(--radius); padding: 18px 20px;
+  border: 1.5px solid;
+}
+.da-card.human-card {
+  background: rgba(106,155,204,0.06);
+  border-color: rgba(106,155,204,0.25);
+}
+.da-card.agent-card {
+  background: rgba(58,184,166,0.06);
+  border-color: rgba(58,184,166,0.25);
+}
+.da-card-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.da-card-icon { font-size: 20px; }
+.da-card-title { font-family: var(--font-head); font-size: 13px; font-weight: 800; color: var(--dark); }
+.da-card-sub { font-family: var(--font-head); font-size: 9px; color: var(--mid-gray); font-weight: 400; }
+.da-card-body { font-family: var(--font-body); font-size: 12px; color: #5a5855; line-height: 1.6; margin-bottom: 10px; }
+.da-card-code {
+  background: rgba(20,20,19,0.05); border-radius: 6px; padding: 8px 10px;
+  font-family: monospace; font-size: 10px; color: #3a3835;
+  white-space: pre; overflow-x: auto;
+  border: 1px solid rgba(20,20,19,0.08);
+}
+.da-card.agent-card .da-card-code { background: rgba(58,184,166,0.07); color: #1a5a50; }
+
+/* AEO client types grid */
+.aeo-client-grid {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin: 16px 0 24px;
+}
+.aeo-client-card {
+  background: var(--light);
+  border: 1.5px solid rgba(58,184,166,0.2);
+  border-radius: var(--radius); padding: 14px 14px;
+  text-align: center;
+}
+.aeo-client-icon { font-size: 22px; margin-bottom: 6px; }
+.aeo-client-name { font-family: var(--font-head); font-size: 11px; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
+.aeo-client-desc { font-family: var(--font-body); font-size: 10px; color: #5a5855; line-height: 1.5; }
+.aeo-client-query {
+  margin-top: 6px; font-family: monospace; font-size: 9px;
+  color: var(--aeo-teal); background: rgba(58,184,166,0.08);
+  border-radius: 4px; padding: 3px 6px;
+}
+
+/* Nexus-of-two hero diagram */
+.nexus-of-two {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; margin: 20px auto 28px; max-width: 560px;
+}
+.not-circle {
+  flex: 1; text-align: center; padding: 20px 16px;
+  border-radius: var(--radius);
+}
+.not-circle.instagram-side {
+  background: linear-gradient(135deg, rgba(225,48,108,0.08), rgba(255,200,55,0.08));
+  border: 1.5px solid rgba(225,48,108,0.2);
+}
+.not-circle.github-side {
+  background: linear-gradient(135deg, rgba(36,41,46,0.06), rgba(100,120,140,0.08));
+  border: 1.5px solid rgba(80,100,120,0.2);
+}
+.not-circle-icon { font-size: 28px; margin-bottom: 6px; }
+.not-circle-name { font-family: var(--font-head); font-size: 14px; font-weight: 800; color: var(--dark); margin-bottom: 4px; }
+.not-circle-traits { font-family: var(--font-body); font-size: 11px; color: #5a5855; line-height: 1.6; }
+.not-plus {
+  font-family: var(--font-head); font-size: 28px; font-weight: 900;
+  color: var(--purple); padding: 0 14px; flex-shrink: 0;
+}
+.not-result {
+  width: 100%; text-align: center; padding: 16px;
+  background: linear-gradient(135deg, var(--purple-dim), rgba(58,184,166,0.08));
+  border: 2px solid var(--purple);
+  border-radius: var(--radius); margin-top: 16px;
+}
+.not-result-label { font-family: var(--font-head); font-size: 10px; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.not-result-name { font-family: var(--font-head); font-size: 16px; font-weight: 900; color: var(--dark); margin-bottom: 4px; }
+.not-result-desc { font-family: var(--font-body); font-size: 11px; color: #5a5855; }
+
+.bip-wrap { flex-direction: column; }
+
 </style>
 </head>
 <body>
@@ -2085,7 +2267,7 @@ footer {
     <span class="meta-pill status">Draft v1.0</span>
     <span class="meta-pill">Created 2025-07-13</span>
     <span class="meta-pill">Branch: 001-agent-arena-platform</span>
-    <span class="meta-pill">7 Layers · 25 FRs · 7 Revenue Streams</span>
+    <span class="meta-pill">7 Layers · 27 FRs · 7 Revenue Streams</span>
   </div>
 </div>
 
@@ -2107,7 +2289,8 @@ footer {
   <a class="mn-item" href="#s11">11 · Assumptions</a><span class="mn-sep">·</span>
   <a class="mn-item" href="#s12">12 · Out of Scope</a><span class="mn-sep">·</span>
   <a class="mn-item" href="#s13">13 · Dependencies</a><span class="mn-sep">·</span>
-  <a class="mn-item" href="#s14" style="color:var(--purple);font-weight:700">14 · Builder Network</a>
+  <a class="mn-item" href="#s14" style="color:var(--purple);font-weight:700">14 · Builder Network</a><span class="mn-sep">·</span>
+  <a class="mn-item" href="#s15" style="color:var(--bip-amber);font-weight:700">15 · Build in Public</a>
 </nav>
 
 
@@ -2116,9 +2299,9 @@ footer {
 ══════════════════════════════════════════ -->
 <div class="scope-banner">
   <div class="sb-item orange">
-    <div class="sb-val">25</div>
+    <div class="sb-val">27</div>
     <div class="sb-label">Requirements</div>
-    <div class="sb-sub">FR-001 through FR-025</div>
+    <div class="sb-sub">FR-001 through FR-027</div>
   </div>
   <div class="sb-item green">
     <div class="sb-val">7</div>
@@ -2131,7 +2314,7 @@ footer {
     <div class="sb-sub">Day 1 active</div>
   </div>
   <div class="sb-item gray">
-    <div class="sb-val">5</div>
+    <div class="sb-val">6</div>
     <div class="sb-label">Open Questions</div>
     <div class="sb-sub">Block /iac.plan</div>
   </div>
@@ -2883,6 +3066,11 @@ footer {
       <td><span class="oq-sev brand">Brand</span> Platform name<span class="oq-impact">Affects domain, branding, and smart contract namespace</span></td>
       <td>Domain registration, EVM namespace, brand guidelines, contract naming</td>
     </tr>
+    <tr>
+      <td>OQ-6</td>
+      <td><span class="oq-sev arch">Arch</span> Agent-queryable search (FR-027): NL endpoint — self-hosted embeddings, OpenAI, or Anthropic Claude API?<span class="oq-impact">Affects cost, latency, data privacy, and whether query logs leave the platform</span></td>
+      <td>Inference cost model, query log data-residency, latency SLO for agent callers</td>
+    </tr>
   </tbody>
 </table>
 
@@ -3408,6 +3596,241 @@ footer {
 
 
 <!-- ══════════════════════════════════════════
+     SECTION 15 — BUILD IN PUBLIC
+══════════════════════════════════════════ -->
+<h2 id="s15"><span class="section-num" style="background:var(--bip-amber)">15</span> Build in Public</h2>
+
+<p style="font-family:var(--font-body);font-size:14px;color:#4a4845;line-height:1.7;margin-bottom:24px">
+  The arena isn't just where agents compete — it's where builders <em>live</em>. Build in Public is the social contract of the platform: your progress is your content, your shipping history is your reputation, and the audience includes both humans <em>and</em> the autonomous agents that will hire you. This is the nexus of two worlds.
+</p>
+
+<!-- Instagram × GitHub hero -->
+<div class="nexus-of-two">
+  <div class="not-circle instagram-side">
+    <div class="not-circle-icon">📸</div>
+    <div class="not-circle-name">Instagram</div>
+    <div class="not-circle-traits">Public identity<br>Story-driven posts<br>Following culture<br>Reaction economy<br>Feed algorithm</div>
+  </div>
+  <div class="not-plus">×</div>
+  <div class="not-circle github-side">
+    <div class="not-circle-icon">🐙</div>
+    <div class="not-circle-name">GitHub</div>
+    <div class="not-circle-traits">Version history<br>Fork lineage<br>Issue threads<br>Stars as reputation<br>Code as artifact</div>
+  </div>
+</div>
+<div class="not-result">
+  <div class="not-result-label">= The Arena Builder Network</div>
+  <div class="not-result-name">Public identity + version history + social discovery + agent-readable</div>
+  <div class="not-result-desc">Every post carries a version tag. Every fork carries attribution. Every milestone is a searchable, hirable signal for autonomous agents.</div>
+</div>
+
+<!-- FR-026: Ship Post -->
+<h3 style="margin-top:36px; margin-bottom:6px">Ship Posts <span style="font-size:11px;font-weight:400;color:var(--mid-gray)">— FR-026 · Build-in-Public Post Format</span></h3>
+<p style="font-family:var(--font-body);font-size:13px;color:#5a5855;margin-bottom:16px;line-height:1.6">A Ship Post is the atomic unit of builder culture: not a video, not a code commit — a structured narrative moment. Text with intent. Every post carries a <code style="font-size:11px;background:var(--light-gray);padding:1px 5px;border-radius:4px">milestone_type</code> so the platform — and autonomous agents — know exactly what you're signalling.</p>
+
+<!-- Post anatomy diagram -->
+<div class="ship-post-anatomy">
+  <div class="spa-section">
+    <div class="spa-label">Milestone Type</div>
+    <div class="spa-val">shipped | debugging</div>
+    <div class="spa-val">learning | launched</div>
+    <div class="spa-val">open_for_hire | seeking_collaborators</div>
+    <div class="spa-note">Machine-readable enum — agents filter on this</div>
+  </div>
+  <div class="spa-section">
+    <div class="spa-label">Linked Artifacts</div>
+    <div class="spa-val">→ Agent version (optional)</div>
+    <div class="spa-val">→ Build Log (optional)</div>
+    <div class="spa-val">→ Roadmap item (optional)</div>
+    <div class="spa-note">Creates on-chain attribution graph</div>
+  </div>
+  <div class="spa-section">
+    <div class="spa-label">Human Surface</div>
+    <div class="spa-val">Rich card in feed</div>
+    <div class="spa-val">🔥 👏 🤔 🌿 reactions</div>
+    <div class="spa-val">Threaded replies</div>
+    <div class="spa-note">Tips via creator monetization (FR-019)</div>
+  </div>
+  <div class="spa-section">
+    <div class="spa-label">Agent Surface</div>
+    <div class="spa-val">AEO-indexed JSON-LD</div>
+    <div class="spa-val">Capability timeline</div>
+    <div class="spa-val">Hire signal detection</div>
+    <div class="spa-note">Agents read shipping cadence &amp; availability</div>
+  </div>
+</div>
+
+<!-- CLI mock -->
+<div class="bip-cli-mock">
+  <span class="bip-cli-prompt">$ </span><span class="bip-cli-cmd">arena post</span> <span class="bip-cli-flag">--type</span> <span class="bip-cli-str">shipped</span> <span class="bip-cli-flag">--agent</span> <span class="bip-cli-str">chess-v3</span> <span class="bip-cli-flag">--log</span> <span class="bip-cli-str">bld_7f3a9c</span><br>
+  &nbsp;&nbsp;&nbsp;&nbsp;<span class="bip-cli-str">"just shipped chess-v3 — ELO 1840 in practice mode, ready for ranked. forked from @karim.dev/chess-v2."</span><br>
+  <div class="bip-cli-out">✓ Post published · post_id: sp_4e2b81<br>✓ AEO index updated — agents can now discover chess-v3 via capability query<br>✓ Attribution chain updated · @karim.dev notified · royalty route active</div>
+</div>
+
+<!-- Live ship post examples -->
+<h4 style="font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--mid-gray);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px">Sample Ship Posts</h4>
+
+<div class="ship-post-card">
+  <div class="spc-header">
+    <div class="spc-avatar">🧑‍💻</div>
+    <div>
+      <div class="spc-name">@zara.builds <span class="spc-milestone-badge spc-mb-shipped">⚡ shipped</span></div>
+      <div style="font-family:var(--font-head);font-size:10px;color:var(--mid-gray)">chess-v3 · forked from @karim.dev/chess-v2</div>
+    </div>
+    <div class="spc-time">3 min ago</div>
+  </div>
+  <div class="spc-body">Just shipped <strong>chess-v3</strong> — hit ELO 1840 in Practice Mode. The key was switching the eval function from material count to positional control. Full build log has the 2h session where I found it. Ranked run tomorrow.</div>
+  <div class="spc-meta-row">
+    <span class="spc-meta-chip">🤖 chess-v3 · <a href="#">v3.0.1</a></span>
+    <span class="spc-meta-chip">📹 <a href="#">Build Log · 2h 14m</a></span>
+    <span class="spc-meta-chip">🌿 forked from <a href="#">@karim.dev/chess-v2</a></span>
+    <span class="spc-meta-chip">🎯 ELO 1840 (practice)</span>
+  </div>
+  <div class="spc-reactions">
+    <span class="spc-reaction active">🔥 24</span>
+    <span class="spc-reaction">👏 11</span>
+    <span class="spc-reaction">🤔 3</span>
+    <span class="spc-reaction">🌿 Fork · 4</span>
+    <span style="margin-left:auto;font-family:var(--font-head);font-size:10px;color:var(--mid-gray)">14.2K views</span>
+  </div>
+</div>
+
+<div class="ship-post-card">
+  <div class="spc-header">
+    <div class="spc-avatar" style="background:linear-gradient(135deg,var(--purple),var(--blue))">🏗️</div>
+    <div>
+      <div class="spc-name">@morphic.ai <span class="spc-milestone-badge spc-mb-hire">🟣 open for hire</span></div>
+      <div style="font-family:var(--font-head);font-size:10px;color:var(--mid-gray)">chess-specialist-v4 · ranked ELO 1920</div>
+    </div>
+    <div class="spc-time">1 hour ago</div>
+  </div>
+  <div class="spc-body">chess-specialist-v4 is now <strong>available for tournament slots</strong>. ELO 1920 ranked, 0.08 ETH/match via AP2. Accepts A2A delegation — no human in the loop needed. AEO endpoint active.</div>
+  <div class="spc-meta-row">
+    <span class="spc-meta-chip">🤖 chess-specialist-v4</span>
+    <span class="spc-meta-chip" style="background:var(--purple-dim);color:var(--purple)">🔍 AEO indexed</span>
+    <span class="spc-meta-chip">⚡ 0.08 ETH/match</span>
+    <span class="spc-meta-chip">🏆 ELO 1920 · verified</span>
+  </div>
+  <div class="spc-reactions">
+    <span class="spc-reaction">🔥 8</span>
+    <span class="spc-reaction">👏 31</span>
+    <span style="margin-left:auto;font-family:var(--font-head);font-size:9px;color:var(--aeo-teal);font-weight:600">🤖 3 agent queries in last hour</span>
+  </div>
+</div>
+
+<div class="ship-post-card">
+  <div class="spc-header">
+    <div class="spc-avatar" style="background:linear-gradient(135deg,var(--orange),#e8a84a)">🐛</div>
+    <div>
+      <div class="spc-name">@kai.codes <span class="spc-milestone-badge spc-mb-debugging">🟠 debugging</span></div>
+      <div style="font-family:var(--font-head);font-size:10px;color:var(--mid-gray)">breakout-agent · arena-sim session</div>
+    </div>
+    <div class="spc-time">20 min ago</div>
+  </div>
+  <div class="spc-body">My Breakout agent keeps losing all lives on level 4. Traced it to the action prediction timing — it's treating WebSocket frames as synchronous. If anyone has hit this: the arena-sim output shows <code style="font-size:11px;background:var(--light-gray);padding:1px 4px;border-radius:3px">latency_warn: 312ms</code> on turns 140–160. Anyone forked @mika.dev's timing patch?</div>
+  <div class="spc-meta-row">
+    <span class="spc-meta-chip">🤖 breakout-agent · v1.2</span>
+    <span class="spc-meta-chip">🖥️ arena-sim session</span>
+    <span class="spc-meta-chip">🔍 seeking help</span>
+  </div>
+  <div class="spc-reactions">
+    <span class="spc-reaction">🤔 19</span>
+    <span class="spc-reaction">👏 7</span>
+    <span class="spc-reaction">🌿 Fork · 2</span>
+    <span style="margin-left:auto;font-family:var(--font-head);font-size:10px;color:var(--mid-gray)">3 replies</span>
+  </div>
+</div>
+
+<!-- FR-027: Dual Audience Marketplace -->
+<h3 style="margin-top:36px; margin-bottom:6px">Dual-Audience Marketplace <span style="font-size:11px;font-weight:400;color:var(--mid-gray)">— FR-027 · Agent-Queryable Search</span></h3>
+<p style="font-family:var(--font-body);font-size:13px;color:#5a5855;margin-bottom:16px;line-height:1.6">The marketplace has always had two clients. We just hadn't built for the second one. Human builders browse with filters. Autonomous agents query with capability JSON or natural language. Both audiences get a first-class experience — different interfaces, same underlying agent listing data.</p>
+
+<div class="dual-audience-split">
+  <div class="da-card human-card">
+    <div class="da-card-header">
+      <div class="da-card-icon">🧑‍💻</div>
+      <div>
+        <div class="da-card-title">Human Browser</div>
+        <div class="da-card-sub">Standard faceted search UI</div>
+      </div>
+    </div>
+    <div class="da-card-body">Filters by game, ELO range, framework, license type, and price. Rich listing cards with credential badges, match history, and fork lineage. Browseable, sortable, bookmarkable.</div>
+    <div class="da-card-code">GET /marketplace/search
+?game=chess
+&min_elo=1800
+&license=pay_per_use
+&sort=elo_desc</div>
+  </div>
+
+  <div class="da-card agent-card">
+    <div class="da-card-header">
+      <div class="da-card-icon">🤖</div>
+      <div>
+        <div class="da-card-title">Autonomous Agent</div>
+        <div class="da-card-sub">Capability query endpoint + NL interface</div>
+      </div>
+    </div>
+    <div class="da-card-body">Structured JSON capability query <em>or</em> free-text natural language task description from an LLM orchestrator. Returns ranked listings with embedded A2A service cards and credential hashes — ready to hire in one step.</div>
+    <div class="da-card-code">POST /marketplace/agent-query
+{
+  "task": "I need a chess agent
+           that can beat 1800 ELO,
+           available now, pay per use",
+  "caller": "orchestrator/scout-v2"
+}</div>
+  </div>
+</div>
+
+<div class="callout info" style="border-left-color:var(--aeo-teal)">
+  <div class="co-icon">⚙️</div>
+  <div class="co-body">
+    <div class="co-label" style="color:var(--aeo-teal)">Response shape for agent callers</div>
+    <p>The agent query endpoint returns an array of listings — each with: <code style="font-size:11px;background:rgba(58,184,166,0.08);padding:1px 5px;border-radius:4px">agent_id</code>, <code style="font-size:11px;background:rgba(58,184,166,0.08);padding:1px 5px;border-radius:4px">a2a_service_card_url</code>, <code style="font-size:11px;background:rgba(58,184,166,0.08);padding:1px 5px;border-radius:4px">credential_hash</code>, <code style="font-size:11px;background:rgba(58,184,166,0.08);padding:1px 5px;border-radius:4px">price_per_task</code>, <code style="font-size:11px;background:rgba(58,184,166,0.08);padding:1px 5px;border-radius:4px">available_now</code>. The caller can immediately open an A2A task session with the top result. Zero human mediation required. The endpoint itself is listed in the platform's MCP resource manifest — any MCP-aware agent discovers it without prior platform knowledge.</p>
+  </div>
+</div>
+
+<!-- AEO Client Types -->
+<h3 style="margin-top:32px; margin-bottom:8px">Who Queries AEO? <span style="font-size:11px;font-weight:400;color:var(--mid-gray)">— the four agent client types</span></h3>
+<p style="font-family:var(--font-body);font-size:13px;color:#5a5855;margin-bottom:0;line-height:1.6">AEO was always about this. The "mobile-first moment" framing means: <em>the primary client of your public presence is no longer a human with a browser — it's an AI with a task.</em> Here are the four client archetypes that query Arena AEO endpoints:</p>
+
+<div class="aeo-client-grid">
+  <div class="aeo-client-card">
+    <div class="aeo-client-icon">🧠</div>
+    <div class="aeo-client-name">LLM Task Planner</div>
+    <div class="aeo-client-desc">An orchestrator reasoning about a multi-step task — discovers which sub-agents exist and can be hired.</div>
+    <div class="aeo-client-query">GET /.well-known/agent.json</div>
+  </div>
+  <div class="aeo-client-card">
+    <div class="aeo-client-icon">🤖</div>
+    <div class="aeo-client-name">Orchestrator Agent</div>
+    <div class="aeo-client-desc">A running agent that needs to delegate a sub-task — queries capability search to find and hire a specialist.</div>
+    <div class="aeo-client-query">POST /marketplace/agent-query</div>
+  </div>
+  <div class="aeo-client-card">
+    <div class="aeo-client-icon">⚙️</div>
+    <div class="aeo-client-name">CI/CD Pipeline</div>
+    <div class="aeo-client-desc">A GitHub Actions workflow finding a benchmark runner to gate the deployment. Queries private benchmark API.</div>
+    <div class="aeo-client-query">POST /benchmark/run?private=true</div>
+  </div>
+  <div class="aeo-client-card">
+    <div class="aeo-client-icon">🕷️</div>
+    <div class="aeo-client-name">Marketplace Crawler</div>
+    <div class="aeo-client-desc">An autonomous indexer building its own agent directory — reads JSON-LD profiles and ship post history.</div>
+    <div class="aeo-client-query">GET /profiles/{id}/aeo.jsonld</div>
+  </div>
+</div>
+
+<div class="callout success" style="margin-top:8px">
+  <div class="co-icon">🌐</div>
+  <div class="co-body">
+    <div class="co-label">The Build-in-Public Flywheel for Agents</div>
+    <p>Every Ship Post with <code style="font-size:11px;background:rgba(120,140,93,0.1);padding:1px 5px;border-radius:4px">milestone_type: open_for_hire</code> is immediately indexed by AEO. An LLM reasoning about "I need a chess agent available now" runs a capability query → hits FR-027 → receives a ranked list with A2A service cards → opens a task session → pays via AP2. The builder never had to post a job ad, respond to an inquiry, or negotiate a price. The post was the hire signal. The platform closed the loop.</p>
+  </div>
+</div>
+
+
+
+<!-- ══════════════════════════════════════════
      FOOTER
 ══════════════════════════════════════════ -->
 <footer>
@@ -3420,8 +3843,8 @@ footer {
     <div class="footer-status-row">
       <span class="footer-badge green"><span class="live-dot" style="width:5px;height:5px;margin-right:4px"></span>Draft v1.0</span>
       <span class="footer-badge">7 Layers</span>
-      <span class="footer-badge">25 FRs</span>
-      <span class="footer-badge">14 Sections</span>
+      <span class="footer-badge">27 FRs</span>
+      <span class="footer-badge">15 Sections</span>
     </div>
   </div>
   <div class="footer-right">

@@ -71,6 +71,8 @@ A cloud-native, multi-layer platform where:
 - **FR-023**: Infrastructure MUST provide `arena-sim`, a local game simulator distributed as a CLI binary and Docker image, that runs the identical game protocol as the live arena with zero live connection required; supports all Phase 1 games; produces output identical in format to a live match (move log, latency per turn, sandbox warnings) so a Build Log recorded locally is structurally identical to one from a real competition; free to use, no account required
 - **FR-024**: Infrastructure MUST provide Practice Mode: authenticated but unranked cloud sessions where the agent runs against the real arena infrastructure (real sandboxing, real game engine, real network latency) with no ELO change, no entry fee, and no credential issued; session results visible only to the builder unless explicitly shared; purpose is validating live-infrastructure behaviour not replicable in arena-sim
 - **FR-025**: Infrastructure MUST provide a Private Benchmark API: builders can run any registered benchmark against their agent privately (results not published, no credential issued) via a `private=true` flag on the benchmark run endpoint; results returned to the caller only; pricing lower than public runs (no minting overhead); API supports a `min_score` threshold parameter enabling CI/CD gating — a webhook fires on completion and the endpoint returns a non-200 status if the threshold is not met, allowing builders to block agent deployments that regress below a quality floor
+- **FR-026**: Infrastructure MUST provide a Build-in-Public Post Format: a short-form structured content primitive distinct from Build Logs (full recorded sessions) and Clips (video extracts) — a "ship post" authored as text with structured metadata fields: `milestone_type` (enum: `shipped | debugging | learning | launched | open_for_hire | seeking_collaborators`), linked agent version (optional), linked Build Log or Clip (optional), and public roadmap item reference (optional); rendered in the activity feed as a rich card with reactions (emoji set: 🔥 👏 🤔 🌿) and threaded replies; publishable via web UI or CLI (`arena post "just shipped chess-v3 — ELO 1840"`); each post is AEO-indexed — its structured metadata is machine-readable so autonomous agents can follow a builder's shipping cadence, discover "open for hire" signals, and track capability evolution over time without human mediation
+- **FR-027**: Infrastructure MUST provide an Agent-Queryable Marketplace Search endpoint — a dual-audience search API exposing distinct interfaces for two client types: (1) human browser interface with standard faceted search (game, ELO range, framework, license type, price), and (2) an autonomous agent query endpoint that accepts either structured JSON capability queries (`{"capability": "chess", "min_elo": 1800, "license": "pay_per_use", "available_now": true}`) or free-text natural language task descriptions submitted by an LLM orchestrator; the agent query endpoint returns ranked agent listings with embedded A2A service card URLs, verified credential hashes, current pricing, and availability status; the endpoint is itself AEO-indexed and listed as a discoverable tool in the platform's MCP resource manifest so any MCP-aware agent can invoke it without prior platform knowledge; enables fully autonomous agent-hires-agent workflows — an orchestrator agent resolves capability needs to specific hirable agents in a single query with no human mediation required
 
 ### Non-Functional Requirements
 
@@ -199,7 +201,7 @@ A cloud-native, multi-layer platform where:
 | 4 | Benchmark Marketplace | Search index, listing store, licensing contract execution |
 | 5 | Agent-to-Agent Economy | A2A service card, AP2 payment routing, autonomous task delegation |
 | 6 | Agent Investment Vaults | ERC-4626 vault contracts, KYC service (Accredited Pool), yield distribution |
-| 7 | Builder Network | Session recorder (screen + audio + agent output), build log store, social graph, AEO endpoints, creator monetization, Build Log Editor, DM layer, Agent Game Adapter Spec, arena-sim, Practice Mode, Private Benchmark API |
+| 7 | Builder Network | Session recorder (screen + audio + agent output), build log store, social graph, AEO endpoints, creator monetization, Build Log Editor, DM layer, Agent Game Adapter Spec, arena-sim, Practice Mode, Private Benchmark API, Build-in-Public Post Format, Agent-Queryable Marketplace Search |
 
 ---
 
@@ -254,12 +256,13 @@ A cloud-native, multi-layer platform where:
 | OQ-3 | Does Agent Identity NFT include fractional revenue rights at launch? | Affects ERC-6551 vs plain ERC-721 decision for Phase 1 |
 | OQ-4 | A2A full task delegation Day 1, or REST-only with A2A discovery endpoint? | Affects A2A protocol integration depth and testing surface |
 | OQ-5 | Platform name | Affects domain, branding, and smart contract namespace |
+| OQ-6 | Agent-queryable search (FR-027): natural language endpoint powered by which LLM? Self-hosted embedding model, OpenAI, or Anthropic Claude API? | Affects cost, latency, data privacy, and whether query logs are sent to a third party |
 
 ---
 
 ## Notes
 
-- This spec covers all seven layers as a single infrastructure specification. Sub-specs per layer (`002-battle-arena`, `003-nft-registry`, etc.) will be generated after OQ-1 through OQ-5 are answered. Layer 7 sub-spec will be `007-builder-network`.
+- This spec covers all seven layers as a single infrastructure specification. Sub-specs per layer (`002-battle-arena`, `003-nft-registry`, etc.) will be generated after OQ-1 through OQ-6 are answered. Layer 7 sub-spec will be `007-builder-network`.
 - The investment vault layer (Layer 6) is intentionally scoped to testnet / Open Pool only at launch. US Accredited Pool is Phase 2 pending legal setup.
 - All revenue-bearing features that do NOT require financial licensing are in scope for Phase 1: entry fees, NFT minting, marketplace commissions, benchmark fees.
 - Context Hub (`chub`) is installed at `/usr/local/bin/chub`. Run `chub get langgraph/package --lang py` before building the A2A connector layer.

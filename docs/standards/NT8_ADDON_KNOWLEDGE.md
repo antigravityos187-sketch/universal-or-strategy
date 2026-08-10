@@ -1459,3 +1459,206 @@ using System;
 NT8-044 (P0) in NT8_COMPILER_RULES.md.
 
 **Key lesson for all agents**: Any file using `StringComparison`, `Math`, `Environment`, `Convert`, `EventArgs`, `Exception`, or any other `System.*` type must have `using System;` explicitly declared. Linting.csproj passing does NOT guarantee NT8 F5 will pass on System-namespace types.
+
+---
+
+## B42 Discoveries — 2026-08-05
+
+Three new compiler rules confirmed during B42 (PTTFollowerStrategy: Native ATM Brackets on Followers).
+
+---
+
+### NT8-052 (P0) — CS0176: `State == State.SetDefaults` in Strategy subclass
+
+**Block**: PTT-COPIER-B42-LANE-A
+**File**: `Features/PttFollowerStrategy.cs`
+**Error**:
+```
+CS0176: Member 'NinjaTrader.NinjaScript.NinjaScriptBase.State' cannot be accessed with
+an instance reference; qualify it with a type name instead
+```
+
+**What was attempted**: Writing `OnStateChange()` as:
+```csharp
+if (State == State.SetDefaults)
+    Calculate = Calculate.OnBarClose;
+```
+
+**What failed at F5**: Both right-hand `State.SetDefaults` and `Calculate.OnBarClose` emit
+CS0176. NT8's Roslyn build sees the bare names `State` and `Calculate` as instance properties
+(inherited from `NinjaScriptBase`) and rejects them when used as static enum references.
+
+**Fix**: Fully qualify all right-hand enum values:
+```csharp
+if (State == NinjaTrader.NinjaScript.State.SetDefaults)
+    Calculate = NinjaTrader.NinjaScript.Calculate.OnBarClose;
+```
+
+**Note**: NT8-010 documents the same issue for `Indicator` subclasses. NT8-052 is the
+`Strategy` subclass variant. Same root cause, same fix. Affects every Strategy subclass.
+
+**Rule added**: NT8-052 (P0) in NT8_COMPILER_RULES.md v1.7.
+
+---
+
+### NT8-053 (P1) — CustomOrder overlay silently ignored from AddOn context
+
+**Block**: ARCH-BRACKET-03 probe (B42 decision gate, live Sim101 test 2026-08-05)
+**Discovery method**: Controlled probe on Sim101 — `ArchBracket03Probe.cs` Strategy
+**No compiler error. Silent runtime discard.**
+
+**What was attempted**: Pass `new CustomOrder { IsAutoTrailEnabled = true, AutoTrailSteps = [...] }`
+as arg12 of `Account.CreateOrder()` from `AddOnBase` (CopyEngine) to spawn trailing stop brackets.
+
+**What happened**: Order filled. `WorkingBuys=0 WorkingSells=0` after fill. Zero bracket legs spawned.
+Probe then called `AtmStrategyCreate()` from inside a StrategyBase — two bracket legs appeared immediately.
+
+**Root cause**: NT8 processes `CustomOrder` overlays only within a `StrategyBase` execution pipeline
+(State.Realtime tick). From AddOn context the overlay is received and silently discarded — no
+strategy session is attached to bind ATM bracket lifecycle to.
+
+**Consequence for B42**: PATH A (CustomOrder from AddOn) is confirmed impossible.
+PATH B (companion PTTFollowerStrategy) is the only viable path to native ATM brackets on followers.
+This drove the entire B42 architecture: one headless `PTTFollowerStrategy` per follower account
+per instrument, subscribing to `PttBus.FillSignal` and calling `AtmStrategyCreate()`.
+
+**Rule added**: NT8-053 (P1) in NT8_COMPILER_RULES.md v1.7.
+
+---
+
+### NT8-054 (P0) — xUnit test files in bin\Custom cause CS0246 / CS0103
+
+**Block**: PTT-COPIER-B42-LANE-A
+**File**: `B42Tests.cs` (after hard-link sync)
+**Errors**:
+```
+CS0246: The type or namespace name 'Xunit' could not be found
+CS0246: The type or namespace name 'FactAttribute' could not be found
+CS0103: The name 'Assert' does not exist in the current context
+```
+
+**What happened**: `verify_links.ps1 -Fix` hard-linked `B42Tests.cs` (which contains
+`using Xunit; [Fact]; Assert.*`) into `%Documents%\NinjaTrader 8\bin\Custom\AddOns\PropTraderTools\`.
+NT8's Roslyn host scans all `.cs` files under `bin\Custom\` and tried to compile the test file.
+xUnit assemblies are not in NT8's compiler reference context → build-break.
+
+**Fix**: Added `B42Tests.cs` and `CopyEngineTests.cs` to `$DeployExcludes` in `scripts\verify_links.ps1`.
+Test files live in the wave workspace `src/PropTraderTools/` only. They are compiled by `PropTraderTools.csproj`
+(for LSP / CI) but never synced to NT8 bin.
+
+**Key lesson**: Any file referencing assemblies not in the NT8 reference list (`xUnit`, `NUnit`,
+`MSTest`, `Moq`, `FluentAssertions`, `BenchmarkDotNet`, etc.) must be excluded from the
+hard-link deploy via `$DeployExcludes`. The `PropTraderTools.csproj` `<Compile Include>` entry
+for the test file is still needed for IDE IntelliSense — the exclusion is deploy-only.
+
+**Rule added**: NT8-054 (P0) in NT8_COMPILER_RULES.md v1.7.
+
+---
+
+## B48 Discoveries (2026-08-07)
+
+### NT8-054 Enforcement -- Tests\ Subfolder Pattern (ESTABLISHED B48)
+
+**Problem**: xUnit test files placed at the flat root of `src/PropTraderTools/` are compiled
+by NT8's Roslyn host, which has no xUnit NuGet packages in scope. This produces CS0246 and
+CS0103 errors at F5, blocking AddOn load. See NT8-054 in NT8_COMPILER_RULES.md.
+
+**Solution**: All B*Tests.cs files (except CopyEngineTests.cs -- see below) live in the
+`src/PropTraderTools/Tests/` subfolder. NT8 scans `AddOns\PropTraderTools\*.cs` using a
+flat (non-recursive) glob. Files in `Tests\` are invisible to NT8.
+
+### Convention for Future Blocks (B49+)
+
+Any new block test file (e.g., B49Tests.cs) MUST:
+1. Be created at `src/PropTraderTools/Tests/B49Tests.cs` (NOT at the flat root).
+2. Have a `<Compile Include="Tests\B49Tests.cs" />` entry added to `PropTraderTools.csproj`.
+3. NOT be added to `$DeployExcludes` in `verify_links.ps1` -- the directory-based Layer 1
+   skip covers all files in `Tests\` automatically.
+
+### CopyEngineTests.cs -- Permanent Root Exception
+
+`CopyEngineTests.cs` MUST remain at `src/PropTraderTools/CopyEngineTests.cs` permanently.
+It accesses `CopyEngine`'s `private readonly struct CopyRule` nested type directly.
+This type is only accessible when both files compile in the same assembly.
+A separate test project would fail with CS0246 on the private nested type.
+`CopyEngineTests.cs` is excluded from NT8 deployment via `$DeployExcludes` in verify_links.ps1.
+Do NOT move it to `Tests\`.
+
+### Two-Layer Exclusion in verify_links.ps1
+
+`scripts/verify_links.ps1` uses a two-layer defense to prevent test files reaching NT8:
+
+**Layer 1** (directory-based, primary, future-proof):
+```powershell
+if ($_.FullName -match '\\Tests\\') {
+    Write-Host "SKIP     : $displayName  (Tests subfolder -- not deployed to NT8)" -ForegroundColor DarkGray
+    $skipped++
+    return
+}
+```
+This fires for ANY file under `Tests\`, regardless of filename. New block test files
+(B49Tests.cs, B50Tests.cs, ...) are automatically excluded without any change to the script.
+
+**Layer 2** (filename-based, defense-in-depth, catches accidental root placement):
+```powershell
+$DeployExcludes = @("CopyEngineTests.cs", "B42Tests.cs", "B43Tests.cs", "B44Tests.cs",
+                    "B45Tests.cs", "B46Tests.cs")
+if ($DeployExcludes -contains $_.Name) { ... $skipped++; return }
+```
+Protects against any file being accidentally relocated back to the flat root.
+
+### B48 Files Changed
+
+| File | Change Type | Location |
+|------|-------------|----------|
+| `src/PropTraderTools/Tests/B42Tests.cs` | MOVED (git mv from root) | Wave workspace |
+| `src/PropTraderTools/Tests/B43Tests.cs` | MOVED (git mv from root) | Wave workspace |
+| `src/PropTraderTools/Tests/B44Tests.cs` | MOVED (git mv from root) | Wave workspace |
+| `src/PropTraderTools/Tests/B45Tests.cs` | MOVED (git mv from root) | Wave workspace |
+| `src/PropTraderTools/Tests/B46Tests.cs` | MOVED (git mv from root) | Wave workspace |
+| `PropTraderTools.csproj` | EDITED (4 path updates + 1 add for B46) | Wave workspace |
+| `scripts/verify_links.ps1` | EDITED (Layer 1 block + B46 to DeployExcludes) | Wave workspace |
+| `CopyEngineTests.cs` | NO CHANGE (stays at root) | Wave workspace |
+| `NT8_COMPILER_RULES.md` | NO CHANGE (NT8-054 already accurate) | Director workspace |
+
+### Deferred Items from B48
+
+| DW ID | Description | Owner |
+|-------|-------------|-------|
+| DW-B44-01 (sub-item 2) | CopyEngineTests.cs 60 compile errors prevent dotnet test | Future block |
+| DW-B47-01 | B47Tests.cs creation + csproj entry | Lane C |
+| Future | Add `<Compile Include="Tests\B47Tests.cs" />` when B47Tests.cs is delivered | Whoever delivers B47Tests.cs |
+
+---
+
+## B52 Discoveries (2026-08-08)
+
+### NinjaTrader.Client.dll Removed from csproj — CS0433 Globals Ambiguity (B50-LaneC)
+
+**Block removed**: PTT-COPIER-B50-LaneC
+**Status**: DW-B50C-02 CLOSED
+
+**What happened**: `NinjaTrader.Client.dll` was referenced in `PropTraderTools.csproj` to
+provide NT8 client-layer types. Removing it resolved a CS0433 build error:
+
+```
+CS0433: The type 'Globals' exists in both 'NinjaTrader.Client, Version=...' and
+        'NinjaTrader.Custom, Version=...'
+```
+
+**Root cause**: `NinjaTrader.Client.dll` is a legacy namespace alias DLL. Every type it
+exposes is also present in `NinjaTrader.Core.dll` and/or `NinjaTrader.Custom.dll`. When
+`NinjaTrader.Custom.dll` was added to the csproj (B42, for `AtmStrategyCreate` and the
+`Indicator`/`Strategy` base classes), the `Globals` type ambiguity became a hard build error
+in the Linting project.
+
+**Replacement assembly**: All `Account`, `Order`, `Instrument`, `Position`, `OrderType`,
+`OrderEntry`, `TimeInForce`, and `Globals` types are fully available through
+`NinjaTrader.Core.dll` (already referenced). No functionality was lost.
+
+**Rule**: Do NOT add `NinjaTrader.Client.dll` back to `PropTraderTools.csproj`. It
+re-introduces the CS0433 Globals ambiguity with `NinjaTrader.Custom.dll`. The three
+current NT8 DLL references are sufficient:
+- `NinjaTrader.Core.dll`   — Account, Order, Instrument, Position, OrderType, Globals, etc.
+- `NinjaTrader.Gui.dll`    — Chart, ChartTrader, ChartControl, AddOnBase, NTWindow, etc.
+- `NinjaTrader.Custom.dll` — Strategy, Indicator, AtmStrategyCreate, Calculate enum, etc.

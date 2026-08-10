@@ -1,6 +1,6 @@
 # NT8-COMPILER-RULES — NinjaTrader 8 NinjaScript Compiler Constraints
-# Version: 1.6
-# Source: PTT Trade Copier blocks B1-B24 (hard compiler errors, runtime crashes, confirmed workarounds)
+# Version: 1.9 (B53 -- NT8-055 added 2026-08-10)
+# Source: PTT Trade Copier blocks B1-B53 (hard compiler errors, runtime crashes, confirmed workarounds)
 # Audience: AGENTS ONLY — every rule here was discovered by hitting the actual NT8 Roslyn compiler
 # Format: NT8-NNN | SEVERITY | ONE-LINE BAN | DO / DONT | FIX
 # Update protocol: append a new rule block whenever a new compiler error or runtime crash is
@@ -859,6 +859,42 @@ SCAN: `StringComparison` without `using System;` in file preamble
 
 ---
 
+### NT8-045 | P1 | `AtmStrategy.AtmStrategyTemplates` NOT AVAILABLE IN LINTING DLL — USE FILESYSTEM PATH
+CONFIRMED: B43 (CS0117 in Linting project — property not exposed in NinjaTrader.Custom.dll backup)
+ERROR: CS0117 "'AtmStrategy' does not contain a definition for 'AtmStrategyTemplates'"
+CAUSE: `NinjaTrader.NinjaScript.AtmStrategy.AtmStrategyTemplates` is a static property available
+       inside NT8's internal NinjaScript runtime (F5 compilation context), but it is NOT exposed
+       in the `NinjaTrader.Custom.dll` referenced by the external Linting .csproj.
+       This is the same class-boundary issue as NT8-009 (GetValueByY absent from external DLL).
+       The property DOES exist and works correctly at NT8 F5 compile time.
+
+BANNED (in code that must compile in the Linting .csproj):
+  foreach (var t in NinjaTrader.NinjaScript.AtmStrategy.AtmStrategyTemplates)
+      cb.Items.Add(t.Name);
+
+SAFE:
+  // Use filesystem path -- NT8 stores ATM templates as XML files in:
+  // Documents\NinjaTrader 8\templates\AtmStrategy\<TemplateName>.xml
+  // Wrapped in try/catch so it degrades gracefully if directory is missing.
+  try
+  {
+      string atmDir = System.IO.Path.Combine(
+          System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments),
+          "NinjaTrader 8", "templates", "AtmStrategy");
+      if (System.IO.Directory.Exists(atmDir))
+          foreach (var f in System.IO.Directory.GetFiles(atmDir, "*.xml"))
+              cb.Items.Add(System.IO.Path.GetFileNameWithoutExtension(f));
+  }
+  catch { }
+
+NOTE: This filesystem approach works in BOTH the Linting .csproj (MSBuild) AND NT8's F5 runtime.
+      Template names from the filesystem match exactly the names NT8 uses in its internal templates list.
+      The directory path is guaranteed by NT8's template management infrastructure.
+
+SCAN: `AtmStrategyTemplates` — replace with filesystem path pattern above.
+
+---
+
 ## CATEGORY: AGENT UPDATE PROTOCOL
 
 ### HOW TO ADD A NEW RULE
@@ -915,3 +951,344 @@ When a new NT8 compiler error or runtime crash is confirmed in a PTT block:
 | NT8-042 | P0 | `Dispatcher.InvokeAsync` not available in NT8 AddOn context -- all 3 paths fail CS0117/CS1061 | B23 |
 | NT8-043 | P0 | Null-conditional compound assignment (`acc?.Event -= handler`) banned -- C# 7.3 limit | B23 |
 | NT8-044 | P0 | `StringComparison` requires explicit `using System;` -- NT8 does not auto-inject System namespace | B24 |
+| NT8-045 | P1 | `AtmStrategy.AtmStrategyTemplates` not in Linting DLL -- use filesystem path `Documents\NinjaTrader 8\templates\AtmStrategy\*.xml` | B43 |
+| NT8-046 | P1 | `acc.Change()` on ATM slot orders (Stop1/Stop2) silently overridden by ATM engine | B32 |
+| NT8-047 | P1 | ATM slot order name pattern: Stop1/Stop2 with FromEntrySignal==null | B32 |
+| NT8-048 | P2 | Native "Breakeven ATM strategy" hotkey exists in Tools -> Keyboard Shortcuts -- zero code needed | B33 |
+| NT8-049 | P0 | `CreateOrder` limitPrice/stopPrice swapped silently; wrong account; wrong qty -- 3 bugs from B33 live test | B33 |
+| NT8-050 | P0 | `Account.Positions[Instrument]` CS1503 -- use `FindPosition(acc, instr)` instead | B33 |
+| NT8-051 | P1 | NT8 sim (Sim101/Sim102) does NOT auto-cancel ATM brackets after position flat -- must call `CancelStaleBrackets` | B33 |
+
+---
+
+### NT8-046 | P1 | acc.Change() on ATM-owned slot orders (Stop1/Stop2) -- CORRECTED in B32
+ORIGINAL CLAIM (B31 2026-07-17): single-array acc.Change(new[]{order}) works on ATM-owned stops.
+CORRECTION (B32 live test 2026-07-19): WRONG for ATM strategy slot orders (Stop1, Stop2, Stop3...).
+
+CONFIRMED B32: Account.Change() has ONE overload: Change(IEnumerable<Order>).
+(Verified: [NinjaTrader.Cbi.Account].GetMethods() | Where Name -eq "Change" -- single result)
+There is no multi-param overload. The "banned multi-param" in the original rule does not exist.
+
+ROOT CAUSE: NT8 ATM engine intercepts ALL acc.Change() calls on orders it owns.
+            It re-applies its own managed price on the next ATM tick. No exception thrown.
+            order.StopPrice property reverts immediately on C# object (local property revert).
+            Stop flickers briefly on chart then snaps back -- ATM intercept signature.
+
+SCOPE: Affects orders named Stop1/Stop2/Stop3... with FromEntrySignal == null (ATM slot orders).
+       Does NOT affect PTT-created follower bracket orders (FromEntrySignal != null).
+       SyncFollowerBracket works because it targets PTT-created orders, not ATM slot orders.
+
+BANNED:
+  acc.Change(new Order[]{order})  -- on ATM slot orders (Stop1/Stop2/Stop3...) -- silently overridden
+  acc.Cancel(new Order[]{stop}); acc.CreateOrder(...)  -- destroys OCO link
+
+SAFE:
+  order.StopPrice = newPrice;
+  acc.Change(new Order[] { order });
+  // ONLY on PTT-created follower bracket orders (order.FromEntrySignal != null).
+  // Confirmed: SyncFollowerBracket CopyEngine.cs L621-624 (PTT-created orders only).
+
+FIX (DW-B32-07): (1) BreakEven(Account leader,...) -- leader direct MoveStop call removed.
+                 ATM manages its own BE via built-in template logic.
+                 (2) MoveStopToBreakEven inner loop -- guard skips Stop\d+ ATM slot orders.
+
+SCAN: TryCreateStopWithRetry|acc\.Cancel\(new Order\[\]
+
+---
+
+### NT8-047 | P1 | ATM slot order name pattern -- Stop1/Stop2/Stop3
+CONFIRMED: B32 (Director live test 2026-07-19)
+NT8 ATM strategies name their managed stop slots as Stop1, Stop2, Stop3...
+These have FromEntrySignal == null (ATM-owned, no PTT entry signal).
+Detect pattern: Name.StartsWith("Stop") && char.IsDigit(Name[4]) && FromEntrySignal == null
+
+BANNED: acc.Change() on these orders -- ATM engine overrides silently.
+SAFE:   Skip in any change loop. Use acc.CreateOrder() for new PTT-managed stops on followers only.
+
+SCAN: order\.Name.*Stop\d
+
+---
+
+### NT8-048 | P2 | NT8 NATIVE "BREAKEVEN ATM STRATEGY" HOTKEY ACTION EXISTS
+CONFIRMED: B33 (Director research 2026-07-20 -- zero code, confirmed working)
+NT8 has a built-in "Breakeven ATM strategy" action in Tools -> Keyboard Shortcuts -> Order Entry.
+Assigns to any key combo. Calls ATM engine internally -- moves ATM-owned stop to entry immediately.
+No arm logic (instant fire on keypress). Works on any ATM trade without any AddOn code.
+Does NOT use acc.Change() -- bypasses NT8-046 entirely (ATM engine handles the move internally).
+
+USE: Manual instant BE without any AddOn code. Assign to e.g. Ctrl+B in NT8 settings.
+NOT A REPLACEMENT: Does not support armed/delayed BE (wait for price cross then fire).
+                   For armed BE, the AddOn SubmitBeStop approach (DW-B33-01) is required.
+DISCOVERY: Director confirmed while investigating NT8-046 workarounds in B33.
+
+SCAN: N/A -- this is a discovery note, not a code pattern to scan.
+
+---
+
+### NT8-050 | P0 | `Account.Positions[Instrument]` DOES NOT COMPILE -- USE `FindPosition(acc, instr)`
+CONFIRMED: B33 (CS1503 at F5 compile -- Argument 1: cannot convert from 'NinjaTrader.Cbi.Instrument' to 'int')
+ERROR: CS1503 "Argument 1: cannot convert from 'NinjaTrader.Cbi.Instrument' to 'int'"
+CAUSE: NT8's `Account.Positions` collection exposes an int indexer (by position slot index),
+       NOT a typed Instrument indexer. Passing an Instrument object causes CS1503 silently
+       accepted by IDE autocomplete but rejected by NT8 Roslyn at F5.
+
+BANNED:
+  var pos = acc.Positions[instr];           // CS1503 -- Instrument is not int
+
+SAFE:
+  var pos = FindPosition(acc, instr);       // existing helper in CopyEngine.cs L1383
+  // FindPosition iterates acc.Positions and matches by Instrument object reference.
+  // Returns null if no position; use IsFlat(pos) for null+zero guard.
+
+  // Or inline:
+  Position pos = null;
+  foreach (Position p in acc.Positions)
+      if (p.Instrument == instr) { pos = p; break; }
+
+SCAN: `\.Positions\[instr\]|\\.Positions\[instrument\]`
+
+---
+
+### NT8-049 | P0 | CreateOrder argument order -- limitPrice/stopPrice swap is a silent bug
+CONFIRMED: B33 (Director live test 2026-07-20 -- order appeared with Limit=0, wrong account, qty=13)
+ERROR: No compiler error. NT8 silently accepts the malformed call.
+SYMPTOM: Order tab shows State=Cancel, Limit=0, Stop not set, qty=total-of-all-accounts.
+         Stop never triggers. Position stays open. Orphan order stuck in Cancel state.
+
+CAUSE (3 bugs confirmed in B33 first attempt):
+  Bug 1 -- arg order: limitPrice is arg6, stopPrice is arg7. Engineer swapped them.
+            bePrice went into arg6 (limitPrice slot) and 0 went into arg7 (stopPrice slot).
+            NT8 accepted silently. Result: limit order with limitPrice=bePrice, stopPrice=0.
+  Bug 2 -- account scope: SubmitBeStop was called inside a foreach-all-accounts loop.
+            Order submitted to Sim102 (wrong account) instead of leader account only.
+  Bug 3 -- qty source: qty was passed in as a parameter summed from outer loop.
+            Should be read directly from leaderAcc.Positions[instr].Quantity inside method.
+
+BANNED:
+  // WRONG -- limitPrice and stopPrice swapped:
+  acc.CreateOrder(instr, action, OrderType.StopMarket, OrderEntry.Manual,
+                  TimeInForce.Day, qty, bePrice, 0, ...);  // bePrice at arg6 = LIMIT slot
+
+  // WRONG -- called inside foreach-all-accounts loop:
+  foreach (var acc in allAccounts)
+      SubmitBeStop(acc, instr, bePrice, qty);  // submits to every account
+
+  // WRONG -- qty passed from outer context (may include all accounts):
+  SubmitBeStop(leaderAcc, instr, bePrice, totalQty);
+
+SAFE:
+  // CORRECT -- limitPrice=0 at arg6, stopPrice=bePrice at arg7:
+  leaderAcc.CreateOrder(
+      instr, direction, OrderType.StopMarket, OrderEntry.Manual,
+      TimeInForce.Day, pos.Quantity,  // qty from leader position directly
+      0,        // arg6: limitPrice -- always 0 for StopMarket
+      bePrice,  // arg7: stopPrice  -- the actual stop price
+      "", "PTT-BE-Stop", DateTime.MaxValue,
+      (NinjaTrader.Cbi.CustomOrder)null);
+
+  // CORRECT -- called once for leader only, qty from leader's live position:
+  var pos = leaderAcc.Positions[instr];
+  if (pos == null || pos.Quantity == 0) return;
+  SubmitBeStop(leaderAcc, instr, bePrice);  // no qty param -- reads from position inside
+
+SCAN: `acc\.CreateOrder` -- verify arg6 is 0 (limitPrice) and arg7 is stopPrice variable.
+      Verify SubmitBeStop called once (leader only), never inside foreach-all-accounts.
+      Verify qty comes from leaderAcc.Positions[instr].Quantity inside SubmitBeStop, not passed in.
+
+---
+
+### NT8-051 | P1 | NT8 sim accounts do NOT auto-cancel ATM bracket orders when position goes flat
+CONFIRMED: B33 (Director live test 2026-07-21 -- Stop1/Stop2/Target1/Target2 remained Working after PTT-BE-Stop fill)
+ERROR: No compiler error. Runtime behaviour differs between sim and live broker.
+SYMPTOM: After PTT-BE-Stop fills and position goes flat, Orders tab still shows Stop1/Stop2/Target1/Target2
+         in Working state for Sim101/Sim102. If market reopens, bracket orders can create unwanted position.
+CAUSE: NT8 internal sim accounts (Sim101/Sim102) do NOT replicate live broker behaviour of
+       auto-cancelling ATM bracket orders when position quantity reaches zero.
+       Real broker connections (Rithmic, NinjaTrader Brokerage, IBKR) DO auto-cancel.
+       This affects ANY ATM-owned bracket order on a sim account -- not specific to PTT.
+
+BANNED:
+  // WRONG -- assuming NT8 sim will clean up bracket orders automatically:
+  // (no code -- the error is not calling anything, i.e. relying on NT8 to clean up)
+
+SAFE:
+  // Explicitly cancel all Working/Accepted orders for the account+instrument after position goes flat.
+  // Exclude the PTT-created stop itself (it just filled; cancelling it would error).
+  // Pattern: hook into the same flat-position detection used by OrphanCancelGuard.
+  private void CancelStaleBrackets(Account leaderAcc, Instrument instr)
+  {
+      if (leaderAcc == null || instr == null) return;
+      var stale = leaderAcc.Orders
+          .Where(o => o.Instrument?.FullName == instr.FullName
+                   && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
+                   && o.Name != "PTT-BE-Stop")
+          .ToList();
+      if (stale.Count == 0) return;
+      try { leaderAcc.Cancel(stale.ToArray()); }
+      catch (Exception ex) { /* log */ }
+  }
+  // Call from TryFirePositionState after OrphanCancelGuard when !hasPos.
+
+NOTE: This only applies to sim accounts. Real broker connections auto-cancel. AddOn cannot
+      distinguish sim from live at the API level, but calling Cancel on already-cancelled
+      bracket orders on a real broker is a no-op (NT8 ignores cancel requests for non-Working orders).
+      Therefore CancelStaleBrackets is safe to call in all cases.
+
+SCAN: After any PTT-BE fill on sim account, verify Orders tab empties. If brackets remain:
+      confirm CancelStaleBrackets is hooked to the flat-position detection path.
+
+
+---
+
+## CATEGORY: NT8 STRATEGY SUBCLASS — NAME COLLISION / STATIC MEMBER ACCESS
+
+### NT8-052 | P0 | `State == State.SetDefaults` / `Calculate == Calculate.OnBarClose` IS BANNED in `Strategy` subclass
+CONFIRMED: B42 (CS0176 — first hit writing PttFollowerStrategy.cs 2026-08-05)
+ERROR: CS0176 "Member 'NinjaTrader.NinjaScript.NinjaScriptBase.State' cannot be accessed with an instance reference; qualify it with a type name instead"
+       CS0176 "Member 'NinjaTrader.NinjaScript.NinjaScriptBase.Calculate' cannot be accessed with an instance reference; qualify it with a type name instead"
+CAUSE: In `Strategy` (and `Indicator`) subclasses, `State` and `Calculate` are BOTH an instance
+       property (inherited) AND a namespace-level enum. The NT8 Roslyn build resolves the bare
+       name as the instance property, then emits CS0176 when it appears on the right-hand side
+       of a comparison (where a static/enum value is expected).
+       This is the same root cause as NT8-010 (Indicator variant) but manifests identically
+       in Strategy subclasses.
+
+BANNED:
+  // In any class that inherits NinjaTrader.NinjaScript.StrategyBase:
+  if (State == State.SetDefaults) { ... }          // CS0176 on right-hand State
+  if (State == State.Realtime) { ... }              // CS0176
+  Calculate = Calculate.OnBarClose;                 // CS0176 on right-hand Calculate
+  if (Calculate == Calculate.OnEachTick) { ... }    // CS0176
+
+SAFE:
+  using NinjaTrader.NinjaScript;
+  // Then qualify EVERY right-hand use with the full enum type:
+  if (State == NinjaTrader.NinjaScript.State.SetDefaults) { ... }
+  if (State == NinjaTrader.NinjaScript.State.Realtime) { ... }
+  Calculate = NinjaTrader.NinjaScript.Calculate.OnBarClose;
+  if (Calculate == NinjaTrader.NinjaScript.Calculate.OnEachTick) { ... }
+
+NOTE: The LEFT-HAND `State` (instance property) is fine as-is. Only the RIGHT-HAND enum
+      values need full qualification. This affects every Strategy subclass in the codebase
+      the moment `OnStateChange()` or `Calculate` is used — which is always.
+
+SCAN: `State == State\.` or `Calculate == Calculate\.` or `Calculate = Calculate\.`
+      in any *.cs file under src/PropTraderTools/ that inherits Strategy.
+
+---
+
+## CATEGORY: NT8 ADDON vs STRATEGY API BOUNDARY
+
+### NT8-053 | P1 | `CustomOrder` overlay at arg12 of `Account.CreateOrder()` IS SILENTLY IGNORED from AddOn context
+CONFIRMED: B42 / ARCH-BRACKET-03 probe (live Sim101 test 2026-08-05)
+ERROR: No compiler error. No runtime exception. NT8 silently accepts the order and discards the
+       CustomOrder overlay entirely.
+SYMPTOM: After `Account.CreateOrder(..., new CustomOrder { IsAutoTrailEnabled=true, AutoTrailSteps=[...] })`
+         fills successfully in AddOn context, `WorkingBuys=0 WorkingSells=0` — zero bracket legs spawned.
+         Same pattern works correctly from StrategyBase context.
+CAUSE: The NT8 broker adapter processes `CustomOrder` overlays only when the call originates from
+       a `StrategyBase` execution pipeline (State.Realtime tick). From `AddOnBase` (button-click /
+       event handler / non-strategy thread), the overlay is received but not processed — NT8 has
+       no attached strategy session to bind the ATM bracket lifecycle to.
+       This is the same reason `AtmStrategyCreate()` is not available on `AddOnBase` at all.
+
+BANNED:
+  // In AddOnBase / CopyEngine / any non-Strategy class:
+  leaderAcc.CreateOrder(instr, action, OrderType.Market, OrderEntry.Manual,
+      TimeInForce.Day, qty, 0, 0, "", "PTT-Copy", DateTime.MaxValue,
+      new NinjaTrader.Cbi.CustomOrder { IsAutoTrailEnabled = true, AutoTrailSteps = new[] { ... } });
+  // ^ CustomOrder is silently DROPPED. No brackets will appear.
+
+SAFE:
+  // Option A (AddOn only orders — no brackets): pass (NinjaTrader.Cbi.CustomOrder)null always.
+  leaderAcc.CreateOrder(instr, action, OrderType.Market, OrderEntry.Manual,
+      TimeInForce.Day, qty, 0, 0, "", "PTT-Copy", DateTime.MaxValue,
+      (NinjaTrader.Cbi.CustomOrder)null);
+
+  // Option B (brackets required): use a companion PTTFollowerStrategy instance.
+  //   - PTTFollowerStrategy inherits StrategyBase.
+  //   - It subscribes to PttBus.FillSignal published by CopyEngine after CreateOrder fills.
+  //   - Inside OnMarketData (StrategyBase context), it calls AtmStrategyCreate() which
+  //     DOES spawn real ATM brackets — brackets are bound to the strategy's account.
+  //   See: src/PropTraderTools/Features/PttFollowerStrategy.cs (B42)
+
+NOTE: The arg12 cast to (CustomOrder)null is still required syntactically (NT8-007).
+      The silence of NT8 when a non-null CustomOrder is passed from AddOn is the *additional*
+      hazard: there is no error, just missing brackets. This makes the bug extremely hard to
+      diagnose without a controlled probe.
+
+SCAN: In non-Strategy .cs files: `new NinjaTrader.Cbi.CustomOrder` or `new CustomOrder {`
+      followed by `IsAutoTrailEnabled` — confirm this is never called from AddOn context.
+
+---
+
+## CATEGORY: NT8 BIN/CUSTOM COMPILE SCOPE — XUNIT / TEST ASSEMBLY CONTAMINATION
+
+### NT8-054 | P0 | xUnit test files in `bin\Custom\` cause CS0246 / CS0103 build-break
+CONFIRMED: B42 (CS0246 / CS0103 — NT8 compiler scanned B42Tests.cs after hard-link sync 2026-08-05)
+ERROR: CS0246 "The type or namespace name 'Xunit' could not be found (are you missing a using directive or an assembly reference?)"
+       CS0246 "The type or namespace name 'FactAttribute' could not be found"
+       CS0103 "The name 'Assert' does not exist in the current context"
+CAUSE: NT8's internal Roslyn host compiles EVERY .cs file found under
+       `%Documents%\NinjaTrader 8\bin\Custom\` and its subdirectories.
+       xUnit assemblies (xunit.core, xunit.assert) are not referenced by NT8's compiler context.
+       Any file that uses `using Xunit;`, `[Fact]`, or `Assert.*` will break the entire NT8 build.
+
+BANNED:
+  // WRONG -- placing any test file that references xUnit in the NT8 bin\Custom tree:
+  // C:\Users\<user>\Documents\NinjaTrader 8\bin\Custom\AddOns\PropTraderTools\B42Tests.cs
+  // C:\Users\<user>\Documents\NinjaTrader 8\bin\Custom\AddOns\PropTraderTools\CopyEngineTests.cs
+
+SAFE:
+  // Keep test files in the wave workspace only (src/PropTraderTools/).
+  // Exclude them from the hard-link / deploy script via $DeployExcludes:
+  //
+  // In scripts\verify_links.ps1:
+  $DeployExcludes = @("CopyEngineTests.cs", "B42Tests.cs", "B43Tests.cs", "B44Tests.cs")
+  //
+  // These files are compiled by the .csproj (LSP / CI only) but NEVER synced to NT8 bin.
+  // The PropTraderTools.csproj <Compile Include="..."> entries for test files are still
+  // needed for the IDE to resolve xUnit types and provide IntelliSense.
+
+NOTE: This applies to ANY file referencing assemblies not in the NT8 compiler reference list:
+      xUnit, NUnit, MSTest, Moq, FluentAssertions, BenchmarkDotNet, etc.
+      The rule is: if the .csproj needs a NuGet package reference to compile it, it CANNOT
+      go into bin\Custom.
+
+SCAN: In scripts\verify_links.ps1 — confirm $DeployExcludes contains all *Tests.cs files.
+      After any hard-link sync (`verify_links.ps1 -Fix`), confirm no *Tests.cs appears under
+      `%Documents%\NinjaTrader 8\bin\Custom\AddOns\PropTraderTools\`.
+
+### NT8-055 | P1 | `AtmStrategyCreate` is NOT accessible as a static from AddOn (non-StrategyBase) code
+CONFIRMED: B53 (CS7036 -- Linting DLL build 2026-08-10)
+ERROR: CS7036 "There is no argument given that corresponds to the required parameter 'limitPrice' of
+       'StrategyBase.AtmStrategyCreate(OrderAction, OrderType, double, double, TimeInForce, string, string, string, Action<ErrorCode, string>)'"
+CAUSE: `NinjaTrader.NinjaScript.AtmStrategy.AtmStrategyCreate` is an INSTANCE method on `StrategyBase`
+       in the Linting DLL (`NinjaTrader.Custom.dll` backup). AddOn code (e.g. CopyEngine, which does
+       NOT extend StrategyBase) cannot call it as a static. The 2-arg and 3-arg static signatures used
+       by Strategy-side code do not exist in the Linting DLL reference surface. The method resolves
+       to the 9-arg StrategyBase instance method and fails to match any call site from a non-strategy class.
+
+BANNED:
+  // Inside an AddOn class (NOT extending StrategyBase / NinjaScriptBase):
+  NinjaTrader.NinjaScript.AtmStrategy.AtmStrategyCreate(templateName, string.Empty);
+  // or
+  NinjaTrader.NinjaScript.AtmStrategy.AtmStrategyCreate(templateName, entryOrderId, callback);
+
+SAFE (PENDING DIRECTOR RESOLUTION):
+  // Gate the call with #if NT8_ADDON_ATM until the correct AddOn ATM API surface is confirmed.
+  // The Director must identify whether:
+  //   (a) An AddOn can trigger ATM via NinjaTrader.NinjaScript.AtmStrategy (different DLL path), or
+  //   (b) ATM must be triggered via a different API (e.g. Account.CreateOrder for bracket legs), or
+  //   (c) PttFollowerStrategy (gated by B53 T3) remains the only valid ATM entry point.
+  //
+  // In B53, the call is gated:
+  //   #if NT8_ADDON_ATM
+  //   NinjaTrader.NinjaScript.AtmStrategy.AtmStrategyCreate(templateName, string.Empty);
+  //   #endif
+
+ESCALATION: B53-LaneA F5-GATE-01 is BLOCKED until Director resolves the correct API.
+            Record resolution as NT8-055-RESOLVED with the correct call pattern.
+
+SCAN: grep -r "AtmStrategyCreate" src/PropTraderTools/ | grep -v "#if NT8_ADDON_ATM"
+      Any unguarded AtmStrategyCreate call = BLOCKED build risk.
