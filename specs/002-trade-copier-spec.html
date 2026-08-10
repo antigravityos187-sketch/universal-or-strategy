@@ -413,9 +413,9 @@
         </div>
       </div>
       <div class="header-meta">
-        <span class="pill pill-green"><span class="status-dot dot-green"></span>B1–B56 COMPLETE &nbsp;&middot;&nbsp; ~266 tests</span>
-        <span class="pill pill-accent">~6000 lines &middot; 6 files &middot; DW-B56-01/02/03 CLOSED</span>
-        <span class="pill pill-amber">DW-B54-01 P0 open (ATM API research) &nbsp;&middot;&nbsp; DW-B56-04 P2 diagnostic pending live test</span>
+        <span class="pill pill-green"><span class="status-dot dot-green"></span>B1–B58 COMPLETE &nbsp;&middot;&nbsp; Panel + Engine fully restored</span>
+        <span class="pill pill-accent">~6000 lines &middot; 6 files &middot; B57+B58 PIPELINE_COMPLETE &middot; F5 PASS</span>
+        <span class="pill pill-amber">DW-B54-01 P0 open (ATM API research) &nbsp;&middot;&nbsp; DW-B56-04 P2 diagnostic pending &nbsp;&middot;&nbsp; DW-B58-01/02/03 P2 deferred</span>
         <span class="pill pill-purple">Add-On + ChartTrader panel</span>
       </div>
     </header>
@@ -23788,6 +23788,87 @@ FINAL_PASS criteria:
       </div>
     </div>
     <!-- ══ end section-b56 ══════════════════════════════════════════════════ -->
+
+
+    <!-- ══ section-b57 ═══════════════════════════════════════════════════════ -->
+    <div id="section-b57" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:var(--green);">&#9679; Block 57 &nbsp;◆&nbsp; PTT-COPIER-B57 &nbsp;◆&nbsp; Submit After CreateOrder Fix &nbsp;◆&nbsp; <span class="pill pill-green">&#10003; PIPELINE_COMPLETE</span></div>
+      <div class="card">
+        <div class="card-title" style="color:var(--green);">&#10003; Block 57 &nbsp;◆&nbsp; PTT-COPIER-B57 &nbsp;◆&nbsp; DW-B57-01 CLOSED &mdash; follower.Submit() after CreateOrder in SendCopy</div>
+
+        <div style="padding:0 1rem 1rem;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;letter-spacing:0.1em;margin-bottom:6px;">PIPELINE_COMPLETE: B57 &mdash; 2026-08-10 &nbsp;&middot;&nbsp; commit 1b99a117</div>
+          <strong>Root cause fixed:</strong> <code style="font-family:var(--mono);">acc.CreateOrder()</code> in AddOn context leaves the follower order at <code style="font-family:var(--mono);">Initialized</code> state -- it never reaches the exchange without a subsequent <code style="font-family:var(--mono);">acc.Submit(new[]{order})</code>.<br>
+          <strong>Fix:</strong> <code style="font-family:var(--mono);">SendCopy</code> now captures the <code style="font-family:var(--mono);">CreateOrder</code> return value and calls <code style="font-family:var(--mono);">follower.Submit(new[]{order})</code> immediately after. Pattern: same as <code style="font-family:var(--mono);">SubmitBeStop</code>.<br>
+          <strong>Build tag:</strong> <code style="font-family:var(--mono);">PTT-COPIER B57 | submit-after-create-order | 2026-08-10</code><br>
+          <strong>Defect closed:</strong> DW-B57-01 (P0) &mdash; follower order stuck Initialized, never reaches exchange.
+        </div>
+
+        <div class="card-footer pills">
+          <span class="pill pill-green">&#10003; DW-B57-01 P0 CLOSED &mdash; follower.Submit() added to SendCopy &nbsp;&middot;&nbsp; PIPELINE_COMPLETE</span>
+          <span class="pill pill-accent">commit 1b99a117 &nbsp;&middot;&nbsp; CopyEngine.cs only &nbsp;&middot;&nbsp; 0 new errors</span>
+        </div>
+      </div>
+    </div>
+    <!-- ══ end section-b57 ══════════════════════════════════════════════════ -->
+
+
+    <!-- ══ section-b58 ═══════════════════════════════════════════════════════ -->
+    <div id="section-b58" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:var(--green);">&#9679; Block 58 &nbsp;◆&nbsp; PTT-COPIER-B58 &nbsp;◆&nbsp; CopyEngine Missing Members Recovery &nbsp;◆&nbsp; <span class="pill pill-green">&#10003; PIPELINE_COMPLETE</span></div>
+      <div class="card">
+        <div class="card-title" style="color:var(--green);">&#10003; Block 58 &nbsp;◆&nbsp; PTT-COPIER-B58 &nbsp;◆&nbsp; 13 missing CopyEngine members restored &mdash; panel compiles clean</div>
+
+        <div style="padding:0 1rem 1rem;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;letter-spacing:0.1em;margin-bottom:6px;">PIPELINE_COMPLETE: B58-LaneA &mdash; 2026-08-10 &nbsp;&middot;&nbsp; commit f0a7b767</div>
+
+          <strong>Context:</strong> B39&ndash;B54 additions to <code style="font-family:var(--mono);">CopyEngine.cs</code> were stored only in a stash WIP blob (d085d7bf) that was never committed to main. The safety commit (1737fd4b) committed the panel but not these engine members. After panel recovery (B58 precursor), the panel compiled with 17 CS1061/CS1503 errors against the engine.<br><br>
+
+          <strong>Pipeline run:</strong> Full 5-phase PTT pipeline &mdash; Ph2 cycle 1 caught relay method gap (REVIEW_FAIL), cycle 2 passed. All 7 start_subtask phases completed.<br><br>
+
+          <strong>13 members added to CopyEngine.cs via 19 discrete changes:</strong>
+          <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;margin-top:8px;">
+            <tr style="border-bottom:1px solid var(--border);color:var(--dim);">
+              <th style="text-align:left;padding:4px 8px;">#</th><th style="text-align:left;padding:4px 8px;">Member</th><th style="text-align:left;padding:4px 8px;">Source block</th>
+            </tr>
+            <tr><td style="padding:3px 8px;">1</td><td style="padding:3px 8px;"><code>CopyEngine : ICopyEngine</code> + RelayBe/Trim/Flat/Cancel</td><td style="padding:3px 8px;">B58-§1</td></tr>
+            <tr><td style="padding:3px 8px;">2</td><td style="padding:3px 8px;"><code>public bool IsEnabled =&gt; _isCopyEnabled</code></td><td style="padding:3px 8px;">B54-§A1</td></tr>
+            <tr><td style="padding:3px 8px;">3</td><td style="padding:3px 8px;"><code>_globalBe</code> field + <code>GlobalBe</code> property</td><td style="padding:3px 8px;">B39-§CE</td></tr>
+            <tr><td style="padding:3px 8px;">4</td><td style="padding:3px 8px;"><code>IsPendingSlotsEmpty()</code></td><td style="padding:3px 8px;">B40-§3</td></tr>
+            <tr><td style="padding:3px 8px;">5</td><td style="padding:3px 8px;"><code>_cloneAtmCache</code>, <code>SetCloneAtmCache</code>, <code>GetCloneAtmMode</code>, <code>ResolveAtmMode</code> + DispatchCopy wire</td><td style="padding:3px 8px;">B50-§CE</td></tr>
+            <tr><td style="padding:3px 8px;">6</td><td style="padding:3px 8px;"><code>FindPositionPublic()</code></td><td style="padding:3px 8px;">B58-§6</td></tr>
+            <tr><td style="padding:3px 8px;">7</td><td style="padding:3px 8px;"><code>SnapshotTargetsPublic()</code></td><td style="padding:3px 8px;">B58-§7</td></tr>
+            <tr><td style="padding:3px 8px;">8</td><td style="padding:3px 8px;"><code>CopyRulesContainer.CopyEnabled</code></td><td style="padding:3px 8px;">B54-§A2</td></tr>
+            <tr><td style="padding:3px 8px;">9</td><td style="padding:3px 8px;"><code>SaveRules</code> + <code>LoadRules</code> CopyEnabled wiring</td><td style="padding:3px 8px;">B54-§A3-A4</td></tr>
+          </table>
+
+          <div style="margin-top:1rem;font-family:var(--mono);font-size:11px;">
+            <strong style="color:var(--green);">All 7 scans: ZERO</strong> &nbsp;&middot;&nbsp;
+            Max CYC=3 (SnapshotTargetsPublic) &nbsp;&middot;&nbsp;
+            0 new errors &nbsp;&middot;&nbsp;
+            DESYNC=0 MISSING=0
+          </div>
+
+          <div style="margin-top:0.8rem;font-size:12px;color:var(--amber);">
+            <strong>Deferred (all P2):</strong><br>
+            DW-B58-01: SnapshotTargetsPublic hardcoded prefixes &mdash; consider CopyRule-driven filter<br>
+            DW-B58-02: GlobalBe non-atomic lazy-init (UI-thread only, acceptable for now)<br>
+            DW-B58-03: RelayBe OcoGroup non-forwarding to followers
+          </div>
+
+          <div style="margin-top:0.8rem;font-size:12px;color:var(--green);">
+            <strong>&#10003; Panel restored and compiling clean.</strong> Screenshot confirmed: Copier section rendering with Signal / Mirror / Clone mode buttons and follower rows. F5 PASS.
+          </div>
+        </div>
+
+        <div class="card-footer pills">
+          <span class="pill pill-green">&#10003; B58 PIPELINE_COMPLETE &mdash; Ph1&rarr;Ph2(x2)&rarr;Ph3&rarr;Ph3.5&rarr;Ph4a&rarr;Ph4b&rarr;Ph5 all PASS</span>
+          <span class="pill pill-green">&#10003; 13 members &nbsp;&middot;&nbsp; 19 changes &nbsp;&middot;&nbsp; 7/7 scans zero &nbsp;&middot;&nbsp; commit f0a7b767</span>
+          <span class="pill pill-amber">DW-B58-01/02/03 &mdash; P2 deferred &nbsp;&middot;&nbsp; docs/brain/B58-LaneA/06-deferred-backlog.md</span>
+        </div>
+      </div>
+    </div>
+    <!-- ══ end section-b58 ══════════════════════════════════════════════════ -->
 
 
   </body>
