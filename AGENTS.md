@@ -2,16 +2,46 @@
 
 Welcome, Agent. You are operating within the **V12 Universal OR Strategy** repository. This environment is optimized for autonomous multi-agent development under the **Sovereign Droid Protocol (SDP)**.
 
-## ⚠️ TWO-TRACK LOCAL DEVELOPMENT MODEL (V12.38 -- MANDATORY)
+## 🔒 SINGLE WORKSPACE MANDATE (V12.40) — P0 PERMANENT PROTECTION RULE
 
-This repo uses two git worktrees in one Bob IDE window. As an agent you MUST
-know which track you are operating in before touching any file.
+**Effective 2026-08-10. The two-worktree model is RETIRED. Root cause: 3 data loss
+incidents (B32–B54 TradeCopierPanel.cs) where `.cs` changes were never committed because
+commits ran from the director worktree which could not see unstaged src/ files.**
 
+### One Directory. One Branch. No Exceptions.
+
+- **Workspace**: `C:\WSGTA\universal-or-strategy` — ONLY workspace for ALL work
+- **Branch**: `main` — ONLY branch for PTT work
+- **No worktrees for PTT**: `universal-or-strategy-director` removed and merged into main
+- **No GitButler virtual branches for PTT work**
+- **All files** — src/, docs/brain/, specs/, docs/ — live in one place
+
+### MANDATORY src/ Commit Rule — P0 HARD GATE
+
+Every ptt-engineer or ptt-orchestrator session MUST end with:
+
+```powershell
+cd C:\WSGTA\universal-or-strategy
+git add src/PropTraderTools/
+git add docs/brain/
+git status --short       # confirm everything is staged
+git commit -m "feat(ptt): BXX description [NNN tests]"
 ```
-C:\WSGTA\
-  universal-or-strategy\           <- TRACK 1: wave work  (main / wave7/pr-X)
-  universal-or-strategy-director\  <- TRACK 2: director   (director branch)
+
+**Non-negotiable. This rule was violated 3 times causing total loss of 24 blocks of panel work.**
+
+### Session Start Verification (mandatory)
+
+```powershell
+cd C:\WSGTA\universal-or-strategy
+git branch --show-current                    # must show: main
+git worktree list                            # must show: 1 PTT worktree only
+git status --short src/PropTraderTools/      # must show: nothing (clean)
 ```
+
+If `git status` shows any modified/untracked `.cs` files at session start:
+**STOP — commit them before any new work. They are orphaned work from a prior session.**
+
 
 **Track 1 rules (universal-or-strategy)**:
 - VM agent writes src/ and docs/brain/ wave artifacts here
