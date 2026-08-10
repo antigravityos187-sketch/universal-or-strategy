@@ -92,6 +92,24 @@
     <Compile Include="TradeCopierAddOn.cs" />
     <Compile Include="TradeCopierPanel.cs" />
     <Compile Include="TradeCopierWindow.cs" />
+    <Compile Include="Core\PttContracts.cs" />
+    <Compile Include="Features\PttBreakEven.cs" />
+    <Compile Include="Features\PttCancel.cs" />
+    <Compile Include="Features\PttCopier.cs" />
+    <Compile Include="Features\PttFlatten.cs" />
+    <Compile Include="Features\PttFollowerStrategy.cs" />
+    <Compile Include="Features\PttGlobalBreakEven.cs" />
+    <Compile Include="Features\PttGlobalQuickExit.cs" />
+    <Compile Include="Features\PttQuickExit.cs" />
+    <Compile Include="Features\PttTrim.cs" />
+    <Compile Include="Tests\B42Tests.cs" />
+    <Compile Include="Tests\B43Tests.cs" />
+    <Compile Include="Tests\B44Tests.cs" />
+    <Compile Include="Tests\B45Tests.cs" />
+    <Compile Include="Tests\B46Tests.cs" />
+    <Compile Include="Tests\B47Tests.cs" />
+    <Compile Include="Tests\B50Tests.cs" />
+    <Compile Include="Tests\B55Tests.cs" />
     <Compile Include="Tests\B56Tests.cs" />
   </ItemGroup>
 
