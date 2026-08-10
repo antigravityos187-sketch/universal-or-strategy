@@ -113,12 +113,31 @@ namespace PropTraderTools
                 _engine.PositionStateChanged  += OnPositionStateChanged;
                 _engine.Subscribe();
                 CopyEngine.Instance.LoadRules();
+                RefreshRuleRows();
                 _engine.CopyEnabledChanged += OnCopyEnabledChanged;
             }
             catch (Exception ex)
             {
                 MessageBox.Show("PTT init error:\n\n" + ex.Message + "\n\n" + ex.StackTrace, "Trade Copier");
             }
+        }
+
+        // B56-LaneB: CYC=3 -- rebuild rule rows from saved engine state after LoadRules.
+        // JS-021: no lock. JS-033: private void (not async void). Dispatcher.InvokeAsync inside.
+        // JS-002: guard against empty instruments (keeps default MES row).
+        // NT8-006: NO System.Linq -- ToList() banned. Manual foreach into List<string>.
+        private void RefreshRuleRows()
+        {
+            var instruments = new System.Collections.Generic.List<string>();
+            foreach (var instr in CopyEngine.Instance.GetRuleInstruments())
+                instruments.Add(instr);
+            if (instruments.Count == 0) return;    // CYC branch (1): no saved rules -- keep default MES row
+            Dispatcher.InvokeAsync(() =>
+            {
+                _rulesPanel.Children.Clear();
+                foreach (var instr in instruments)    // CYC branch (2): iterate instruments
+                    _rulesPanel.Children.Add(BuildRuleRow(instr));
+            });
         }
 
         // V04: unsubscribe PositionStateChanged on close to prevent ghost callbacks / memory leaks
@@ -189,6 +208,7 @@ namespace PropTraderTools
             var modeCb = new ComboBox { Width = 120, VerticalAlignment = VerticalAlignment.Center };
             modeCb.Items.Add("Signal (default)");
             modeCb.Items.Add("Mirror");
+            modeCb.Items.Add("Clone");
             modeCb.SelectedIndex = 0;
             modeCb.SelectionChanged += OnCopyModeComboChanged;
             modeRow.Children.Add(modeLabel);
@@ -569,13 +589,14 @@ namespace PropTraderTools
             return grid;
         }
 
-        // B9 T3: CYC=2 -- null guard (1) + index-based ternary (straight-line, counts as 1 branch = CYC=2)
+        // B56-LaneB: CYC=4 -- null guard (1) + 3-way if-chain for index 0/1/2 (branches 2/3/4)
         private void OnCopyModeComboChanged(object sender, SelectionChangedEventArgs e)
         {
             var cb = sender as ComboBox;
-            if (cb == null) return;                                              // guard (1)
-            CopyEngine.Instance.SetCopyMode(
-                cb.SelectedIndex == 1 ? CopyMode.Mirror : CopyMode.Signal);    // branch (2)
+            if (cb == null) return;                                                  // guard (1)
+            if      (cb.SelectedIndex == 1) CopyEngine.Instance.SetCopyMode(CopyMode.Mirror);   // branch (2)
+            else if (cb.SelectedIndex == 2) CopyEngine.Instance.SetCopyMode(CopyMode.Clone);    // branch (3)
+            else                            CopyEngine.Instance.SetCopyMode(CopyMode.Signal);   // branch (4)
         }
 
         private void OnGlobalToggle(object sender, RoutedEventArgs e)

@@ -2679,5 +2679,73 @@ namespace PropTraderTools
             Assert.False(hasOrderActionLocal);
         }
 
+        // T_B56_01: IsDispatchTriggerState predicate -- 6 OrderState assertions (INV-1 through INV-6).
+        // TESTABILITY: method is internal static, param is OrderState (NT8 enum available in Linting.csproj).
+        // Same pattern as ShouldMirrorClose(OrderState, bool) tests at line ~1040.
+        [Fact]
+        public void IsDispatchTriggerState_ReturnsTrueForSubmittedAndAccepted()
+        {
+            // Act + Assert -- INV-1: Submitted triggers follower dispatch (market orders)
+            Assert.True(CopyEngine.IsDispatchTriggerState(OrderState.Submitted),    "Submitted must be true");
+
+            // INV-2: Accepted triggers follower dispatch (AddOn limit orders -- skip Submitted state)
+            Assert.True(CopyEngine.IsDispatchTriggerState(OrderState.Accepted),     "Accepted must be true");
+
+            // INV-3..6: all other states must NOT trigger dispatch
+            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Initialized), "Initialized must be false");
+            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Working),     "Working must be false");
+            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Filled),      "Filled must be false");
+            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Cancelled),   "Cancelled must be false");
+        }
+
+        // -----------------------------------------------------------------
+        // B55 LaneB -- DW-B47-05 P2 (FindRule null contract)
+        // -----------------------------------------------------------------
+
+        // T_B55B_01 -- FindRule_ReturnsNull_WhenNoRules
+        // Documents and locks the null-return contract of FindRule.
+        // Engine with empty _rules list: FindRule(stub instrument) returns null.
+        // Uses reflection (private method in sealed class) -- same pattern as B53 LaneA tests.
+        // JS-002: null contract now tested and documented.
+        // Plan-review NOTE-01: Assert.Equal(typeof(CopyRule?), mi.ReturnType) is vacuous for
+        // reference types (NRT annotation is compile-time only; CLR typeof(CopyRule?) == typeof(CopyRule)).
+        // Primary assertion is result.HasValue == false which correctly handles boxed nullable structs.
+        [Fact]
+        public void T_B55B_01_FindRule_ReturnsNull_WhenNoRules()
+        {
+            // Arrange: verify _rules is empty via reflection on _rules field
+            var rulesField = typeof(CopyEngine).GetField(
+                "_rules",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(rulesField);
+            var rulesValue = rulesField.GetValue(_engine);
+            Assert.NotNull(rulesValue);
+            // ConcurrentBag -- cast and verify empty
+            var bag = rulesValue as System.Collections.Concurrent.ConcurrentBag<CopyRule>;
+            Assert.NotNull(bag);
+            Assert.Empty(bag);
+
+            // Arrange: get FindRule via reflection
+            var mi = typeof(CopyEngine).GetMethod(
+                "FindRule",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(mi);
+
+            // Verify parameter count and type
+            Assert.Equal(1, mi.GetParameters().Length);
+            Assert.Equal(typeof(NinjaTrader.Cbi.Instrument), mi.GetParameters()[0].ParameterType);
+
+            // Act: invoke with stub Instrument whose FullName will not match any rule.
+            // Passing null as Instrument hits the first null guard in FindRule (return null).
+            // Both code paths (null guard hit, no-match fallthrough) return null -- same observable contract.
+            var result = mi.Invoke(_engine, new object[] { (NinjaTrader.Cbi.Instrument)null });
+
+            // Assert: null-return contract confirmed.
+            // result is boxed CopyRule? -- use HasValue check (NOT Assert.Null which may mis-behave
+            // on boxed nullable structs when the boxed value is non-null but the inner nullable is null).
+            Assert.False(((CopyRule?)result).HasValue,
+                "FindRule must return null when _rules is empty (JS-002 null contract)");
+        }
+
     }
 }

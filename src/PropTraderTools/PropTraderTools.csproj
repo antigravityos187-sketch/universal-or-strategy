@@ -92,6 +92,7 @@
     <Compile Include="TradeCopierAddOn.cs" />
     <Compile Include="TradeCopierPanel.cs" />
     <Compile Include="TradeCopierWindow.cs" />
+    <Compile Include="Tests\B56Tests.cs" />
   </ItemGroup>
 
 </Project>

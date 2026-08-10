@@ -1,3 +1,9 @@
+// PTT-COPIER-B56-LaneA-T1 -- CopyEngine.cs
+// B56 T1 CHANGES:
+//   1. Added IsDispatchTriggerState(OrderState) -- internal static predicate, CYC=2. (DW-B56-01 Gap 1)
+//   2. DispatchCopy Gate 3: replaced raw Submitted check with IsDispatchTriggerState. (DW-B56-01 Gap 1)
+//   3. OnOrderUpdate Cancelled block: propagate leader cancel to follower entry orders. (DW-B56-01 Gap 2)
+// PTT-COPIER B56 | limit-order-gate3-fix + leader-cancel-propagation | 2026-08-09
 // PTT-COPIER-B14-T1 -- CopyEngine.cs
 // B14 T1 CHANGES:
 //   1. Added trail BE fields (B27: replaced with _trailBeSlots + _trailBeLastPnlBits per DW-B27-01).
@@ -74,7 +80,7 @@ namespace PropTraderTools
     // B8: SendCopy switch + UI dropdown wired in T2.
 
     // B9 T3 -- Copy mode discriminated union (JS-023: volatile int backing for thread-safe reads/writes)
-    internal enum CopyMode { Signal = 0, Mirror = 1 }
+    internal enum CopyMode { Signal = 0, Mirror = 1, Clone = 2 }
 
     internal sealed class CopyEngine
     {
@@ -299,6 +305,120 @@ namespace PropTraderTools
             return (CopyMode)_copyModeValue;
         }
 
+        // B56-LaneB: CYC=2 -- yield distinct instrument names for UI refresh after LoadRules.
+        // JS-021: no lock -- ConcurrentBag foreach is lock-free.
+        // JS-002: returns empty IEnumerable (not null) when _rules is empty.
+        internal IEnumerable<string> GetRuleInstruments()
+        {
+            var seen = new HashSet<string>();
+            foreach (var r in _rules)
+                if (seen.Add(r.Instrument))
+                    yield return r.Instrument;
+        }
+
+        // ── B56 BUILD-FIX stubs (pre-existing callers referenced these before they were added) ──
+
+        // IsFollowerAccount: returns true if acc is a follower in any rule.
+        // Called by PttBreakEven + PttGlobalQuickExit to skip follower accounts.
+        // CYC=3: null guard(1) + foreach(2) + inner foreach(3). JS-021: no lock.
+        internal bool IsFollowerAccount(Account acc)
+        {
+            if (acc == null) return false;                          // (1)
+            foreach (var rule in _rules)                           // (2)
+                foreach (var f in rule.FollowerAccounts)           // (3)
+                    if (f != null && f.Name == acc.Name) return true;
+            return false;
+        }
+
+        // GetQuickTicksForInstrument: returns (t1,t2) quick-exit tick defaults for an instrument.
+        // Delegates to InstrumentDefaults -- rule-specific overrides deferred to future block.
+        // CYC=2: null guard(1) + delegate(2). JS-002: returns tuple (not null).
+        internal (int t1, int t2) GetQuickTicksForInstrument(NinjaTrader.Cbi.Instrument instr)
+        {
+            if (instr == null) return (4, 8);                      // (1)
+            return InstrumentDefaults.GetQuickTicks(               // (2)
+                instr.MasterInstrument?.Name ?? string.Empty);
+        }
+
+        // CancelQxBrackets: cancel all Working/Initialized PTT-QX-* orders on acc for instr.
+        // Called by PttQuickExit.Execute() before re-placing new bracket.
+        // CYC=4: null guard(1) + foreach(2) + stateOk(3) + prefix check(4). JS-021: no lock.
+        internal void CancelQxBrackets(Account acc, NinjaTrader.Cbi.Instrument instr)
+        {
+            if (acc == null || instr == null) return;              // (1)
+            var stale = new System.Collections.Generic.List<Order>();
+            foreach (Order o in acc.Orders)                        // (2)
+            {
+                bool stateOk = o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Initialized
+                            || o.OrderState == OrderState.Accepted;
+                if (!stateOk) continue;                            // (3)
+                if (o.Instrument == null || o.Instrument.FullName != instr.FullName) continue;
+                if (o.Name != null && o.Name.StartsWith("PTT-QX-"))  // (4)
+                    stale.Add(o);
+            }
+            if (stale.Count == 0) return;
+            try { acc.Cancel(stale.ToArray()); }
+            catch { }
+        }
+
+        // NextQxOcoId: monotonic OCO group ID for Quick Exit bracket pairs.
+        // Uses Interlocked.Increment on _qxOcoSeq (thread-safe, no lock).
+        // CYC=1: straight expression. JS-021: no lock -- Interlocked.
+        private int _qxOcoSeq = 0;
+        internal string NextQxOcoId()
+            => "PTT-QX-" + System.Threading.Interlocked.Increment(ref _qxOcoSeq).ToString("D5");
+
+        // SubmitBeStop: submit a StopMarket order at bePrice for acc+instr.
+        // Called by PttGlobalBreakEven default constructor lambda.
+        // CYC=3: null guard(1) + pos guard(2) + CreateOrder try(3). JS-021: no lock.
+        internal void SubmitBeStop(Account acc, NinjaTrader.Cbi.Instrument instr, double bePrice)
+        {
+            if (acc == null || instr == null) return;              // (1)
+            NinjaTrader.Cbi.Position pos = null;
+            foreach (NinjaTrader.Cbi.Position p in acc.Positions)
+                if (p.Instrument == instr) { pos = p; break; }
+            if (pos == null || pos.Quantity == 0) return;          // (2)
+            bool isLong = pos.MarketPosition == MarketPosition.Long;
+            OrderAction dir = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+            try                                                    // (3)
+            {
+                var order = acc.CreateOrder(
+                    instr, dir, OrderType.StopMarket,
+                    OrderEntry.Manual, TimeInForce.Gtc,
+                    pos.Quantity, 0, bePrice,
+                    string.Empty, "PTT-BE-Stop",
+                    DateTime.MaxValue,
+                    (NinjaTrader.Cbi.CustomOrder)null);
+                if (order != null)
+                    acc.Submit(new[] { order });
+            }
+            catch { }
+        }
+
+        // ArmAllPendingBe: arm pending break-even for all non-follower accounts.
+        // Called by PttGlobalBreakEven.Execute(int bufferTicks).
+        // CYC=4: foreach(1) + follower skip(2) + pos loop(3) + flat skip(4). JS-021: no lock.
+        internal void ArmAllPendingBe(int bufferTicks)
+        {
+            foreach (Account acc in Account.All)                   // (1)
+            {
+                if (IsFollowerAccount(acc)) continue;              // (2) skip followers
+                foreach (NinjaTrader.Cbi.Position pos in acc.Positions)  // (3)
+                {
+                    if (pos == null || pos.Quantity == 0) continue; // (4) skip flat
+                    bool isLong = pos.MarketPosition == MarketPosition.Long;
+                    double tick = pos.Instrument.MasterInstrument?.TickSize ?? 0.25;
+                    double bePrice = Math.Round(
+                        (pos.AveragePrice + (isLong ? bufferTicks : -bufferTicks) * tick) / tick
+                    ) * tick;
+                    SubmitBeStop(acc, pos.Instrument, bePrice);
+                }
+            }
+        }
+
+        // ── end B56 BUILD-FIX stubs ──
+
         // B9 T1: CYC=2 -- returns engine value when enabled; 1 otherwise
         internal int GetSuggestedQty(NinjaTrader.Cbi.Instrument instrument)
         {
@@ -432,6 +552,20 @@ namespace PropTraderTools
             if ((CopyMode)_copyModeValue == CopyMode.Mirror)
                 MirrorOrderUpdate(e.Order, matchedRule.Value);
 
+            // B56 T1: propagate leader cancel to follower entry orders.
+            // Fires when leader order is cancelled -- cancels all Initialized/Working
+            // follower entry orders for this instrument via CancelOneAccount.
+            // Placed BEFORE Gate B so bracket orders are not affected (they have their own path).
+            if (e.Order.OrderState == OrderState.Cancelled)
+            {
+                foreach (var acc in matchedRule.Value.FollowerAccounts)
+                {
+                    if (acc == null) continue;
+                    CancelOneAccount(acc, e.Order.Instrument);
+                }
+                return;
+            }
+
             // Gate B: bracket drag detection -- divert to HandleBracketChange path
             if (IsWorkingBracket(e.Order))
             {
@@ -498,6 +632,15 @@ namespace PropTraderTools
             }
         }
 
+        // B56 T1: IsDispatchTriggerState -- CYC=2. True for states that trigger follower placement.
+        // Market orders fire Submitted; AddOn limit orders fire Accepted (skip Submitted).
+        // JS-002: returns bool (not null). JS-021: no lock. NT8 confirmed state set.
+        // TESTABILITY: internal static with primitive OrderState param -- directly testable without NT8 runtime.
+        //   Same pattern as ShouldMirrorClose(OrderState state, bool isBracketLeg).
+        internal static bool IsDispatchTriggerState(OrderState state)
+            => state == OrderState.Submitted   // market orders
+            || state == OrderState.Accepted;   // limit orders (AddOn path)
+
         // --- B7-F0: Bracket mirroring methods ---
 
         // B8 T1: DispatchCopy -- index-tracking loop replaces plain foreach.
@@ -508,8 +651,8 @@ namespace PropTraderTools
             // Gate 0.5: PTT-prefix guard -- prevents cascade copy of our own PTT- signals. CYC: 7->8.
             if (order.Name != null && order.Name.StartsWith("PTT-")) return;
 
-            // Gate 3: must be Submitted state
-            if (order.OrderState != OrderState.Submitted)
+            // Gate 3: must be a dispatch-trigger state (Submitted for market; Accepted for AddOn limit)
+            if (!IsDispatchTriggerState(order.OrderState))
                 return;
 
             // Gate 4: market or limit order type only
@@ -1194,6 +1337,13 @@ namespace PropTraderTools
             }
         }
 
+        /// <summary>
+        /// Finds the copy rule for the given instrument.
+        /// </summary>
+        /// <returns>
+        /// Matching <see cref="CopyRule"/>, or <c>null</c> if no rule exists for this instrument.
+        /// Callers MUST null-check the return value.
+        /// </returns>
         private CopyRule? FindRule(Instrument instrument)
         {
             if (instrument == null)

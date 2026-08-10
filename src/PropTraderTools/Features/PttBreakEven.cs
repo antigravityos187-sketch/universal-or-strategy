@@ -1,0 +1,477 @@
+// C:\WSGTA\universal-or-strategy\src\PropTraderTools\Features\PttBreakEven.cs
+// B34 — PttBreakEven module: cancel stale brackets + submit BE stop for ALL accounts.
+// IPttModule implementation. ModuleId = "BE".
+// DW-B36-01 FIX: AllAccounts loop applies BE stop to leader AND all followers.
+// DW-B33-05/06/07 FIXED: per-account isLong, bePrice, CancelStaleBrackets.
+// DW-B35-TARGETS-01 FIX (B36-LaneB): SnapshotTargetsLocal + SubmitBeTargetsLocal + OCO group.
+// DW-B36-OCO-01 FIX (B37-LaneA): per-pair OCO groups -- each target[i] paired with its own stop[i].
+// DW-B40-OCO-02 FIX: BuildBeOcoId replaced price-int component with monotonic _beOcoSeq counter.
+//   Old formula: "PTT-BE-"+accPrefix+"-"+priceInt+"-"+pairIndex  (collides on same-price re-entry)
+//   New formula: "PTT-BE-"+accPrefix+"-"+seq.ToString("D5")+"-"+pairIndex  (always unique)
+// Dependencies: Core/PttContracts.cs + NinjaTrader.Cbi ONLY. NO CopyEngine import.
+// JS-021: no lock anywhere. JS-023: volatile int ok. JS-033: synchronous void only.
+
+using System;
+using System.Collections.Generic;
+using NinjaTrader.Cbi;
+
+namespace PropTraderTools
+{
+    /// <summary>
+    /// Break-even module. Cancels stale ATM brackets then submits a StopMarket
+    /// order at each account's own entry price (+/- buffer ticks) for every account
+    /// in ctx.AllAccounts.
+    /// DW-B36-01: AllAccounts loop ensures leader AND followers both receive BE stop.
+    /// DW-B33-05/06/07: per-account isLong, bePrice, and CancelStaleBrackets.
+    /// </summary>
+    public class PttBreakEven : IPttModule
+    {
+        public string ModuleId  { get; private set; }
+        public bool   IsEnabled { get; private set; }
+
+        // DW-B40-OCO-02: monotonic sequence counter. Incremented once per Execute() call.
+        // JS-023: volatile int allowed. NT8-003: volatile double banned -- not used here.
+        // Guarantees BuildBeOcoId produces a unique ID even when bePrice is identical
+        // across successive clicks (same-price re-entry is the common failure mode).
+        private volatile int _beOcoSeq = 0;
+
+        public PttBreakEven()
+        {
+            ModuleId  = "BE";
+            IsEnabled = true;
+        }
+
+        /// <summary>Set enabled state (wired by TradeCopierPanel license bool). CYC=1.</summary>
+        public void SetEnabled(bool enabled) { IsEnabled = enabled; }
+
+        /// <summary>No PttBus subscriptions needed -- module fires BeFired, never listens. CYC=1.</summary>
+        public void Initialize(IPttHostContext ctx) { }
+
+        /// <summary>No subscriptions to unsubscribe. CYC=1.</summary>
+        public void Teardown() { }
+
+        /// <summary>
+        /// Execute break-even for all accounts in ctx.AllAccounts, skipping followers.
+        /// CYC=6: (1) IsEnabled guard, (2) leader null||qty, (3) foreach,
+        ///        (4) IsFollowerAccount guard, (5) ExecuteOneAccount delegate, (6) RaiseBeNotify.
+        /// DW-B47-BE-FOLLOWER-SCOPE: follower accounts skipped via CopyEngine.IsFollowerAccount.
+        /// Called on UI thread from TradeCopierPanel button handler.
+        /// JS-021: no lock. JS-033: synchronous void. JS-001: no throw -- try/catch in helpers.
+        /// </summary>
+        public void Execute(IPttHostContext ctx)
+        {
+            if (!IsEnabled) return;                                                // (1) guard
+            int seq = System.Threading.Interlocked.Increment(ref _beOcoSeq);
+
+            Position leaderPos = FindPositionLocal(ctx.LeaderAccount, ctx.Instrument);
+            if (leaderPos == null || leaderPos.Quantity == 0) return;              // (2) leader guard
+
+            double tickSize = ctx.Instrument.MasterInstrument.TickSize;
+            double buf      = (double)ctx.BeBuffer;
+
+            foreach (Account acc in ctx.AllAccounts)                               // (3) foreach
+            {
+                if (CopyEngine.Instance != null && CopyEngine.Instance.IsFollowerAccount(acc)) continue; // (4) follower skip
+                ExecuteOneAccount(acc, ctx, buf, tickSize, seq);                   // (5) delegate
+            }
+
+            RaiseBeNotify(ctx, leaderPos, buf, tickSize);                          // (6) bus notify
+        }
+
+        /// <summary>
+        /// Per-account break-even logic: position check, price validation, submit.
+        /// CYC=5: (1) pos null||qty guard, (2) priceOk check, (3) reject path, (4) snapshot, (5) submit.
+        /// Price validity delegated to IsBePriceOk (DW-B35-SILENT-REJECT).
+        /// DW-B33-05/06/07: per-account isLong, bePrice, CancelStaleBracketsLocal.
+        /// JS-021: no lock. JS-001: no throw -- try/catch in helpers.
+        /// </summary>
+        private void ExecuteOneAccount(Account acc, IPttHostContext ctx, double buf, double tickSize, int seq)
+        {
+            Position pos = FindPositionLocal(acc, ctx.Instrument);
+            if (pos == null || pos.Quantity == 0) return;                          // (1)
+            bool   isLong  = pos.MarketPosition == MarketPosition.Long;
+            double bePrice = pos.AveragePrice + (isLong ? +buf : -buf) * tickSize;
+            if (!IsBePriceOk(isLong, bePrice, ctx.Ask, ctx.Bid))                  // (2)
+            {
+                string msg = BuildBeRejectMsg(acc.Name, bePrice, isLong, ctx.Ask, ctx.Bid);
+                NinjaTrader.Code.Output.Process(msg, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                ctx.WarnUser(acc.Name + ": BE stop rejected (" + (isLong ? "above ask " : "below bid ") + (isLong ? ctx.Ask : ctx.Bid).ToString("F2") + ")"); // (3)
+                return;
+            }
+            var targets = SnapshotTargetsLocal(acc, ctx.Instrument);               // (4)
+            CancelStaleBracketsLocal(acc, ctx.Instrument);
+            SubmitBeTargetsLocal(acc, ctx.Instrument, bePrice, isLong, tickSize, targets, seq); // (5)
+        }
+
+        /// <summary>
+        /// Returns true if bePrice is valid to submit against live market.
+        /// NT8 rule: Sell stop must be <= Ask; BuyToCover stop must be >= Bid.
+        /// ask/bid <= 0.0 means no market data yet -- allow submission, NT8 handles it.
+        /// CYC=3: (1) isLong branch, (2) long priceOk expr, (3) short priceOk expr.
+        /// JS-001: no throw. JS-002: returns bool.
+        /// </summary>
+        private static bool IsBePriceOk(bool isLong, double bePrice, double ask, double bid)
+        {
+            if (isLong) return ask <= 0.0 || bePrice <= ask;   // (1)(2)
+            return bid <= 0.0 || bePrice >= bid;               // (3)
+        }
+
+        /// <summary>
+        /// Build the BE price-rejection warning string.
+        /// CYC=3: (1) isLong ternary for side, (2) isLong ternary for market price, (3) string concat.
+        /// JS-001: no throw. JS-002: string concat always non-null.
+        /// </summary>
+        private static string BuildBeRejectMsg(string accName, double bePrice, bool isLong, double ask, double bid)
+        {
+            string side   = isLong ? "above ask" : "below bid";                   // (1)
+            string market = isLong ? ask.ToString("F2") : bid.ToString("F2");     // (2)
+            return "[BE] WARNING: " + accName + " BE stop @ "                     // (3)
+                   + bePrice.ToString("F2") + " rejected -- stop "
+                   + side + " market " + market + " -- position UNPROTECTED";
+        }
+
+        /// <summary>
+        /// Raise PttBus BE event with leader account context.
+        /// NOTE DW-B34-RAISE-01: carries leader values only (mixed-direction deferred).
+        /// CYC=2: (1) leaderIsLong ternary, (2) PttBus.RaiseBe call.
+        /// JS-021: no lock. JS-001: no throw.
+        /// </summary>
+        private void RaiseBeNotify(IPttHostContext ctx, Position leaderPos, double buf, double tickSize)
+        {
+            bool   leaderIsLong  = leaderPos.MarketPosition == MarketPosition.Long; // (1)
+            double leaderBePrice = leaderPos.AveragePrice + (leaderIsLong ? +buf : -buf) * tickSize;
+            PttBus.RaiseBe(this, new BeEventArgs(                                   // (2)
+                ctx.Instrument, leaderBePrice, leaderPos.AveragePrice,
+                leaderIsLong, string.Empty));
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // PRIVATE HELPERS
+        // ─────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Cancel stale Working/Initialized orders (excluding PTT-BE-Stop) for given account.
+        /// NT8-051: NT8 sim does not auto-cancel ATM brackets when position goes flat.
+        /// NT8-006: NO LINQ -- explicit foreach instead of .Where().
+        /// CYC=3: (1) null guard, (2) foreach+conditions, (3) Count==0 early return.
+        /// JS-021: no lock.
+        /// </summary>
+        private static void CancelStaleBracketsLocal(Account acc, Instrument instr)
+        {
+            if (acc == null || instr == null) return;                             // (1)
+
+            var stale = new List<Order>();
+            foreach (Order o in acc.Orders)                                       // (2)
+            {
+                if (o == null) continue;
+                bool stateOk = o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Initialized;
+                bool instrOk = o.Instrument != null
+                            && o.Instrument.FullName == instr.FullName;
+                bool notBe   = o.Name != "PTT-BE-Stop";
+                if (stateOk && instrOk && notBe)
+                    stale.Add(o);
+            }
+            if (stale.Count == 0) return;                                         // (3)
+            try
+            {
+                acc.Cancel(stale.ToArray());
+                NinjaTrader.Code.Output.Process(
+                    "[BE] CancelStaleBracketsLocal: " + stale.Count + " orders cancelled",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            }
+            catch { /* cancel on already-filled orders is non-fatal */ }
+        }
+
+        /// <summary>
+        /// Submit StopMarket order at bePrice for the given account.
+        /// NT8-049: arg6=limitPrice=0, arg7=stopPrice=bePrice -- CRITICAL, never swap.
+        /// NT8-007: arg11 = (NinjaTrader.Cbi.CustomOrder)null -- NOT a string.
+        /// NT8-013: DateTime.MaxValue for GTC -- NOT DateTime.Now.
+        /// NT8-014: signal "PTT-BE-Stop" -- must start with "PTT-".
+        /// NT8-050: uses FindPositionLocal -- NEVER acc.Positions[instr].
+        /// CYC=3: (1) null guard, (2) position guard, (3) CreateOrder+Submit try/catch.
+        /// </summary>
+        private static void SubmitBeStopLocal(Account acc, Instrument instr,
+                                              double bePrice, bool isLong, string ocoId)
+        {
+            if (acc == null || instr == null) return;                             // (1)
+
+            Position pos = FindPositionLocal(acc, instr);
+            if (pos == null || pos.Quantity == 0) return;                         // (2)
+
+            OrderAction direction = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+
+            try                                                                   // (3)
+            {
+                var order = acc.CreateOrder(
+                    instr,
+                    direction,
+                    OrderType.StopMarket,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    pos.Quantity,                          // qty from live position
+                    0,                                     // arg6: limitPrice=0 (NT8-049)
+                    bePrice,                               // arg7: stopPrice=bePrice (NT8-049)
+                    ocoId,                                 // arg8: OCO group ID (DW-B35-TARGETS-01 FIX)
+                    "PTT-BE-Stop",                         // arg9: signal name (NT8-014)
+                    DateTime.MaxValue,                     // arg10: gtd (NT8-013)
+                    (NinjaTrader.Cbi.CustomOrder)null);    // arg11: not a string (NT8-007)
+                if (order != null)
+                {
+                    acc.Submit(new[] { order });
+                    NinjaTrader.Code.Output.Process(
+                        "[BE] SubmitBeStopLocal " + direction + " " + pos.Quantity
+                        + " @ " + bePrice.ToString("F2") + " on " + acc.Name,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
+            }
+            catch (Exception ex)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "[BE] SubmitBeStopLocal EXCEPTION on " + (acc != null ? acc.Name : "null")
+                    + ": " + ex.Message,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            }
+        }
+
+        /// <summary>
+        /// Find position for account + instrument without Positions[Instrument] indexer.
+        /// NT8-050: acc.Positions[Instrument] is CS1503 in NT8 -- use foreach.
+        /// CYC=2: foreach(1), if(2). Returns null if flat -- callers have null guards.
+        /// </summary>
+        private static Position FindPositionLocal(Account acc, Instrument instr)
+        {
+            if (acc == null || instr == null) return null;
+            foreach (Position p in acc.Positions)
+                if (p.Instrument == instr)
+                    return p;
+            return null;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // B36-LaneB DW-B35-TARGETS-01: New helpers
+        // ─────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Return true if name is an ATM Target order name (Target1..Target9, not Target0).
+        /// Local private copy of CopyEngine.IsAtmTargetName pattern.
+        /// Adds name[6] != '0' guard to satisfy test T2 (Target0=false).
+        /// CYC=2: (1) length guard, (2) prefix+digit check.
+        /// JS-021: no lock. JS-002: returns bool.
+        /// </summary>
+        private static bool IsAtmTargetName(string name)
+        {
+            if (string.IsNullOrEmpty(name) || name.Length < 7) return false;       // (1)
+            return name.StartsWith("Target", StringComparison.Ordinal)
+                   && char.IsDigit(name[6]) && name[6] != '0';                     // (2)
+        }
+
+        /// <summary>
+        /// Return true if name is a PTT Quick Exit target order (PTT-QX-T1, PTT-QX-T2, PTT-QX-T3).
+        /// These are plain Limit orders -- LimitPrice and Quantity are readable.
+        /// BUG-B42-QX-BE-01 FIX (Direction 1): BE All after Quick All must recognise QX targets.
+        /// CYC=2: (1) length+null guard, (2) char-index body.
+        /// JS-021: no lock. JS-002: returns bool. NT8-006: no LINQ, char primitives only.
+        /// </summary>
+        private static bool IsPttQxTarget(string name)
+        {
+            if (name == null || name.Length != 9) return false;                     // (1)
+            return name[0] == 'P' && name[1] == 'T' && name[2] == 'T'
+                   && name[3] == '-' && name[4] == 'Q' && name[5] == 'X'
+                   && name[6] == '-' && name[7] == 'T'
+                   && name[8] >= '1' && name[8] <= '3';                            // (2)
+        }
+
+        /// <summary>
+        /// Read Working/Accepted ATM Target orders from acc for the given instrument.
+        /// NT8-006: NO LINQ -- foreach only, no .ToList()/.Where()/.Select()/.Any().
+        /// Must be called BEFORE CancelStaleBracketsLocal so targets are still Working.
+        /// JS-002: returns empty list, never null.
+        /// CYC=3: (1) null guard, (2) foreach, (3) compound state+instr+name filter.
+        /// </summary>
+        private static List<(double Price, int Qty, OrderAction Action)>
+            SnapshotTargetsLocal(Account acc, Instrument instr)
+        {
+            var result = new List<(double, int, OrderAction)>();
+            if (acc == null || instr == null) return result;                        // (1)
+            foreach (Order o in acc.Orders)                                         // (2)
+            {
+                if (o == null) continue;
+                bool stateOk = o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Accepted;
+                bool instrOk = o.Instrument != null
+                            && o.Instrument.FullName == instr.FullName;
+                if (!stateOk || !instrOk || (!IsAtmTargetName(o.Name) && !IsPttQxTarget(o.Name))) continue; // (3) BUG-B42-QX-BE-01
+                result.Add((o.LimitPrice, o.Quantity, o.OrderAction));
+                NinjaTrader.Code.Output.Process(
+                    "[BE] Snapshot target: " + o.Name + " " + o.OrderAction
+                    + " " + o.Quantity + " @ " + o.LimitPrice.ToString("F2"),
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Build a unique OCO group ID for a specific stop+target pair at index pairIndex.
+        /// DW-B36-OCO-01 FIX: pairIndex makes each pair's ocoId distinct so Target-1 fill
+        ///   cancels only Stop-1, leaving Stop-2 + Target-2 (OCO-1) intact.
+        /// CYC=2: (1) ternary prefix selection. Pure computation, no side effects.
+        /// </summary>
+        // DW-B40-OCO-02 FIX: seq replaces priceInt -- monotonic, never reused.
+        // Old: "PTT-BE-"+prefix+"-"+priceInt+"-"+pairIndex  (collides on same-price re-entry)
+        // New: "PTT-BE-"+prefix+"-"+seq.ToString("D5")+"-"+pairIndex  (always unique per Execute call)
+        // CYC=2: (1) ternary prefix selection. Pure computation, no side effects.
+        private static string BuildBeOcoId(string accName, int seq, int pairIndex)
+        {
+            string prefix = accName.Length >= 4 ? accName.Substring(0, 4) : accName; // (1)
+            return "PTT-BE-" + prefix + "-" + seq.ToString("D5") + "-" + pairIndex.ToString();
+        }
+
+        /// <summary>
+        /// Submit pre-snapshotted ATM targets as GTC Limit orders named PTT-BE-Target-N,
+        /// each paired with its own StopMarket order in a dedicated OCO group.
+        /// DW-B36-OCO-01 FIX: one OCO pair per target -- Target-i fill cancels only Stop-i,
+        ///   never Stop-j (j != i). Mirrors NT8 ATM's own bracket layout exactly.
+        /// 0-targets edge case: submit one bare stop for pos.Quantity with empty ocoId.
+        /// NT8-049: StopMarket arg6=0, arg7=bePrice; Limit arg6=t.Price, arg7=0. DO NOT SWAP.
+        /// NT8-007: arg11=(NinjaTrader.Cbi.CustomOrder)null.
+        /// NT8-013: DateTime.MaxValue + TimeInForce.Gtc for all stops (B38 fix).
+        /// NT8-014: signal names start with "PTT-".
+        /// try/catch is PER-ORDER (inside loop) -- non-fatal, remaining pairs still protect.
+        /// CYC=6: (1) acc/instr null guard, (2) targets null guard,
+        ///        (3) 0-targets bare stop branch, (4) for loop,
+        ///        (5) stop ord null check, (6) target ord null check.
+        /// JS-021: no lock. JS-033: synchronous void.
+        /// </summary>
+        private static void SubmitBeTargetsLocal(
+            Account acc,
+            Instrument instr,
+            double bePrice,
+            bool isLong,
+            double tickSize,
+            List<(double Price, int Qty, OrderAction Action)> targets,
+            int seq)
+        {
+            if (acc == null || instr == null) return;                               // (1)
+            if (targets == null) return;                                            // (2)
+
+            OrderAction stopDirection = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+
+            // (3) 0-targets edge case: single bare stop for full position qty, no OCO
+            if (targets.Count == 0)
+            {
+                Position barePos = FindPositionLocal(acc, instr);
+                if (barePos == null || barePos.Quantity == 0) return;
+                try
+                {
+                    var bareStop = acc.CreateOrder(
+                        instr, stopDirection, OrderType.StopMarket, OrderEntry.Manual,
+                        TimeInForce.Gtc, barePos.Quantity,
+                        0,                                        // arg6: limitPrice=0  (NT8-049)
+                        bePrice,                                  // arg7: stopPrice     (NT8-049)
+                        string.Empty,                             // arg8: no OCO
+                        "PTT-BE-Stop",                            // arg9: signal name   (NT8-014)
+                        DateTime.MaxValue,                        // arg10: GTC          (NT8-013)
+                        (NinjaTrader.Cbi.CustomOrder)null);       // arg11: cast         (NT8-007)
+                    if (bareStop != null)
+                        acc.Submit(new[] { bareStop });
+                }
+                catch (Exception ex)
+                {
+                    NinjaTrader.Code.Output.Process(
+                        "[BE] SubmitBeTargetsLocal bare stop EXCEPTION: " + ex.Message,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
+                NinjaTrader.Code.Output.Process(
+                    "[BE] SubmitBeTargetsLocal: 0 targets -- bare stop submitted for " + acc.Name,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                return;
+            }
+
+            // (4) Per-pair loop: each target[i] paired with its own stop[i] in ocoId_i
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var t      = targets[i];
+                string ocoId_i = BuildBeOcoId(acc.Name, seq, i);                  // DW-B40-OCO-02: seq-based, never reused
+
+                // Submit PTT-BE-Stop-{i+1}: StopMarket for this tranche qty only
+                try
+                {
+                    var sOrd = acc.CreateOrder(
+                        instr, stopDirection, OrderType.StopMarket, OrderEntry.Manual,
+                        TimeInForce.Gtc, t.Qty,
+                        0,                                        // arg6: limitPrice=0  (NT8-049)
+                        bePrice,                                  // arg7: stopPrice     (NT8-049)
+                        ocoId_i,                                  // arg8: OCO pair i
+                        "PTT-BE-Stop-" + (i + 1),                // arg9: signal name   (NT8-014)
+                        DateTime.MaxValue,                        // arg10: GTC          (NT8-013)
+                        (NinjaTrader.Cbi.CustomOrder)null);       // arg11: cast         (NT8-007)
+                    if (sOrd != null)                                               // (5)
+                    {
+                        acc.Submit(new[] { sOrd });
+                        NinjaTrader.Code.Output.Process(
+                            "[BE] SubmitBeTargetsLocal Stop-" + (i + 1) + " "
+                            + stopDirection + " " + t.Qty + " @ " + bePrice.ToString("F2")
+                            + " ocoId=" + ocoId_i,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    }
+                    else
+                        NinjaTrader.Code.Output.Process(
+                            "[BE] SubmitBeTargetsLocal Stop-" + (i + 1)
+                            + " CreateOrder null -- skip",
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
+                catch (Exception ex)
+                {
+                    NinjaTrader.Code.Output.Process(
+                        "[BE] SubmitBeTargetsLocal EXCEPTION Stop-" + (i + 1)
+                        + ": " + ex.Message,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
+
+                // Submit PTT-BE-Target-{i+1}: Limit order for this tranche
+                try
+                {
+                    var tOrd = acc.CreateOrder(
+                        instr,
+                        t.Action,
+                        OrderType.Limit,
+                        OrderEntry.Manual,
+                        TimeInForce.Gtc,
+                        t.Qty,
+                        t.Price,                                  // arg6: limitPrice  (NT8-049)
+                        0,                                        // arg7: stopPrice=0 (NT8-049)
+                        ocoId_i,                                  // arg8: OCO pair i
+                        "PTT-BE-Target-" + (i + 1),              // arg9: signal name  (NT8-014)
+                        DateTime.MaxValue,                        // arg10: GTC         (NT8-013)
+                        (NinjaTrader.Cbi.CustomOrder)null);       // arg11: cast        (NT8-007)
+                    if (tOrd != null)                                               // (6)
+                    {
+                        acc.Submit(new[] { tOrd });
+                        NinjaTrader.Code.Output.Process(
+                            "[BE] SubmitBeTargetsLocal Target-" + (i + 1) + " "
+                            + t.Action + " " + t.Qty + " @ " + t.Price.ToString("F2")
+                            + " ocoId=" + ocoId_i,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    }
+                    else
+                        NinjaTrader.Code.Output.Process(
+                            "[BE] SubmitBeTargetsLocal Target-" + (i + 1)
+                            + " CreateOrder null -- skip",
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
+                catch (Exception ex)
+                {
+                    NinjaTrader.Code.Output.Process(
+                        "[BE] SubmitBeTargetsLocal EXCEPTION Target-" + (i + 1)
+                        + ": " + ex.Message,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
+            }
+            NinjaTrader.Code.Output.Process(
+                "[BE] SubmitBeTargetsLocal: " + targets.Count + " OCO pairs for " + acc.Name,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+        }
+    }
+}
