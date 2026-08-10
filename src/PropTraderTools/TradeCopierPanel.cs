@@ -418,6 +418,7 @@ namespace PropTraderTools
 
         public void Detach()
         {
+            _engine.Unsubscribe();  // B44: unsubscribe from order events before teardown
             // B9 T2: unregister click trader before clearing state
             if (_currentChart != null)
                 TradeCopierAddOn.UnregisterClickTrader(_currentChart);
@@ -490,6 +491,7 @@ namespace PropTraderTools
             NotifyRiskChanged();
             NotifyAtrFractionChanged();
             _engine.CopyEnabledChanged += OnCopyEnabledChanged;
+            _engine.Subscribe();   // B44: wire order stream to CopyEngine (panel path)
         }
 
         // -- live P&L push from NT8 -----------------------------------------------
