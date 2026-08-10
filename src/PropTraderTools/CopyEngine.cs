@@ -88,7 +88,7 @@ namespace PropTraderTools
     // B9 T3 -- Copy mode discriminated union (JS-023: volatile int backing for thread-safe reads/writes)
     internal enum CopyMode { Signal = 0, Mirror = 1, Clone = 2 }
 
-    internal sealed class CopyEngine
+    internal sealed class CopyEngine : ICopyEngine
     {
         // --- Singleton ---
         private static readonly CopyEngine _instance = new CopyEngine();
@@ -101,6 +101,14 @@ namespace PropTraderTools
         private volatile AtrSizingEngine _atrEngine  = null;    // write/read on UI thread only
         // B9 T3 -- Mirror mode (JS-023: volatile int backing for CopyMode enum)
         private volatile int _copyModeValue = 0;   // 0=Signal (default), 1=Mirror
+        // B50 -- _cloneAtmCache: volatile string holds ATM template name captured at Clone mode activation.
+        // volatile string: reference-type writes are atomic on CLR 4.0+ (JS-023 compliant).
+        // NT8-003: volatile double/float BANNED -- string is safe.
+        private volatile string _cloneAtmCache = string.Empty;
+        // B39 -- _globalBe: singleton reference to shared Global BE execution engine.
+        // Lazily initialized; Panel and Window read via GlobalBe property (UI thread only).
+        // JS-023: volatile null-check safe for singleton reads on CLR 4.0+.
+        private PttGlobalBreakEven _globalBe = null;
         private readonly ConcurrentDictionary<string, long> _dedupCache = new ConcurrentDictionary<string, long>(); // JS-025
         private ConcurrentBag<CopyRule> _rules = new ConcurrentBag<CopyRule>(); // Change 1: removed readonly
         private double _dailyCapFloor = -500.0; // Change 4
@@ -272,6 +280,24 @@ namespace PropTraderTools
             CopyEnabledChanged?.Invoke(enabled);
         }
 
+        // B54 -- IsEnabled: read-only view of _isCopyEnabled (JS-023: volatile bool read).
+        // CYC=1. Used by TradeCopierPanel.OnLoaded snap and TradeCopierWindow.OnLoaded snap.
+        public bool IsEnabled => _isCopyEnabled;
+
+        // B39 -- GlobalBe: shared Global BE engine. Lazy-init on first access (UI thread only).
+        // CYC=2 (null check + assignment).
+        // JS-021: no lock -- CLR object reference assignment is atomic on 64-bit.
+        // JS-002: always returns non-null; new PttGlobalBreakEven() as fallback.
+        public PttGlobalBreakEven GlobalBe
+        {
+            get
+            {
+                if (_globalBe == null)
+                    _globalBe = new PttGlobalBreakEven();
+                return _globalBe;
+            }
+        }
+
         // Change 5: SetDailyCapFloor added immediately after SetEnabled
         internal void SetDailyCapFloor(double floor)
         {
@@ -309,6 +335,50 @@ namespace PropTraderTools
         internal CopyMode GetCopyMode()
         {
             return (CopyMode)_copyModeValue;
+        }
+
+        // B58 ICopyEngine -- RelayBe: fan out pre-calculated BE price to all follower accounts.
+        // BeEventArgs.BePrice is already computed by PttGlobalBreakEven/BE module before firing.
+        // CYC=2 (1 base + 1 foreach branch). JS-021: no lock -- AllAccounts snapshot; SubmitBeStop lock-free.
+        // JS-002: void method, no return null.
+        public void RelayBe(BeEventArgs e)
+        {
+            foreach (var acc in AllAccounts(e.Instrument))
+                SubmitBeStop(acc, e.Instrument, e.BePrice);
+        }
+
+        // B58 ICopyEngine -- RelayTrim: delegate to Trim(Instrument) fan-out. CYC=1.
+        // Trim(Instrument) at line 1006 iterates AllAccounts and calls TrimOneAccount per account.
+        // JS-021: no lock. JS-002: void, no return null.
+        public void RelayTrim(TrimEventArgs e) => Trim(e.Instrument);
+
+        // B58 ICopyEngine -- RelayFlatten: delegate to Flatten(Instrument) fan-out. CYC=1.
+        // Flatten(Instrument) at line 1012 iterates AllAccounts and calls FlattenOneAccount per account.
+        // JS-021: no lock. JS-002: void, no return null.
+        public void RelayFlatten(FlatEventArgs e) => Flatten(e.Instrument);
+
+        // B58 ICopyEngine -- RelayCancel: delegate to CancelPendingEntries(Instrument) fan-out. CYC=1.
+        // CancelPendingEntries(Instrument) at line 1192 iterates AllAccounts and calls CancelOneAccount.
+        // JS-021: no lock. JS-002: void, no return null.
+        public void RelayCancel(CancelEventArgs e) => CancelPendingEntries(e.Instrument);
+
+        // B50 -- SetCloneAtmCache: CYC=1. Stores ATM template name for Clone mode dispatch.
+        // Called from TradeCopierPanel.OnCloneModeClick after reading leader's current ATM template.
+        // JS-023: volatile string write is atomic.
+        internal void SetCloneAtmCache(string value)
+        {
+            _cloneAtmCache = value ?? string.Empty;
+        }
+
+        // B50 -- GetCloneAtmMode: CYC=2. Returns Named(cache) if cache non-empty, else Inherit.
+        // Called by ResolveAtmMode when CopyMode == Clone.
+        // JS-002: never returns null -- returns Inherit as fallback.
+        internal FollowerAtmMode GetCloneAtmMode()
+        {
+            var cache = _cloneAtmCache;
+            if (cache != null && cache.Length > 0)  // branch (1)
+                return new FollowerAtmMode.Named(cache);
+            return new FollowerAtmMode.Inherit();
         }
 
         // B56-LaneB: CYC=2 -- yield distinct instrument names for UI refresh after LoadRules.
@@ -696,7 +766,7 @@ namespace PropTraderTools
                     baseQty * mult,
                     baseSignal.LimitPrice,
                     baseSignal.OrderId);
-                var mode = GetAtmMode(rule, acc.Name);
+                var mode = ResolveAtmMode(rule, acc.Name);
                 SendCopy(acc, order.Instrument, in scaledSignal, mode);
                 idx++;
             }
@@ -956,6 +1026,17 @@ namespace PropTraderTools
             if (rule.FollowerAtmTemplates.TryGetValue(accountName ?? string.Empty, out mode)) // branch (1)
                 return mode;
             return new FollowerAtmMode.Inherit();
+        }
+
+        // B50 -- ResolveAtmMode: CYC=2. Mode-aware ATM dispatch router.
+        // Clone mode uses shared _cloneAtmCache; Signal/Mirror modes delegate to GetAtmMode (per-rule).
+        // Replaces direct GetAtmMode call in DispatchCopy inner loop.
+        // JS-002: never returns null -- all branches return a FollowerAtmMode subtype.
+        private FollowerAtmMode ResolveAtmMode(CopyRule rule, string accountName)
+        {
+            if (GetCopyMode() == CopyMode.Clone)  // branch (1)
+                return GetCloneAtmMode();
+            return GetAtmMode(rule, accountName);
         }
 
         // B8 T2: ParseAtmModeName -- deserializes "Inherit"|"Market"|"Named:XXX" to FollowerAtmMode.
@@ -1428,6 +1509,32 @@ namespace PropTraderTools
             return null;
         }
 
+        // B58 -- FindPositionPublic: thin wrapper over private FindPosition for panel access.
+        // CYC=1. Returns null if no position (pre-existing FindPosition behavior -- not new).
+        // JS-002: null return is pre-existing contract of FindPosition, not a new null-return site.
+        internal Position FindPositionPublic(Account acc, Instrument instrument)
+            => FindPosition(acc, instrument);
+
+        // B58 -- SnapshotTargetsPublic: collects Working orders with PTT-QX-T or PTT-TGT- prefix.
+        // CYC=3 (1 base + foreach + prefix check). Returns List<Order> -- panel uses .Count.
+        // JS-002: never returns null -- returns empty List if no matches.
+        // JS-021: acc.Orders iteration; no lock required (NT8 AddOn read-only enumeration).
+        internal List<Order> SnapshotTargetsPublic(Account acc, Instrument instr)
+        {
+            var result = new List<Order>();
+            if (acc == null || instr == null) return result;             // (1) null guard
+            foreach (Order o in acc.Orders)                              // (2) foreach
+            {
+                if (o.Instrument != instr) continue;
+                if (o.OrderState != OrderState.Working) continue;
+                string n = o.Name ?? string.Empty;
+                if (n.StartsWith("PTT-QX-T", StringComparison.Ordinal)  // (3) prefix check
+                 || n.StartsWith("PTT-TGT-", StringComparison.Ordinal))
+                    result.Add(o);
+            }
+            return result;
+        }
+
         // B31 -- MoveStopToBreakEven: order.StopPrice + acc.Change(new Order[]{order}) in-place.
         // B31 CONFIRMED: order-level Change() preserves ATM OCO link (Director live test 2026-07-17).
         // CYC=6: IsFlat(1), tickSize guard(2), foreach(3), working(4), stop type(5), isStopLeg(6).
@@ -1663,6 +1770,11 @@ namespace PropTraderTools
                 slot.Account.AccountItemUpdate -= OnPendingBeAccountUpdate;
         }
 
+        // B40 -- IsPendingSlotsEmpty: CYC=1. Lock-free read of ConcurrentDictionary.IsEmpty.
+        // Called by TradeCopierPanel BE ALL armed/wait flow to determine gate state.
+        // JS-021: ConcurrentDictionary.IsEmpty is lock-free.
+        internal bool IsPendingSlotsEmpty() => _pendingBeSlots.IsEmpty;
+
         // B27 -- ArmTrailBe: arms the continuous trail watcher using acc.AccountItemUpdate.
         // CYC=4: instr null(1), acc null(2), pos flat(3), slot upsert(4).
         // DW-B27-01: slot dicts replace five singleton fields -- per-account, no data races.
@@ -1811,6 +1923,9 @@ namespace PropTraderTools
         private sealed class CopyRulesContainer
         {
             public List<CopyRuleDto> Rules { get; set; } = new List<CopyRuleDto>();
+            // B54 -- persists copy-enabled state so F5 cycle restores button color correctly.
+            // NT8-001: { get; set; } (not init accessor). XmlSerializer requires public { set; }.
+            public bool CopyEnabled { get; set; } = false;
         }
 
         // -- B6: Path helper (CYC=1) -----------------------------------------
@@ -1929,6 +2044,7 @@ namespace PropTraderTools
                 var container = new CopyRulesContainer();
                 foreach (var rule in _rules)
                     container.Rules.Add(RuleToDto(rule));
+                container.CopyEnabled = _isCopyEnabled;  // B54: persist enabled state
 
                 var serializer = new XmlSerializer(typeof(CopyRulesContainer));
                 var xml = string.Empty;
@@ -1973,6 +2089,8 @@ namespace PropTraderTools
                     {
                         foreach (var dto in container.Rules)
                             _rules.Add(DtoToRule(dto));
+                        _isCopyEnabled = container.CopyEnabled;             // B54: restore enabled state
+                        CopyEnabledChanged?.Invoke(_isCopyEnabled);         // B54: sync UI buttons
                     }
                 }
             }
