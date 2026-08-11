@@ -642,6 +642,9 @@ namespace PropTraderTools
                 return;
             }
 
+            // DW-B60-01: leader went flat -- propagate close to followers
+            if (TryDispatchLeaderFlat(e.Order.Account, e.Order.Instrument)) return;
+
             // Gate B: bracket drag detection -- divert to HandleBracketChange path
             if (IsWorkingBracket(e.Order))
             {
@@ -727,7 +730,7 @@ namespace PropTraderTools
             if (name.StartsWith("PTT-",  StringComparison.Ordinal))       return true;
             if (name == "Close")                                           return true;
             if (name == "Flatten")                                         return true;
-            if (name == "Rev")                                             return true;
+            if (name.StartsWith("Rev", StringComparison.Ordinal))         return true;
             if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;
             return false;
         }
@@ -961,6 +964,19 @@ namespace PropTraderTools
             if (pos == null)
                 return false;
             return pos.Quantity > 0;
+        }
+
+        // DW-B60-01: Detect leader-flat and fan out PTT-Flatten to followers.
+        // CYC=2: (1) follower guard, (2) position guard.
+        // Only called from OnOrderUpdate after Gates 1+2+2.5 (copy enabled, rule matched).
+        // JS-001: no throw. JS-002: returns bool. JS-021: no lock.
+        // TESTABILITY: private instance -- testable via CopyEngine harness.
+        private bool TryDispatchLeaderFlat(Account account, Instrument instrument)
+        {
+            if (IsFollowerAccount(account)) return false;           // (1) guard: not a follower
+            if (HasOpenPosition(account, instrument)) return false; // (2) guard: leader is flat
+            Flatten(account, instrument);
+            return true;
         }
 
         // CYC=3. Returns true if any working non-bracket order exists for the instrument.

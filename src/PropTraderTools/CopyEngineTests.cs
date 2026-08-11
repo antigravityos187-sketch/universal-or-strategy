@@ -2808,6 +2808,31 @@ namespace PropTraderTools
             Assert.False(CopyEngine.IsExitSignalName(""));
         }
 
+        // B60 T1: Rev prefix widening -- DW-B59-02 fix verification.
+        // Verifies that StartsWith("Rev") catches all NT8 reversal order name variants.
+        // Old exact match (name == "Rev") would return false for all three inputs below.
+
+        [Fact]
+        public void T_B60_Rev_01_IsExitSignalName_Reversal_ReturnsTrue()
+        {
+            // "Reversal" starts with "Rev" -- must be blocked after StartsWith fix.
+            Assert.True(CopyEngine.IsExitSignalName("Reversal"));
+        }
+
+        [Fact]
+        public void T_B60_Rev_02_IsExitSignalName_RevLong_ReturnsTrue()
+        {
+            // "RevLong" (long reversal variant) starts with "Rev" -- must be blocked.
+            Assert.True(CopyEngine.IsExitSignalName("RevLong"));
+        }
+
+        [Fact]
+        public void T_B60_Rev_03_IsExitSignalName_RevShort_ReturnsTrue()
+        {
+            // "RevShort" (short reversal variant) starts with "Rev" -- must be blocked.
+            Assert.True(CopyEngine.IsExitSignalName("RevShort"));
+        }
+
 
     }
 }
