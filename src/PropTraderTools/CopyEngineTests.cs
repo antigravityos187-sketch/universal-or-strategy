@@ -2747,5 +2747,67 @@ namespace PropTraderTools
                 "FindRule must return null when _rules is empty (JS-002 null contract)");
         }
 
+        // =====================================================================
+        // B59 T1: IsExitSignalName -- 7 direct tests (T_B59_01 through T_B59_07)
+        // DW-B59-01 -- Gate 0.5 exit-name guard.
+        // TESTABILITY: internal static -- no reflection, no NT8 runtime required.
+        // =====================================================================
+
+        [Fact]
+        public void T_B59_01_IsExitSignalName_NullName_ReturnsFalse()
+        {
+            // Null name: unknown signal -- must NOT be blocked (pass-through).
+            Assert.False(CopyEngine.IsExitSignalName(null));
+        }
+
+        [Fact]
+        public void T_B59_02_IsExitSignalName_PttPrefix_ReturnsTrue()
+        {
+            // PTT- own signal must be blocked to prevent cascade copy.
+            Assert.True(CopyEngine.IsExitSignalName("PTT-Copy"));
+            Assert.True(CopyEngine.IsExitSignalName("PTT-TrimLimit"));
+            Assert.True(CopyEngine.IsExitSignalName("PTT-Mirror-Close"));
+        }
+
+        [Fact]
+        public void T_B59_03_IsExitSignalName_Close_ReturnsTrue()
+        {
+            // NT8 Close button emits Name="Close" -- must be blocked (root cause of DW-B59-01).
+            Assert.True(CopyEngine.IsExitSignalName("Close"));
+        }
+
+        [Fact]
+        public void T_B59_04_IsExitSignalName_Flatten_ReturnsTrue()
+        {
+            // NT8 Flatten signal -- must be blocked.
+            Assert.True(CopyEngine.IsExitSignalName("Flatten"));
+        }
+
+        [Fact]
+        public void T_B59_05_IsExitSignalName_Rev_ReturnsTrue()
+        {
+            // NT8 Rev (reversal) signal -- must be blocked to prevent reverse-copy.
+            Assert.True(CopyEngine.IsExitSignalName("Rev"));
+        }
+
+        [Fact]
+        public void T_B59_06_IsExitSignalName_ExitPrefix_ReturnsTrue()
+        {
+            // NT8 "Exit..." prefix family -- must be blocked.
+            Assert.True(CopyEngine.IsExitSignalName("Exit at target"));
+            Assert.True(CopyEngine.IsExitSignalName("Exit"));
+            Assert.True(CopyEngine.IsExitSignalName("ExitOnClose"));
+        }
+
+        [Fact]
+        public void T_B59_07_IsExitSignalName_ArbitrarySignal_ReturnsFalse()
+        {
+            // Normal user-defined signal names must pass through Gate 0.5.
+            Assert.False(CopyEngine.IsExitSignalName("MySignal"));
+            Assert.False(CopyEngine.IsExitSignalName("MES_Long_Entry"));
+            Assert.False(CopyEngine.IsExitSignalName(""));
+        }
+
+
     }
 }

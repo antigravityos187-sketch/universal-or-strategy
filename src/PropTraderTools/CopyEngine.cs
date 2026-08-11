@@ -717,6 +717,23 @@ namespace PropTraderTools
             => state == OrderState.Submitted   // market orders
             || state == OrderState.Accepted;   // limit orders (AddOn path)
 
+        // B59 T1: IsExitSignalName -- CYC=6. Returns true for names that must not trigger follower copy.
+        // Covers: (1) PTT- own signals; (2) NT8 Close button; (3) NT8 Flatten; (4) NT8 Rev reversal;
+        //         (5) NT8 "Exit..." prefix family. JS-001: no throw. JS-002: returns bool.
+        // TESTABILITY: internal static with string param -- directly testable without NT8 runtime.
+        internal static bool IsExitSignalName(string name)
+        {
+            if (name == null)                                              return false;
+            if (name.StartsWith("PTT-",  StringComparison.Ordinal))       return true;
+            if (name == "Close")                                           return true;
+            if (name == "Flatten")                                         return true;
+            if (name == "Rev")                                             return true;
+            if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;
+            return false;
+        }
+
+
+
         // --- B7-F0: Bracket mirroring methods ---
 
         // B8 T1: DispatchCopy -- index-tracking loop replaces plain foreach.
@@ -724,8 +741,8 @@ namespace PropTraderTools
         // JS-001: no throw in hot path. JS-021: no lock.
         private void DispatchCopy(Order order, CopyRule rule)
         {
-            // Gate 0.5: PTT-prefix guard -- prevents cascade copy of our own PTT- signals. CYC: 7->8.
-            if (order.Name != null && order.Name.StartsWith("PTT-")) return;
+            // Gate 0.5: block PTT- cascade AND known NT8 exit signal names (B59). CYC: 7->8 (unchanged).
+            if (IsExitSignalName(order.Name)) return;
 
             // Gate 3: must be a dispatch-trigger state (Submitted for market; Accepted for AddOn limit)
             if (!IsDispatchTriggerState(order.OrderState))
