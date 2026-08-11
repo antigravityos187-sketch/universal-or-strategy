@@ -643,7 +643,9 @@ namespace PropTraderTools
             }
 
             // DW-B60-01: leader went flat -- propagate close to followers
-            if (TryDispatchLeaderFlat(e.Order.Account, e.Order.Instrument)) return;
+            if (TryDispatchLeaderFlat(
+                    e.Order.Account, e.Order.Instrument, e.Order.OrderState, matchedRule.Value,
+                    IsFollowerAccount, HasOpenPosition, FlattenOneAccount)) return;
 
             // Gate B: bracket drag detection -- divert to HandleBracketChange path
             if (IsWorkingBracket(e.Order))
@@ -966,16 +968,25 @@ namespace PropTraderTools
             return pos.Quantity > 0;
         }
 
-        // DW-B60-01: Detect leader-flat and fan out PTT-Flatten to followers.
-        // CYC=2: (1) follower guard, (2) position guard.
-        // Only called from OnOrderUpdate after Gates 1+2+2.5 (copy enabled, rule matched).
-        // JS-001: no throw. JS-002: returns bool. JS-021: no lock.
-        // TESTABILITY: private instance -- testable via CopyEngine harness.
-        private bool TryDispatchLeaderFlat(Account account, Instrument instrument)
+        // CYC=4 (spec-comment) / CYC=6 (strict McCabe, counting loop + null guard):
+        // (1) state guard, (2) follower guard, (3) open-position guard, (4) foreach follower.
+        // Fires only on Filled or Cancelled. Skips if account is a follower.
+        // Skips if leader still has an open position.
+        // Loops rule.FollowerAccounts directly -- does NOT touch the leader account.
+        // JS-021: no lock. JS-001: no throw. JS-002: no null return.
+        private static bool TryDispatchLeaderFlat(
+            Account account, Instrument instrument, OrderState state, CopyRule rule,
+            Func<Account, bool> isFollower, Func<Account, Instrument, bool> hasOpenPosition,
+            Action<Account, Instrument> flattenOne)
         {
-            if (IsFollowerAccount(account)) return false;           // (1) guard: not a follower
-            if (HasOpenPosition(account, instrument)) return false; // (2) guard: leader is flat
-            Flatten(account, instrument);
+            if (state != OrderState.Filled && state != OrderState.Cancelled) return false; // (1)
+            if (isFollower(account)) return false;                                           // (2)
+            if (hasOpenPosition(account, instrument)) return false;                          // (3)
+            foreach (var acc in rule.FollowerAccounts)                                       // (4)
+            {
+                if (acc == null) continue;
+                flattenOne(acc, instrument);
+            }
             return true;
         }
 
