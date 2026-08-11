@@ -8202,8 +8202,9 @@ customModes:
                      Call execute_lsp(workspace_symbols, query="NinjaTrader") to enumerate available NT8 types.
           Thought 8: Final pre-flight - any violation found = add more thoughts to resolve before writing
         Only after ALL 8 thoughts reach nextThoughtNeeded=false: write the plan file.
-        Read: specs/{spec-file}, docs/standards/jane-street/RULES_CATALOG.md
-               docs/brain/{prev-epic}/06-deferred-backlog.md (OPEN items -- if provided by orchestrator)
+        Read: docs/standards/NT8_FULL_REFERENCE.md (grep for any API used in Thought 7 -- ground-truth before any NT8 claim)
+              specs/{spec-file}, docs/standards/jane-street/RULES_CATALOG.md
+              docs/brain/{prev-epic}/06-deferred-backlog.md (OPEN items -- if provided by orchestrator)
         Produce: docs/brain/{epic}/02-architecture-plan.md
         Include: component list, class names, method signatures, data flow,
                  NinjaTrader 8 API usage, threading model, no lock() anywhere.
@@ -8363,6 +8364,7 @@ customModes:
         Read: docs/brain/{epic}/02-architecture-plan.md
               specs/{spec-file}
               docs/standards/jane-street/RULES_CATALOG.md
+              docs/standards/NT8_FULL_REFERENCE.md (verify any NT8 API claimed in plan is valid AddOn API -- e.g. AtmStrategyCreate is StrategyBase-only, not AddOnBase)
         Apply ALL checks from the DNA block above to the plan.
         Write: docs/brain/{epic}/02-plan-review.md
           Include: per-violation line (rule ID | description | location in plan)
@@ -8375,6 +8377,7 @@ customModes:
               all ticket-N-completion.md and ticket-N-verification.md files
               specs/{spec-file}
               docs/standards/jane-street/RULES_CATALOG.md
+              docs/standards/NT8_FULL_REFERENCE.md (cross-check any NT8 API in completed source is valid AddOn API)
               docs/brain/{epic}/06-deferred-backlog.md (prior blocks -- if exists)
         Check: Do CopyEngine + TradeCopierPanel + TradeCopierWindow form a
                complete coherent system? Any cross-file rule violations from DNA?
@@ -8701,6 +8704,7 @@ customModes:
               docs/brain/{epic}/ticket-N-completion.md
               specs/{spec-file}
               docs/standards/jane-street/RULES_CATALOG.md
+              docs/standards/NT8_FULL_REFERENCE.md (confirm any NT8 API in implemented source is valid AddOn API -- CreateOrder, Account.*, Order.* only)
 
       Run ALL 7 SCANS INDEPENDENTLY (do NOT trust engineer scan results):
         SCAN-01: execute_lsp(workspace_symbols, query="lock") -- compiler-accurate -> 0
@@ -8849,6 +8853,7 @@ customModes:
           3. ctx_read(docs/brain/{epic}/04-tickets.md, mode=full)
           4. ctx_read(docs/brain/{epic}/02-architecture-plan.md, mode=map)
           5. ctx_read(c:/WSGTA/universal-or-strategy-director/docs/standards/jane-street/RULES_CATALOG.md, mode=signatures)
+          6. ctx_read(docs/standards/NT8_FULL_REFERENCE.md, mode=map)  (catch bad NT8 API claims in ticket descriptions before engineer sees them)
         READING FILES: ctx_read(path, mode=full|map)  -- never read_file
         SHELL OUTPUT:  ctx_shell("command") SEQUENTIALLY (one call per command, wait for result) -- never execute_command, never batch
         SESSION END:
