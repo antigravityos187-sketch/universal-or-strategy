@@ -807,10 +807,16 @@ namespace PropTraderTools
             return v < 1 ? 1 : (v > 10 ? 10 : v);
         }
 
-        // CYC=1. Gate predicate for bracket change detection in OnOrderUpdate.
-        private static bool IsWorkingBracket(Order order)
+        // CYC=3. Gate predicate for bracket detection in OnOrderUpdate.
+        // B63: Accepted added -- NT8 bracket orders fire Accepted before (or instead of) Working.
+        // NT8_FULL_REFERENCE.md line 1005: "some stop orders may only reach Accepted state".
+        // Extending to Accepted is safe: SyncFollowerBracket price-delta guard absorbs double-fire.
+        // JS-021: no lock. JS-001: no throw.
+        internal static bool IsWorkingBracket(Order order)
         {
-            return order.OrderState == OrderState.Working && IsBracketLegStatic(order);
+            return (order.OrderState == OrderState.Working
+                    || order.OrderState == OrderState.Accepted)
+                   && IsBracketLegStatic(order);
         }
 
         // B10 T1 -- IsTrailingStop: trailing stop detection predicate.
