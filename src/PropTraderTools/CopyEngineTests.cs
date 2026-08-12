@@ -2852,7 +2852,7 @@ namespace PropTraderTools
             return null;
         }
 
-        // Helper: get MethodInfo for TryDispatchLeaderFlat (private static, 7 params).
+        // Helper: get MethodInfo for TryDispatchLeaderFlat (private static, 8 params).
         private static System.Reflection.MethodInfo GetTryDispatchLeaderFlat()
             => typeof(CopyEngine).GetMethod(
                 "TryDispatchLeaderFlat",
@@ -2877,6 +2877,7 @@ namespace PropTraderTools
                 null,                                  // account
                 null,                                  // instrument
                 OrderState.Filled,                     // state
+                "BuyLimit",                            // orderName (non-native: guard applies)
                 ruleVal,                               // rule (boxed CopyRule)
                 (Func<Account, bool>)(_ => false),     // isFollower
                 (Func<Account, Instrument, bool>)((_, __) => true),   // hasOpenPosition: leader still open
@@ -2907,6 +2908,7 @@ namespace PropTraderTools
                 null,                                  // account
                 null,                                  // instrument
                 OrderState.Working,                    // state (non-terminal)
+                "BuyLimit",                            // orderName
                 ruleVal,                               // rule
                 (Func<Account, bool>)(_ => false),     // isFollower
                 (Func<Account, Instrument, bool>)((_, __) => false),  // hasOpenPosition
@@ -2937,6 +2939,7 @@ namespace PropTraderTools
                 null,                                  // account
                 null,                                  // instrument
                 OrderState.Filled,                     // state
+                "BuyLimit",                            // orderName (non-native)
                 ruleVal,                               // rule
                 (Func<Account, bool>)(_ => true),      // isFollower: account IS a follower
                 (Func<Account, Instrument, bool>)((_, __) => false),  // hasOpenPosition
@@ -2978,6 +2981,7 @@ namespace PropTraderTools
                 null,                                  // account (leader)
                 null,                                  // instrument
                 OrderState.Filled,                     // state (terminal)
+                "BuyLimit",                            // orderName (non-native exit)
                 ruleVal,                               // rule (0 followers -- guards still exercised)
                 (Func<Account, bool>)(_ => false),     // isFollower: leader is NOT a follower
                 (Func<Account, Instrument, bool>)((_, __) => false),  // hasOpenPosition: leader is flat
@@ -2992,12 +2996,129 @@ namespace PropTraderTools
             // Also verify Cancelled state passes the state guard (CYC branch 1b)
             var resultCancelled = (bool)mi.Invoke(null, new object[]
             {
-                null, null, OrderState.Cancelled, ruleVal,
+                null, null, OrderState.Cancelled, "BuyLimit", ruleVal,
                 (Func<Account, bool>)(_ => false),
                 (Func<Account, Instrument, bool>)((_, __) => false),
                 (Action<Account, Instrument>)((_, __) => { })
             });
             Assert.True(resultCancelled);
+        }
+
+        // ── B65 tests: IsNativeExitName + TryDispatchLeaderFlat race bypass ──
+        // T_B65_01 through T_B65_07: direct IsNativeExitName unit tests.
+        // T_B65_08: regression test for DW-B65-01 race bypass.
+        // T_B65_09: regression guard -- non-native exit still respects position guard.
+
+        [Fact]
+        public void T_B65_01_IsNativeExitName_Null_ReturnsFalse()
+        {
+            Assert.False(CopyEngine.IsNativeExitName(null));
+        }
+
+        [Fact]
+        public void T_B65_02_IsNativeExitName_Close_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsNativeExitName("Close"));
+        }
+
+        [Fact]
+        public void T_B65_03_IsNativeExitName_Flatten_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsNativeExitName("Flatten"));
+        }
+
+        [Fact]
+        public void T_B65_04_IsNativeExitName_RevPrefix_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsNativeExitName("RevLong"));
+            Assert.True(CopyEngine.IsNativeExitName("RevShort"));
+            Assert.True(CopyEngine.IsNativeExitName("Reversal"));
+        }
+
+        [Fact]
+        public void T_B65_05_IsNativeExitName_ExitPrefix_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsNativeExitName("ExitLong"));
+            Assert.True(CopyEngine.IsNativeExitName("Exit"));
+        }
+
+        [Fact]
+        public void T_B65_06_IsNativeExitName_PttPrefix_ReturnsFalse()
+        {
+            // "PTT-Flatten" is a PTT own signal, NOT a native NT8 exit name.
+            Assert.False(CopyEngine.IsNativeExitName("PTT-Flatten"));
+            Assert.False(CopyEngine.IsNativeExitName("PTT-Copy"));
+        }
+
+        [Fact]
+        public void T_B65_07_IsNativeExitName_ArbitrarySignal_ReturnsFalse()
+        {
+            Assert.False(CopyEngine.IsNativeExitName("BuyLimit"));
+            Assert.False(CopyEngine.IsNativeExitName("MES_Long_Entry"));
+            Assert.False(CopyEngine.IsNativeExitName(""));
+        }
+
+        [Fact]
+        public void T_B65_08_TryDispatchLeaderFlat_NativeExitFilled_BypassesPositionRace()
+        {
+            // CORE B65 REGRESSION TEST (DW-B65-01):
+            // orderName="Close" (native NT8 exit), state=Filled, hasOpenPosition RETURNS TRUE
+            // (simulates NT8 position lag documented in NT8_FULL_REFERENCE.md line 1721).
+            // Expected: flattenOne IS NOT blocked by guard (3) -- race bypassed. result = true.
+            // 0 followers in rule: result=true confirms all guards passed; flattenCallCount=0
+            // confirms no followers were flattened (rule has none), consistent with T_B61_04 design.
+            _engine.SetEnabled(false);
+            _engine.AddRule("B65T08", null, new Account[0]);
+            var ruleVal = GetRuleValue(_engine, "B65T08");
+            Assert.NotNull(ruleVal);
+            int flattenCallCount = 0;
+            var mi = GetTryDispatchLeaderFlat();
+            Assert.NotNull(mi);
+
+            var result = (bool)mi.Invoke(null, new object[]
+            {
+                null,                                           // account
+                null,                                           // instrument
+                OrderState.Filled,                              // state
+                "Close",                                        // orderName (native NT8 exit)
+                ruleVal,                                        // rule
+                (Func<Account, bool>)(_ => false),              // isFollower: NOT a follower
+                (Func<Account, Instrument, bool>)((_, __) => true),  // hasOpenPosition: TRUE (race condition)
+                (Action<Account, Instrument>)((_, __) => flattenCallCount++)
+            });
+
+            Assert.True(result);          // race bypassed -- method returned true
+            Assert.Equal(0, flattenCallCount); // 0 followers in rule, but guards all passed
+        }
+
+        [Fact]
+        public void T_B65_09_TryDispatchLeaderFlat_NonExitFilled_LeaderHasPosition_SkipsFlat()
+        {
+            // Guard regression: orderName="BuyLimit" (non-native), state=Filled, hasOpenPosition=true.
+            // Expected: guard (3) still fires -- result = false. flattenOne NOT called.
+            // Confirms the bypass is exclusive to native NT8 exit names.
+            _engine.SetEnabled(false);
+            _engine.AddRule("B65T09", null, new Account[0]);
+            var ruleVal = GetRuleValue(_engine, "B65T09");
+            Assert.NotNull(ruleVal);
+            int flattenCallCount = 0;
+            var mi = GetTryDispatchLeaderFlat();
+            Assert.NotNull(mi);
+
+            var result = (bool)mi.Invoke(null, new object[]
+            {
+                null,                                           // account
+                null,                                           // instrument
+                OrderState.Filled,                              // state
+                "BuyLimit",                                     // orderName (NOT a native exit)
+                ruleVal,                                        // rule
+                (Func<Account, bool>)(_ => false),              // isFollower
+                (Func<Account, Instrument, bool>)((_, __) => true),  // hasOpenPosition: TRUE
+                (Action<Account, Instrument>)((_, __) => flattenCallCount++)
+            });
+
+            Assert.False(result);         // guard (3) blocked -- non-native exit with open position
+            Assert.Equal(0, flattenCallCount);
         }
 
 

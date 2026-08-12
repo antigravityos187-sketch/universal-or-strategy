@@ -649,7 +649,8 @@ namespace PropTraderTools
 
             // DW-B60-01: leader went flat -- propagate close to followers
             if (TryDispatchLeaderFlat(
-                    e.Order.Account, e.Order.Instrument, e.Order.OrderState, matchedRule.Value,
+                    e.Order.Account, e.Order.Instrument, e.Order.OrderState, e.Order.Name,
+                    matchedRule.Value,
                     IsFollowerAccount, HasOpenPosition, FlattenOneAccount)) return;
 
             // Gate B: bracket drag detection -- divert to HandleBracketChange path
@@ -753,6 +754,26 @@ namespace PropTraderTools
             if (name == "Close")                                           return true;
             if (name == "Flatten")                                         return true;
             if (name.StartsWith("Rev", StringComparison.Ordinal))         return true;
+            if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;
+            return false;
+        }
+
+        // B65 T1: IsNativeExitName -- CYC=6. Returns true for NT8 built-in exit order names ONLY.
+        // Distinct from IsExitSignalName: does NOT cover PTT- prefixed signals.
+        // Rationale: Only native NT8 exits (Close/Flatten/Rev/Exit) can arrive in OnOrderUpdate
+        // while the leader position has not yet updated -- see NT8_FULL_REFERENCE.md line 1721:
+        //   "Changes to positions will not be reflected till at least the next OnBarUpdate() event
+        //    after an order fill."
+        // For these names, bypass the hasOpenPosition guard in TryDispatchLeaderFlat to avoid
+        // the position-race and propagate the close immediately to followers (DW-B65-01 fix).
+        // NT8-VERIFY-03/04: "IsNativeExitName" confirmed NOT present in NT8 Custom codebase.
+        // JS-001: no throw. JS-002: returns bool (never null). JS-021: no lock.
+        internal static bool IsNativeExitName(string name)
+        {
+            if (name == null)                                              return false;
+            if (name == "Close")                                           return true;
+            if (name == "Flatten")                                         return true;
+            if (name.StartsWith("Rev",  StringComparison.Ordinal))        return true;
             if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;
             return false;
         }
@@ -1061,20 +1082,24 @@ namespace PropTraderTools
             return pos.Quantity > 0;
         }
 
-        // CYC=4 (spec-comment) / CYC=6 (strict McCabe, counting loop + null guard):
-        // (1) state guard, (2) follower guard, (3) open-position guard, (4) foreach follower.
-        // Fires only on Filled or Cancelled. Skips if account is a follower.
-        // Skips if leader still has an open position.
-        // Loops rule.FollowerAccounts directly -- does NOT touch the leader account.
+        // B65 T1: TryDispatchLeaderFlat -- CYC=7 (strict McCabe: loop + null guard + 4 early returns + IsNativeExitName branch).
+        // (1) state guard, (2) follower guard, (3) open-position race-safe guard, (4) foreach follower.
+        // Guard (3) change: bypass hasOpenPosition when orderName is a native NT8 exit.
+        // Rationale: NT8_FULL_REFERENCE.md line 1721 -- position state is not updated until the next
+        // OnBarUpdate() after an order fill. When leader fills a native close order (Name="Close",
+        // "Flatten", "Exit*", "Rev*"), position still shows open even though the order is filled.
+        // Bypassing the guard here ensures followers are flattened immediately (DW-B65-01 fix).
         // JS-021: no lock. JS-001: no throw. JS-002: no null return.
         private static bool TryDispatchLeaderFlat(
-            Account account, Instrument instrument, OrderState state, CopyRule rule,
-            Func<Account, bool> isFollower, Func<Account, Instrument, bool> hasOpenPosition,
+            Account account, Instrument instrument, OrderState state, string orderName,
+            CopyRule rule,
+            Func<Account, bool> isFollower,
+            Func<Account, Instrument, bool> hasOpenPosition,
             Action<Account, Instrument> flattenOne)
         {
             if (state != OrderState.Filled && state != OrderState.Cancelled) return false; // (1)
             if (isFollower(account)) return false;                                           // (2)
-            if (hasOpenPosition(account, instrument)) return false;                          // (3)
+            if (!IsNativeExitName(orderName) && hasOpenPosition(account, instrument)) return false; // (3)
             foreach (var acc in rule.FollowerAccounts)                                       // (4)
             {
                 if (acc == null) continue;
