@@ -1,18 +1,42 @@
 # B62-LaneA Orchestrator Prompt
 
-## Block: B62 — Entry order drag sync + dedup fix
+## Block: B62 — Live entry drag sync + price-keyed dedup fix
 
-**DW item**: DW-B62-01 (live test confirmed: dragging a leader limit order spawns duplicate PTT-Copy
-orders on the follower because the 10-second dedup expiry allows re-entry, and no entry-order drag
-sync path exists — follower does not move its working PTT-Copy order when the leader drags).
+**Run AFTER B63 is merged.** B63 must be deployed (F5 green) before testing B62.
 
-**Root cause** (confirmed from NinjaTrader Grid 2026-08-11 logs, Sim102 accumulated 41L vs 10L):
-1. `IsDedup` prunes cache by time (`>10s`). A drag after >10s adds a new entry and passes Gate 5,
-   spawning a second `PTT-Copy` order instead of moving the existing one.
-2. No code path exists that detects "this orderId is already in the cache + state=Accepted + Limit"
-   and diverts to an `acc.Change()` call.
+**DW item**: DW-B62-01 (live confirmed 2026-08-11, NinjaTrader Grid 07-25/07-26 PM):
+When the leader drags a working limit entry order in Chart Trader or SuperDOM, NT8 fires
+`OnOrderUpdate` with the SAME orderId but a new `LimitPrice` at `Accepted` then `Working`
+states. PTT currently has NO path to call `acc.Change()` on the follower's working `PTT-Copy`
+order. The follower's entry stays at the old price.
 
-**Option chosen**: Option B — real-time entry drag sync (mirror of `HandleBracketChange` pattern).
+Additionally, the existing `IsDedup` uses a 10-second time-based expiry. If the leader drags
+after 10s, the dedup cache has evicted that orderId and `DispatchCopy` fires again, spawning
+a second `PTT-Copy` entry order on the follower instead of moving the existing one.
+
+**Goal: live drag sync identical to "Affordable Indicators" behaviour** — drag the leader entry
+in Chart Trader or SuperDOM, follower entry moves instantly to the same price via `acc.Change()`.
+
+---
+
+## NT8 API CONFIRMATION (from NT8_FULL_REFERENCE.md)
+
+**Drag event sequence** (confirmed from live logs 2026-08-11):
+```
+Order='X/Sim101' Name='Entry' New state='Change submitted'  ← NT8 auto-chase fires
+Order='X/Sim101' Name='Entry' New state='Accepted'  LimitPrice=NEW_PRICE
+Order='X/Sim101' Name='Entry' New state='Working'   LimitPrice=NEW_PRICE
+```
+Same orderId `X` across all three. PTT must detect "same orderId, different LimitPrice".
+
+**`Account.Change(Order[])`** (NT8_FULL_REFERENCE.md line 328–329):
+> "Change() — Changes specified order(s) on the account"
+The `acc.Change(new Order[] { fo })` pattern is ALREADY used in `SyncFollowerBracket` (line 865).
+B62 replicates this exact call for entry orders.
+
+**`Order.LimitPriceChanged`** (NT8_FULL_REFERENCE.md line 839–840):
+> "LimitPriceChanged — new limit price of an order. Used with Account.Change()"
+Pattern: `fo.LimitPrice = newPrice; acc.Change(new Order[] { fo });`
 
 ---
 
@@ -31,57 +55,83 @@ Ph5  ptt-plan-reviewer   -> docs/brain/B62-LaneA/05-final-review.md
 
 ---
 
-## EXACT CHANGES REQUIRED (spec — not a suggestion)
+## EXACT CHANGES REQUIRED (7 changes total)
 
-### Change 1 — Replace `IsDedup` with persistent-only dedup (no time-based pruning)
+### Change 1 — `_dedupCache` field type: `long` → `double` (stores LimitPrice, not timestamp)
 
-**Current `IsDedup` body** (lines 1442–1459 of `src/PropTraderTools/CopyEngine.cs`):
+**Current** (line 112):
+```csharp
+private readonly ConcurrentDictionary<string, long> _dedupCache = new ConcurrentDictionary<string, long>(); // JS-025
+```
+
+**Required**:
+```csharp
+// B62: value changed from long (timestamp) to double (last dispatched LimitPrice).
+// Enables drag detection: same orderId + different price = leader dragged.
+// JS-025: ConcurrentDictionary is lock-free.
+private readonly ConcurrentDictionary<string, double> _dedupCache = new ConcurrentDictionary<string, double>(); // JS-025
+```
+
+### Change 2 — Replace `IsDedup` body (price-keyed, no time expiry)
+
+**Current** `IsDedup` body (lines 1442–1459):
 ```csharp
 private bool IsDedup(string orderId)
 {
     long now = DateTime.UtcNow.Ticks;
     long expiry = TimeSpan.FromSeconds(10).Ticks;
-
-    // Prune expired entries
     foreach (var key in _dedupCache.Keys)
     {
         if (_dedupCache.TryGetValue(key, out long storedTicks) && now - storedTicks > expiry)
             _dedupCache.TryRemove(key, out _);
     }
-
-    // Attempt add -- if TryAdd returns false, orderId already exists (duplicate)
     if (!_dedupCache.TryAdd(orderId, now))
         return true;
-
     return false;
 }
 ```
 
-**Required replacement** — remove time-based expiry entirely; eviction is now done by `EvictDedup`
-called unconditionally on terminal states (see Change 2):
+**Required replacement**:
 ```csharp
-// B62: dedup is now persistent (no time expiry). Eviction happens via EvictDedup on terminal state.
+// B62: price-keyed dedup. Stores LimitPrice (double) instead of timestamp (long).
+// First call for orderId: TryAdd succeeds -> not a dup -> dispatch.
+// Repeat call same orderId: TryAdd fails -> true dup -> skip.
+// Drag detection is handled by Gate C BEFORE this is called -- drag events never reach IsDedup.
+// Eviction is handled by EvictDedup on terminal states (Filled/Cancelled/Rejected).
 // CYC=2: TryAdd false-path (1) + early return.
 // JS-025: ConcurrentDictionary.TryAdd is lock-free.
-private bool IsDedup(string orderId)
+private bool IsDedup(string orderId, double limitPrice)
 {
-    if (!_dedupCache.TryAdd(orderId, 0L))
+    if (!_dedupCache.TryAdd(orderId, limitPrice))
         return true;
 
     return false;
 }
 ```
 
-The `long` value in `ConcurrentDictionary<string, long>` is now always `0L` — the timestamp is no
-longer needed. The field declaration at line 112 stays unchanged (`ConcurrentDictionary<string, long>`).
+### Change 3 — Update `IsDedup` call site in `DispatchCopy` Gate 5
 
-### Change 2 — Add `EvictDedup` method (evict on terminal order state)
-
-New `internal` method (add immediately after the new `IsDedup`):
+**Current** (line 763):
 ```csharp
-// B62: evict a dedup entry when the order reaches a terminal state.
-// Called unconditionally from OnOrderUpdate before Gate 1 (after TryFirePositionState).
-// CYC=2: terminal-state branch (1) + TryRemove (no branch).
+if (IsDedup(order.OrderId.ToString()))
+    return;
+```
+
+**Required**:
+```csharp
+// B62: pass limitPrice as second arg (price-keyed dedup).
+if (IsDedup(order.OrderId.ToString(), order.LimitPrice))
+    return;
+```
+
+### Change 4 — Add `EvictDedup` method (evict on terminal state)
+
+Add immediately after the new `IsDedup` method:
+```csharp
+// B62: evict dedup entry when order reaches terminal state (Filled/Cancelled/Rejected).
+// Called unconditionally from OnOrderUpdate pre-gate, after TryFirePositionState.
+// Ensures evicted orderId can be detected as drag-free new order on next placement.
+// CYC=2: terminal-state guard (1) + TryRemove (no branch).
 // JS-025: ConcurrentDictionary.TryRemove is lock-free.
 internal void EvictDedup(string orderId, OrderState state)
 {
@@ -92,9 +142,9 @@ internal void EvictDedup(string orderId, OrderState state)
 }
 ```
 
-### Change 3 — Wire `EvictDedup` into `OnOrderUpdate` (line ~603, after `TryFirePositionState`)
+### Change 5 — Wire `EvictDedup` in `OnOrderUpdate` pre-gate
 
-Current lines 602–607:
+**Current** (lines 602–607):
 ```csharp
 // Pre-gate: fire position state unconditionally (even when copy disabled)
 TryFirePositionState(e);
@@ -104,11 +154,11 @@ if (!_isCopyEnabled)
     return;
 ```
 
-Required — insert one line after `TryFirePositionState` call:
+**Required** (insert one line after TryFirePositionState):
 ```csharp
 // Pre-gate: fire position state unconditionally (even when copy disabled)
 TryFirePositionState(e);
-// B62: evict dedup cache on terminal states (Filled/Cancelled/Rejected) -- prevents drag re-entry.
+// B62: evict dedup on terminal states so orderId is not permanently blocked.
 EvictDedup(e.Order.OrderId.ToString(), e.Order.OrderState);
 
 // Gate 1: enabled check
@@ -116,21 +166,22 @@ if (!_isCopyEnabled)
     return;
 ```
 
-### Change 4 — Add `FindFollowerEntryOrder` method (mirror of `FindFollowerBracketOrder`)
+### Change 6 — Add `FindFollowerEntryOrder` (mirror of `FindFollowerBracketOrder`)
 
-Add after `FindFollowerBracketOrder` (currently ends at line 925):
+Add immediately after `FindFollowerBracketOrder` (currently ends at line 925):
 ```csharp
-// B62: find a working PTT-Copy limit entry order on the follower account for the instrument.
-// Mirror of FindFollowerBracketOrder but matches by Name=="PTT-Copy" + Limit + Working.
-// CYC=3: foreach(1), instrument filter(2), state+name+type filter(3).
-// JS-002: returns null when not found (caller must guard).
+// B62: find the follower's working PTT-Copy limit entry order for the instrument.
+// Mirror of FindFollowerBracketOrder -- matches by Name=="PTT-Copy" + Limit + Working.
+// Used by HandleEntryChange to locate the order to acc.Change().
+// CYC=3: foreach(1), instrument guard(2), state+name+type guard(3).
+// JS-002: returns null when not found -- callers must null-guard.
 private static Order? FindFollowerEntryOrder(Account follower, Instrument instrument)
 {
-    foreach (var order in follower.Orders.ToList())                        // (1)
+    foreach (var order in follower.Orders.ToList())                       // (1)
     {
-        if (order.Instrument != instrument)                                // (2)
+        if (order.Instrument != instrument)                               // (2)
             continue;
-        if (order.OrderState == OrderState.Working                         // (3)
+        if (order.OrderState == OrderState.Working                        // (3)
             && order.OrderType == OrderType.Limit
             && order.Name == "PTT-Copy")
             return order;
@@ -139,13 +190,14 @@ private static Order? FindFollowerEntryOrder(Account follower, Instrument instru
 }
 ```
 
-### Change 5 — Add `HandleEntryChange` method (mirror of `HandleBracketChange`)
+### Change 7 — Add `HandleEntryChange` + Gate C in `OnOrderUpdate`
 
-Add after `HandleBracketChange` (currently ends at line 900):
+**Add `HandleEntryChange` method** immediately after `HandleBracketChange` (currently ends at line 900):
 ```csharp
 // B62: sync a leader entry drag to all follower working PTT-Copy limit orders.
 // Mirror of HandleBracketChange -- tick-rounds price, calls acc.Change() per follower.
-// CYC=5: instr null(1), tickSize(2), rawPrice tick-round(3), foreach acc(4), fo null guard(5).
+// Triggered by Gate C when leader's entry orderId is already in dedup cache but price changed.
+// CYC=5: instr null(1), tickSize zero(2), price delta guard(3), foreach acc(4), fo null(5).
 // JS-001: try/catch around acc.Change() -- no throw in hot path.
 // JS-021: no lock -- _dedupCache is ConcurrentDictionary (lock-free).
 private void HandleEntryChange(Order leaderOrder, CopyRule rule)
@@ -155,10 +207,13 @@ private void HandleEntryChange(Order leaderOrder, CopyRule rule)
         return;
 
     double tickSize = instrument.MasterInstrument?.TickSize ?? 0.0;           // (2)
-    double rawPrice = leaderOrder.LimitPrice;                                  // (3)
+    double rawPrice = leaderOrder.LimitPrice;
     double newPrice = tickSize > 0
         ? Math.Round(rawPrice / tickSize) * tickSize
         : rawPrice;
+
+    // Update stored price in dedup cache to track latest leader price.
+    _dedupCache[leaderOrder.OrderId.ToString()] = newPrice;
 
     foreach (var acc in rule.FollowerAccounts)                                // (4)
     {
@@ -170,7 +225,7 @@ private void HandleEntryChange(Order leaderOrder, CopyRule rule)
             continue;
 
         double currentPrice = fo.LimitPrice;
-        if (Math.Abs(newPrice - currentPrice) < tickSize)
+        if (tickSize > 0 && Math.Abs(newPrice - currentPrice) < tickSize)    // (3)
             continue;
 
         try
@@ -187,9 +242,9 @@ private void HandleEntryChange(Order leaderOrder, CopyRule rule)
 }
 ```
 
-### Change 6 — Add entry drag detection gate in `OnOrderUpdate` (after Gate B, before `DispatchCopy`)
+**Add Gate C in `OnOrderUpdate`** — replace the current `DispatchCopy` call block (lines 650–660):
 
-Current lines 650–660:
+**Current**:
 ```csharp
 // Gate B: bracket drag detection -- divert to HandleBracketChange path
 if (IsWorkingBracket(e.Order))
@@ -204,7 +259,7 @@ if (IsWorkingBracket(e.Order))
 DispatchCopy(e.Order, matchedRule.Value);
 ```
 
-Required — add Gate C immediately after Gate B and before `DispatchCopy`:
+**Required**:
 ```csharp
 // Gate B: bracket drag detection -- divert to HandleBracketChange path
 if (IsWorkingBracket(e.Order))
@@ -215,17 +270,22 @@ if (IsWorkingBracket(e.Order))
     return;
 }
 
-// Gate C (B62): entry drag detection -- divert to HandleEntryChange when a known orderId drags
-// Condition: order is Limit + Accepted/Working + orderId already in _dedupCache (seen before).
+// Gate C (B62): entry drag detection -- same orderId + new LimitPrice = leader dragged.
+// Fires when state is Accepted or Working (the two states that carry updated price post-drag).
+// Only for Limit orders (Market orders have no LimitPrice to track).
+// _dedupCache.TryGetValue: orderId was previously dispatched; compare stored price.
 if (e.Order.OrderType == OrderType.Limit
-    && (e.Order.OrderState == OrderState.Accepted || e.Order.OrderState == OrderState.Working)
-    && _dedupCache.ContainsKey(e.Order.OrderId.ToString()))
+    && (e.Order.OrderState == OrderState.Accepted || e.Order.OrderState == OrderState.Working))
 {
-    HandleEntryChange(e.Order, matchedRule.Value);
-    return;
+    if (_dedupCache.TryGetValue(e.Order.OrderId.ToString(), out double storedPrice)
+        && Math.Abs(e.Order.LimitPrice - storedPrice) >= (e.Order.Instrument?.MasterInstrument?.TickSize ?? 0.01))
+    {
+        HandleEntryChange(e.Order, matchedRule.Value);
+        return;
+    }
 }
 
-// No bracket, no entry drag -- normal copy dispatch
+// No bracket, no drag -- normal copy dispatch
 DispatchCopy(e.Order, matchedRule.Value);
 ```
 
@@ -233,106 +293,62 @@ DispatchCopy(e.Order, matchedRule.Value);
 
 ## TESTS REQUIRED (5 new [Fact] tests, tag T_B62_01 through T_B62_05)
 
-All tests use `xUnit [Fact]` only. All use `CopyEngine`'s `internal` or `static` methods.
-No `lock()`, no `throw new`, no NUnit/MSTest.
-
 **T_B62_01** — `IsDedup_FirstCall_ReturnsFalse`
-- Arrange: new `CopyEngine` instance; arbitrary orderId "ord-001".
-- Act: call `IsDedup` via reflection (private) with "ord-001".
-- Assert: returns `false` (first time not a dup).
+- Arrange: new `CopyEngine`; orderId "ord-001"; limitPrice 7751.0.
+- Act: call `IsDedup` via reflection with ("ord-001", 7751.0).
+- Assert: returns `false`.
 
-**T_B62_02** — `IsDedup_SecondCall_ReturnsTrue`
-- Arrange: same engine; call `IsDedup("ord-002")` once (adds to cache).
-- Act: call `IsDedup("ord-002")` a second time.
-- Assert: returns `true` (duplicate).
+**T_B62_02** — `IsDedup_SecondCallSamePrice_ReturnsTrue`
+- Arrange: call `IsDedup("ord-002", 7751.0)` once.
+- Act: call again with same args.
+- Assert: returns `true`.
 
 **T_B62_03** — `EvictDedup_FilledState_RemovesEntry`
-- Arrange: call `IsDedup("ord-003")` to seed the cache.
-- Act: call `engine.EvictDedup("ord-003", OrderState.Filled)`.
-- Assert: calling `IsDedup("ord-003")` again returns `false` (evicted, not a dup).
+- Arrange: `IsDedup("ord-003", 7751.0)` to seed cache.
+- Act: `engine.EvictDedup("ord-003", OrderState.Filled)`.
+- Assert: `IsDedup("ord-003", 7751.0)` returns `false` (evicted, fresh again).
 
 **T_B62_04** — `EvictDedup_WorkingState_DoesNotRemove`
-- Arrange: call `IsDedup("ord-004")` to seed the cache.
-- Act: call `engine.EvictDedup("ord-004", OrderState.Working)`.
-- Assert: calling `IsDedup("ord-004")` again returns `true` (still in cache — not a terminal state).
+- Arrange: `IsDedup("ord-004", 7751.0)` to seed cache.
+- Act: `engine.EvictDedup("ord-004", OrderState.Working)`.
+- Assert: `IsDedup("ord-004", 7751.0)` returns `true` (still in cache).
 
 **T_B62_05** — `EvictDedup_CancelledState_RemovesEntry`
-- Arrange: call `IsDedup("ord-005")` to seed the cache.
-- Act: call `engine.EvictDedup("ord-005", OrderState.Cancelled)`.
-- Assert: calling `IsDedup("ord-005")` again returns `false` (evicted).
+- Arrange: `IsDedup("ord-005", 7751.0)` to seed cache.
+- Act: `engine.EvictDedup("ord-005", OrderState.Cancelled)`.
+- Assert: `IsDedup("ord-005", 7751.0)` returns `false` (evicted).
 
 ---
 
-## DEFERRED WORK ITEMS TO DOCUMENT IN 06-deferred-backlog.md
-
-Carry forward all open items from B61's backlog plus any new ones discovered during B62.
-
-**DW-B62-01** (if not fully closed): Entry drag sync verified in sim — confirm no duplicate orders
-accumulate in a live drag-and-release scenario over >10s.
-
-**DW-B62-02** (new, if applicable): `HandleEntryChange` skips orders where `tickSize == 0.0`
-(price-delta guard divides by zero risk) — NT8 instruments always have a valid TickSize in sim
-but this should be confirmed for live accounts.
-
----
-
-## JANE STREET / OKF COMPLIANCE CHECKLIST
-
-Before Ph4a writes any code, the engineer MUST verify:
+## JANE STREET / OKF COMPLIANCE
 
 | Rule | Check |
 |------|-------|
-| JS-021 | No `lock()` added anywhere — all state via `ConcurrentDictionary` |
-| JS-001 | No `throw new` in `HandleEntryChange` or `IsDedup` — `try/catch` only |
-| JS-002 | `FindFollowerEntryOrder` returns `Order?` (nullable) with null guard at call site |
-| CYC ≤ 8 | `HandleEntryChange` CYC=5, `IsDedup` CYC=2, `EvictDedup` CYC=2 — all ≤ 8 |
-| ASCII-only | No Unicode/emoji in any new string literals |
-| xUnit only | All 5 tests use `[Fact]` — no NUnit/MSTest |
+| JS-021 | No `lock()` — all state via `ConcurrentDictionary` |
+| JS-001 | No `throw new` in `HandleEntryChange` — `try/catch` only |
+| JS-002 | `FindFollowerEntryOrder` returns `Order?` (nullable), null-guarded at call site |
+| CYC ≤ 8 | `HandleEntryChange` CYC=5, `IsDedup` CYC=2, `EvictDedup` CYC=2, Gate C CYC=2 |
+| ASCII-only | No Unicode in new string literals |
+| xUnit only | All 5 tests use `[Fact]` |
 
 ---
 
-## NT8 API CONSTRAINTS (from NT8_FULL_REFERENCE.md)
-
-- `acc.Change(Order[])` — valid on `AddOnBase` for modifying a working order's price.
-- `order.LimitPrice` — readable and writable on working Limit orders.
-- `order.OrderState` — `Working` and `Accepted` are valid non-terminal states for entry limit orders.
-- `order.Name` — `"PTT-Copy"` is the signal name assigned by `SendCopy` for all copy modes.
-- Engineer MUST grep `docs/standards/NT8_FULL_REFERENCE.md` for `Change(` before writing any
-  `acc.Change()` call to confirm the overload signature.
-
----
-
-## BRAIN ARTIFACT CHECKLIST (all 8 files required for pipeline completion)
+## BRAIN ARTIFACT CHECKLIST
 
 ```
-docs/brain/B62-LaneA/02-architecture-plan.md      <- Ph1 output
-docs/brain/B62-LaneA/02-plan-review.md            <- Ph2 output  (must end: REVIEW_PASS)
-docs/brain/B62-LaneA/04-tickets.md                <- Ph3 output
-docs/brain/B62-LaneA/04-ticket-review.md          <- Ph3.5 output (must end: TICKET_REVIEW_PASS)
-docs/brain/B62-LaneA/ticket-1-completion.md       <- Ph4a output (must contain git commit hash)
-docs/brain/B62-LaneA/ticket-1-verification.md     <- Ph4b output (must end: VERIFY_PASS)
-docs/brain/B62-LaneA/05-final-review.md           <- Ph5 output
-docs/brain/B62-LaneA/06-deferred-backlog.md       <- Ph5 output
+docs/brain/B62-LaneA/02-architecture-plan.md      <- Ph1
+docs/brain/B62-LaneA/02-plan-review.md            <- Ph2  (must end: REVIEW_PASS)
+docs/brain/B62-LaneA/04-tickets.md                <- Ph3
+docs/brain/B62-LaneA/04-ticket-review.md          <- Ph3.5 (must end: TICKET_REVIEW_PASS)
+docs/brain/B62-LaneA/ticket-1-completion.md       <- Ph4a (must contain git commit hash)
+docs/brain/B62-LaneA/ticket-1-verification.md     <- Ph4b (must end: VERIFY_PASS)
+docs/brain/B62-LaneA/05-final-review.md           <- Ph5
+docs/brain/B62-LaneA/06-deferred-backlog.md       <- Ph5
 ```
 
 ---
 
-## SESSION STATE AT B62 START
-
-| Item | Status |
-|------|--------|
-| B59 `IsExitSignalName` | ✅ CLOSED (commit `fac65246`) |
-| B60 `TryDispatchLeaderFlat` wire-up + Rev prefix | ✅ CLOSED (commit `57b10313`) |
-| B61 state guard + follower-only flatten | ✅ CLOSED (commit `8a097ac8`) |
-| DW-B57-01 CreateOrder+Submit fix | ✅ CLOSED |
-| DW-B58-01/02/03 | OPEN P2 (no action planned) |
-| DW-B54-01 ATM auto-inject | OPEN P1 (blocked — StrategyBase-only) |
-| DW-B62-01 entry drag | TARGET of this block |
-| Total tests added B59–B61 | 14 new `[Fact]` tests |
-
----
-
-## WORKSPACE RULES (copy verbatim into each phase prompt)
+## WORKSPACE RULES
 
 - SRC CODE BAN: ptt-architect and ptt-plan-reviewer MUST NOT edit any `.cs` file.
 - ptt-engineer is the ONLY mode permitted to touch `.cs` files.
@@ -341,4 +357,4 @@ docs/brain/B62-LaneA/06-deferred-backlog.md       <- Ph5 output
   then commit: `git add src/PropTraderTools/ && git commit -m "fix(ptt): B62 -- ..."`
 - NT8 API reference: grep `docs/standards/NT8_FULL_REFERENCE.md` before any NT8 API claim.
 - Jane Street rules: JS-021 no lock(), JS-001 no throw in hot path, JS-002 no null return,
-  CYC ≤ 8 per method, ASCII-only literals, xUnit [Fact] only.
+  CYC <= 8 per method, ASCII-only literals, xUnit [Fact] only.
