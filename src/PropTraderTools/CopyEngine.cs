@@ -109,7 +109,10 @@ namespace PropTraderTools
         // Lazily initialized; Panel and Window read via GlobalBe property (UI thread only).
         // JS-023: volatile null-check safe for singleton reads on CLR 4.0+.
         private PttGlobalBreakEven _globalBe = null;
-        private readonly ConcurrentDictionary<string, long> _dedupCache = new ConcurrentDictionary<string, long>(); // JS-025
+        // B62: value changed from long (timestamp) to double (last dispatched LimitPrice).
+        // Enables drag detection: same orderId + different price = leader dragged.
+        // JS-025: ConcurrentDictionary is lock-free.
+        private readonly ConcurrentDictionary<string, double> _dedupCache = new ConcurrentDictionary<string, double>(); // JS-025
         private ConcurrentBag<CopyRule> _rules = new ConcurrentBag<CopyRule>(); // Change 1: removed readonly
         private double _dailyCapFloor = -500.0; // Change 4
 
@@ -601,6 +604,8 @@ namespace PropTraderTools
         {
             // Pre-gate: fire position state unconditionally (even when copy disabled)
             TryFirePositionState(e);
+            // B62: evict dedup on terminal states so orderId is not permanently blocked.
+            EvictDedup(e.Order.OrderId.ToString(), e.Order.OrderState);
 
             // Gate 1: enabled check
             if (!_isCopyEnabled)
@@ -656,7 +661,22 @@ namespace PropTraderTools
                 return;
             }
 
-            // No bracket -- normal copy dispatch
+            // Gate C (B62): entry drag detection -- same orderId + new LimitPrice = leader dragged.
+            // Fires when state is Accepted or Working (the two states that carry updated price post-drag).
+            // Only for Limit orders (Market orders have no LimitPrice to track).
+            // _dedupCache.TryGetValue: orderId was previously dispatched; compare stored price.
+            if (e.Order.OrderType == OrderType.Limit
+                && (e.Order.OrderState == OrderState.Accepted || e.Order.OrderState == OrderState.Working))
+            {
+                if (_dedupCache.TryGetValue(e.Order.OrderId.ToString(), out double storedPrice)
+                    && Math.Abs(e.Order.LimitPrice - storedPrice) >= (e.Order.Instrument?.MasterInstrument?.TickSize ?? 0.01))
+                {
+                    HandleEntryChange(e.Order, matchedRule.Value);
+                    return;
+                }
+            }
+
+            // No bracket, no drag -- normal copy dispatch
             DispatchCopy(e.Order, matchedRule.Value);
         }
 
@@ -760,7 +780,8 @@ namespace PropTraderTools
                 return;
 
             // Gate 5: dedup -- reject duplicate event for same orderId
-            if (IsDedup(order.OrderId.ToString()))
+            // B62: pass limitPrice as second arg (price-keyed dedup).
+            if (IsDedup(order.OrderId.ToString(), order.LimitPrice))
                 return;
 
             // All gates passed -- build base signal
@@ -928,6 +949,72 @@ namespace PropTraderTools
                 }
             }
             return null;
+        }
+
+        // B62: find the follower's working PTT-Copy limit entry order for the instrument.
+        // Mirror of FindFollowerBracketOrder -- matches by Name=="PTT-Copy" + Limit + Working.
+        // Used by HandleEntryChange to locate the order to acc.Change().
+        // CYC=3: foreach (1), instrument guard (2), state+name+type compound guard (3).
+        // JS-002: returns null when not found -- callers must null-guard.
+        private static Order? FindFollowerEntryOrder(Account follower, Instrument instrument)
+        {
+            foreach (var order in follower.Orders.ToList())                       // (1)
+            {
+                if (order.Instrument != instrument)                               // (2)
+                    continue;
+                if (order.OrderState == OrderState.Working                        // (3)
+                    && order.OrderType == OrderType.Limit
+                    && order.Name == "PTT-Copy")
+                    return order;
+            }
+            return null;
+        }
+
+        // B62: sync a leader entry drag to all follower working PTT-Copy limit orders.
+        // Mirror of HandleBracketChange -- tick-rounds price, calls acc.Change() per follower.
+        // Triggered by Gate C when leader's entry orderId is already in dedup cache but price changed.
+        // CYC=6: instr null (1), tickSize ternary (2), foreach acc (3), acc null (4), fo null (5), price delta guard (6).
+        // JS-001: try/catch around acc.Change() -- no throw in hot path.
+        // JS-021: no lock -- _dedupCache is ConcurrentDictionary (lock-free).
+        private void HandleEntryChange(Order leaderOrder, CopyRule rule)
+        {
+            var instrument = leaderOrder.Instrument;
+            if (instrument == null)                                                    // (1)
+                return;
+
+            double tickSize = instrument.MasterInstrument?.TickSize ?? 0.0;           // (2)
+            double rawPrice = leaderOrder.LimitPrice;
+            double newPrice = tickSize > 0
+                ? Math.Round(rawPrice / tickSize) * tickSize
+                : rawPrice;
+
+            // Update stored price in dedup cache to track latest leader price.
+            _dedupCache[leaderOrder.OrderId.ToString()] = newPrice;
+
+            foreach (var acc in rule.FollowerAccounts)                                // (3)
+            {
+                if (acc == null)                                                       // (4)
+                    continue;
+
+                var fo = FindFollowerEntryOrder(acc, instrument);
+                if (fo == null)                                                        // (5)
+                    continue;
+
+                double currentPrice = fo.LimitPrice;
+                if (tickSize > 0 && Math.Abs(newPrice - currentPrice) < tickSize)    // (6)
+                    continue;
+
+                try
+                {
+                    fo.LimitPrice = newPrice;
+                    acc.Change(new Order[] { fo });
+                    StatusUpdate?.Invoke(acc.Name + ": entry dragged -> " + newPrice);
+                }
+                catch (Exception ex)
+                {
+                    StatusUpdate?.Invoke(acc.Name + ": entry drag error: " + ex.Message);
+                }
+            }
         }
 
         // CYC=2. Records (signal, follower) association in _orderMap for future bracket lookups.
@@ -1445,23 +1532,32 @@ namespace PropTraderTools
             }
         }
 
-        private bool IsDedup(string orderId)
+        // B62: price-keyed dedup. Stores LimitPrice (double) instead of timestamp (long).
+        // First call for orderId: TryAdd succeeds -> not a dup -> dispatch.
+        // Repeat call same orderId: TryAdd fails -> true dup -> skip.
+        // Drag detection is handled by Gate C BEFORE this is called -- drag events never reach IsDedup.
+        // Eviction is handled by EvictDedup on terminal states (Filled/Cancelled/Rejected).
+        // CYC=2: TryAdd false-path (1) + early return.
+        // JS-025: ConcurrentDictionary.TryAdd is lock-free.
+        private bool IsDedup(string orderId, double limitPrice)
         {
-            long now = DateTime.UtcNow.Ticks;
-            long expiry = TimeSpan.FromSeconds(10).Ticks;
-
-            // Prune expired entries
-            foreach (var key in _dedupCache.Keys)
-            {
-                if (_dedupCache.TryGetValue(key, out long storedTicks) && now - storedTicks > expiry)
-                    _dedupCache.TryRemove(key, out _);
-            }
-
-            // Attempt add -- if TryAdd returns false, orderId already exists (duplicate)
-            if (!_dedupCache.TryAdd(orderId, now))
+            if (!_dedupCache.TryAdd(orderId, limitPrice))
                 return true;
 
             return false;
+        }
+
+        // B62: evict dedup entry when order reaches terminal state (Filled/Cancelled/Rejected).
+        // Called unconditionally from OnOrderUpdate pre-gate, after TryFirePositionState.
+        // Ensures evicted orderId can be re-used for the next fresh order on the same instrument.
+        // CYC=2: terminal-state guard (1) + TryRemove (no branch).
+        // JS-025: ConcurrentDictionary.TryRemove is lock-free.
+        internal void EvictDedup(string orderId, OrderState state)
+        {
+            if (state != OrderState.Filled && state != OrderState.Cancelled && state != OrderState.Rejected)
+                return;
+
+            _dedupCache.TryRemove(orderId, out _);
         }
 
         private IEnumerable<Account> AllAccounts(Instrument instrument)

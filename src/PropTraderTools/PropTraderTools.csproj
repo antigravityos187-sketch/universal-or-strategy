@@ -17,13 +17,14 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
+    <LangVersion>8.0</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <!-- Suppress build output — this project is for LSP only -->
     <OutputType>Library</OutputType>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <!-- Allow LSP to open files even if NT8 DLLs are absent on a new machine -->
-    <NoWarn>MSB3245;MSB3246;CS0012</NoWarn>
+    <NoWarn>MSB3245;MSB3246;CS0012;CS8632;CS0234;CS0246</NoWarn>
     <AssemblyName>PropTraderTools</AssemblyName>
     <RootNamespace>PropTraderTools</RootNamespace>
     <!-- Prevent NETSDK1022 duplicate Compile items (explicit list below) -->
@@ -47,6 +48,10 @@
     </Reference>
     <Reference Include="NinjaTrader.Client">
       <HintPath>C:\Program Files\NinjaTrader 8\bin\NinjaTrader.Client.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="NinjaTrader.Custom">
+      <HintPath>C:\Program Files\NinjaTrader 8\bin\NinjaTrader.Custom.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
@@ -111,6 +116,7 @@
     <Compile Include="Tests\B50Tests.cs" />
     <Compile Include="Tests\B55Tests.cs" />
     <Compile Include="Tests\B56Tests.cs" />
+    <Compile Include="Tests\B62Tests.cs" />
   </ItemGroup>
 
 </Project>
