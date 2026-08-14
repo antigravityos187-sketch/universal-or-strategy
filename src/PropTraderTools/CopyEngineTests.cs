@@ -3284,5 +3284,67 @@ namespace PropTraderTools
         }
 
 
+        // =====================================================================
+        // B66 Ticket-1: IsQxCancelCandidate -- widen CancelQxBrackets to ATM+BE brackets
+        // DW-B66-01: live incident 2026-08-13 double-brackets bug.
+        // TESTABILITY: internal static -- callable directly (same assembly).
+        // =====================================================================
+
+        [Fact]
+        public void T_B66_01_IsQxCancelCandidate_PttQxPrefix_ReturnsTrue()
+        {
+            var order = MakeOrder(OrderState.Working, "PTT-QX-Stop01");
+            bool result = CopyEngine.IsQxCancelCandidate(order);
+            Assert.True(result, "IsQxCancelCandidate: 'PTT-QX-Stop01' must return true (PTT-QX- prefix)");
+        }
+
+        [Fact]
+        public void T_B66_02_IsQxCancelCandidate_Stop1_ReturnsTrue()
+        {
+            var order = MakeOrder(OrderState.Working, "Stop1");
+            bool result = CopyEngine.IsQxCancelCandidate(order);
+            Assert.True(result, "IsQxCancelCandidate: 'Stop1' must return true (ATM bracket name)");
+        }
+
+        [Fact]
+        public void T_B66_03_IsQxCancelCandidate_Stop2_ReturnsTrue()
+        {
+            var order = MakeOrder(OrderState.Working, "Stop2");
+            bool result = CopyEngine.IsQxCancelCandidate(order);
+            Assert.True(result, "IsQxCancelCandidate: 'Stop2' must return true (ATM bracket name)");
+        }
+
+        [Fact]
+        public void T_B66_04_IsQxCancelCandidate_Target1_ReturnsTrue()
+        {
+            var order = MakeOrder(OrderState.Working, "Target1");
+            bool result = CopyEngine.IsQxCancelCandidate(order);
+            Assert.True(result, "IsQxCancelCandidate: 'Target1' must return true (ATM bracket name)");
+        }
+
+        [Fact]
+        public void T_B66_05_IsQxCancelCandidate_Target2_ReturnsTrue()
+        {
+            var order = MakeOrder(OrderState.Working, "Target2");
+            bool result = CopyEngine.IsQxCancelCandidate(order);
+            Assert.True(result, "IsQxCancelCandidate: 'Target2' must return true (ATM bracket name)");
+        }
+
+        [Fact]
+        public void T_B66_06_IsQxCancelCandidate_PttBeStop_ReturnsTrue()
+        {
+            var order = MakeOrder(OrderState.Working, "PTT-BE-Stop");
+            bool result = CopyEngine.IsQxCancelCandidate(order);
+            Assert.True(result, "IsQxCancelCandidate: 'PTT-BE-Stop' must return true (PTT-BE- prefix)");
+        }
+
+        [Fact]
+        public void T_B66_07_IsQxCancelCandidate_SomeOtherOrder_ReturnsFalse()
+        {
+            var order = MakeOrder(OrderState.Working, "SomeOtherOrder");
+            bool result = CopyEngine.IsQxCancelCandidate(order);
+            Assert.False(result, "IsQxCancelCandidate: 'SomeOtherOrder' must return false (no matching prefix or name)");
+        }
+
     }
 }

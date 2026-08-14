@@ -342,12 +342,13 @@ namespace PropTraderTools
 
         // B58 ICopyEngine -- RelayBe: fan out pre-calculated BE price to all follower accounts.
         // BeEventArgs.BePrice is already computed by PttGlobalBreakEven/BE module before firing.
+        // B66 DW-B66-BE-01: e.IsLong passed to SubmitBeStop (was relying on re-read inside method -- race).
         // CYC=2 (1 base + 1 foreach branch). JS-021: no lock -- AllAccounts snapshot; SubmitBeStop lock-free.
-        // JS-002: void method, no return null.
+        // JS-002: void method, no return null. JS-033: synchronous void.
         public void RelayBe(BeEventArgs e)
         {
             foreach (var acc in AllAccounts(e.Instrument))
-                SubmitBeStop(acc, e.Instrument, e.BePrice);
+                SubmitBeStop(acc, e.Instrument, e.BePrice, e.IsLong);
         }
 
         // B58 ICopyEngine -- RelayTrim: delegate to Trim(Instrument) fan-out. CYC=1.
@@ -419,9 +420,30 @@ namespace PropTraderTools
                 instr.MasterInstrument?.Name ?? string.Empty);
         }
 
-        // CancelQxBrackets: cancel all Working/Initialized PTT-QX-* orders on acc for instr.
+        // IsAtmBracketName: true if name is a standard NT8 ATM bracket order name.
+        // NT8-REF: NT8_FULL_REFERENCE.md line 1631: "The order name such as 'Stop1' or 'Target2'"
+        // CYC=1: expression body -- no if-branches in method body (Roslyn convention).
+        // JS-021: no lock. JS-001: no throw. ASCII-only string literals.
+        internal static bool IsAtmBracketName(string name) =>
+            name == "Stop1" || name == "Stop2" || name == "Target1" || name == "Target2";
+
+        // IsQxCancelCandidate: returns true if order should be cancelled by CancelQxBrackets.
+        // Covers: ATM bracket names (via IsAtmBracketName), PTT-QX-* prefix, PTT-BE-* prefix.
+        // CYC=5: 1 (base) + 4 if-branches. Roslyn: || inside single if = 1 decision point.
+        // JS-021: no lock. JS-001: no throw. JS-002: returns bool (never null). ASCII-only.
+        internal static bool IsQxCancelCandidate(Order o)
+        {
+            if (o == null || o.Name == null) return false;                               // (1)
+            if (IsAtmBracketName(o.Name)) return true;                                   // (2)
+            if (o.Name.StartsWith("PTT-QX-", StringComparison.Ordinal)) return true;    // (3)
+            if (o.Name.StartsWith("PTT-BE-", StringComparison.Ordinal)) return true;    // (4)
+            return false;
+        }
+
+        // CancelQxBrackets: cancel all Working/Initialized/Accepted ATM-bracket + PTT-* orders on acc for instr.
         // Called by PttQuickExit.Execute() before re-placing new bracket.
-        // CYC=4: null guard(1) + foreach(2) + stateOk(3) + prefix check(4). JS-021: no lock.
+        // CYC=6: null guard(1) + foreach(2) + stateOk(3) + instrument check(4) + IsQxCancelCandidate(5) + staleCount(6).
+        // JS-021: no lock. Predicate logic in IsQxCancelCandidate (CYC=5) + IsAtmBracketName (CYC=1).
         internal void CancelQxBrackets(Account acc, NinjaTrader.Cbi.Instrument instr)
         {
             if (acc == null || instr == null) return;              // (1)
@@ -433,7 +455,7 @@ namespace PropTraderTools
                             || o.OrderState == OrderState.Accepted;
                 if (!stateOk) continue;                            // (3)
                 if (o.Instrument == null || o.Instrument.FullName != instr.FullName) continue;
-                if (o.Name != null && o.Name.StartsWith("PTT-QX-"))  // (4)
+                if (IsQxCancelCandidate(o))                           // (5) widened via helper
                     stale.Add(o);
             }
             if (stale.Count == 0) return;
@@ -448,19 +470,24 @@ namespace PropTraderTools
         internal string NextQxOcoId()
             => "PTT-QX-" + System.Threading.Interlocked.Increment(ref _qxOcoSeq).ToString("D5");
 
-        // SubmitBeStop: submit a StopMarket order at bePrice for acc+instr.
-        // Called by PttGlobalBreakEven default constructor lambda.
-        // CYC=3: null guard(1) + pos guard(2) + CreateOrder try(3). JS-021: no lock.
-        internal void SubmitBeStop(Account acc, NinjaTrader.Cbi.Instrument instr, double bePrice)
+        // B66 DW-B66-BE-01: SubmitBeStop -- submit a StopMarket order at bePrice for acc+instr.
+        // FIX: isLong is now a parameter -- callers pass direction at their own snapshot-read time.
+        // Removed: internal pos.MarketPosition re-read (was racing with NT8 position update lag --
+        //   NT8_FULL_REFERENCE.md line 1721: "Changes to positions will not be reflected till at
+        //   least the next OnBarUpdate() event after an order fill.").
+        // B65 precedent: same race fixed in TryDispatchLeaderFlat (CopyEngine.cs lines 651-654).
+        // CYC=7 (strict McCabe): null-guard(1) + pos-loop(2) + inner-if(3) + pos-null-guard(4)
+        //         + ternary-dir(5) + if-order-null(6) + base(1) = 7. JS-021: no lock.
+        // JS-001: no throw. JS-002: void. JS-033: synchronous void.
+        internal void SubmitBeStop(Account acc, NinjaTrader.Cbi.Instrument instr, double bePrice, bool isLong)
         {
             if (acc == null || instr == null) return;              // (1)
             NinjaTrader.Cbi.Position pos = null;
-            foreach (NinjaTrader.Cbi.Position p in acc.Positions)
-                if (p.Instrument == instr) { pos = p; break; }
-            if (pos == null || pos.Quantity == 0) return;          // (2)
-            bool isLong = pos.MarketPosition == MarketPosition.Long;
-            OrderAction dir = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
-            try                                                    // (3)
+            foreach (NinjaTrader.Cbi.Position p in acc.Positions) // (2)
+                if (p.Instrument == instr) { pos = p; break; }    // (3)
+            if (pos == null || pos.Quantity == 0) return;          // (4)
+            OrderAction dir = isLong ? OrderAction.Sell : OrderAction.BuyToCover; // (5)
+            try                                                    // (6) CreateOrder call
             {
                 var order = acc.CreateOrder(
                     instr, dir, OrderType.StopMarket,
@@ -469,7 +496,7 @@ namespace PropTraderTools
                     string.Empty, "PTT-BE-Stop",
                     DateTime.MaxValue,
                     (NinjaTrader.Cbi.CustomOrder)null);
-                if (order != null)
+                if (order != null)                                 // (6) inner if
                     acc.Submit(new[] { order });
             }
             catch { }
@@ -491,7 +518,7 @@ namespace PropTraderTools
                     double bePrice = Math.Round(
                         (pos.AveragePrice + (isLong ? bufferTicks : -bufferTicks) * tick) / tick
                     ) * tick;
-                    SubmitBeStop(acc, pos.Instrument, bePrice);
+                    SubmitBeStop(acc, pos.Instrument, bePrice, isLong);
                 }
             }
         }
@@ -662,15 +689,17 @@ namespace PropTraderTools
                 return;
             }
 
-            // Gate C (B62): entry drag detection -- same orderId + new LimitPrice = leader dragged.
+            // Gate C (B62/B66-LaneC): entry drag detection -- same orderId + new price = leader dragged.
             // Fires when state is Accepted or Working (the two states that carry updated price post-drag).
-            // Only for Limit orders (Market orders have no LimitPrice to track).
+            // Widened in B66-LaneC to accept StopLimit in addition to Limit (DW-B64-01 fix).
+            // NT8: StopLimit.LimitPrice==0 always; drag price lives in StopPrice -- use GetOrderPrice().
             // _dedupCache.TryGetValue: orderId was previously dispatched; compare stored price.
-            if (e.Order.OrderType == OrderType.Limit
+            if ((e.Order.OrderType == OrderType.Limit || e.Order.OrderType == OrderType.StopLimit)
                 && (e.Order.OrderState == OrderState.Accepted || e.Order.OrderState == OrderState.Working))
             {
+                double currentPrice = GetOrderPrice(e.Order);
                 if (_dedupCache.TryGetValue(e.Order.OrderId.ToString(), out double storedPrice)
-                    && Math.Abs(e.Order.LimitPrice - storedPrice) >= (e.Order.Instrument?.MasterInstrument?.TickSize ?? 0.01))
+                    && Math.Abs(currentPrice - storedPrice) >= (e.Order.Instrument?.MasterInstrument?.TickSize ?? 0.01))
                 {
                     HandleEntryChange(e.Order, matchedRule.Value);
                     return;
@@ -972,10 +1001,29 @@ namespace PropTraderTools
             return null;
         }
 
-        // B62: find the follower's working PTT-Copy limit entry order for the instrument.
-        // Mirror of FindFollowerBracketOrder -- matches by Name=="PTT-Copy" + Limit + Working.
-        // Used by HandleEntryChange to locate the order to acc.Change().
-        // CYC=3: foreach (1), instrument guard (2), state+name+type compound guard (3).
+        // CYC=2. Returns StopPrice for StopLimit orders, LimitPrice for all others.
+        // NT8 fact: StopLimit.LimitPrice==0 always; drag price lives in StopPrice (Fact 1).
+        // B66-LaneC: DW-B64-01 fix -- GetOrderPrice used in Gate C and HandleEntryChange.
+        // JS-021: no lock. JS-001: no throw. Pure computation. Zero heap allocation (JS-036).
+        private static double GetOrderPrice(Order order)
+            => order.OrderType == OrderType.StopLimit ? order.StopPrice : order.LimitPrice;
+
+        // CYC=2. Sets StopPrice for StopLimit follower orders, LimitPrice for all others.
+        // NT8: for Account.Change() on StopLimit, assign StopPrice not LimitPrice
+        //   (NT8_FULL_REFERENCE.md lines 898-899, Fact 2).
+        // B66-LaneC: DW-B64-01 fix -- SetFollowerPrice replaces direct fo.LimitPrice assignment.
+        // JS-021: no lock. JS-001: no throw. Pure field assignment.
+        private static void SetFollowerPrice(Order fo, double newPrice)
+        {
+            if (fo.OrderType == OrderType.StopLimit)
+                fo.StopPrice = newPrice;
+            else
+                fo.LimitPrice = newPrice;
+        }
+
+        // CYC=3: foreach (1), instrument guard (2), state+type+name compound guard (3).
+        // B66-LaneC: widened state to Working||Accepted, type to Limit||StopLimit (DW-B64-01).
+        // NT8: broker-simulated StopLimit may stay in Accepted (NT8_FULL_REFERENCE.md line 1005).
         // JS-002: returns null when not found -- callers must null-guard.
         private static Order? FindFollowerEntryOrder(Account follower, Instrument instrument)
         {
@@ -983,16 +1031,16 @@ namespace PropTraderTools
             {
                 if (order.Instrument != instrument)                               // (2)
                     continue;
-                if (order.OrderState == OrderState.Working                        // (3)
-                    && order.OrderType == OrderType.Limit
+                if ((order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted) // (3)
+                    && (order.OrderType == OrderType.Limit || order.OrderType == OrderType.StopLimit)
                     && order.Name == "PTT-Copy")
                     return order;
             }
             return null;
         }
 
-        // B62: sync a leader entry drag to all follower working PTT-Copy limit orders.
-        // Mirror of HandleBracketChange -- tick-rounds price, calls acc.Change() per follower.
+        // B62/B66-LaneC: sync a leader entry drag to all follower working PTT-Copy entry orders.
+        // B66-LaneC: widened to StopLimit via GetOrderPrice/SetFollowerPrice helpers (DW-B64-01).
         // Triggered by Gate C when leader's entry orderId is already in dedup cache but price changed.
         // CYC=6: instr null (1), tickSize ternary (2), foreach acc (3), acc null (4), fo null (5), price delta guard (6).
         // JS-001: try/catch around acc.Change() -- no throw in hot path.
@@ -1004,7 +1052,7 @@ namespace PropTraderTools
                 return;
 
             double tickSize = instrument.MasterInstrument?.TickSize ?? 0.0;           // (2)
-            double rawPrice = leaderOrder.LimitPrice;
+            double rawPrice = GetOrderPrice(leaderOrder); // B66-LaneC: StopLimit price in StopPrice
             double newPrice = tickSize > 0
                 ? Math.Round(rawPrice / tickSize) * tickSize
                 : rawPrice;
@@ -1021,13 +1069,13 @@ namespace PropTraderTools
                 if (fo == null)                                                        // (5)
                     continue;
 
-                double currentPrice = fo.LimitPrice;
+                double currentPrice = GetOrderPrice(fo); // B66-LaneC: StopLimit price in StopPrice
                 if (tickSize > 0 && Math.Abs(newPrice - currentPrice) < tickSize)    // (6)
                     continue;
 
                 try
                 {
-                    fo.LimitPrice = newPrice;
+                    SetFollowerPrice(fo, newPrice); // B66-LaneC: StopLimit -> fo.StopPrice (NT8_FULL_REFERENCE.md lines 898-899)
                     acc.Change(new Order[] { fo });
                     StatusUpdate?.Invoke(acc.Name + ": entry dragged -> " + newPrice);
                 }
