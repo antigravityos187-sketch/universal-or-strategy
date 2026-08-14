@@ -442,6 +442,7 @@ namespace PropTraderTools
 
         // CancelQxBrackets: cancel all Working/Initialized/Accepted ATM-bracket + PTT-* orders on acc for instr.
         // Called by PttQuickExit.Execute() before re-placing new bracket.
+        // Also called by FlattenOneAccount (B67 DW-B67-01) before market order submission.
         // CYC=6: null guard(1) + foreach(2) + stateOk(3) + instrument check(4) + IsQxCancelCandidate(5) + staleCount(6).
         // JS-021: no lock. Predicate logic in IsQxCancelCandidate (CYC=5) + IsAtmBracketName (CYC=1).
         internal void CancelQxBrackets(Account acc, NinjaTrader.Cbi.Instrument instr)
@@ -1039,12 +1040,17 @@ namespace PropTraderTools
             return null;
         }
 
-        // B62/B66-LaneC: sync a leader entry drag to all follower working PTT-Copy entry orders.
-        // B66-LaneC: widened to StopLimit via GetOrderPrice/SetFollowerPrice helpers (DW-B64-01).
+        // B62/B66-LaneC/B67-LaneB: sync a leader entry drag to all follower working PTT-Copy entry orders.
+        // B67-LaneB: DW-B67-02 -- replaced acc.Change() with Cancel+CreateOrder+Submit.
+        //   acc.Change() on Apex/Rithmic is a silent broker-side no-op for pre-fill entry orders.
+        //   Pattern from @2Custom PropagateMasterEntryMove (FIX-PM-02, FIX-PM-02b).
+        //   NT8_FULL_REFERENCE.md lines 898-899: StopLimit price in StopPrice, not LimitPrice.
+        //   limitPx = fo.OrderType == StopLimit ? 0 : newPrice
+        //   stopPx  = fo.OrderType == StopLimit ? newPrice : 0
         // Triggered by Gate C when leader's entry orderId is already in dedup cache but price changed.
-        // CYC=6: instr null (1), tickSize ternary (2), foreach acc (3), acc null (4), fo null (5), price delta guard (6).
-        // JS-001: try/catch around acc.Change() -- no throw in hot path.
-        // JS-021: no lock -- _dedupCache is ConcurrentDictionary (lock-free).
+        // CYC=7: instr null(1) + tickSize ternary(2) + foreach acc(3) + acc null(4)
+        //   + fo null(5) + price delta guard(6) + order null guard in CreateOrder(7).
+        // JS-001: no throw in hot path. JS-021: no lock. JS-002: void.
         private void HandleEntryChange(Order leaderOrder, CopyRule rule)
         {
             var instrument = leaderOrder.Instrument;
@@ -1058,7 +1064,10 @@ namespace PropTraderTools
                 : rawPrice;
 
             // Update stored price in dedup cache to track latest leader price.
-            _dedupCache[leaderOrder.OrderId.ToString()] = newPrice;
+            // B67-LaneB DW-B67-02: remove stale key after cancel+resubmit.
+            // New entry will be re-keyed by DispatchCopy on the follower's Accepted event.
+            // Do NOT insert newPrice under the old key after cancel+resubmit.
+            _dedupCache.TryRemove(leaderOrder.OrderId.ToString(), out _);
 
             foreach (var acc in rule.FollowerAccounts)                                // (3)
             {
@@ -1073,16 +1082,27 @@ namespace PropTraderTools
                 if (tickSize > 0 && Math.Abs(newPrice - currentPrice) < tickSize)    // (6)
                     continue;
 
-                try
-                {
-                    SetFollowerPrice(fo, newPrice); // B66-LaneC: StopLimit -> fo.StopPrice (NT8_FULL_REFERENCE.md lines 898-899)
-                    acc.Change(new Order[] { fo });
-                    StatusUpdate?.Invoke(acc.Name + ": entry dragged -> " + newPrice);
-                }
-                catch (Exception ex)
-                {
-                    StatusUpdate?.Invoke(acc.Name + ": entry drag error: " + ex.Message);
-                }
+                // B67-LaneB DW-B67-02: Cancel+CreateOrder+Submit (acc.Change() is Apex/Rithmic no-op).
+                // NT8_FULL_REFERENCE.md lines 898-899: StopLimit price in StopPrice not LimitPrice.
+                double limitPx = fo.OrderType == OrderType.StopLimit ? 0.0 : newPrice; // (7a)
+                double stopPx  = fo.OrderType == OrderType.StopLimit ? newPrice : 0.0; // (7b)
+                acc.Cancel(new Order[] { fo });
+                var order = acc.CreateOrder(
+                    instrument,
+                    fo.OrderAction,
+                    fo.OrderType,
+                    OrderEntry.Manual,
+                    fo.TimeInForce,
+                    fo.Quantity,
+                    limitPx,
+                    stopPx,
+                    null,
+                    fo.Name,
+                    DateTime.MaxValue,
+                    null);
+                if (order != null)                                                       // (7)
+                    acc.Submit(new[] { order });
+                StatusUpdate?.Invoke(acc.Name + ": entry dragged -> " + newPrice);
             }
         }
 
@@ -1420,8 +1440,14 @@ namespace PropTraderTools
             }
         }
 
-        // B28 T1 -- FlattenOneAccount: per-account market flatten helper. CYC=3.
-        // (1) pos null/qty guard, (2) action ternary, (3) try/catch CreateOrder.
+        // B28 T1 -- FlattenOneAccount: per-account market flatten helper.
+        // B67 DW-B67-01: cancel follower ATM+QX brackets BEFORE submitting market order.
+        // NT8 precedent: @2Custom-0909edcc FlattenPositionByName V8.31 comment:
+        //   "Cancel ALL bracket orders first to prevent race conditions."
+        // Rithmic/Apex: incoming market order conflicts with live OCO bracket at broker layer
+        //   -> "Close operation failed. Operation timed out." without this cancel step.
+        // CYC=4: (1) pos null/qty guard, (2) CancelQxBrackets, (3) action ternary, (4) try/catch.
+        // JS-021: no lock. JS-001: no throw in hot path. JS-002: void.
         private void FlattenOneAccount(Account acc, Instrument instrument)
         {
             var pos = FindPosition(acc, instrument);
@@ -1430,6 +1456,7 @@ namespace PropTraderTools
                 StatusUpdate?.Invoke(acc.Name + ": flat skip");
                 return;
             }
+            CancelQxBrackets(acc, instrument);   // B67 DW-B67-01: cancel before market order
             var action = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
             try
             {
