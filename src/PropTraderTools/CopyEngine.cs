@@ -343,12 +343,17 @@ namespace PropTraderTools
         // B58 ICopyEngine -- RelayBe: fan out pre-calculated BE price to all follower accounts.
         // BeEventArgs.BePrice is already computed by PttGlobalBreakEven/BE module before firing.
         // B66 DW-B66-BE-01: e.IsLong passed to SubmitBeStop (was relying on re-read inside method -- race).
-        // CYC=2 (1 base + 1 foreach branch). JS-021: no lock -- AllAccounts snapshot; SubmitBeStop lock-free.
-        // JS-002: void method, no return null. JS-033: synchronous void.
+        // B68 DW-B68-01: CancelQxBrackets added before SubmitBeStop -- clears stale ATM brackets
+        //   (Stop1/Stop2/Target1/Target2) on each account before the new BE stop is placed.
+        //   No new McCabe branch: the cancel is a void call in the loop body, not an if-branch.
+        // CYC=2 (unchanged: 1 base + 1 foreach branch). JS-021: no lock. JS-002: void. JS-033: synchronous.
         public void RelayBe(BeEventArgs e)
         {
             foreach (var acc in AllAccounts(e.Instrument))
+            {
+                CancelQxBrackets(acc, e.Instrument);
                 SubmitBeStop(acc, e.Instrument, e.BePrice, e.IsLong);
+            }
         }
 
         // B58 ICopyEngine -- RelayTrim: delegate to Trim(Instrument) fan-out. CYC=1.
@@ -462,6 +467,25 @@ namespace PropTraderTools
             if (stale.Count == 0) return;
             try { acc.Cancel(stale.ToArray()); }
             catch { }
+        }
+
+        // B68 DW-B68-01: CancelQxBracketsForFollowers -- cancel stale brackets on all followers.
+        // Called by PttGlobalQuickExit.Execute before placing new PTT-QX-* orders on the leader.
+        // Ensures follower ATM brackets (Stop1/Stop2/Target1/Target2) and prior PTT-QX-*/PTT-BE-*
+        // orders do not persist as stale orders alongside new QX bracket pairs.
+        // CYC=5: instr-null-guard(1) + rule-null-guard(2) + foreach(3) + acc-null-guard(4) + delegate(5).
+        // JS-021: no lock. JS-001: no throw. JS-002: void. JS-033: synchronous void.
+        // NT8-REF: Account.Cancel -- via CancelQxBrackets (existing, tested, line 462).
+        internal void CancelQxBracketsForFollowers(NinjaTrader.Cbi.Instrument instr)
+        {
+            if (instr == null) return;                                   // (1)
+            var rule = FindRule(instr);
+            if (rule == null) return;                                    // (2)
+            foreach (var acc in rule.Value.FollowerAccounts)            // (3)
+            {
+                if (acc == null) continue;                               // (4)
+                CancelQxBrackets(acc, instr);                            // (5)
+            }
         }
 
         // NextQxOcoId: monotonic OCO group ID for Quick Exit bracket pairs.
