@@ -117,6 +117,8 @@
     <Compile Include="Tests\B55Tests.cs" />
     <Compile Include="Tests\B56Tests.cs" />
     <Compile Include="Tests\B62Tests.cs" />
+    <Compile Include="Tests\B66Tests.cs" />
+    <Compile Include="Tests\CopyEngineB66Tests.cs" />
   </ItemGroup>
 
 </Project>

@@ -24,15 +24,18 @@ namespace PropTraderTools
 
         // Test seam: injectable delegate. Default calls internal CopyEngine.Instance.SubmitBeStop.
         // Production: default constructor. Tests: pass fake lambda.
-        private readonly Action<Account, Instrument, double> _submitBeStop;
+        // B66: delegate updated to 4-arg to match SubmitBeStop(acc, instr, bePrice, isLong).
+        // DW-B66-BE-01 fix: isLong passed at call-site read time, not re-read inside SubmitBeStop.
+        private readonly Action<Account, Instrument, double, bool> _submitBeStop;
 
         // Production constructor -- delegates to injection constructor using inline lambda.
         // The lambda captures nothing at construction time; CopyEngine.Instance is resolved at call time.
+        // B66: lambda extended to accept isLong (4th arg) and forward to SubmitBeStop.
         internal PttGlobalBreakEven()
-            : this((acc, instr, price) => CopyEngine.Instance.SubmitBeStop(acc, instr, price)) { }
+            : this((acc, instr, price, lng) => CopyEngine.Instance.SubmitBeStop(acc, instr, price, lng)) { }
 
-        // Test injection constructor.
-        internal PttGlobalBreakEven(Action<Account, Instrument, double> submitBeStop)
+        // Test injection constructor. B66: delegate updated to 4-arg Action.
+        internal PttGlobalBreakEven(Action<Account, Instrument, double, bool> submitBeStop)
         {
             _submitBeStop = submitBeStop;
         }
@@ -69,7 +72,7 @@ namespace PropTraderTools
             double bePrice  = Math.Round(
                 (pos.AveragePrice + (isLong ? bufferTicks : -bufferTicks) * tickSize) / tickSize
             ) * tickSize;
-            _submitBeStop(acc, pos.Instrument, bePrice);
+            _submitBeStop(acc, pos.Instrument, bePrice, isLong);
         }
 
         // B40 DW-B39-OCO-01 FIX: globally unique OCO group ID prefix for BE ALL path.
