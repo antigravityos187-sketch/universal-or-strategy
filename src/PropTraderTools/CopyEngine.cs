@@ -447,7 +447,6 @@ namespace PropTraderTools
 
         // CancelQxBrackets: cancel all Working/Initialized/Accepted ATM-bracket + PTT-* orders on acc for instr.
         // Called by PttQuickExit.Execute() before re-placing new bracket.
-        // Also called by FlattenOneAccount (B67 DW-B67-01) before market order submission.
         // CYC=6: null guard(1) + foreach(2) + stateOk(3) + instrument check(4) + IsQxCancelCandidate(5) + staleCount(6).
         // JS-021: no lock. Predicate logic in IsQxCancelCandidate (CYC=5) + IsAtmBracketName (CYC=1).
         internal void CancelQxBrackets(Account acc, NinjaTrader.Cbi.Instrument instr)
@@ -467,6 +466,33 @@ namespace PropTraderTools
             if (stale.Count == 0) return;
             try { acc.Cancel(stale.ToArray()); }
             catch { }
+        }
+
+        // B69 DW-B69-01: CancelAllAccountOrders -- cancel every active order on acc for instr
+        // before submitting a market flatten. No name filter -- all order names cancelled.
+        // NT8 precedent: @2Custom-0909edcc EmergencyFlattenSingleFleetAccount [938-EF-GUARD]:
+        //   "Step 1: Cancel ALL working orders on this instrument for this account."
+        //   States: Working|Submitted|Accepted|ChangePending|ChangeSubmitted.
+        // CYC=4: null-guard(1) + foreach(2) + stateOk(3) + instrument-name(4). JS-021: no lock.
+        // JS-001: no throw. JS-002: void. ASCII-only.
+        internal void CancelAllAccountOrders(Account acc, NinjaTrader.Cbi.Instrument instr)
+        {
+            if (acc == null || instr == null) return;                              // (1)
+            var toCancel = new System.Collections.Generic.List<Order>();
+            foreach (Order o in acc.Orders)                                        // (2)
+            {
+                bool stateOk = o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Initialized
+                            || o.OrderState == OrderState.Submitted
+                            || o.OrderState == OrderState.Accepted
+                            || o.OrderState == OrderState.ChangeSubmitted;
+                if (!stateOk) continue;                                            // (3)
+                if (o.Instrument == null
+                    || o.Instrument.FullName != instr.FullName) continue;          // (4)
+                toCancel.Add(o);
+            }
+            if (toCancel.Count == 0) return;
+            try { acc.Cancel(toCancel); } catch { }
         }
 
         // B68 DW-B68-01: CancelQxBracketsForFollowers -- cancel stale brackets on all followers.
@@ -504,12 +530,15 @@ namespace PropTraderTools
         // CYC=7 (strict McCabe): null-guard(1) + pos-loop(2) + inner-if(3) + pos-null-guard(4)
         //         + ternary-dir(5) + if-order-null(6) + base(1) = 7. JS-021: no lock.
         // JS-001: no throw. JS-002: void. JS-033: synchronous void.
+        // B69 DW-B69-02: pos-find uses FullName comparison (not reference equality).
+        // NT8: same contract can exist as 2 different Instrument objects across account contexts.
         internal void SubmitBeStop(Account acc, NinjaTrader.Cbi.Instrument instr, double bePrice, bool isLong)
         {
             if (acc == null || instr == null) return;              // (1)
             NinjaTrader.Cbi.Position pos = null;
             foreach (NinjaTrader.Cbi.Position p in acc.Positions) // (2)
-                if (p.Instrument == instr) { pos = p; break; }    // (3)
+                if (p.Instrument != null                                                          // (3)
+                    && p.Instrument.FullName == instr.FullName) { pos = p; break; }
             if (pos == null || pos.Quantity == 0) return;          // (4)
             OrderAction dir = isLong ? OrderAction.Sell : OrderAction.BuyToCover; // (5)
             try                                                    // (6) CreateOrder call
@@ -1125,7 +1154,14 @@ namespace PropTraderTools
                     DateTime.MaxValue,
                     null);
                 if (order != null)                                                       // (7)
+                {
                     acc.Submit(new[] { order });
+                    // B69 DW-B69-03: preload new orderId into _dedupCache at newPrice.
+                    // Prevents the new order's Accepted event from re-entering DispatchCopy
+                    // (same-account double-copy guard, lightweight FSM-in-flight equivalent).
+                    // Ref: @2Custom PropagateFollowerEntryReplace Build 947 -- PendingCancel absorb.
+                    _dedupCache[order.OrderId.ToString()] = newPrice;
+                }
                 StatusUpdate?.Invoke(acc.Name + ": entry dragged -> " + newPrice);
             }
         }
@@ -1466,11 +1502,12 @@ namespace PropTraderTools
 
         // B28 T1 -- FlattenOneAccount: per-account market flatten helper.
         // B67 DW-B67-01: cancel follower ATM+QX brackets BEFORE submitting market order.
+        // B69 DW-B69-01: widened from CancelQxBrackets to cancel ALL active orders (name-agnostic).
         // NT8 precedent: @2Custom-0909edcc FlattenPositionByName V8.31 comment:
         //   "Cancel ALL bracket orders first to prevent race conditions."
         // Rithmic/Apex: incoming market order conflicts with live OCO bracket at broker layer
         //   -> "Close operation failed. Operation timed out." without this cancel step.
-        // CYC=4: (1) pos null/qty guard, (2) CancelQxBrackets, (3) action ternary, (4) try/catch.
+        // CYC=4: (1) pos null/qty guard, (2) CancelAllAccountOrders, (3) action ternary, (4) try/catch.
         // JS-021: no lock. JS-001: no throw in hot path. JS-002: void.
         private void FlattenOneAccount(Account acc, Instrument instrument)
         {
@@ -1480,14 +1517,16 @@ namespace PropTraderTools
                 StatusUpdate?.Invoke(acc.Name + ": flat skip");
                 return;
             }
-            CancelQxBrackets(acc, instrument);   // B67 DW-B67-01: cancel before market order
+            CancelAllAccountOrders(acc, instrument); // B69 DW-B69-01: cancel ALL orders first
             var action = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
             try
             {
-                acc.CreateOrder(
+                var order = acc.CreateOrder(
                     instrument, action, OrderType.Market, OrderEntry.Manual,
                     TimeInForce.Gtc, pos.Quantity, 0, 0, null, "PTT-Flatten",
                     DateTime.MaxValue, null);
+                if (order != null)
+                    acc.Submit(new[] { order });
                 StatusUpdate?.Invoke(acc.Name + ": flatten " + pos.Quantity);
             }
             catch (Exception ex)
@@ -1775,7 +1814,7 @@ namespace PropTraderTools
         private Position FindPosition(Account acc, Instrument instrument)
         {
             foreach (Position p in acc.Positions)
-                if (p.Instrument == instrument) return p;
+                if (p.Instrument != null && p.Instrument.FullName == instrument.FullName) return p;
             return null;
         }
 

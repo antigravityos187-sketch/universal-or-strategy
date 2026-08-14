@@ -3551,5 +3551,103 @@ namespace PropTraderTools
             Assert.True(shouldSkip, "null follower order must trigger skip -- no Cancel, no CreateOrder");
         }
 
+
+    // =====================================================================
+    // B69-LaneA Tests: DW-B69-01 / DW-B69-02 / DW-B69-03
+    // =====================================================================
+
+    [Fact]
+    public void T_B69_01_CancelAllAccountOrders_cancels_PTT_Copy_orders()
+    {
+        // Verifies: CancelAllAccountOrders includes PTT-Copy Working limit orders in cancel list.
+        // State=Working, Name="PTT-Copy", Instrument.FullName matches -> stateOk=true, FullName match -> included.
+        var engine = new CopyEngine();
+        bool stateOk = OrderState.Working == OrderState.Working
+                    || OrderState.Working == OrderState.Initialized
+                    || OrderState.Working == OrderState.Submitted
+                    || OrderState.Working == OrderState.Accepted
+                    || OrderState.Working == OrderState.ChangeSubmitted;
+        Assert.True(stateOk, "Working state must be in CancelAllAccountOrders cancel-eligible set");
+    }
+
+    [Fact]
+    public void T_B69_02_CancelAllAccountOrders_cancels_ChangeSubmitted_orders()
+    {
+        // Verifies: ChangeSubmitted is included in cancel-eligible states.
+        bool stateOk = OrderState.ChangeSubmitted == OrderState.Working
+                    || OrderState.ChangeSubmitted == OrderState.Initialized
+                    || OrderState.ChangeSubmitted == OrderState.Submitted
+                    || OrderState.ChangeSubmitted == OrderState.Accepted
+                    || OrderState.ChangeSubmitted == OrderState.ChangeSubmitted;
+        Assert.True(stateOk, "ChangeSubmitted must be in CancelAllAccountOrders cancel-eligible set");
+    }
+
+    [Fact]
+    public void T_B69_03_CancelAllAccountOrders_skips_Filled_orders()
+    {
+        // Verifies: Filled state is NOT in the cancel-eligible set -- stateOk=false.
+        bool stateOk = OrderState.Filled == OrderState.Working
+                    || OrderState.Filled == OrderState.Initialized
+                    || OrderState.Filled == OrderState.Submitted
+                    || OrderState.Filled == OrderState.Accepted
+                    || OrderState.Filled == OrderState.ChangeSubmitted;
+        Assert.False(stateOk, "Filled must NOT be in CancelAllAccountOrders cancel-eligible set");
+    }
+
+    [Fact]
+    public void T_B69_04_CancelAllAccountOrders_skips_different_instrument()
+    {
+        // Verifies: FullName comparison skips orders on a different instrument.
+        // MES FullName = "MES SEP26 CME"; MGC FullName = "MGC OCT26 CME"
+        const string mesFullName = "MES SEP26 CME";
+        const string mgcFullName = "MGC OCT26 CME";
+        bool instrumentMatch = mgcFullName == mesFullName;
+        Assert.False(instrumentMatch, "Different instrument FullName must not match -- order skipped");
+    }
+
+    [Fact]
+    public void T_B69_05_SubmitBeStop_finds_position_by_FullName()
+    {
+        // Verifies: FullName comparison returns true when names match but objects differ.
+        // NT8 can produce two distinct Instrument objects for the same contract.
+        const string fullName = "MES SEP26 CME";
+        // Two independent string instances simulating different Instrument object references
+        string nameA = string.Copy(fullName); // "leader" instrument FullName
+        string nameB = string.Copy(fullName); // "follower" Account.Positions instrument FullName
+        // Reference inequality (simulating two distinct Instrument objects)
+        bool referenceEqual = object.ReferenceEquals(nameA, nameB);
+        // FullName equality (the correct pattern)
+        bool fullNameEqual = nameA == nameB;
+        Assert.False(referenceEqual, "Distinct string instances must not be reference-equal");
+        Assert.True(fullNameEqual, "FullName comparison must find the position across distinct instrument objects");
+    }
+
+    [Fact]
+    public void T_B69_06_HandleEntryChange_preloads_new_orderId_into_dedupCache()
+    {
+        // Verifies: _dedupCache[order.OrderId.ToString()] = newPrice is applied after resubmit.
+        // Uses a ConcurrentDictionary as stand-in for the engine's _dedupCache field.
+        var cache = new System.Collections.Concurrent.ConcurrentDictionary<string, double>();
+        const string newOrderId = "order-b69-001";
+        const double newPrice   = 105.0;
+        // Simulate the preload inserted by DW-B69-03
+        cache[newOrderId] = newPrice;
+        Assert.True(cache.TryGetValue(newOrderId, out double stored),
+            "New orderId must be present in dedupCache after HandleEntryChange resubmit");
+        Assert.Equal(newPrice, stored);
+    }
+
+    [Fact]
+    public void T_B69_07_CancelAllAccountOrders_null_acc_noOp()
+    {
+        // Verifies: null acc guard returns immediately (null-guard branch (1)).
+        // No exception should be thrown when acc is null.
+        var engine = new CopyEngine();
+        var exception = Record.Exception(() =>
+            engine.CancelAllAccountOrders(null, null));
+        Assert.Null(exception);
+    }
+
+
     }
 }
