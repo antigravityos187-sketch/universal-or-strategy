@@ -19,8 +19,10 @@ namespace PropTraderTools
     {
         /// <summary>
         /// Execute: all-accounts Quick Exit bracket swap, skipping follower accounts.
-        /// CYC=5: acc loop(1), follower guard(2), pos loop(3), null/flat continue(4), delegate(5).
+        /// CYC=6: acc loop(1), follower guard(2), pos loop(3), null/flat continue(4),
+        ///        engine?. null-check on cancel call(5), delegate(6).
         /// DW-B47-BE-FOLLOWER-SCOPE: follower accounts skipped via CopyEngine.IsFollowerAccount.
+        /// B68 DW-B68-01: follower brackets cancelled via CancelQxBracketsForFollowers before ExecuteOne.
         /// JS-021: no lock. NT8-021: Account.All safe -- called from UI thread after Loaded.
         /// </summary>
         internal void Execute()
@@ -33,7 +35,8 @@ namespace PropTraderTools
                 {
                     if (pos == null || pos.Quantity == 0) continue;  // (4)
                     var ticks = ResolveQuickTicks(pos.Instrument);
-                    ExecuteOne(acc, pos.Instrument, ticks.t1, ticks.t2);
+                    engine?.CancelQxBracketsForFollowers(pos.Instrument); // B68 DW-B68-01 (5)
+                    ExecuteOne(acc, pos.Instrument, ticks.t1, ticks.t2); // (6)
                 }
             }
         }
