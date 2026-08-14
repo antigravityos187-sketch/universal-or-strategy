@@ -120,6 +120,7 @@
     <Compile Include="Tests\B66Tests.cs" />
     <Compile Include="Tests\CopyEngineB66Tests.cs" />
     <Compile Include="Tests\B68Tests.cs" />
+    <Compile Include="Tests\B70Tests.cs" />
   </ItemGroup>
 
 </Project>

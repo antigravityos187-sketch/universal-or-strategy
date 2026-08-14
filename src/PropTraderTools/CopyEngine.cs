@@ -433,8 +433,9 @@ namespace PropTraderTools
             name == "Stop1" || name == "Stop2" || name == "Target1" || name == "Target2";
 
         // IsQxCancelCandidate: returns true if order should be cancelled by CancelQxBrackets.
-        // Covers: ATM bracket names (via IsAtmBracketName), PTT-QX-* prefix, PTT-BE-* prefix.
-        // CYC=5: 1 (base) + 4 if-branches. Roslyn: || inside single if = 1 decision point.
+        // Covers: ATM bracket names (via IsAtmBracketName), PTT-QX-* prefix, PTT-BE-* prefix,
+        //         PTT-Copy* prefix (B70 DW-B70-02: follower copy-dispatched entry orders).
+        // CYC=6: 1 (base) + 5 if-branches. Roslyn: || inside single if = 1 decision point.
         // JS-021: no lock. JS-001: no throw. JS-002: returns bool (never null). ASCII-only.
         internal static bool IsQxCancelCandidate(Order o)
         {
@@ -442,6 +443,7 @@ namespace PropTraderTools
             if (IsAtmBracketName(o.Name)) return true;                                   // (2)
             if (o.Name.StartsWith("PTT-QX-", StringComparison.Ordinal)) return true;    // (3)
             if (o.Name.StartsWith("PTT-BE-", StringComparison.Ordinal)) return true;    // (4)
+            if (o.Name.StartsWith("PTT-Copy", StringComparison.Ordinal)) return true;   // (5) B70 DW-B70-02
             return false;
         }
 
@@ -517,7 +519,8 @@ namespace PropTraderTools
         // NextQxOcoId: monotonic OCO group ID for Quick Exit bracket pairs.
         // Uses Interlocked.Increment on _qxOcoSeq (thread-safe, no lock).
         // CYC=1: straight expression. JS-021: no lock -- Interlocked.
-        private int _qxOcoSeq = 0;
+        // B70 DW-B70-01: seed with TickCount & 0x7FFF (0..32767) to avoid ID reuse on session reconnect.
+        private int _qxOcoSeq = Environment.TickCount & 0x7FFF;
         internal string NextQxOcoId()
             => "PTT-QX-" + System.Threading.Interlocked.Increment(ref _qxOcoSeq).ToString("D5");
 

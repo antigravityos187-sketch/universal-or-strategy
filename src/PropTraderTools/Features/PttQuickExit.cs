@@ -25,7 +25,7 @@ namespace PropTraderTools
 
         /// <summary>
         /// Execute: per-chart Quick Exit bracket swap.
-        /// CYC=5: null/flat guard(1) + snapshotStop guard(2) + isLong(3) + T1-null(4) + T2-null(5).
+        /// CYC=6: null/flat guard(1) + snapshotStop guard(2) + isLong(3) + T1-null(4) + T2-null(5) + CancelQxBracketsForFollowers?.call(6).
         /// JS-001: no throw -- logs instead. JS-021: no lock -- CopyEngine.NextQxOcoId uses Interlocked.
         /// NT8-007: CreateOrder arg12 = (CustomOrder)null. NT8-013: DateTime.MaxValue for GTC.
         /// NT8-014: signal name = "PTT-QX-*". NT8-049: Limit arg6=limitPrice, arg7=0; StopMarket arg6=0, arg7=stopPrice.
@@ -48,8 +48,10 @@ namespace PropTraderTools
             // Step 2: SnapshotStopPrice -- capture current stop price before cancel
             double snapshotStop = SnapshotStopPrice(leader, instr);
 
-            // Step 3: CancelStaleBrackets -- cancel ATM bracket + previous PTT-QX orders
+            // Step 3: CancelStaleBrackets -- cancel ATM bracket + previous PTT-QX orders (leader)
             CopyEngine.Instance?.CancelQxBrackets(leader, instr);
+            // B70 DW-B70-02: also cancel follower PTT-Copy brackets before re-placing QX orders
+            CopyEngine.Instance?.CancelQxBracketsForFollowers(instr);
 
             // Step 4: OCO ID -- monotonic sequence from CopyEngine singleton, unique per press per session
             string ocoId = CopyEngine.Instance?.NextQxOcoId() ?? ("PTT-QX-" + Guid.NewGuid().ToString("N").Substring(0, 8));
