@@ -47,12 +47,16 @@
         "search_custom_context",
         "list_merge_requests",
         "list_merge_request_comments"
-      ]
+      ],
+      "disabled": true
     },
     "sequential-thinking": {
       "type": "stdio",
       "command": "C:\\Program Files\\nodejs\\npx.cmd",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
       "env": {
         "PATH": "C:\\Program Files\\nodejs;C:\\Users\\Mohammed Khalid\\AppData\\Roaming\\npm;C:\\Users\\Mohammed Khalid\\.local\\bin"
       },

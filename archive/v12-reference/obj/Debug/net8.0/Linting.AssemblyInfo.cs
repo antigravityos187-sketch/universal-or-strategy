@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Linting")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c49d25a3df3794a4244272b89dda60fb366d989d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+19742ee64e91f71ed42a3d1ea791e52bc3864ecb")]
 [assembly: System.Reflection.AssemblyProductAttribute("Linting")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Linting")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

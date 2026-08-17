@@ -1,14 +1,30 @@
 {
   "version": 2,
-  "dgSpecHash": "1qJKilGJ7qQ=",
+  "dgSpecHash": "lbURKGNhWSw=",
   "success": true,
-  "projectFilePath": "C:\\WSGTA\\universal-or-strategy\\archive\\v12-reference\\Linting.csproj",
+  "projectFilePath": "C:\\WSGTA\\universal-or-strategy\\archive\\v12-reference\\Testing.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\stylecop.analyzers\\1.2.0-beta.556\\stylecop.analyzers.1.2.0-beta.556.nupkg.sha512",
-    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\stylecop.analyzers.unstable\\1.2.0.556\\stylecop.analyzers.unstable.1.2.0.556.nupkg.sha512",
-    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.27\\microsoft.netcore.app.ref.8.0.27.nupkg.sha512",
-    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.27\\microsoft.windowsdesktop.app.ref.8.0.27.nupkg.sha512",
-    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.27\\microsoft.aspnetcore.app.ref.8.0.27.nupkg.sha512"
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\coverlet.msbuild\\10.0.1\\coverlet.msbuild.10.0.1.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.applicationinsights\\2.23.0\\microsoft.applicationinsights.2.23.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.codecoverage\\18.6.0\\microsoft.codecoverage.18.6.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.net.test.sdk\\18.6.0\\microsoft.net.test.sdk.18.6.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.testing.extensions.telemetry\\2.1.0\\microsoft.testing.extensions.telemetry.2.1.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.testing.extensions.trxreport.abstractions\\2.1.0\\microsoft.testing.extensions.trxreport.abstractions.2.1.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.testing.extensions.vstestbridge\\2.1.0\\microsoft.testing.extensions.vstestbridge.2.1.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.testing.platform\\2.1.0\\microsoft.testing.platform.2.1.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.testing.platform.msbuild\\2.1.0\\microsoft.testing.platform.msbuild.2.1.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\microsoft.testplatform.objectmodel\\18.0.1\\microsoft.testplatform.objectmodel.18.0.1.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\nunit\\4.6.1\\nunit.4.6.1.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\nunit3testadapter\\6.2.0\\nunit3testadapter.6.2.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\system.collections.immutable\\8.0.0\\system.collections.immutable.8.0.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\system.diagnostics.diagnosticsource\\6.0.0\\system.diagnostics.diagnosticsource.6.0.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\system.numerics.vectors\\4.5.0\\system.numerics.vectors.4.5.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\system.reflection.metadata\\8.0.0\\system.reflection.metadata.8.0.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\system.threading.tasks.extensions\\4.5.4\\system.threading.tasks.extensions.4.5.4.nupkg.sha512",
+    "C:\\Users\\Mohammed Khalid\\.nuget\\packages\\system.valuetuple\\4.6.2\\system.valuetuple.4.6.2.nupkg.sha512"
   ],
   "logs": []
 }
