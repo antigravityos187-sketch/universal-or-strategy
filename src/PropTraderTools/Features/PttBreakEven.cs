@@ -29,11 +29,12 @@ namespace PropTraderTools
         public string ModuleId  { get; private set; }
         public bool   IsEnabled { get; private set; }
 
-        // DW-B40-OCO-02: monotonic sequence counter. Incremented once per Execute() call.
-        // JS-023: volatile int allowed. NT8-003: volatile double banned -- not used here.
-        // Guarantees BuildBeOcoId produces a unique ID even when bePrice is identical
-        // across successive clicks (same-price re-entry is the common failure mode).
-        private volatile int _beOcoSeq = 0;
+        // DW-B40-OCO-02: monotonic sequence counter -- now delegated to CopyEngine.NextBeOcoSeq().
+        // HOTFIX-BEALL-OCO-SEQ-SHARED-01: removed per-instance _beOcoSeq. Both MoveStopToBreakEven
+        // (CopyEngine) and PttBreakEven.Execute now share the same counter via CopyEngine.NextBeOcoSeq()
+        // so OCO IDs are globally unique across all BE code paths. Per-instance counter caused collision:
+        // first press via BE ALL set _mstbeOcoSeq=1; second press via per-chart BE set _beOcoSeq=1 on a new
+        // instance => same OCO ID "PTT-BE-Sim101-00001-0" => NT8 OCO reuse error.
 
         public PttBreakEven()
         {
@@ -61,7 +62,8 @@ namespace PropTraderTools
         public void Execute(IPttHostContext ctx)
         {
             if (!IsEnabled) return;                                                // (1) guard
-            int seq = System.Threading.Interlocked.Increment(ref _beOcoSeq);
+            // HOTFIX-BEALL-OCO-SEQ-SHARED-01: use global counter shared with MoveStopToBreakEven.
+            int seq = CopyEngine.Instance?.NextBeOcoSeq() ?? 1;
 
             Position leaderPos = FindPositionLocal(ctx.LeaderAccount, ctx.Instrument);
             if (leaderPos == null || leaderPos.Quantity == 0) return;              // (2) leader guard
@@ -90,7 +92,11 @@ namespace PropTraderTools
             Position pos = FindPositionLocal(acc, ctx.Instrument);
             if (pos == null || pos.Quantity == 0) return;                          // (1)
             bool   isLong  = pos.MarketPosition == MarketPosition.Long;
-            double bePrice = pos.AveragePrice + (isLong ? +buf : -buf) * tickSize;
+            // HOTFIX-BUG-BE-STOP-SHORT: Long stop goes AT/BELOW entry (fires when price drops back).
+            //   Short stop goes AT/ABOVE entry (fires when price rises back).
+            //   Old: (isLong ? +buf : -buf) placed short stop BELOW entry -- immediately executable.
+            //   New: (isLong ? -buf : +buf) -- long stop = entry - buf*tick, short stop = entry + buf*tick.
+            double bePrice = pos.AveragePrice + (isLong ? -buf : +buf) * tickSize;
             if (!IsBePriceOk(isLong, bePrice, ctx.Ask, ctx.Bid))                  // (2)
             {
                 string msg = BuildBeRejectMsg(acc.Name, bePrice, isLong, ctx.Ask, ctx.Bid);
@@ -139,7 +145,9 @@ namespace PropTraderTools
         private void RaiseBeNotify(IPttHostContext ctx, Position leaderPos, double buf, double tickSize)
         {
             bool   leaderIsLong  = leaderPos.MarketPosition == MarketPosition.Long; // (1)
-            double leaderBePrice = leaderPos.AveragePrice + (leaderIsLong ? +buf : -buf) * tickSize;
+            // HOTFIX-BUG-BE-STOP-SHORT: keep in sync with ExecuteOneAccount sign fix.
+            // Long: entry - buf*tick (stop below entry). Short: entry + buf*tick (stop above entry).
+            double leaderBePrice = leaderPos.AveragePrice + (leaderIsLong ? -buf : +buf) * tickSize;
             PttBus.RaiseBe(this, new BeEventArgs(                                   // (2)
                 ctx.Instrument, leaderBePrice, leaderPos.AveragePrice,
                 leaderIsLong, string.Empty));
@@ -150,10 +158,14 @@ namespace PropTraderTools
         // ─────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Cancel stale Working/Initialized orders (excluding PTT-BE-Stop) for given account.
+        /// Cancel stale Working/Initialized orders (excluding PTT-BE-* prefix) for given account.
         /// NT8-051: NT8 sim does not auto-cancel ATM brackets when position goes flat.
         /// NT8-006: NO LINQ -- explicit foreach instead of .Where().
         /// CYC=3: (1) null guard, (2) foreach+conditions, (3) Count==0 early return.
+        /// HOTFIX-QX-DOUBLE-01: Added TriggerPending, Submitted, Accepted to match CancelQxBrackets coverage.
+        ///   Without this, BE button pressed quickly after ATM fill misses brackets in pre-Working states.
+        ///   NT8_FULL_REFERENCE.md line 946: TriggerPending = "Order is pending submission."
+        /// HOTFIX-ATM-T3-CANCEL-01: notBe changed from exact-match to StartsWith prefix guard.
         /// JS-021: no lock.
         /// </summary>
         private static void CancelStaleBracketsLocal(Account acc, Instrument instr)
@@ -165,10 +177,13 @@ namespace PropTraderTools
             {
                 if (o == null) continue;
                 bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Initialized;
+                            || o.OrderState == OrderState.Initialized
+                            || o.OrderState == OrderState.Submitted         // HOTFIX-QX-DOUBLE-01
+                            || o.OrderState == OrderState.Accepted          // HOTFIX-QX-DOUBLE-01
+                            || o.OrderState == OrderState.TriggerPending;   // HOTFIX-QX-DOUBLE-01: pre-submit
                 bool instrOk = o.Instrument != null
                             && o.Instrument.FullName == instr.FullName;
-                bool notBe   = o.Name != "PTT-BE-Stop";
+                bool notBe   = o.Name == null || !o.Name.StartsWith("PTT-BE-", StringComparison.Ordinal); // HOTFIX-ATM-T3-CANCEL-01: prefix guard, not exact-match
                 if (stateOk && instrOk && notBe)
                     stale.Add(o);
             }
@@ -316,15 +331,19 @@ namespace PropTraderTools
         /// Build a unique OCO group ID for a specific stop+target pair at index pairIndex.
         /// DW-B36-OCO-01 FIX: pairIndex makes each pair's ocoId distinct so Target-1 fill
         ///   cancels only Stop-1, leaving Stop-2 + Target-2 (OCO-1) intact.
-        /// CYC=2: (1) ternary prefix selection. Pure computation, no side effects.
+        /// HOTFIX-BUG-BE-OCO-REUSE: accName.Substring(0,4) on "Sim101" and "Sim102" both
+        ///   produce "Sim1" -- identical OCO ID across accounts. Fix: use full accName.
+        ///   Old: prefix = accName[0..3] -> "Sim1" for Sim101 AND Sim102 -> collision.
+        ///   New: prefix = full accName, truncated to 8 chars to keep ID under NT8 limits.
+        /// CYC=2: (1) length guard for prefix. Pure computation, no side effects.
         /// </summary>
         // DW-B40-OCO-02 FIX: seq replaces priceInt -- monotonic, never reused.
-        // Old: "PTT-BE-"+prefix+"-"+priceInt+"-"+pairIndex  (collides on same-price re-entry)
-        // New: "PTT-BE-"+prefix+"-"+seq.ToString("D5")+"-"+pairIndex  (always unique per Execute call)
-        // CYC=2: (1) ternary prefix selection. Pure computation, no side effects.
+        // HOTFIX-BUG-BE-OCO-REUSE: full accName (up to 8 chars) replaces 4-char prefix.
         private static string BuildBeOcoId(string accName, int seq, int pairIndex)
         {
-            string prefix = accName.Length >= 4 ? accName.Substring(0, 4) : accName; // (1)
+            // Use up to 8 chars of accName to differentiate Sim101 vs Sim102.
+            // "Sim101" -> "Sim101", "Sim102" -> "Sim102" -- no collision.
+            string prefix = accName.Length >= 8 ? accName.Substring(0, 8) : accName; // (1)
             return "PTT-BE-" + prefix + "-" + seq.ToString("D5") + "-" + pairIndex.ToString();
         }
 

@@ -25,12 +25,18 @@ namespace PropTraderTools
 
         /// <summary>
         /// Execute: per-chart Quick Exit bracket swap.
-        /// CYC=6: null/flat guard(1) + snapshotStop guard(2) + isLong(3) + T1-null(4) + T2-null(5) + CancelQxBracketsForFollowers?.call(6).
+        /// CYC=8: null/flat guard(1) + follower guard(2) + snapshotStop guard(3) + isLong(4)
+        ///        + fallback guard(5) + for-loop(6) + stop-submit null check(7) + target-submit null check(8).
+        /// HOTFIX-QUICK-T3-01: accepts targets snapshot; submits N OCO pairs instead of always 2.
+        /// B71 DW-B71-02: skipIfFollower param added -- default true rejects follower accounts.
         /// JS-001: no throw -- logs instead. JS-021: no lock -- CopyEngine.NextQxOcoId uses Interlocked.
         /// NT8-007: CreateOrder arg12 = (CustomOrder)null. NT8-013: DateTime.MaxValue for GTC.
         /// NT8-014: signal name = "PTT-QX-*". NT8-049: Limit arg6=limitPrice, arg7=0; StopMarket arg6=0, arg7=stopPrice.
         /// </summary>
-        internal void Execute(Account leader, Instrument instr, int t1Ticks, int t2Ticks)
+        internal void Execute(
+            Account leader, Instrument instr, int t1Ticks,
+            System.Collections.Generic.List<(double Price, int Qty)> targets,
+            bool skipIfFollower = true)
         {
             // Step 1: null/flat guard
             Position pos = null;
@@ -45,165 +51,125 @@ namespace PropTraderTools
                 return;
             }
 
-            // Step 2: SnapshotStopPrice -- capture current stop price before cancel
+            // B71 DW-B71-02: reject follower account on direct calls (skipIfFollower=true default)
+            if (skipIfFollower && CopyEngine.Instance?.IsFollowerAccount(leader) == true)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "PTT-QX: follower guard -- skip " + (leader != null ? leader.Name : "NULL"),
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                return;
+            }
+
+            // Step 2: snapshot stop price before cancel
             double snapshotStop = SnapshotStopPrice(leader, instr);
 
-            // Step 3: CancelStaleBrackets -- cancel ATM bracket + previous PTT-QX orders (leader)
+            // Step 3: cancel ATM bracket + previous PTT-QX orders
             CopyEngine.Instance?.CancelQxBrackets(leader, instr);
             // B70 DW-B70-02: also cancel follower PTT-Copy brackets before re-placing QX orders
             CopyEngine.Instance?.CancelQxBracketsForFollowers(instr);
 
-            // Step 4: OCO ID -- monotonic sequence from CopyEngine singleton, unique per press per session
-            string ocoId = CopyEngine.Instance?.NextQxOcoId() ?? ("PTT-QX-" + Guid.NewGuid().ToString("N").Substring(0, 8));
-
-            // Step 5: compute prices and quantities
+            // Step 4: compute direction and tick
             bool isLong = pos.MarketPosition == MarketPosition.Long;
             double entryPx = pos.AveragePrice;
             double tick = instr.MasterInstrument?.TickSize ?? 0.25;
 
-            // T1 price: entryPx + (isLong ? +t1Ticks : -t1Ticks) * tick
-            double rawT1 = isLong
-                ? entryPx + t1Ticks * tick
-                : entryPx - t1Ticks * tick;
-            double t1Price = Math.Round(rawT1 / tick) * tick;
+            // Step 5: targetCount -- use snapshotted targets, fallback 2 if none
+            int targetCount = (targets != null && targets.Count > 0) ? targets.Count : 2;  // (5)
 
-            // T2 price: entryPx + (isLong ? +t2Ticks : -t2Ticks) * tick
-            double rawT2 = isLong
-                ? entryPx + t2Ticks * tick
-                : entryPx - t2Ticks * tick;
-            double t2Price = Math.Round(rawT2 / tick) * tick;
-
-            // Quantity split: T1 = ceil(qty/2), T2 = qty - T1
-            int t1Qty = (int)Math.Ceiling(pos.Quantity / 2.0);
-            int t2Qty = pos.Quantity - t1Qty;
-
-            // B41 HOTFIX: Two independent OCO groups so T1 fill does not orphan the T2 residual.
-            // Single-OCO design: T1 fills -> OCO cancels Stop+T2 -> 5 lots unprotected.
-            // Two-OCO design:
-            //   Group A (ocoId):  PTT-QX-Stop (t1Qty)  + PTT-QX-T1 (t1Qty)
-            //   Group B (ocoId2): PTT-QX-Stop2 (t2Qty) + PTT-QX-T2 (t2Qty)
-            // T1 fills -> OCO-A cancels Stop only (t1Qty stop). Stop2+T2 in OCO-B remain live.
-            // T2 fills -> OCO-B cancels Stop2. Position fully exited, both stops cleaned up.
-            // CancelQxBrackets still cancels all PTT-QX-* via the PTT-QX- prefix filter.
-            string ocoId2 = CopyEngine.Instance?.NextQxOcoId()
-                ?? ("PTT-QX-" + Guid.NewGuid().ToString("N").Substring(0, 8));
-
-            // Step 6a: Submit PTT-QX-Stop for T1 slice (OCO group A)
-            if (snapshotStop > 0)
+            // Step 6: submit N OCO pairs (one stop + one limit target per pair)
+            // tN = t1 * N ticks from entry (T1=t1, T2=t1*2, T3=t1*3 ... TN=t1*N).
+            // Each pair gets its own OCO ID so T1 fill only cancels Stop1, not Stop2/Stop3.
+            string firstOcoId = string.Empty;
+            for (int i = 0; i < targetCount; i++)                                         // (6)
             {
+                int tNTicks = t1Ticks * (i + 1);
+                double rawTN = isLong ? entryPx + tNTicks * tick : entryPx - tNTicks * tick;
+                double tNPrice = Math.Round(rawTN / tick) * tick;
+
+                int tNQty = (targets != null && i < targets.Count)
+                    ? targets[i].Qty
+                    : Math.Max(1, pos.Quantity / targetCount);
+
+                string ocoId_i = CopyEngine.Instance?.NextQxOcoId()
+                    ?? ("PTT-QX-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                if (i == 0) firstOcoId = ocoId_i;
+
+                string stopName   = i == 0 ? "PTT-QX-Stop" : "PTT-QX-Stop" + (i + 1);
+                string targetName = "PTT-QX-T" + (i + 1);
+
+                if (snapshotStop > 0)
+                {
+                    try
+                    {
+                        var stopOrd = leader.CreateOrder(
+                            instr,
+                            isLong ? OrderAction.Sell : OrderAction.BuyToCover,
+                            OrderType.StopMarket,
+                            OrderEntry.Manual,
+                            TimeInForce.Gtc,
+                            tNQty,
+                            0,
+                            snapshotStop,
+                            ocoId_i,
+                            stopName,
+                            DateTime.MaxValue,
+                            (CustomOrder)null);
+                        if (stopOrd != null)                                               // (7)
+                            leader.Submit(new[] { stopOrd });
+                        else
+                            NinjaTrader.Code.Output.Process("PTT-QX: " + stopName + " null", NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    }
+                    catch (Exception ex)
+                    {
+                        NinjaTrader.Code.Output.Process("PTT-QX: " + stopName + " ex -- " + ex.Message, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    }
+                }
+
                 try
                 {
-                    var stopOrd = leader.CreateOrder(
-                        instr,
-                        isLong ? OrderAction.Sell : OrderAction.BuyToCover,
-                        OrderType.StopMarket,
-                        OrderEntry.Manual,
-                        TimeInForce.Gtc,
-                        t1Qty,          // covers T1 slice only
-                        0,
-                        snapshotStop,
-                        ocoId,
-                        "PTT-QX-Stop",
-                        DateTime.MaxValue,
-                        (CustomOrder)null);
-                    if (stopOrd != null)
-                        leader.Submit(new[] { stopOrd });
-                    else
-                        NinjaTrader.Code.Output.Process("PTT-QX: Stop CreateOrder returned null -- position unprotected", NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                }
-                catch (Exception ex)
-                {
-                    NinjaTrader.Code.Output.Process("PTT-QX: Stop submit exception -- " + ex.Message, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                }
-            }
-
-            // Step 6b: Submit PTT-QX-Stop2 for T2 slice (OCO group B) -- only if t2Qty > 0
-            if (snapshotStop > 0 && t2Qty > 0)
-            {
-                try
-                {
-                    var stop2Ord = leader.CreateOrder(
-                        instr,
-                        isLong ? OrderAction.Sell : OrderAction.BuyToCover,
-                        OrderType.StopMarket,
-                        OrderEntry.Manual,
-                        TimeInForce.Gtc,
-                        t2Qty,          // covers T2 slice only
-                        0,
-                        snapshotStop,
-                        ocoId2,
-                        "PTT-QX-Stop2",
-                        DateTime.MaxValue,
-                        (CustomOrder)null);
-                    if (stop2Ord != null)
-                        leader.Submit(new[] { stop2Ord });
-                    else
-                        NinjaTrader.Code.Output.Process("PTT-QX: Stop2 CreateOrder returned null", NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                }
-                catch (Exception ex)
-                {
-                    NinjaTrader.Code.Output.Process("PTT-QX: Stop2 submit exception -- " + ex.Message, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                }
-            }
-
-            // Step 7: Submit PTT-QX-T1 (Limit, OCO group A)
-            try
-            {
-                var t1Ord = leader.CreateOrder(
-                    instr,
-                    isLong ? OrderAction.Sell : OrderAction.BuyToCover,
-                    OrderType.Limit,
-                    OrderEntry.Manual,
-                    TimeInForce.Gtc,
-                    t1Qty,
-                    t1Price,
-                    0,
-                    ocoId,
-                    "PTT-QX-T1",
-                    DateTime.MaxValue,
-                    (CustomOrder)null);
-                if (t1Ord != null)
-                    leader.Submit(new[] { t1Ord });
-                else
-                    NinjaTrader.Code.Output.Process("PTT-QX: T1 CreateOrder returned null -- skip", NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            }
-            catch (Exception ex)
-            {
-                NinjaTrader.Code.Output.Process("PTT-QX: T1 submit exception -- " + ex.Message, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            }
-
-            // Step 8: Submit PTT-QX-T2 (Limit, OCO group B) -- only if t2Qty > 0
-            if (t2Qty > 0)
-            {
-                try
-                {
-                    var t2Ord = leader.CreateOrder(
+                    var tNOrd = leader.CreateOrder(
                         instr,
                         isLong ? OrderAction.Sell : OrderAction.BuyToCover,
                         OrderType.Limit,
                         OrderEntry.Manual,
                         TimeInForce.Gtc,
-                        t2Qty,
-                        t2Price,
+                        tNQty,
+                        tNPrice,
                         0,
-                        ocoId2,
-                        "PTT-QX-T2",
+                        ocoId_i,
+                        targetName,
                         DateTime.MaxValue,
                         (CustomOrder)null);
-                    if (t2Ord != null)
-                        leader.Submit(new[] { t2Ord });
+                    if (tNOrd != null)                                                     // (8)
+                        leader.Submit(new[] { tNOrd });
                     else
-                        NinjaTrader.Code.Output.Process("PTT-QX: T2 CreateOrder returned null", NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        NinjaTrader.Code.Output.Process("PTT-QX: " + targetName + " null", NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                 }
                 catch (Exception ex)
                 {
-                    NinjaTrader.Code.Output.Process("PTT-QX: T2 submit exception -- " + ex.Message, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.Code.Output.Process("PTT-QX: " + targetName + " ex -- " + ex.Message, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                 }
             }
 
-            // Step 9: raise PttBus.QuickExitFired (Card B: includes TickSize for window back-calc)
+            // Step 7: raise PttBus.QuickExitFired (Card B: back-calc using T1 and T2 prices)
+            double t1Price = isLong ? entryPx + t1Ticks * tick : entryPx - t1Ticks * tick;
+            double t2Price = isLong ? entryPx + t1Ticks * 2 * tick : entryPx - t1Ticks * 2 * tick;
             PttBus.RaiseQuickExit(this, new QuickExitEventArgs(
-                instr, entryPx, t1Price, t2Price, isLong, ocoId, tick));
+                instr, entryPx, t1Price, t2Price, isLong, firstOcoId, tick));
+        }
+
+        /// <summary>
+        /// Execute (compat overload): per-chart single-scope call from TradeCopierPanel.OnQuickClick.
+        /// Bridges the old (t1, t2) signature to the new targets-based Execute.
+        /// Passes empty targets list → Execute falls back to 2-target behavior (t1, t1*2).
+        /// CYC=1: straight delegation. HOTFIX-QUICK-T3-01: TradeCopierPanel.cs is off-limits;
+        /// this shim preserves its 4-arg call without modifying that file.
+        /// </summary>
+        internal void Execute(Account leader, Instrument instr, int t1Ticks, int t2Ticks, bool skipIfFollower = true)
+        {
+            Execute(leader, instr, t1Ticks,
+                new System.Collections.Generic.List<(double Price, int Qty)>(),
+                skipIfFollower);
         }
 
         /// <summary>
@@ -214,7 +180,7 @@ namespace PropTraderTools
         {
             foreach (var o in acc.Orders)
             {
-                if (o.Instrument != instr) continue;                                     // (1)
+                if (o.Instrument == null || o.Instrument.FullName != instr?.FullName) continue;  // HOTFIX-SNAPSHOT-STOP-INSTRREF: FullName comparison (NT8 creates separate Instrument instances per account context)
                 if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted) continue;
                 if (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)  // (2)
                     return o.StopPrice;

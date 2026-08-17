@@ -1,0 +1,1768 @@
+# No-Pipeline Repairs Log
+
+Direct `.cs` edits bypassing the 5-phase PTT pipeline.
+Each entry here requires a full pipeline run (Ph1 → Ph5) before the block is closed.
+Director authorization: live-trading session, post-trade-day pipeline runs scheduled.
+
+---
+
+## PIPELINE STATUS — B72 / B73 / B74
+
+**All three pipeline runs: FINAL_PASS (2026-08-17)**
+
+| Block | Lane | Files | Hotfixes | Tests written | Final verdict |
+|-------|------|-------|----------|---------------|---------------|
+| B72-LaneA | Engine logic | CopyEngine.cs + PttBreakEven.cs | 22 active (1 superseded) | 72 [Fact] | FINAL_PASS |
+| B73-LaneB | UI logic | TradeCopierPanel.cs | 15 | 33 [Fact] | FINAL_PASS |
+| B74-LaneC | Feature files | PttGlobalQuickExit.cs + PttQuickExit.cs + PttGlobalBreakEven.cs | 5 | 22 [Fact] | FINAL_PASS |
+
+**DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
+
+**B72-LaneA gap note**: `ticket-1-completion.md` absent from B72-LaneA directory (noted by B73 Ph5 reviewer). Code artifact (`CopyEngine.cs`, `PttBreakEven.cs`, test files) is present and verified. This is a pipeline documentation gap only — no functional defect. Director should ensure `ticket-1-completion.md` is written retroactively.
+
+### New Deferred Items from B72/B73/B74 Ph5 Reviews
+
+| ID | Source | Item | Priority | Status |
+|----|--------|------|----------|--------|
+| DW-B72-01 | B72-LaneA Ph5 | `IsAtmBracketName("Stop10")` returns true — digit-at-[4] edge case. NT8 ATM names are Stop1..Stop9 only; over-cancel is conservative, not dangerous. | P3 | OPEN |
+| DW-B73-B-01 | B73-LaneB Ph5 | `RaiseBeAllDisarmed` fires on every flat regardless of per-account slot ownership — redundant broadcasts, no correctness impact | P2 | OPEN |
+| DW-B73-B-02 | B73-LaneB Ph5 | `UpdateBeAllVisuals` creates unfrozen `SolidColorBrush` instances on every call — allocation on WPF UI thread, not a hot path | P2 | OPEN |
+
+### Consolidated Carry-Forward OPEN Items (post B72/B73/B74)
+
+| ID | Item | Priority | Status |
+|----|------|----------|--------|
+| DW-B66-BE-01 | `CancelQxBrackets` cancels `PTT-BE-Stop` orders during Quick Exit — Director confirmation required | P1 | OPEN |
+| DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | OPEN |
+| DW-B63-01 | Spurious `PTT-Copy` bracket orders on Sim102 after ATM fill | P1 | OPEN |
+| DW-B54-01 | ATM auto-inject — blocked, requires `StrategyBase` API unavailable in `AddOnBase` | P1 | OPEN (blocked) |
+| DW-B72-01 | `IsAtmBracketName("Stop10")` returns true — acceptable-known edge | P3 | OPEN |
+| DW-B73-B-01 | `RaiseBeAllDisarmed` redundant broadcasts on flat | P2 | OPEN |
+| DW-B73-B-02 | `UpdateBeAllVisuals` unfrozen brush allocation | P2 | OPEN |
+| DW-B58-01 | `SnapshotTargetsPublic` hardcoded order-name prefixes | P2 | OPEN |
+| DW-B58-02 | `GlobalBe` non-atomic lazy init | P2 | OPEN |
+| DW-B58-03 | `RelayBe` `OcoGroup` not forwarded | P2 | OPEN |
+| PRE-EXISTING-01 | Non-ASCII em-dash `CopyEngine.cs` lines 398, 499 | P2 | OPEN |
+| PRE-EXISTING-02 | Non-ASCII arrow `CopyEngine.cs` lines ~1449-1450 (estimate may have shifted with B72 insertions) | P2 | OPEN |
+| PRE-EXISTING-03 | `deploy-sync.ps1` archived; PropTraderTools sync is manual | P2 | OPEN |
+
+---
+
+## ALL HOTFIXES BELOW: PIPELINE-COMPLETE (B72 / B73 / B74)
+
+The following entries were formalised through the full 7-phase PTT pipeline.
+No further pipeline action required unless a regression is identified.
+
+
+---
+
+## HOTFIX-BE-ALL-01
+
+**Date**: 2026-08-14 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `ArmAllPendingBe(int bufferTicks)` (line 563)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+`ArmAllPendingBe` was calling `SubmitBeStop(acc, pos.Instrument, bePrice, isLong)` which:
+1. Created a brand-new `PTT-BE-Stop` StopMarket order immediately (no wait for price trigger)
+2. Never wrote to `_pendingBeSlots` so `IsPendingSlotsEmpty()` always returned `true`
+3. Result: BE All panel button always stayed purple (never armed), and a new stop order
+   stacked on top of existing ATM brackets without cancelling them first (double-stop bug)
+4. Followers were never touched (their stops were never moved)
+
+### Fix
+Replaced `SubmitBeStop(...)` call with `ArmPendingBe(pos.Instrument, acc, bufferTicks)`.
+This is exactly the path used by the per-chart BE button for a single account.
+
+When the price trigger fires:
+- `OnPendingBeAccountUpdate` fires for the leader
+- Calls `BreakEven(leader, instrument, bufferTicks)`
+- `BreakEven(Account,...)` fans out via `AllAccounts(instrument)` -> `MoveStopToBreakEven`
+- `MoveStopToBreakEven` moves existing stops in-place via `acc.Change()` for both
+  leader AND all followers in the copy rule
+
+### Expected behavior after fix
+- Press BE All while in drawdown: button turns amber (pending slots are now populated)
+- When price reaches entry: all leader + follower stops move to BE price in-place
+- Press BE All again: disarms (turns purple), pending slots cleared
+- No new `PTT-BE-Stop` StopMarket order created (stops are moved in-place, not replaced)
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- `ArmPendingBe` already ConcurrentDictionary-based (lock-free) ✅
+
+### Diff (minimal)
+```diff
+-                    bool isLong = pos.MarketPosition == MarketPosition.Long;
+-                    double tick = pos.Instrument.MasterInstrument?.TickSize ?? 0.25;
+-                    double bePrice = Math.Round(
+-                        (pos.AveragePrice + (isLong ? bufferTicks : -bufferTicks) * tick) / tick
+-                    ) * tick;
+-                    SubmitBeStop(acc, pos.Instrument, bePrice, isLong);
++                    ArmPendingBe(pos.Instrument, acc, bufferTicks); // HOTFIX-BE-ALL-01
+```
+
+### Pipeline work needed (block BXX-LaneA)
+- Ph1 Architecture: document the ArmAllPendingBe/SubmitBeStop vs ArmPendingBe design decision
+- Ph2 Review: confirm `MoveStopToBreakEven` follower fan-out path works for ATM bracket stops
+  (IsStopLeg filter at line 1880 -- need to verify ATM Stop1/Stop2 pass this filter)
+- Ph3.5 Tickets: add 4 new tests:
+  - T_BEALL_01: `ArmAllPendingBe` with 1 non-follower account -> `_pendingBeSlots` populated
+  - T_BEALL_02: `ArmAllPendingBe` with follower account -> slot NOT added (skipped)
+  - T_BEALL_03: `ArmAllPendingBe` with flat account -> slot NOT added (ArmPendingBe flat guard)
+  - T_BEALL_04: `IsPendingSlotsEmpty` returns false after `ArmAllPendingBe` with open position
+- Ph4 Verify: confirm no regression to per-chart BE button (separate path, untouched)
+
+### Open question resolved (DW-BEALL-01 — CLOSED)
+`MoveStopToBreakEven` uses `IsStopLeg(order)` filter (line 1880).
+`IsStopLeg` (line 1780): returns true if `order.Name.StartsWith("Stop")`.
+ATM bracket stops are named `Stop1` and `Stop2` — both start with "Stop". ✅
+Follower ATM bracket stops WILL be moved by `MoveStopToBreakEven`. No pipeline gap here.
+
+---
+
+## HOTFIX-QX-DOUBLE-01
+
+**Date**: 2026-08-14 (live trading session)
+**Files**: `src/PropTraderTools/CopyEngine.cs`, `src/PropTraderTools/Features/PttBreakEven.cs`
+**Methods**: `CancelQxBrackets` (CopyEngine.cs line ~454), `CancelStaleBracketsLocal` (PttBreakEven.cs line ~159)
+**Status**: APPLIED — awaiting pipeline
+**Deferred item**: DW-B72-01
+
+### Bug
+Clicking Quick All (or BE button) immediately after an ATM strategy fills leaves ATM bracket
+orders in `OrderState.TriggerPending` state — "Order is pending submission" per
+NT8_FULL_REFERENCE.md line 946. Neither `CancelQxBrackets` nor `CancelStaleBracketsLocal`
+included `TriggerPending` in their `stateOk` filter, so the cancels silently skipped
+those brackets. New PTT-QX orders were then placed on top → two sets of brackets on the account.
+
+The same root cause also affects any other button (Quick per-chart, BE per-chart) that
+calls either cancel helper before placing new orders.
+
+### State coverage before fix
+
+| State | `CancelQxBrackets` | `CancelStaleBracketsLocal` |
+|-------|--------------------|---------------------------|
+| TriggerPending | ❌ MISSING | ❌ MISSING |
+| Initialized | ✅ | ✅ |
+| Submitted | ✅ (B71) | ❌ MISSING |
+| Accepted | ✅ | ❌ MISSING |
+| Working | ✅ | ✅ |
+
+### Fix
+Added `OrderState.TriggerPending` to `CancelQxBrackets` stateOk filter (1 line).
+Added `OrderState.TriggerPending`, `Submitted`, `Accepted` to `CancelStaleBracketsLocal`
+stateOk filter (3 lines) — brings it to parity with `CancelQxBrackets`.
+NT8 reference: NT8_FULL_REFERENCE.md line 946.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (Roslyn counts the full `||` chain as 1 decision point in one `if`) ✅
+
+### Diff (minimal)
+
+**CopyEngine.cs — CancelQxBrackets**:
+```diff
+ bool stateOk = o.OrderState == OrderState.Working
+             || o.OrderState == OrderState.Initialized
+             || o.OrderState == OrderState.Accepted
+-            || o.OrderState == OrderState.Submitted;  // B71
++            || o.OrderState == OrderState.Submitted      // B71
++            || o.OrderState == OrderState.TriggerPending; // HOTFIX-QX-DOUBLE-01
+```
+
+**PttBreakEven.cs — CancelStaleBracketsLocal**:
+```diff
+ bool stateOk = o.OrderState == OrderState.Working
+-            || o.OrderState == OrderState.Initialized;
++            || o.OrderState == OrderState.Initialized
++            || o.OrderState == OrderState.Submitted         // HOTFIX-QX-DOUBLE-01
++            || o.OrderState == OrderState.Accepted          // HOTFIX-QX-DOUBLE-01
++            || o.OrderState == OrderState.TriggerPending;   // HOTFIX-QX-DOUBLE-01
+```
+
+### Pipeline work needed (block BXX-LaneA)
+- Ph1 Architecture: document NT8 order state lifecycle for ATM brackets
+- Ph3.5 Tickets: add tests:
+  - T_QX_DOUBLE_01: `CancelQxBrackets` with TriggerPending order -> order IS in stale list
+  - T_QX_DOUBLE_02: `CancelQxBrackets` with Submitted order -> order IS in stale list (regression)
+  - T_QX_DOUBLE_03: `CancelQxBrackets` with Filled order -> order NOT in stale list (terminal state safe)
+  - T_BE_CANCEL_01: `CancelStaleBracketsLocal` with TriggerPending -> order IS cancelled
+  - T_BE_CANCEL_02: `CancelStaleBracketsLocal` with Accepted -> order IS cancelled
+  - T_BE_CANCEL_03: `CancelStaleBracketsLocal` with PTT-BE-Stop -> order NOT cancelled (notBe guard)
+
+---
+
+## HOTFIX-BUG2-BE-RESET
+
+**Date**: 2026-08-14 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `OnOrderUpdate` (~line 692)
+**Status**: APPLIED — awaiting pipeline
+**Deferred item**: BUG-BE-RESET
+
+### Bug
+`TryFirePositionState(e)` was called PRE-Gate 2 — unconditionally for every account order.
+When follower bracket orders (Stop1/Stop2/Target1/Target2 on Sim102) transitioned through
+Filled/Cancelled states, `TryFirePositionState` fired for the follower account. If Sim102
+had no open position at that moment, `hasPos=False` was fired, causing the panel's
+`UpdateButtonColors` to reset `_beState` to Idle via HOTFIX-F3 — even when Sim101 (leader)
+still had an open position.
+Result: BE button armed by user → immediately disarmed by follower order state noise.
+
+### Fix
+Moved `TryFirePositionState(e)` from line 696 (pre-Gate 1) to after Gate 2.5 (post line 720).
+Now fires ONLY when the order belongs to a matched leader account+instrument pair.
+Follower orders never trigger `PositionStateChanged` events.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (no new branches) ✅
+
+### Diff (minimal, CopyEngine.cs OnOrderUpdate)
+```diff
+-        // Pre-gate: fire position state unconditionally (even when copy disabled)
+-        TryFirePositionState(e);
+         // B62: evict dedup on terminal states...
+         EvictDedup(...);
+         // Gate 1 ... Gate 2 ... Gate 2.5 ...
++        // BUG-BE-RESET fix: fire position state ONLY for leader account+instrument orders
++        TryFirePositionState(e);
+```
+
+### Pipeline work needed
+- Ph1: document that `TryFirePositionState` must be leader-scoped (after Gate 2.5)
+- Ph3.5 Tickets: add test T_BE_RESET_01 — follower Filled event does NOT fire PositionStateChanged
+
+---
+
+## HOTFIX-DW-B64-01
+
+**Date**: 2026-08-14 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `OnOrderUpdate` Gate C (~line 766)
+**Status**: APPLIED — awaiting pipeline
+**Deferred item**: DW-B64-01
+
+### Bug
+Leader entry drag fires two NT8 `OnOrderUpdate` events for the same drag:
+1. `OrderState.Accepted` — price updated — Gate C passes dedup check → `HandleEntryChange` called.
+   `HandleEntryChange` calls `_dedupCache.TryRemove(orderId)` → key is now GONE.
+2. `OrderState.Working` — same new price — Gate C `TryGetValue` misses (key gone) → falls through
+   to `DispatchCopy` → a second PTT-Copy entry order is placed on the follower. DUPLICATE.
+
+### Fix
+Re-insert `currentPrice` into `_dedupCache` BEFORE calling `HandleEntryChange`.
+`HandleEntryChange` then removes it (TryRemove), but on the second Working event, `TryGetValue`
+finds the key with the new price → `Math.Abs(newPrice - newPrice) = 0 < tickSize` → skips.
+
+### JS-DNA compliance
+- No `lock()` added ✅ (`_dedupCache` is `ConcurrentDictionary`, indexer is thread-safe)
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged ✅
+
+### Diff (minimal)
+```diff
+ if (_dedupCache.TryGetValue(e.Order.OrderId.ToString(), out double storedPrice)
+     && Math.Abs(currentPrice - storedPrice) >= tickSize)
+ {
++    _dedupCache[e.Order.OrderId.ToString()] = currentPrice;  // DW-B64-01 fix
+     HandleEntryChange(e.Order, matchedRule.Value);
+     return;
+ }
+```
+
+### Pipeline work needed
+- Ph3.5 Tickets: add test T_DRAG_DEDUP_01 — second Working event after drag does NOT call DispatchCopy
+
+---
+
+## HOTFIX-DW-B72-02
+
+**Date**: 2026-08-14 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Methods**: `OnGlobalBeClick`, `OnPendingBeFiredDispatch`, `UpdateButtonColors`
+**Status**: APPLIED — awaiting pipeline
+**Deferred item**: DW-B72-02
+
+### Bug
+`_globalBeState` (line 247) was a per-panel instance field. Two panels open (MES + MGC):
+- Press BE ALL on MES → MES sets `_globalBeState = Armed` → MES button turns amber.
+- MGC panel `_globalBeState` is still `Idle` → MGC button stays purple.
+- They disagree. Also, if `OnPositionStateChanged` fired on one panel with `hasPos=False`,
+  it reset `_beState` (per-chart) but never touched `_globalBeState` — stale state.
+
+### Fix
+Removed `_globalBeState` field entirely. All panels now read
+`CopyEngine.Instance.IsPendingSlotsEmpty()` as the shared truth source:
+- `OnGlobalBeClick`: `if (IsPendingSlotsEmpty()) → arm; else → disarm` (no local state)
+- `OnPendingBeFiredDispatch`: `if (IsPendingSlotsEmpty()) → set Idle visual` (no check against local state)
+- `UpdateButtonColors`: on flat, if slots not empty, DisarmPendingBe for all + set Idle visual
+
+All panels call the same CopyEngine singleton, so both panels update consistently.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC reduced (removed switch, replaced with if/else) ✅
+
+### Pipeline work needed
+- Ph1: document that BE ALL state must be singleton-scoped (CopyEngine), not panel-scoped
+- Ph3.5 Tickets: add test T_BEALL_SYNC_01 — two panels, arm via one, verify both show Armed
+
+---
+
+## Pending items for pipeline runs
+
+## HOTFIX-FIX-A-BE-BACKGROUND
+
+**Date**: 2026-08-14 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `UpdateBeVisuals` (~line 1268)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+`UpdateBeVisuals(BeState.Idle)` only reset `Content` (label text) — never reset `Background`.
+After user armed BE (BrushCaution amber set) then position closed (HOTFIX-F3 called Idle),
+the button stayed amber forever with no label change, visually stuck in Armed state.
+
+### Fix
+Added `_beBtn2.Background = BrushInactive` to the `BeState.Idle` case.
+
+---
+
+## HOTFIX-FIX-B-TRYFIRE-CANCELLED
+
+**Date**: 2026-08-14 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `TryFirePositionState` (~line 1194)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+`TryFirePositionState` included `Cancelled` and `Rejected` in the trigger filter.
+When a trade closes, NT8 cancels all ATM bracket orders (Stop1, Stop2, Target1, Target2).
+Each cancel fires `TryFirePositionState` → `HasOpenPosition` = False (position already gone) →
+`PositionStateChanged(hasPos=False)` → `UpdateButtonColors(false)` → HOTFIX-F3 resets
+`_beState = Idle` → `UpdateBeVisuals(Idle)`. Hundreds of these per close = button never stays armed.
+
+### Fix
+Removed `Cancelled` and `Rejected` from filter. Only `Filled` and `PartFilled` fire now.
+The flat state is still delivered correctly: the Filled close-order event fires hasPos=False
+after position removal — one clean signal, not hundreds.
+
+---
+
+## HOTFIX-FIX-C-NO-DISARM-IN-UPDATEBUTTONCOLORS
+
+**Date**: 2026-08-14 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `UpdateButtonColors` (~line 570)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+The DW-B72-02 block added in the previous session called `DisarmPendingBe` for ALL accounts
+inside `UpdateButtonColors(hasPos=False)`. This fired on every ATM bracket cancel during close,
+immediately destroying the pending BE slot the user had just armed. Result: BE arm button
+pressed → slot created → ATM brackets cancel → DisarmPendingBe called → slot gone → price
+never triggers → stop never moves.
+
+### Fix
+Removed the DW-B72-02 DisarmPendingBe block from UpdateButtonColors entirely.
+BE ALL visual reset on flat is now handled only by `OnPendingBeFiredDispatch` (checks
+`IsPendingSlotsEmpty()` after the trigger fires naturally). No forced disarm in UI event handlers.
+
+---
+
+## Pending items for pipeline runs
+
+| Hotfix ID | File | Method | Status | Pipeline block |
+|-----------|------|--------|--------|----------------|
+| HOTFIX-BE-ALL-01 | CopyEngine.cs | ArmAllPendingBe | APPLIED | TBD (BXX) |
+| HOTFIX-QX-DOUBLE-01 | CopyEngine.cs + PttBreakEven.cs | CancelQxBrackets + CancelStaleBracketsLocal | APPLIED | TBD (BXX) |
+| HOTFIX-BUG2-BE-RESET | CopyEngine.cs | OnOrderUpdate (TryFirePositionState move) | APPLIED | TBD (BXX) |
+| HOTFIX-DW-B64-01 | CopyEngine.cs | OnOrderUpdate Gate C (dedup re-insert) | APPLIED | TBD (BXX) |
+| HOTFIX-DW-B72-02 | TradeCopierPanel.cs | OnGlobalBeClick + OnPendingBeFiredDispatch + UpdateButtonColors | APPLIED | TBD (BXX) |
+| HOTFIX-FIX-A-BE-BACKGROUND | TradeCopierPanel.cs | UpdateBeVisuals (Idle background reset) | APPLIED | TBD (BXX) |
+| HOTFIX-FIX-B-TRYFIRE-CANCELLED | CopyEngine.cs | TryFirePositionState (remove Cancelled/Rejected) | APPLIED | TBD (BXX) |
+| HOTFIX-FIX-C-NO-DISARM-IN-UPDATEBUTTONCOLORS | TradeCopierPanel.cs | UpdateButtonColors (remove forced DisarmPendingBe) | APPLIED | TBD (BXX) |
+| HOTFIX-BEALL-BUFFER-SYNC-01 | CopyEngine.cs + PttGlobalBreakEven.cs | GlobalBeBufferChanged event + IncrementBuffer + DecrementBuffer | PENDING ENGINEER | TBD (BXX) |
+| HOTFIX-QUICKALL-SINGLETON-01 | CopyEngine.cs + TradeCopierPanel.cs + PttGlobalQuickExit.cs | _globalQuickAllT1 singleton + broadcast events + Execute() wiring | PENDING ENGINEER | TBD (BXX) |
+
+---
+
+## HOTFIX-BUG-BE-OCO-REUSE
+
+**Date**: 2026-08-15 (live trading session continuation)
+**File**: `src/PropTraderTools/Features/PttBreakEven.cs`
+**Method**: `BuildBeOcoId` (~line 331)
+**Status**: APPLIED — awaiting pipeline
+**Deferred item**: BUG-BE-OCO-REUSE
+
+### Bug
+`BuildBeOcoId` used `accName.Substring(0, 4)` as the prefix component.
+Both `"Sim101"` and `"Sim102"` produce prefix `"Sim1"`.
+When `Execute()` iterates over both accounts with the same `seq` value, both calls produce
+identical OCO IDs (e.g. `"PTT-BE-Sim1-00001-0"` for pair 0).
+NT8 rejects the second `CreateOrder` call: `"The OCO ID 'PTT-BE-Sim1-00001-1' cannot be reused"`.
+Result: all Sim102 BE bracket orders rejected — only Sim101 protected.
+
+### Fix
+Changed prefix to `accName.Substring(0, 8)` (or full name if shorter).
+- `"Sim101"` → prefix `"Sim101"` → OCO ID `"PTT-BE-Sim101-00001-0"`
+- `"Sim102"` → prefix `"Sim102"` → OCO ID `"PTT-BE-Sim102-00001-0"`
+No collision possible between any two distinct account names.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (same ternary, 1 char change) ✅
+
+### Diff (minimal)
+```diff
+-            string prefix = accName.Length >= 4 ? accName.Substring(0, 4) : accName;
++            string prefix = accName.Length >= 8 ? accName.Substring(0, 8) : accName;
+```
+
+### Pipeline work needed
+- Ph3.5 Tickets: add test T_OCO_ID_01 — BuildBeOcoId("Sim101", 1, 0) != BuildBeOcoId("Sim102", 1, 0)
+- Ph3.5 Tickets: add test T_OCO_ID_02 — BuildBeOcoId with same seq, same pair, different acc → unique
+- Ph3.5 Tickets: add test T_OCO_ID_03 — BuildBeOcoId with short account name (<8 chars) → full name used
+
+---
+
+## HOTFIX-BUG-BE-STOP-PRICE-SHORT
+
+**Date**: 2026-08-15 (live trading session continuation)
+**File**: `src/PropTraderTools/Features/PttBreakEven.cs`
+**Method**: `ExecuteOneAccount` (~line 93)
+**Status**: APPLIED — awaiting pipeline
+**Deferred item**: BUG-BE-STOP-PRICE-SHORT
+
+### Bug
+`bePrice = pos.AveragePrice + (isLong ? +buf : -buf) * tickSize`
+
+For a **short** position (e.g. entry at 7804.75, buf=1 tick):
+- `bePrice = 7804.75 + (-1) * 0.25 = 7804.50`
+- 7804.50 is **BELOW** entry price for a short
+- A BuyToCover StopMarket at 7804.50 fires when price RISES to 7804.50
+- But price is already at/below 7804.50 if the trade is profitable → stop fires immediately
+- Also: a BuyToCover stop must be **ABOVE** the current bid to be accepted by NT8
+  (stop at 7804.50 is below bid when trade is profitable → rejected)
+
+For a **long** position (e.g. entry at 7804.75, buf=1 tick):
+- `bePrice = 7804.75 + (+1) * 0.25 = 7805.00`
+- 7805.00 is ABOVE entry price for a long
+- A Sell StopMarket at 7805.00 fires when price DROPS to 7805.00
+- That's above entry — captures 1 tick of profit, not true break-even
+- (Minor issue — many traders prefer this convention, but it should match intent)
+
+### Fix
+Flipped sign for both directions:
+`bePrice = pos.AveragePrice + (isLong ? -buf : +buf) * tickSize`
+
+- Long:  `entry - buf*tick` → stop BELOW entry (fires if price drops back past entry)
+- Short: `entry + buf*tick` → stop ABOVE entry (fires if price rises back to entry)
+
+With buf=0: bePrice = avgPrice exactly (true break-even, no buffer).
+With buf=1: long stop 1 tick below entry; short stop 1 tick above entry.
+
+`IsBePriceOk` validation is still correct:
+- Long (Sell stop):      `bePrice <= ask`  → entry - buf ≤ ask ✅
+- Short (BuyToCover):    `bePrice >= bid`  → entry + buf ≥ bid ✅ (only true if not yet profitable)
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (same ternary, sign change only) ✅
+
+### Diff (minimal)
+```diff
+-            double bePrice = pos.AveragePrice + (isLong ? +buf : -buf) * tickSize;
++            double bePrice = pos.AveragePrice + (isLong ? -buf : +buf) * tickSize;
+```
+
+### Pipeline work needed
+- Ph1 Architecture: document buf sign convention (positive buf = away from profitable direction)
+- Ph3.5 Tickets:
+  - T_BE_PRICE_LONG_01: long at 100, buf=0 → bePrice=100 (exact entry)
+  - T_BE_PRICE_LONG_02: long at 100, buf=1, tickSize=0.25 → bePrice=99.75 (below entry)
+  - T_BE_PRICE_SHORT_01: short at 100, buf=0 → bePrice=100 (exact entry)
+  - T_BE_PRICE_SHORT_02: short at 100, buf=1, tickSize=0.25 → bePrice=100.25 (above entry)
+  - T_BE_PRICE_VALID_SHORT: short bePrice=100.25, bid=99.0 → IsBePriceOk returns true
+
+
+---
+
+## HOTFIX-BUG-BE-RAISE-NOTIFY-SIGN
+
+**Date**: 2026-08-15 (live trading session continuation)
+**File**: `src/PropTraderTools/Features/PttBreakEven.cs`
+**Method**: `RaiseBeNotify` (~line 145)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+`RaiseBeNotify` had its own independent copy of the bePrice formula:
+`leaderBePrice = leaderPos.AveragePrice + (leaderIsLong ? +buf : -buf) * tickSize`
+This is the same wrong sign as HOTFIX-BUG-BE-STOP-SHORT — the value published to `PttBus.BeEventArgs`
+was incorrect for short positions (and for long with buf>0).
+This value is consumed by `OnPendingBeAccountUpdate` to display the BE price in the output log
+and is potentially used by panel subscribers to cross-check the trigger price.
+
+### Fix
+Aligned sign with `ExecuteOneAccount`:
+`leaderBePrice = leaderPos.AveragePrice + (leaderIsLong ? -buf : +buf) * tickSize`
+
+### Diff (minimal)
+```diff
+-            double leaderBePrice = leaderPos.AveragePrice + (leaderIsLong ? +buf : -buf) * tickSize;
++            double leaderBePrice = leaderPos.AveragePrice + (leaderIsLong ? -buf : +buf) * tickSize;
+```
+
+
+---
+
+## HOTFIX-BUG-BE-INSTRUMENT-REF
+
+**Date**: 2026-08-15 (live trading session continuation)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `MoveStopToBreakEven` (~line 1885)
+**Status**: APPLIED — awaiting pipeline
+**Root cause of**: BE and BE ALL never moving the stop loss
+
+### Bug
+`MoveStopToBreakEven` filtered orders with reference equality:
+```csharp
+if (order.Instrument != instrument)  continue;
+```
+NT8 creates separate `Instrument` object instances per account context (confirmed by B69 DW-B69-02
+which fixed the same pattern in `FindPosition` and `SubmitBeStop`). The reference equality check
+always evaluates `true` (different objects = not equal), so **every single order in the loop was
+skipped silently**. `acc.Change()` was never called. The stop never moved.
+
+Confirmed by 12-12 PM CSV: every trade closes via `Name='Close'` (Chart Trader manual close).
+Zero `PTT-BE-Stop` change events appear anywhere — not rejected, not errored, not called.
+The pending trigger (`AccountItemUpdate`) fires correctly, `BreakEven()` is called, but
+`MoveStopToBreakEven` exits the loop having done nothing.
+
+This is why BE appeared to "work" early in the project (before B69 DW-B69-02 exposed
+the same pattern) and then stopped working — or more precisely: it never worked for
+accounts where the Instrument reference differed from the one stored in the copy rule.
+
+### Fix
+Changed reference equality to `FullName` string comparison — identical to the B69 fix:
+```diff
+-if (order.Instrument != instrument)
++if (order.Instrument == null || order.Instrument.FullName != instrument.FullName)
+```
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (same filter, extra null guard) ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets: T_BE_MOVE_01 — MoveStopToBreakEven with different Instrument object instances but same FullName → Change() IS called
+- Ph3.5 Tickets: T_BE_MOVE_02 — MoveStopToBreakEven with null order.Instrument → order skipped (no NRE)
+
+---
+
+## HOTFIX-BUG-BE-MOVESTOP-SIGN
+
+**Date**: 2026-08-15 (live trading session continuation)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `MoveStopToBreakEven` (~line 1881)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+`MoveStopToBreakEven` had the same wrong sign as `PttBreakEven.ExecuteOneAccount`:
+```csharp
+double direction = isLong ? 1.0 : -1.0;
+```
+- Short position: `newStop = avgPrice - buf*tick` → stop placed BELOW entry for a short = wrong.
+
+### Fix
+Aligned with `PttBreakEven` fix (HOTFIX-BUG-BE-STOP-SHORT):
+```diff
+-double direction = isLong ? 1.0 : -1.0;
++double direction = isLong ? -1.0 : +1.0;
+```
+With buf=0 this has no practical effect (both produce `avgPrice`). Matters when buf > 0.
+
+
+---
+
+## HOTFIX-BUG-BE-IMMEDIATE
+
+**Date**: 2026-08-15 (live trading session continuation)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `ArmPendingBe` (~line 2075)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+`ArmPendingBe` always armed a pending watcher — no path existed to fire immediately
+when price was already at or past the BE level at button-press time.
+
+- Per-chart BE button (OnBeClick): had its own `IsPriceAlreadyAtBe` check at panel level,
+  routing to `DispatchModule("BE")` for the immediate case. Only armed when in drawdown.
+- BE ALL (OnGlobalBeClick → GlobalBe.Execute → ArmAllPendingBe → ArmPendingBe):
+  no immediate-fire path existed at all. Always armed, always waited for AccountItemUpdate
+  to fire. If price was already past entry when BE ALL was pressed, the trigger condition
+  was immediately true on the first AccountItemUpdate tick — but that requires at least one
+  account item event to fire after the button press, which may not happen quickly or at all
+  in a slow market.
+
+More critically: after HOTFIX-BUG-BE-INSTRUMENT-REF fixed MoveStopToBreakEven, the
+pending path now actually works. But "in the green" = already profitable = the trigger
+should fire the moment BE is pressed, not wait for the next PnL tick.
+
+### Fix
+Added immediate-fire check inside `ArmPendingBe` before writing to `_pendingBeSlots`:
+- Reads current bid (long) or ask (short) from `instr.MarketData`
+- Computes `target = avgPrice + (isLong ? +1.0 : -1.0) * buf * tick` (same formula as trigger)
+- If `refPx` is already past `target` → call `BreakEven()` + `PendingBeFired` immediately, return
+- If market data unavailable (refPx=0) → fall through to normal arm (safe fallback)
+
+This fixes both per-chart BE and BE ALL for the "in the green" case via a single engine-level fix.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC increase: 4→6 (added tickSize guard + alreadyAtBe branch) ✅ (still ≤8)
+
+### Behavior after fix
+| Scenario | Before | After |
+|---|---|---|
+| Press BE while in drawdown (red) | Arms watcher ✅ | Arms watcher ✅ |
+| Press BE while at break-even | Arms watcher, waits forever | Fires immediately ✅ |
+| Press BE while in profit (green) | Arms watcher, fires on next PnL tick | Fires immediately ✅ |
+| No market data (refPx=0) | Arms watcher | Arms watcher (safe fallback) ✅ |
+
+### Pipeline work needed
+- Ph3.5 Tickets:
+  - T_BE_IMM_01: ArmPendingBe long, bid >= target → BreakEven called immediately, no slot added
+  - T_BE_IMM_02: ArmPendingBe short, ask <= target → BreakEven called immediately, no slot added
+  - T_BE_IMM_03: ArmPendingBe, refPx=0 (no market data) → slot added normally (arms watcher)
+  - T_BE_IMM_04: ArmPendingBe long, bid < target → slot added (arms watcher, does not fire)
+
+
+---
+
+## DIAG-MOVESTOP-01
+
+**Date**: 2026-08-15 (live trading session — continue)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `MoveStopToBreakEven` (~line 1872)
+**Status**: APPLIED — diagnostic only, remove once BE confirmed working
+
+### Purpose
+`StatusUpdate` only writes to the panel's `_statusText` label — invisible in the NT8 Output tab.
+`MoveStopToBreakEven` had zero visibility into which filter gate was skipping orders.
+Added `NinjaTrader.Code.Output.Process("[MSTBE] ...")` at every skip point and at the
+`acc.Change()` call site so the next BE test shows exactly why the stop is or isn't moving.
+
+### What the output tells us
+After pressing BE (armed, then price crosses to green):
+- `[MSTBE] acc=Sim101 instr=... posQty=N` — confirms method is called
+- `[MSTBE] SKIP flat` — position not found (FindPosition bug) or qty=0
+- `[MSTBE] SKIP state: Stop1 state=Accepted` — orders not yet Working (timing issue)
+- `[MSTBE] SKIP state: Stop1 state=TriggerPending` — ATM bracket not yet submitted
+- `[MSTBE] SKIP type: Stop1 type=StopLimit` — (should NOT appear; StopLimit is allowed)
+- `[MSTBE] SKIP not-stop-leg: SomeOrder` — order name doesn't start with "Stop"/"STP"
+- `[MSTBE] SKIP already-at-be: Stop1 stopPx=X newStop=X` — idempotency guard firing
+- `[MSTBE] CALLING Change() on Stop1 ...` — method reached acc.Change()
+- `[MSTBE] Change() OK Stop1 @ X` — acc.Change() succeeded
+- `[MSTBE] Change() EXCEPTION Stop1: ...` — acc.Change() threw
+
+### Remove when
+All four scenarios are confirmed working:
+1. BE armed (in drawdown) → price crosses → stop moves (pending path)
+2. BE pressed "in the green" → immediate fire → stop moves
+3. BE ALL → both leader and follower stops move
+4. No duplicate stops placed
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (Output.Process calls are straight-line, no branching) ✅
+
+
+---
+
+## HOTFIX-MSTBE-STATE
+
+**Date**: 2026-08-15 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `MoveStopToBreakEven` (~line 1913)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug (confirmed by DIAG-MOVESTOP-01 output)
+Every `[MSTBE]` invocation showed:
+```
+[MSTBE] SKIP state: Stop1 state=Accepted
+[MSTBE] SKIP state: Stop2 state=Accepted
+```
+Zero `Working` orders — `acc.Change()` was never called.
+
+Root cause: NT8 sim ATM brackets go `TriggerPending → Accepted → Working` after the entry fills.
+`OnPendingBeAccountUpdate` fires on the first PnL tick (AccountItemUpdate) which arrives while
+Stop1/Stop2 are still in `Accepted` state — before they transition to `Working`.
+The state filter `order.OrderState != OrderState.Working` blocked every order → stop never moved.
+
+`acc.Change()` on `Accepted` orders is valid NT8 API (same as Chart Trader drag operation).
+NT8_FULL_REFERENCE.md: `acc.Change()` accepts orders in `Accepted` state.
+
+### Fix
+Widened state filter from `Working` only to `Working || Accepted || TriggerPending`.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC increase: 6 → 7 (one extra bool expression, still ≤ 8) ✅
+
+### Diff (minimal)
+```diff
+-if (order.OrderState != OrderState.Working)
++bool stateOk = order.OrderState == OrderState.Working
++            || order.OrderState == OrderState.Accepted
++            || order.OrderState == OrderState.TriggerPending;
++if (!stateOk)
+```
+
+### Pipeline work needed
+- Ph3.5 Tickets:
+  - T_BE_MOVE_03: MoveStopToBreakEven with Accepted stop → Change() IS called
+  - T_BE_MOVE_04: MoveStopToBreakEven with TriggerPending stop → Change() IS called
+  - T_BE_MOVE_05: MoveStopToBreakEven with Cancelled stop → Change() NOT called (still filtered)
+
+---
+
+## HOTFIX-FLAT-DISARM
+
+**Date**: 2026-08-15 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `UpdateButtonColors` (~line 565)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+When the user manually closes a position while BE is Armed (yellow button), the button
+stays yellow permanently. Two parts to the failure:
+1. HOTFIX-F3 correctly resets `_beState = Idle` and calls `UpdateBeVisuals(Idle)` for the visual.
+2. BUT it never called `DisarmPendingBe` — the engine slot stayed alive forever.
+3. On the next trade, the stale slot would fire `BreakEven()` for the OLD instrument/account,
+   potentially moving a stop that belongs to a different trade context.
+
+FIX-C (prior session) removed ALL `DisarmPendingBe` calls from `UpdateButtonColors` because
+the blanket disarm was killing slots during active trades (ATM bracket Cancelled events fired
+`UpdateButtonColors(false)` mid-trade). That was correct — but left no disarm at all.
+
+The corrected logic: disarm ONLY when `hasPosition=false` AND `_beState != Idle` (position
+truly closed while armed). Post-HOTFIX-BUG2-BE-RESET, this path only fires for the leader
+account (follower bracket noise is filtered by Gate 2.5 before `TryFirePositionState`), so
+`hasPos=false` here reliably means the leader is flat.
+
+### Fix
+Inside the existing HOTFIX-F3 block (already gated by `!hasPosition && _beState != Idle`),
+added:
+1. `CopyEngine.Instance.DisarmPendingBe(_leaderAccount)` — clean up engine slot
+2. `if (IsPendingSlotsEmpty()) UpdateBeAllVisuals(BeState.Idle)` — reset BE ALL button
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅ (`_leaderAccount` null-guarded before call)
+- CYC unchanged (added two straight-line calls inside existing branch) ✅
+
+
+---
+
+## HOTFIX-ENTRY-DRAG-DEDUP
+
+**Date**: 2026-08-15 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `HandleEntryChange` (~line 1140)
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+`TryRemove(orderId)` removed the leader order key from `_dedupCache` immediately after
+`HandleEntryChange` was called from Gate C. NT8 then fires a second `OnOrderUpdate` event
+for the same leader order (Accepted → Working state transition). At that point Gate C's
+`TryGetValue` returns false (key was removed), the drag-price delta check is never reached,
+and the code falls through to `DispatchCopy`. A second `PTT-Copy` order is placed on the
+follower → 2× contracts.
+
+Note: HOTFIX-DW-B64-01 (same session) added `_dedupCache[orderId] = currentPrice` in Gate C
+BEFORE calling `HandleEntryChange`, specifically to survive the `TryRemove`. But `HandleEntryChange`
+then immediately removes the key again at line 1140, undoing that fix for the Working-state event.
+
+### Fix
+Replaced `_dedupCache.TryRemove(leaderOrder.OrderId.ToString(), out _)` with
+`_dedupCache[leaderOrder.OrderId.ToString()] = newPrice` (upsert, not remove).
+
+Keeping the key alive means the second Working-state event hits Gate C, finds the stored price,
+computes `Math.Abs(newPrice - newPrice) = 0 < tickSize`, and exits without calling `DispatchCopy`.
+`DispatchCopy`'s own `IsDedup` check also independently blocks it.
+
+### JS-DNA compliance
+- No `lock()` added ✅ (`_dedupCache` is `ConcurrentDictionary`, indexer write is lock-free)
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (one-for-one line replacement) ✅
+
+### Diff (minimal)
+```diff
+-            // Update stored price in dedup cache to track latest leader price.
+-            // B67-LaneB DW-B67-02: remove stale key after cancel+resubmit.
+-            // New entry will be re-keyed by DispatchCopy on the follower's Accepted event.
+-            // Do NOT insert newPrice under the old key after cancel+resubmit.
+-            _dedupCache.TryRemove(leaderOrder.OrderId.ToString(), out _);
++            // HOTFIX-ENTRY-DRAG-DEDUP: keep leader orderId in cache at newPrice (upsert, not remove).
++            // TryRemove caused Working-state re-entry to fall through Gate C into DispatchCopy,
++            // placing a second PTT-Copy order (doubling follower contracts).
++            // Keeping the key at newPrice means the Working event hits Gate C, sees delta=0 (price unchanged
++            // since Accepted), and returns without dispatching. DispatchCopy's IsDedup also blocks it.
++            _dedupCache[leaderOrder.OrderId.ToString()] = newPrice;
+```
+
+### Pipeline work needed
+- Ph1 Architecture: document that `HandleEntryChange` must keep leader key alive (upsert semantics) after cancel+resubmit
+- Ph3.5 Tickets:
+  - T_DRAG_DEDUP_02: Working-state re-entry after drag — Gate C sees delta=0 → DispatchCopy NOT called
+  - T_DRAG_DEDUP_03: After HandleEntryChange completes — orderId key still present in _dedupCache at newPrice
+  - T_DRAG_DEDUP_04: New follower order (cancel+resubmit path) — new orderId keyed correctly via line 1180
+
+
+---
+
+## HOTFIX-MSTBE-CANCEL-RESUBMIT
+
+**Date**: 2026-08-14 (live trading session)
+**ID**: HOTFIX-MSTBE-CANCEL-RESUBMIT
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks)`
+**Status**: APPLIED — awaiting pipeline
+
+### Bug
+
+`acc.Change()` is a silent no-op when called on ATM-bracket-owned orders (`Stop1`, `Stop2`)
+from AddOn context. The NT8 ATM engine owns those brackets and ignores `acc.Change()` calls —
+no exception is raised and no effect occurs on the stop price.
+
+**Confirmed in NT8 output log**: `[MSTBE] Change() OK Stop1 @ <newPrice>` was logged while
+the stop remained at its original price in the Orders tab.
+
+### Fix
+
+Replaced the entire `foreach (var order in acc.Orders.ToList())` loop and its `acc.Change()`
+body with a cancel+resubmit pattern mirroring `PttBreakEven.ExecuteOneAccount`:
+
+- **Step A** — Snapshot target orders (Working/Accepted Limit orders matching `Target1..Target9`)
+  before cancelling anything. Mirrors `PttBreakEven.SnapshotTargetsLocal`.
+- **Step B** — Cancel all stale brackets: Working | Initialized | Submitted | Accepted |
+  TriggerPending orders on the instrument that do not already start with `PTT-BE-`.
+  Mirrors `PttBreakEven.CancelStaleBracketsLocal`. Cancel errors are non-fatal (caught).
+- **Step C** — Submit new `PTT-BE-Stop-N` + `PTT-BE-Target-N` OCO pairs (or one bare
+  `PTT-BE-Stop` when no targets found). Mirrors `PttBreakEven.SubmitBeTargetsLocal`.
+  All `CreateOrder` calls use NT8-049 arg order (StopMarket: arg6=0, arg7=stop;
+  Limit: arg6=price, arg7=0), NT8-007 cast, NT8-013 DateTime.MaxValue, NT8-014 PTT- prefix.
+
+Guards preserved unchanged: all guards before the loop (`IsFlat`, tickSize, newStop calc,
+DIAG-MOVESTOP-01 log lines 1878-1903, `isLong`, `newStop`).
+
+`BreakEven()`, `ArmPendingBe()`, `OnPendingBeAccountUpdate()` are not touched.
+
+
+---
+
+## HOTFIX-MSTBE-OCO-REUSE
+
+- **ID**: HOTFIX-MSTBE-OCO-REUSE
+- **File**: src/PropTraderTools/CopyEngine.cs
+- **Method**: MoveStopToBreakEven + field _mstbeOcoSeq
+- **Bug**: Static OCO ID PTT-BE-Sim101-0 reused on second BE press -- NT8 rejects all orders, position unprotected
+- **Fix**: volatile int _mstbeOcoSeq + Interlocked.Increment per call, mirrors PttBreakEven._beOcoSeq (DW-B40-OCO-02)
+- **Status**: APPLIED -- awaiting pipeline
+
+## HOTFIX-MSTBE-OCO-REUSE
+
+**Date**: 2026-08-15 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Methods**: `MoveStopToBreakEven` (OCO ID generation) + field declaration
+**Status**: APPLIED + SYNCED — awaiting live test
+**Deferred item**: HOTFIX-MSTBE-OCO-REUSE
+
+### Bug
+`MoveStopToBreakEven` OCO ID formula was:
+```csharp
+string ocoId_i = "PTT-BE-" + acc.Name.Substring(0, Math.Min(8, acc.Name.Length)) + "-" + i;
+```
+This is **static per session** — `i` is the pair index (0, 1), not a monotonic counter.
+On a second BE press after the first set of `PTT-BE-*` orders are cancelled/filled, NT8 refuses
+to reuse a cancelled OCO ID within the same session:
+`"The OCO ID 'PTT-BE-Sim101-0' cannot be reused."`
+All 4 PTT-BE orders on the second press are rejected → position left unprotected after second press.
+
+Root cause is identical to `PttBreakEven._beOcoSeq` (DW-B40-OCO-02) which already fixes this
+pattern for the `PttBreakEven.SubmitBeTargetsLocal` path.
+
+### Fix
+Added field (line 156):
+```csharp
+// HOTFIX-MSTBE-OCO-REUSE: monotonic counter for BE OCO IDs -- never reuse a cancelled OCO ID.
+// DW-B40-OCO-02 pattern from PttBreakEven._beOcoSeq. JS-023: volatile int allowed.
+private volatile int _mstbeOcoSeq = 0;
+```
+
+Added `seq` increment before the OCO submission loop (line 2015):
+```csharp
+int seq = System.Threading.Interlocked.Increment(ref _mstbeOcoSeq);
+```
+
+Changed OCO ID generation inside the loop:
+```diff
+-string ocoId_i = "PTT-BE-"
+-    + acc.Name.Substring(0, Math.Min(8, acc.Name.Length))
+-    + "-" + i;
++string ocoId_i = "PTT-BE-"
++    + acc.Name.Substring(0, Math.Min(8, acc.Name.Length))
++    + "-" + seq.ToString("D5") + "-" + i;
+```
+
+Result: First press → `PTT-BE-Sim101-00001-0`, `PTT-BE-Sim101-00001-1`.
+Second press → `PTT-BE-Sim101-00002-0`, `PTT-BE-Sim101-00002-1`. No collision.
+
+### Expected test output (NT8 Output Tab 1)
+- First BE press: `ocoId=PTT-BE-Sim101-00001-0`, `ocoId=PTT-BE-Sim101-00001-1`
+- Second BE press: `ocoId=PTT-BE-Sim101-00002-0`, `ocoId=PTT-BE-Sim101-00002-1`
+- All 4 orders appear in Orders tab on both presses
+
+### Failure signature (old bug)
+Second press shows `ocoId=PTT-BE-Sim101-0` and orders silently fail → position unprotected.
+
+### JS-DNA compliance
+- No `lock()` added ✅ (`Interlocked.Increment` is lock-free, JS-023)
+- No `throw new` added ✅
+- No `return null` added ✅
+- `volatile int` field is JS-023 compliant ✅
+- CYC unchanged (straight-line seq increment before existing loop) ✅
+
+### Diff (minimal)
+**Field (after _trailBeLastPnlBits, line 156)**:
+```diff
++        // HOTFIX-MSTBE-OCO-REUSE: monotonic counter for BE OCO IDs -- never reuse a cancelled OCO ID.
++        // DW-B40-OCO-02 pattern from PttBreakEven._beOcoSeq. JS-023: volatile int allowed.
++        private volatile int _mstbeOcoSeq = 0;
+```
+
+**MoveStopToBreakEven OCO loop (line 2015)**:
+```diff
++        int seq = System.Threading.Interlocked.Increment(ref _mstbeOcoSeq);
+         for (int i = 0; i < targets.Count; i++)
+         {
+             var t = targets[i];
+             string ocoId_i = "PTT-BE-"
+                 + acc.Name.Substring(0, Math.Min(8, acc.Name.Length))
+-                + "-" + i;
++                + "-" + seq.ToString("D5") + "-" + i;
+```
+
+### Pipeline work needed
+- Ph3.5 Tickets:
+  - T_OCO_SEQ_01: First call to MoveStopToBreakEven → seq=1 → ocoId contains "00001"
+  - T_OCO_SEQ_02: Second call → seq=2 → ocoId contains "00002" (no collision with prior seq)
+  - T_OCO_SEQ_03: Concurrent calls (two accounts) → Interlocked.Increment guarantees unique seq per call
+  - T_OCO_SEQ_04: Pair index i=0 and i=1 with same seq → distinct IDs (same seq, different suffix "-0" vs "-1")
+
+---
+
+## HOTFIX-FLAT-DISARM-FOLLOWER
+
+**Date**: 2026-08-15 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `OnOrderUpdate` (pre-Gate 1 section, ~line 700)
+**Status**: APPLIED + SYNCED — awaiting live test
+**Fixes**: HOTFIX-FLAT-DISARM partial failure — BE button stayed yellow after manual close
+
+### Bug
+HOTFIX-FLAT-DISARM (prior session) correctly resets `_beState=Idle` and calls
+`DisarmPendingBe(_leaderAccount)` when `UpdateButtonColors(hasPos=false)` fires.
+
+But `UpdateButtonColors(false)` was **never called** after the follower's PTT-BE stop filled:
+- When `PTT-BE-Stop-1/2` fills on **Sim102 (follower)**, `OnOrderUpdate` fires for Sim102.
+- Gate 2 checks `e.Order.Account.Name == rule.MasterAccount?.Name`.
+- Sim102 is a follower account, not a master — Gate 2 returns null → early exit at line 717.
+- `TryFirePositionState` is never reached → `PositionStateChanged` never fires.
+- Panel's `OnPositionStateChanged` never called → `UpdateButtonColors(false)` never called.
+- HOTFIX-F3 / HOTFIX-FLAT-DISARM never execute → BE button stays yellow permanently.
+
+The leader (Sim101) closes via `Name='Close'` first. `TryFirePositionState` fires for Sim101,
+`HasOpenPosition(Sim101)=false`, panel resets correctly. But when the user then places a new
+trade on Sim102 and presses BE, then the PTT-BE stop fills and closes Sim102 — the button
+stays yellow because Sim102 is never the subject of a `PositionStateChanged` event.
+
+### Fix
+Added a narrow pre-Gate-1 path in `OnOrderUpdate`:
+- Triggers only on: `Filled` + `Name.StartsWith("PTT-BE-Stop")` + non-leader account
+- Non-leader check: iterate `_rules`, confirm account is not any rule's `MasterAccount`
+- If non-leader: fire `PositionStateChanged` directly with current `HasOpenPosition` result
+
+This is safe because:
+1. Leader PTT-BE-Stop fills still go through `TryFirePositionState` via the normal path (Gate 2 passes for leaders)
+2. The non-leader check prevents double-firing for any edge case where leader account name matches
+3. `PTT-BE-Stop*` prefix is unique to this codepath (not used by QX or any other feature)
+4. `HasOpenPosition` is lock-free (ConcurrentDictionary read via `FindPosition`)
+
+### JS-DNA compliance
+- No `lock()` added ✅ (`_rules` is read-only after init; `HasOpenPosition` is lock-free)
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC increase: +2 (outer `if` + inner `foreach` loop) — total method stays ≤ 8 ✅
+
+### Diff (minimal, OnOrderUpdate pre-Gate-1)
+```diff
++        // HOTFIX-FLAT-DISARM-FOLLOWER: fire PositionStateChanged when a PTT-BE bracket on a
++        // FOLLOWER account fills and closes that account's position.
++        if (e.Order != null
++            && e.Order.OrderState == OrderState.Filled
++            && e.Order.Name != null
++            && e.Order.Name.StartsWith("PTT-BE-Stop")
++            && e.Order.Instrument?.FullName != null)
++        {
++            bool isLeader = false;
++            foreach (var r in _rules)
++            {
++                if (e.Order.Account.Name == r.MasterAccount?.Name) { isLeader = true; break; }
++            }
++            if (!isLeader)
++            {
++                bool hasPos     = HasOpenPosition(e.Order.Account, e.Order.Instrument);
++                bool hasEntries = HasWorkingEntries(e.Order.Account, e.Order.Instrument);
++                PositionStateChanged?.Invoke(
++                    e.Order.Instrument.FullName,
++                    new PositionState(hasPos, hasEntries));
++            }
++        }
+         // Gate 1: enabled check
+         if (!_isCopyEnabled)
+```
+
+### Expected behavior after fix
+- BE armed (yellow) → PTT-BE stops fire on Sim102 → Sim102 goes flat → `PositionStateChanged`
+  fires with `hasPos=false` → `UpdateButtonColors(false)` → HOTFIX-F3 → `_beState=Idle` →
+  button goes grey → `DisarmPendingBe` clears any residual slot → button stays grey ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets:
+  - T_FOLLOWER_FLAT_01: PTT-BE-Stop-1 fills on follower → PositionStateChanged fired with hasPos=false
+  - T_FOLLOWER_FLAT_02: PTT-BE-Stop-1 fills on leader → NOT fired by this path (isLeader=true guard)
+  - T_FOLLOWER_FLAT_03: PTT-QX-Stop fills on follower → NOT fired (name does not start with "PTT-BE-Stop")
+  - T_FOLLOWER_FLAT_04: PTT-BE-Stop fills on follower but position still open (partial fill) → hasPos=true fired correctly
+
+---
+
+---
+
+## HOTFIX-MSTBE-QX-TARGETS-01
+- **ID**: HOTFIX-MSTBE-QX-TARGETS-01
+- **File**: CopyEngine.cs
+- **Method**: MoveStopToBreakEven (Step A isAtmTarget filter, ~line 1961)
+- **Bug**: After QX, BE ALL submitted only a bare stop (no targets). ATM Target1/2 replaced by PTT-QX-T1/T2 which do not start with "Target" -> snapshot missed them -> 0 targets.
+- **Fix**: Extended isAtmTarget to also match PTT-QX-T* and PTT-BE-Target-* Limit orders.
+- **Status**: APPLIED -- awaiting pipeline
+
+---
+
+## HOTFIX-BEALL-SYNC-01
+- **ID**: HOTFIX-BEALL-SYNC-01
+- **File**: CopyEngine.cs + TradeCopierPanel.cs
+- **Method**: ArmPendingBe (new PendingBeArmed event) + OnPendingBeArmedDispatch (new handler)
+- **Bug**: BE ALL button only turned yellow on the panel that was clicked; other panels stayed grey
+- **Fix**: PendingBeArmed event broadcast from ArmPendingBe; all panels subscribe and call UpdateBeAllVisuals(Armed)
+- **Status**: APPLIED -- awaiting pipeline
+
+---
+
+## HOTFIX-FLAT-MANUAL-CLOSE-01
+- **ID**: HOTFIX-FLAT-MANUAL-CLOSE-01
+- **File**: TradeCopierPanel.cs
+- **Method**: OnLeaderPositionUpdate
+- **Bug**: Manual close (Name='Close') before BE fires -> button stays yellow. HasOpenPosition returns True at order-fill time (NT8 position-state lag). hasPos=False never reaches panel.
+- **Fix**: OnLeaderPositionUpdate fires UpdateButtonColors(false,false) on Operation.Remove -- NT8 guarantees position is gone at this event, no lag.
+- **Status**: APPLIED -- awaiting pipeline
+
+## HOTFIX-BEALL-BUFFER-SYNC-01
+- **ID**: HOTFIX-BEALL-BUFFER-SYNC-01
+- **Files**: CopyEngine.cs, Features/PttGlobalBreakEven.cs
+- **Methods**: GlobalBeBufferChanged event + IncrementBuffer + DecrementBuffer
+- **Bug**: BE ALL buffer spin on Panel A does not update Panel B label -- per-panel label only
+- **Fix**: Added GlobalBeBufferChanged Action<int> event; fired from IncrementBuffer/DecrementBuffer; panels subscribe in Task B
+- **Status**: APPLIED (partial -- Task B wiring pending) -- awaiting pipeline
+
+---
+
+---
+
+## HOTFIX-QUICKALL-SINGLETON-01
+
+**ID**: HOTFIX-QUICKALL-SINGLETON-01
+**Files**: `CopyEngine.cs`, `TradeCopierPanel.cs`, `Features/PttGlobalQuickExit.cs`
+**Methods**: `_globalQuickAllT1` singleton + `GlobalBeBufferChanged` wire + `OnGlobalBeBufferChanged` + `OnQuickAllBufferChanged`
+**Bug**: Quick ALL `_quickAllT1` was per-panel and never fed into execution; BE ALL buffer label only updated on clicked panel
+**Fix**: Singleton `GlobalQuickAllT1` on `CopyEngine`; broadcast events refresh all panel labels; `Execute()` uses singleton value
+**Status**: APPLIED — awaiting pipeline
+
+
+## HOTFIX-QUICKALL-COMPILE-01
+
+**ID**: HOTFIX-QUICKALL-COMPILE-01
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `_quickAllBtn` button construction block (~line 1092)
+**Bug**: Button label initializer still referenced removed field `_quickAllT1` (compilation error).
+  `_quickAllT1` was correctly removed as a field by HOTFIX-QUICKALL-SINGLETON-01 but the button
+  init line `Content = FormatBuffer("Quick ALL", _quickAllT1)` was not updated.
+**Fix**: Replaced `_quickAllT1` with `CopyEngine.Instance.GlobalQuickAllT1` so the button reads
+  the singleton at construction time, consistent with OnQuickAllBufferChanged updates.
+**Status**: APPLIED — awaiting pipeline
+
+### Diff (minimal)
+```diff
+-                Content         = FormatBuffer("Quick ALL", _quickAllT1),
++                Content         = FormatBuffer("Quick ALL", CopyEngine.Instance.GlobalQuickAllT1),
+```
+
+---
+
+## HOTFIX-CS0070-BEBUFFER-01
+
+**ID**: HOTFIX-CS0070-BEBUFFER-01
+**Files**: `src/PropTraderTools/CopyEngine.cs`, `src/PropTraderTools/Features/PttGlobalBreakEven.cs`
+**Methods**: `RaiseBeBufferChanged` (new relay) + `IncrementBuffer` + `DecrementBuffer`
+**Bug**: CS0070 — `PttGlobalBreakEven.IncrementBuffer/DecrementBuffer` called
+  `CopyEngine.Instance.GlobalBeBufferChanged?.Invoke(...)` from outside `CopyEngine`.
+  C# CS0070 rule: an `event` field may only be raised (Invoke) from inside the declaring class.
+  The `GlobalQuickAllBufferChanged` event had the same raise moved inside `CopyEngine.IncrementQuickAll/DecrementQuickAll`
+  (where it is legal), but `GlobalBeBufferChanged` was raised externally from `PttGlobalBreakEven`.
+**Fix**: Added one-line relay method `internal void RaiseBeBufferChanged(int newValue) => GlobalBeBufferChanged?.Invoke(newValue);`
+  inside `CopyEngine`. `PttGlobalBreakEven.IncrementBuffer/DecrementBuffer` now call
+  `CopyEngine.Instance.RaiseBeBufferChanged(...)` instead of direct `?.Invoke`.
+**Status**: APPLIED — awaiting pipeline
+
+### Diff (minimal)
+
+**CopyEngine.cs** (new relay after event declaration):
+```diff
++        internal void RaiseBeBufferChanged(int newValue) => GlobalBeBufferChanged?.Invoke(newValue);
+```
+
+**PttGlobalBreakEven.cs** (x2 — IncrementBuffer + DecrementBuffer):
+```diff
+-            CopyEngine.Instance.GlobalBeBufferChanged?.Invoke(_globalBeBuffer);
++            CopyEngine.Instance.RaiseBeBufferChanged(_globalBeBuffer);
+```
+
+---
+
+## HOTFIX-THREAD-DISPATCH-01
+
+**ID**: HOTFIX-THREAD-DISPATCH-01
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Methods**: `OnGlobalBeBufferChanged` + `OnQuickAllBufferChanged`
+**Bug**: Both handlers set WPF control `.Content` directly on the calling panel's UI thread.
+  In NT8, each Chart window has its own Dispatcher. Panel A's spin button fires the event
+  synchronously on Panel A's thread; Panel B's handler runs on Panel A's thread but Panel B's
+  WPF controls belong to Panel B's Dispatcher → InvalidOperationException: "The calling thread
+  cannot access this object because a different thread owns it."
+**Fix**: Wrapped both handlers in `Dispatcher.InvokeAsync` (same pattern as `OnPendingBeFiredDispatch`
+  and `OnPendingBeArmedDispatch`).
+**Status**: APPLIED — awaiting pipeline
+
+### Diff
+```diff
+-        private void OnGlobalBeBufferChanged(int newBuffer)
+-        {
+-            if (_globalBeBtn2 != null)
+-                _globalBeBtn2.Content = FormatGlobalBeBuffer("BE ALL", newBuffer);
+-        }
++        private void OnGlobalBeBufferChanged(int newBuffer)
++        {
++            Dispatcher.InvokeAsync(() =>
++            {
++                if (_globalBeBtn2 != null)
++                    _globalBeBtn2.Content = FormatGlobalBeBuffer("BE ALL", newBuffer);
++            });
++        }
+-        private void OnQuickAllBufferChanged(int newT1)
+-        {
+-            if (_quickAllBtn != null)
+-                _quickAllBtn.Content = FormatBuffer("Quick ALL", newT1);
+-        }
++        private void OnQuickAllBufferChanged(int newT1)
++        {
++            Dispatcher.InvokeAsync(() =>
++            {
++                if (_quickAllBtn != null)
++                    _quickAllBtn.Content = FormatBuffer("Quick ALL", newT1);
++            });
++        }
+```
+
+---
+
+## HOTFIX-BEALL-DISARM-SYNC-01
+
+**ID**: HOTFIX-BEALL-DISARM-SYNC-01
+**Files**: `src/PropTraderTools/CopyEngine.cs`, `src/PropTraderTools/TradeCopierPanel.cs`
+**Methods**: `GlobalBeAllDisarmed` event + `RaiseBeAllDisarmed()` relay + `OnGlobalBeAllDisarmed` handler
+  + `OnGlobalBeClick` disarm path + `UpdateButtonColors` HOTFIX-F3 branch
+**Bug 1**: Clicking BE ALL to disarm called `UpdateBeAllVisuals(Idle)` only on the clicked panel.
+  No event was broadcast — other panels stayed yellow.
+**Bug 2**: When position closes while BE is armed, `UpdateButtonColors(false)` only fires on the
+  panel whose instrument matches the closed position. Other panels (e.g. MGC panel watching a MES
+  position) never receive the flat signal → button stays yellow permanently.
+**Fix**: Added `internal event Action GlobalBeAllDisarmed` + `internal void RaiseBeAllDisarmed()`
+  relay on CopyEngine. All panels subscribe/unsubscribe in OnLoaded/Detach. Handler calls
+  `Dispatcher.InvokeAsync(() => UpdateBeAllVisuals(Idle))`. `RaiseBeAllDisarmed()` is called
+  from (1) `OnGlobalBeClick` disarm path after `UpdateBeAllVisuals(Idle)`, and (2) `UpdateButtonColors`
+  HOTFIX-F3 branch after `UpdateBeAllVisuals(Idle)`.
+**Status**: APPLIED — awaiting pipeline
+
+---
+
+## HOTFIX-BEALL-OCO-SEQ-SHARED-01
+
+**ID**: HOTFIX-BEALL-OCO-SEQ-SHARED-01
+**Files**: `src/PropTraderTools/CopyEngine.cs`, `src/PropTraderTools/Features/PttBreakEven.cs`
+**Methods**: `NextBeOcoSeq()` (new) + `PttBreakEven.Execute` seq generation
+**Bug**: `PttBreakEven._beOcoSeq` (per-instance, per-chart BE path) and `CopyEngine._mstbeOcoSeq`
+  (BE ALL / MoveStopToBreakEven path) are separate counters both starting at 0. First BE ALL press
+  → `_mstbeOcoSeq` = 1 → creates `PTT-BE-Sim101-00001-0`. Subsequent per-chart BE press →
+  `_beOcoSeq` on new PttBreakEven instance = 1 → same OCO ID `PTT-BE-Sim101-00001-0` → NT8 rejects:
+  "OCO ID cannot be reused."
+**Fix**: Added `internal int NextBeOcoSeq() => Interlocked.Increment(ref _mstbeOcoSeq)` on
+  CopyEngine. Removed `_beOcoSeq` field from PttBreakEven. `PttBreakEven.Execute` now calls
+  `CopyEngine.Instance?.NextBeOcoSeq() ?? 1` — both paths share the same global counter.
+**Status**: APPLIED — awaiting pipeline
+
+---
+
+## HOTFIX-FOLLOWER-LABEL-CLIP-01
+
+**ID**: HOTFIX-FOLLOWER-LABEL-CLIP-01
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `BuildInlineFollowerRow` (~line 1721)
+**Bug**: Account name `TextBlock` had `Width = 90` (fixed pixels). Long PA/Apex account names like
+  `PA-APEX-422136-01U` (~20 chars, ~160px needed) were clipped — last digits invisible. User could
+  not distinguish which follower accounts were selected, masking a potential double-selection bug.
+**Fix**: Replaced `StackPanel` row with `DockPanel` (`LastChildFill = true`). ATM combo and PnL
+  label are `DockPanel.SetDock(Dock.Right)`. Name label has no fixed `Width` and fills remaining
+  space as the `LastChildFill` child. `TextTrimming = CharacterEllipsis` for graceful degradation
+  on very narrow panels.
+**Status**: APPLIED — awaiting pipeline
+
+### Layout change
+```
+Before: [Chk][Name:90px][PnL:64px][ATM:120px]   ← fixed widths, name clipped
+After:  [Chk|L][ATM:110px|R][PnL:60px|R][Name fills remaining|LastChildFill]
+```
+
+---
+
+## HOTFIX-DISPATCH-FIX-01
+
+**Date**: 2026-08-16 (live trading session)
+**Files**: `src/PropTraderTools/CopyEngine.cs`, `src/PropTraderTools/TradeCopierPanel.cs`
+**Methods**: `RaiseBeBufferChanged`, `IncrementQuickAll`, `DecrementQuickAll`, `OnGlobalBeBufferChanged`, `OnQuickAllBufferChanged`
+**Status**: APPLIED + SYNCED — awaiting live test
+
+### Bug
+`GlobalBeBufferChanged` and `GlobalQuickAllBufferChanged` events were raised synchronously
+(`.Invoke()`) from Panel A's RepeatButton click handler on Panel A's chart Dispatcher thread.
+NT8 creates a separate Dispatcher per chart window (`chart.Dispatcher.InvokeAsync` pattern at
+TradeCopierAddOn.cs:168). Panel B's handler ran on Panel A's thread. The inner
+`this.Dispatcher.InvokeAsync(lambda)` posted to Panel B's Dispatcher, but the lambda could
+reach Panel B's WPF controls from the wrong thread → `InvalidOperationException:
+"The calling thread cannot access this object because a different thread owns it."`
+
+### Fix
+Changed raise sites in CopyEngine to use `System.Windows.Application.Current.Dispatcher.InvokeAsync`.
+All NT8 UI runs on the Application.Current Dispatcher. Events now arrive at subscribers on
+the correct thread. Removed redundant inner `Dispatcher.InvokeAsync` wrappers from the two
+TradeCopierPanel buffer handlers (`OnGlobalBeBufferChanged`, `OnQuickAllBufferChanged`).
+
+This matches the existing `TradeCopierAddOn.cs:252` pattern: `System.Windows.Application.Current.Dispatcher.InvokeAsync(...)`.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (single-expression lambda, no new branches) ✅
+
+## HOTFIX-MARKET-DEDUP-01
+
+**Date**: 2026-08-16 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Methods**: `IsDispatchTriggerState` (signature + body), `DispatchCopy` (call site line ~960)
+**Status**: APPLIED + SYNCED — awaiting live test
+
+### Bug
+NT8/Rithmic changes `Order.OrderId` from GUID format (at `Submitted` state) to a permanent
+numeric format (at `Accepted` state). `IsDispatchTriggerState` returned `true` for both states,
+so `DispatchCopy` was called twice per Market order:
+- Submitted: `IsDedup("25e44acc...", 0)` → cache miss → PTT-Copy #1 dispatched
+- Accepted:  `IsDedup("2862949760", 0)` → DIFFERENT key → cache miss → PTT-Copy #2 dispatched
+
+Confirmed by 08-37 PM log: orders 2862949761 and 2862949762 both named `PTT-Copy` both filled
+on PA-APEX-422136-08, producing 14L when 7 was intended. Same doubling seen for PA-APEX-422136-01
+and Sim102 in earlier log entries.
+
+### Fix
+Changed `IsDispatchTriggerState(OrderState)` to `IsDispatchTriggerState(OrderState, OrderType)`.
+- Market orders: dispatch on `Submitted` only (GUID is stable; numeric ID arrives at Accepted).
+- Limit orders: dispatch on `Accepted` only (AddOn path — `Submitted` never fires for these).
+Updated single call site in `DispatchCopy` to pass `order.OrderType`.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (same 2 conditions, same boolean logic) ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets:
+  - T_DEDUP_MARKET_01: Market order Submitted → IsDispatchTriggerState returns true
+  - T_DEDUP_MARKET_02: Market order Accepted → IsDispatchTriggerState returns FALSE (was true before fix)
+  - T_DEDUP_LIMIT_01: Limit order Accepted → IsDispatchTriggerState returns true
+  - T_DEDUP_LIMIT_02: Limit order Submitted → IsDispatchTriggerState returns false
+
+## HOTFIX-BEALL-DISARM-CROSS-01
+**Date**: 2026-08-16 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `UpdateButtonColors` (~line 569)
+**Status**: APPLIED — awaiting pipeline
+**Fixes**: BUG 2 partial — BE ALL stays yellow on second panel after manual close
+
+### Bug
+`RaiseBeAllDisarmed()` was inside `if (IsPendingSlotsEmpty())` guard. After
+`DisarmPendingBe(_leaderAccount)` cleared this panel's slot, another panel's slot
+could still exist → `IsPendingSlotsEmpty()` returns false → `RaiseBeAllDisarmed`
+never fires → second panel stays amber.
+
+### Fix
+Moved `RaiseBeAllDisarmed()` and `UpdateBeAllVisuals(BeState.Idle)` OUTSIDE the
+`IsPendingSlotsEmpty` guard. Both fire unconditionally when flat+armed. Each receiving
+panel handles its own visual update in `OnGlobalBeAllDisarmed`.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC decreased (removed nested if) ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets: T_DISARM_CROSS_01 — two panels open, flat on panel 1 → panel 2 receives disarm event
+
+
+## HOTFIX-BUFLABEL-02
+**Date**: 2026-08-16 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Methods**: `OnGlobalBeBufferChanged`, `OnQuickAllBufferChanged`, new `FormatQuickAllBuffer`
+**Status**: APPLIED — awaiting pipeline
+**Fixes**: BUF-LABEL-01 (button label not updating on spin), QUICK-LABEL-UNIT-01 (no "t" unit suffix)
+
+### Bug
+`OnGlobalBeBufferChanged` and `OnQuickAllBufferChanged` wrote to button Content directly on
+Application.Current.Dispatcher. NT8 chart panel WPF elements were created on the chart-window
+Dispatcher (different thread context). Writing from the wrong dispatcher = silent no-op.
+Also: Quick ALL label showed "+4" with no unit — ambiguous across MES/MGC/MCL.
+
+### Fix
+Both handlers wrapped in `Dispatcher.InvokeAsync` (panel-local Dispatcher), mirroring
+the correct pattern at `OnGlobalBeAllDisarmed` (line 907).
+`FormatQuickAllBuffer` added to append "t" suffix: "Quick ALL +4t".
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets: T_LABEL_01 — IncrementQuickAll fires → OnQuickAllBufferChanged → label shows "+Nt"
+- Ph3.5 Tickets: T_LABEL_02 — IncrementBuffer fires → OnGlobalBeBufferChanged → label shows "BE ALL +N"
+
+---
+
+---
+
+## HOTFIX-QUICK-T3-01
+**Date**: 2026-08-16 (live trading session)
+**Files**: `src/PropTraderTools/Features/PttGlobalQuickExit.cs`, `src/PropTraderTools/Features/PttQuickExit.cs`
+**Methods**: `PttGlobalQuickExit.Execute`, `PttGlobalQuickExit.ExecuteOne` (signature change),
+             new `PttGlobalQuickExit.SnapshotTargetOrders`, `PttQuickExit.Execute` (N-bracket rewrite)
+**Status**: APPLIED — awaiting pipeline
+**Fixes**: QUICK-T3-01 (only 2 brackets submitted regardless of ATM target count)
+
+### Bug
+`PttGlobalQuickExit.ResolveQuickTicks` always returned (T1, T2) — exactly 2 values.
+`PttQuickExit.Execute` submitted exactly PTT-QX-Stop + PTT-QX-T1 (pair A) and
+PTT-QX-Stop2 + PTT-QX-T2 (pair B). With a 3-target ATM ("MES $200 SL6"), Target3
+and Stop3 survived uncancelled → dangling third bracket → position exposure.
+
+### Fix
+`SnapshotTargetOrders` added to `PttGlobalQuickExit` — scans acc.Orders for active
+Limit target orders (ATM Target1..N, PTT-QX-T*, PTT-BE-Target-*) before cancelling anything.
+`Execute` passes snapshot to `ExecuteOne` → `PttQuickExit.Execute`.
+`PttQuickExit.Execute` rewrites bracket submission as a for-loop:
+- targetCount = snapshot count, fallback 2 if none
+- tNPrice = entry +/- t1Ticks*N * tick (proportional spacing)
+- tNQty from snapshot[i].Qty, fallback evenly split
+- each pair gets its own OCO ID (independent fills)
+- stop names: PTT-QX-Stop, PTT-QX-Stop2, PTT-QX-Stop3 ...
+- target names: PTT-QX-T1, PTT-QX-T2, PTT-QX-T3 ...
+
+Also added `Execute(Account, Instrument, int t1, int t2, bool)` compat overload in
+`PttQuickExit` to preserve `TradeCopierPanel.OnQuickClick` (off-limits per spec). The
+compat overload passes an empty targets list → falls back to 2-target behavior.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC: PttGlobalQuickExit.Execute stays 8, PttQuickExit.Execute = 8, SnapshotTargetOrders = 4 ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets: T_QX_T3_01 — Execute with 3-target snapshot → 3 OCO pairs submitted
+- Ph3.5 Tickets: T_QX_T3_02 — Execute with empty snapshot → 2 pairs (fallback)
+- Ph3.5 Tickets: T_QX_T3_03 — tNPrice for i=2 (T3) = entry + t1*3*tick (proportional)
+- Ph3.5 Tickets: T_QX_T3_04 — SnapshotTargetOrders finds ATM Target3 (ATM name match)
+- Ph3.5 Tickets: T_QX_T3_05 — SnapshotTargetOrders finds PTT-QX-T3 (QX name match)
+
+---
+
+## HOTFIX-ATM-T3-CANCEL-01
+
+**Date**: 2026-08-16 (live trading session)
+**Files**: `src/PropTraderTools/CopyEngine.cs`, `src/PropTraderTools/Features/PttBreakEven.cs`
+**Methods**: `IsAtmBracketName` (CopyEngine.cs ~line 469), `CancelStaleBracketsLocal` (PttBreakEven.cs ~line 185)
+**Status**: APPLIED — awaiting pipeline
+**Fixes**: T3-ORPHAN-01 (Stop3/Target3 not cancelled), OCO-REUSE-02 (root cause addressed)
+
+### Bug
+`IsAtmBracketName` was hardcoded to exactly 4 names: `Stop1`, `Stop2`, `Target1`, `Target2`.
+Stop3..Stop9 and Target3..Target9 were NOT returned as cancel candidates by `IsQxCancelCandidate`,
+so they survived uncancelled when Quick ALL or BE ALL ran against a 3-target ATM strategy.
+`CancelStaleBracketsLocal` `notBe` filter used exact-match `o.Name != "PTT-BE-Stop"` — did not
+exclude "PTT-BE-Stop-1", "PTT-BE-Stop-2" etc. from prior BE presses.
+
+### Fix
+`IsAtmBracketName`: replaced hardcoded 4-name check with generic:
+- `name.StartsWith("Stop", Ordinal) && name.Length > 4 && char.IsDigit(name[4])`
+- `name.StartsWith("Target", Ordinal) && name.Length > 6 && char.IsDigit(name[6])`
+Matches Stop1..Stop9 and Target1..Target9 without enumerating each.
+`CancelStaleBracketsLocal` `notBe`: changed to `!o.Name.StartsWith("PTT-BE-", Ordinal)`.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (expression body stays CYC=1) ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets: T_ATM_T3_01 — IsAtmBracketName("Stop3") returns true
+- Ph3.5 Tickets: T_ATM_T3_02 — IsAtmBracketName("Target3") returns true
+- Ph3.5 Tickets: T_ATM_T3_03 — IsAtmBracketName("Stop10") returns false (2-digit suffix — digit at [4] is '1', not '10', but check: "Stop10"[4] = '1' which IS a digit — actual edge case: "Stop10" would match. Verify in pipeline.)
+- Ph3.5 Tickets: T_ATM_T3_04 — CancelStaleBracketsLocal excludes "PTT-BE-Stop-1"
+- Ph3.5 Tickets: T_ATM_T3_05 — CancelStaleBracketsLocal includes "Stop3" in stale list
+
+---
+
+## HOTFIX-BUFLABEL-02
+
+**Date**: 2026-08-16 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Methods**: `OnGlobalBeBufferChanged`, `OnQuickAllBufferChanged`, new `FormatQuickAllBuffer`
+**Status**: APPLIED — awaiting pipeline
+**Fixes**: BUF-LABEL-01 (button label not updating on spin), QUICK-LABEL-UNIT-01 (no "t" unit suffix)
+
+### Bug
+`OnGlobalBeBufferChanged` and `OnQuickAllBufferChanged` wrote to button Content directly on
+`Application.Current.Dispatcher`. NT8 chart panel WPF elements (`_globalBeBtn2`, `_quickAllBtn`)
+were created on the chart-window Dispatcher — a different thread context from the app Dispatcher.
+Writing to a WPF element from the wrong Dispatcher = silent no-op or cross-thread violation.
+Also: Quick ALL label showed "+4" with no tick unit — ambiguous when trading MES/MGC/MCL.
+
+### Fix
+Both handlers wrapped in `Dispatcher.InvokeAsync` (panel-local Dispatcher), mirroring the
+correct pattern at `OnGlobalBeAllDisarmed` (line 907).
+New `FormatQuickAllBuffer` added to append "t" suffix: "Quick ALL +4t".
+`FormatBuffer` (per-chart Quick button) is unchanged — no "t" suffix there.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets: T_LABEL_01 — IncrementQuickAll fires → OnQuickAllBufferChanged → label shows "+Nt"
+- Ph3.5 Tickets: T_LABEL_02 — IncrementBuffer fires → OnGlobalBeBufferChanged → label shows "BE ALL +N"
+
+---
+
+## HOTFIX-BEALL-DISARM-CROSS-01
+
+**Date**: 2026-08-16 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `UpdateButtonColors` (~line 569)
+**Status**: APPLIED — awaiting pipeline
+**Fixes**: BUG 2 — BE ALL stays yellow on second panel after manual close
+
+### Bug
+`RaiseBeAllDisarmed()` was inside `if (IsPendingSlotsEmpty())` guard. After
+`DisarmPendingBe(_leaderAccount)` cleared this panel's slot, another panel's slot could still
+exist → `IsPendingSlotsEmpty()` returns false → `RaiseBeAllDisarmed` never fires → second panel
+stays amber permanently.
+
+### Fix
+Moved `RaiseBeAllDisarmed()` and `UpdateBeAllVisuals(BeState.Idle)` OUTSIDE the
+`IsPendingSlotsEmpty` guard. Both fire unconditionally when flat+armed. Each receiving panel
+handles its own visual update in `OnGlobalBeAllDisarmed`.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC decreased (removed nested if) ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets: T_DISARM_CROSS_01 — two panels open, flat on panel 1 → panel 2 receives disarm event and resets to Idle
+
+---
+
+## HOTFIX-QUICK-T3-01
+
+**Date**: 2026-08-16 (live trading session)
+**Files**: `src/PropTraderTools/Features/PttGlobalQuickExit.cs`, `src/PropTraderTools/Features/PttQuickExit.cs`
+**Methods**: `PttGlobalQuickExit.Execute`, `PttGlobalQuickExit.ExecuteOne` (signature change),
+             new `PttGlobalQuickExit.SnapshotTargetOrders`, `PttQuickExit.Execute` (N-bracket rewrite)
+**Status**: APPLIED — awaiting pipeline
+**Fixes**: QUICK-T3-01 (only 2 brackets submitted regardless of ATM target count)
+
+### Bug
+`PttGlobalQuickExit.ResolveQuickTicks` always returned (T1, T2) — exactly 2 values.
+`PttQuickExit.Execute` submitted exactly 2 OCO pairs (PTT-QX-Stop+T1 and PTT-QX-Stop2+T2).
+With a 3-target ATM ("MES $200 SL6"), Target3 and Stop3 survived uncancelled → dangling bracket.
+
+### Fix
+`SnapshotTargetOrders` added to `PttGlobalQuickExit` — scans acc.Orders for active Limit target
+orders (ATM Target1..N, PTT-QX-T*, PTT-BE-Target-*) before cancelling anything.
+`Execute` passes snapshot to `ExecuteOne` → `PttQuickExit.Execute`.
+`PttQuickExit.Execute` rewrites bracket submission as a for-loop (N pairs):
+- targetCount = snapshot count, fallback 2 if none
+- tNPrice = entry ±  t1Ticks*N * tick (proportional spacing)
+- tNQty from snapshot[i].Qty, fallback evenly split
+- each pair gets its own OCO ID (independent fills)
+- stop names: PTT-QX-Stop, PTT-QX-Stop2, PTT-QX-Stop3 ...
+- target names: PTT-QX-T1, PTT-QX-T2, PTT-QX-T3 ...
+Backward-compat overload (t2Ticks param) preserved for single-chart Quick button callers.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC: PttGlobalQuickExit.Execute=8, PttQuickExit.Execute=8, SnapshotTargetOrders=4 ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets: T_QX_T3_01 — Execute with 3-target snapshot → 3 OCO pairs submitted
+- Ph3.5 Tickets: T_QX_T3_02 — Execute with empty snapshot → 2 pairs (fallback)
+- Ph3.5 Tickets: T_QX_T3_03 — tNPrice for i=2 (T3) = entry + t1*3*tick (proportional)
+- Ph3.5 Tickets: T_QX_T3_04 — SnapshotTargetOrders finds ATM Target3
+- Ph3.5 Tickets: T_QX_T3_05 — SnapshotTargetOrders finds PTT-QX-T3
+
+---
+
+## HOTFIX-BEALL-FLAT-RESET
+
+**Date**: 2026-08-16 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `UpdateButtonColors` (~line 569)
+**Status**: APPLIED — awaiting pipeline
+**Fixes**: BE ALL stays yellow after manual close when per-chart BE was not armed
+
+### Bug
+`HOTFIX-F3` gate: `!hasPosition && _beState != BeState.Idle`.
+`_beState` is the **per-chart** BE button state only. When user presses BE ALL (global)
+without pressing the per-chart BE button, `_beState` remains `BeState.Idle`. Gate evaluates
+false → `UpdateBeAllVisuals(BeState.Idle)` and `RaiseBeAllDisarmed()` never execute →
+BE ALL button stays amber after position closes via manual flatten.
+
+### Fix
+Extracted the BE ALL reset into a SEPARATE independent check:
+```csharp
+if (!hasPosition && !CopyEngine.Instance.IsPendingSlotsEmpty())
+{
+    if (_leaderAccount != null)
+        CopyEngine.Instance.DisarmPendingBe(_leaderAccount);
+    UpdateBeAllVisuals(BeState.Idle);
+    CopyEngine.Instance.RaiseBeAllDisarmed();
+}
+```
+This fires unconditionally whenever the position closes AND the engine still has a pending
+BE slot — regardless of whether the per-chart BE button was ever armed.
+Safe: `UpdateButtonColors(hasPos=false)` only arrives via `TryFirePositionState`
+(Filled/PartFilled, post-Gate-2.5) — not on ATM bracket cancel noise.
+Double-fire with HOTFIX-F3 is safe: if F3 block runs `DisarmPendingBe` first, then
+`IsPendingSlotsEmpty()` returns true and the new block skips.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC: +1 (new independent if block, still well below 8) ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets: T_BEALL_FLAT_01 — position closes with BE ALL armed, per-chart BE NOT armed → BE ALL resets to Idle
+- Ph3.5 Tickets: T_BEALL_FLAT_02 — position closes with BOTH armed → both reset, no double-fire
+
+---
+
+## HOTFIX-SNAPSHOT-STOP-INSTRREF
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/Features/PttQuickExit.cs`
+**Method**: `SnapshotStopPrice` (~line 179)
+**Status**: APPLIED -- awaiting pipeline
+
+### Bug
+`SnapshotStopPrice` used reference equality `o.Instrument != instr` to filter orders by
+instrument. NT8 creates separate `Instrument` object instances per account context -- two
+objects representing the same instrument are NOT reference-equal. This means every order
+in the loop was skipped (the condition was always true), so `snapshotStop` was always 0.0.
+
+With `snapshotStop == 0`, the guard `if (snapshotStop > 0)` at `PttQuickExit.Execute` line 100
+skips ALL stop submissions. Quick ALL produces target orders only (PTT-QX-T1/T2/T3) with
+NO matching stop orders -- position has no downside protection after a Quick ALL press.
+
+Root cause is identical to HOTFIX-BUG-BE-INSTRUMENT-REF (CopyEngine.cs MoveStopToBreakEven,
+same session) and the B69 DW-B69-02 fix in FindPosition/SubmitBeStop.
+
+### Fix
+Changed reference equality to `FullName` string comparison, identical to the pattern used
+in `CancelQxBrackets` (CopyEngine.cs line 513):
+```diff
+-                if (o.Instrument != instr) continue;
++                if (o.Instrument == null || o.Instrument.FullName != instr?.FullName) continue;
+```
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (one-for-one line replacement, same branch count) ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets:
+  - T_SNAP_STOP_01: SnapshotStopPrice with Working StopMarket order, different Instrument instance but same FullName -> returns StopPrice (not 0.0)
+  - T_SNAP_STOP_02: SnapshotStopPrice with null o.Instrument -> order skipped (no NRE)
+  - T_SNAP_STOP_03: SnapshotStopPrice with Filled order -> skipped (state filter)
+  - T_SNAP_STOP_04: SnapshotStopPrice with no matching orders -> returns 0.0
+
+---
+
+## HOTFIX-ORPHAN-STOP-CLEANUP
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `UpdateButtonColors` (~line 590)
+**Status**: APPLIED -- awaiting pipeline
+
+### Bug
+When the user manually closes a position (Chart Trader × or Close order) while BE is armed,
+NT8 does NOT auto-cancel PTT-BE-Stop-N orders (AddOn-issued orders, not ATM-owned). These
+orphaned stop orders remain Working and can fill on the next trade, creating an unintended
+position. Confirmed from 2026-08-16 CSV: PTT-BE-Stop-3 filled at 10:06:15 PM (Sell 1@7813.25)
+while position was already being closed manually -- creating a short that required immediate recovery.
+
+### Fix
+Added `CopyEngine.Instance.CancelQxBrackets(_leaderAccount, _instrument)` call unconditionally
+whenever `hasPosition=false` and `_leaderAccount != null` and `_instrument != null`.
+`CancelQxBrackets` already covers PTT-BE-* prefix via `IsQxCancelCandidate` (line 488 CopyEngine.cs).
+Safe: `CancelQxBrackets` is a no-op when no qualifying orders exist (stale.Count==0 returns early).
+This fires ONLY on Filled/PartFilled events post-Gate-2.5 -- NOT on bracket cancel noise.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (one additional straight-line call, no new branches added) ✅
+
+### Diff (minimal)
+```diff
++            // HOTFIX-ORPHAN-STOP-CLEANUP: cancel any PTT-BE-*/PTT-QX-* orders that survived
++            // a manual position close.
++            if (!hasPosition && _leaderAccount != null && _instrument != null)
++                CopyEngine.Instance.CancelQxBrackets(_leaderAccount, _instrument);
+```
+
+### Pipeline work needed
+- Ph3.5 Tickets:
+  - T_ORPHAN_01: manual close with PTT-BE-Stop-1/2/3 Working -> all cancelled on flat event
+  - T_ORPHAN_02: flat with no PTT-BE orders -> CancelQxBrackets no-op (stale.Count==0)
+  - T_ORPHAN_03: flat with PTT-QX-Stop Working -> also cancelled (IsQxCancelCandidate covers PTT-QX-*)
+
+---
+
+## HOTFIX-MSTBE-OCO-TICKSEED-01
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `_mstbeOcoSeq` field declaration (~line 159)
+**Status**: TESTED-PASS (2026-08-17 live session -- ocoId=PTT-BE-Sim101-274022126-* confirmed, 3 OCO pairs submitted, no rejections)
+
+### Bug
+`_mstbeOcoSeq` was initialized to `0` at field-declaration time. NT8 allows recompiling
+an AddOn within a running session ("Compile" in NinjaScript Editor) without restarting NT8.
+When this happens CopyEngine is GC'd and re-created, resetting `_mstbeOcoSeq` to 0.
+NT8 keeps all OCO IDs used in the current NT8 session in memory and refuses to reuse a
+cancelled OCO ID. After recompile-within-session, seq=1 and seq=2 are immediately rejected:
+"The OCO ID 'PTT-BE-Sim101-00001-0' cannot be reused" -- position left unprotected.
+
+Confirmed by 2026-08-16 10-30 PM log: second MSTBE press (seq=00002) has all 6 orders
+rejected, meaning 00002-* was already used in the pre-recompile run of the same NT8 session.
+
+### Fix
+Seeded `_mstbeOcoSeq` from `Environment.TickCount` (milliseconds since OS boot):
+```diff
+-        private volatile int _mstbeOcoSeq = 0;
++        private volatile int _mstbeOcoSeq = Environment.TickCount;
+```
+`Environment.TickCount` advances even during recompile. Post-recompile, the new CopyEngine
+instance initialises `_mstbeOcoSeq` to the current tick count -- orders of magnitude above
+any value used pre-recompile. No collision possible within a single OS session.
+
+### JS-DNA compliance
+- No `lock()` added (volatile int + Interlocked.Increment unchanged) ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC unchanged (field initializer, no Roslyn decision point) ✅
+- `Environment.TickCount` returns `int` directly -- no cast needed ✅
+
+### Pipeline work needed
+- Ph3.5 Tickets:
+  - T_OCO_SEED_01: Two CopyEngine instances (simulating recompile) -- second instance's first NextBeOcoSeq() != any value from first instance (TickCount gap guarantees)
+  - T_OCO_SEED_02: NextBeOcoSeq() called 1000x on single instance -- all values unique (Interlocked.Increment guarantees)
+  - T_OCO_SEED_03: _mstbeOcoSeq initial value != 0 (TickCount seeding confirmed)

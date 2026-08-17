@@ -90,11 +90,13 @@ namespace PropTraderTools
         internal void IncrementBuffer()                               // CYC=2
         {
             if (_globalBeBuffer < 10) _globalBeBuffer++;
+            CopyEngine.Instance.RaiseBeBufferChanged(_globalBeBuffer); // HOTFIX-CS0070: relay -- CS0070 forbids external event invoke
         }
 
         internal void DecrementBuffer()                               // CYC=2
         {
             if (_globalBeBuffer > -10) _globalBeBuffer--;
+            CopyEngine.Instance.RaiseBeBufferChanged(_globalBeBuffer); // HOTFIX-CS0070: relay -- CS0070 forbids external event invoke
         }
     }
 }

@@ -151,6 +151,20 @@ namespace PropTraderTools
         private readonly ConcurrentDictionary<string, long>           _trailBeLastPnlBits
             = new ConcurrentDictionary<string, long>();
 
+        // HOTFIX-MSTBE-OCO-REUSE: monotonic counter for BE OCO IDs -- never reuse a cancelled OCO ID.
+        // DW-B40-OCO-02 pattern from PttBreakEven._beOcoSeq. JS-023: volatile int allowed.
+        // HOTFIX-BEALL-OCO-SEQ-SHARED-01: shared by BOTH MoveStopToBreakEven AND PttBreakEven.Execute
+        // so the two paths never collide on the same OCO ID. PttBreakEven calls NextBeOcoSeq() instead
+        // of its own _beOcoSeq, ensuring global uniqueness across all BE code paths.
+        // HOTFIX-MSTBE-OCO-TICKSEED-01: seed from Environment.TickCount (ms since OS boot).
+        // NT8 keeps cancelled OCO IDs for the entire NT8 session. When NT8 recompiles an AddOn
+        // within a running session, CopyEngine is GC'd and re-created -- if seeded at 0 the counter
+        // restarts at 1 and immediately collides with pre-recompile OCO IDs still in NT8 memory.
+        // Environment.TickCount advances even during recompile so post-recompile seq starts far above
+        // any value used in the prior run. JS-023: volatile int. TickCount returns int -- no cast needed.
+        private volatile int _mstbeOcoSeq = Environment.TickCount;
+        internal int NextBeOcoSeq() => System.Threading.Interlocked.Increment(ref _mstbeOcoSeq);
+
         // V01: order map for follower bracket lookup
         // JS-025: ConcurrentDictionary (atomic GetOrAdd) + ConcurrentBag (lock-free Add/iterate)
         // JS-021: NO lock keyword anywhere
@@ -166,6 +180,35 @@ namespace PropTraderTools
 
         // B10 T2 -- Pending BE fired notification (fires on NT8 account bg thread; Panel marshals to UI)
         internal event Action<string, string> PendingBeFired;
+        internal event Action<string, string> PendingBeArmed;   // HOTFIX-BEALL-SYNC-01: instr, accName
+        internal event Action<int> GlobalBeBufferChanged;  // HOTFIX-BEALL-BUFFER-SYNC-01: fires on buffer +/- spin, int = new buffer value
+        // CS0070 fix: event can only be raised from declaring class (CopyEngine). PttGlobalBreakEven calls this relay.
+        internal void RaiseBeBufferChanged(int newValue)
+            => System.Windows.Application.Current.Dispatcher.InvokeAsync(
+                () => GlobalBeBufferChanged?.Invoke(newValue));  // HOTFIX-DISPATCH-FIX-01: fire on app UI thread
+        // HOTFIX-QUICKALL-SINGLETON-01: Quick ALL tick buffer — singleton so all panels share the same value.
+        // JS-023: volatile int allowed. NT8-003: volatile double banned — not used here.
+        private volatile int _globalQuickAllT1 = 4;  // default 4 ticks (same as per-panel default)
+        internal int  GlobalQuickAllT1 => _globalQuickAllT1;
+        internal void IncrementQuickAll()
+        {
+            if (_globalQuickAllT1 < 99) _globalQuickAllT1++;
+            int v = _globalQuickAllT1;
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(
+                () => GlobalQuickAllBufferChanged?.Invoke(v));  // HOTFIX-DISPATCH-FIX-01
+        }
+        internal void DecrementQuickAll()
+        {
+            if (_globalQuickAllT1 > 1) _globalQuickAllT1--;
+            int v = _globalQuickAllT1;
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(
+                () => GlobalQuickAllBufferChanged?.Invoke(v));  // HOTFIX-DISPATCH-FIX-01
+        }
+        internal event Action<int> GlobalQuickAllBufferChanged;  // HOTFIX-QUICKALL-SINGLETON-01
+        // HOTFIX-BEALL-DISARM-SYNC-01: broadcast so all panels reset BE ALL visual to Idle on disarm.
+        // Fired from OnGlobalBeClick disarm path AND from UpdateButtonColors HOTFIX-F3 branch (position close).
+        internal event Action GlobalBeAllDisarmed;
+        internal void RaiseBeAllDisarmed() => GlobalBeAllDisarmed?.Invoke();
 
         // B20-LANE-A T2: Copy ON/OFF sync event (DW-B17-SYNC-01)
         // Plain delegate field -- NOT lock-guarded (JS-021). Fired from SetEnabled on every toggle.
@@ -174,7 +217,7 @@ namespace PropTraderTools
 
         // --- Nested structs ---
 
-        private readonly struct CopyRule
+        internal readonly struct CopyRule
         {
             internal readonly string Instrument;
             internal readonly Account MasterAccount;
@@ -427,10 +470,16 @@ namespace PropTraderTools
 
         // IsAtmBracketName: true if name is a standard NT8 ATM bracket order name.
         // NT8-REF: NT8_FULL_REFERENCE.md line 1631: "The order name such as 'Stop1' or 'Target2'"
-        // CYC=1: expression body -- no if-branches in method body (Roslyn convention).
+        // HOTFIX-ATM-T3-CANCEL-01: widened from hardcoded 4 names to generic Stop1-Stop9 / Target1-Target9.
+        // Hardcoded Stop1/Stop2/Target1/Target2 missed Stop3..Stop9 and Target3..Target9 for
+        // ATM strategies with 3+ targets (e.g. "MES $200 SL6" with 3 targets).
+        // CYC=1: expression body -- Roslyn counts the compound bool expression as 1 decision point.
         // JS-021: no lock. JS-001: no throw. ASCII-only string literals.
         internal static bool IsAtmBracketName(string name) =>
-            name == "Stop1" || name == "Stop2" || name == "Target1" || name == "Target2";
+            !string.IsNullOrEmpty(name) && (
+                (name.StartsWith("Stop",   StringComparison.Ordinal) && name.Length > 4 && char.IsDigit(name[4]))
+             || (name.StartsWith("Target", StringComparison.Ordinal) && name.Length > 6 && char.IsDigit(name[6]))
+            );
 
         // IsQxCancelCandidate: returns true if order should be cancelled by CancelQxBrackets.
         // Covers: ATM bracket names (via IsAtmBracketName), PTT-QX-* prefix, PTT-BE-* prefix,
@@ -447,9 +496,13 @@ namespace PropTraderTools
             return false;
         }
 
-        // CancelQxBrackets: cancel all Working/Initialized/Accepted ATM-bracket + PTT-* orders on acc for instr.
+        // CancelQxBrackets: cancel all active ATM-bracket + PTT-* orders on acc for instr.
         // Called by PttQuickExit.Execute() before re-placing new bracket.
-        // CYC=6: null guard(1) + foreach(2) + stateOk(3) + instrument check(4) + IsQxCancelCandidate(5) + staleCount(6).
+        // HOTFIX-QX-DOUBLE-01: Added TriggerPending -- ATM brackets spend time here before Submitted.
+        //   NT8_FULL_REFERENCE.md line 946: TriggerPending = "Order is pending submission."
+        //   Without this, clicking Quick All immediately after an ATM fill leaves bracket orders
+        //   in TriggerPending state uncancelled -> new PTT-QX brackets stack on top -> double brackets.
+        // CYC=6: null guard(1) + foreach(2) + stateOk(5 branches, Roslyn=1)(3) + instrument check(4) + IsQxCancelCandidate(5) + staleCount(6).
         // JS-021: no lock. Predicate logic in IsQxCancelCandidate (CYC=5) + IsAtmBracketName (CYC=1).
         internal void CancelQxBrackets(Account acc, NinjaTrader.Cbi.Instrument instr)
         {
@@ -459,7 +512,9 @@ namespace PropTraderTools
             {
                 bool stateOk = o.OrderState == OrderState.Working
                             || o.OrderState == OrderState.Initialized
-                            || o.OrderState == OrderState.Accepted;
+                            || o.OrderState == OrderState.Accepted
+                            || o.OrderState == OrderState.Submitted      // B71: catch ATM brackets placed <800ms ago
+                            || o.OrderState == OrderState.TriggerPending; // HOTFIX-QX-DOUBLE-01: pre-submit state
                 if (!stateOk) continue;                            // (3)
                 if (o.Instrument == null || o.Instrument.FullName != instr.FullName) continue;
                 if (IsQxCancelCandidate(o))                           // (5) widened via helper
@@ -559,9 +614,14 @@ namespace PropTraderTools
             catch { }
         }
 
-        // ArmAllPendingBe: arm pending break-even for all non-follower accounts.
+        // ArmAllPendingBe: arm pending break-even watcher for all non-follower accounts.
         // Called by PttGlobalBreakEven.Execute(int bufferTicks).
-        // CYC=4: foreach(1) + follower skip(2) + pos loop(3) + flat skip(4). JS-021: no lock.
+        // HOTFIX-BE-ALL-01: was calling SubmitBeStop (immediate new order, skipped followers,
+        // never wrote to _pendingBeSlots so IsPendingSlotsEmpty stayed true and panel stayed purple).
+        // Fix: delegate to ArmPendingBe -- same path as per-chart BE button.
+        // When the pending trigger fires it calls BreakEven(Account,...) which fans out to
+        // followers via AllAccounts() -> MoveStopToBreakEven. No SubmitBeStop needed here.
+        // CYC=3: foreach(1) + follower skip(2) + delegate(3). JS-021: no lock.
         internal void ArmAllPendingBe(int bufferTicks)
         {
             foreach (Account acc in Account.All)                   // (1)
@@ -570,12 +630,7 @@ namespace PropTraderTools
                 foreach (NinjaTrader.Cbi.Position pos in acc.Positions)  // (3)
                 {
                     if (pos == null || pos.Quantity == 0) continue; // (4) skip flat
-                    bool isLong = pos.MarketPosition == MarketPosition.Long;
-                    double tick = pos.Instrument.MasterInstrument?.TickSize ?? 0.25;
-                    double bePrice = Math.Round(
-                        (pos.AveragePrice + (isLong ? bufferTicks : -bufferTicks) * tick) / tick
-                    ) * tick;
-                    SubmitBeStop(acc, pos.Instrument, bePrice, isLong);
+                    ArmPendingBe(pos.Instrument, acc, bufferTicks); // (5) HOTFIX-BE-ALL-01
                 }
             }
         }
@@ -686,10 +741,37 @@ namespace PropTraderTools
         // --- Hot path: restructured CYC=7 (B7-F0) ---
         private void OnOrderUpdate(object sender, OrderEventArgs e)
         {
-            // Pre-gate: fire position state unconditionally (even when copy disabled)
-            TryFirePositionState(e);
             // B62: evict dedup on terminal states so orderId is not permanently blocked.
             EvictDedup(e.Order.OrderId.ToString(), e.Order.OrderState);
+
+            // HOTFIX-FLAT-DISARM-FOLLOWER: fire PositionStateChanged when a PTT-BE bracket on a
+            // FOLLOWER account fills and closes that account's position.
+            // Root cause: Gate 2 only passes leader orders, so follower PTT-BE-Stop fills never
+            // reached TryFirePositionState. Panel's _beState stayed Armed after follower BE fires.
+            // This path is narrow: only PTT-BE-Stop-* Filled events on accounts that are not
+            // copy-rule masters. TryFirePositionState already handles the leader side.
+            // CYC cost: +1 (single if, no extra loop). JS-021: no lock. JS-002: no null return.
+            if (e.Order != null
+                && e.Order.OrderState == OrderState.Filled
+                && e.Order.Name != null
+                && e.Order.Name.StartsWith("PTT-BE-Stop")                      // HOTFIX-FLAT-DISARM-FOLLOWER
+                && e.Order.Instrument?.FullName != null)
+            {
+                bool isLeader = false;
+                foreach (var r in _rules)
+                {
+                    if (e.Order.Account.Name == r.MasterAccount?.Name) { isLeader = true; break; }
+                }
+                if (!isLeader)
+                {
+                    // Follower PTT-BE stop filled -- fire position state so panel resets BE visual.
+                    bool hasPos     = HasOpenPosition(e.Order.Account, e.Order.Instrument);
+                    bool hasEntries = HasWorkingEntries(e.Order.Account, e.Order.Instrument);
+                    PositionStateChanged?.Invoke(
+                        e.Order.Instrument.FullName,
+                        new PositionState(hasPos, hasEntries));
+                }
+            }
 
             // Gate 1: enabled check
             if (!_isCopyEnabled)
@@ -712,6 +794,11 @@ namespace PropTraderTools
             // Gate 2.5: per-rule enable check
             if (!matchedRule.Value.Enabled)
                 return;
+
+            // BUG-BE-RESET fix: fire position state ONLY for leader account+instrument orders
+            // (moved from pre-Gate 1 to post-Gate 2.5 so follower bracket fills don't spam
+            // PositionStateChanged with hasPos=False and reset the BE button to Idle).
+            TryFirePositionState(e);
 
             // B9 T3 -- Mirror mode relay (inserted after Gate 2.5, before Gate B)
             if ((CopyMode)_copyModeValue == CopyMode.Mirror)
@@ -758,6 +845,11 @@ namespace PropTraderTools
                 if (_dedupCache.TryGetValue(e.Order.OrderId.ToString(), out double storedPrice)
                     && Math.Abs(currentPrice - storedPrice) >= (e.Order.Instrument?.MasterInstrument?.TickSize ?? 0.01))
                 {
+                    // DW-B64-01 fix: re-insert new price BEFORE HandleEntryChange removes old key.
+                    // HandleEntryChange calls TryRemove(orderId) -- without this line, the second
+                    // state transition (Working after Accepted) sees no cache entry and falls through
+                    // to DispatchCopy, placing a duplicate PTT-Copy order on the follower.
+                    _dedupCache[e.Order.OrderId.ToString()] = currentPrice;
                     HandleEntryChange(e.Order, matchedRule.Value);
                     return;
                 }
@@ -820,14 +912,16 @@ namespace PropTraderTools
             }
         }
 
-        // B56 T1: IsDispatchTriggerState -- CYC=2. True for states that trigger follower placement.
-        // Market orders fire Submitted; AddOn limit orders fire Accepted (skip Submitted).
-        // JS-002: returns bool (not null). JS-021: no lock. NT8 confirmed state set.
-        // TESTABILITY: internal static with primitive OrderState param -- directly testable without NT8 runtime.
-        //   Same pattern as ShouldMirrorClose(OrderState state, bool isBracketLeg).
-        internal static bool IsDispatchTriggerState(OrderState state)
-            => state == OrderState.Submitted   // market orders
-            || state == OrderState.Accepted;   // limit orders (AddOn path)
+        // B56 T1: IsDispatchTriggerState -- CYC=2. True for the ONE state that triggers follower placement.
+        // HOTFIX-MARKET-DEDUP-01: Market orders must dispatch on Submitted ONLY.
+        //   NT8/Rithmic changes OrderId from GUID (Submitted) to numeric (Accepted).
+        //   Without type-awareness, both states pass the dedup cache with different keys -> double dispatch.
+        // AddOn limit orders skip Submitted; they arrive first as Accepted -- dispatch on Accepted only.
+        // JS-002: returns bool (not null). JS-021: no lock.
+        // TESTABILITY: internal static with primitive params -- directly testable without NT8 runtime.
+        internal static bool IsDispatchTriggerState(OrderState state, OrderType type)
+            => (type == OrderType.Market && state == OrderState.Submitted)   // Market: GUID-keyed, Submitted only
+            || (type == OrderType.Limit  && state == OrderState.Accepted);   // Limit: first exchange ack
 
         // B59 T1: IsExitSignalName -- CYC=6. Returns true for names that must not trigger follower copy.
         // Covers: (1) PTT- own signals; (2) NT8 Close button; (3) NT8 Flatten; (4) NT8 Rev reversal;
@@ -877,7 +971,7 @@ namespace PropTraderTools
             if (IsExitSignalName(order.Name)) return;
 
             // Gate 3: must be a dispatch-trigger state (Submitted for market; Accepted for AddOn limit)
-            if (!IsDispatchTriggerState(order.OrderState))
+            if (!IsDispatchTriggerState(order.OrderState, order.OrderType))  // HOTFIX-MARKET-DEDUP-01
                 return;
 
             // Gate 4: market or limit order type only
@@ -1119,11 +1213,12 @@ namespace PropTraderTools
                 ? Math.Round(rawPrice / tickSize) * tickSize
                 : rawPrice;
 
-            // Update stored price in dedup cache to track latest leader price.
-            // B67-LaneB DW-B67-02: remove stale key after cancel+resubmit.
-            // New entry will be re-keyed by DispatchCopy on the follower's Accepted event.
-            // Do NOT insert newPrice under the old key after cancel+resubmit.
-            _dedupCache.TryRemove(leaderOrder.OrderId.ToString(), out _);
+            // HOTFIX-ENTRY-DRAG-DEDUP: keep leader orderId in cache at newPrice (upsert, not remove).
+            // TryRemove caused Working-state re-entry to fall through Gate C into DispatchCopy,
+            // placing a second PTT-Copy order (doubling follower contracts).
+            // Keeping the key at newPrice means the Working event hits Gate C, sees delta=0 (price unchanged
+            // since Accepted), and returns without dispatching. DispatchCopy's IsDedup also blocks it.
+            _dedupCache[leaderOrder.OrderId.ToString()] = newPrice;
 
             foreach (var acc in rule.FollowerAccounts)                                // (3)
             {
@@ -1182,17 +1277,21 @@ namespace PropTraderTools
                 bag.Add(new FollowerBinding(followerAccount, fromEntrySignalName));
         }
 
-        // CYC=2. Fires PositionStateChanged only on states that alter position truth.
-        // Called BEFORE Gate 1 -- fires even when copy is disabled.
+        // CYC=2. Fires PositionStateChanged only on states that open or grow a position.
+        // FIX-B: Cancelled and Rejected REMOVED from the filter.
+        // Rationale: when ATM brackets (Stop1/Stop2/Target1/Target2) cancel as part of closing
+        // a trade, the position is already gone. TryFirePositionState fires hasPos=False hundreds
+        // of times -- each one resets the BE button to Idle via HOTFIX-F3 in UpdateButtonColors.
+        // Only Filled and PartFilled can open or grow a position. Cancelled/Rejected never do.
+        // The flat signal is still correctly delivered: the Filled close event fires first with
+        // hasPos=False (after position removal), so the button color is correct.
         // JS-003: PositionState readonly struct captured by value in event args (no aliasing).
         private void TryFirePositionState(OrderEventArgs e)
         {
-            // Fire only on states that change position truth (NOT Working -- prevents spurious updates)
+            // Fire ONLY on Filled/PartFilled -- the only states that alter position quantity.
             var state = e.OrderState;
             if (state != OrderState.Filled &&
-                state != OrderState.PartFilled &&
-                state != OrderState.Cancelled &&
-                state != OrderState.Rejected)                              // (1) branch
+                state != OrderState.PartFilled)                            // (1) branch
                 return;
 
             if (e.Order?.Instrument?.FullName == null)                     // (1) branch
@@ -1747,7 +1846,7 @@ namespace PropTraderTools
         /// Matching <see cref="CopyRule"/>, or <c>null</c> if no rule exists for this instrument.
         /// Callers MUST null-check the return value.
         /// </returns>
-        private CopyRule? FindRule(Instrument instrument)
+        internal CopyRule? FindRule(Instrument instrument)
         {
             if (instrument == null)
                 return null; // Change 8: null guard
@@ -1847,10 +1946,18 @@ namespace PropTraderTools
             return result;
         }
 
-        // B31 -- MoveStopToBreakEven: order.StopPrice + acc.Change(new Order[]{order}) in-place.
-        // B31 CONFIRMED: order-level Change() preserves ATM OCO link (Director live test 2026-07-17).
-        // CYC=6: IsFlat(1), tickSize guard(2), foreach(3), working(4), stop type(5), isStopLeg(6).
-        // JS-001: try/catch around acc.Change() -- no throw in hot path.
+        // HOTFIX-MSTBE-CANCEL-RESUBMIT: replaced acc.Change() (silent no-op on ATM brackets) with
+        // cancel+resubmit pattern mirroring PttBreakEven.ExecuteOneAccount.
+        // Root cause: NT8 ATM engine owns Stop1/Stop2 brackets and ignores acc.Change() from AddOn
+        // context -- no exception, no effect. Confirmed: [MSTBE] Change() OK Stop1 logged while
+        // stop remained at original price in Orders tab.
+        // Pattern source: PttBreakEven.ExecuteOneAccount + CancelStaleBracketsLocal + SubmitBeTargetsLocal.
+        // CYC=8: IsFlat(1) + tickSize/pos guard(2) + snapshot-foreach(3) + stateOk(4) + instrOk(5)
+        //        + cancel-try(6) + 0-targets branch(7) + targets-for-loop(8).
+        // JS-021: no lock. JS-001: try/catch per order pair -- no throw in hot path.
+        // NT8-049: StopMarket arg6=0, arg7=stopPrice; Limit arg6=limitPrice, arg7=0.
+        // NT8-007: arg11=(NinjaTrader.Cbi.CustomOrder)null. NT8-013: DateTime.MaxValue.
+        // NT8-014: signal names start with "PTT-". NT8-006: no LINQ.
         private void MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks)
         {
             var pos = FindPosition(acc, instrument);
@@ -1861,40 +1968,147 @@ namespace PropTraderTools
             }
             double tickSize = instrument.MasterInstrument.TickSize;
             bool isLong = pos.MarketPosition == MarketPosition.Long;
-            double direction = isLong ? 1.0 : -1.0;
+            // HOTFIX-BUG-BE-STOP-SHORT (MoveStopToBreakEven): align sign with PttBreakEven fix.
+            // Long: stop goes BELOW entry (entry - buf*tick). Short: stop goes ABOVE entry (entry + buf*tick).
+            // Old: direction = isLong ? +1 : -1  -> short stop = entry - buf (wrong, below entry).
+            // New: direction = isLong ? -1 : +1  -> short stop = entry + buf (correct, above entry).
+            double direction = isLong ? -1.0 : +1.0;
             double raw = pos.AveragePrice + direction * bufferTicks * tickSize;
             double newStop = Math.Round(raw / tickSize) * tickSize;
-            foreach (var order in acc.Orders.ToList())                                     // (3)
+
+            // -- Step A: snapshot ATM target orders BEFORE cancelling anything ----------
+            // Must read targets while they are still Working/Accepted.
+            // Mirrors PttBreakEven.SnapshotTargetsLocal.
+            var targets = new List<(double Price, int Qty, OrderAction Action)>();         // (3)
+            foreach (Order o in acc.Orders)
             {
-                if (order.Instrument != instrument)                                        // (2) -- instrument filter
-                    continue;
-                if (order.OrderState != OrderState.Working)                                // (4)
-                    continue;
-                // DW-B25-01: accept StopLimit (ATM bracket) as well as StopMarket (direct).
-                // Precedent: TightenStop L1234-1235 uses this exact two-type pattern.
-                // acc.Change() on StopLimit is safe -- NT8 recalculates LimitPrice from original offset.
-                if (order.OrderType != OrderType.StopMarket &&                             // (5)
-                    order.OrderType != OrderType.StopLimit)
-                    continue;
-                if (!IsStopLeg(order))                                                     // (6)
-                    continue;
-                // B10 T1: idempotency guard -- skip if stop is already at or past BE level
-                if (IsStopAlreadyAtBe(order, newStop, isLong))
-                    continue;
-                // B31: in-place move -- same pattern as SyncFollowerBracket (L621-624).
-                // NT8-046: property-set + single-array acc.Change() works on ATM-owned stops.
-                StatusUpdate?.Invoke(acc.Name + ": BE moving stop -> " + newStop);
+                if (o == null) continue;
+                bool stateOk = o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Accepted;                        // (4)
+                bool instrOk = o.Instrument != null
+                            && o.Instrument.FullName == instrument.FullName;               // (5)
+                if (!stateOk || !instrOk) continue;
+                if (o.OrderType != OrderType.Limit) continue;
+                // HOTFIX-MSTBE-QX-TARGETS-01: also snapshot PTT-QX-T* and PTT-BE-Target-* limits.
+                // After QX, ATM targets are replaced by PTT-QX-T1/T2 (not "Target1/Target2").
+                // Without this, BE ALL after QX always takes the 0-targets bare-stop path.
+                bool isAtmTarget = !string.IsNullOrEmpty(o.Name)
+                                && (
+                                    // ATM target names: Target1..Target9
+                                    (o.Name.Length >= 7
+                                     && o.Name.StartsWith("Target", StringComparison.Ordinal)
+                                     && char.IsDigit(o.Name[6]) && o.Name[6] != '0')
+                                    // QX target names: PTT-QX-T1, PTT-QX-T2, etc.
+                                    || (o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                                        && o.Name.Length > 8
+                                        && char.IsDigit(o.Name[8]))
+                                    // Prior PTT-BE target names (re-arming after a prior BE)
+                                    || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
+                                   );
+                if (!isAtmTarget) continue;
+                targets.Add((o.LimitPrice, o.Quantity, o.OrderAction));
+            }
+
+            // -- Step B: cancel all stale brackets (mirrors CancelStaleBracketsLocal) ---
+            var stale = new List<Order>();
+            foreach (Order o in acc.Orders)
+            {
+                if (o == null) continue;
+                bool stateOk = o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Initialized
+                            || o.OrderState == OrderState.Submitted
+                            || o.OrderState == OrderState.Accepted
+                            || o.OrderState == OrderState.TriggerPending;
+                bool instrOk = o.Instrument != null
+                            && o.Instrument.FullName == instrument.FullName;
+                bool notBe   = o.Name == null
+                            || !o.Name.StartsWith("PTT-BE-", StringComparison.Ordinal);
+                if (stateOk && instrOk && notBe)
+                    stale.Add(o);
+            }
+            try                                                                             // (6)
+            {
+                if (stale.Count > 0)
+                    acc.Cancel(stale.ToArray());
+            }
+            catch { /* cancel on already-filled orders is non-fatal */ }
+
+            // -- Step C: submit new BE stop+target OCO pairs ----------------------------
+            // Mirrors PttBreakEven.SubmitBeTargetsLocal.
+            // NT8-049: StopMarket arg6=0 (limitPrice), arg7=newStop (stopPrice). NEVER swap.
+            //          Limit      arg6=t.Price (limitPrice), arg7=0 (stopPrice). NEVER swap.
+            // NT8-007: arg11=(NinjaTrader.Cbi.CustomOrder)null.
+            // NT8-013: DateTime.MaxValue for GTC.
+            // NT8-014: signal names start with "PTT-".
+            OrderAction stopDirection = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+
+            if (targets.Count == 0)                                                        // (7)
+            {
+                // 0-targets: submit one bare PTT-BE-Stop for full pos quantity, no OCO.
                 try
                 {
-                    order.StopPrice = newStop;
-                    acc.Change(new Order[] { order });
-                    StatusUpdate?.Invoke(acc.Name + ": BE stop moved @ " + newStop);
+                    var bareStop = acc.CreateOrder(
+                        instrument, stopDirection, OrderType.StopMarket, OrderEntry.Manual,
+                        TimeInForce.Gtc, pos.Quantity,
+                        0,                                           // arg6: limitPrice=0  (NT8-049)
+                        newStop,                                     // arg7: stopPrice     (NT8-049)
+                        string.Empty,                                // arg8: no OCO
+                        "PTT-BE-Stop",                              // arg9: signal name   (NT8-014)
+                        DateTime.MaxValue,                           // arg10: GTC          (NT8-013)
+                        (NinjaTrader.Cbi.CustomOrder)null);          // arg11: cast         (NT8-007)
+                    if (bareStop != null)
+                    {
+                        acc.Submit(new[] { bareStop });
+                        StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    StatusUpdate?.Invoke(acc.Name + ": BE Change() failed -- " + ex.Message);
-                }
+                catch { /* non-fatal */ }
+                return;
             }
+
+            int seq = System.Threading.Interlocked.Increment(ref _mstbeOcoSeq);
+            for (int i = 0; i < targets.Count; i++)                                       // (8)
+            {
+                var t = targets[i];
+                string ocoId_i = "PTT-BE-"
+                    + acc.Name.Substring(0, Math.Min(8, acc.Name.Length))
+                    + "-" + seq.ToString("D5") + "-" + i;
+
+                // Submit PTT-BE-Stop-{i+1}: StopMarket for this tranche qty.
+                try
+                {
+                    var sOrd = acc.CreateOrder(
+                        instrument, stopDirection, OrderType.StopMarket, OrderEntry.Manual,
+                        TimeInForce.Gtc, t.Qty,
+                        0,                                           // arg6: limitPrice=0  (NT8-049)
+                        newStop,                                     // arg7: stopPrice     (NT8-049)
+                        ocoId_i,                                     // arg8: OCO pair i
+                        "PTT-BE-Stop-" + (i + 1),                  // arg9: signal name   (NT8-014)
+                        DateTime.MaxValue,                           // arg10: GTC          (NT8-013)
+                        (NinjaTrader.Cbi.CustomOrder)null);          // arg11: cast         (NT8-007)
+                    if (sOrd != null)
+                        acc.Submit(new[] { sOrd });
+                }
+                catch { /* non-fatal */ }
+
+                // Submit PTT-BE-Target-{i+1}: Limit order for this tranche.
+                try
+                {
+                    var tOrd = acc.CreateOrder(
+                        instrument, t.Action, OrderType.Limit, OrderEntry.Manual,
+                        TimeInForce.Gtc, t.Qty,
+                        t.Price,                                     // arg6: limitPrice    (NT8-049)
+                        0,                                           // arg7: stopPrice=0   (NT8-049)
+                        ocoId_i,                                     // arg8: OCO pair i
+                        "PTT-BE-Target-" + (i + 1),                // arg9: signal name   (NT8-014)
+                        DateTime.MaxValue,                           // arg10: GTC          (NT8-013)
+                        (NinjaTrader.Cbi.CustomOrder)null);          // arg11: cast         (NT8-007)
+                    if (tOrd != null)
+                        acc.Submit(new[] { tOrd });
+                }
+                catch { /* non-fatal */ }
+            }
+            StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
         }
 
         internal void BreakEven(Instrument instrument, int bufferTicks)
@@ -2041,9 +2255,14 @@ namespace PropTraderTools
         }
 
         // B27 -- ArmPendingBe: arms the pending BE watcher using acc.AccountItemUpdate.
-        // CYC=4: instr null(1), acc null+emit(2), pos flat+emit(3), slot upsert(4).
+        // CYC=6: instr null(1), acc null+emit(2), pos flat+emit(3), immediate-fire check(4),
+        //        tickSize guard(5), slot upsert(6).
         // DW-B30-05: StatusUpdate on null-leader and flat-position paths (previously silent).
         // DW-B27-01: slot dict replaces four singleton fields -- per-account, no data races.
+        // HOTFIX-BUG-BE-IMMEDIATE: if price is already at/past entry when BE is pressed,
+        //   fire BreakEven immediately -- do not arm a pending watcher that will never trigger.
+        //   Fixes BE ALL "in the green" case (no immediate path existed before).
+        //   Mirrors the IsPriceAlreadyAtBe check in TradeCopierPanel.OnBeClick (per-chart path).
         // JS-021: no lock -- ConcurrentDictionary indexer write is lock-free.
         internal void ArmPendingBe(Instrument instr, Account masterAcc, int bufferTicks)
         {
@@ -2060,7 +2279,30 @@ namespace PropTraderTools
                 StatusUpdate?.Invoke("PTT-BE: no open position for " + masterAcc.Name);
                 return;
             }
-            _pendingBeSlots[masterAcc.Name] = new PendingBeSlot(masterAcc, instr, bufferTicks); // (4)
+            // (4) HOTFIX-BUG-BE-IMMEDIATE: check if price is already at/past BE level right now.
+            // Long:  bid >= avgPrice + buf*tick  (price already at or above entry)
+            // Short: ask <= avgPrice - buf*tick  (price already at or below entry)
+            // If true, fire immediately -- no need to arm and wait.
+            double tickSize = instr.MasterInstrument?.TickSize ?? 0.0;
+            if (tickSize > 0.0)                                 // (5) guard -- no market data = arm normally
+            {
+                bool isLong  = pos.MarketPosition == NinjaTrader.Cbi.MarketPosition.Long;
+                double target = pos.AveragePrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
+                double refBid = instr.MarketData?.Bid?.Price ?? 0.0;
+                double refAsk = instr.MarketData?.Ask?.Price ?? 0.0;
+                double refPx  = isLong ? refBid : refAsk;
+                bool alreadyAtBe = refPx > 0.0
+                    && (isLong ? (refPx >= target) : (refPx <= target));
+                if (alreadyAtBe)
+                {
+                    StatusUpdate?.Invoke("PTT-BE: price already at BE for " + masterAcc.Name + " -- firing immediately");
+                    BreakEven(masterAcc, instr, bufferTicks);
+                    PendingBeFired?.Invoke(instr.FullName ?? string.Empty, masterAcc.Name ?? string.Empty);
+                    return;
+                }
+            }
+            _pendingBeSlots[masterAcc.Name] = new PendingBeSlot(masterAcc, instr, bufferTicks); // (6)
+            PendingBeArmed?.Invoke(instr.FullName ?? string.Empty, masterAcc.Name ?? string.Empty);  // HOTFIX-BEALL-SYNC-01
             masterAcc.AccountItemUpdate += OnPendingBeAccountUpdate;
         }
 

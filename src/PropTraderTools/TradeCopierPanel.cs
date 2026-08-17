@@ -232,8 +232,8 @@ namespace PropTraderTools
         // B47 T5-B: Root-level BE and Quick row panels (extracted from _contentPanel in T6-B)
         private UniformGrid _beRowPanel   = null;  // 2-col: BE cluster | BE ALL cluster
         private UniformGrid _quickRowPanel = null;  // 2-col: Quick cluster | Quick ALL cluster
-        // B47 T5-B: Quick ALL tick value (independent spin from _quickT1)
-        private int _quickAllT1 = 4;
+        // HOTFIX-QUICKALL-SINGLETON-01: Quick ALL buffer is now a CopyEngine singleton.
+        // _quickAllT1 per-panel field removed. Read CopyEngine.Instance.GlobalQuickAllT1 instead.
 
         // B39: BE ALL button reference for green-flash update.
         private Button _globalBeBtn2;
@@ -242,9 +242,8 @@ namespace PropTraderTools
         // MakeBrush(r,g,b) calls .Freeze() internally.
         private static readonly SolidColorBrush BrushPurple = MakeBrush(168, 85, 247);
 
-        // B40: armed/wait state for the BE ALL button. Mirrors _beState for per-account BE+.
-        // UI-thread only. No volatile needed.
-        private BeState _globalBeState = BeState.Idle;
+        // DW-B72-02: _globalBeState removed. Truth source is CopyEngine.Instance.IsPendingSlotsEmpty().
+        // All panels read the shared _pendingBeSlots dict -- no per-panel shadow state needed.
 
         // B12 T2 -- Collapse state and refs (plain bool; UI-thread-only; no volatile per NT8-003)
         private bool       _isCollapsed        = false;
@@ -517,6 +516,10 @@ namespace PropTraderTools
             _engine.StatusUpdate              -= OnStatusUpdate;
             _engine.PositionStateChanged      -= OnPositionStateChanged;
             _engine.PendingBeFired            -= OnPendingBeFiredDispatch;
+            _engine.PendingBeArmed            -= OnPendingBeArmedDispatch;   // HOTFIX-BEALL-SYNC-01
+            _engine.GlobalBeBufferChanged       -= OnGlobalBeBufferChanged;     // HOTFIX-BEALL-BUFFER-SYNC-01
+            _engine.GlobalQuickAllBufferChanged -= OnQuickAllBufferChanged;     // HOTFIX-QUICKALL-SINGLETON-01
+            _engine.GlobalBeAllDisarmed         -= OnGlobalBeAllDisarmed;       // HOTFIX-BEALL-DISARM-SYNC-01
             foreach (var item in _followerItems)
                 if (item.Account != null)
                     item.Account.AccountItemUpdate -= OnAccountItemUpdate;
@@ -538,10 +541,10 @@ namespace PropTraderTools
             _leaderAccount = null;
 
             // B40: disarm all accounts on detach (BE ALL global cleanup). NT8-043: no null-conditional compound.
+            // DW-B72-02: _globalBeState removed -- truth is IsPendingSlotsEmpty(). No local reset needed.
             if (Account.All != null)
                 foreach (var acc in Account.All)
                     CopyEngine.Instance.DisarmPendingBe(acc);
-            _globalBeState = BeState.Idle;
             // No visual update here -- panel is being destroyed.
 
             // B33 T7 -- Teardown all IPttModules (unsubscribes all PttBus events).
@@ -563,11 +566,35 @@ namespace PropTraderTools
             if (_flattenBtn2    != null) _flattenBtn2.Background    = hasPosition  ? BrushDanger   : BrushInactive;
             if (_cancelBtn2     != null) _cancelBtn2.Background     = hasEntries   ? BrushDanger   : BrushInactive;
             if (_trimBtn2       != null) _trimBtn2.Background       = hasPosition  ? BrushCaution  : BrushInactive;
-            if (!hasPosition && _beState != BeState.Idle)           // HOTFIX-F3: reset BE on flat
+            if (!hasPosition && _beState != BeState.Idle)           // HOTFIX-F3: reset per-chart BE on flat
             {
                 _beState = BeState.Idle;
                 UpdateBeVisuals(BeState.Idle);
+                // HOTFIX-FLAT-DISARM: disarm pending BE slot when position closes while armed.
+                if (_leaderAccount != null)
+                    CopyEngine.Instance.DisarmPendingBe(_leaderAccount);
             }
+            // HOTFIX-BEALL-FLAT-RESET: BE ALL visual reset is INDEPENDENT of _beState.
+            // _beState tracks the per-chart BE button only. When user armed BE ALL but NOT the
+            // per-chart BE button, _beState == Idle -> HOTFIX-F3 gate is false -> BE ALL stays
+            // amber after flat. Fix: check IsPendingSlotsEmpty independently on every flat event.
+            // Safe because UpdateButtonColors(hasPos=false) only fires via TryFirePositionState
+            // (Filled/PartFilled only, post-Gate-2.5) -- NOT on ATM bracket cancel noise.
+            if (!hasPosition && !CopyEngine.Instance.IsPendingSlotsEmpty())
+            {
+                if (_leaderAccount != null)
+                    CopyEngine.Instance.DisarmPendingBe(_leaderAccount);
+                UpdateBeAllVisuals(BeState.Idle);
+                CopyEngine.Instance.RaiseBeAllDisarmed(); // notify all panels unconditionally
+            }
+            // HOTFIX-ORPHAN-STOP-CLEANUP: cancel any PTT-BE-*/PTT-QX-* orders that survived
+            // a manual position close. NT8 does NOT auto-cancel AddOn orders when user clicks
+            // Chart Trader X or issues a Close order -- orphaned PTT-BE-Stop-N orders remain
+            // Working and can fill on the next trade. CancelQxBrackets covers PTT-BE-* and
+            // PTT-QX-* prefixes via IsQxCancelCandidate. Safe: CancelQxBrackets is a no-op
+            // when no such orders exist (stale.Count==0 early return in CopyEngine.cs line 517).
+            if (!hasPosition && _leaderAccount != null && _instrument != null)
+                CopyEngine.Instance.CancelQxBrackets(_leaderAccount, _instrument);
         }
 
         // CYC=1: single null+instrument filter guard.
@@ -591,6 +618,10 @@ namespace PropTraderTools
             Loaded -= OnLoaded;
             _engine.PositionStateChanged += OnPositionStateChanged;
             _engine.PendingBeFired       += OnPendingBeFiredDispatch;
+            _engine.PendingBeArmed       += OnPendingBeArmedDispatch;   // HOTFIX-BEALL-SYNC-01
+            _engine.GlobalBeBufferChanged       += OnGlobalBeBufferChanged;     // HOTFIX-BEALL-BUFFER-SYNC-01
+            _engine.GlobalQuickAllBufferChanged += OnQuickAllBufferChanged;     // HOTFIX-QUICKALL-SINGLETON-01
+            _engine.GlobalBeAllDisarmed         += OnGlobalBeAllDisarmed;       // HOTFIX-BEALL-DISARM-SYNC-01
             _followerItems.Clear();
             if (Account.All == null) return;
             foreach (var acc in Account.All)
@@ -846,13 +877,53 @@ namespace PropTraderTools
             Dispatcher.InvokeAsync(() =>
             {
                 OnBeConnected(instr, accountName);
-                // B40: auto-reset _globalBeState when the last armed slot fires.
-                if (_globalBeState == BeState.Armed && CopyEngine.Instance.IsPendingSlotsEmpty())
-                {
-                    _globalBeState = BeState.Idle;
+                // DW-B72-02: auto-reset BE ALL when last armed slot fires.
+                // Truth source: IsPendingSlotsEmpty() -- no local shadow state.
+                if (CopyEngine.Instance.IsPendingSlotsEmpty())
                     UpdateBeAllVisuals(BeState.Idle);
-                }
             });
+        }
+
+        // HOTFIX-BEALL-SYNC-01: marshals PendingBeArmed from NT8 bg thread to UI.
+        // Fires on ALL panels when any account slot is armed -- keeps BE ALL visual synced.
+        // CYC=1: straight-line Dispatcher.InvokeAsync, no branches.
+        private void OnPendingBeArmedDispatch(string instr, string accountName)
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                if (!CopyEngine.Instance.IsPendingSlotsEmpty())
+                    UpdateBeAllVisuals(BeState.Armed);
+            });
+        }
+
+        // HOTFIX-BUFLABEL-02: wrap in panel-local Dispatcher.InvokeAsync.
+        // Application.Current.Dispatcher (where event fires) != chart-window Dispatcher (where _globalBeBtn2 was created).
+        // Reference pattern: OnGlobalBeAllDisarmed uses Dispatcher.InvokeAsync (this panel's own Dispatcher).
+        private void OnGlobalBeBufferChanged(int newBuffer)
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                if (_globalBeBtn2 != null)
+                    _globalBeBtn2.Content = FormatGlobalBeBuffer("BE ALL", newBuffer);
+            });
+        }
+
+        // HOTFIX-BUFLABEL-02: wrap in panel-local Dispatcher.InvokeAsync (same reason as OnGlobalBeBufferChanged).
+        // Also updates to use FormatQuickAllBuffer to append "t" unit suffix (QUICK-LABEL-UNIT-01).
+        private void OnQuickAllBufferChanged(int newT1)
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                if (_quickAllBtn != null)
+                    _quickAllBtn.Content = FormatQuickAllBuffer("Quick ALL", newT1);
+            });
+        }
+
+        // HOTFIX-BEALL-DISARM-SYNC-01: all panels reset BE ALL visual when any panel disarms.
+        // CYC=1: straight-line Dispatcher.InvokeAsync, no branches.
+        private void OnGlobalBeAllDisarmed()
+        {
+            Dispatcher.InvokeAsync(() => UpdateBeAllVisuals(BeState.Idle));
         }
 
         // B40 -- UpdateBeAllVisuals: purple=Idle, amber=Armed. CYC=2.
@@ -1045,7 +1116,7 @@ namespace PropTraderTools
             DockPanel.SetDock(quickAllArrows, Dock.Right);
             _quickAllBtn = new Button
             {
-                Content         = FormatBuffer("Quick ALL", _quickAllT1),
+                Content         = FormatBuffer("Quick ALL", CopyEngine.Instance.GlobalQuickAllT1),
                 BorderBrush     = MakeBrush(13, 148, 136),
                 Foreground      = MakeBrush(13, 148, 136),
                 BorderThickness = new Thickness(2)
@@ -1082,6 +1153,14 @@ namespace PropTraderTools
             return name + " +" + ticks;
         }
 
+        // HOTFIX-BUFLABEL-02 / QUICK-LABEL-UNIT-01: Quick ALL label appends "t" to make tick unit explicit.
+        // MES tick = $1.25, MGC tick = $0.10, MCL tick = $0.01 — storing raw ticks; unit must be visible.
+        // "Quick ALL +4t" not "Quick ALL +4".
+        private static string FormatQuickAllBuffer(string name, int ticks)
+        {
+            return name + " +" + ticks + "t";
+        }
+
         // B39: FormatGlobalBeBuffer -- handles 0 / positive / negative for BE ALL label.
         // 2-parameter form: caller supplies label ("BE ALL"). Plan SS5.5 authoritative.
         // Does NOT modify the existing FormatBuffer(string, int) method.
@@ -1097,42 +1176,39 @@ namespace PropTraderTools
         // Idle->Armed: arm all pending; if at least one slot entered Armed state, turn amber.
         // Armed->Idle (manual disarm): loop Account.All and DisarmPendingBe for each; turn purple.
         // JS-021: no lock(). JS-033: synchronous void event handler -- not async void.
+        // DW-B72-02: _globalBeState removed. IsPendingSlotsEmpty() is the truth source.
+        // Idle (slots empty)  -> arm all, then show Armed visual if slots were taken.
+        // Armed (slots exist) -> disarm all, show Idle visual.
+        // Both panels read the same CopyEngine singleton so state is automatically shared.
         private void OnGlobalBeClick(object sender, RoutedEventArgs e)
         {
-            switch (_globalBeState)
+            if (CopyEngine.Instance.IsPendingSlotsEmpty())
             {
-                case BeState.Idle:
-                    CopyEngine.Instance.GlobalBe.Execute(CopyEngine.Instance.GlobalBe.GlobalBeBuffer);
-                    if (!CopyEngine.Instance.IsPendingSlotsEmpty())
-                    {
-                        _globalBeState = BeState.Armed;
-                        UpdateBeAllVisuals(BeState.Armed);
-                    }
-                    break;
-                case BeState.Armed:
-                    if (Account.All != null)
-                        foreach (var acc in Account.All)
-                            CopyEngine.Instance.DisarmPendingBe(acc);
-                    _globalBeState = BeState.Idle;
-                    UpdateBeAllVisuals(BeState.Idle);
-                    break;
+                // Currently Idle -- arm
+                CopyEngine.Instance.GlobalBe.Execute(CopyEngine.Instance.GlobalBe.GlobalBeBuffer);
+            }
+            else
+            {
+                // Currently Armed -- disarm
+                if (Account.All != null)
+                    foreach (var acc in Account.All)
+                        CopyEngine.Instance.DisarmPendingBe(acc);
+                UpdateBeAllVisuals(BeState.Idle);
             }
         }
 
-        // B39: OnGlobalBeUp -- increment shared buffer, update label. CYC=2.
+        // B39: OnGlobalBeUp -- increment shared buffer; label refresh handled by OnGlobalBeBufferChanged broadcast.
+        // HOTFIX-BEALL-BUFFER-SYNC-01: removed per-panel label update here -- event fires to all panels.
         private void OnGlobalBeUp(object sender, RoutedEventArgs e)
         {
             CopyEngine.Instance.GlobalBe.IncrementBuffer();
-            if (_globalBeBtn2 != null)
-                _globalBeBtn2.Content = FormatGlobalBeBuffer("BE ALL", CopyEngine.Instance.GlobalBe.GlobalBeBuffer);
         }
 
-        // B39: OnGlobalBeDown -- decrement shared buffer, update label. CYC=2.
+        // B39: OnGlobalBeDown -- decrement shared buffer; label refresh handled by OnGlobalBeBufferChanged broadcast.
+        // HOTFIX-BEALL-BUFFER-SYNC-01: removed per-panel label update here -- event fires to all panels.
         private void OnGlobalBeDown(object sender, RoutedEventArgs e)
         {
             CopyEngine.Instance.GlobalBe.DecrementBuffer();
-            if (_globalBeBtn2 != null)
-                _globalBeBtn2.Content = FormatGlobalBeBuffer("BE ALL", CopyEngine.Instance.GlobalBe.GlobalBeBuffer);
         }
 
 
@@ -1260,6 +1336,8 @@ namespace PropTraderTools
         }
 
         // B32 -- UpdateBeVisuals: 2-state only. Connected removed (DW-B32-04). CYC=2.
+        // FIX-A: Idle case now also resets Background -- previously only Content was reset,
+        // leaving the amber BrushCaution background stuck on the button after disarm.
         private void UpdateBeVisuals(BeState state)
         {
             if (_beBtn2 == null) return;
@@ -1267,6 +1345,7 @@ namespace PropTraderTools
             {
                 case BeState.Idle:                                                    // (1)
                     _beBtn2.Content    = FormatBuffer("BE", _beBuffer);
+                    _beBtn2.Background = BrushInactive;                // FIX-A: clear amber
                     break;
                 case BeState.Armed:                                                   // (2)
                     _beBtn2.Content    = "BE Armed";
@@ -1536,18 +1615,18 @@ namespace PropTraderTools
                 _quickBtn.Content = FormatBuffer("Quick", _quickT1);                    // (2)
         }
 
-        // B47 T5-B: OnQuickAllUp -- spin _quickAllT1 up (max 99). CYC=1.
+        // B47 T5-B: OnQuickAllUp -- increment singleton; label refresh via broadcast. CYC=1.
+        // HOTFIX-QUICKALL-SINGLETON-01: _quickAllT1 removed; delegates to CopyEngine.IncrementQuickAll().
         private void OnQuickAllUp(object sender, RoutedEventArgs e)
         {
-            _quickAllT1 = Math.Min(_quickAllT1 + 1, 99);
-            if (_quickAllBtn != null) _quickAllBtn.Content = FormatBuffer("Quick ALL", _quickAllT1);
+            CopyEngine.Instance.IncrementQuickAll();
         }
 
-        // B47 T5-B: OnQuickAllDown -- spin _quickAllT1 down (min 1). CYC=1.
+        // B47 T5-B: OnQuickAllDown -- decrement singleton; label refresh via broadcast. CYC=1.
+        // HOTFIX-QUICKALL-SINGLETON-01: _quickAllT1 removed; delegates to CopyEngine.DecrementQuickAll().
         private void OnQuickAllDown(object sender, RoutedEventArgs e)
         {
-            _quickAllT1 = Math.Max(_quickAllT1 - 1, 1);
-            if (_quickAllBtn != null) _quickAllBtn.Content = FormatBuffer("Quick ALL", _quickAllT1);
+            CopyEngine.Instance.DecrementQuickAll();
         }
 
         // B41: RefreshQuickDisplay -- Card A: back-calc actual T1 ticks from live PTT-QX-T1 order.
@@ -1612,6 +1691,8 @@ namespace PropTraderTools
 
         // B41: OnLeaderPositionUpdate -- NT8 fires on background thread; dispatch to UI thread.
         // CYC=2: null guard(1), instrument guard(2).
+        // HOTFIX-FLAT-MANUAL-CLOSE-01: on Operation.Remove fire flat-cleanup directly; NT8 position
+        // state is fully updated at this event (unlike order-fill time where HasOpenPosition lags).
         private void OnLeaderPositionUpdate(object sender, PositionEventArgs e)
         {
             if (e == null || e.Position == null) return;                                      // (1)
@@ -1623,6 +1704,15 @@ namespace PropTraderTools
                 RefreshQuickDisplay(acc, instr);
                 UpdateT3Visibility(acc, instr);
             });
+            // HOTFIX-FLAT-MANUAL-CLOSE-01: fire flat signal from Position.Remove event.
+            // NT8 delivers PositionUpdate(Remove) AFTER position state is fully updated
+            // (unlike order Filled events where HasOpenPosition still reads the old qty).
+            // This is the correct place to trigger UpdateButtonColors(false) for manual closes.
+            if (e.Operation != Operation.Remove) return;                          // (1)
+            if (e.Position?.Instrument?.FullName == null) return;                 // (2)
+            if (_instrument == null) return;                                      // (3)
+            if (e.Position.Instrument.FullName != _instrument.FullName) return;  // (4)
+            Dispatcher.InvokeAsync(() => UpdateButtonColors(false, false));       // (5)
         }
 
         // B47 T1-B: LoadFollowers -- build inline follower rows into _followerScrollViewerPanel.
@@ -1645,53 +1735,64 @@ namespace PropTraderTools
         // Row: [CheckBox][account TextBlock][P&L TextBlock][ATM ComboBox]  -- 4 columns per spec.
         private void BuildInlineFollowerRow(FollowerItem item)
         {
-            var row = new StackPanel
+            // HOTFIX-FOLLOWER-LABEL-CLIP-01: switched from StackPanel to DockPanel so the account
+            // name label stretches to fill all remaining space. Fixed Width=90 was clipping long
+            // PA-APEX account names (e.g. "PA-APEX-422136-01U" = 20 chars at ~8px/char needs ~160px).
+            // PnL and ATM combo are docked Right so they never compete with the name.
+            var row = new DockPanel
             {
-                Orientation = Orientation.Horizontal,
-                Margin      = new Thickness(0, 1, 0, 1)
+                LastChildFill = true,
+                Margin        = new Thickness(0, 1, 0, 1)
             };
 
-            // Col 0: CheckBox -- tracks IsSelected
+            // Col 0: CheckBox -- docked Left, tracks IsSelected
             var chk = new CheckBox
             {
                 IsChecked         = item.IsSelected,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin            = new Thickness(0, 0, 4, 0)
             };
+            DockPanel.SetDock(chk, Dock.Left);
 
-            // Col 1: Account name label
-            var nameLabel = new TextBlock
-            {
-                Text              = item.ToString(),
-                Width             = 90,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(0, 0, 4, 0)
-            };
-            nameLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
-
-            // Col 2: P&L TextBlock -- mirrors DailyPnlText/DailyPnlColor from BuildCheckItemTemplate().
-            // item.DailyPnlText: formatted string e.g. "+$125.00"
-            // item.DailyPnlColor: SolidColorBrush -- green/red/neutral (already Freeze()d by FollowerItem)
-            var pnlLabel = new TextBlock
-            {
-                Text              = item.DailyPnlText,
-                Width             = 64,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(0, 0, 4, 0),
-                Foreground        = item.DailyPnlColor
-            };
-
-            // Col 3: ATM ComboBox (NT8-045: populated from filesystem on Loaded event)
+            // Col 2 (docked Right): ATM ComboBox (NT8-045: populated from filesystem on Loaded event)
+            // Docked before PnL so DockPanel processes right-most first.
             var atmCombo = new ComboBox
             {
-                Width             = 120,
+                Width             = 110,
                 IsEnabled         = item.IsSelected,
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin            = new Thickness(2, 0, 0, 0)
             };
             atmCombo.AddHandler(FrameworkElement.LoadedEvent,
                 new RoutedEventHandler(OnFollowerAtmTemplateComboLoaded));
             atmCombo.SelectionChanged += OnFollowerAtmTemplateComboChanged;
             atmCombo.DataContext = item;
+            DockPanel.SetDock(atmCombo, Dock.Right);
+
+            // Col 2 (docked Right): P&L TextBlock -- mirrors DailyPnlText/DailyPnlColor.
+            // item.DailyPnlText: formatted string e.g. "+$125.00"
+            // item.DailyPnlColor: SolidColorBrush -- green/red/neutral (already Freeze()d by FollowerItem)
+            var pnlLabel = new TextBlock
+            {
+                Text              = item.DailyPnlText,
+                Width             = 60,
+                TextAlignment     = TextAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin            = new Thickness(2, 0, 2, 0),
+                Foreground        = item.DailyPnlColor
+            };
+            DockPanel.SetDock(pnlLabel, Dock.Right);
+
+            // Col 1 (LastChildFill): Account name label -- fills all remaining space.
+            // TextTrimming=CharacterEllipsis ensures long names degrade gracefully if panel is very narrow.
+            var nameLabel = new TextBlock
+            {
+                Text              = item.ToString(),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming      = TextTrimming.CharacterEllipsis,
+                Margin            = new Thickness(0, 0, 4, 0)
+            };
+            nameLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
 
             // CheckBox event handlers: toggle IsSelected + ATM IsEnabled + sort + auto-apply
             chk.Checked += (s, e) =>
@@ -1711,10 +1812,12 @@ namespace PropTraderTools
                 TryAutoApply();       // B47 T2-B
             };
 
+            // DockPanel child order: Left-docked first, Right-docked next (ATM then PnL),
+            // LastChildFill (name) added last so it fills the remaining centre space.
             row.Children.Add(chk);
-            row.Children.Add(nameLabel);
-            row.Children.Add(pnlLabel);
             row.Children.Add(atmCombo);
+            row.Children.Add(pnlLabel);
+            row.Children.Add(nameLabel);
             _followerScrollViewerPanel.Children.Add(row);
         }
 
