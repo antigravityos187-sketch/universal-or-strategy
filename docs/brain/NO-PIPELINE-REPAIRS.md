@@ -32,6 +32,7 @@ Director authorization: live-trading session, post-trade-day pipeline runs sched
 
 | ID | Item | Priority | Status |
 |----|------|----------|--------|
+| DW-B63-FLATTEN-MULTWAVE-01 | PTT-Flatten multi-wave on follower accounts after ATM target fills — followers go Short instead of Flat. Root cause: each PTT-QX-T*/Target* fill on leader dispatches a new copy/reduce wave to -01/-03. With 2 targets filling in sequence, 2 waves overshoot. Live-observed 2026-08-17 06:35 AM. Requires pipeline block. | P1 | OPEN |
 | DW-B66-BE-01 | `CancelQxBrackets` cancels `PTT-BE-Stop` orders during Quick Exit — Director confirmation required | P1 | OPEN |
 | DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | OPEN |
 | DW-B63-01 | Spurious `PTT-Copy` bracket orders on Sim102 after ATM fill | P1 | OPEN |
