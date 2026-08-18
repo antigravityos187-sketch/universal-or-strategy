@@ -83,9 +83,9 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 
 
 
-## PIPELINE STATUS — B72 / B73 / B74
+## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76
 
-**All three pipeline runs: FINAL_PASS (2026-08-17)**
+**Latest pipeline run: B76-LaneA FINAL_PASS (2026-08-18)**
 
 | Block | Lane | Files | Hotfixes | Tests written | Final verdict |
 |-------|------|-------|----------|---------------|---------------|
@@ -94,6 +94,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | B74-LaneC | Feature files | PttGlobalQuickExit.cs + PttQuickExit.cs + PttGlobalBreakEven.cs | 5 | 22 [Fact] | FINAL_PASS |
 | B75-LaneB | UI logic | TradeCopierPanel.cs | 3 | 10 [Fact] | FINAL_PASS |
 | B75-LaneA | Clone/copy hotfixes | CopyEngine.cs | 12 hotfixes + 2 CYC refactors | 60 [Fact] | FINAL_PASS |
+| B76-LaneA | Race+guard+dedup+ATM | CopyEngine.cs + TradeCopierPanel.cs + TradeCopierAddOn.cs + TradeCopierWindow.cs | 6 hotfixes | 12 [Fact] | FINAL_PASS |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
@@ -2524,3 +2525,85 @@ Done. Copied: 2  Skipped (in sync): 13  Excluded (tests/obj/bin): 29
   - T_B66OBJ_03: `SendCopyWithAtm` with `AtmObject != null` calls `StartAtmStrategy(obj, order)` path
   - T_B66OBJ_04: `SendCopyWithAtm` with `AtmObject == null`, string non-empty -> falls back to string overload
   - T_B66OBJ_05: regression -- `DispatchCopy` non-Named mode still uses `SendCopy` unaffected
+
+## HOTFIX-B76-FLATTEN-RACE-01
+
+**ID**: HOTFIX-B76-FLATTEN-RACE-01
+**Date**: 2026-08-18
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `FlattenOneAccount(Account acc, Instrument instrument)` (line ~1850)
+**Status**: PIPELINE_COMPLETE (B76-LaneA FINAL_PASS 2026-08-18)
+**Authorized**: Director direct-engineer pre-pipeline test
+
+### Bug
+ATM BE stop fills a follower account flat. `acc.Positions` is stale in the same `OnOrderUpdate`
+cycle (NT8 position lag, NT8_FULL_REFERENCE.md line 1721). `FindPosition()` reads the stale
+"1 Long". `FlattenOneAccount` submits PTT-Flatten Sell Market. Account inverts to 1 Short.
+Observed live: 2026-08-18 07:12 AM session, -08 account, MES SEP26.
+
+### Fix
+Added `posAfterCancel = FindPosition(acc, instrument)` AFTER `CancelAllAccountOrders`.
+If `posAfterCancel` is null or qty=0: emit "flat-race skip" StatusUpdate and return.
+Otherwise use `posAfterCancel` for action ternary and `CreateOrder` quantity.
+CYC: 4 -> 5. JS-DNA: no lock, no throw, no async void. ✅
+
+### Pipeline work needed
+B76-LaneA pipeline documents are already written at docs/brain/B76-LaneA/.
+Run Ph4a ptt-engineer to formally execute + test, Ph4b to verify, Ph5 to sign off.
+
+
+## HOTFIX-B76-FLATTEN-GUARD-01
+**ID**: HOTFIX-B76-FLATTEN-GUARD-01
+**Date**: 2026-08-18
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `FlattenOneAccount(Account acc, Instrument instrument)`
+**Bug**: N PTT-Flatten orders submitted per flatten call (N = open bracket count). Each cancel-ack from NT8 fires one OnOrderUpdate callback, and each callback re-enters FlattenOneAccount via TryDispatchLeaderFlat with no re-entry guard. Result: N PTT-Flatten market orders submitted simultaneously.
+**Fix**: Per-account in-flight flag (_flattenInFlight ConcurrentDictionary). TryAdd at method entry -- if already set, emit flat-guard skip and return. finally block calls TryRemove to clear flag after Submit. Lock-free (JS-021). Zero heap alloc on hot path.
+**Status**: PIPELINE_COMPLETE (B76-LaneA FINAL_PASS 2026-08-18)
+
+## HOTFIX-B76-POSSTATE-LEAK-01
+**ID**: HOTFIX-B76-POSSTATE-LEAK-01
+**Date**: 2026-08-18
+**File**: `src/PropTraderTools/TradeCopierAddOn.cs`
+**Method**: `DoInject(Chart chart)` -- stale panel removal loop (line ~373)
+**Bug**: PositionStateChanged fires 16x per position event. Stale TradeCopierPanel objects removed from the ChartTrader grid on F5 reload without calling Detach(). Each stale panel retains its PositionStateChanged += OnPositionStateChanged subscription. After N reloads there are N subscriptions on the singleton CopyEngine event. Each raise of PositionStateChanged calls OnPositionStateChanged N times.
+**Fix**: Cast each stale grid child to TradeCopierPanel and call stalePanel.Detach() before grid removal. Detach() unsubscribes all CopyEngine events including PositionStateChanged. Idempotent -- safe if Detach() was already called. Zero new state.
+**Status**: PIPELINE_COMPLETE (B76-LaneA FINAL_PASS 2026-08-18)
+
+## HOTFIX-B76-FLATTEN-GUARD-02
+**ID**: HOTFIX-B76-FLATTEN-GUARD-02
+**Date**: 2026-08-18
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `FlattenOneAccount(Account acc, Instrument instrument)`
+**Bug**: v1 flag (_flattenInFlight ConcurrentDictionary TryAdd/TryRemove in finally) was cleared before cancel-ack callbacks arrived. All N cancel-ack threads re-entered with flag already clear -- no guard effect. N PTT-Flatten orders still submitted.
+**Fix (v2)**: Scan acc.Orders.ToList() at method entry for an existing PTT-Flatten order in Submitted/Accepted/Working state. NT8 order book is the authoritative in-flight signal -- it remains populated until Filled/Cancelled, surviving across all cancel-ack callbacks. If found, emit flat-guard skip StatusUpdate and return. Zero new state, zero allocations, no flag to maintain.
+**Test result**: PASS confirmed 12:48 PM session -- exactly 1 PTT-Flatten Filled, zero Cancelled duplicates.
+**Status**: PIPELINE_COMPLETE (B76-LaneA FINAL_PASS 2026-08-18)
+
+---
+
+## HOTFIX-B76-POSSTATE-LEAK-02
+**ID**: HOTFIX-B76-POSSTATE-LEAK-02
+**Date**: 2026-08-18
+**File**: `src/PropTraderTools/TradeCopierWindow.cs`
+**Method**: `OnLoaded` (lines 110-128)
+**Bug**: PositionStateChanged fires N times per position event (confirmed 16 False on entry, 33 True, growing). Root cause: TradeCopierWindow.OnLoaded calls _engine.Subscribe() which does acc.OrderUpdate += OnOrderUpdate for every account in Account.All. OnClosed calls _engine.Unsubscribe(). If OnLoaded fires N times without a corresponding OnClosed (NT8 menu re-open, window re-init), Subscribe() accumulates N OnOrderUpdate delegates per account. OnOrderUpdate fires N times per order event. After Gate 2.5, TryFirePositionState is called N times per fill, raising PositionStateChanged?.Invoke N times. Panel handler fires N times. 16 fires = 16 Subscribe() calls without Unsubscribe() in this NT8 session.
+**Fix**: Added _engine.Unsubscribe() as the FIRST call inside the try block in OnLoaded, before all -= and += lines. C# -= on a handler not yet subscribed is a no-op -- safe on first call. Makes all of OnLoaded idempotent: drain all prior acc.OrderUpdate subscriptions, drain all event subscriptions, then re-subscribe exactly once. Zero new state.
+**Diff**:
+  +_engine.Unsubscribe();
+   _engine.StatusUpdate         -= OnStatusUpdate;
+   _engine.PositionStateChanged -= OnPositionStateChanged;
+   _engine.CopyEnabledChanged   -= OnCopyEnabledChanged;
+   _engine.StatusUpdate          += OnStatusUpdate;
+   _engine.PositionStateChanged  += OnPositionStateChanged;
+   _engine.Subscribe();
+**Status**: PIPELINE_COMPLETE (B76-LaneA FINAL_PASS 2026-08-18)
+
+## HOTFIX-B76-POSSTATE-DEDUP-01
+**ID**: HOTFIX-B76-POSSTATE-DEDUP-01
+**Date**: 2026-08-18
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `TryFirePositionState` + new field `_lastHasPos`
+**Bug**: PositionStateChanged fires N*M times per position event where N = number of Filled/PartFilled orders that pass Gate 2 per trade (entry fill + bracket fills + target fills + Close fill = 8+ orders) and M = number of panels subscribed (1 per chart window open). With 2 chart windows open (both MES SEP26), result was 16 False per close (8 fills * 2 panels). This was confirmed by fresh NT8 restart + 2 charts + 1 F5 showing exactly 16. Root cause: TryFirePositionState had no dedup guard -- it invoked PositionStateChanged on every qualifying fill regardless of whether hasPos had actually changed. The panel handler logged and called UpdateButtonColors on every invoke.
+**Fix**: Added `_lastHasPos ConcurrentDictionary<string, bool>` keyed by instrument FullName. TryFirePositionState computes hasPos, then checks _lastHasPos[instr]. If the value matches the last known value, return immediately without invoking. If it differs (or key is absent -- first fill ever), update _lastHasPos[instr] and invoke. This deduplicates all redundant mid-trade fills, delivering exactly 1 False->True transition on entry and 1 True->False transition on exit, regardless of how many fills or panels are active.
+**Status**: PIPELINE_COMPLETE (B76-LaneA FINAL_PASS 2026-08-18). 1 chart: 1 line per transition (1 engine fire x 1 panel). 2 charts: 2 lines per transition (1 engine fire x 2 panels). CAS dedup confirmed working. Bug #3 CLOSED.

@@ -178,6 +178,15 @@ namespace PropTraderTools
         private volatile int _mstbeOcoSeq = Environment.TickCount;
         internal int NextBeOcoSeq() => System.Threading.Interlocked.Increment(ref _mstbeOcoSeq);
 
+        // HOTFIX-B76-POSSTATE-DEDUP-01: atomic hasPos dedup per instrument.
+        // Value is int[1]: 0=False, 1=True, 2=unknown (initial).
+        // int[] gives a stable heap ref so Interlocked.Exchange can operate on [0].
+        // GetOrAdd allocates the array once per instrument on first fill (not per-fill).
+        // Interlocked.Exchange is the only write -- one winner per transition, all others
+        // see the new value already written and return without invoking. JS-021: lock-free.
+        private readonly ConcurrentDictionary<string, int[]> _lastHasPos
+            = new ConcurrentDictionary<string, int[]>();
+
         // V01: order map for follower bracket lookup
         // JS-025: ConcurrentDictionary (atomic GetOrAdd) + ConcurrentBag (lock-free Add/iterate)
         // JS-021: NO lock keyword anywhere
@@ -1419,6 +1428,17 @@ namespace PropTraderTools
 
             string instr   = e.Order.Instrument.FullName;
             bool hasPos     = HasOpenPosition(e.Order.Account, e.Order.Instrument);
+
+            // HOTFIX-B76-POSSTATE-DEDUP-01: Interlocked CAS dedup.
+            // GetOrAdd returns the stable int[1] box for this instrument (allocates once).
+            // Interlocked.Exchange atomically writes newVal and returns the prior value.
+            // If prior == newVal: no transition -- another thread already wrote it, skip.
+            // 0=False, 1=True, 2=unknown (initial sentinel -- always fires on first fill).
+            int newVal = hasPos ? 1 : 0;
+            var box    = _lastHasPos.GetOrAdd(instr, _ => new int[] { 2 });
+            int prior  = System.Threading.Interlocked.Exchange(ref box[0], newVal);
+            if (prior == newVal) return;
+
             bool hasEntries = HasWorkingEntries(e.Order.Account, e.Order.Instrument);
             PositionStateChanged?.Invoke(instr, new PositionState(hasPos, hasEntries));
         }
@@ -1841,14 +1861,42 @@ namespace PropTraderTools
         // B28 T1 -- FlattenOneAccount: per-account market flatten helper.
         // B67 DW-B67-01: cancel follower ATM+QX brackets BEFORE submitting market order.
         // B69 DW-B69-01: widened from CancelQxBrackets to cancel ALL active orders (name-agnostic).
+        // B76 HOTFIX-B76-FLATTEN-RACE-01: re-read position after CancelAllAccountOrders.
+        //   NT8_FULL_REFERENCE.md line 1721: position state lags until next OnBarUpdate after fill.
+        //   Pre-cancel read (pos): fast-exit guard -- skip cancel round-trip on already-flat accounts.
+        //   Post-cancel read (posAfterCancel): race guard -- after CancelAllAccountOrders round-trips
+        //   to NT8 order manager, acc.Positions reflects ATM bracket fills. If posAfterCancel shows
+        //   flat, account was closed by bracket fill -- skip PTT-Flatten to prevent inversion.
         // NT8 precedent: @2Custom-0909edcc FlattenPositionByName V8.31 comment:
         //   "Cancel ALL bracket orders first to prevent race conditions."
         // Rithmic/Apex: incoming market order conflicts with live OCO bracket at broker layer
         //   -> "Close operation failed. Operation timed out." without this cancel step.
-        // CYC=4: (1) pos null/qty guard, (2) CancelAllAccountOrders, (3) action ternary, (4) try/catch.
+        // CYC=6: (1) active PTT-Flatten guard, (2) pre-cancel pos null/qty guard,
+        //        (3) CancelAllAccountOrders, (4) post-cancel re-read null/qty guard,
+        //        (5) action ternary, (6) try/catch.
         // JS-021: no lock. JS-001: no throw in hot path. JS-002: void.
         private void FlattenOneAccount(Account acc, Instrument instrument)
         {
+            // B76 HOTFIX-B76-FLATTEN-GUARD-01 v2: order-book guard.
+            // Field flag (v1) was cleared in finally before NT8 delivered bracket-cancel callbacks.
+            // Root cause: CancelAllAccountOrders returns immediately; bracket-cancel acks fire on
+            // the NT8 account thread after finally runs, re-entering with the flag already cleared.
+            // Fix: scan acc.Orders for an active PTT-Flatten -- NT8 order book is the authoritative
+            // in-flight signal. An active flatten is already working; subsequent cancel-ack callbacks
+            // skip. acc.Orders.ToList() snapshot prevents InvalidOperationException (same pattern as
+            // HasWorkingPttCopy). JS-021: no lock.
+            foreach (var o in acc.Orders.ToList())
+            {
+                if (o.Name != "PTT-Flatten") continue;
+                if (o.Instrument?.FullName != instrument.FullName) continue;
+                if (o.OrderState == OrderState.Submitted
+                    || o.OrderState == OrderState.Accepted
+                    || o.OrderState == OrderState.Working)
+                {
+                    StatusUpdate?.Invoke(acc.Name + ": flat-guard: in-flight skip");
+                    return;
+                }
+            }
             var pos = FindPosition(acc, instrument);
             if (pos == null || pos.Quantity == 0)
             {
@@ -1856,16 +1904,26 @@ namespace PropTraderTools
                 return;
             }
             CancelAllAccountOrders(acc, instrument); // B69 DW-B69-01: cancel ALL orders first
-            var action = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
+            // B76 HOTFIX-B76-FLATTEN-RACE-01: re-read after cancel.
+            // ATM bracket fill may have cleared the position while cancel request was in-flight.
+            var posAfterCancel = FindPosition(acc, instrument);
+            if (posAfterCancel == null || posAfterCancel.Quantity == 0)
+            {
+                StatusUpdate?.Invoke(acc.Name + ": flat-race skip (pos cleared by bracket fill)");
+                return;
+            }
+            var action = posAfterCancel.MarketPosition == MarketPosition.Long
+                ? OrderAction.Sell
+                : OrderAction.BuyToCover;
             try
             {
                 var order = acc.CreateOrder(
                     instrument, action, OrderType.Market, OrderEntry.Manual,
-                    TimeInForce.Gtc, pos.Quantity, 0, 0, null, "PTT-Flatten",
+                    TimeInForce.Gtc, posAfterCancel.Quantity, 0, 0, null, "PTT-Flatten",
                     DateTime.MaxValue, null);
                 if (order != null)
                     acc.Submit(new[] { order });
-                StatusUpdate?.Invoke(acc.Name + ": flatten " + pos.Quantity);
+                StatusUpdate?.Invoke(acc.Name + ": flatten " + posAfterCancel.Quantity);
             }
             catch (Exception ex)
             {

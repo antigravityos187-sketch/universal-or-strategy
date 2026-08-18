@@ -633,6 +633,26 @@ namespace PropTraderTools
                 _followersDropDown.ItemsSource = _followerItems;  // kept; harmless on non-visual ComboBox
             UpdateDropDownHeader();
             LoadFollowers();  // B47 T1-B: populate inline ScrollViewer rows
+
+            // HOTFIX-B67-CHECKBOX-RESTORE: after LoadRules, engine _rules already contain the
+            // persisted follower list. Restore IsSelected on matching _followerItems so that
+            // the first TryAutoApply (checkbox toggle) does not wipe a valid restored rule.
+            // CYC cost: +0 (straight-line, no branch beyond the foreach).
+            // Must run AFTER LoadFollowers() (rows exist) and BEFORE TryAutoApply is triggered.
+            if (_instrument != null && _leaderAccount != null)
+            {
+                var saved = _engine.GetSavedFollowerNames(
+                    _instrument.FullName, _leaderAccount.Name);
+                if (saved.Count > 0)
+                {
+                    foreach (var item in _followerItems)
+                        if (item.Account != null && saved.Contains(item.Account.Name))
+                            item.IsSelected = true;
+                    SortFollowerRows();   // re-sort so checked rows float to top
+                    TryAutoApply();       // re-register live rule with restored followers
+                }
+            }
+
             // B13 T2: push initial panel values to AtrSizingEngine at startup.
             // CopyEngine.UpdateAtrFraction / UpdateMaxRisk are null-guarded;
             // if _atrEngine is null (not yet attached) they are silent no-ops.
@@ -1553,13 +1573,24 @@ namespace PropTraderTools
             UpdateAtmComboVisibility(Visibility.Visible);
         }
 
-        // B50: OnCloneModeClick -- Clone radio button event handler. CYC=1.
+        // B50: OnCloneModeClick -- Clone radio button event handler. CYC=2.
         // JS-033: synchronous event handler (RoutedEventHandler) -- async void exemption NOT needed.
-        // JS-021: no lock. Calls SetCopyMode (volatile int write) + SetCloneAtmCache (volatile string write).
+        // JS-021: no lock. Calls SetCopyMode (volatile int) + SetCloneAtmObjectCache (volatile ref) + SetCloneAtmCache (volatile string).
+        // HOTFIX-B66-ATM-OBJ: capture ChartTrader.AtmStrategy OBJECT at click time (not .Name string).
+        // .Name returns "AtmStrategy" (class name), not the template name. Object overload of
+        // StartAtmStrategy(atm, order) is the correct path confirmed by NT8 community forum topic 5133.
         private void OnCloneModeClick(object sender, RoutedEventArgs e)
         {
             CopyEngine.Instance.SetCopyMode(CopyMode.Clone);
-            string tpl = GetLeaderAtmTemplateName(_currentChart);
+            // Capture live AtmStrategy object from ChartTrader -- must be done on UI thread (we are).
+            NinjaTrader.NinjaScript.AtmStrategy atmObj = null;
+            if (_currentChart != null)                                           // branch (1)
+            {
+                var ct = TradeCopierAddOn.FindVisualChild<ChartTrader>(_currentChart);
+                atmObj = ct?.AtmStrategy;
+            }
+            CopyEngine.Instance.SetCloneAtmObjectCache(atmObj);
+            string tpl = GetLeaderAtmTemplateName(_currentChart);                // string for display only
             CopyEngine.Instance.SetCloneAtmCache(tpl);
             UpdateAtmComboVisibility(Visibility.Collapsed);
         }
@@ -2176,9 +2207,17 @@ namespace PropTraderTools
         // Internal static for testability (T_B43_04 calls with null -- no WPF instantiation required).
         // NT8-008: Chart.ChartControl does not exist -- use FindVisualChild<ChartTrader> instead.
         // NT8-041: Reflection on ChartControl.Charts fails -- visual tree walk only.
-        // ATM ComboBox: index 2 in ChartTrader (index 0 = Instrument, index 1 = Account per B18).
+        // HOTFIX-B66-ATM-TPL (v2): ChartTrader.AtmStrategy is a direct property (confirmed community
+        //   NT8 forum: ChartControl.OwnerChart.ChartTrader.AtmStrategy, topic 5133 + 6060).
+        //   Primary: ct.AtmStrategy?.Name -- zero child-walk, no index fragility.
+        //   Class-name guard: if .Name == "AtmStrategy" (NT8 internal class, no template staged),
+        //   fall through to Fallback-1 selector. Observed 2026-08-18 session.
+        //   Fallback-1: FindVisualChild<AtmStrategySelector> (in case CT build differs).
+        //   Fallback-2: FindVisualChildByIndex<ComboBox>(ct, 2) (legacy, pre-B66).
         // Returns string.Empty on any null/exception -- NEVER throws, NEVER returns null.
-        // CYC=4: (1) chart null, (2) ChartTrader null, (3) ComboBox found/not, (4) catch.
+        // CYC=7: (1) chart null, (2) ChartTrader null, (3) direct AtmStrategy path,
+        //        (4) class-name guard, (5) class-name guard branch,
+        //        (6) AtmStrategySelector fallback, (7) catch. ComboBox leg is a sub-branch of (6).
         internal static string GetLeaderAtmTemplateName(Chart currentChart)
         {
             if (currentChart == null) return string.Empty;                   // branch 1 -- null guard
@@ -2186,11 +2225,27 @@ namespace PropTraderTools
             {
                 var ct = TradeCopierAddOn.FindVisualChild<ChartTrader>(currentChart);
                 if (ct == null) return string.Empty;                         // branch 2 -- null guard
+                // Primary: ChartTrader.AtmStrategy direct property (no child walk).
+                // null when user has "None" selected -- which is correct: return empty.
+                if (ct.AtmStrategy != null)                                  // branch 3 -- primary path
+                {
+                    var n = ct.AtmStrategy.Name ?? string.Empty;
+                    // B76 HOTFIX-B76-ATM-TPL-CLASSNAME: "AtmStrategy" is the NT8 class name returned when
+                    // no template is staged on ChartTrader -- not a user template name.
+                    // Observed live 2026-08-18: [PTT-CLONE] SetCloneAtmCache: 'AtmStrategy' (empty=False).
+                    // Fall through to AtmStrategySelector fallback to get the real template name.
+                    if (n.Length > 0 && n != "AtmStrategy")                 // branch 4 -- class-name guard
+                        return n;
+                }
+                // Fallback-1: AtmStrategySelector by type (covers non-standard ChartTrader builds).
+                var sel = TradeCopierAddOn.FindVisualChild<NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector>(ct);
+                if (sel?.SelectedAtmStrategy != null)                        // branch 6 -- fallback-1
+                    return sel.SelectedAtmStrategy.Name ?? string.Empty;
+                // Fallback-2: original index-2 ComboBox (pre-B66 legacy path).
                 var atmCb = TradeCopierAddOn.FindVisualChildByIndex<ComboBox>(ct, 2);
-                if (atmCb == null) return string.Empty;                      // branch 3 -- not found
-                return atmCb.SelectedItem as string ?? string.Empty;
+                return atmCb?.SelectedItem as string ?? string.Empty;
             }
-            catch { return string.Empty; }                                   // branch 4 -- API exception
+            catch { return string.Empty; }                                   // branch 7 -- API exception
         }
 
         // B43 T1: Walks the visual tree UPWARD from child, returning the DataContext of the first
