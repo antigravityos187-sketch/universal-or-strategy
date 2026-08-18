@@ -93,6 +93,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | B73-LaneB | UI logic | TradeCopierPanel.cs | 15 | 33 [Fact] | FINAL_PASS |
 | B74-LaneC | Feature files | PttGlobalQuickExit.cs + PttQuickExit.cs + PttGlobalBreakEven.cs | 5 | 22 [Fact] | FINAL_PASS |
 | B75-LaneB | UI logic | TradeCopierPanel.cs | 3 | 10 [Fact] | FINAL_PASS |
+| B75-LaneA | Clone/copy hotfixes | CopyEngine.cs | 12 hotfixes + 2 CYC refactors | 60 [Fact] | FINAL_PASS |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
@@ -1853,7 +1854,7 @@ any value used pre-recompile. No collision possible within a single OS session.
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `TryDispatchLeaderFlat` (~line 1323)
-**Status**: APPLIED + SYNCED — awaiting live test
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 **Deferred item closed**: DW-B63-FLATTEN-MULTWAVE-01
 
 ### Bug
@@ -1918,7 +1919,7 @@ The B65 DW-B65-01 native-exit bypass (`IsNativeExitName` at gate 3) is unaffecte
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `OnOrderUpdate` -- B56 Cancelled block (~line 811)
-**Status**: APPLIED + SYNCED -- awaiting live test
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 **Fixes**: Follower PTT-Copy entry order disappears when leader gets filled
 
 ### Bug
@@ -1968,7 +1969,7 @@ cancels (Name="Entry", Name="PTT-Copy", etc.) reach CancelOneAccount.
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `TryDispatchLeaderFlat` (~line 1338)
-**Status**: APPLIED + SYNCED -- awaiting live test
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 **Fixes**: Follower PTT-Copy entry order cancelled immediately after leader Entry fills
 
 ### Bug
@@ -2018,7 +2019,7 @@ does not depend on position state.
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `OnOrderUpdate` -- Gate C outer condition (~line 851)
-**Status**: APPLIED + SYNCED -- awaiting live test
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 **Fixes**: Follower PTT-Copy entry order cancelled by HandleEntryChange when leader Entry fills mid-auto-chase
 
 ### Bug
@@ -2176,7 +2177,7 @@ Added gate in `OnOrderUpdate`: when leader order `Name == "Entry"` and state is
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Methods**: `OnOrderUpdate` (pre-Gate-1 block) + new `ReplaceFollowerCopyOnAtmCancel`
-**Status**: APPLIED -- awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 ### Bug
 After a leader entry fills, NT8 ATM bracket-arming sweep cancels all PTT-Copy Limit orders
@@ -2227,7 +2228,7 @@ acceptable for hotfix; pipeline block should add resubmit-count guard (_copyRepl
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Methods**: `IsExitSignalName` + `DispatchCopy` + `ReplaceFollowerCopyOnAtmCancel` + new `SendCopyWithAtm`
-**Status**: APPLIED -- awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 ### Bug
 In Clone mode, follower entry order was placed as a bare `"PTT-Copy"` Limit via `SendCopy`.
@@ -2303,7 +2304,7 @@ the live rule. Only fires when `_instrument != null && _leaderAccount != null &&
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `IsExitSignalName`
-**Status**: APPLIED -- awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 ### Bug
 HOTFIX-B66-NATIVE-ATM added `if (name == "Entry") return true` to `IsExitSignalName`.
@@ -2338,7 +2339,7 @@ The guard was unnecessary and was silently blocking all copy dispatch.
 **Date**: 2026-08-17 (live trading session — post-test diagnosis)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Methods**: `ReplaceFollowerCopyOnAtmCancel` (guard added) + new `HasWorkingPttCopy`
-**Status**: APPLIED + SYNCED — awaiting live test
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 ### Bug
 `ReplaceFollowerCopyOnAtmCancel` fired on every entry-drag cancel (auto-chase), not just
@@ -2420,7 +2421,7 @@ private bool HasWorkingPttCopy(Account acc, Instrument instrument)
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Methods**: `FindFollowerEntryOrder` (name guard widened) + `SetCloneAtmCache` + `GetCloneAtmMode` (diagnostics)
-**Status**: APPLIED + SYNCED — awaiting live test
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 ### Bug 1: Clone mode follower entry drag never propagated (HOTFIX-CLONE-DRAG)
 `HandleEntryChange` -> `FindFollowerEntryOrder` had `order.Name == "PTT-Copy"` hardcoded.

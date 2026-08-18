@@ -80,7 +80,16 @@ namespace PropTraderTools
         public sealed class Named    : FollowerAtmMode
         {
             public string TemplateName { get; }
-            public Named(string templateName) { TemplateName = templateName; }
+            // HOTFIX-B66-ATM-OBJ: AtmObject carries the live ChartTrader.AtmStrategy instance.
+            // When non-null, SendCopyWithAtm uses StartAtmStrategy(atm, order) object overload
+            // instead of StartAtmStrategy(string, order) -- avoids reading .Name (returns class name).
+            public NinjaTrader.NinjaScript.AtmStrategy AtmObject { get; }
+            public Named(string templateName) { TemplateName = templateName; AtmObject = null; }
+            public Named(string templateName, NinjaTrader.NinjaScript.AtmStrategy atmObj)
+            {
+                TemplateName = templateName;
+                AtmObject    = atmObj;
+            }
         }
     }
     // B8: SendCopy switch + UI dropdown wired in T2.
@@ -101,10 +110,14 @@ namespace PropTraderTools
         private volatile AtrSizingEngine _atrEngine  = null;    // write/read on UI thread only
         // B9 T3 -- Mirror mode (JS-023: volatile int backing for CopyMode enum)
         private volatile int _copyModeValue = 0;   // 0=Signal (default), 1=Mirror
-        // B50 -- _cloneAtmCache: volatile string holds ATM template name captured at Clone mode activation.
+        // B50 -- _cloneAtmCache: volatile string holds ATM template name for display/logging only.
         // volatile string: reference-type writes are atomic on CLR 4.0+ (JS-023 compliant).
         // NT8-003: volatile double/float BANNED -- string is safe.
         private volatile string _cloneAtmCache = string.Empty;
+        // HOTFIX-B66-ATM-OBJ: volatile reference to live ChartTrader.AtmStrategy object.
+        // Captured at Clone mode click; used in StartAtmStrategy(atm, order) object overload.
+        // volatile object reference write/read: atomic on CLR 4.0+ (JS-023 compliant).
+        private volatile NinjaTrader.NinjaScript.AtmStrategy _cloneAtmObject = null;
         // B39 -- _globalBe: singleton reference to shared Global BE execution engine.
         // Lazily initialized; Panel and Window read via GlobalBe property (UI thread only).
         // JS-023: volatile null-check safe for singleton reads on CLR 4.0+.
@@ -414,22 +427,38 @@ namespace PropTraderTools
         // JS-021: no lock. JS-002: void, no return null.
         public void RelayCancel(CancelEventArgs e) => CancelPendingEntries(e.Instrument);
 
-        // B50 -- SetCloneAtmCache: CYC=1. Stores ATM template name for Clone mode dispatch.
-        // Called from TradeCopierPanel.OnCloneModeClick after reading leader's current ATM template.
+        // B50 -- SetCloneAtmCache: CYC=1. Stores ATM template name string for display/logging only.
+        // Called from TradeCopierPanel.OnCloneModeClick alongside SetCloneAtmObjectCache.
         // JS-023: volatile string write is atomic.
         internal void SetCloneAtmCache(string value)
         {
             _cloneAtmCache = value ?? string.Empty;
+            NinjaTrader.Code.Output.Process("[PTT-CLONE] SetCloneAtmCache: '" + _cloneAtmCache + "' (empty=" + (_cloneAtmCache.Length == 0) + ")", PrintTo.OutputTab1);
         }
 
-        // B50 -- GetCloneAtmMode: CYC=2. Returns Named(cache) if cache non-empty, else Inherit.
-        // Called by ResolveAtmMode when CopyMode == Clone.
+        // HOTFIX-B66-ATM-OBJ: SetCloneAtmObjectCache -- stores live AtmStrategy object for Clone dispatch.
+        // Called from TradeCopierPanel.OnCloneModeClick after FindVisualChild<ChartTrader>.AtmStrategy.
+        // JS-023: volatile reference write is atomic on CLR 4.0+.
+        // CYC=1. JS-001: no throw. JS-002: null is valid (means None selected).
+        internal void SetCloneAtmObjectCache(NinjaTrader.NinjaScript.AtmStrategy atmObj)
+        {
+            _cloneAtmObject = atmObj;
+            NinjaTrader.Code.Output.Process("[PTT-CLONE] SetCloneAtmObjectCache: " + (atmObj == null ? "null" : "SET"), PrintTo.OutputTab1);
+        }
+
+        // B50 -- GetCloneAtmMode: CYC=2. Returns Named(obj) if object cached, Named(string) if string only, else Inherit.
+        // Primary: use _cloneAtmObject (live AtmStrategy) so StartAtmStrategy(atm,order) overload is used.
+        // Fallback: _cloneAtmCache string (for non-Clone-via-ChartTrader scenarios).
         // JS-002: never returns null -- returns Inherit as fallback.
         internal FollowerAtmMode GetCloneAtmMode()
         {
+            var atmObj = _cloneAtmObject;
+            if (atmObj != null)                         // branch (1) -- preferred: object overload
+                return new FollowerAtmMode.Named(_cloneAtmCache, atmObj);
             var cache = _cloneAtmCache;
-            if (cache != null && cache.Length > 0)  // branch (1)
+            if (cache != null && cache.Length > 0)      // branch (2) -- fallback: string overload
                 return new FollowerAtmMode.Named(cache);
+            NinjaTrader.Code.Output.Process("[PTT-CLONE] GetCloneAtmMode: no cache -- Inherit fallback", PrintTo.OutputTab1);
             return new FollowerAtmMode.Inherit();
         }
 
@@ -443,6 +472,23 @@ namespace PropTraderTools
                 if (seen.Add(r.Instrument))
                     yield return r.Instrument;
         }
+
+        // HOTFIX-B67-CHECKBOX-RESTORE: returns saved follower account names for a given instrument+master.
+        // Called from TradeCopierPanel.OnLoaded to restore IsSelected checkboxes after NT8 restart.
+        // CYC=2: foreach rules(1) + foreach followers(2). JS-021: no lock. JS-002: returns empty set not null.
+        internal HashSet<string> GetSavedFollowerNames(string instrument, string masterName)
+        {
+            var result = new HashSet<string>();
+            foreach (var rule in _rules)
+            {
+                if (rule.Instrument != instrument || rule.MasterAccount?.Name != masterName) continue;
+                foreach (var f in rule.FollowerAccounts)
+                    if (f?.Name != null) result.Add(f.Name);
+            }
+            return result;
+        }
+
+
 
         // ── B56 BUILD-FIX stubs (pre-existing callers referenced these before they were added) ──
 
@@ -480,6 +526,30 @@ namespace PropTraderTools
                 (name.StartsWith("Stop",   StringComparison.Ordinal) && name.Length > 4 && char.IsDigit(name[4]))
              || (name.StartsWith("Target", StringComparison.Ordinal) && name.Length > 6 && char.IsDigit(name[6]))
             );
+
+        // IsBeDisarmCandidate: CYC=4. Returns true when order is a PTT-BE-Stop fill on a non-null instrument.
+        // Called by TryFireFollowerBeDisarm to guard the leader-check loop.
+        // JS-001: no throw. JS-002: returns bool. JS-021: no lock. TESTABILITY: internal static.
+        internal static bool IsBeDisarmCandidate(Order order)
+        {
+            if (order == null) return false;                                                           // (1)
+            if (order.OrderState != OrderState.Filled) return false;                                  // (2)
+            if (order.Name == null || !order.Name.StartsWith("PTT-BE-Stop", StringComparison.Ordinal)) return false; // (3)
+            return order.Instrument?.FullName != null;                                                 // (4)
+        }
+
+        // IsPttEntryOrderCancelTrigger: CYC=3. Returns true when a follower entry cancel should trigger re-place.
+        // Matches HOTFIX-B66-COPY-REPLACE + HOTFIX-B66-NATIVE-ATM: "PTT-Copy" or "Entry" + Cancelled + LimitPrice>0.
+        // Called from pre-Gate-1 block in OnOrderUpdate.
+        // JS-001: no throw. JS-002: returns bool (never null). JS-021: no lock. ASCII-only.
+        // TESTABILITY: internal static, Order parameter, no NT8 runtime deps beyond field reads.
+        internal static bool IsPttEntryOrderCancelTrigger(Order order)
+        {
+            if (order == null) return false;                                                               // (1)
+            if (order.OrderState != OrderState.Cancelled) return false;                                    // (2)
+            if (order.Name != "PTT-Copy" && order.Name != "Entry") return false;                          // (3)
+            return order.LimitPrice > 0 && order.Instrument?.FullName != null;
+        }
 
         // IsQxCancelCandidate: returns true if order should be cancelled by CancelQxBrackets.
         // Covers: ATM bracket names (via IsAtmBracketName), PTT-QX-* prefix, PTT-BE-* prefix,
@@ -738,66 +808,34 @@ namespace PropTraderTools
                 acc.OrderUpdate -= OnOrderUpdate;
         }
 
-        // --- Hot path: restructured CYC=7 (B7-F0) ---
+        // --- Hot path: CYC=8 (B75-LaneA second pass). All sub-blocks extracted to helpers. ---
         private void OnOrderUpdate(object sender, OrderEventArgs e)
         {
             // B62: evict dedup on terminal states so orderId is not permanently blocked.
             EvictDedup(e.Order.OrderId.ToString(), e.Order.OrderState);
 
-            // HOTFIX-FLAT-DISARM-FOLLOWER: fire PositionStateChanged when a PTT-BE bracket on a
-            // FOLLOWER account fills and closes that account's position.
-            // Root cause: Gate 2 only passes leader orders, so follower PTT-BE-Stop fills never
-            // reached TryFirePositionState. Panel's _beState stayed Armed after follower BE fires.
-            // This path is narrow: only PTT-BE-Stop-* Filled events on accounts that are not
-            // copy-rule masters. TryFirePositionState already handles the leader side.
-            // CYC cost: +1 (single if, no extra loop). JS-021: no lock. JS-002: no null return.
-            if (e.Order != null
-                && e.Order.OrderState == OrderState.Filled
-                && e.Order.Name != null
-                && e.Order.Name.StartsWith("PTT-BE-Stop")                      // HOTFIX-FLAT-DISARM-FOLLOWER
-                && e.Order.Instrument?.FullName != null)
-            {
-                bool isLeader = false;
-                foreach (var r in _rules)
-                {
-                    if (e.Order.Account.Name == r.MasterAccount?.Name) { isLeader = true; break; }
-                }
-                if (!isLeader)
-                {
-                    // Follower PTT-BE stop filled -- fire position state so panel resets BE visual.
-                    bool hasPos     = HasOpenPosition(e.Order.Account, e.Order.Instrument);
-                    bool hasEntries = HasWorkingEntries(e.Order.Account, e.Order.Instrument);
-                    PositionStateChanged?.Invoke(
-                        e.Order.Instrument.FullName,
-                        new PositionState(hasPos, hasEntries));
-                }
-            }
+            // HOTFIX-FLAT-DISARM-FOLLOWER: extracted to TryFireFollowerBeDisarm (CYC=8).
+            // Fires PositionStateChanged when a follower PTT-BE-Stop fills. JS-021: no lock.
+            TryFireFollowerBeDisarm(e);
+
+            // HOTFIX-B66-COPY-REPLACE / HOTFIX-B66-NATIVE-ATM: re-place follower entry when NT8-ATM
+            // cancel sweep wipes it during bracket arming. Predicate logic in IsPttEntryOrderCancelTrigger.
+            if (IsPttEntryOrderCancelTrigger(e.Order))
+                ReplaceFollowerCopyOnAtmCancel(e.Order);
 
             // Gate 1: enabled check
             if (!_isCopyEnabled)
                 return;
 
-            // Gate 2: find matching rule -- instrument AND master account must match
-            CopyRule? matchedRule = null;
-            foreach (var rule in _rules)
-            {
-                if (e.Order.Instrument.FullName == rule.Instrument && e.Order.Account.Name == rule.MasterAccount?.Name)
-                {
-                    matchedRule = rule;
-                    break;
-                }
-            }
+            // Gate 2: find matching rule -- instrument AND master account must match.
+            // Extracted to FindMatchingRule (CYC=3).
+            CopyRule? matchedRule = FindMatchingRule(e.Order);
 
-            if (matchedRule == null)
+            // Gate 2 + 2.5: combined null/disabled check (single McCabe point).
+            if (matchedRule == null || !matchedRule.Value.Enabled)
                 return;
 
-            // Gate 2.5: per-rule enable check
-            if (!matchedRule.Value.Enabled)
-                return;
-
-            // BUG-BE-RESET fix: fire position state ONLY for leader account+instrument orders
-            // (moved from pre-Gate 1 to post-Gate 2.5 so follower bracket fills don't spam
-            // PositionStateChanged with hasPos=False and reset the BE button to Idle).
+            // BUG-BE-RESET fix: fire position state ONLY for leader account+instrument orders.
             TryFirePositionState(e);
 
             // B9 T3 -- Mirror mode relay (inserted after Gate 2.5, before Gate B)
@@ -805,18 +843,8 @@ namespace PropTraderTools
                 MirrorOrderUpdate(e.Order, matchedRule.Value);
 
             // B56 T1: propagate leader cancel to follower entry orders.
-            // Fires when leader order is cancelled -- cancels all Initialized/Working
-            // follower entry orders for this instrument via CancelOneAccount.
-            // Placed BEFORE Gate B so bracket orders are not affected (they have their own path).
-            if (e.Order.OrderState == OrderState.Cancelled)
-            {
-                foreach (var acc in matchedRule.Value.FollowerAccounts)
-                {
-                    if (acc == null) continue;
-                    CancelOneAccount(acc, e.Order.Instrument);
-                }
-                return;
-            }
+            // Extracted to TryCancelFollowerEntries (CYC=4). Includes HOTFIX-B63-COPY-CANCEL-01 guard.
+            if (TryCancelFollowerEntries(e.Order, matchedRule.Value)) return;
 
             // DW-B60-01: leader went flat -- propagate close to followers
             if (TryDispatchLeaderFlat(
@@ -824,39 +852,110 @@ namespace PropTraderTools
                     matchedRule.Value,
                     IsFollowerAccount, HasOpenPosition, FlattenOneAccount)) return;
 
-            // Gate B: bracket drag detection -- divert to HandleBracketChange path
-            if (IsWorkingBracket(e.Order))
-            {
-                if (e.Order.FromEntrySignal != null)
-                    PopulateOrderMap(e.Order.FromEntrySignal, e.Order.Account);
-                HandleBracketChange(e.Order, matchedRule.Value);
-                return;
-            }
-
-            // Gate C (B62/B66-LaneC): entry drag detection -- same orderId + new price = leader dragged.
-            // Fires when state is Accepted or Working (the two states that carry updated price post-drag).
-            // Widened in B66-LaneC to accept StopLimit in addition to Limit (DW-B64-01 fix).
-            // NT8: StopLimit.LimitPrice==0 always; drag price lives in StopPrice -- use GetOrderPrice().
-            // _dedupCache.TryGetValue: orderId was previously dispatched; compare stored price.
-            if ((e.Order.OrderType == OrderType.Limit || e.Order.OrderType == OrderType.StopLimit)
-                && (e.Order.OrderState == OrderState.Accepted || e.Order.OrderState == OrderState.Working))
-            {
-                double currentPrice = GetOrderPrice(e.Order);
-                if (_dedupCache.TryGetValue(e.Order.OrderId.ToString(), out double storedPrice)
-                    && Math.Abs(currentPrice - storedPrice) >= (e.Order.Instrument?.MasterInstrument?.TickSize ?? 0.01))
-                {
-                    // DW-B64-01 fix: re-insert new price BEFORE HandleEntryChange removes old key.
-                    // HandleEntryChange calls TryRemove(orderId) -- without this line, the second
-                    // state transition (Working after Accepted) sees no cache entry and falls through
-                    // to DispatchCopy, placing a duplicate PTT-Copy order on the follower.
-                    _dedupCache[e.Order.OrderId.ToString()] = currentPrice;
-                    HandleEntryChange(e.Order, matchedRule.Value);
-                    return;
-                }
-            }
+            // Gate B+C: bracket drag then entry drag -- consolidated into TryHandleDrag (one branch here).
+            if (TryHandleDrag(e.Order, matchedRule.Value)) return;
 
             // No bracket, no drag -- normal copy dispatch
             DispatchCopy(e.Order, matchedRule.Value);
+        }
+
+        // TryFireFollowerBeDisarm: CYC=4. Fires PositionStateChanged when a follower PTT-BE-Stop fills.
+        // Called from pre-Gate-1 in OnOrderUpdate. HOTFIX-FLAT-DISARM-FOLLOWER.
+        // Guards delegated to IsBeDisarmCandidate (CYC=4) to keep total CYC<=8 per method.
+        // JS-021: no lock. JS-001: no throw. JS-002: void.
+        private void TryFireFollowerBeDisarm(OrderEventArgs e)
+        {
+            if (!IsBeDisarmCandidate(e.Order)) return;                       // (1)
+
+            bool isLeader = false;
+            foreach (var r in _rules)                                        // (2)
+            {
+                if (e.Order.Account.Name == r.MasterAccount?.Name) { isLeader = true; break; } // (3)
+            }
+            if (!isLeader)                                                   // (4)
+            {
+                // Follower PTT-BE stop filled -- fire position state so panel resets BE visual.
+                bool hasPos = HasOpenPosition(e.Order.Account, e.Order.Instrument);
+                bool hasEntries = HasWorkingEntries(e.Order.Account, e.Order.Instrument);
+                PositionStateChanged?.Invoke(
+                    e.Order.Instrument.FullName,
+                    new PositionState(hasPos, hasEntries));
+            }
+        }
+
+        // FindMatchingRule: CYC=3. Finds the CopyRule whose Instrument and MasterAccount match the order.
+        // Returns null if no rule matches. Called from Gate 2 in OnOrderUpdate.
+        // JS-021: no lock. JS-002: null return is Option-style (caller guards immediately).
+        private CopyRule? FindMatchingRule(Order order)
+        {
+            foreach (var rule in _rules)
+            {
+                if (order.Instrument.FullName == rule.Instrument
+                    && order.Account.Name == rule.MasterAccount?.Name)
+                    return rule;
+            }
+            return null;
+        }
+
+        // TryCancelFollowerEntries: CYC=4. Propagates leader cancel to all follower entry orders.
+        // Returns true if Cancelled state was handled (caller should return immediately).
+        // HOTFIX-B63-COPY-CANCEL-01: ATM bracket cancels are skipped via IsAtmBracketName guard.
+        // JS-021: no lock. JS-001: no throw.
+        private bool TryCancelFollowerEntries(Order order, CopyRule rule)
+        {
+            if (order.OrderState != OrderState.Cancelled) return false;
+            if (IsAtmBracketName(order.Name)) return true; // HOTFIX-B63-COPY-CANCEL-01
+            foreach (var acc in rule.FollowerAccounts)
+            {
+                if (acc == null) continue;
+                CancelOneAccount(acc, order.Instrument);
+            }
+            return true;
+        }
+
+        // TryHandleBracketDrag: CYC=3. Gate B bracket drag detection -- diverts to HandleBracketChange.
+        // Returns true if handled (caller should return immediately).
+        // JS-021: no lock. JS-001: no throw.
+        private bool TryHandleBracketDrag(Order order, CopyRule rule)
+        {
+            if (!IsWorkingBracket(order)) return false;
+            if (order.FromEntrySignal != null)
+                PopulateOrderMap(order.FromEntrySignal, order.Account);
+            HandleBracketChange(order, rule);
+            return true;
+        }
+
+        // TryHandleDrag: CYC=3. Combines bracket drag (Gate B) and entry drag (Gate C) into one dispatch.
+        // Returns true if either gate consumed the event (caller should return).
+        // Consolidates the two consecutive if-dispatch calls in OnOrderUpdate to one branch.
+        // JS-021: no lock. JS-001: no throw. JS-002: returns bool.
+        private bool TryHandleDrag(Order order, CopyRule rule)
+        {
+            if (TryHandleBracketDrag(order, rule)) return true;   // (1)
+            if (TryHandleEntryDrag(order, rule)) return true;     // (2)
+            return false;
+        }
+
+        // TryHandleEntryDrag: CYC=7. Gate C entry drag detection -- same orderId + new price = dragged.
+        // Returns true if handled (caller should return immediately).
+        // B62/B66-LaneC: accepts Limit and StopLimit. HOTFIX-B65-GATE-C-FILL-GUARD-01: Filled==0 guard.
+        // DW-B64-01: re-inserts new price before HandleEntryChange removes old key.
+        // JS-021: no lock. JS-001: no throw.
+        private bool TryHandleEntryDrag(Order order, CopyRule rule)
+        {
+            if (order.OrderType != OrderType.Limit && order.OrderType != OrderType.StopLimit) return false;
+            if (order.OrderState != OrderState.Accepted && order.OrderState != OrderState.Working) return false;
+            if (order.Filled != 0) return false; // HOTFIX-B65-GATE-C-FILL-GUARD-01
+            double currentPrice = GetOrderPrice(order);
+            if (!_dedupCache.TryGetValue(order.OrderId.ToString(), out double storedPrice)) return false;
+            if (Math.Abs(currentPrice - storedPrice) < (order.Instrument?.MasterInstrument?.TickSize ?? 0.01)) return false;
+            // DW-B64-01 fix: re-insert new price BEFORE HandleEntryChange removes old key.
+            // HandleEntryChange calls TryRemove(orderId) -- without this line the second state
+            // transition (Working after Accepted) sees no cache entry and falls through to
+            // DispatchCopy, placing a duplicate PTT-Copy order on the follower.
+            _dedupCache[order.OrderId.ToString()] = currentPrice;
+            HandleEntryChange(order, rule);
+            return true;
         }
 
         // --- B9 T3: Mirror mode methods ---
@@ -925,7 +1024,10 @@ namespace PropTraderTools
 
         // B59 T1: IsExitSignalName -- CYC=6. Returns true for names that must not trigger follower copy.
         // Covers: (1) PTT- own signals; (2) NT8 Close button; (3) NT8 Flatten; (4) NT8 Rev reversal;
-        //         (5) NT8 "Exit..." prefix family. JS-001: no throw. JS-002: returns bool.
+        //         (5) NT8 "Exit..." prefix family.
+        // "Entry" is NOT blocked -- Gate 2 already limits dispatch to master account only.
+        // Follower "Entry" orders (SendCopyWithAtm) never pass Gate 2, so no cascade is possible.
+        // JS-001: no throw. JS-002: returns bool.
         // TESTABILITY: internal static with string param -- directly testable without NT8 runtime.
         internal static bool IsExitSignalName(string name)
         {
@@ -935,6 +1037,8 @@ namespace PropTraderTools
             if (name == "Flatten")                                         return true;
             if (name.StartsWith("Rev", StringComparison.Ordinal))         return true;
             if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;
+            // NOTE: "Entry" is intentionally NOT blocked here.
+            // Gate 2 already filters to master account only -- follower "Entry" orders never reach DispatchCopy.
             return false;
         }
 
@@ -955,6 +1059,18 @@ namespace PropTraderTools
             if (name == "Flatten")                                         return true;
             if (name.StartsWith("Rev",  StringComparison.Ordinal))        return true;
             if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;
+            return false;
+        }
+
+        // IsNonFlatDispatchName: CYC=2. Returns true when orderName must NOT trigger follower flatten.
+        // Combines HOTFIX-B63-FLATTEN-01 (PTT- prefix) and HOTFIX-B64-ENTRY-FLATTEN-01 ("Entry").
+        // Both represent orders that mean "open a position" or "manage exit" - never "go flat now".
+        // JS-001: no throw. JS-002: returns bool (never null). JS-021: no lock. ASCII-only.
+        // TESTABILITY: internal static, string parameter, no NT8 runtime deps.
+        internal static bool IsNonFlatDispatchName(string orderName)
+        {
+            if (orderName != null && orderName.StartsWith("PTT-", StringComparison.Ordinal)) return true; // (1)
+            if (orderName == "Entry") return true;                                                          // (2)
             return false;
         }
 
@@ -1011,7 +1127,10 @@ namespace PropTraderTools
                     baseSignal.LimitPrice,
                     baseSignal.OrderId);
                 var mode = ResolveAtmMode(rule, acc.Name);
-                SendCopy(acc, order.Instrument, in scaledSignal, mode);
+                if (mode is FollowerAtmMode.Named namedAtm)               // HOTFIX-B66-NATIVE-ATM: Named mode -> native ATM
+                    SendCopyWithAtm(acc, order.Instrument, in scaledSignal, namedAtm);
+                else
+                    SendCopy(acc, order.Instrument, in scaledSignal, mode);
                 idx++;
             }
         }
@@ -1174,6 +1293,7 @@ namespace PropTraderTools
 
         // CYC=3: foreach (1), instrument guard (2), state+type+name compound guard (3).
         // B66-LaneC: widened state to Working||Accepted, type to Limit||StopLimit (DW-B64-01).
+        // HOTFIX-CLONE-DRAG: widened name to "PTT-Copy" OR "Entry" (Clone mode uses "Entry").
         // NT8: broker-simulated StopLimit may stay in Accepted (NT8_FULL_REFERENCE.md line 1005).
         // JS-002: returns null when not found -- callers must null-guard.
         private static Order? FindFollowerEntryOrder(Account follower, Instrument instrument)
@@ -1184,7 +1304,7 @@ namespace PropTraderTools
                     continue;
                 if ((order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted) // (3)
                     && (order.OrderType == OrderType.Limit || order.OrderType == OrderType.StopLimit)
-                    && order.Name == "PTT-Copy")
+                    && (order.Name == "PTT-Copy" || order.Name == "Entry"))
                     return order;
             }
             return null;
@@ -1303,6 +1423,59 @@ namespace PropTraderTools
             PositionStateChanged?.Invoke(instr, new PositionState(hasPos, hasEntries));
         }
 
+
+        // HOTFIX-B66-COPY-REPLACE / HOTFIX-B66-NATIVE-ATM: re-places a cancelled follower entry order.
+        // Called from pre-Gate-1 block when follower "PTT-Copy" or "Entry" is cancelled while leader is long.
+        // Finds the copy rule where cancelledOrder.Account is a follower, verifies the leader
+        // still has an open position (ATM-sweep cancel, not a user-initiated close cancel),
+        // then re-fires SendCopy or SendCopyWithAtm at the same LimitPrice.
+        // Named mode (Clone ATM): uses SendCopyWithAtm so re-placed order arms native ATM brackets.
+        // All other modes: uses SendCopy ("PTT-Copy" bare Limit).
+        // CYC=7: (1) !_isCopyEnabled guard, (2) foreach rules, (3) follower match loop,
+        //        (4) follower found check, (5) hasOpenPosition check, (6) Named-mode branch,
+        //        (7) SendCopyWithAtm vs SendCopy.
+        // JS-021: no lock. JS-001: no throw. JS-002: no return null (void).
+        private void ReplaceFollowerCopyOnAtmCancel(Order cancelledOrder)
+        {
+            if (!_isCopyEnabled) return;                                          // (1)
+            CopyRule? matchedRule = null;
+            int followerIndex = -1;
+            foreach (var rule in _rules)                                          // (2)
+            {
+                if (rule.Instrument != cancelledOrder.Instrument.FullName) continue;
+                for (int i = 0; i < (rule.FollowerAccounts?.Length ?? 0); i++)   // (3)
+                {
+                    if (rule.FollowerAccounts[i]?.Name == cancelledOrder.Account.Name)
+                    {
+                        matchedRule    = rule;
+                        followerIndex  = i;
+                        break;
+                    }
+                }
+                if (matchedRule.HasValue) break;
+            }
+            if (!matchedRule.HasValue || followerIndex < 0) return;              // (4) not a follower order
+            var leader = matchedRule.Value.MasterAccount;
+            if (leader == null) return;
+            if (!HasOpenPosition(leader, cancelledOrder.Instrument)) return;     // (5) leader flat = normal close cancel, skip
+            if (HasWorkingPttCopy(cancelledOrder.Account, cancelledOrder.Instrument)) return; // (6) drag-cancel: replacement already in flight
+            // Leader has open position and no replacement in flight -- this is an ATM-sweep cancel, re-place the entry.
+            int qty  = (int)cancelledOrder.Quantity;  // original qty already includes multiplier
+            var signal = CopySignal.Create(
+                cancelledOrder.OrderAction,
+                OrderType.Limit,
+                qty,
+                cancelledOrder.LimitPrice,
+                cancelledOrder.OrderId.ToString() + "-R");  // "-R" suffix = replacement, avoids dedup collision
+            var mode = ResolveAtmMode(matchedRule.Value, cancelledOrder.Account.Name);
+            if (mode is FollowerAtmMode.Named namedAtm)                          // (7) Named -> native ATM re-place
+                SendCopyWithAtm(cancelledOrder.Account, cancelledOrder.Instrument, in signal, namedAtm); // (8)
+            else
+                SendCopy(cancelledOrder.Account, cancelledOrder.Instrument, in signal, mode);                        // (8)
+            StatusUpdate?.Invoke(cancelledOrder.Account.Name + ": re-placed @ " + cancelledOrder.LimitPrice + " (ATM-sweep replace)");
+        }
+
+
         // CYC=2. Thin wrapper over FindPosition.
         private bool HasOpenPosition(Account acc, Instrument instrument)
         {
@@ -1312,7 +1485,7 @@ namespace PropTraderTools
             return pos.Quantity > 0;
         }
 
-        // B65 T1: TryDispatchLeaderFlat -- CYC=7 (strict McCabe: loop + null guard + 4 early returns + IsNativeExitName branch).
+        // B65 T1: TryDispatchLeaderFlat -- CYC=8 (strict McCabe: loop + null guard + 5 early returns + IsNativeExitName branch).
         // (1) state guard, (2) follower guard, (3) open-position race-safe guard, (4) foreach follower.
         // Guard (3) change: bypass hasOpenPosition when orderName is a native NT8 exit.
         // Rationale: NT8_FULL_REFERENCE.md line 1721 -- position state is not updated until the next
@@ -1329,6 +1502,7 @@ namespace PropTraderTools
         {
             if (state != OrderState.Filled && state != OrderState.Cancelled) return false; // (1)
             if (isFollower(account)) return false;                                           // (2)
+            if (IsNonFlatDispatchName(orderName)) return false;                             // (2.5+2.6) combines HOTFIX-B63-FLATTEN-01 + HOTFIX-B64-ENTRY-FLATTEN-01
             if (!IsNativeExitName(orderName) && hasOpenPosition(account, instrument)) return false; // (3)
             foreach (var acc in rule.FollowerAccounts)                                       // (4)
             {
@@ -1349,6 +1523,26 @@ namespace PropTraderTools
                     continue;
                 if (!IsBracketLeg(order))
                     return true;
+            }
+            return false;
+        }
+
+        // HOTFIX-B66-COPY-REPLACE-FIX: discriminates ATM-sweep cancel from entry-drag cancel.
+        // Entry drag: HandleEntryChange places a new PTT-Copy (Working/Accepted/Submitted) before
+        // this Cancelled event arrives in OnOrderUpdate. ATM-sweep: all follower orders wiped,
+        // nothing is Working/Accepted/Submitted for this account+instrument after the sweep.
+        // CYC=3: foreach(1) + state check(2) + name check(3).
+        // NT8: FullName string compare (reference equality banned -- HOTFIX-BUG-BE-INSTRUMENT-REF).
+        // JS-021: no lock. acc.Orders.ToList() snapshot prevents InvalidOperationException.
+        private bool HasWorkingPttCopy(Account acc, Instrument instrument)
+        {
+            foreach (var order in acc.Orders.ToList())
+            {
+                if (order.Instrument?.FullName != instrument.FullName) continue;
+                if (order.OrderState != OrderState.Working
+                    && order.OrderState != OrderState.Accepted
+                    && order.OrderState != OrderState.Submitted) continue;
+                if (order.Name == "PTT-Copy" || order.Name == "Entry") return true;
             }
             return false;
         }
@@ -1409,6 +1603,48 @@ namespace PropTraderTools
                 return false;
             }
         }
+
+        // HOTFIX-B66-NATIVE-ATM: SendCopyWithAtm -- submits follower entry order with native NT8 ATM.
+        // Called from DispatchCopy (Named mode) and ReplaceFollowerCopyOnAtmCancel (Named mode).
+        // Uses StartAtmStrategy (static, callable from AddOnBase -- confirmed NT8_FULL_REFERENCE.md).
+        // NT8 CONSTRAINT: order name MUST be "Entry" for StartAtmStrategy to arm brackets.
+        // NT8 CONSTRAINT: StartAtmStrategy handles submission -- do NOT call follower.Submit() after.
+        // HOTFIX-B66-ATM-OBJ: AtmObject overload preferred -- passes live object, avoids .Name class-name trap.
+        // CYC=4: (1) try/catch outer, (2) order null guard, (3) AtmObject branch, (4) string branch.
+        // JS-021: no lock. JS-001: catch logs, returns false. JS-002: no return null (void return path).
+        private bool SendCopyWithAtm(Account follower, Instrument instrument, in CopySignal signal, FollowerAtmMode.Named namedMode)
+        {
+            try                                                                    // (1)
+            {
+                var order = follower.CreateOrder(
+                    instrument,
+                    signal.Action,
+                    OrderType.Limit,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    signal.Quantity,
+                    signal.LimitPrice,
+                    0,
+                    string.Empty,
+                    "Entry",                    // NT8: MUST be "Entry" for StartAtmStrategy to arm
+                    DateTime.MaxValue,
+                    (NinjaTrader.Cbi.CustomOrder)null);
+                if (order == null) return false;                                   // (2)
+                if (namedMode.AtmObject != null)                                   // (3) preferred: object overload
+                    NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(namedMode.AtmObject, order);
+                else                                                               // (4) fallback: string overload
+                    NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(namedMode.TemplateName, order);
+                StatusUpdate?.Invoke(follower.Name + ": PTT-ATM entry @ " + signal.LimitPrice + " atm=" + namedMode.TemplateName);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                StatusUpdate?.Invoke("PTT-ATM error: " + ex.Message);
+                return false;
+            }
+        }
+
+
 
         // B8 T2: GetAtmMode -- bounds-safe ATM mode retrieval. CYC=2.
         // Returns Inherit if accountName not found -- never null, never throws (JS-001, JS-002).

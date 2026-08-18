@@ -3650,4 +3650,611 @@ namespace PropTraderTools
 
 
     }
+
+    // B75-LaneA: 60 xUnit tests covering TryDispatchLeaderFlat gates, IsAtmBracketName,
+    // IsNonFlatDispatchName, IsDispatchTriggerState, IsPttEntryOrderCancelTrigger,
+    // HasWorkingPttCopy, IsExitSignalName, IsNativeExitName, GetCloneAtmMode,
+    // SetCloneAtmObjectCache, ParseAtmModeName, AtmModeToString, GetSavedFollowerNames,
+    // IsBeDisarmCandidate.
+    // JS-001: no throw. JS-002: no return null. JS-021: no lock. ASCII-only.
+    // NT8-runtime tests are marked [Fact(Skip="NT8-runtime")].
+    public class CopyEngineB75Tests : IDisposable
+    {
+        private readonly CopyEngine _engine = CopyEngine.Instance;
+
+        public void Dispose() { }
+
+        // Helper: reflect private static TryDispatchLeaderFlat
+        private static System.Reflection.MethodInfo GetTryDispatchLeaderFlat()
+            => typeof(CopyEngine).GetMethod(
+                "TryDispatchLeaderFlat",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        // Helper: invoke TryDispatchLeaderFlat with test doubles
+        private static bool InvokeTryDispatchLeaderFlat(
+            OrderState state,
+            string orderName,
+            Func<Account, bool> isFollower,
+            Func<Account, Instrument, bool> hasOpenPosition,
+            Account[] followers)
+        {
+            var mi = GetTryDispatchLeaderFlat();
+            Assert.NotNull(mi);
+            var rule = CopyRule.Create(
+                instrument: "TEST",
+                master: null,
+                followers: followers ?? new Account[0]);
+            return (bool)mi.Invoke(null, new object[]
+            {
+                null,                                                    // account
+                null,                                                    // instrument
+                state,
+                orderName,
+                rule,
+                isFollower,
+                hasOpenPosition,
+                (Action<Account, Instrument>)((a, i) => { })            // flattenOne no-op
+            });
+        }
+
+        // =================================================================
+        // HOTFIX-B63-FLATTEN-01 -- TryDispatchLeaderFlat gate 2.5 PTT- prefix guard
+        // =================================================================
+
+        [Fact]
+        public void T_B63_01_TryDispatchLeaderFlat_PttQxT2Name_LeaderFlat_ReturnsFalse()
+        {
+            // Gate (2.5/2.6): IsNonFlatDispatchName("PTT-QX-T2") = true -> return false immediately.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                "PTT-QX-T2",
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => false,
+                followers: new Account[0]);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void T_B63_02_TryDispatchLeaderFlat_PttFlattenName_LeaderFlat_ReturnsFalse()
+        {
+            // Gate (2.5/2.6): IsNonFlatDispatchName("PTT-Flatten") = true -> return false.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                "PTT-Flatten",
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => false,
+                followers: new Account[0]);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void T_B63_03_TryDispatchLeaderFlat_PttCopyName_LeaderFlat_ReturnsFalse()
+        {
+            // Gate (2.5/2.6): IsNonFlatDispatchName("PTT-Copy") = true -> return false.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                "PTT-Copy",
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => false,
+                followers: new Account[0]);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void T_B63_04_TryDispatchLeaderFlat_CloseName_LeaderFlat_ReturnsTrue()
+        {
+            // "Close" passes gates (2.5, 2.6, 3) -- IsNativeExitName("Close")=true bypasses
+            // hasOpenPosition gate. Followers array is empty so foreach fires with no-ops,
+            // method returns true.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                "Close",
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => false,
+                followers: new Account[0]);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void T_B63_05_TryDispatchLeaderFlat_CloseName_LeaderHasPosition_ReturnsTrue()
+        {
+            // "Close" is a native exit: gate (3) condition is !IsNativeExitName && hasOpenPosition.
+            // !IsNativeExitName("Close") = false -> gate (3) does NOT fire.
+            // Flatten still proceeds -> returns true even when leader has open position.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                "Close",
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => true,
+                followers: new Account[0]);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void T_B63_06_TryDispatchLeaderFlat_NullName_LeaderFlat_PassesPttGuard()
+        {
+            // null name: IsNonFlatDispatchName(null) = false -> gates 2.5/2.6 pass.
+            // IsNativeExitName(null) = false; hasOpenPosition = false -> gate (3) passes.
+            // Followers empty -> foreach no-ops -> returns true.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                null,
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => false,
+                followers: new Account[0]);
+            Assert.True(result);
+        }
+
+        // =================================================================
+        // HOTFIX-B63-COPY-CANCEL-01 -- IsAtmBracketName ATM bracket guard
+        // =================================================================
+
+        [Fact]
+        public void T_B63C_01_IsAtmBracketName_Stop1_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsAtmBracketName("Stop1"));
+        }
+
+        [Fact]
+        public void T_B63C_02_IsAtmBracketName_Target3_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsAtmBracketName("Target3"));
+        }
+
+        [Fact]
+        public void T_B63C_03_IsAtmBracketName_Entry_ReturnsFalse()
+        {
+            // "Entry" is the ATM entry order, not a bracket leg.
+            Assert.False(CopyEngine.IsAtmBracketName("Entry"));
+        }
+
+        [Fact]
+        public void T_B63C_04_IsAtmBracketName_PttCopy_ReturnsFalse()
+        {
+            Assert.False(CopyEngine.IsAtmBracketName("PTT-Copy"));
+        }
+
+        [Fact]
+        public void T_B63C_05_IsAtmBracketName_Stop10_ReturnsTrue()
+        {
+            // "Stop10": starts with "Stop", length > 4, char[4]='1' is a digit -> true.
+            Assert.True(CopyEngine.IsAtmBracketName("Stop10"));
+        }
+
+        // =================================================================
+        // HOTFIX-B64-ENTRY-FLATTEN-01 -- Gate 2.6 "Entry" guard in TryDispatchLeaderFlat
+        // =================================================================
+
+        [Fact]
+        public void T_B64E_01_TryDispatchLeaderFlat_EntryName_NoPosition_ReturnsFalse()
+        {
+            // IsNonFlatDispatchName("Entry") = true -> return false immediately.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                "Entry",
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => false,
+                followers: new Account[0]);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void T_B64E_02_TryDispatchLeaderFlat_EntryName_OpenPosition_ReturnsFalse()
+        {
+            // IsNonFlatDispatchName("Entry") = true -> return false regardless of position.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                "Entry",
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => true,
+                followers: new Account[0]);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void T_B64E_03_TryDispatchLeaderFlat_CloseName_NoPosition_ReturnsTrue_Regression()
+        {
+            // Regression: "Close" must still work after B64 guard.
+            // Gates (2.5, 2.6, 3) all pass; returns true.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                "Close",
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => false,
+                followers: new Account[0]);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void T_B64E_04_TryDispatchLeaderFlat_CloseName_OpenPosition_Behavior()
+        {
+            // "Close" is native exit -- gate (3) does not fire even with open position.
+            bool result = InvokeTryDispatchLeaderFlat(
+                OrderState.Filled,
+                "Close",
+                isFollower: _ => false,
+                hasOpenPosition: (a, i) => true,
+                followers: new Account[0]);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void T_B64E_05_IsNonFlatDispatchName_Entry_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsNonFlatDispatchName("Entry"));
+        }
+
+        // =================================================================
+        // HOTFIX-B65-GATE-C-FILL-GUARD-01 -- IsDispatchTriggerState
+        // IsDispatchTriggerState(OrderState, OrderType) -- 2 params, no filled arg.
+        // true: Market+Submitted OR Limit+Accepted.
+        // =================================================================
+
+        [Fact]
+        public void T_B65G_01_IsDispatchTriggerState_LimitAccepted_ReturnsTrue()
+        {
+            // Limit + Accepted is the trigger state for AddOn limit orders.
+            Assert.True(CopyEngine.IsDispatchTriggerState(OrderState.Accepted, OrderType.Limit));
+        }
+
+        [Fact]
+        public void T_B65G_02_IsDispatchTriggerState_LimitWorking_ReturnsFalse()
+        {
+            // Limit + Working is not a trigger state (only Accepted triggers for Limit).
+            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Working, OrderType.Limit));
+        }
+
+        [Fact]
+        public void T_B65G_03_IsDispatchTriggerState_MarketSubmitted_ReturnsTrue()
+        {
+            // Market + Submitted is the trigger state for Market orders (GUID-keyed dedup).
+            Assert.True(CopyEngine.IsDispatchTriggerState(OrderState.Submitted, OrderType.Market));
+        }
+
+        [Fact]
+        public void T_B65G_04_IsDispatchTriggerState_MarketAccepted_ReturnsFalse()
+        {
+            // Market + Accepted is NOT a trigger (only Submitted triggers for Market).
+            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Accepted, OrderType.Market));
+        }
+
+        [Fact]
+        public void T_B65G_05_IsNonFlatDispatchName_PttQxT1_ReturnsTrue()
+        {
+            // PTT-prefix check fires for "PTT-QX-T1" (covers former gate 2.5).
+            Assert.True(CopyEngine.IsNonFlatDispatchName("PTT-QX-T1"));
+        }
+
+        // =================================================================
+        // HOTFIX-B66-COPY-REPLACE -- IsPttEntryOrderCancelTrigger + HasWorkingPttCopy
+        // =================================================================
+
+        [Fact]
+        public void T_B66R_01_IsPttEntryOrderCancelTrigger_NullOrder_ReturnsFalse()
+        {
+            // Null guard (1) fires immediately -- no NT8 runtime needed.
+            Assert.False(CopyEngine.IsPttEntryOrderCancelTrigger(null));
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState property")]
+        public void T_B66R_02_IsPttEntryOrderCancelTrigger_NotCancelled_ReturnsFalse()
+        {
+            // order.OrderState = Filled (not Cancelled) -> guard (2) fires -> false.
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument")]
+        public void T_B66R_03_IsPttEntryOrderCancelTrigger_CancelledEntryNoPrice_ReturnsFalse()
+        {
+            // Cancelled + Name="Entry" + LimitPrice=0 -> LimitPrice>0 fails -> false.
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument")]
+        public void T_B66R_04_IsPttEntryOrderCancelTrigger_CancelledPttCopyWithPrice_ReturnsTrue()
+        {
+            // Cancelled + Name="PTT-Copy" + LimitPrice=5050.25 + non-null Instrument -> true.
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument")]
+        public void T_B66R_05_IsPttEntryOrderCancelTrigger_CancelledEntryWithPrice_ReturnsTrue()
+        {
+            // Cancelled + Name="Entry" + LimitPrice=5050.25 + non-null Instrument -> true.
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument")]
+        public void T_B66R_06_IsPttEntryOrderCancelTrigger_CancelledStop1WithPrice_ReturnsFalse()
+        {
+            // Cancelled + Name="Stop1" + LimitPrice>0 -- name guard (3) fires -> false.
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Account with Orders collection")]
+        public void T_B66R_07_HasWorkingPttCopy_NoOrders_ReturnsFalse()
+        {
+            // No Working/Accepted/Submitted PTT-Copy or Entry for the instrument -> false.
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Account with Orders collection")]
+        public void T_B66R_08_HasWorkingPttCopy_WorkingPttCopyExists_ReturnsTrue()
+        {
+            // account.Orders contains Name="PTT-Copy", State=Working, matching instrument -> true.
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Account with Orders collection")]
+        public void T_B66R_09_HasWorkingPttCopy_AcceptedEntryExists_ReturnsTrue()
+        {
+            // account.Orders contains Name="Entry", State=Accepted, matching instrument -> true.
+        }
+
+        // =================================================================
+        // HOTFIX-B66-NATIVE-ATM -- IsExitSignalName
+        // =================================================================
+
+        [Fact]
+        public void T_B66N_01_IsExitSignalName_Entry_ReturnsFalse_B67Regression()
+        {
+            // Primary regression guard: "Entry" must NOT be in IsExitSignalName after HOTFIX-B67.
+            Assert.False(CopyEngine.IsExitSignalName("Entry"));
+        }
+
+        [Fact]
+        public void T_B66N_02_IsExitSignalName_PttCopy_ReturnsTrue()
+        {
+            // "PTT-Copy" starts with "PTT-" -> true.
+            Assert.True(CopyEngine.IsExitSignalName("PTT-Copy"));
+        }
+
+        [Fact]
+        public void T_B66N_03_IsExitSignalName_Close_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsExitSignalName("Close"));
+        }
+
+        [Fact]
+        public void T_B66N_04_IsExitSignalName_Null_ReturnsFalse()
+        {
+            Assert.False(CopyEngine.IsExitSignalName(null));
+        }
+
+        [Fact]
+        public void T_B66N_05_IsExitSignalName_PttQxT1_ReturnsTrue()
+        {
+            // PTT- prefix covers all PTT-owned partial-exit orders.
+            Assert.True(CopyEngine.IsExitSignalName("PTT-QX-T1"));
+        }
+
+        [Fact]
+        public void T_B66N_06_IsExitSignalName_ExitLong_ReturnsTrue()
+        {
+            // "Exit*" prefix family matches NT8 native strategy exit signal names.
+            Assert.True(CopyEngine.IsExitSignalName("ExitLong"));
+        }
+
+        // =================================================================
+        // HOTFIX-B67-ENTRY-UNBLOCK -- "Entry" removed from IsExitSignalName
+        // =================================================================
+
+        [Fact]
+        public void T_B67E_01_IsExitSignalName_Entry_ReturnsFalse_PrimaryGuard()
+        {
+            // HOTFIX-B67 removed "Entry" from IsExitSignalName -- must return false.
+            Assert.False(CopyEngine.IsExitSignalName("Entry"));
+        }
+
+        [Fact]
+        public void T_B67E_02_IsExitSignalName_PttPrefix_ReturnsTrue()
+        {
+            // Bare "PTT-" prefix still matches as a PTT-exit signal.
+            Assert.True(CopyEngine.IsExitSignalName("PTT-"));
+        }
+
+        [Fact]
+        public void T_B67E_03_IsNativeExitName_Entry_ReturnsFalse()
+        {
+            // "Entry" is not a native NT8 exit order name.
+            Assert.False(CopyEngine.IsNativeExitName("Entry"));
+        }
+
+        [Fact]
+        public void T_B67E_04_IsNativeExitName_Close_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsNativeExitName("Close"));
+        }
+
+        [Fact]
+        public void T_B67E_05_IsNativeExitName_Rev_ReturnsTrue()
+        {
+            // "Rev" starts with "Rev" -> true.
+            Assert.True(CopyEngine.IsNativeExitName("Rev"));
+        }
+
+        // =================================================================
+        // HOTFIX-CLONE-DRAG -- GetCloneAtmMode (SetCloneAtmCache + SetCloneAtmObjectCache)
+        // =================================================================
+
+        [Fact(Skip = "NT8-runtime: NinjaTrader.NinjaScript.AtmStrategy requires NT8 host")]
+        public void T_CLONE_01_GetCloneAtmMode_NonNullAtmObject_ReturnsNamedWithAtmObject()
+        {
+            // Arrange: SetCloneAtmObjectCache(non-null AtmStrategy) -> GetCloneAtmMode() returns
+            // Named with AtmObject != null. Requires live NT8 AtmStrategy instance.
+        }
+
+        [Fact]
+        public void T_CLONE_02_GetCloneAtmMode_NullObjectNonEmptyCache_ReturnsNamedString()
+        {
+            // Arrange: _cloneAtmObject = null, _cloneAtmCache = "MES $200 SL6".
+            _engine.SetCloneAtmObjectCache(null);
+            _engine.SetCloneAtmCache("MES $200 SL6");
+
+            FollowerAtmMode mode = _engine.GetCloneAtmMode();
+
+            // Priority 2: string fallback -> Named with TemplateName.
+            Assert.IsType<FollowerAtmMode.Named>(mode);
+            var named = (FollowerAtmMode.Named)mode;
+            Assert.Equal("MES $200 SL6", named.TemplateName);
+            Assert.Null(named.AtmObject);
+
+            // Teardown: reset to empty so other tests get Inherit.
+            _engine.SetCloneAtmCache(string.Empty);
+        }
+
+        [Fact]
+        public void T_CLONE_03_GetCloneAtmMode_NullObjectEmptyCache_ReturnsInherit()
+        {
+            // Both caches empty/null -> priority 3 (default) returns Inherit.
+            _engine.SetCloneAtmObjectCache(null);
+            _engine.SetCloneAtmCache(string.Empty);
+
+            FollowerAtmMode mode = _engine.GetCloneAtmMode();
+
+            Assert.IsType<FollowerAtmMode.Inherit>(mode);
+        }
+
+        [Fact]
+        public void T_CLONE_04_SetCloneAtmCache_NonEmpty_GetCloneAtmModeReturnsNamed()
+        {
+            // SetCloneAtmCache updates the string fallback path correctly.
+            _engine.SetCloneAtmObjectCache(null);
+            _engine.SetCloneAtmCache("MES $200 SL6");
+
+            FollowerAtmMode mode = _engine.GetCloneAtmMode();
+
+            Assert.IsType<FollowerAtmMode.Named>(mode);
+            Assert.Equal("MES $200 SL6", ((FollowerAtmMode.Named)mode).TemplateName);
+
+            // Teardown
+            _engine.SetCloneAtmCache(string.Empty);
+        }
+
+        // =================================================================
+        // HOTFIX-B66-ATM-OBJ -- SetCloneAtmObjectCache two-cache design
+        // =================================================================
+
+        [Fact(Skip = "NT8-runtime: NinjaTrader.NinjaScript.AtmStrategy requires NT8 host")]
+        public void T_B66OBJ_01_SetCloneAtmObjectCache_NonNull_GetCloneAtmModeReturnsNamedWithObject()
+        {
+            // Arrange: SetCloneAtmObjectCache(non-null) -> GetCloneAtmMode() returns Named with AtmObject.
+            // Requires live NT8 AtmStrategy instance.
+        }
+
+        [Fact]
+        public void T_B66OBJ_02_SetCloneAtmObjectCache_Null_ClearsAtmObject()
+        {
+            // SetCloneAtmObjectCache(null) clears object cache.
+            // Then set string cache to non-empty -- string fallback must still work.
+            _engine.SetCloneAtmObjectCache(null);
+            _engine.SetCloneAtmCache("MES 200");
+
+            FollowerAtmMode mode = _engine.GetCloneAtmMode();
+
+            // Object is null so string fallback fires -> Named with AtmObject == null.
+            Assert.IsType<FollowerAtmMode.Named>(mode);
+            var named = (FollowerAtmMode.Named)mode;
+            Assert.Null(named.AtmObject);
+            Assert.Equal("MES 200", named.TemplateName);
+
+            // Teardown
+            _engine.SetCloneAtmCache(string.Empty);
+        }
+
+        [Fact]
+        public void T_B66OBJ_03_ParseAtmModeName_NamedPrefix_ReturnsNamedWithTemplateName()
+        {
+            var mode = CopyEngine.ParseAtmModeName("Named:MES 200") as FollowerAtmMode;
+            Assert.NotNull(mode);
+            var named = Assert.IsType<FollowerAtmMode.Named>(mode);
+            Assert.Equal("MES 200", named.TemplateName);
+        }
+
+        [Fact]
+        public void T_B66OBJ_04_ParseAtmModeName_Inherit_ReturnsInherit()
+        {
+            var mode = CopyEngine.ParseAtmModeName("Inherit") as FollowerAtmMode;
+            Assert.NotNull(mode);
+            Assert.IsType<FollowerAtmMode.Inherit>(mode);
+        }
+
+        [Fact]
+        public void T_B66OBJ_05_AtmModeToString_Named_ReturnsNamedPrefix()
+        {
+            string result = CopyEngine.AtmModeToString(new FollowerAtmMode.Named("MES 200"));
+            Assert.Equal("Named:MES 200", result);
+        }
+
+        // =================================================================
+        // HOTFIX-B67-CHECKBOX-RESTORE -- GetSavedFollowerNames (CopyEngine side)
+        // =================================================================
+
+        [Fact]
+        public void T_B67_04_GetSavedFollowerNames_EmptyRules_ReturnsEmptyHashSet()
+        {
+            // Phantom instrument has no matching rule -> returns empty HashSet, not null.
+            var result = _engine.GetSavedFollowerNames("T_B67_04_PHANTOM", "Sim101");
+            Assert.NotNull(result);
+            Assert.Empty(result);
+        }
+
+        [Fact(Skip = "NT8-runtime: NinjaTrader.Cbi.Account cannot be constructed without NT8 host")]
+        public void T_B67_05_GetSavedFollowerNames_MatchingRule_ReturnsFollowerNames()
+        {
+            // Arrange: AddRule("MES SEP26", master:Sim101, followers:[Sim102,Sim103]).
+            // Act: GetSavedFollowerNames("MES SEP26", "Sim101").
+            // Assert: result contains "Sim102" and "Sim103". Count == 2.
+            // Requires live NT8 Account objects.
+        }
+
+        // =================================================================
+        // CYC REFACTOR HELPERS -- IsBeDisarmCandidate + IsNonFlatDispatchName
+        // =================================================================
+
+        [Fact]
+        public void T_CYC_01_IsBeDisarmCandidate_NullOrder_ReturnsFalse()
+        {
+            // Null guard (1) -- no NT8 runtime needed.
+            Assert.False(CopyEngine.IsBeDisarmCandidate(null));
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState, Name, Instrument")]
+        public void T_CYC_02_IsBeDisarmCandidate_FilledPttBeStopWithInstrument_ReturnsTrue()
+        {
+            // order.OrderState=Filled, Name="PTT-BE-Stop", Instrument.FullName="MES SEP26" -> true.
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState, Name, Instrument")]
+        public void T_CYC_03_IsBeDisarmCandidate_FilledPttBeStop2WithInstrument_ReturnsTrue()
+        {
+            // order.OrderState=Filled, Name="PTT-BE-Stop2", Instrument.FullName="NQ SEP26" -> true.
+            // StartsWith("PTT-BE-Stop") matches "PTT-BE-Stop2" suffix variants.
+        }
+
+        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState, Name, Instrument")]
+        public void T_CYC_04_IsBeDisarmCandidate_CancelledOrder_ReturnsFalse()
+        {
+            // order.OrderState=Cancelled -- guard (2) fires -> false.
+        }
+
+        [Fact]
+        public void T_CYC_05_IsNonFlatDispatchName_Null_ReturnsFalse()
+        {
+            // null check: IsNonFlatDispatchName(null) = false -- no throw (JS-001), no null return (JS-002).
+            Assert.False(CopyEngine.IsNonFlatDispatchName(null));
+        }
+
+        [Fact]
+        public void T_CYC_06_IsNonFlatDispatchName_PttQxT1_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsNonFlatDispatchName("PTT-QX-T1"));
+        }
+
+        [Fact]
+        public void T_CYC_07_IsNonFlatDispatchName_Entry_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsNonFlatDispatchName("Entry"));
+        }
+
+        [Fact]
+        public void T_CYC_08_IsNonFlatDispatchName_Close_ReturnsFalse()
+        {
+            // "Close" is a native exit signal, NOT a blocked dispatch name.
+            Assert.False(CopyEngine.IsNonFlatDispatchName("Close"));
+        }
+    }
 }
