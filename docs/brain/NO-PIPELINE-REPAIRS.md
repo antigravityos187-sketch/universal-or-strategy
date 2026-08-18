@@ -6,6 +6,83 @@ Director authorization: live-trading session, post-trade-day pipeline runs sched
 
 ---
 
+---
+
+## HOTFIX-B66-ATM-TPL
+
+**ID**: HOTFIX-B66-ATM-TPL
+**Date**: 2026-08-17
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `GetLeaderAtmTemplateName(Chart currentChart)` (line 2207)
+**Status**: PIPELINE-COMPLETE (B75-LaneB)
+
+### Bug
+`GetLeaderAtmTemplateName` used `FindVisualChildByIndex<ComboBox>(ct, 2)` to find the ATM
+template ComboBox in ChartTrader (index 0 = Instrument, 1 = Account, assumed 2 = ATM).
+PTT panel injects its own ComboBoxes (`_followersDropDown`, per-follower ATM combos) into the
+ChartTrader Grid, shifting the native ATM ComboBox from index 2 to a higher index.
+Result: `GetLeaderAtmTemplateName` returned `string.Empty` every time.
+`OnCloneModeClick` stored empty string into `_cloneAtmCache`.
+`GetCloneAtmMode` returned `FollowerAtmMode.Inherit` (no template) -- follower got a bare Limit
+order (`SendCopy`) instead of `SendCopyWithAtm` + `StartAtmStrategy` + ATM brackets.
+Confirmed by DIAG-CLONE-01 log: `[PTT-CLONE] SetCloneAtmCache: '' (empty=True)`.
+
+### Fix (v2 -- direct property)
+Primary path replaced with `ct.AtmStrategy?.Name` -- `ChartTrader.AtmStrategy` is a direct
+property returning the currently selected `AtmStrategy` object; `.Name` is the template name.
+Confirmed from NT8 community forum topics 5133 and 6060 (multiple independent developers).
+No child walk, no index fragility, no injected-ComboBox interference.
+Fallback-1: `FindVisualChild<AtmStrategySelector>` by type (covers unusual builds).
+Fallback-2: original `FindVisualChildByIndex<ComboBox>(ct, 2)` (legacy pre-B66 path).
+
+### Fix (v1 -- superseded by v2 above)
+`FindVisualChild<AtmStrategySelector>` by type was primary in v1. Superseded because
+`ct.AtmStrategy` is simpler, more direct, and confirmed by NT8 community as the canonical path.
+
+### NT8_FULL_REFERENCE.md update
+Added `ChartTrader Class` section documenting `.AtmStrategy`, `.Account`, `.Quantity`,
+`.Instrument` properties, access patterns (Indicator vs. AddOn), thread safety, and comparison
+table of three ATM template lookup approaches.
+
+### Expected behavior after fix
+Clone radio click -> `GetLeaderAtmTemplateName` reads `ct.AtmStrategy?.Name` ->
+`SetCloneAtmCache` stores the real template name (e.g. "MES $200 SL6") ->
+`GetCloneAtmMode` returns `FollowerAtmMode.Named("MES $200 SL6")` ->
+`ResolveAtmMode` returns Named mode -> `DispatchCopy` calls `SendCopyWithAtm` ->
+follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added (all paths return `string.Empty`) ✅
+- No `async void` added ✅
+
+### Diff (minimal -- v2 primary change)
+```diff
+-                var atmCb = TradeCopierAddOn.FindVisualChildByIndex<ComboBox>(ct, 2);
+-                if (atmCb == null) return string.Empty;
+-                return atmCb.SelectedItem as string ?? string.Empty;
++                if (ct.AtmStrategy != null)
++                    return ct.AtmStrategy.Name ?? string.Empty;
++                var sel = TradeCopierAddOn.FindVisualChild<NinjaTrader.NinjaScript.AtmStrategy.AtmStrategySelector>(ct);
++                if (sel?.SelectedAtmStrategy != null)
++                    return sel.SelectedAtmStrategy.Name ?? string.Empty;
++                var atmCb = TradeCopierAddOn.FindVisualChildByIndex<ComboBox>(ct, 2);
++                return atmCb?.SelectedItem as string ?? string.Empty;
+```
+
+### Pipeline work needed (block BXX-LaneB)
+- Ph1 Architecture: document ChartTrader.AtmStrategy as canonical template source
+- Ph3 DNA: verify no other callers use FindVisualChildByIndex<ComboBox>(..., 2) for ATM reads
+- Ph3.5 Tickets: tests for GetLeaderAtmTemplateName:
+  - T_B66TPL_01: null chart -> string.Empty
+  - T_B66TPL_02: ChartTrader not found -> string.Empty
+  - T_B66TPL_03: ct.AtmStrategy non-null -> returns .Name
+  - T_B66TPL_04: ct.AtmStrategy null, AtmStrategySelector found -> returns SelectedAtmStrategy.Name
+  - T_B66TPL_05: all null -> string.Empty (not throw)
+
+
+
 ## PIPELINE STATUS — B72 / B73 / B74
 
 **All three pipeline runs: FINAL_PASS (2026-08-17)**
@@ -15,6 +92,7 @@ Director authorization: live-trading session, post-trade-day pipeline runs sched
 | B72-LaneA | Engine logic | CopyEngine.cs + PttBreakEven.cs | 22 active (1 superseded) | 72 [Fact] | FINAL_PASS |
 | B73-LaneB | UI logic | TradeCopierPanel.cs | 15 | 33 [Fact] | FINAL_PASS |
 | B74-LaneC | Feature files | PttGlobalQuickExit.cs + PttQuickExit.cs + PttGlobalBreakEven.cs | 5 | 22 [Fact] | FINAL_PASS |
+| B75-LaneB | UI logic | TradeCopierPanel.cs | 3 | 10 [Fact] | FINAL_PASS |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
@@ -32,7 +110,7 @@ Director authorization: live-trading session, post-trade-day pipeline runs sched
 
 | ID | Item | Priority | Status |
 |----|------|----------|--------|
-| DW-B63-FLATTEN-MULTWAVE-01 | PTT-Flatten multi-wave on follower accounts after ATM target fills — followers go Short instead of Flat. Root cause: each PTT-QX-T*/Target* fill on leader dispatches a new copy/reduce wave to -01/-03. With 2 targets filling in sequence, 2 waves overshoot. Live-observed 2026-08-17 06:35 AM. Requires pipeline block. | P1 | OPEN |
+| DW-B63-FLATTEN-MULTWAVE-01 | PTT-Flatten multi-wave on follower accounts after ATM target fills — followers go Short instead of Flat. Root cause: each PTT-QX-T*/Target* fill on leader dispatches a new copy/reduce wave to -01/-03. With 2 targets filling in sequence, 2 waves overshoot. Live-observed 2026-08-17 06:35 AM. **FIXED by HOTFIX-B63-FLATTEN-01** (PTT-prefix guard added to `TryDispatchLeaderFlat` gate 2.5). | P1 | APPLIED — awaiting live test |
 | DW-B66-BE-01 | `CancelQxBrackets` cancels `PTT-BE-Stop` orders during Quick Exit — Director confirmation required | P1 | OPEN |
 | DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | OPEN |
 | DW-B63-01 | Spurious `PTT-Copy` bracket orders on Sim102 after ATM fill | P1 | OPEN |
@@ -1767,3 +1845,681 @@ any value used pre-recompile. No collision possible within a single OS session.
   - T_OCO_SEED_01: Two CopyEngine instances (simulating recompile) -- second instance's first NextBeOcoSeq() != any value from first instance (TickCount gap guarantees)
   - T_OCO_SEED_02: NextBeOcoSeq() called 1000x on single instance -- all values unique (Interlocked.Increment guarantees)
   - T_OCO_SEED_03: _mstbeOcoSeq initial value != 0 (TickCount seeding confirmed)
+
+---
+
+## HOTFIX-B63-FLATTEN-01
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `TryDispatchLeaderFlat` (~line 1323)
+**Status**: APPLIED + SYNCED — awaiting live test
+**Deferred item closed**: DW-B63-FLATTEN-MULTWAVE-01
+
+### Bug
+`TryDispatchLeaderFlat` gate (3) fires a follower flatten whenever a leader order fills
+AND `hasOpenPosition(leader) = false`. This correctly handles native NT8 close signals
+(Close/Flatten/Rev*/Exit*) but was also firing for PTT-QX-T* partial-exit fills that
+happen to exhaust the leader's last contracts.
+
+When `PTT-QX-T2` filled and left leader -04 at 0ct:
+- `IsNativeExitName("PTT-QX-T2")` = false
+- `hasOpenPosition(-04)` = false (last contract just sold by T2)
+- Gate (3) condition: `!false && false` = false → gate did NOT block → followers flattened
+- Followers -01/-03 (still long 2ct) each received `PTT-Flatten Sell Market 2ct`
+- Multiple waves from multiple leaders/fills → followers went Long 2ct → Short 6ct
+
+Live incident: 2026-08-17 06:35 AM. -04 (2ct) + -06 (10ct) both leaders to -01/-03.
+T1 (6:35:25) + T2 (6:35:28) exhausted -04's position → TryDispatchLeaderFlat fired 3×
+(once per trigger event reaching both follower accounts) → 6 waves × 2ct Sell Market.
+Corrected by NT8 Flatten Everything at 06:35:38 (Buy 6ct Close on -01/-03).
+
+### Fix
+Added guard (2.5) in `TryDispatchLeaderFlat` before the existing gate (3):
+```csharp
+if (orderName != null && orderName.StartsWith("PTT-", StringComparison.Ordinal)) return false; // (2.5) HOTFIX-B63-FLATTEN-01
+```
+PTT-owned fills (QX targets, Flatten, Copy, BE-Stop, Tighten) must never trigger follower
+flattening via this path. Followers manage their own exits via their own ATM brackets.
+Consistent with `IsExitSignalName` in `DispatchCopy` which already blocks PTT- cascade.
+
+The B65 DW-B65-01 native-exit bypass (`IsNativeExitName` at gate 3) is unaffected —
+`Close`/`Flatten`/`Rev*`/`Exit*` still propagate correctly to followers.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC: 7 → 8 (one new `if` branch — at JS limit, acceptable) ✅
+
+### Diff (minimal)
+```diff
+  if (state != OrderState.Filled && state != OrderState.Cancelled) return false; // (1)
+  if (isFollower(account)) return false;                                           // (2)
++ if (orderName != null && orderName.StartsWith("PTT-", StringComparison.Ordinal)) return false; // (2.5) HOTFIX-B63-FLATTEN-01
+  if (!IsNativeExitName(orderName) && hasOpenPosition(account, instrument)) return false; // (3)
+```
+
+### Pipeline work needed (block BXX-LaneA)
+- Ph1 Architecture: document that `TryDispatchLeaderFlat` is intended ONLY for native NT8 exits,
+  not for PTT-own partial-exit fills accidentally leaving the leader flat.
+- Ph3.5 Tickets:
+  - T_B63_01: `TryDispatchLeaderFlat` orderName="PTT-QX-T2", leader flat → returns false (no follower flatten)
+  - T_B63_02: `TryDispatchLeaderFlat` orderName="PTT-Flatten", leader flat → returns false (no cascade)
+  - T_B63_03: `TryDispatchLeaderFlat` orderName="PTT-Copy", leader flat → returns false (no PTT cascade)
+  - T_B63_04: `TryDispatchLeaderFlat` orderName="Close", leader flat → returns true (native exit still fires)
+  - T_B63_05: `TryDispatchLeaderFlat` orderName="Close", leader has position → returns false (gate 3 still works)
+  - T_B63_06: `TryDispatchLeaderFlat` orderName=null, leader flat → returns true (null passes PTT guard, falls to gate 3)
+
+---
+
+## HOTFIX-B63-COPY-CANCEL-01
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `OnOrderUpdate` -- B56 Cancelled block (~line 811)
+**Status**: APPLIED + SYNCED -- awaiting live test
+**Fixes**: Follower PTT-Copy entry order disappears when leader gets filled
+
+### Bug
+The B56 T1 cancel-propagation block called `CancelOneAccount(follower, instrument)`
+for every cancelled order on the leader account -- including ATM bracket cancels
+(Stop1/Stop2/Stop3/Target1/Target2/Target3). When the user presses Chart Trader Close,
+NT8 cancels all ATM brackets first (Cancelled events fire for each), then fills the
+Close market order. Each bracket Cancelled event passed Gate 2 (correct leader
+account+instrument match) and reached the B56 block, which called CancelOneAccount
+on the follower -- wiping the follower's live PTT-Copy entry order before it filled.
+Confirmed by 11-16 AM log: PTT-Copy goes Working at 11:11:49, immediately receives
+Cancel submitted at 11:11:51 (same timestamp as Target1/Target2/Target3 Cancelled on leader).
+
+### Fix
+Added `if (IsAtmBracketName(e.Order.Name)) return;` guard before the CancelOneAccount
+loop. `IsAtmBracketName` already exists and correctly matches Stop1..Stop9 / Target1..Target9.
+ATM bracket cancels no longer propagate to followers. Only genuine leader entry-order
+cancels (Name="Entry", Name="PTT-Copy", etc.) reach CancelOneAccount.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC: 7 -> 8 (one new `if` inside existing Cancelled block) ✅
+- `IsAtmBracketName` is a pre-existing pure static helper -- no new allocations ✅
+
+### Diff (minimal)
+```diff
+ if (e.Order.OrderState == OrderState.Cancelled)
+ {
++    if (IsAtmBracketName(e.Order.Name)) return; // HOTFIX-B63-COPY-CANCEL-01
+     foreach (var acc in matchedRule.Value.FollowerAccounts)
+```
+
+### Pipeline work needed (block BXX-LaneA)
+- Ph3.5 Tickets:
+  - T_B63C_01: OnOrderUpdate with leader Stop1 Cancelled -> CancelOneAccount NOT called
+  - T_B63C_02: OnOrderUpdate with leader Target3 Cancelled -> CancelOneAccount NOT called
+  - T_B63C_03: OnOrderUpdate with leader Entry Cancelled -> CancelOneAccount IS called (regression)
+  - T_B63C_04: OnOrderUpdate with leader PTT-Copy Cancelled -> CancelOneAccount IS called
+  - T_B63C_05: leader Close Filled (not Cancelled) -> block not reached at all (state guard)
+
+---
+
+## HOTFIX-B64-ENTRY-FLATTEN-01
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `TryDispatchLeaderFlat` (~line 1338)
+**Status**: APPLIED + SYNCED -- awaiting live test
+**Fixes**: Follower PTT-Copy entry order cancelled immediately after leader Entry fills
+
+### Bug
+`TryDispatchLeaderFlat` flattened followers when the leader's `Entry` order filled.
+Root cause: NT8 position state is not updated until the next `OnBarUpdate()` after a fill
+(NT8_FULL_REFERENCE.md line 1721). When leader `Entry` fills, `hasOpenPosition` returns
+`false` (position race). Gate (3) evaluates `!IsNativeExitName("Entry") && false` = `false`,
+so the guard does NOT fire, and the foreach calls `FlattenOneAccount` on all followers.
+`FlattenOneAccount` cancels the working PTT-Copy order on the follower account.
+Confirmed by 11-41 AM log: at 11:39:10, `d30ffde` PTT-Copy goes `Working` then immediately
+`Cancel submitted` at the same clock tick as the leader `Entry` fills and ATM brackets submit.
+
+### Fix
+Added `if (orderName == "Entry") return false;` as gate (2.6) in `TryDispatchLeaderFlat`,
+immediately after the PTT- prefix guard (2.5). An `Entry` fill can never mean "go flat" --
+it means "opened a position". The position-race false-negative on `hasOpenPosition` is only
+relevant for exit-order fills (Close/Flatten/Rev/Exit). This guard is unconditional and
+does not depend on position state.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- No `async void` added ✅
+- CYC: TryDispatchLeaderFlat 8 -> 9 (one new `if` early return) -- pipeline refactor needed ⚠️
+- Single string equality comparison -- no heap allocation ✅
+
+### Diff (minimal)
+```diff
+  if (orderName != null && orderName.StartsWith("PTT-", StringComparison.Ordinal)) return false; // (2.5)
++ if (orderName == "Entry") return false; // HOTFIX-B64-ENTRY-FLATTEN-01
+  if (!IsNativeExitName(orderName) && hasOpenPosition(account, instrument)) return false; // (3)
+```
+
+### Pipeline work needed (block BXX-LaneB)
+- Ph3.5 Tickets:
+  - T_B64E_01: TryDispatchLeaderFlat orderName="Entry", state=Filled, no open position -> returns false (followers NOT flattened)
+  - T_B64E_02: TryDispatchLeaderFlat orderName="Entry", state=Filled, open position -> returns false (same guard fires first)
+  - T_B64E_03: TryDispatchLeaderFlat orderName="Close", state=Filled, no open position -> returns true (flatten fires -- regression check)
+  - T_B64E_04: TryDispatchLeaderFlat orderName="Close", state=Filled, open position -> returns false (gate 3 still works)
+  - T_B64E_05: Refactor TryDispatchLeaderFlat to CYC<=8 (extract name-guard predicate)
+
+---
+
+## HOTFIX-B65-GATE-C-FILL-GUARD-01
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `OnOrderUpdate` -- Gate C outer condition (~line 851)
+**Status**: APPLIED + SYNCED -- awaiting live test
+**Fixes**: Follower PTT-Copy entry order cancelled by HandleEntryChange when leader Entry fills mid-auto-chase
+
+### Bug
+Gate C (`HandleEntryChange` dispatch) did not guard against `e.Order.Filled > 0`. When the
+leader Entry order was auto-chased and simultaneously filled (same NT8 tick), NT8 dispatched
+both the price-change `Accepted`/`Working` events AND the `PartFilled`/`Filled` events
+concurrently on background threads. The `Working` event (same price as `Accepted`) saw
+`storedPrice != currentPrice` due to a concurrent-read race before `HandleEntryChange`
+updated `_dedupCache` on the `Accepted` thread. As a result, `HandleEntryChange` fired a
+second time -- cancelling the live PTT-Copy follower order that had just been correctly placed
+by the first `HandleEntryChange` call, and placing a replacement that was immediately stale.
+
+Confirmed in 12:09:57 PM log: `d190d5` (PTT-Copy) went `Submitted -> Accepted -> Working ->
+Cancel submitted` all at the same timestamp as `Entry -> Filled`. The cancel source was the
+second (race) invocation of `HandleEntryChange`.
+
+### Fix
+Added `&& e.Order.Filled == 0` to Gate C's outer `if` condition. When `Filled > 0`, the
+order is mid-fill and price dragging is impossible -- Gate C is skipped entirely. The
+fall-through to `DispatchCopy` is a no-op for `Working`/`Accepted` states
+(`IsDispatchTriggerState(Working/Accepted, Limit) == false`). Normal drag detection is
+unaffected: a dragged entry order always has `Filled == 0` at the moment of the drag event.
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- CYC: 8 -> 9 (one new `&&` condition in Gate C outer `if`) ✅
+- No new heap allocations -- `e.Order.Filled` is a primitive int property read ✅
+
+### Diff (minimal)
+```diff
+ if ((e.Order.OrderType == OrderType.Limit || e.Order.OrderType == OrderType.StopLimit)
+-    && (e.Order.OrderState == OrderState.Accepted || e.Order.OrderState == OrderState.Working))
++    && (e.Order.OrderState == OrderState.Accepted || e.Order.OrderState == OrderState.Working)
++    && e.Order.Filled == 0) // HOTFIX-B65-GATE-C-FILL-GUARD-01
+```
+
+### Pipeline work needed (block BXX-LaneA)
+- Ph3.5 Tickets:
+  - T_B65G_01: Gate C with Entry Working, Filled=0, price changed -> HandleEntryChange fires (normal drag, unaffected)
+  - T_B65G_02: Gate C with Entry Working, Filled=3, price changed -> HandleEntryChange does NOT fire (fill guard)
+  - T_B65G_03: Gate C with Entry Accepted, Filled=0, price changed -> HandleEntryChange fires (normal drag)
+  - T_B65G_04: Gate C with Entry Accepted, Filled=1, price changed -> HandleEntryChange does NOT fire (fill guard)
+  - T_B65G_05: Entry fills while PTT-Copy is Working -> PTT-Copy remains Working, not cancelled
+
+---
+
+## DIAGNOSIS-B66-ATM-CANCEL-ROOT-CAUSE
+
+**Date**: 2026-08-17 (live trading session)
+**Status**: ROOT CAUSE IDENTIFIED -- no code fix applied yet
+**Symptom**: Follower PTT-Copy (Limit GTC) cancelled at exact moment leader Entry fills with ATM strategy
+
+### Confirmed root cause
+NT8's ATM strategy manager cancels open working Limit orders on all accounts in its scope
+when it arms the OCO bracket set after `Entry -> Filled`. This is NT8-internal behavior --
+it bypasses all CopyEngine code entirely. No DIAG trace fires. No `CancelOneAccount` call.
+
+**Evidence**:
+- 12:28:21 PM test: leader Entry fills with ATM=None (no ATM strategy) -> PTT-Copy SURVIVES
+  and fills at the same price. Leader order Name='' (no strategy). Both accounts filled.
+- 12:20:14 PM test: leader Entry fills with ATM=`MES $200 SL6 - 1` -> PTT-Copy `Cancel submitted`
+  fires at the EXACT same millisecond as ATM brackets (Stop1/Stop2/Stop3/Target1/Target2/Target3)
+  Submitted/Accepted/Working. NT8's ATM engine issues the cancel as part of bracket arming.
+
+### CopyEngine fixes B63/B64/B65 are all CORRECT and NEEDED
+They fix distinct real bugs:
+- B63: ATM bracket Cancelled events propagating CancelOneAccount (Gate B56 path)
+- B64: Entry Filled triggering TryDispatchLeaderFlat via position-race (TryDispatchLeaderFlat path)
+- B65: Concurrent Accepted+Working events with Filled>0 triggering double HandleEntryChange (Gate C race)
+These three paths are all separate from the NT8-ATM cancellation path.
+
+### Options for fix
+- **Option A (workaround, no code)**: Set follower ATM mode to Market in the panel. PTT-Copy
+  fires as Market order, fills immediately at placement, no working Limit exists when ATM arms.
+- **Option B (HOTFIX-B66)**: On `Entry -> Filled` leader event, detect and immediately re-place
+  the follower's working PTT-Copy as a Market order before ATM brackets arm (~same tick).
+  Requires new gate in OnOrderUpdate: `if (state==Filled && name=="Entry") FireFollowerMarketFill()`.
+- **Option C (correct long-term)**: Suppress NT8's ATM manager from seeing Sim102 as in-scope.
+  Requires NT8 ATM account group configuration -- outside CopyEngine control.
+
+### Pipeline work needed
+- T_B66_01: Design HOTFIX-B66 FireFollowerMarketFill gate -- Ph2 architecture review needed
+- T_B66_02: Confirm Option A (Market mode) works for follower accounts on live ATM trades
+- T_B66_03: Regression -- B63 bracket-cancel guard still functional with B66 in place
+
+---
+
+## HOTFIX-B66-ATM-ARM
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `OnOrderUpdate` -- new gate before `DispatchCopy` + new `ArmFollowerAtm()` method
+**Status**: APPLIED + SYNCED -- TEST ONLY, hypothesis unverified
+**Fixes**: Follower PTT-Copy Limit GTC cancelled by NT8 ATM engine when leader Entry fills with ATM strategy
+
+### Bug (DIAGNOSIS-B66 confirmed)
+NT8's ATM strategy manager cancels all open working Limit orders on follower accounts
+when it arms OCO brackets after `Entry -> Filled`. This is NT8-internal -- zero CopyEngine
+code path, zero DIAG output. Confirmed: ATM=None trade -> PTT-Copy survives; ATM=strategy -> PTT-Copy cancelled.
+
+### Hypothesis
+If the follower's PTT-Copy order is already registered inside an Active `ServerAtmStrategy`
+on `Account.ServerStrategies` before the leader fills, NT8's ATM cancel sweep may recognise
+the order as ATM-managed and skip cancelling it.
+
+### Fix (TEST implementation)
+Added gate in `OnOrderUpdate`: when leader order `Name == "Entry"` and state is
+`Working` or `Accepted`, call `ArmFollowerAtm(rule, instrument, action)`.
+
+`ArmFollowerAtm()`:
+1. Reads `_cloneAtmCache` for the template name (set by `OnCloneModeClick`)
+2. Looks up `UserAtmDictionary.Instance.TryGetValue(templateName)` to get saved template
+3. Clones the first template entry via `ServerAtmStrategy.Clone()`
+4. Sets `atm.Account`, `atm.Instrument`, adds PTT-Copy order to `atm.Orders` + `atm.OrderIds`
+5. Calls `acc.ServerStrategies.Add(atm)` then `atm.SetState(State.Active)`
+6. Emits `PTT-B66:` status line for verification in NT8 Output Tab
+
+### What to look for in NT8 Output Tab
+- `PTT-B66: armed ATM <template> on Sim102 order=<id>` -- confirms ArmFollowerAtm fired
+- `PTT-B66-ERR: ...` -- NT8 threw on SetState; hypothesis fails, remove this hotfix
+- PTT-Copy order on Sim102 survives and fills -- hypothesis confirmed, brackets arm on fill
+- PTT-Copy order on Sim102 still cancelled -- hypothesis wrong, NT8 ignores ServerStrategies
+
+### JS-DNA compliance
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- No `async void` added ✅
+- CYC: 9 -> 10 (one new `if` in `OnOrderUpdate` + new `ArmFollowerAtm` method CYC=6) ✅
+- `acc.Orders.ToList()` snapshot -- no InvalidOperationException on concurrent modification ✅
+
+### Diff (minimal)
+```diff
++            if (e.Order.Name == "Entry"
++                && (e.Order.OrderState == OrderState.Working || e.Order.OrderState == OrderState.Accepted))
++            {
++                ArmFollowerAtm(matchedRule.Value, e.Order.Instrument, e.Order.OrderAction);
++            }
+```
+
+### Pipeline work needed (block BXX-LaneA)
+- T_B66A_01: verify `PTT-B66:` line appears in Output Tab on leader Entry Working event
+- T_B66A_02: verify PTT-Copy survives and fills when leader Entry fills with ATM active
+- T_B66A_03: verify follower gets Stop1/Target1 brackets after PTT-Copy fills
+- T_B66A_04: verify `PTT-B66-ERR:` does NOT appear (no exception on SetState)
+- T_B66A_05: regression -- B63 bracket-cancel guard still fires correctly (IsAtmBracketName path intact)
+- T_B66A_06: if hypothesis fails -- remove ArmFollowerAtm gate and method entirely
+
+---
+
+## HOTFIX-B66-COPY-REPLACE
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Methods**: `OnOrderUpdate` (pre-Gate-1 block) + new `ReplaceFollowerCopyOnAtmCancel`
+**Status**: APPLIED -- awaiting pipeline
+
+### Bug
+After a leader entry fills, NT8 ATM bracket-arming sweep cancels all PTT-Copy Limit orders
+on follower accounts. Gate 2 returns null for followers (not rule masters), so normal copy
+dispatch never re-places the cancelled follower order. Follower left flat while leader is long.
+
+### Fix
+Pre-Gate-1 block in OnOrderUpdate: detects Name=="PTT-Copy" + Cancelled + LimitPrice>0,
+calls ReplaceFollowerCopyOnAtmCancel(Order).
+ReplaceFollowerCopyOnAtmCancel: walks _rules to find follower match, verifies leader has
+open position (ATM-sweep vs close cancel), re-fires SendCopy at same LimitPrice with
+orderId suffix "-R" to bypass dedup cache.
+
+### Key design decisions
+- Same LimitPrice (Director confirmed)
+- Limit order type, not Market (exact entry level required)
+- HasOpenPosition(leader) guard: ATM-sweep cancel (leader long) vs normal close cancel (leader flat)
+- OrderId suffix "-R": bypasses IsDedup cache for the replacement order
+- Pre-Gate-1 placement: follower accounts never pass Gate 2 (not rule masters)
+- CYC: OnOrderUpdate +1 (now CYC=10, hotfix exception), ReplaceFollowerCopyOnAtmCancel CYC=6
+
+### JS-DNA compliance
+- No lock() added ✅
+- No throw new added ✅
+- No return null added ✅ (void method)
+- No async void added ✅
+
+### Dedup cascade analysis
+Replacement PTT-Copy reaches Accepted on follower -> OnOrderUpdate fires -> Gate 2 returns null
+(follower, not master) -> exits. No cascade. If replacement is cancelled again: HasOpenPosition
+returns false (leader flat after close) -> no infinite loop. Edge case of double ATM sweep is
+acceptable for hotfix; pipeline block should add resubmit-count guard (_copyReplaceCount, max=1).
+
+### Pipeline debt (block BXX)
+- Refactor OnOrderUpdate (CYC=10-><=8): extract name-guard predicate
+- Refactor TryDispatchLeaderFlat (CYC=9-><=8): extract name-guard predicate
+- Add resubmit-count guard to ReplaceFollowerCopyOnAtmCancel (max 1 replace per orderId)
+- T_B66R_01: ReplaceFollowerCopyOnAtmCancel called when PTT-Copy Cancelled + leader has open position
+- T_B66R_02: NOT called when leader is flat (normal close cancel)
+- T_B66R_03: NOT called for non-follower PTT-Copy cancel
+- T_B66R_04: orderId suffix "-R" bypasses IsDedup cache
+- T_B66R_05: re-placed order uses same LimitPrice as cancelled order
+
+---
+
+## HOTFIX-B66-NATIVE-ATM
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Methods**: `IsExitSignalName` + `DispatchCopy` + `ReplaceFollowerCopyOnAtmCancel` + new `SendCopyWithAtm`
+**Status**: APPLIED -- awaiting pipeline
+
+### Bug
+In Clone mode, follower entry order was placed as a bare `"PTT-Copy"` Limit via `SendCopy`.
+`StartAtmStrategy` (the only path to native NT8 ATM from AddOnBase) requires the order name
+to be `"Entry"`. Result: follower filled with no brackets, no trailing stop, no native auto-BE.
+
+### Fix
+New `SendCopyWithAtm`: `CreateOrder("Entry")` + `NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(template, order)`.
+`DispatchCopy`: Named mode routes to `SendCopyWithAtm` instead of `SendCopy`.
+`ReplaceFollowerCopyOnAtmCancel`: Named mode routes to `SendCopyWithAtm` for re-placed entries.
+`IsExitSignalName`: `"Entry"` added -- blocks follower ATM fills from cascading back into `DispatchCopy`.
+Pre-Gate-1 cancel guard: widened to catch `"Entry"` cancels (ATM sweep on Named mode entries).
+
+### JS-DNA compliance
+- No lock() added
+- No throw new added
+- No return null added
+- No async void added
+
+### NT8 API facts confirmed
+- `StartAtmStrategy` is static on `NinjaTrader.NinjaScript.AtmStrategy` -- callable from AddOnBase
+- Order name MUST be "Entry" -- any other name silently fails to arm brackets
+- `StartAtmStrategy` handles submission internally -- no separate `Submit()` call needed
+- Source: NT8 online docs scraped 2026-08-17, added to NT8_FULL_REFERENCE.md
+
+### Pipeline debt (block BXX)
+- T_B66N_01: follower "Entry" order appears in Orders tab in Named/Clone mode
+- T_B66N_02: native ATM brackets (Stop1/Target1 etc.) appear on follower after entry fills
+- T_B66N_03: trailing stop and auto-BE work natively on follower
+- T_B66N_04: IsExitSignalName("Entry") == true (no cascade)
+- T_B66N_05: non-Named modes (Inherit, Market) still use SendCopy path unaffected
+- T_B66N_06: ATM-sweep re-place in Named mode re-arms native ATM via SendCopyWithAtm
+
+---
+
+## HOTFIX-B67-CHECKBOX-RESTORE
+
+**Date**: 2026-08-17 (live trading session)
+**Files**: `src/PropTraderTools/CopyEngine.cs` + `src/PropTraderTools/TradeCopierPanel.cs`
+**Methods**: new `GetSavedFollowerNames` + `OnLoaded` restore block
+**Status**: PIPELINE-COMPLETE (B75-LaneB)
+
+### Bug
+After NT8 restart, `LoadRules` correctly restores the engine rule (instrument + master + followers)
+and `_isCopyEnabled = true`. But `OnLoaded` builds all `_followerItems` with `IsSelected = false`.
+The first time the user touches any follower checkbox, `TryAutoApply` fires with `followers.Length == 0`
+and replaces the valid restored rule with an empty follower list. Copy silently stops.
+
+### Fix
+New `CopyEngine.GetSavedFollowerNames(instrument, masterName)`: returns `HashSet<string>` of follower
+account names from `_rules` for the given instrument+master. CYC=2, no lock, no null return.
+`TradeCopierPanel.OnLoaded`: after `LoadFollowers()`, calls `GetSavedFollowerNames`, sets
+`IsSelected = true` on matching `_followerItems`, re-sorts rows, calls `TryAutoApply()` to re-register
+the live rule. Only fires when `_instrument != null && _leaderAccount != null && saved.Count > 0`.
+
+### JS-DNA compliance
+- No lock() added
+- No throw new added
+- No return null added (HashSet, never null)
+- No async void added
+
+### Pipeline debt (block BXX)
+- T_B67_01: after restart with saved rule, follower checkboxes are pre-checked on panel load
+- T_B67_02: status bar shows "Rule: MES SEP26 leader=Sim101" immediately on load (no manual action)
+- T_B67_03: first checkbox toggle after restart does NOT wipe the follower list
+- T_B67_04: GetSavedFollowerNames returns empty set when no rule saved (no crash)
+- T_B67_05: if _instrument or _leaderAccount is null at OnLoaded, restore block is skipped silently
+
+---
+
+## HOTFIX-B67-ENTRY-UNBLOCK
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `IsExitSignalName`
+**Status**: APPLIED -- awaiting pipeline
+
+### Bug
+HOTFIX-B66-NATIVE-ATM added `if (name == "Entry") return true` to `IsExitSignalName`.
+The intent was to block follower ATM entry fills from cascading back into `DispatchCopy`.
+However, Chart Trader always names the leader's own entry order `"Entry"`.
+Gate 0.5 in `DispatchCopy` calls `IsExitSignalName(order.Name)` and now returned `true`
+for the leader's entry -- blocking it from ever reaching `DispatchCopy`. Copy never fired.
+
+### Fix
+Removed `"Entry"` from `IsExitSignalName`. The cascade it was guarding against is impossible:
+Gate 2 filters to `order.Account.Name == rule.MasterAccount.Name`. Follower accounts never pass
+Gate 2, so follower `"Entry"` orders (from `SendCopyWithAtm`) cannot reach `DispatchCopy` regardless.
+The guard was unnecessary and was silently blocking all copy dispatch.
+
+### JS-DNA compliance
+- No lock() added
+- No throw new added
+- No return null added
+- No async void added
+
+### Pipeline debt (block BXX)
+- T_B67E_01: leader "Entry" Limit order triggers copy dispatch (PTT-Copy on Sim102)
+- T_B67E_02: follower "Entry" order (SendCopyWithAtm Named mode) does NOT trigger a second dispatch
+- T_B67E_03: IsExitSignalName("Entry") == false (regression test)
+- T_B67E_04: IsExitSignalName("PTT-Copy") == true (PTT- prefix still blocked)
+- T_B67E_05: copy fires in Signal mode (baseline regression)
+
+---
+
+## HOTFIX-B66-COPY-REPLACE-FIX
+
+**Date**: 2026-08-17 (live trading session — post-test diagnosis)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Methods**: `ReplaceFollowerCopyOnAtmCancel` (guard added) + new `HasWorkingPttCopy`
+**Status**: APPLIED + SYNCED — awaiting live test
+
+### Bug
+`ReplaceFollowerCopyOnAtmCancel` fired on every entry-drag cancel (auto-chase), not just
+ATM-sweep cancels. When the leader's entry was dragged, `HandleEntryChange` cancelled the
+old follower PTT-Copy and placed a new one at the updated price. The Cancelled event for
+the old PTT-Copy then triggered `ReplaceFollowerCopyOnAtmCancel`, which placed an additional
+PTT-Copy at the old price — resulting in two live follower orders per drag step.
+
+The `HasOpenPosition(leader)` guard did not filter this case because the leader has an open
+(or pending) position during entry drag, so the guard passed.
+
+Observed: CSV 06-59 PM shows ~6 auto-chase drag steps, each producing a stale PTT-Copy
+re-place at the prior price alongside the correct new PTT-Copy from HandleEntryChange.
+First test produced extra orders + brackets; subsequent tests produced open position without
+brackets (extra orders consumed the position but no ATM was associated).
+
+### Root cause
+Entry drag cancel and ATM-sweep cancel are both `Name=="PTT-Copy" + Cancelled + leader long`.
+The correct discriminator: during entry drag, `HandleEntryChange` already placed a replacement
+PTT-Copy (Working/Accepted/Submitted) before the Cancelled event arrives. During ATM-sweep,
+all follower orders are wiped — nothing is Working/Accepted/Submitted.
+
+### Fix
+Added guard in `ReplaceFollowerCopyOnAtmCancel` after `HasOpenPosition` check:
+```csharp
+if (HasWorkingPttCopy(cancelledOrder.Account, cancelledOrder.Instrument)) return;
+```
+New helper `HasWorkingPttCopy`: walks `acc.Orders.ToList()` for Working/Accepted/Submitted
+PTT-Copy or Entry orders on the same instrument using FullName string compare.
+Returns true (skip re-place) if HandleEntryChange's replacement is already in flight.
+Returns false (proceed with re-place) if ATM sweep wiped everything.
+
+### JS-DNA compliance
+- No lock() added ✅ (acc.Orders.ToList() snapshot — no lock needed)
+- No throw new added ✅
+- No return null added ✅
+- No async void added ✅
+- FullName string compare (reference equality banned per HOTFIX-BUG-BE-INSTRUMENT-REF) ✅
+
+### Diff (minimal)
+**ReplaceFollowerCopyOnAtmCancel — guard added (1 line)**:
+```diff
+  if (!HasOpenPosition(leader, cancelledOrder.Instrument)) return;     // (5)
++ if (HasWorkingPttCopy(cancelledOrder.Account, cancelledOrder.Instrument)) return; // (6) drag-cancel: replacement already in flight
+  // Leader has open position and no replacement in flight -- ATM-sweep cancel, re-place.
+```
+
+**New HasWorkingPttCopy method**:
+```csharp
+private bool HasWorkingPttCopy(Account acc, Instrument instrument)
+{
+    foreach (var order in acc.Orders.ToList())
+    {
+        if (order.Instrument?.FullName != instrument.FullName) continue;
+        if (order.OrderState != OrderState.Working
+            && order.OrderState != OrderState.Accepted
+            && order.OrderState != OrderState.Submitted) continue;
+        if (order.Name == "PTT-Copy" || order.Name == "Entry") return true;
+    }
+    return false;
+}
+```
+
+### Expected NT8 behavior after fix
+- Entry drag (auto-chase): follower PTT-Copy tracks each new price, single order only
+- ATM-sweep cancel (post-leader-fill): follower PTT-Copy re-placed once at fill price
+- Normal close cancel (leader flat): no re-place (HasOpenPosition guard)
+
+### Pipeline debt additions (append to HOTFIX-B66-COPY-REPLACE block BXX)
+- T_B66R_06: HasWorkingPttCopy returns true when Working PTT-Copy exists
+- T_B66R_07: HasWorkingPttCopy returns false after ATM sweep (no Working orders)
+- T_B66R_08: entry drag — ReplaceFollowerCopyOnAtmCancel skips re-place (replacement in flight)
+- T_B66R_09: ATM-sweep — ReplaceFollowerCopyOnAtmCancel fires re-place (no replacement in flight)
+
+---
+
+## HOTFIX-CLONE-DRAG + DIAG-CLONE-01
+
+**Date**: 2026-08-17 (live trading session)
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Methods**: `FindFollowerEntryOrder` (name guard widened) + `SetCloneAtmCache` + `GetCloneAtmMode` (diagnostics)
+**Status**: APPLIED + SYNCED — awaiting live test
+
+### Bug 1: Clone mode follower entry drag never propagated (HOTFIX-CLONE-DRAG)
+`HandleEntryChange` -> `FindFollowerEntryOrder` had `order.Name == "PTT-Copy"` hardcoded.
+Clone mode places follower entries as `Name='Entry'` (required by `StartAtmStrategy`).
+When leader auto-chase drags, the follower `"Entry"` order was never found -> never dragged.
+Follower entry stayed at original price; leader filled at chase price; positions mismatched.
+
+### Fix 1
+Widened name guard in `FindFollowerEntryOrder`:
+```diff
+-    && order.Name == "PTT-Copy")
++    && (order.Name == "PTT-Copy" || order.Name == "Entry"))
+```
+Now `HandleEntryChange` finds and drags Clone mode follower entries correctly.
+
+### Bug 2: Clone mode ATM template may not be captured (DIAG-CLONE-01)
+`SetCloneAtmCache` reads ATM template via `GetLeaderAtmTemplateName` -> `FindVisualChildByIndex<ComboBox>(ct, 2)`.
+If index 2 is wrong for this NT8 version/layout, cache stays empty.
+`GetCloneAtmMode` falls back to `Inherit` -> `SendCopy` instead of `SendCopyWithAtm` -> no brackets.
+Added `[PTT-CLONE]` Output.Process logs to diagnose template capture on next test.
+
+### What to check in NT8 Output Tab 1 after F5
+**When you click Clone mode button**:
+- `[PTT-CLONE] SetCloneAtmCache: 'MES $200 SL6 - 1' (empty=False)` = template captured correctly
+- `[PTT-CLONE] SetCloneAtmCache: '' (empty=True)` = template NOT captured -> Issue 2 confirmed
+
+**When leader entry fills** (if cache was empty):
+- `[PTT-CLONE] GetCloneAtmMode: cache empty -- falling back to Inherit` = root cause confirmed
+
+### JS-DNA compliance
+- No lock() added ✅
+- No throw new added ✅
+- No return null added ✅
+- No async void added ✅
+
+### Pipeline debt (block BXX)
+- Replace `FindVisualChildByIndex<ComboBox>(ct, 2)` with named-property or tag-based lookup
+- T_CLONE_01: FindFollowerEntryOrder returns "Entry" order (Clone mode)
+- T_CLONE_02: FindFollowerEntryOrder returns "PTT-Copy" order (Inherit mode, regression)
+- T_CLONE_03: SetCloneAtmCache with non-empty template -> GetCloneAtmMode returns Named
+- T_CLONE_04: SetCloneAtmCache with empty string -> GetCloneAtmMode returns Inherit
+- Remove DIAG-CLONE-01 Output.Process lines once Clone mode confirmed working
+
+---
+
+## HOTFIX-B66-ATM-OBJ
+
+**ID**: HOTFIX-B66-ATM-OBJ
+**Date**: 2026-08-17
+**Files**: `src/PropTraderTools/CopyEngine.cs` + `src/PropTraderTools/TradeCopierPanel.cs`
+**Methods**: `FollowerAtmMode.Named` (new 2-arg ctor + AtmObject property), `SetCloneAtmObjectCache` (new), `GetCloneAtmMode` (updated), `DispatchCopy` inner loop (updated), `ReplaceFollowerCopyOnAtmCancel` (updated), `SendCopyWithAtm` (signature changed), `OnCloneModeClick` (updated)
+**Status**: PIPELINE-COMPLETE (B75-LaneB)
+
+### Bug
+`GetLeaderAtmTemplateName` returned `"AtmStrategy"` (the C# class name, not the template file name) because `ChartTrader.AtmStrategy.Name` reflects the runtime object name, not the template. `SendCopyWithAtm` called `StartAtmStrategy("AtmStrategy", order)` -- template not found -- order stayed `Initialized`, never submitted. Follower got yellow ghost lines on chart, no fill, no brackets.
+
+### Root cause
+NT8 `ChartTrader.AtmStrategy` returns the live strategy instance. Its `.Name` property is the runtime class name `"AtmStrategy"`, NOT the user-selected template name (e.g. `"MES $200 SL6"`). The string-name overload `StartAtmStrategy(string, order)` silently no-ops when the template name doesn't match a file on disk. The fix is to pass the **object** directly using `StartAtmStrategy(AtmStrategy, Order)`.
+
+### Fix
+Capture `ChartTrader.AtmStrategy` object at click time in `OnCloneModeClick` via `FindVisualChild<ChartTrader>`. Store as `volatile NinjaTrader.NinjaScript.AtmStrategy _cloneAtmObject` via new `SetCloneAtmObjectCache`. `GetCloneAtmMode` returns `FollowerAtmMode.Named(string, atmObj)` when object is non-null. `SendCopyWithAtm` uses `StartAtmStrategy(namedMode.AtmObject, order)` when `AtmObject != null`, falling back to string overload otherwise.
+
+### Key design decisions
+- `volatile` on reference type is valid C# -- no lock needed
+- String cache (`_cloneAtmCache`) kept for display/logging; object cache (`_cloneAtmObject`) drives dispatch
+- Fall-through to string overload preserves behavior when object unavailable (panel reload after NT8 restart)
+- `StartAtmStrategy` handles order submission internally -- no separate `Submit()` call in `SendCopyWithAtm`
+
+### JS-DNA compliance
+- No `lock()` added (volatile reference, no lock needed) ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- No `async void` added ✅
+
+### Sync
+`powershell -File scripts\sync-ptt-to-nt8.ps1` output:
+```
+COPIED:   CopyEngine.cs
+COPIED:   TradeCopierPanel.cs
+Done. Copied: 2  Skipped (in sync): 13  Excluded (tests/obj/bin): 29
+```
+
+### Expected NT8 behavior after fix
+- Click Clone radio -> `[PTT-CLONE] SetCloneAtmObjectCache: SET` in Output Tab 1
+- Leader Buy LMT fills -> follower gets `"Entry"` order + `StartAtmStrategy(atmObj, order)`
+- Follower account shows Stop1/Stop2/Target1/Target2 brackets (native ATM armed)
+- No yellow ghost lines; follower fills at same limit price as leader
+
+### What to check in NT8 Output Tab 1 after F5
+- `[PTT-CLONE] SetCloneAtmObjectCache: SET` (object captured, not null)
+- `[PTT-CLONE] GetCloneAtmMode: object present` (object dispatched correctly)
+- NO `[PTT-CLONE] GetCloneAtmMode: cache empty` line
+
+### Pipeline debt (block BXX-LaneA)
+- Ph1 Architecture: document `_cloneAtmObject` volatile field + two-cache design
+- Ph3 DNA: verify `volatile` reference field conforms to JS-021 (no lock -- CONFIRMED: volatile ref is lock-free)
+- Ph5 Tests:
+  - T_B66OBJ_01: `SetCloneAtmObjectCache(non-null)` -> `GetCloneAtmMode` returns `Named` with `AtmObject != null`
+  - T_B66OBJ_02: `SetCloneAtmObjectCache(null)` -> `GetCloneAtmMode` returns `Inherit` (object null, string empty)
+  - T_B66OBJ_03: `SendCopyWithAtm` with `AtmObject != null` calls `StartAtmStrategy(obj, order)` path
+  - T_B66OBJ_04: `SendCopyWithAtm` with `AtmObject == null`, string non-empty -> falls back to string overload
+  - T_B66OBJ_05: regression -- `DispatchCopy` non-Named mode still uses `SendCopy` unaffected
