@@ -604,6 +604,71 @@ namespace PropTraderTools
             catch { }
         }
 
+        // B77 DW-B77-01: BuildQxSnapshot -- capture point-in-time set of cancellable QX orders.
+        // Called by PttQuickExit.Execute() BEFORE CancelQxBrackets to record which orders existed
+        // at snapshot time. Only orders in this set may be cancelled by the 3-param overload.
+        // Prevents the race window where newly-submitted PTT-QX orders (from the Submit loop) are
+        // caught by a second CancelQxBrackets call that was queued before the Submit loop ran.
+        // CYC=4: null-guard(1) + foreach(2) + stateOk-and-instrument(3) + IsQxCancelCandidate(4).
+        // JS-021: no lock. HashSet<Order> is local; NT8 dispatcher is serial (single-threaded dispatch).
+        // JS-002: returns new empty HashSet<Order>() on null input -- never returns null.
+        // JS-001: no throw. JS-033: synchronous static. ASCII-only.
+        internal static System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order> BuildQxSnapshot(
+            NinjaTrader.Cbi.Account acc,
+            NinjaTrader.Cbi.Instrument instr)
+        {
+            if (acc == null || instr == null)                                              // (1)
+                return new System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>();   // never null -- JS-002
+            var result = new System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>();
+            foreach (Order o in acc.Orders)                                                // (2)
+            {
+                bool stateOk = o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Initialized
+                            || o.OrderState == OrderState.Accepted
+                            || o.OrderState == OrderState.Submitted
+                            || o.OrderState == OrderState.TriggerPending;
+                if (!stateOk) continue;                                                    // (3)
+                if (o.Instrument == null || o.Instrument.FullName != instr.FullName) continue;
+                if (IsQxCancelCandidate(o))                                                // (4)
+                    result.Add(o);
+            }
+            return result;
+        }
+
+        // B77 DW-B77-02: CancelQxBrackets 3-param overload -- snapshot-gated cancel.
+        // Identical to the 2-param overload except: an order is only added to stale if it
+        // is contained in snapshot. Orders not in snapshot (submitted after snapshot was
+        // taken = this cycle's new orders) are skipped, preventing the race window.
+        // snapshot == null fallback: behaves identically to the 2-param overload (cancels all).
+        // CYC=7: null-guard(1) + foreach(2) + stateOk(3) + instrument-filter(4) + snapshot-filter(5)
+        //         + IsQxCancelCandidate(6) + stale-count(7). Budget <= 8. PASS.
+        // JS-021: no lock. HashSet<Order> passed by reference, consumed synchronously on caller thread.
+        // JS-001: no throw. JS-002: void return. JS-033: synchronous void. ASCII-only.
+        internal void CancelQxBrackets(
+            NinjaTrader.Cbi.Account acc,
+            NinjaTrader.Cbi.Instrument instr,
+            System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order> snapshot)
+        {
+            if (acc == null || instr == null) return;                                      // (1)
+            var stale = new System.Collections.Generic.List<Order>();
+            foreach (Order o in acc.Orders)                                                // (2)
+            {
+                bool stateOk = o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Initialized
+                            || o.OrderState == OrderState.Accepted
+                            || o.OrderState == OrderState.Submitted
+                            || o.OrderState == OrderState.TriggerPending;
+                if (!stateOk) continue;                                                    // (3)
+                if (o.Instrument == null || o.Instrument.FullName != instr.FullName) continue; // (4)
+                if (snapshot != null && !snapshot.Contains(o)) continue;                   // (5)
+                if (IsQxCancelCandidate(o))                                                 // (6)
+                    stale.Add(o);
+            }
+            if (stale.Count == 0) return;                                                  // (7)
+            try { acc.Cancel(stale.ToArray()); }
+            catch { }
+        }
+
         // B69 DW-B69-01: CancelAllAccountOrders -- cancel every active order on acc for instr
         // before submitting a market flatten. No name filter -- all order names cancelled.
         // NT8 precedent: @2Custom-0909edcc EmergencyFlattenSingleFleetAccount [938-EF-GUARD]:

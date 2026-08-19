@@ -64,7 +64,11 @@ namespace PropTraderTools
             double snapshotStop = SnapshotStopPrice(leader, instr);
 
             // Step 3: cancel ATM bracket + previous PTT-QX orders
-            CopyEngine.Instance?.CancelQxBrackets(leader, instr);
+            // B77 DW-B77-01: capture snapshot of current QX candidates BEFORE cancelling.
+            // Orders submitted after this point (by the Submit loop below) are NOT in the snapshot
+            // and will be skipped by the 3-param CancelQxBrackets overload -- no race cancellation.
+            var snapshot = CopyEngine.BuildQxSnapshot(leader, instr);
+            CopyEngine.Instance?.CancelQxBrackets(leader, instr, snapshot);
             // B70 DW-B70-02: also cancel follower PTT-Copy brackets before re-placing QX orders
             CopyEngine.Instance?.CancelQxBracketsForFollowers(instr);
 
