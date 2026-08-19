@@ -83,7 +83,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 
 
 
-## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76
+## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76 / B77
 
 **Latest pipeline run: B76-LaneA FINAL_PASS (2026-08-18)**
 
@@ -95,6 +95,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | B75-LaneB | UI logic | TradeCopierPanel.cs | 3 | 10 [Fact] | FINAL_PASS |
 | B75-LaneA | Clone/copy hotfixes | CopyEngine.cs | 12 hotfixes + 2 CYC refactors | 60 [Fact] | FINAL_PASS |
 | B76-LaneA | Race+guard+dedup+ATM | CopyEngine.cs + TradeCopierPanel.cs + TradeCopierAddOn.cs + TradeCopierWindow.cs | 6 hotfixes | 12 [Fact] | FINAL_PASS |
+| B77 direct | ATM fallback-1 fix + ASCII comments | TradeCopierPanel.cs + CopyEngine.cs | 2 | 0 (pipeline pending) | APPLIED -- awaiting pipeline |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
@@ -2607,3 +2608,27 @@ Run Ph4a ptt-engineer to formally execute + test, Ph4b to verify, Ph5 to sign of
 **Bug**: PositionStateChanged fires N*M times per position event where N = number of Filled/PartFilled orders that pass Gate 2 per trade (entry fill + bracket fills + target fills + Close fill = 8+ orders) and M = number of panels subscribed (1 per chart window open). With 2 chart windows open (both MES SEP26), result was 16 False per close (8 fills * 2 panels). This was confirmed by fresh NT8 restart + 2 charts + 1 F5 showing exactly 16. Root cause: TryFirePositionState had no dedup guard -- it invoked PositionStateChanged on every qualifying fill regardless of whether hasPos had actually changed. The panel handler logged and called UpdateButtonColors on every invoke.
 **Fix**: Added `_lastHasPos ConcurrentDictionary<string, bool>` keyed by instrument FullName. TryFirePositionState computes hasPos, then checks _lastHasPos[instr]. If the value matches the last known value, return immediately without invoking. If it differs (or key is absent -- first fill ever), update _lastHasPos[instr] and invoke. This deduplicates all redundant mid-trade fills, delivering exactly 1 False->True transition on entry and 1 True->False transition on exit, regardless of how many fills or panels are active.
 **Status**: PIPELINE_COMPLETE (B76-LaneA FINAL_PASS 2026-08-18). 1 chart: 1 line per transition (1 engine fire x 1 panel). 2 charts: 2 lines per transition (1 engine fire x 2 panels). CAS dedup confirmed working. Bug #3 CLOSED.
+
+---
+
+## HOTFIX-B77-01 -- DW-B76-02
+
+**ID**: HOTFIX-B77-01
+**Date**: 2026-08-19
+**File**: `src/PropTraderTools/TradeCopierPanel.cs`
+**Method**: `GetLeaderAtmTemplateName` (line 2242)
+**Bug**: Fallback-1 used `sel.SelectedAtmStrategy.Name` which returns "AtmStrategy" (NT8 class name), same class-name trap as the B76 primary-path guard. The real template name lives on the combo's `SelectedItem` as a plain string.
+**Fix**: Changed condition from `sel?.SelectedAtmStrategy != null` to `sel != null`; changed return from `sel.SelectedAtmStrategy.Name ?? string.Empty` to `sel.SelectedItem as string ?? string.Empty`.
+**Status**: APPLIED -- awaiting pipeline (B77-LaneA)
+
+---
+
+## HOTFIX-B77-02 -- DW-B75-01
+
+**ID**: HOTFIX-B77-02
+**Date**: 2026-08-19
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Lines**: 502, 717
+**Bug**: Em-dash Unicode characters (U+2500) in comments on lines 502 and 717 violated JS-ASCII-only mandate (PRE-EXISTING-01 partial).
+**Fix**: Replaced `// ── B56 BUILD-FIX stubs ...` and `// ── end B56 BUILD-FIX stubs ──` with ASCII triple-hyphen equivalents.
+**Status**: APPLIED -- awaiting pipeline (B77-LaneA cosmetic carry-in)

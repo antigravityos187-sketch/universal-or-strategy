@@ -499,7 +499,7 @@ namespace PropTraderTools
 
 
 
-        // ── B56 BUILD-FIX stubs (pre-existing callers referenced these before they were added) ──
+        // --- B56 BUILD-FIX stubs (pre-existing callers referenced these before they were added) ---
 
         // IsFollowerAccount: returns true if acc is a follower in any rule.
         // Called by PttBreakEven + PttGlobalQuickExit to skip follower accounts.
@@ -714,7 +714,7 @@ namespace PropTraderTools
             }
         }
 
-        // ── end B56 BUILD-FIX stubs ──
+        // --- end B56 BUILD-FIX stubs ---
 
         // B9 T1: CYC=2 -- returns engine value when enabled; 1 otherwise
         internal int GetSuggestedQty(NinjaTrader.Cbi.Instrument instrument)

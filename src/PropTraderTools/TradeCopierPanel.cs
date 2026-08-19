@@ -2239,8 +2239,8 @@ namespace PropTraderTools
                 }
                 // Fallback-1: AtmStrategySelector by type (covers non-standard ChartTrader builds).
                 var sel = TradeCopierAddOn.FindVisualChild<NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector>(ct);
-                if (sel?.SelectedAtmStrategy != null)                        // branch 6 -- fallback-1
-                    return sel.SelectedAtmStrategy.Name ?? string.Empty;
+                if (sel != null)                                             // branch 6 -- fallback-1
+                    return sel.SelectedItem as string ?? string.Empty;
                 // Fallback-2: original index-2 ComboBox (pre-B66 legacy path).
                 var atmCb = TradeCopierAddOn.FindVisualChildByIndex<ComboBox>(ct, 2);
                 return atmCb?.SelectedItem as string ?? string.Empty;
