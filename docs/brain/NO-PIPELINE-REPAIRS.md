@@ -83,9 +83,9 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 
 
 
-## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76 / B77
+## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76 / B77 / B78
 
-**Latest pipeline run: B77-LaneB FINAL_PASS (2026-08-19)**
+**Latest pipeline run: B78-LaneA DIRECT (2026-08-20) -- DW-B63-01 QX follower stop price lag**
 
 | Block | Lane | Files | Hotfixes | Tests written | Final verdict |
 |-------|------|-------|----------|---------------|---------------|
@@ -98,6 +98,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | B77 direct | ATM fallback-1 fix + ASCII comments | TradeCopierPanel.cs + CopyEngine.cs | 2 | 5 [Fact] | PIPELINE-COMPLETE (B77-LaneA) |
 | B77-LaneB | QX race guard | CancelQxBrackets self-cancel prevention | BuildQxSnapshot + 3-param overload | 8 [Fact] | PIPELINE_COMPLETE |
 | B77 post | REPAIR-03 + tracing | CopyEngine.cs + PttQuickExit.cs + PttGlobalQuickExit.cs + PttGlobalBreakEven.cs + TradeCopierPanel.cs | DW-B75-02 CLOSED + 20 trace lines | -- | DIRECT (Director approved) |
+| B78-LaneA | QX follower stop lag | PttQuickExit.cs + PttGlobalQuickExit.cs | DW-B63-01 fix: ResolveStop + ResolveTargetCount + leaderStop/leaderTargetCount param flow | 8 [Fact] | DIRECT (Director approved) -- awaiting sim test |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
@@ -118,9 +119,9 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | ID | Item | Priority | Status |
 |----|------|----------|--------|
 | DW-B63-FLATTEN-MULTWAVE-01 | PTT-Flatten multi-wave on follower accounts after ATM target fills — followers go Short instead of Flat. Root cause: each PTT-QX-T*/Target* fill on leader dispatches a new copy/reduce wave to -01/-03. With 2 targets filling in sequence, 2 waves overshoot. Live-observed 2026-08-17 06:35 AM. **FIXED by HOTFIX-B63-FLATTEN-01** (PTT-prefix guard added to `TryDispatchLeaderFlat` gate 2.5). | P1 | APPLIED — awaiting live test |
-| DW-B66-BE-01 | `CancelQxBrackets` cancels `PTT-BE-Stop` orders during Quick Exit — Director confirmation required | P1 | OPEN |
-| DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | OPEN |
-| DW-B63-01 | Spurious `PTT-Copy` bracket orders on Sim102 after ATM fill | P1 | OPEN |
+| DW-B66-BE-01 | `CancelQxBrackets` cancels `PTT-BE-Stop` orders during Quick Exit | P1 | CLOSED -- behaviour confirmed correct (B77 post-sign-off) |
+| DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | CLOSED -- non-issue: Gate 4 blocks StopLimit before dedup path (B77 post-sign-off) |
+| DW-B63-01 | QX places targets but no stop orders on followers (ATM bracket async lag) | P1 | **FIXED B78-LaneA** -- ResolveStop + ResolveTargetCount + leaderStop/leaderTargetCount param flow. Awaiting sim test (SIM-TEST-QX-01/02). |
 | DW-B54-01 | ATM auto-inject — blocked, requires `StrategyBase` API unavailable in `AddOnBase` | P1 | OPEN (blocked) |
 | DW-B72-01 | `IsAtmBracketName("Stop10")` returns true — acceptable-known edge | P3 | OPEN |
 | DW-B73-B-01 | `RaiseBeAllDisarmed` redundant broadcasts on flat | P2 | OPEN |
