@@ -28,6 +28,9 @@ namespace PropTraderTools
         /// </summary>
         internal void Execute()
         {
+            NinjaTrader.Code.Output.Process(
+                "[PTT-QX-ALL] GlobalQuickExit fired",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             var engine = CopyEngine.Instance;                   // capture once
             foreach (Account acc in Account.All)                // (1)
             {
@@ -37,6 +40,9 @@ namespace PropTraderTools
                     if (pos == null || pos.Quantity == 0) continue;  // (4)
                     var targets = SnapshotTargetOrders(acc, pos.Instrument);
                     var ticks = ResolveQuickTicks(pos.Instrument);
+                    NinjaTrader.Code.Output.Process(
+                        "[PTT-QX-ALL] leader: " + acc.Name + " " + pos.Instrument.FullName + " qty=" + pos.Quantity + " t1=" + ticks.t1,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                     ExecuteOne(acc, pos.Instrument, ticks.t1, targets);
                     // B71 DW-B71-04: place PTT-QX on every follower that has an open position
                     var rule = engine?.FindRule(pos.Instrument);    // (5)
@@ -45,6 +51,9 @@ namespace PropTraderTools
                         {
                             if (follower == null) continue;         // (7)
                             var followerTargets = SnapshotTargetOrders(follower, pos.Instrument);
+                            NinjaTrader.Code.Output.Process(
+                                "[PTT-QX-ALL] follower: " + follower.Name + " " + pos.Instrument.FullName,
+                                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                             ExecuteOne(follower, pos.Instrument, ticks.t1, followerTargets, skipIfFollower: false);
                         }
                 }

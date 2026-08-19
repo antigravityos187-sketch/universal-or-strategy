@@ -45,6 +45,9 @@ namespace PropTraderTools
         internal void Execute(int bufferTicks)
         {
             System.Threading.Interlocked.Increment(ref _ocoSeq);
+            NinjaTrader.Code.Output.Process(
+                "[BE-ALL] GlobalBreakEven: ArmAllPendingBe buf=" + bufferTicks + "t",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             CopyEngine.Instance.ArmAllPendingBe(bufferTicks);
         }
 

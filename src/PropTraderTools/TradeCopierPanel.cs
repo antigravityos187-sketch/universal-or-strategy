@@ -1205,11 +1205,17 @@ namespace PropTraderTools
             if (CopyEngine.Instance.IsPendingSlotsEmpty())
             {
                 // Currently Idle -- arm
+                NinjaTrader.Code.Output.Process(
+                    "[BE-ALL] button: arm buf=" + CopyEngine.Instance.GlobalBe.GlobalBeBuffer,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                 CopyEngine.Instance.GlobalBe.Execute(CopyEngine.Instance.GlobalBe.GlobalBeBuffer);
             }
             else
             {
                 // Currently Armed -- disarm
+                NinjaTrader.Code.Output.Process(
+                    "[BE-ALL] button: disarm all",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                 if (Account.All != null)
                     foreach (var acc in Account.All)
                         CopyEngine.Instance.DisarmPendingBe(acc);
@@ -1253,6 +1259,9 @@ namespace PropTraderTools
         {
             if (_instrument == null) return;                                               // (1)
             _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();                 // B30-B
+            NinjaTrader.Code.Output.Process(
+                "[TRIM] button: " + (_leaderAccount?.Name ?? "null") + " " + (_instrument?.FullName ?? "null"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             DispatchModule("TRIM");                                                        // (2)
         }
 
@@ -1276,6 +1285,9 @@ namespace PropTraderTools
         {
             if (_instrument == null) return;                                               // (1)
             _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();                 // B30-B
+            NinjaTrader.Code.Output.Process(
+                "[FLAT] button: " + (_leaderAccount?.Name ?? "null") + " " + (_instrument?.FullName ?? "null"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             DispatchModule("FLAT");                                                        // (2)
         }
 
@@ -1313,17 +1325,26 @@ namespace PropTraderTools
                     // Otherwise arm and wait for price to cross.
                     if (IsPriceAlreadyAtBe(_leaderAccount, _instrument, _beBuffer))       // (4)
                     {
+                        NinjaTrader.Code.Output.Process(
+                            "[BE] button: immediate fire " + _leaderAccount.Name + " buf=" + _beBuffer,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                         DispatchModule("BE");
                         // stay Idle -- ATM owns stop from here
                     }
                     else
                     {
+                        NinjaTrader.Code.Output.Process(
+                            "[BE] button: arming " + _leaderAccount.Name + " buf=" + _beBuffer,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                         _engine.ArmPendingBe(_instrument, _leaderAccount, _beBuffer);
                         _beState = BeState.Armed;
                         UpdateBeVisuals(BeState.Armed);
                     }
                     break;
                 case BeState.Armed:                                                        // (5)
+                    NinjaTrader.Code.Output.Process(
+                        "[BE] button: disarming " + _leaderAccount.Name,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                     _engine.DisarmPendingBe(_leaderAccount);
                     _beState = BeState.Idle;
                     UpdateBeVisuals(BeState.Idle);
@@ -1452,6 +1473,9 @@ namespace PropTraderTools
         {
             if (_instrument == null) return;                                               // (1)
             _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();                 // B30-B
+            NinjaTrader.Code.Output.Process(
+                "[CANCEL] button: " + (_leaderAccount?.Name ?? "null") + " " + (_instrument?.FullName ?? "null"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             DispatchModule("CANCEL");                                                      // (2)
         }
 
@@ -1616,6 +1640,9 @@ namespace PropTraderTools
         {
             if (_instrument == null) return;                                              // (1)
             _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();
+            NinjaTrader.Code.Output.Process(
+                "[PTT-QX] button: " + (_leaderAccount?.Name ?? "null") + " " + (_instrument?.FullName ?? "null") + " t1=" + _quickT1,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             var qx = new PttQuickExit();
             qx.Execute(_leaderAccount, _instrument, _quickT1, _quickT2);                // (2)
         }

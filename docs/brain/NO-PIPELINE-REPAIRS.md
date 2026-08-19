@@ -97,8 +97,11 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | B76-LaneA | Race+guard+dedup+ATM | CopyEngine.cs + TradeCopierPanel.cs + TradeCopierAddOn.cs + TradeCopierWindow.cs | 6 hotfixes | 12 [Fact] | FINAL_PASS |
 | B77 direct | ATM fallback-1 fix + ASCII comments | TradeCopierPanel.cs + CopyEngine.cs | 2 | 5 [Fact] | PIPELINE-COMPLETE (B77-LaneA) |
 | B77-LaneB | QX race guard | CancelQxBrackets self-cancel prevention | BuildQxSnapshot + 3-param overload | 8 [Fact] | PIPELINE_COMPLETE |
+| B77 post | REPAIR-03 + tracing | CopyEngine.cs + PttQuickExit.cs + PttGlobalQuickExit.cs + PttGlobalBreakEven.cs + TradeCopierPanel.cs | DW-B75-02 CLOSED + 20 trace lines | -- | DIRECT (Director approved) |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
+
+**DW-B75-02 CLOSED (2026-08-19)**: `[PTT-CLONE]` DIAG lines removed from `SetCloneAtmCache`, `SetCloneAtmObjectCache`, `GetCloneAtmMode` -- Clone dispatch confirmed working (object cache SET). Director approved removal.
 
 **B72-LaneA gap note**: `ticket-1-completion.md` absent from B72-LaneA directory (noted by B73 Ph5 reviewer). Code artifact (`CopyEngine.cs`, `PttBreakEven.cs`, test files) is present and verified. This is a pipeline documentation gap only — no functional defect. Director should ensure `ticket-1-completion.md` is written retroactively.
 

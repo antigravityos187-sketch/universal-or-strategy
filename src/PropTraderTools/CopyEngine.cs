@@ -416,6 +416,9 @@ namespace PropTraderTools
         {
             foreach (var acc in AllAccounts(e.Instrument))
             {
+                NinjaTrader.Code.Output.Process(
+                    "[BE] RelayBe: " + acc.Name + " @ " + e.BePrice.ToString("F2") + " isLong=" + e.IsLong,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                 CancelQxBrackets(acc, e.Instrument);
                 SubmitBeStop(acc, e.Instrument, e.BePrice, e.IsLong);
             }
@@ -442,7 +445,6 @@ namespace PropTraderTools
         internal void SetCloneAtmCache(string value)
         {
             _cloneAtmCache = value ?? string.Empty;
-            NinjaTrader.Code.Output.Process("[PTT-CLONE] SetCloneAtmCache: '" + _cloneAtmCache + "' (empty=" + (_cloneAtmCache.Length == 0) + ")", PrintTo.OutputTab1);
         }
 
         // HOTFIX-B66-ATM-OBJ: SetCloneAtmObjectCache -- stores live AtmStrategy object for Clone dispatch.
@@ -452,7 +454,6 @@ namespace PropTraderTools
         internal void SetCloneAtmObjectCache(NinjaTrader.NinjaScript.AtmStrategy atmObj)
         {
             _cloneAtmObject = atmObj;
-            NinjaTrader.Code.Output.Process("[PTT-CLONE] SetCloneAtmObjectCache: " + (atmObj == null ? "null" : "SET"), PrintTo.OutputTab1);
         }
 
         // B50 -- GetCloneAtmMode: CYC=2. Returns Named(obj) if object cached, Named(string) if string only, else Inherit.
@@ -467,7 +468,6 @@ namespace PropTraderTools
             var cache = _cloneAtmCache;
             if (cache != null && cache.Length > 0)      // branch (2) -- fallback: string overload
                 return new FollowerAtmMode.Named(cache);
-            NinjaTrader.Code.Output.Process("[PTT-CLONE] GetCloneAtmMode: no cache -- Inherit fallback", PrintTo.OutputTab1);
             return new FollowerAtmMode.Inherit();
         }
 
@@ -632,6 +632,9 @@ namespace PropTraderTools
                 if (IsQxCancelCandidate(o))                                                // (4)
                     result.Add(o);
             }
+            NinjaTrader.Code.Output.Process(
+                "[PTT-QX] snapshot: " + result.Count + " cancellable orders for " + instr.FullName,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             return result;
         }
 
@@ -651,6 +654,7 @@ namespace PropTraderTools
         {
             if (acc == null || instr == null) return;                                      // (1)
             var stale = new System.Collections.Generic.List<Order>();
+            int raceSkipped = 0;
             foreach (Order o in acc.Orders)                                                // (2)
             {
                 bool stateOk = o.OrderState == OrderState.Working
@@ -660,10 +664,13 @@ namespace PropTraderTools
                             || o.OrderState == OrderState.TriggerPending;
                 if (!stateOk) continue;                                                    // (3)
                 if (o.Instrument == null || o.Instrument.FullName != instr.FullName) continue; // (4)
-                if (snapshot != null && !snapshot.Contains(o)) continue;                   // (5)
+                if (snapshot != null && !snapshot.Contains(o)) { raceSkipped++; continue; } // (5)
                 if (IsQxCancelCandidate(o))                                                 // (6)
                     stale.Add(o);
             }
+            NinjaTrader.Code.Output.Process(
+                "[PTT-QX] cancel: " + stale.Count + " queued, " + raceSkipped + " race-skipped on " + acc.Name,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             if (stale.Count == 0) return;                                                  // (7)
             try { acc.Cancel(stale.ToArray()); }
             catch { }
@@ -753,7 +760,12 @@ namespace PropTraderTools
                     DateTime.MaxValue,
                     (NinjaTrader.Cbi.CustomOrder)null);
                 if (order != null)                                 // (6) inner if
+                {
                     acc.Submit(new[] { order });
+                    NinjaTrader.Code.Output.Process(
+                        "[BE] SubmitBeStop: " + dir + " " + pos.Quantity + " @ " + bePrice.ToString("F2") + " on " + acc.Name,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
             }
             catch { }
         }
@@ -1201,6 +1213,11 @@ namespace PropTraderTools
                     baseSignal.LimitPrice,
                     baseSignal.OrderId);
                 var mode = ResolveAtmMode(rule, acc.Name);
+                NinjaTrader.Code.Output.Process(
+                    "[PTT-COPY] dispatch: " + scaledSignal.Action + " x" + scaledSignal.Quantity
+                    + " " + order.Instrument.FullName + " -> " + acc.Name
+                    + " mult=" + mult + " mode=" + mode.GetType().Name,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                 if (mode is FollowerAtmMode.Named namedAtm)               // HOTFIX-B66-NATIVE-ATM: Named mode -> native ATM
                     SendCopyWithAtm(acc, order.Instrument, in scaledSignal, namedAtm);
                 else
@@ -2325,6 +2342,9 @@ namespace PropTraderTools
                 StatusUpdate?.Invoke(acc.Name + ": flat skip");
                 return;
             }
+            NinjaTrader.Code.Output.Process(
+                "[BE] MoveStopToBreakEven: " + acc.Name + " buf=" + bufferTicks + "t",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             double tickSize = instrument.MasterInstrument.TickSize;
             bool isLong = pos.MarketPosition == MarketPosition.Long;
             // HOTFIX-BUG-BE-STOP-SHORT (MoveStopToBreakEven): align sign with PttBreakEven fix.
@@ -2385,6 +2405,9 @@ namespace PropTraderTools
                 if (stateOk && instrOk && notBe)
                     stale.Add(o);
             }
+            NinjaTrader.Code.Output.Process(
+                "[BE] MoveStopToBreakEven: " + acc.Name + " cancel=" + stale.Count + " targets=" + targets.Count + " newStop=" + newStop.ToString("F2"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             try                                                                             // (6)
             {
                 if (stale.Count > 0)
@@ -2660,6 +2683,9 @@ namespace PropTraderTools
                     return;
                 }
             }
+            NinjaTrader.Code.Output.Process(
+                "[BE] ArmPendingBe: " + masterAcc.Name + " " + instr.FullName + " buf=" + bufferTicks + "t -- ARMED",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             _pendingBeSlots[masterAcc.Name] = new PendingBeSlot(masterAcc, instr, bufferTicks); // (6)
             PendingBeArmed?.Invoke(instr.FullName ?? string.Empty, masterAcc.Name ?? string.Empty);  // HOTFIX-BEALL-SYNC-01
             masterAcc.AccountItemUpdate += OnPendingBeAccountUpdate;

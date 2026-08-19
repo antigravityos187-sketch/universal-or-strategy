@@ -68,6 +68,9 @@ namespace PropTraderTools
             // Orders submitted after this point (by the Submit loop below) are NOT in the snapshot
             // and will be skipped by the 3-param CancelQxBrackets overload -- no race cancellation.
             var snapshot = CopyEngine.BuildQxSnapshot(leader, instr);
+            NinjaTrader.Code.Output.Process(
+                "[PTT-QX] race-guard: snapshot=" + snapshot.Count + " orders on " + leader.Name,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             CopyEngine.Instance?.CancelQxBrackets(leader, instr, snapshot);
             // B70 DW-B70-02: also cancel follower PTT-Copy brackets before re-placing QX orders
             CopyEngine.Instance?.CancelQxBracketsForFollowers(instr);
