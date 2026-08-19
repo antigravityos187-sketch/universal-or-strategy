@@ -85,7 +85,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 
 ## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76 / B77
 
-**Latest pipeline run: B76-LaneA FINAL_PASS (2026-08-18)**
+**Latest pipeline run: B77-LaneA FINAL_PASS (2026-08-19)**
 
 | Block | Lane | Files | Hotfixes | Tests written | Final verdict |
 |-------|------|-------|----------|---------------|---------------|
@@ -95,7 +95,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | B75-LaneB | UI logic | TradeCopierPanel.cs | 3 | 10 [Fact] | FINAL_PASS |
 | B75-LaneA | Clone/copy hotfixes | CopyEngine.cs | 12 hotfixes + 2 CYC refactors | 60 [Fact] | FINAL_PASS |
 | B76-LaneA | Race+guard+dedup+ATM | CopyEngine.cs + TradeCopierPanel.cs + TradeCopierAddOn.cs + TradeCopierWindow.cs | 6 hotfixes | 12 [Fact] | FINAL_PASS |
-| B77 direct | ATM fallback-1 fix + ASCII comments | TradeCopierPanel.cs + CopyEngine.cs | 2 | 0 (pipeline pending) | APPLIED -- awaiting pipeline |
+| B77 direct | ATM fallback-1 fix + ASCII comments | TradeCopierPanel.cs + CopyEngine.cs | 2 | 5 [Fact] | PIPELINE-COMPLETE (B77-LaneA) |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
