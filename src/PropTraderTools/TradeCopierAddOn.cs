@@ -372,6 +372,13 @@ namespace PropTraderTools
                     }
                     foreach (var old in stale)
                     {
+                        // B76 HOTFIX-B76-POSSTATE-LEAK-01: call Detach() on each stale panel
+                        // before grid removal. Without this, the stale panel retains its
+                        // PositionStateChanged subscription, accumulating N subscriptions after
+                        // N F5 reloads and firing the handler N times per position event.
+                        var stalePanel = old as TradeCopierPanel;
+                        if (stalePanel != null)
+                            stalePanel.Detach();
                         int staleRow = System.Windows.Controls.Grid.GetRow(old);
                         grid.Children.Remove(old);
                         // Remove the RowDefinition that was added for this panel row.

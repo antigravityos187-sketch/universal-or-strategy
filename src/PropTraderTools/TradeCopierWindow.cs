@@ -109,12 +109,14 @@ namespace PropTraderTools
 
             try
             {
+                _engine.StatusUpdate         -= OnStatusUpdate;
+                _engine.PositionStateChanged -= OnPositionStateChanged;
+                _engine.CopyEnabledChanged   -= OnCopyEnabledChanged;
                 _engine.StatusUpdate          += OnStatusUpdate;
                 _engine.PositionStateChanged  += OnPositionStateChanged;
-                _engine.Subscribe();
+                _engine.CopyEnabledChanged   += OnCopyEnabledChanged;
                 CopyEngine.Instance.LoadRules();
                 RefreshRuleRows();
-                _engine.CopyEnabledChanged += OnCopyEnabledChanged;
             }
             catch (Exception ex)
             {
@@ -150,8 +152,9 @@ namespace PropTraderTools
         protected override void OnClosed(EventArgs e)
         {
             try { CopyEngine.Instance.SaveRules(); } catch { }
-            _engine.StatusUpdate -= OnStatusUpdate;
-            _engine.Unsubscribe();
+            _engine.StatusUpdate         -= OnStatusUpdate;
+            _engine.PositionStateChanged -= OnPositionStateChanged;
+            _engine.CopyEnabledChanged   -= OnCopyEnabledChanged;
             base.OnClosed(e);
         }
 
