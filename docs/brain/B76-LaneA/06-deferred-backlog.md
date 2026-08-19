@@ -16,6 +16,8 @@ section. Items carry forward until resolved or explicitly closed by Director.
 | ID | Item | Priority | Status |
 |----|------|----------|--------|
 | DW-B76-01 | NT8 popup "Cancellation rejected -- Order is complete" on ATM teardown. NT8-internal behavior; no code fix possible without hooking NT8 internals. Document as confirmed NT8 behavior. | P3 | OPEN (doc only) |
+| DW-B76-02 | GetLeaderAtmTemplateName Fallback-1 reads wrong property. `AtmStrategySelector.SelectedAtmStrategy.Name` returns "AtmStrategy" (class name) -- same bug as `ct.AtmStrategy.Name`. The template name string lives on `sel.SelectedItem as string`, not on `.SelectedAtmStrategy.Name`. Fix: replace Fallback-1 body with `return sel?.SelectedItem as string ?? string.Empty`. Observed live 2026-08-19: SetCloneAtmCache still logs 'AtmStrategy' after B76 guard correctly rejects ct.AtmStrategy.Name -- all fallbacks fail. Clone mode cannot read ATM template name in any path until this is fixed. | P1 | OPEN |
+| DW-B76-03 | QX self-cancellation race on 8-contract accounts. Observed live 2026-08-19: PA-APEX-422136-09 PTT-QX-Stop/Stop2/Stop3 submitted+accepted at 6:48:54, then Cancel submitted at 6:48:55 with Filled=0 -- before price reached stop level. Hypothesis: ATM teardown cancel-all sweep on -09 ran concurrently with PTT-QX order submission and swept the new QX stops as collateral. -07 (same 8 contracts, different ATM teardown timing) stopped out correctly. Needs sim reproduction test at 8 contracts across all accounts + investigation of cancel ordering in CancelQxBrackets / QX dispatch sequence. | P1 | OPEN |
 
 ### Carried Items from Prior Blocks (OPEN)
 
