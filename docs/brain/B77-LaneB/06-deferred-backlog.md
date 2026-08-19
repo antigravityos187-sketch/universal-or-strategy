@@ -43,12 +43,12 @@ section. Items carry forward until resolved or explicitly closed by Director.
 | ID | Source | Item | Priority | Status |
 |----|--------|------|----------|--------|
 | DW-B75-01 | B75-LaneA | Non-ASCII em-dash/arrow in CopyEngine.cs (lines 202, 203, 493, 697 approx). | P2 | OPEN |
-| DW-B75-02 | B75-LaneA | [PTT-CLONE] diagnostic Output.Process lines. Remove after Clone live confirm. | P2 | OPEN |
+| DW-B75-02 | B75-LaneA | [PTT-CLONE] diagnostic Output.Process lines. Remove after Clone live confirm. | P2 | CLOSED (B77 post -- Director approved) |
 | DW-B75-03 | B75-LaneA | 14 NT8-runtime-bound tests marked [Fact(Skip="NT8-runtime")]. | P2 | OPEN |
 | DW-B75-04 | B75-LaneA | HasWorkingPttCopy no retry counter guard. | P2 | OPEN |
-| DW-B66-BE-01 | B66/B74 | CancelQxBrackets cancels PTT-BE-Stop during QX. Director confirmation required. | P1 | OPEN |
-| DW-B66-C-02 | B66/B74 | DispatchCopy Gate 5 dedup key = 0.0 for StopLimit. | P1 | OPEN |
-| DW-B63-01 | B63/B74 | Spurious PTT-Copy bracket orders on Sim102. | P1 | OPEN |
+| DW-B66-BE-01 | B66/B74 | CancelQxBrackets cancels PTT-BE-Stop during QX. Director confirmation required. | P1 | CLOSED -- behaviour confirmed correct. Live PTT-BE-Stop orders cancelled+replaced by QX (intended). Armed-only slots live in _pendingBeSlots (in-memory), never in acc.Orders, so QX cannot touch them. Both paths work as designed. |
+| DW-B66-C-02 | B66/B74 | DispatchCopy Gate 5 dedup key = 0.0 for StopLimit. | P1 | CLOSED -- non-issue. DispatchCopy Gate 4 blocks OrderType.StopLimit before IsDedup is reached. StopLimit orders never enter the dedup path. |
+| DW-B63-01 | B63/B74 | Spurious PTT-Copy bracket orders on Sim102. | P1 | OPEN -- awaiting sim trace ([PTT-COPY] dispatch: output) to identify failing gate |
 | DW-B54-01 | B54 | ATM auto-inject blocked: AtmStrategyCreate() is StrategyBase-only. | P1 | OPEN (blocked) |
 | DW-B72-01 | B72-LaneA | IsAtmBracketName("Stop10") returns true -- known edge. | P3 | OPEN |
 | DW-B73-B-01 | B73-LaneB | RaiseBeAllDisarmed redundant broadcasts on flat. | P2 | OPEN |
