@@ -24,6 +24,9 @@ namespace PropTraderTools
         /// HOTFIX-QUICK-T3-01: snapshot target orders before cancel to determine N (targetCount).
         /// Pass targets snapshot to ExecuteOne for N-bracket submission.
         /// DW-B47-BE-FOLLOWER-SCOPE: follower accounts skipped in leader loop via IsFollowerAccount.
+        /// B78 DW-B63-01: capture leaderStop BEFORE calling ExecuteOne (which cancels leader brackets).
+        ///   Pass leaderStop + targets.Count to follower ExecuteOne so follower resolves the correct
+        ///   stop price and target count even when its own ATM brackets have not yet arrived.
         /// JS-021: no lock. NT8-021: Account.All safe -- called from UI thread after Loaded.
         /// </summary>
         internal void Execute()
@@ -39,9 +42,12 @@ namespace PropTraderTools
                 {
                     if (pos == null || pos.Quantity == 0) continue;  // (4)
                     var targets = SnapshotTargetOrders(acc, pos.Instrument);
+                    // B78 DW-B63-01: snapshot leader stop BEFORE ExecuteOne cancels leader brackets.
+                    double leaderStop = PttQuickExit.SnapshotStopPrice(acc, pos.Instrument);
                     var ticks = ResolveQuickTicks(pos.Instrument);
                     NinjaTrader.Code.Output.Process(
-                        "[PTT-QX-ALL] leader: " + acc.Name + " " + pos.Instrument.FullName + " qty=" + pos.Quantity + " t1=" + ticks.t1,
+                        "[PTT-QX-ALL] leader: " + acc.Name + " " + pos.Instrument.FullName
+                            + " qty=" + pos.Quantity + " t1=" + ticks.t1 + " stop=" + leaderStop,
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                     ExecuteOne(acc, pos.Instrument, ticks.t1, targets);
                     // B71 DW-B71-04: place PTT-QX on every follower that has an open position
@@ -52,9 +58,13 @@ namespace PropTraderTools
                             if (follower == null) continue;         // (7)
                             var followerTargets = SnapshotTargetOrders(follower, pos.Instrument);
                             NinjaTrader.Code.Output.Process(
-                                "[PTT-QX-ALL] follower: " + follower.Name + " " + pos.Instrument.FullName,
+                                "[PTT-QX-ALL] follower: " + follower.Name + " " + pos.Instrument.FullName
+                                    + " leaderStop=" + leaderStop + " leaderTargets=" + targets.Count,
                                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                            ExecuteOne(follower, pos.Instrument, ticks.t1, followerTargets, skipIfFollower: false);
+                            ExecuteOne(follower, pos.Instrument, ticks.t1, followerTargets,
+                                skipIfFollower: false,
+                                leaderStop: leaderStop,
+                                leaderTargetCount: targets.Count);
                         }
                 }
             }
@@ -76,15 +86,18 @@ namespace PropTraderTools
         /// <summary>
         /// ExecuteOne: per-account Quick Exit bracket swap.
         /// HOTFIX-QUICK-T3-01: accepts targets snapshot for N-bracket submission.
+        /// B78 DW-B63-01: leaderStop + leaderTargetCount forwarded to PttQuickExit.Execute.
         /// CYC=1: straight delegation.
         /// </summary>
         private void ExecuteOne(
             Account acc, Instrument instr, int t1Ticks,
             System.Collections.Generic.List<(double Price, int Qty)> targets,
-            bool skipIfFollower = true)
+            bool skipIfFollower = true,
+            double leaderStop = 0,
+            int leaderTargetCount = 0)
         {
             var executor = new PttQuickExit();
-            executor.Execute(acc, instr, t1Ticks, targets, skipIfFollower);
+            executor.Execute(acc, instr, t1Ticks, targets, skipIfFollower, leaderStop, leaderTargetCount);
         }
 
         /// <summary>
