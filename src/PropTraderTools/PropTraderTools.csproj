@@ -127,6 +127,7 @@
     <Compile Include="Tests\PttBreakEvenB72Tests.cs" />
     <Compile Include="TradeCopierPanelB75Tests.cs" />
     <Compile Include="B76Tests.cs" />
+    <Compile Include="TradeCopierPanelB77Tests.cs" />
   </ItemGroup>
 
 </Project>
