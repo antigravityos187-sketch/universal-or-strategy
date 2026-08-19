@@ -2034,3 +2034,327 @@ public class MyAddOnTab : NTTabPage
 - Pages failed: 0
 - Total pages attempted: 26
 - Scraped: 2026-08-10 12:12 UTC
+
+---
+
+## StartAtmStrategy()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/startatmstrategy
+> **Slug**: `startatmstrategy`
+> **Scraped**: 2026-08-17 (live session)
+
+## Definition
+
+**StartAtmStrategy** can be used to submit entry orders with ATM strategies.
+
+**CRITICAL**: This is a **static method on `NinjaTrader.NinjaScript.AtmStrategy`** — callable from ANY context including `NTTabPage` / `AddOnBase`. It is NOT restricted to `StrategyBase`.
+
+## Syntax
+
+`NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(AtmStrategy atmStrategyTemplate, Order entryOrder)`
+
+`NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(string atmStrategyTemplateName, Order entryOrder)`
+
+## Parameters
+
+* **atmStrategyTemplate** — An AtmStrategy representing the ATM strategy you wish to use
+* **atmStrategyTemplateName** — A string representing the name of the ATM strategy you wish to use
+* **entryOrder** — An Order representing the entry order
+
+## CRITICAL CONSTRAINT
+
+The `name` argument on `CreateOrder()` MUST be **"Entry"** for the ATM Strategy to be started successfully.
+This means `SendCopy` in `CopyEngine` MUST pass `"Entry"` as the signal name (not `"PTT-Copy"`) when
+intending to arm an ATM strategy on the follower via `StartAtmStrategy`.
+
+## Example (from AddOn window — NTTabPage)
+
+```csharp
+// Example of starting an ATM strategy from an Add On window.
+public class MyAddOnTab : NTTabPage
+{
+    private Account account;
+    private Order entryOrder;
+
+    public MyAddOnTab()
+    {
+        lock (Account.All)
+            account = Account.All.FirstOrDefault(a => a.Name == "Sim101");
+
+        if (account != null)
+        {
+            entryOrder = account.CreateOrder(Cbi.Instrument.GetInstrument("AAPL"), OrderAction.Buy, OrderType.Market,
+                TimeInForce.Day, 1, 0, 0, string.Empty, "Entry", null);
+
+            // Submits our entry order with the ATM strategy named "myAtmStrategyName"
+            NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy("myAtmStrategyName", entryOrder);
+        }
+    }
+}
+```
+
+---
+
+## CreateOrder() — Full Signature (confirmed 2026-08-17)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/createorder
+> **Slug**: `createorder`
+> **Scraped**: 2026-08-17 (live session)
+
+## Syntax
+
+`CreateOrder(Instrument instrument, OrderAction action, OrderType orderType, OrderEntry orderEntry, TimeInForce timeInForce, int quantity, double limitPrice, double stopPrice, string oco, string name, DateTime gtd, CustomOrder customOrder)`
+
+## Parameters
+
+* **instrument** — Order instrument
+* **orderAction** — OrderAction.Buy / BuyToCover / Sell / SellShort
+* **orderType** — OrderType.Limit / Market / MIT / StopMarket / StopLimit
+* **orderEntry** — OrderEntry.Automated / Manual
+* **timeInForce** — TimeInForce.Day / Gtc / Gtd / Ioc / Opg
+* **quantity** — Order quantity
+* **limitPrice** — Limit price. Use 0 if irrelevant.
+* **stopPrice** — Stop price. Use 0 if irrelevant.
+* **oco** — OCO group ID string
+* **name** — Order name. Max 50 chars. MUST be "Entry" when using StartAtmStrategy().
+* **gtd** — DateTime for Gtd; use Core.Globals.MaxDate otherwise
+* **customOrder** — Custom order, or null
+
+---
+
+## Using ATM Strategies (guide)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/using_atm_strategies
+> **Slug**: `using_atm_strategies`
+> **Scraped**: 2026-08-17 (live session)
+
+There is a clear line between a NinjaScript Strategy and an ATM Strategy. The use model for
+creating an ATM Strategy within a NinjaScript Strategy is when you want to programmatically
+monitor and generate an entry signal and then manually manage the resulting open position via
+an ATM Strategy in one of NinjaTrader's order entry windows.
+
+**IMPORTANT**: When manually closing an ATM Strategy from SuperDOM/Chart Trader:
+- If ATM Strategy Selection Mode is NOT "DisplaySelectedATMStrategyOnly": close via middle mouse button
+- If it IS "DisplaySelectedATMStrategyOnly": left-click Close
+Not following this will close the account/instrument position, terminate all strategies and cancel all orders.
+
+---
+
+## Submit()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/submit
+> **Scraped**: 2026-08-17 (live session)
+
+## Definition
+
+Submits specified **Order** object(s).
+
+## Syntax
+
+`Submit(IEnumerable<Order> orders)`
+
+## Parameters
+
+* **orders** — Order(s) to submit
+
+## Example
+
+```csharp
+Order stopOrder = null;
+stopOrder = myAccount.CreateOrder(myInstrument, OrderAction.Sell, OrderType.StopMarket,
+    TimeInForce.Day, 1, 0, 1400, "myOCO", "stopOrder", null);
+myAccount.Submit(new[] { stopOrder });
+```
+
+---
+
+## Account.Strategies Property
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/strategies
+> **Scraped**: 2026-08-17 (live session)
+
+## Definition
+
+A collection of **StrategyBase** objects generated for the specified account.
+ATM strategies launched via `StartAtmStrategy()` appear in this collection as `AtmStrategy` instances.
+
+## Syntax
+
+`<account>.Strategies`
+
+## Property Value
+
+A Collection of **StrategyBase** objects (ATM strategies appear as `AtmStrategy` subtype).
+
+---
+
+## OrderUpdate Event (AddOn / NTTabPage pattern)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/orderupdate
+> **Scraped**: 2026-08-17 (live session)
+
+## Definition
+
+**OrderUpdate** can be used for subscribing to order update events from an AddOn.
+
+## Key pattern: submitting brackets after entry fills (NTTabPage)
+
+```csharp
+public class MyAddOnTab : NTTabPage
+{
+    private Account account;
+    private Order myEntryOrder;
+    private Order profitTarget;
+    private Order stopLoss;
+
+    public MyAddOnTab()
+    {
+        lock (Account.All)
+            account = Account.All.FirstOrDefault(a => a.Name == "Sim101");
+        if (account != null)
+            account.OrderUpdate += OnOrderUpdate;
+    }
+
+    private void OnOrderUpdate(object sender, OrderEventArgs e)
+    {
+        if (myEntryOrder != null && myEntryOrder == e.Order)
+        {
+            if (e.OrderState == OrderState.Filled)
+            {
+                string oco = Guid.NewGuid().ToString("N");
+                profitTarget = account.CreateOrder(e.Order.Instrument, OrderAction.Sell,
+                    OrderType.Limit, OrderEntry.Manual, TimeInForce.Day,
+                    e.Quantity, e.AverageFillPrice + 10 * e.Order.Instrument.MasterInstrument.TickSize,
+                    0, oco, "profitTarget", null);
+                stopLoss = account.CreateOrder(e.Order.Instrument, OrderAction.Sell,
+                    OrderType.StopMarket, OrderEntry.Manual, TimeInForce.Day,
+                    e.Quantity, 0,
+                    e.AverageFillPrice - 10 * e.Order.Instrument.MasterInstrument.TickSize,
+                    oco, "stopLoss", null);
+                account.Submit(new[] { profitTarget, stopLoss });
+            }
+        }
+    }
+}
+```
+
+---
+
+## NT8 ATM Integration — KEY FACTS (confirmed 2026-08-17)
+
+### StartAtmStrategy is available from AddOnBase / NTTabPage
+- Static method: `NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(string templateName, Order entryOrder)`
+- Works from ANY NinjaScript context — NOT restricted to StrategyBase
+- Confirmed by official NT8 docs example using NTTabPage
+
+### CRITICAL: Order name MUST be "Entry"
+- `CreateOrder(..., name: "Entry", ...)` — mandatory for StartAtmStrategy to arm brackets
+- Any other name causes StartAtmStrategy to silently fail (no brackets armed)
+
+### Sequence
+1. `account.CreateOrder(... "Entry" ...)` — creates order object (not yet submitted)
+2. `NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(templateName, order)` — arms ATM AND submits
+   - NOTE: StartAtmStrategy handles submission internally. Do NOT call account.Submit() separately.
+   - The ATM strategy appears in `account.Strategies` after arming.
+
+### What native ATM gives the follower
+- Stop/Target brackets at template-defined distances
+- Native trailing stop (if template uses it)
+- Native auto break-even (if template uses it)
+- Full SuperDOM/Chart Trader visibility as an ATM strategy instance
+
+### Impact on CopyEngine.SendCopy
+- Current `SendCopy` uses signal name "PTT-Copy" — incompatible with StartAtmStrategy
+- New `SendCopyWithAtm(Account, Instrument, CopySignal, string templateName)` needed
+- Gate 0.5 in DispatchCopy blocks "PTT-" prefixed orders -- "Entry" named orders pass Gate 0.5
+  therefore follower-account guard needed to prevent cascade copy of follower "Entry" fills
+- B66-COPY-REPLACE detects Name=="PTT-Copy" -- if original uses "Entry", guard needs updating
+
+
+---
+
+## ChartTrader Class
+
+> **Source**: NT8 community forum (discourse.ninjatrader.com) topics 5133 + 6060, confirmed
+> independently by multiple AddOn/Indicator developers. No official doc URL — class is part
+> of `NinjaTrader.Gui.Chart` namespace accessible from AddOns and Indicators.
+> **Confirmed date**: 2026-08-17 (HOTFIX-B66-ATM-TPL research).
+
+### Definition
+
+`ChartTrader` is the order-entry sidebar attached to a `Chart` window. It exposes the currently
+selected ATM strategy, account, quantity, and instrument as direct properties.
+
+### Access Patterns
+
+**From an Indicator** (has `ChartControl`):
+```csharp
+ChartTrader ct = ChartControl.OwnerChart.ChartTrader;
+```
+
+**From an AddOn/NTTabPage** (has `Chart` object, no `ChartControl`):
+```csharp
+// NT8-008: Chart.ChartControl does not exist in AddOn context.
+// Use visual tree walk from the Chart object to reach ChartTrader.
+var ct = TradeCopierAddOn.FindVisualChild<ChartTrader>(currentChart);
+```
+Both patterns yield a `ChartTrader` instance; the properties below apply to both.
+
+### Key Properties
+
+| Property | Type | Notes |
+|----------|------|-------|
+| `AtmStrategy` | `NinjaTrader.NinjaScript.AtmStrategy` | Currently selected ATM template. **`null` when "None" is selected.** Use `?.Name` safely. |
+| `Account` | `NinjaTrader.Cbi.Account` | Currently selected trading account. |
+| `Quantity` | `int` | Currently displayed quantity. |
+| `Instrument` | `NinjaTrader.Cbi.Instrument` | Currently displayed instrument. |
+
+### Reading the Selected ATM Template Name
+
+```csharp
+// Correct (direct property -- preferred, no child walk):
+NinjaTrader.NinjaScript.AtmStrategy atm = ct.AtmStrategy;
+string templateName = atm?.Name ?? string.Empty;   // empty = "None" selected
+
+// Indicator pattern:
+AtmStrategy atm = ChartControl.OwnerChart.ChartTrader.AtmStrategy;
+if (atm == null)
+    // "None" selected in ChartTrader
+    account.Submit(new[] { order });
+else
+    NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(atm, order);
+```
+
+### IMPORTANT: AtmStrategy Object vs. Template Name String
+
+`ChartTrader.AtmStrategy` returns an **`AtmStrategy` object** (the live selected strategy),
+not a string. Its `.Name` property is the template name string used by `StartAtmStrategy(string, Order)`.
+
+After the leader fills and brackets arm, the NT8 ATM system replaces the selector's item with
+a new *active instance* of the strategy. At that point `ChartTrader.AtmStrategy` reflects the
+active instance, and `.Name` is still the template name. This is expected behavior.
+
+### AtmStrategy Direct vs. AtmStrategySelector
+
+These are two separate approaches to reading the same data:
+
+| Approach | How | When to use |
+|----------|-----|-------------|
+| `ct.AtmStrategy?.Name` | Direct property on `ChartTrader` | **Preferred.** Works in both Indicator and AddOn. Zero child walk. |
+| `FindVisualChild<NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector>(ct).SelectedAtmStrategy?.Name` | Visual tree DFS by type | Fallback if `ct.AtmStrategy` is unavailable (unusual builds). |
+| `FindVisualChildByIndex<ComboBox>(ct, 2).SelectedItem as string` | Visual tree DFS by index | **Fragile.** Index 2 shifts when AddOns inject extra ComboBoxes into ChartTrader. Pre-B66 legacy only. |
+
+### Thread Safety
+
+`ChartTrader` properties must be accessed on the UI thread.
+In an Indicator: wrap in `ChartControl.Dispatcher.InvokeAsync(...)`.
+In an AddOn/NTTabPage click handler: already on UI thread (no wrapper needed).
+In `OnCloneModeClick` / `GetLeaderAtmTemplateName`: called from UI button click — UI thread, safe.
+
+### Namespace
+
+```csharp
+using NinjaTrader.Gui.Chart;   // ChartTrader lives here
+// AtmStrategySelector lives at NinjaTrader.Gui.NinjaScript.AtmStrategy (assembly=NinjaTrader.Gui)
+// AtmStrategy (the strategy object) lives at NinjaTrader.NinjaScript.AtmStrategy
+```

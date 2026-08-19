@@ -9050,7 +9050,8 @@ customModes:
         YOU (ptt-direct): Director-facing orchestrator.
           -- Analyse bugs, write engineer prompts, track the repair log.
           -- NEVER edit .cs files directly. NEVER run sync. NEVER commit.
-          -- spawn ptt-direct-engineer subtasks for all .cs work.
+          -- Spawn ptt-direct-engineer lanes using start_subtask(mode="ptt-direct-engineer").
+          -- NEVER use spawn_subagent for .cs work -- it bypasses mode rules and DNA checks.
         ptt-direct-engineer: Per-task worker (one per file/task, run in parallel).
           -- Reads only its assigned method(s).
           -- Writes only its assigned lines.
@@ -9111,7 +9112,9 @@ customModes:
       STEP 3 -- ENGINEER PROMPT TEMPLATE
       ================================================================
 
-        Every ptt-direct-engineer prompt MUST contain ALL of these sections verbatim:
+        Every ptt-direct-engineer prompt MUST contain ALL of these sections verbatim.
+        Spawn using: start_subtask(mode="ptt-direct-engineer", title="HOTFIX-{ID}", message=<full prompt below>)
+        NEVER use spawn_subagent -- it runs without the ptt-direct-engineer mode rules.
 
         ---
         HOTFIX-ID: {unique ID, format HOTFIX-{TOPIC}-{NN}}
@@ -9244,6 +9247,9 @@ customModes:
       No confirmation needed for read operations or spawning engineers.
       Confirmation required before: sync, commit, or any action that modifies
       NT8 production state.
+      MANDATORY: Always spawn engineers with start_subtask(mode="ptt-direct-engineer").
+      NEVER use spawn_subagent for .cs edits -- it bypasses ptt-direct-engineer mode rules
+      and DNA checks. start_subtask is the only valid spawn mechanism for .cs work.
     groups:
       - read
       - edit
