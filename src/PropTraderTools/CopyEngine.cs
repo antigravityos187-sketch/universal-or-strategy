@@ -2431,9 +2431,10 @@ namespace PropTraderTools
             NinjaTrader.Code.Output.Process(
                 "[BE] MoveStopToBreakEven: " + acc.Name + " cancel=" + stale.Count + " targets=" + targets.Count + " newStop=" + newStop.ToString("F2"),
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            // DW-B79-02 DIAG: if nothing found, dump all orders with state
-            // so we can see if they exist in an unexpected state.
-            if (stale.Count == 0 && targets.Count == 0)
+            // DW-B79-02 DIAG: if no targets found, dump all orders with state
+            // so we can see what state PTT-QX/ATM orders are in.
+            // Widened from (stale==0 && targets==0) to (targets==0) -- covers cancel=1 targets=0 case.
+            if (targets.Count == 0)
             {
                 foreach (Order o in acc.Orders)
                 {
