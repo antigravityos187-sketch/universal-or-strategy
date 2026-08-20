@@ -1814,8 +1814,8 @@ namespace PropTraderTools
             // TryFireFollowerBeRetry fires at t+0 but finds no slot yet -- event-driven path misses.
             // 500ms fallback fires after ATM is fully settled and claims the slot via TryRemove.
             // If event-driven path wins (QX path, slow NT8), fallback TryRemove returns false -> no-op.
-            _pendingFollowerBeSlots.TryRemove(acc.Name, out _);
-            _pendingFollowerBeSlots[acc.Name] = new PendingFollowerBeSlot(acc, instr, 0);
+            if (!_pendingFollowerBeSlots.TryAdd(acc.Name, new PendingFollowerBeSlot(acc, instr, 0)))
+                return;
             NinjaTrader.Code.Output.Process(
                 "[BE-DIAG] TryReplacePttBeBrackets: " + acc.Name
                     + " -- attempt " + (prevAttempts + 1) + "/3, slot registered, 500ms fallback queued",
@@ -2784,7 +2784,7 @@ namespace PropTraderTools
                     NinjaTrader.Code.Output.Process(
                         "[BE-DIAG] " + acc.Name + " -- targets=0, registered BE retry slot + 200ms fallback",
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                    QueueBeRetryFallback(acc, instrument, bufferTicks);
+                    QueueBeRetryFallback(acc, instrument, bufferTicks, delayMs: 500);
                 }
                 return;
             }
