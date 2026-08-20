@@ -2767,3 +2767,75 @@ The following errors exist in `dotnet build` only and have zero production impac
 Nothing. Pure technical debt. Prioritize after next live-session hotfix cycle.
 
 ---
+
+## HOTFIX-B80-BE-RETRY-01 -- DW-B80-01 + DW-B80-02
+
+**ID**: HOTFIX-B80-BE-RETRY-01
+**Date**: 2026-08-21
+**Commit**: 04b3acfc
+**Files**: `src/PropTraderTools/CopyEngine.cs`
+**Tests**: 295 [Fact] passing, 0 failed
+**Status**: DEPLOYED -- SIM confirmation pending (Director NT8 restart + QX->BE-ALL test)
+
+### Bug DW-B80-01 -- 200ms retry delay insufficient for follower ATM bracket creation
+
+When QX-ALL is pressed immediately before BE-ALL, follower ATM brackets are cancelled by
+`CancelQxBrackets` and then re-created by NT8's ATM engine. The 350ms->500ms retry timer in
+`MoveStopToBreakEven` (DW-B79-04) fired the retry call at 200ms (original code) -- before
+follower ATM brackets had time to appear in `acc.Orders` after QX cancel+recreate. Result:
+retry still sees `targets=0`, submits bare `PTT-BE-Stop` with no OCO target pairs.
+
+SIM test evidence: both `[BE-RETRY] Sim103` and `[BE-RETRY] Sim104` fired with `flat=False`
+but `cancel=0 targets=0`. The 200ms delay was hardcoded in the original DW-B79-04 fix; the
+`delayMs` parameter was always present but defaulted to 200.
+
+### Fix DW-B80-01 -- one line, no CYC change
+
+Passed `delayMs: 500` explicitly to `QueueBeRetryFallback`:
+
+```
+Before: QueueBeRetryFallback(acc, instrument, bufferTicks);
+After:  QueueBeRetryFallback(acc, instrument, bufferTicks, delayMs: 500);
+```
+
+File: CopyEngine.cs L2787. CYC unchanged (MoveStopToBreakEven remains CYC=6).
+
+Note: stale log string at L2785 prints `"registered BE retry slot + 200ms fallback"` -- cosmetic
+only, the actual timer waits 500ms. Log string fix deferred (P3, batch into future pipeline).
+
+### Bug DW-B80-02 -- TryReplacePttBeBrackets double-registration race
+
+`TryReplacePttBeBrackets` previously called `TryRemove` then assigned a new slot unconditionally.
+If two `OnOrderUpdate` events fired in rapid succession for the same account (e.g. Target1 and
+Target2 both going Working within the same tick), the second call would overwrite the first slot
+before it had been consumed, losing the slot's `targetCount`. This caused some slots to be
+registered with `targetCount=0` even when targets were present.
+
+### Fix DW-B80-02 -- TryAdd dedup guard, CYC +1
+
+Replaced unconditional overwrite with `TryAdd` early-return:
+
+```
+Before: _pendingFollowerBeSlots.TryRemove(acc.Name, out _);
+        _pendingFollowerBeSlots[acc.Name] = new PendingFollowerBeSlot(acc, instr, 0);
+
+After:  if (!_pendingFollowerBeSlots.TryAdd(acc.Name, new PendingFollowerBeSlot(acc, instr, 0)))
+            return;
+```
+
+File: CopyEngine.cs L1817-1818. CYC: TryReplacePttBeBrackets +1 (was 5, now 6).
+
+### JS-DNA compliance
+
+- No `lock()` added ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- ASCII-only ✅
+- CYC delta: +1 (DW-B80-02 guard only)
+
+### Pipeline work needed
+
+- None. Director-approved direct repair (no-pipeline hotfix category).
+- SIM test required to confirm 500ms delay is sufficient in clean-session NT8.
+- If bare stops persist after clean restart: open DW-B80-03 for multi-step retry design.
+- Spec cards DW-B80-01 / DW-B80-02 stamped CLOSED after Director SIM green confirmation.
