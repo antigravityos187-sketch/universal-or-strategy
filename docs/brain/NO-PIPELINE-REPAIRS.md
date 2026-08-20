@@ -85,7 +85,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 
 ## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76 / B77 / B78 / B79
 
-**Latest pipeline run: DW-B79-08 v2 DIRECT (2026-08-19) -- TryReplacePttBeBrackets slot-registration fix (commit b2685f55)**
+**Latest pipeline run: DW-B79-04 FINAL_PASS (2026-08-20) -- ChangeSubmitted cancel filter + BE eviction log gate (HEAD 5925b618)**
 
 | Block | Lane | Files | Hotfixes | Tests written | Final verdict |
 |-------|------|-------|----------|---------------|---------------|
@@ -144,7 +144,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 
 ---
 
-## ALL HOTFIXES BELOW: PIPELINE-COMPLETE (B72 / B73 / B74)
+## ALL HOTFIXES BELOW: PIPELINE-COMPLETE (B72 / B73 / B74 / B75 / B76 / B77)
 
 The following entries were formalised through the full 7-phase PTT pipeline.
 No further pipeline action required unless a regression is identified.
@@ -157,7 +157,7 @@ No further pipeline action required unless a regression is identified.
 **Date**: 2026-08-14 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `ArmAllPendingBe(int bufferTicks)` (line 563)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ### Bug
 `ArmAllPendingBe` was calling `SubmitBeStop(acc, pos.Instrument, bePrice, isLong)` which:
@@ -225,7 +225,7 @@ Follower ATM bracket stops WILL be moved by `MoveStopToBreakEven`. No pipeline g
 **Date**: 2026-08-14 (live trading session)
 **Files**: `src/PropTraderTools/CopyEngine.cs`, `src/PropTraderTools/Features/PttBreakEven.cs`
 **Methods**: `CancelQxBrackets` (CopyEngine.cs line ~454), `CancelStaleBracketsLocal` (PttBreakEven.cs line ~159)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA + B74-LaneC)
 **Deferred item**: DW-B72-01
 
 ### Bug
@@ -299,7 +299,7 @@ NT8 reference: NT8_FULL_REFERENCE.md line 946.
 **Date**: 2026-08-14 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `OnOrderUpdate` (~line 692)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 **Deferred item**: BUG-BE-RESET
 
 ### Bug
@@ -344,7 +344,7 @@ Follower orders never trigger `PositionStateChanged` events.
 **Date**: 2026-08-14 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `OnOrderUpdate` Gate C (~line 766)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 **Deferred item**: DW-B64-01
 
 ### Bug
@@ -386,7 +386,7 @@ finds the key with the new price → `Math.Abs(newPrice - newPrice) = 0 < tickSi
 **Date**: 2026-08-14 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Methods**: `OnGlobalBeClick`, `OnPendingBeFiredDispatch`, `UpdateButtonColors`
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B73-LaneB)
 **Deferred item**: DW-B72-02
 
 ### Bug
@@ -424,7 +424,7 @@ All panels call the same CopyEngine singleton, so both panels update consistentl
 **Date**: 2026-08-14 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Method**: `UpdateBeVisuals` (~line 1268)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B73-LaneB)
 
 ### Bug
 `UpdateBeVisuals(BeState.Idle)` only reset `Content` (label text) — never reset `Background`.
@@ -441,7 +441,7 @@ Added `_beBtn2.Background = BrushInactive` to the `BeState.Idle` case.
 **Date**: 2026-08-14 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `TryFirePositionState` (~line 1194)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ### Bug
 `TryFirePositionState` included `Cancelled` and `Rejected` in the trigger filter.
@@ -462,7 +462,7 @@ after position removal — one clean signal, not hundreds.
 **Date**: 2026-08-14 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Method**: `UpdateButtonColors` (~line 570)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B73-LaneB)
 
 ### Bug
 The DW-B72-02 block added in the previous session called `DisarmPendingBe` for ALL accounts
@@ -482,16 +482,16 @@ BE ALL visual reset on flat is now handled only by `OnPendingBeFiredDispatch` (c
 
 | Hotfix ID | File | Method | Status | Pipeline block |
 |-----------|------|--------|--------|----------------|
-| HOTFIX-BE-ALL-01 | CopyEngine.cs | ArmAllPendingBe | APPLIED | TBD (BXX) |
-| HOTFIX-QX-DOUBLE-01 | CopyEngine.cs + PttBreakEven.cs | CancelQxBrackets + CancelStaleBracketsLocal | APPLIED | TBD (BXX) |
-| HOTFIX-BUG2-BE-RESET | CopyEngine.cs | OnOrderUpdate (TryFirePositionState move) | APPLIED | TBD (BXX) |
-| HOTFIX-DW-B64-01 | CopyEngine.cs | OnOrderUpdate Gate C (dedup re-insert) | APPLIED | TBD (BXX) |
-| HOTFIX-DW-B72-02 | TradeCopierPanel.cs | OnGlobalBeClick + OnPendingBeFiredDispatch + UpdateButtonColors | APPLIED | TBD (BXX) |
-| HOTFIX-FIX-A-BE-BACKGROUND | TradeCopierPanel.cs | UpdateBeVisuals (Idle background reset) | APPLIED | TBD (BXX) |
-| HOTFIX-FIX-B-TRYFIRE-CANCELLED | CopyEngine.cs | TryFirePositionState (remove Cancelled/Rejected) | APPLIED | TBD (BXX) |
-| HOTFIX-FIX-C-NO-DISARM-IN-UPDATEBUTTONCOLORS | TradeCopierPanel.cs | UpdateButtonColors (remove forced DisarmPendingBe) | APPLIED | TBD (BXX) |
-| HOTFIX-BEALL-BUFFER-SYNC-01 | CopyEngine.cs + PttGlobalBreakEven.cs | GlobalBeBufferChanged event + IncrementBuffer + DecrementBuffer | PENDING ENGINEER | TBD (BXX) |
-| HOTFIX-QUICKALL-SINGLETON-01 | CopyEngine.cs + TradeCopierPanel.cs + PttGlobalQuickExit.cs | _globalQuickAllT1 singleton + broadcast events + Execute() wiring | PENDING ENGINEER | TBD (BXX) |
+| HOTFIX-BE-ALL-01 | CopyEngine.cs | ArmAllPendingBe | PIPELINE-COMPLETE | B72-LaneA |
+| HOTFIX-QX-DOUBLE-01 | CopyEngine.cs + PttBreakEven.cs | CancelQxBrackets + CancelStaleBracketsLocal | PIPELINE-COMPLETE | B72-LaneA + B74-LaneC |
+| HOTFIX-BUG2-BE-RESET | CopyEngine.cs | OnOrderUpdate (TryFirePositionState move) | PIPELINE-COMPLETE | B72-LaneA |
+| HOTFIX-DW-B64-01 | CopyEngine.cs | OnOrderUpdate Gate C (dedup re-insert) | PIPELINE-COMPLETE | B72-LaneA |
+| HOTFIX-DW-B72-02 | TradeCopierPanel.cs | OnGlobalBeClick + OnPendingBeFiredDispatch + UpdateButtonColors | PIPELINE-COMPLETE | B73-LaneB |
+| HOTFIX-FIX-A-BE-BACKGROUND | TradeCopierPanel.cs | UpdateBeVisuals (Idle background reset) | PIPELINE-COMPLETE | B73-LaneB |
+| HOTFIX-FIX-B-TRYFIRE-CANCELLED | CopyEngine.cs | TryFirePositionState (remove Cancelled/Rejected) | PIPELINE-COMPLETE | B72-LaneA |
+| HOTFIX-FIX-C-NO-DISARM-IN-UPDATEBUTTONCOLORS | TradeCopierPanel.cs | UpdateButtonColors (remove forced DisarmPendingBe) | PIPELINE-COMPLETE | B73-LaneB |
+| HOTFIX-BEALL-BUFFER-SYNC-01 | CopyEngine.cs + PttGlobalBreakEven.cs | GlobalBeBufferChanged event + IncrementBuffer + DecrementBuffer | PIPELINE-COMPLETE | B74-LaneC + B75-LaneB |
+| HOTFIX-QUICKALL-SINGLETON-01 | CopyEngine.cs + TradeCopierPanel.cs + PttGlobalQuickExit.cs | _globalQuickAllT1 singleton + broadcast events + Execute() wiring | PIPELINE-COMPLETE | B75-LaneA |
 
 ---
 
@@ -500,7 +500,7 @@ BE ALL visual reset on flat is now handled only by `OnPendingBeFiredDispatch` (c
 **Date**: 2026-08-15 (live trading session continuation)
 **File**: `src/PropTraderTools/Features/PttBreakEven.cs`
 **Method**: `BuildBeOcoId` (~line 331)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 **Deferred item**: BUG-BE-OCO-REUSE
 
 ### Bug
@@ -541,7 +541,7 @@ No collision possible between any two distinct account names.
 **Date**: 2026-08-15 (live trading session continuation)
 **File**: `src/PropTraderTools/Features/PttBreakEven.cs`
 **Method**: `ExecuteOneAccount` (~line 93)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 **Deferred item**: BUG-BE-STOP-PRICE-SHORT
 
 ### Bug
@@ -605,7 +605,7 @@ With buf=1: long stop 1 tick below entry; short stop 1 tick above entry.
 **Date**: 2026-08-15 (live trading session continuation)
 **File**: `src/PropTraderTools/Features/PttBreakEven.cs`
 **Method**: `RaiseBeNotify` (~line 145)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ### Bug
 `RaiseBeNotify` had its own independent copy of the bePrice formula:
@@ -633,7 +633,7 @@ Aligned sign with `ExecuteOneAccount`:
 **Date**: 2026-08-15 (live trading session continuation)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `MoveStopToBreakEven` (~line 1885)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 **Root cause of**: BE and BE ALL never moving the stop loss
 
 ### Bug
@@ -679,7 +679,7 @@ Changed reference equality to `FullName` string comparison — identical to the 
 **Date**: 2026-08-15 (live trading session continuation)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `MoveStopToBreakEven` (~line 1881)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ### Bug
 `MoveStopToBreakEven` had the same wrong sign as `PttBreakEven.ExecuteOneAccount`:
@@ -704,7 +704,7 @@ With buf=0 this has no practical effect (both produce `avgPrice`). Matters when 
 **Date**: 2026-08-15 (live trading session continuation)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `ArmPendingBe` (~line 2075)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ### Bug
 `ArmPendingBe` always armed a pending watcher — no path existed to fire immediately
@@ -761,7 +761,7 @@ This fixes both per-chart BE and BE ALL for the "in the green" case via a single
 **Date**: 2026-08-15 (live trading session — continue)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `MoveStopToBreakEven` (~line 1872)
-**Status**: APPLIED — diagnostic only, remove once BE confirmed working
+**Status**: REMOVED (2026-08-17 pre-flight) -- all [MSTBE] log lines stripped from MoveStopToBreakEven before first live BE test
 
 ### Purpose
 `StatusUpdate` only writes to the panel's `_statusText` label — invisible in the NT8 Output tab.
@@ -803,7 +803,7 @@ All four scenarios are confirmed working:
 **Date**: 2026-08-15 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `MoveStopToBreakEven` (~line 1913)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ### Bug (confirmed by DIAG-MOVESTOP-01 output)
 Every `[MSTBE]` invocation showed:
@@ -852,7 +852,7 @@ Widened state filter from `Working` only to `Working || Accepted || TriggerPendi
 **Date**: 2026-08-15 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Method**: `UpdateButtonColors` (~line 565)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B73-LaneB)
 
 ### Bug
 When the user manually closes a position while BE is Armed (yellow button), the button
@@ -891,7 +891,7 @@ added:
 **Date**: 2026-08-15 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `HandleEntryChange` (~line 1140)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ### Bug
 `TryRemove(orderId)` removed the leader order key from `_dedupCache` immediately after
@@ -950,7 +950,7 @@ computes `Math.Abs(newPrice - newPrice) = 0 < tickSize`, and exits without calli
 **ID**: HOTFIX-MSTBE-CANCEL-RESUBMIT
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks)`
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ### Bug
 
@@ -991,14 +991,14 @@ DIAG-MOVESTOP-01 log lines 1878-1903, `isLong`, `newStop`).
 - **Method**: MoveStopToBreakEven + field _mstbeOcoSeq
 - **Bug**: Static OCO ID PTT-BE-Sim101-0 reused on second BE press -- NT8 rejects all orders, position unprotected
 - **Fix**: volatile int _mstbeOcoSeq + Interlocked.Increment per call, mirrors PttBreakEven._beOcoSeq (DW-B40-OCO-02)
-- **Status**: APPLIED -- awaiting pipeline
+- **Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ## HOTFIX-MSTBE-OCO-REUSE
 
 **Date**: 2026-08-15 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Methods**: `MoveStopToBreakEven` (OCO ID generation) + field declaration
-**Status**: APPLIED + SYNCED — awaiting live test
+**Status**: PIPELINE-COMPLETE (B72-LaneA)
 **Deferred item**: HOTFIX-MSTBE-OCO-REUSE
 
 ### Bug
@@ -1090,7 +1090,7 @@ Second press shows `ocoId=PTT-BE-Sim101-0` and orders silently fail → position
 **Date**: 2026-08-15 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Method**: `OnOrderUpdate` (pre-Gate 1 section, ~line 700)
-**Status**: APPLIED + SYNCED — awaiting live test
+**Status**: PIPELINE-COMPLETE (B73-LaneB)
 **Fixes**: HOTFIX-FLAT-DISARM partial failure — BE button stayed yellow after manual close
 
 ### Bug
@@ -1178,7 +1178,7 @@ This is safe because:
 - **Method**: MoveStopToBreakEven (Step A isAtmTarget filter, ~line 1961)
 - **Bug**: After QX, BE ALL submitted only a bare stop (no targets). ATM Target1/2 replaced by PTT-QX-T1/T2 which do not start with "Target" -> snapshot missed them -> 0 targets.
 - **Fix**: Extended isAtmTarget to also match PTT-QX-T* and PTT-BE-Target-* Limit orders.
-- **Status**: APPLIED -- awaiting pipeline
+- **Status**: PIPELINE-COMPLETE (B72-LaneA)
 
 ---
 
@@ -1188,7 +1188,7 @@ This is safe because:
 - **Method**: ArmPendingBe (new PendingBeArmed event) + OnPendingBeArmedDispatch (new handler)
 - **Bug**: BE ALL button only turned yellow on the panel that was clicked; other panels stayed grey
 - **Fix**: PendingBeArmed event broadcast from ArmPendingBe; all panels subscribe and call UpdateBeAllVisuals(Armed)
-- **Status**: APPLIED -- awaiting pipeline
+- **Status**: PIPELINE-COMPLETE (B73-LaneB)
 
 ---
 
@@ -1198,7 +1198,7 @@ This is safe because:
 - **Method**: OnLeaderPositionUpdate
 - **Bug**: Manual close (Name='Close') before BE fires -> button stays yellow. HasOpenPosition returns True at order-fill time (NT8 position-state lag). hasPos=False never reaches panel.
 - **Fix**: OnLeaderPositionUpdate fires UpdateButtonColors(false,false) on Operation.Remove -- NT8 guarantees position is gone at this event, no lag.
-- **Status**: APPLIED -- awaiting pipeline
+- **Status**: PIPELINE-COMPLETE (B73-LaneB)
 
 ## HOTFIX-BEALL-BUFFER-SYNC-01
 - **ID**: HOTFIX-BEALL-BUFFER-SYNC-01
@@ -1206,7 +1206,7 @@ This is safe because:
 - **Methods**: GlobalBeBufferChanged event + IncrementBuffer + DecrementBuffer
 - **Bug**: BE ALL buffer spin on Panel A does not update Panel B label -- per-panel label only
 - **Fix**: Added GlobalBeBufferChanged Action<int> event; fired from IncrementBuffer/DecrementBuffer; panels subscribe in Task B
-- **Status**: APPLIED (partial -- Task B wiring pending) -- awaiting pipeline
+- **Status**: PIPELINE-COMPLETE (B74-LaneC Task A + B75-LaneB Task B wiring)
 
 ---
 
@@ -1219,7 +1219,7 @@ This is safe because:
 **Methods**: `_globalQuickAllT1` singleton + `GlobalBeBufferChanged` wire + `OnGlobalBeBufferChanged` + `OnQuickAllBufferChanged`
 **Bug**: Quick ALL `_quickAllT1` was per-panel and never fed into execution; BE ALL buffer label only updated on clicked panel
 **Fix**: Singleton `GlobalQuickAllT1` on `CopyEngine`; broadcast events refresh all panel labels; `Execute()` uses singleton value
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 
 ## HOTFIX-QUICKALL-COMPILE-01
@@ -1232,7 +1232,7 @@ This is safe because:
   init line `Content = FormatBuffer("Quick ALL", _quickAllT1)` was not updated.
 **Fix**: Replaced `_quickAllT1` with `CopyEngine.Instance.GlobalQuickAllT1` so the button reads
   the singleton at construction time, consistent with OnQuickAllBufferChanged updates.
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 ### Diff (minimal)
 ```diff
@@ -1255,7 +1255,7 @@ This is safe because:
 **Fix**: Added one-line relay method `internal void RaiseBeBufferChanged(int newValue) => GlobalBeBufferChanged?.Invoke(newValue);`
   inside `CopyEngine`. `PttGlobalBreakEven.IncrementBuffer/DecrementBuffer` now call
   `CopyEngine.Instance.RaiseBeBufferChanged(...)` instead of direct `?.Invoke`.
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 ### Diff (minimal)
 
@@ -1284,7 +1284,7 @@ This is safe because:
   cannot access this object because a different thread owns it."
 **Fix**: Wrapped both handlers in `Dispatcher.InvokeAsync` (same pattern as `OnPendingBeFiredDispatch`
   and `OnPendingBeArmedDispatch`).
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneB)
 
 ### Diff
 ```diff
@@ -1334,7 +1334,7 @@ This is safe because:
   `Dispatcher.InvokeAsync(() => UpdateBeAllVisuals(Idle))`. `RaiseBeAllDisarmed()` is called
   from (1) `OnGlobalBeClick` disarm path after `UpdateBeAllVisuals(Idle)`, and (2) `UpdateButtonColors`
   HOTFIX-F3 branch after `UpdateBeAllVisuals(Idle)`.
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B73-LaneB)
 
 ---
 
@@ -1351,7 +1351,7 @@ This is safe because:
 **Fix**: Added `internal int NextBeOcoSeq() => Interlocked.Increment(ref _mstbeOcoSeq)` on
   CopyEngine. Removed `_beOcoSeq` field from PttBreakEven. `PttBreakEven.Execute` now calls
   `CopyEngine.Instance?.NextBeOcoSeq() ?? 1` — both paths share the same global counter.
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 ---
 
@@ -1367,7 +1367,7 @@ This is safe because:
   label are `DockPanel.SetDock(Dock.Right)`. Name label has no fixed `Width` and fills remaining
   space as the `LastChildFill` child. `TextTrimming = CharacterEllipsis` for graceful degradation
   on very narrow panels.
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneB)
 
 ### Layout change
 ```
@@ -1382,7 +1382,7 @@ After:  [Chk|L][ATM:110px|R][PnL:60px|R][Name fills remaining|LastChildFill]
 **Date**: 2026-08-16 (live trading session)
 **Files**: `src/PropTraderTools/CopyEngine.cs`, `src/PropTraderTools/TradeCopierPanel.cs`
 **Methods**: `RaiseBeBufferChanged`, `IncrementQuickAll`, `DecrementQuickAll`, `OnGlobalBeBufferChanged`, `OnQuickAllBufferChanged`
-**Status**: APPLIED + SYNCED — awaiting live test
+**Status**: PIPELINE-COMPLETE (B76-LaneA)
 
 ### Bug
 `GlobalBeBufferChanged` and `GlobalQuickAllBufferChanged` events were raised synchronously
@@ -1412,7 +1412,7 @@ This matches the existing `TradeCopierAddOn.cs:252` pattern: `System.Windows.App
 **Date**: 2026-08-16 (live trading session)
 **File**: `src/PropTraderTools/CopyEngine.cs`
 **Methods**: `IsDispatchTriggerState` (signature + body), `DispatchCopy` (call site line ~960)
-**Status**: APPLIED + SYNCED — awaiting live test
+**Status**: PIPELINE-COMPLETE (B76-LaneA)
 
 ### Bug
 NT8/Rithmic changes `Order.OrderId` from GUID format (at `Submitted` state) to a permanent
@@ -1448,7 +1448,7 @@ Updated single call site in `DispatchCopy` to pass `order.OrderType`.
 **Date**: 2026-08-16 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Method**: `UpdateButtonColors` (~line 569)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B73-LaneB)
 **Fixes**: BUG 2 partial — BE ALL stays yellow on second panel after manual close
 
 ### Bug
@@ -1476,7 +1476,7 @@ panel handles its own visual update in `OnGlobalBeAllDisarmed`.
 **Date**: 2026-08-16 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Methods**: `OnGlobalBeBufferChanged`, `OnQuickAllBufferChanged`, new `FormatQuickAllBuffer`
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneB)
 **Fixes**: BUF-LABEL-01 (button label not updating on spin), QUICK-LABEL-UNIT-01 (no "t" unit suffix)
 
 ### Bug
@@ -1509,7 +1509,7 @@ the correct pattern at `OnGlobalBeAllDisarmed` (line 907).
 **Files**: `src/PropTraderTools/Features/PttGlobalQuickExit.cs`, `src/PropTraderTools/Features/PttQuickExit.cs`
 **Methods**: `PttGlobalQuickExit.Execute`, `PttGlobalQuickExit.ExecuteOne` (signature change),
              new `PttGlobalQuickExit.SnapshotTargetOrders`, `PttQuickExit.Execute` (N-bracket rewrite)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B74-LaneC)
 **Fixes**: QUICK-T3-01 (only 2 brackets submitted regardless of ATM target count)
 
 ### Bug
@@ -1554,7 +1554,7 @@ compat overload passes an empty targets list → falls back to 2-target behavior
 **Date**: 2026-08-16 (live trading session)
 **Files**: `src/PropTraderTools/CopyEngine.cs`, `src/PropTraderTools/Features/PttBreakEven.cs`
 **Methods**: `IsAtmBracketName` (CopyEngine.cs ~line 469), `CancelStaleBracketsLocal` (PttBreakEven.cs ~line 185)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B72-LaneA + B74-LaneC)
 **Fixes**: T3-ORPHAN-01 (Stop3/Target3 not cancelled), OCO-REUSE-02 (root cause addressed)
 
 ### Bug
@@ -1591,7 +1591,7 @@ Matches Stop1..Stop9 and Target1..Target9 without enumerating each.
 **Date**: 2026-08-16 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Methods**: `OnGlobalBeBufferChanged`, `OnQuickAllBufferChanged`, new `FormatQuickAllBuffer`
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneB) [duplicate entry — see HOTFIX-BUFLABEL-02 above]
 **Fixes**: BUF-LABEL-01 (button label not updating on spin), QUICK-LABEL-UNIT-01 (no "t" unit suffix)
 
 ### Bug
@@ -1624,7 +1624,7 @@ New `FormatQuickAllBuffer` added to append "t" suffix: "Quick ALL +4t".
 **Date**: 2026-08-16 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Method**: `UpdateButtonColors` (~line 569)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B73-LaneB) [duplicate entry — see HOTFIX-BEALL-DISARM-CROSS-01 above]
 **Fixes**: BUG 2 — BE ALL stays yellow on second panel after manual close
 
 ### Bug
@@ -1655,7 +1655,7 @@ handles its own visual update in `OnGlobalBeAllDisarmed`.
 **Files**: `src/PropTraderTools/Features/PttGlobalQuickExit.cs`, `src/PropTraderTools/Features/PttQuickExit.cs`
 **Methods**: `PttGlobalQuickExit.Execute`, `PttGlobalQuickExit.ExecuteOne` (signature change),
              new `PttGlobalQuickExit.SnapshotTargetOrders`, `PttQuickExit.Execute` (N-bracket rewrite)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B74-LaneC) [duplicate entry — see HOTFIX-QUICK-T3-01 above]
 **Fixes**: QUICK-T3-01 (only 2 brackets submitted regardless of ATM target count)
 
 ### Bug
@@ -1696,7 +1696,7 @@ Backward-compat overload (t2Ticks param) preserved for single-chart Quick button
 **Date**: 2026-08-16 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Method**: `UpdateButtonColors` (~line 569)
-**Status**: APPLIED — awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B73-LaneB)
 **Fixes**: BE ALL stays yellow after manual close when per-chart BE was not armed
 
 ### Bug
@@ -1741,7 +1741,7 @@ Double-fire with HOTFIX-F3 is safe: if F3 block runs `DisarmPendingBe` first, th
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/Features/PttQuickExit.cs`
 **Method**: `SnapshotStopPrice` (~line 179)
-**Status**: APPLIED -- awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B75-LaneA)
 
 ### Bug
 `SnapshotStopPrice` used reference equality `o.Instrument != instr` to filter orders by
@@ -1784,7 +1784,7 @@ in `CancelQxBrackets` (CopyEngine.cs line 513):
 **Date**: 2026-08-17 (live trading session)
 **File**: `src/PropTraderTools/TradeCopierPanel.cs`
 **Method**: `UpdateButtonColors` (~line 590)
-**Status**: APPLIED -- awaiting pipeline
+**Status**: PIPELINE-COMPLETE (B73-LaneB)
 
 ### Bug
 When the user manually closes a position (Chart Trader × or Close order) while BE is armed,
@@ -2633,7 +2633,7 @@ Run Ph4a ptt-engineer to formally execute + test, Ph4b to verify, Ph5 to sign of
 **Method**: `GetLeaderAtmTemplateName` (line 2242)
 **Bug**: Fallback-1 used `sel.SelectedAtmStrategy.Name` which returns "AtmStrategy" (NT8 class name), same class-name trap as the B76 primary-path guard. The real template name lives on the combo's `SelectedItem` as a plain string.
 **Fix**: Changed condition from `sel?.SelectedAtmStrategy != null` to `sel != null`; changed return from `sel.SelectedAtmStrategy.Name ?? string.Empty` to `sel.SelectedItem as string ?? string.Empty`.
-**Status**: APPLIED -- awaiting pipeline (B77-LaneA)
+**Status**: PIPELINE-COMPLETE (B77-LaneA)
 
 ---
 
@@ -2645,7 +2645,7 @@ Run Ph4a ptt-engineer to formally execute + test, Ph4b to verify, Ph5 to sign of
 **Lines**: 502, 717
 **Bug**: Em-dash Unicode characters (U+2500) in comments on lines 502 and 717 violated JS-ASCII-only mandate (PRE-EXISTING-01 partial).
 **Fix**: Replaced `// ── B56 BUILD-FIX stubs ...` and `// ── end B56 BUILD-FIX stubs ──` with ASCII triple-hyphen equivalents.
-**Status**: APPLIED -- awaiting pipeline (B77-LaneA cosmetic carry-in)
+**Status**: PIPELINE-COMPLETE (B77-LaneA)
 
 ## DW-B79-04 -- MoveStopToBreakEven targets=0 async ATM bracket timing race (2026-08-19)
 
@@ -2711,3 +2711,59 @@ On retry: bare stop is stale (Step B cancels it), ATM brackets now visible -> OC
 ---
 
 | DW-B79-04 | `MoveStopToBreakEven` targets=0 on rapid BE-ALL -- async ATM bracket timing race. Sub-bug A: brackets not yet in acc.Orders. Sub-bug B: ChangeSubmitted state not in stateOk. | P1 | FIXED b8a1961f -- **PARTIAL SIM CONFIRM** (BE-ALL only test). OCO pairs reached Working on all 4 accounts in that run. However 3 unbracketed positions remained at end -- Director confirmed no brackets present before Flatten Everything press. QX->BE-ALL combined test NOT yet run. Pending Director test. |
+
+---
+
+## DW-CSPROJ-BUILD-DEBT-01 -- dotnet build clean-up (deferred)
+
+**ID**: DW-CSPROJ-BUILD-DEBT-01
+**Date**: 2026-08-21
+**File**: `src/PropTraderTools/PropTraderTools.csproj` (LSP-only reference project)
+**Status**: DEFERRED -- NT8 F5 green, 295 tests pass, no runtime impact
+
+### Context
+Fixing `AtrSizingEngine.cs` (CS0234/CS0246 -- missing `NinjaTrader.Custom.dll` HintPath)
+revealed that `dotnet build` was never fully clean. The `.csproj` is an LSP-only project
+that NT8 never uses for compilation. All 295 xUnit tests pass under NT8's Roslyn host.
+The following errors exist in `dotnet build` only and have zero production impact.
+
+### Deferred Error Inventory
+
+| # | Error | File(s) | Root Cause |
+|---|-------|---------|-----------|
+| 1 | CS8400: `not` pattern requires C# 9 | `TradeCopierPanel.cs:2110` | `<LangVersion>8.0</LangVersion>` in .csproj; fix: bump to `9.0` |
+| 2 | CS0433: `Globals` ambiguous between `NinjaTrader.Client` + `NinjaTrader.Core` | `CopyEngine.cs:3243` | Both DLLs export `Globals`; fix: `extern alias` in .csproj |
+| 3 | CS0246: `CopyRule` not found (many sites) | `CopyEngineTests.cs`, `B71Tests.cs` | `CopyRule` is `internal readonly struct` nested in `CopyEngine` -- tests reference it by name directly; fix: access only via `typeof(CopyEngine).GetNestedType("CopyRule", BindingFlags.NonPublic)` |
+| 4 | CS0234: `NinjaTrader.NinjaScript.Instruments` not found | `B76Tests.cs:38`, `CopyEngineTests.cs` multiple | Sub-namespace not resolvable under `net48` `dotnet build`; fix: use `NinjaTrader.Cbi.Instrument` or access via reflection |
+| 5 | CS0234: `System.Collections.Immutable` not found | `CopyEngineTests.cs` multiple | Not in `net48` by default; fix: add `<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />` |
+| 6 | CS0234: `System.Reflection.NullabilityInfoContext` not found | `CopyEngineTests.cs:436` | .NET 6+ API; not available in `net48`; fix: guard with `#if NET6_0_OR_GREATER` or remove |
+| 7 | CS1061: `MethodInfo[].FirstOrDefault` / `IList<>.Any` not found | `CopyEngineTests.cs` multiple | Missing `using System.Linq`; fix: add using or add `System.Core` reference |
+| 8 | CS0117: `TradeCopierWindow.ParseAtmTemplateSelection` not found | `B43Tests.cs:35,57,75` | Method was renamed or removed in a past wave; fix: update test to match current API |
+| 9 | CS7036 + CS0272: `BeEventArgs` constructor + property mismatch | `B68Tests.cs:193` | `BeEventArgs` constructor signature changed; properties now init-only; fix: update test call site |
+| 10 | CS0122: `CopyEngine.CopyEngine()` inaccessible | `CopyEngineTests.cs:3564,3645` | Parameterless ctor is `internal`/`private`; fix: use the `internal` test-seam ctor or factory |
+| 11 | CS0246: `Dictionary<,>` not found (2 sites) | `CopyEngineTests.cs:2277,2283` | Missing `using System.Collections.Generic`; fix: add using |
+
+### Fix Plan (when prioritized)
+
+**Phase 1 -- .csproj only (no source changes, 15 min):**
+1. `<LangVersion>9.0</LangVersion>`
+2. Add `System.Collections.Immutable` PackageReference
+3. Add `extern alias NTClient` for `NinjaTrader.Client` to resolve `Globals` ambiguity
+
+**Phase 2 -- test file fixes (source changes, separate PR per file):**
+4. `CopyEngineTests.cs` -- add `using System.Linq; using System.Collections.Generic;`, guard `NullabilityInfoContext` with `#if`, fix `CopyRule` direct-name references, fix `IsDispatchTriggerState` call sites, fix `new CopyEngine()` call sites
+5. `B43Tests.cs` -- update `ParseAtmTemplateSelection` references to current API
+6. `B68Tests.cs` -- update `BeEventArgs` construction to current constructor signature
+7. `B71Tests.cs` -- fix `CopyRule` direct-name reference
+8. `B76Tests.cs` -- fix `NinjaTrader.NinjaScript.Instruments.Instrument` reference
+
+### What is NOT broken
+- NT8 F5 compilation: GREEN
+- All 295 xUnit tests: PASSING
+- Hard links: ACTIVE (production code deployed)
+- `dotnet test`: PASSING (xUnit runner loads via NT8 harness, not dotnet build)
+
+### Blocked By
+Nothing. Pure technical debt. Prioritize after next live-session hotfix cycle.
+
+---
