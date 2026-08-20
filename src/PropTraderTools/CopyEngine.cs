@@ -2417,12 +2417,50 @@ namespace PropTraderTools
         // NT8-007: arg11=(NinjaTrader.Cbi.CustomOrder)null. NT8-013: DateTime.MaxValue.
         // NT8-014: signal names start with "PTT-". NT8-006: no LINQ.
         // DW-B79-04 isRetry: prevents recursive retry loops.
-        // First call: isRetry=false (default). On targets=0 + open position, one retry queued.
+        // CountLeaderTargets: CYC=4. Returns the number of Working/Accepted/Submitted target
+        // limit orders on the leader account for the given instrument. Used by MoveStopToBreakEven
+        // to detect partial-target visibility on follower accounts (DW-B79-07).
+        // Matches the same name filter as Step A's isAtmTarget predicate.
+        // JS-021: no lock. JS-001: no throw. JS-002: returns int (never negative).
+        private int CountLeaderTargets(Instrument instrument)
+        {
+            var rule = FindRule(instrument);
+            if (rule == null) return 0;                                        // (1)
+            var leader = rule.Value.MasterAccount;
+            if (leader == null) return 0;                                      // (2)
+            int count = 0;
+            foreach (Order o in leader.Orders)                                 // (3)
+            {
+                if (o == null) continue;
+                bool stateOk = o.OrderState == OrderState.Working
+                            || o.OrderState == OrderState.Accepted
+                            || o.OrderState == OrderState.Submitted;
+                bool instrOk = o.Instrument != null
+                            && o.Instrument.FullName == instrument.FullName;
+                if (!stateOk || !instrOk || o.OrderType != OrderType.Limit) continue;
+                bool isTarget = !string.IsNullOrEmpty(o.Name)
+                    && (   (o.Name.Length >= 7
+                            && o.Name.StartsWith("Target", StringComparison.Ordinal)
+                            && char.IsDigit(o.Name[6]) && o.Name[6] != '0')
+                        || (o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                            && o.Name.Length > 8 && char.IsDigit(o.Name[8]))
+                        || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
+                       );
+                if (isTarget) count++;                                         // (4)
+            }
+            return count;
+        }
+
+        // First call: isRetry=false (default). On targets=0 OR partial targets, one retry queued.
         // Retry call: isRetry=true. No further retry regardless of result.
         // REPAIR-09 DW-B79-05: CancelSubmitted added to Step A stateOk.
         //   PTT-QX-T orders transition Working->CancelSubmitted when follower ATM brackets
         //   arrive async and NT8 cancels them. LimitPrice+Quantity still readable at this state.
         //   Widening captures them as targets before they fully disappear -> OCO pairs submitted.
+        // DW-B79-07: partial targets (targets.Count < leaderCount) also register retry slot.
+        //   Follower may see 1 or 2 of 3 PTT-QX-T orders before the rest land. OCO pairs are
+        //   submitted for visible targets immediately (position partially protected), then retry
+        //   fires when remaining PTT-QX-T orders go Working to complete the remaining pairs.
         private void MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks, bool isRetry = false)
         {
             var pos = FindPosition(acc, instrument);
@@ -2570,14 +2608,10 @@ namespace PropTraderTools
                 }
                 catch { /* non-fatal */ }
 
-                // DW-B79-06: Replace 350ms DispatcherTimer with event-driven slot registration.
-                // TryFireFollowerBeRetry (OnOrderUpdate pre-gate) fires MoveStopToBreakEven the
-                // instant a PTT-QX-T* order transitions to Working on this account -- zero timing
-                // dependency, eliminates the QX->BE-ALL race permanently.
-                // Bare PTT-BE-Stop above protects the position during the wait window.
-                // isRetry guard: if retry already ran (e.g. targets=0 on second pass too -- NT8 sim
-                // drop), no further registration. Bare stop remains as final fallback protection.
-                // TryRemove in TryFireFollowerBeRetry is the atomic claim gate: exactly one fire.
+                // DW-B79-06: event-driven slot for targets=0 path.
+                // Bare PTT-BE-Stop above protects the position while we wait for QX orders to land.
+                // TryFireFollowerBeRetry fires MoveStopToBreakEven(isRetry:true) the instant a
+                // PTT-QX-T* order goes Working -- replaces bare stop with full OCO pairs.
                 if (!isRetry && !IsFlat(FindPosition(acc, instrument)))
                 {
                     _pendingFollowerBeSlots[acc.Name] =
@@ -2632,6 +2666,30 @@ namespace PropTraderTools
                 catch { /* non-fatal */ }
             }
             StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
+
+            // DW-B79-07: partial-target retry slot.
+            // If this is a follower account and we only saw a subset of the expected QX target
+            // orders (some had already transitioned to Cancelled before Step A ran), the OCO
+            // pairs above cover only the visible tranches. Register an event-driven retry slot
+            // so TryFireFollowerBeRetry can re-run MoveStopToBreakEven when the remaining
+            // PTT-QX-T* orders go Working -- completing the missing OCO pairs.
+            // isRetry guard prevents infinite re-registration. Flat guard prevents ghost slots.
+            // CountLeaderTargets queries the leader's Working targets for the authoritative count.
+            if (!isRetry && IsFollowerAccount(acc))
+            {
+                int leaderCount = CountLeaderTargets(instrument);
+                if (leaderCount > 0 && targets.Count < leaderCount
+                    && !IsFlat(FindPosition(acc, instrument)))
+                {
+                    _pendingFollowerBeSlots[acc.Name] =
+                        new PendingFollowerBeSlot(acc, instrument, bufferTicks);
+                    NinjaTrader.Code.Output.Process(
+                        "[BE-DIAG] " + acc.Name + " -- partial targets=" + targets.Count
+                            + " leader=" + leaderCount
+                            + ", registered event-driven BE retry slot",
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
+            }
         }
 
         internal void BreakEven(Instrument instrument, int bufferTicks)
