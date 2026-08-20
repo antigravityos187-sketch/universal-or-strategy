@@ -1040,9 +1040,15 @@ namespace PropTraderTools
         //     Fires AFTER the new ATM has fully settled, at the correct stable moment --
         //     avoids MoveStopToBreakEven(isRetry) running acc.Cancel while sweep is active.
         //
+        // DW-B82-01: reset _beReplaceAttempts on slot consumption.
+        //   The counter was only reset in TryEvictFollowerBeSlot (position-close path), which
+        //   races with the QX exit path. QX's 3 PTT-BE-Stop-* cancels exhaust the 3-attempt
+        //   limit in one trade; all subsequent trades get "max 3 attempts" immediately and no
+        //   brackets are ever placed. Fix: always reset when a slot is atomically claimed here.
+        //
         // CYC=6: (1) null guard, (2a) PTT-QX-T prefix check, (2b) Target1..Target9 check,
         //        (3) state guard, (4) TryRemove atomic claim, (5) flat guard.
-        // JS-021: ConcurrentDictionary.TryRemove is lock-free -- only one caller wins per slot.
+        // JS-021: ConcurrentDictionary ops are lock-free -- only one caller wins per slot.
         // JS-001: no throw. JS-002: void. ASCII-only.
         private void TryFireFollowerBeRetry(OrderEventArgs e)
         {
@@ -1058,6 +1064,7 @@ namespace PropTraderTools
                 return;
             if (!_pendingFollowerBeSlots.TryRemove(o.Account.Name, out var slot))  // (4) atomic claim
                 return;
+            _beReplaceAttempts.TryRemove(o.Account.Name, out _);                   // DW-B82-01: reset on slot consumption
             if (IsFlat(FindPosition(slot.Account, slot.Instrument)))               // (5)
                 return;
             NinjaTrader.Code.Output.Process(
@@ -1146,6 +1153,7 @@ namespace PropTraderTools
                     timer.Stop();
                     if (_pendingFollowerBeSlots.TryRemove(capturedAcc.Name, out var slot))
                     {
+                        _beReplaceAttempts.TryRemove(capturedAcc.Name, out _);     // DW-B82-01: reset on slot consumption
                         bool flat = IsFlat(FindPosition(slot.Account, slot.Instrument));
                         NinjaTrader.Code.Output.Process(
                             "[BE-RETRY] " + capturedAcc.Name + " -- fallback timer fired, flat=" + flat,
