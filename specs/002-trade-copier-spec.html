@@ -24664,6 +24664,207 @@ FINAL_PASS criteria:
 
     <!-- ══ end section-b73 ══════════════════════════════════════════════════ -->
 
+    <!-- ══ section-b80 ══════════════════════════════════════════════════════
+         DW-B80 | HOTFIX-B80-BE-RETRY-01 | BE-Retry 200ms→500ms + TryAdd dedup
+         Commit: 04b3acfc | Status: PENDING SIM GATE
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <div id="section-b80" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:var(--amber);">&#9679; DW-B80 &nbsp;&#9670;&nbsp; PTT-COPIER-B80 &nbsp;&#9670;&nbsp; BE-Retry Hotfix &nbsp;&#9670;&nbsp; <span class="pill pill-amber">&#9679; PENDING SIM GATE &nbsp;&middot;&nbsp; Director must run clean NT8 restart + QX&rarr;BE-ALL test</span></div>
+
+      <!-- DW-B80-01 ─────────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--amber); background:var(--amber-lo);">
+        <div class="card-title" style="color:var(--amber);">DW-B80-01 &mdash; QueueBeRetryFallback delay 200ms &rarr; 500ms</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+          <strong>Problem:</strong> 200ms delay insufficient for NT8 follower ATM to submit bracket orders before retry check fires.
+          Follower bracket not yet live when retry checks for targets &rarr; retry sees 0 targets &rarr; single stop placed (no targets).<br>
+          <strong>Fix:</strong> <code>QueueBeRetryFallback(acc, instrument, bufferTicks, delayMs: 500)</code> at
+          <code>CopyEngine.cs L2787</code>.<br>
+          <strong>CYC:</strong> 0 change (MoveStopToBreakEven stays CYC=6).<br>
+          <strong>Commit:</strong> <code>04b3acfc</code> &mdash; 295 [Fact]
+        </div>
+        <div>
+          <span class="pill pill-amber">&#9679; PENDING SIM GATE</span>
+          <span class="pill" style="background:rgba(37,99,235,0.12);color:#60a5fa;">NO-PIPELINE &mdash; Director authorized direct repair</span>
+          <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
+        </div>
+      </div>
+
+      <!-- DW-B80-02 ─────────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--amber); background:var(--amber-lo);">
+        <div class="card-title" style="color:var(--amber);">DW-B80-02 &mdash; TryAdd dedup guard in TryReplacePttBeBrackets</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+          <strong>Problem:</strong> Concurrent re-entry via two paths (event-driven + timer fallback) could fire
+          <code>TryReplacePttBeBrackets</code> twice, placing duplicate bracket slots and double-counting attempts.<br>
+          <strong>Fix:</strong> Replace <code>TryRemove + direct-assign</code> with <code>TryAdd</code>-guard at
+          <code>CopyEngine.cs L1817-1818</code>. If slot already exists, return immediately (concurrent path already owns it).<br>
+          <strong>CYC:</strong> +1 (TryReplacePttBeBrackets CYC=5 &rarr; 6).<br>
+          <strong>⚠ Known side effect:</strong> If a prior slot was NOT evicted on Rejected (see DW-B81-01), TryAdd returns false
+          and no bracket is placed &rarr; follower gets stop-only, no targets. DW-B81-01 must be fixed before DW-B80-02 is fully safe.<br>
+          <strong>Commit:</strong> <code>04b3acfc</code> &mdash; 295 [Fact]
+        </div>
+        <div>
+          <span class="pill pill-amber">&#9679; PENDING SIM GATE</span>
+          <span class="pill" style="background:rgba(37,99,235,0.12);color:#60a5fa;">NO-PIPELINE &mdash; Director authorized direct repair</span>
+          <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
+        </div>
+      </div>
+
+      <!-- SIM Gate instructions -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--purple); background:var(--purple-lo);">
+        <div class="card-title" style="color:var(--purple);">SIM Gate &mdash; Director Action Required Before CLOSED Stamp</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
+          <strong>Protocol:</strong><br>
+          1. Clean NT8 restart (close + reopen NinjaTrader).<br>
+          2. Load copier, attach Sim101 (leader) + Sim102/103/104 (followers).<br>
+          3. Enter a trade on Sim101 with ATM. Let all followers fill.<br>
+          4. Press QX-ALL &rarr; observe followers flatten cleanly.<br>
+          5. Enter again. Press BE-ALL &rarr; wait 3s &rarr; verify all followers have PTT-BE-Stop-1/2/3 brackets (not single PTT-BE-Stop).<br>
+          6. Press QX-ALL. Verify flatten clean.<br>
+          <strong>GREEN:</strong> DW-B80-01 + DW-B80-02 &rarr; stamp CLOSED. <strong>RED:</strong> Open DW-B80-03 with log evidence.
+        </div>
+      </div>
+    </div>
+    <!-- ══ end section-b80 ══════════════════════════════════════════════════ -->
+
+    <!-- ══ section-b81 ══════════════════════════════════════════════════════
+         DW-B81 | PTT-BE-Stop Rejection Bug + Slot-Leak Root Cause
+         Diagnosed 2026-08-21 from NinjaTrader Grid 2026-08-20 04-08 PM.csv
+         Status: OPEN — requires pipeline
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <div id="section-b81" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:var(--red);">&#9679; DW-B81 &nbsp;&#9670;&nbsp; PTT-COPIER-B81 &nbsp;&#9670;&nbsp; BE-Stop Rejection + Slot Leak &nbsp;&#9670;&nbsp; <span class="pill pill-red">&#9679; OPEN &nbsp;&middot;&nbsp; Diagnosed 2026-08-21 &nbsp;&middot;&nbsp; Requires Pipeline</span></div>
+
+      <!-- Evidence block -->
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--red); background:var(--red-lo);">
+        <div class="card-title" style="color:var(--red);">Evidence &mdash; 2026-08-20 1:40:39 PM Log Entry</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
+          Source: <code>NinjaTrader Grid 2026-08-20 04-08 PM.csv</code> (NT8 activity log, 3316 rows)<br><br>
+          <strong>Exact rejection messages:</strong>
+          <pre style="background:var(--surface);padding:8px;border-radius:4px;font-size:11px;margin:6px 0;overflow-x:auto;">Order='2b722a8395bd43258f468dffbf64616e/Sim102' Name='PTT-BE-Stop' New state='Rejected'
+Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be placed below the market.'
+
+Order='f5b65618a0d044abae25fc261c65ee07/Sim104' Name='PTT-BE-Stop' New state='Rejected'
+Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be placed below the market.'
+
+Order='6781cad7fc8c4eed912d2ab52edec1c6/Sim103' Name='PTT-BE-Stop' New state='Rejected'
+Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be placed below the market.'</pre>
+          <strong>Timeline:</strong><br>
+          1:40:23–1:40:31 PM &mdash; Sim101-104 enter SHORT MES @ 7666.50<br>
+          1:40:39 PM &mdash; BE-ALL fires; <code>MoveStopToBreakEven</code> submits PTT-BE-Stop @ 7666.50 for followers<br>
+          1:40:39 PM &mdash; NT8 REJECTS all three follower PTT-BE-Stops (market already below 7666.50)<br>
+          1:41:08 PM &mdash; Second copier entry fires (Sim101-104 add SHORT @ 7666.75 — stacked position)<br>
+          1:41:27–1:41:28 PM &mdash; PTT-BE-Stop-1/2/3 brackets eventually placed and filled for some accounts<br>
+          1:43:50 PM &mdash; Flatten-all; Sim102 residual 2 contracts closed via <code>Close</code> (NT8 emergency flatten)
+        </div>
+      </div>
+
+      <!-- DW-B81-01 ─────────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--red); background:var(--red-lo);">
+        <div class="card-title" style="color:var(--red);">DW-B81-01 &mdash; PTT-BE-Stop Rejection Does Not Evict <code>_pendingFollowerBeSlots</code> Entry (P1)</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+          <strong>Root cause chain:</strong><br>
+          1. <code>TryReplacePttBeBrackets</code> (L1817) calls <code>TryAdd</code> to register a slot.<br>
+          2. <code>MoveStopToBreakEven</code> submits PTT-BE-Stop for the follower.<br>
+          3. NT8 returns <code>Rejected</code> ("Buy stop below market") — market moved in favor before NT8 accepted.<br>
+          4. <code>TryEvictFollowerBeSlot</code> (L1082) only evicts on <code>OrderState.Filled</code>, not <code>Rejected</code>.<br>
+          5. Slot persists in <code>_pendingFollowerBeSlots</code> indefinitely.<br>
+          6. Next BE press on the same account: <code>TryAdd</code> finds existing slot &rarr; returns <code>false</code> &rarr; <code>TryReplacePttBeBrackets</code> returns early &rarr; <strong>no brackets placed</strong>.<br>
+          7. Only the single <code>PTT-BE-Stop</code> from <code>MoveStopToBreakEven</code> is submitted &rarr; follower has stop but NO targets.<br><br>
+          <strong>Affected code:</strong><br>
+          &bull; <code>CopyEngine.cs L1082-1095</code> — <code>TryEvictFollowerBeSlot</code>: add <code>OrderState.Rejected</code> guard<br>
+          &bull; <code>CopyEngine.cs L1817-1818</code> — <code>TryReplacePttBeBrackets</code>: evict stale slot before TryAdd, OR handle Rejected in OnOrderUpdate path<br>
+          &bull; <code>CopyEngine.cs L2782</code> and <code>L2852</code> — direct-assign paths still overwrite slot safely (not affected)<br><br>
+          <strong>Proposed fix (spec-only, no code):</strong><br>
+          In <code>TryEvictFollowerBeSlot</code>: expand the guard to also evict on <code>OrderState.Rejected</code> when order name is <code>PTT-BE-Stop</code>.<br>
+          Additionally: in <code>TryReplacePttBeBrackets</code>, before <code>TryAdd</code>, check if an existing slot's attempt counter has been exhausted or if the slot's bracket was rejected, and evict it first.<br><br>
+          <strong>Risk:</strong> P1 — followers can be left with stops but no targets after any BE press where the market moves
+          faster than NT8 can accept the stop. Gap window = 500ms+. Financial exposure on a single adverse
+          tick during the gap.
+        </div>
+        <div>
+          <span class="pill pill-red">&#9679; OPEN</span>
+          <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
+          <span class="pill pill-amber">Requires PTT Pipeline</span>
+          <span class="pill" style="background:var(--surface);color:var(--mid);">Diagnosed 2026-08-21</span>
+        </div>
+      </div>
+
+      <!-- DW-B81-02 ─────────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--red); background:var(--red-lo);">
+        <div class="card-title" style="color:var(--red);">DW-B81-02 &mdash; Second-Trade Stops-Only Pattern (P1) — Interaction with DW-B80-02</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+          <strong>Observed symptom:</strong> After a short multi-trade session (3:49–4:05 PM, 5 consecutive
+          entry-BE-QX cycles), followers Sim102/103/104 consistently received single <code>PTT-BE-Stop</code>
+          (stop only, no OCO bracket) rather than <code>PTT-BE-Stop-1/2/3</code> (stop + targets) on certain trades.<br><br>
+          <strong>Interaction with DW-B80-02 (TryAdd guard):</strong><br>
+          The TryAdd guard at L1817 is correct for preventing duplicate concurrent retries. However it requires
+          that <code>_pendingFollowerBeSlots</code> is reliably evicted after each trade's BE sequence completes.
+          The existing eviction paths are:<br>
+          &bull; <code>TryEvictFollowerBeSlot</code> (L1082): fires on <code>Filled</code> + flat &rarr; evicts slot ✓<br>
+          &bull; <code>OnPositionUpdate</code> (L1089): fires on flat &rarr; evicts slot ✓<br>
+          &bull; <code>TryFireFollowerBeRetry</code> (L1131): fires on Working target &rarr; TryRemove + retry ✓<br>
+          The missing eviction path: <code>OrderState.Rejected</code> for PTT-BE-Stop (DW-B81-01 above).<br><br>
+          <strong>Additional investigation item:</strong> Confirm that the 3:49-4:05 PM stops-only pattern is caused by
+          slot leak from the prior Rejected event (DW-B81-01) rather than a separate timing issue. If the slot
+          WAS being evicted correctly between those trades (no rejection in those specific trades), a secondary
+          timing cause exists and requires additional DIAG instrumentation.<br><br>
+          <strong>Spec note:</strong> Evidence of stops-only visible in activity log — Sim102/103/104 show
+          single <code>PTT-BE-Stop</code> (no OCO identifier) at 4:00:00 PM for Sim102/103/104, where
+          Sim101 leader shows <code>PTT-BE-Stop-1/2/3</code> with proper OCO pairs. This confirms the bracket
+          path was NOT taken for followers on that particular BE press.
+        </div>
+        <div>
+          <span class="pill pill-red">&#9679; OPEN</span>
+          <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
+          <span class="pill pill-amber">Requires PTT Pipeline</span>
+          <span class="pill" style="background:var(--surface);color:var(--mid);">Investigation pending additional DIAG run</span>
+        </div>
+      </div>
+
+      <!-- DW-B81-03 ─────────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--amber); background:var(--amber-lo);">
+        <div class="card-title" style="color:var(--amber);">DW-B81-03 &mdash; Stacked Position from Copier Re-Entry While Follower Unprotected (P2)</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+          <strong>Observed:</strong> At 1:41:07-1:41:08 PM, a second copier entry fired for all four accounts
+          while Sim102/103/104 had unprotected 7-contract shorts (PTT-BE-Stop rejected, no retry yet placed).<br>
+          Result: Sim102/103/104 held 14-contract stacked short with partial protection only.<br><br>
+          <strong>Root cause:</strong> The leader (Sim101) entered a new trade normally. The copier fired new
+          follower entries. The copier has no awareness that follower accounts have an unprotected position
+          from the prior rejected BE stop.<br><br>
+          <strong>Proposed safeguard (spec-only):</strong> Before firing a new follower entry, check if the follower
+          has a non-empty <code>_pendingFollowerBeSlots</code> entry with a Rejected or stale-slot state.
+          If so, either skip the new entry (risky — loses copy sync) or ensure the prior unprotected position
+          is resolved first (fire emergency bracket before new entry).<br><br>
+          <strong>Note:</strong> Low urgency compared to DW-B81-01 which is the root cause. DW-B81-01 fix
+          prevents the Rejected slot from persisting, which prevents the stacked-position scenario from
+          occurring in the first place.
+        </div>
+        <div>
+          <span class="pill pill-amber">&#9679; OPEN</span>
+          <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P2</span>
+          <span class="pill" style="background:var(--surface);color:var(--mid);">Depends on DW-B81-01</span>
+        </div>
+      </div>
+
+      <!-- Priority order -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--accent); background:var(--accent-lo);">
+        <div class="card-title" style="color:#60a5fa;">DW-B81 Pipeline Priority</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
+          <strong>Recommended pipeline order:</strong><br>
+          1. <strong>DW-B81-01</strong> (P1) — Fix <code>TryEvictFollowerBeSlot</code> to handle <code>Rejected</code> state.
+             This is a small, surgical change to a single guard. Unblocks DW-B80-02 safety and prevents DW-B81-02/03.<br>
+          2. <strong>DW-B81-02</strong> (P1) — Once DW-B81-01 is merged, run a fresh DIAG SIM session.
+             If stops-only still appears, open Phase 2 investigation for the 3:49-4:05 PM pattern.<br>
+          3. <strong>DW-B81-03</strong> (P2) — Deferred until DW-B81-01 confirms whether stacked positions
+             are fully prevented by slot eviction fix.<br><br>
+          <strong>Spec note:</strong> HOTFIX-B80 SIM gate should proceed first. If the SIM test is GREEN on
+          5 consecutive BE cycles with no stops-only, then DW-B81-02 may be moot (the rejection scenario was
+          pre-B80 only). If stops-only still appears post-B80, DW-B81-01 is the confirmed fix path.
+        </div>
+      </div>
+    </div>
+    <!-- ══ end section-b81 ══════════════════════════════════════════════════ -->
+
 
   </body>
 </html>
