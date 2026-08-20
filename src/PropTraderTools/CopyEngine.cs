@@ -1088,6 +1088,11 @@ namespace PropTraderTools
         //   200ms path (QX): event-driven missed because QX target already Cancelled before slot registered.
         //   500ms path (ATM sweep): new ATM brackets go Working BEFORE PTT-BE-Stop cancel arrives,
         //     so TryFireFollowerBeRetry sees no slot. 500ms fires after ATM fully settled.
+        // DW-B79-08 v7: timer MUST be created on the WPF UI dispatcher thread.
+        //   OnOrderUpdate fires on NT8's order-update background thread. A DispatcherTimer created
+        //   on a background thread uses that thread's dispatcher which never pumps -- Tick never fires.
+        //   Fix: wrap timer construction in Application.Current.Dispatcher.InvokeAsync so it runs
+        //   on the WPF UI thread whose dispatcher pumps normally. Same pattern as RaiseBeBufferChanged.
         // TryRemove is the atomic claim gate: if the event-driven path already consumed the slot,
         // TryRemove returns false and this callback is a no-op. Exactly one path wins.
         // CYC=1: straight sequence (no branches in method body -- timer lambda is not a branch here).
@@ -1097,24 +1102,35 @@ namespace PropTraderTools
             var capturedAcc   = acc;
             var capturedInstr = instrument;
             var capturedBuf   = bufferTicks;
-            var timer = new System.Windows.Threading.DispatcherTimer(
-                System.Windows.Threading.DispatcherPriority.Background)
+            // DW-B79-08 v7: marshal onto WPF UI thread so DispatcherTimer.Tick actually fires.
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                Interval = System.TimeSpan.FromMilliseconds(delayMs)
-            };
-            timer.Tick += (s, e) =>
-            {
-                timer.Stop();
-                if (_pendingFollowerBeSlots.TryRemove(capturedAcc.Name, out var slot))
+                var timer = new System.Windows.Threading.DispatcherTimer(
+                    System.Windows.Threading.DispatcherPriority.Background)
                 {
-                    NinjaTrader.Code.Output.Process(
-                        "[BE-RETRY] " + capturedAcc.Name + " -- fallback timer fired, event-driven missed",
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                    if (!IsFlat(FindPosition(slot.Account, slot.Instrument)))
-                        MoveStopToBreakEven(slot.Account, slot.Instrument, slot.BufferTicks, isRetry: true);
-                }
-            };
-            timer.Start();
+                    Interval = System.TimeSpan.FromMilliseconds(delayMs)
+                };
+                timer.Tick += (s, e) =>
+                {
+                    timer.Stop();
+                    if (_pendingFollowerBeSlots.TryRemove(capturedAcc.Name, out var slot))
+                    {
+                        bool flat = IsFlat(FindPosition(slot.Account, slot.Instrument));
+                        NinjaTrader.Code.Output.Process(
+                            "[BE-RETRY] " + capturedAcc.Name + " -- fallback timer fired, flat=" + flat,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        if (!flat)
+                            MoveStopToBreakEven(slot.Account, slot.Instrument, slot.BufferTicks, isRetry: true);
+                    }
+                    else
+                    {
+                        NinjaTrader.Code.Output.Process(
+                            "[BE-RETRY] " + capturedAcc.Name + " -- fallback TryRemove=false (slot already consumed or evicted)",
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    }
+                };
+                timer.Start();
+            });
         }
 
         // FindMatchingRule: CYC=3. Finds the CopyRule whose Instrument and MasterAccount match the order.
