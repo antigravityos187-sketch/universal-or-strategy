@@ -1763,7 +1763,7 @@ namespace PropTraderTools
             _beReplaceAttempts[acc.Name] = prevAttempts + 1;
             // (5) Atomically replace any stale slot then register fresh slot.
             _pendingFollowerBeSlots.TryRemove(acc.Name, out _);
-            _pendingFollowerBeSlots[acc.Name] = new PendingFollowerBeSlot(acc, instr, bufferTicks: 0);
+            _pendingFollowerBeSlots[acc.Name] = new PendingFollowerBeSlot(acc, instr, 0);
             // (6) 200ms fallback is the sole consumer for this path (no PTT-QX-T* trigger in plain re-entry).
             NinjaTrader.Code.Output.Process(
                 "[BE-DIAG] TryReplacePttBeBrackets: " + acc.Name
