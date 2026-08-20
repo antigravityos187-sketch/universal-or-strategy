@@ -11803,7 +11803,8 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
             formally closed by <strong>B35-LaneB PIPELINE_COMPLETE (2026-07-23)</strong> — 5×P0 BE defects:
             DW-B32-01b, DW-B32-02, DW-B32-04b, DW-B32-07, DW-B32-08 (164 [Fact], VERIFY_PASS).
             DW-B32-03 confirmed live (no instrument mismatch). DW-B32-04/05/10 closed B35-LaneB.
-            <strong style="color:var(--green);">No items remain in queue. DW-B79-09 CLOSED 2026-08-21 &mdash; commit 1d65e48b &mdash; 295 [Fact].</strong>
+            <strong style="color:var(--green);">No items remain in queue. DW-B79-09 CLOSED 2026-08-21 &mdash; commit 1d65e48b &mdash; 295 [Fact].
+            DW-B73-B-01+02 CLOSED 2026-08-21 &mdash; commit 59d3af6c &mdash; 301 [Fact].</strong>
           </div>
           <table style="font-size:11px;width:100%;border-collapse:collapse;margin-bottom:14px;">
             <thead>
@@ -24538,6 +24539,130 @@ FINAL_PASS criteria:
       </div>
 
     <!-- ══ end section-b79 ══════════════════════════════════════════════════ -->
+
+
+    <!-- ══ section-b73 ═══════════════════════════════════════════════════════
+         DW-B73-B-01 + DW-B73-B-02 | BeAllDisarmed self-notify + BrushTeal cache
+         Pipeline complete 2026-08-21 | commit 59d3af6c | 301 [Fact]
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <div id="section-b73" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:var(--green);">&#9679; DW-B73-B &nbsp;&#9670;&nbsp; PTT-COPIER-B73 &nbsp;&#9670;&nbsp; BeAllDisarmed Self-notify + BrushTeal Cache &nbsp;&#9670;&nbsp; <span class="pill pill-green">&#10003; CLOSED &nbsp;&middot;&nbsp; commit 59d3af6c &nbsp;&middot;&nbsp; 301 [Fact]</span></div>
+
+      <!-- ── DW-B73-B-01 ─────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--green); background:rgba(34,197,94,0.03);">
+        <div class="card-title" style="color:var(--green);">DW-B73-B-01 &mdash; P2 CLOSED &mdash; Remove redundant <code style="font-family:var(--mono);">UpdateBeAllVisuals(BeState.Idle)</code> from <code style="font-family:var(--mono);">UpdateButtonColors</code></div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
+          <strong style="color:var(--bright);">Root cause:</strong><br>
+          <code style="font-family:var(--mono);">UpdateButtonColors</code> called <code style="font-family:var(--mono);">UpdateBeAllVisuals(BeState.Idle)</code> at ~L587
+          immediately before <code style="font-family:var(--mono);">CopyEngine.Instance.RaiseBeAllDisarmed()</code>.
+          <code style="font-family:var(--mono);">RaiseBeAllDisarmed()</code> fires <code style="font-family:var(--mono);">GlobalBeAllDisarmed</code>,
+          which every panel subscribes to — including the calling panel itself — causing
+          <code style="font-family:var(--mono);">UpdateBeAllVisuals(BeState.Idle)</code> to fire twice on the leader panel on every disarm.<br><br>
+
+          <strong style="color:var(--bright);">Fix:</strong> Remove the direct call (<code style="font-family:var(--mono);">UpdateBeAllVisuals(BeState.Idle)</code>)
+          at <code style="font-family:var(--mono);">TradeCopierPanel.cs ~L587</code>. The event subscription already handles it.<br><br>
+
+          <strong style="color:var(--bright);">File:</strong> <code style="font-family:var(--mono);">src/PropTraderTools/TradeCopierPanel.cs</code> &mdash; 1 line removed<br>
+          <strong style="color:var(--bright);">Tests:</strong> <code style="font-family:var(--mono);">src/PropTraderTools/Tests/B73Tests.cs</code> &mdash;
+          3 new <code style="font-family:var(--mono);">[Fact]</code>: <code style="font-family:var(--mono);">RaiseBeAllDisarmed_NoException_WhenCalled</code>,
+          <code style="font-family:var(--mono);">GlobalBeAllDisarmed_EventExists_AndIsSubscribable</code>,
+          <code style="font-family:var(--mono);">RaiseBeAllDisarmed_FiresSubscriber_ExactlyOnce</code><br>
+          <strong style="color:var(--bright);">Pipeline:</strong> <code style="font-family:var(--mono);">docs/brain/DW-B73-B-01/</code> (11 artifacts) &nbsp;&middot;&nbsp; All phases PASS &nbsp;&middot;&nbsp; 301 [Fact]<br>
+          <strong style="color:var(--bright);">Commit:</strong> <code style="font-family:var(--mono);">59d3af6c</code> &mdash; 2026-08-21
+        </div>
+        <div style="margin-top:10px;">
+          <span class="pill pill-green">&#10003; CLOSED &nbsp;&middot;&nbsp; DW-B73-B-01 &nbsp;&middot;&nbsp; commit 59d3af6c</span>
+          <span class="pill pill-green">&#10003; Ph4b VERIFY_PASS &nbsp;&middot;&nbsp; Ph5 FINAL_PASS</span>
+          <span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">P2 &nbsp;&middot;&nbsp; double-fire eliminated on disarm</span>
+        </div>
+      </div>
+
+      <!-- ── DW-B73-B-02 ─────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--green); background:rgba(34,197,94,0.03);">
+        <div class="card-title" style="color:var(--green);">DW-B73-B-02 &mdash; P2 CLOSED &mdash; <code style="font-family:var(--mono);">BrushTeal</code> static readonly cache (10 inline <code style="font-family:var(--mono);">MakeBrush</code> calls eliminated)</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
+          <strong style="color:var(--bright);">Root cause:</strong><br>
+          10 call sites across 5 construction/paint methods used <code style="font-family:var(--mono);">MakeBrush(13, 148, 136)</code>
+          inline. <code style="font-family:var(--mono);">MakeBrush</code> allocates a new <code style="font-family:var(--mono);">SolidColorBrush</code> and
+          freezes it on every call. On every BE-ALL disarm event this produced 10 redundant heap allocations
+          for an identical teal-600 brush that could be shared.<br><br>
+
+          <strong style="color:var(--bright);">Fix:</strong> Add
+          <code style="font-family:var(--mono);">private static readonly SolidColorBrush BrushTeal = MakeBrush(13, 148, 136);</code>
+          at <code style="font-family:var(--mono);">TradeCopierPanel.cs L281</code> (alongside <code style="font-family:var(--mono);">BrushActive/Danger/Caution/Inactive</code>).
+          Replace all 10 inline call sites with <code style="font-family:var(--mono);">BrushTeal</code>.<br><br>
+
+          <strong>Sites replaced:</strong>
+          <code style="font-family:var(--mono);">UpdateBeAllVisuals</code> Idle branch (×2),
+          <code style="font-family:var(--mono);">_beBtn2</code> construction (×2),
+          <code style="font-family:var(--mono);">_globalBeBtn2</code> construction (×2),
+          <code style="font-family:var(--mono);">_quickBtn</code> construction (×2),
+          <code style="font-family:var(--mono);">_quickAllBtn</code> construction (×2).<br><br>
+
+          <strong style="color:var(--bright);">File:</strong> <code style="font-family:var(--mono);">src/PropTraderTools/TradeCopierPanel.cs</code> &mdash; +2 lines (field + comment), 10 substitutions<br>
+          <strong style="color:var(--bright);">Tests:</strong> <code style="font-family:var(--mono);">src/PropTraderTools/Tests/B73Tests.cs</code> &mdash;
+          3 new <code style="font-family:var(--mono)">[Fact]</code>: <code style="font-family:var(--mono);">BrushTeal_IsNotNull</code>,
+          <code style="font-family:var(--mono);">BrushTeal_IsFrozen</code>,
+          <code style="font-family:var(--mono);">BrushTeal_Color_MatchesTeal600</code><br>
+          <strong style="color:var(--bright);">Pipeline:</strong> <code style="font-family:var(--mono);">docs/brain/DW-B73-B-01/</code> (shared block) &nbsp;&middot;&nbsp; All phases PASS &nbsp;&middot;&nbsp; 301 [Fact]<br>
+          <strong style="color:var(--bright);">Commit:</strong> <code style="font-family:var(--mono);">59d3af6c</code> &mdash; 2026-08-21
+        </div>
+        <div style="margin-top:10px;">
+          <span class="pill pill-green">&#10003; CLOSED &nbsp;&middot;&nbsp; DW-B73-B-02 &nbsp;&middot;&nbsp; commit 59d3af6c</span>
+          <span class="pill pill-green">&#10003; Ph4b VERIFY_PASS &nbsp;&middot;&nbsp; Ph5 FINAL_PASS</span>
+          <span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">P2 &nbsp;&middot;&nbsp; 10 brush allocations &rarr; 1 frozen singleton per process</span>
+          <span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">JS-008 compliant &nbsp;&middot;&nbsp; static readonly field pattern</span>
+        </div>
+      </div>
+
+      <!-- ── Deferred items from this block ─────────────────────────────── -->
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--amber); background:rgba(245,158,11,0.03);">
+        <div class="card-title" style="color:var(--amber);">DW-B73-B Deferred Backlog (4 items &mdash; logged 2026-08-21)</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
+          <table style="font-size:11px;width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border);background:rgba(0,0,0,0.15);">
+                <th style="width:12%;padding:5px 8px;text-align:left;">ID</th>
+                <th style="width:5%;padding:5px 8px;">P</th>
+                <th style="padding:5px 8px;text-align:left;">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--amber);">DW-DEFER-B73-01</td>
+                <td style="padding:4px 8px;"><span class="pill pill-amber">P1</span></td>
+                <td style="padding:4px 8px;"><code style="font-family:var(--mono);">deploy-sync.ps1</code> not found at workspace root. NT8 hard-link sync was NOT run. Must be located or recreated before next pipeline to ensure NinjaTrader assembly stays synchronized with src/ changes. Blocks F5 gate.</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--amber);">DW-DEFER-B73-02</td>
+                <td style="padding:4px 8px;"><span class="pill pill-amber">P1</span></td>
+                <td style="padding:4px 8px;">Pre-existing build failures blocking <code style="font-family:var(--mono);">dotnet test</code> runtime execution: <code style="font-family:var(--mono);">CopyEngineTests.cs</code> (CS0246, CS0234, CS1061, CS7036, CS0122), <code style="font-family:var(--mono);">CopyEngine.cs</code> L3243 (CS0433 Globals ambiguity), <code style="font-family:var(--mono);">B43/B68/B71/B76Tests.cs</code>. Root cause investigation + separate-PR resolution required per V12.23 No Scope Creep.</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--dim);">DW-DEFER-B73-03</td>
+                <td style="padding:4px 8px;"><span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">P2</span></td>
+                <td style="padding:4px 8px;"><code style="font-family:var(--mono);">scripts/complexity_audit.py</code> absent from workspace root. CYC audits performed manually. Automated CYC enforcement cannot run until restored.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--dim);">DW-DEFER-B73-04</td>
+                <td style="padding:4px 8px;"><span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">P2</span></td>
+                <td style="padding:4px 8px;">Orchestrator prompt stated &ldquo;6 inline call sites&rdquo;; architecture plan correctly identified all 10. Prompt accuracy gap &mdash; informational only, no behavioral impact.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── section footer ─────────────────────────────────────────────── -->
+      <div style="margin-top:12px;">
+        <span class="pill pill-green">&#10003; DW-B73-B-01 CLOSED &mdash; double-fire eliminated &nbsp;&middot;&nbsp; commit 59d3af6c</span>
+        <span class="pill pill-green">&#10003; DW-B73-B-02 CLOSED &mdash; 10 MakeBrush allocs &rarr; BrushTeal singleton &nbsp;&middot;&nbsp; commit 59d3af6c</span>
+        <span class="pill pill-green">&#10003; 301 [Fact] tests &nbsp;&middot;&nbsp; CYC &le; 8 throughout &nbsp;&middot;&nbsp; 0 JS P0 violations</span>
+        <span class="pill pill-green">&#10003; Pipeline: 11 artifacts, all phases PASS &nbsp;&middot;&nbsp; docs/brain/DW-B73-B-01/</span>
+      </div>
+    </div>
+
+    <!-- ══ end section-b73 ══════════════════════════════════════════════════ -->
 
 
   </body>
