@@ -2342,7 +2342,10 @@ namespace PropTraderTools
         // NT8-049: StopMarket arg6=0, arg7=stopPrice; Limit arg6=limitPrice, arg7=0.
         // NT8-007: arg11=(NinjaTrader.Cbi.CustomOrder)null. NT8-013: DateTime.MaxValue.
         // NT8-014: signal names start with "PTT-". NT8-006: no LINQ.
-        private void MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks)
+        // DW-B79-04 isRetry: prevents recursive retry loops.
+        // First call: isRetry=false (default). On targets=0 + open position, one retry queued.
+        // Retry call: isRetry=true. No further retry regardless of result.
+        private void MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks, bool isRetry = false)
         {
             var pos = FindPosition(acc, instrument);
             if (IsFlat(pos))                                                               // (1)
@@ -2386,7 +2389,8 @@ namespace PropTraderTools
                             || o.OrderState == OrderState.Accepted
                             || o.OrderState == OrderState.Submitted
                             || o.OrderState == OrderState.Initialized
-                            || o.OrderState == OrderState.TriggerPending;                  // (4)
+                            || o.OrderState == OrderState.TriggerPending                   // (4)
+                            || o.OrderState == OrderState.ChangeSubmitted;                 // DW-B79-04: NT8 sim ATM target transient state on creation
                 bool instrOk = o.Instrument != null
                             && o.Instrument.FullName == instrument.FullName;               // (5)
                 if (!stateOk || !instrOk) continue;
@@ -2486,6 +2490,31 @@ namespace PropTraderTools
                     }
                 }
                 catch { /* non-fatal */ }
+
+                // DW-B79-04: ATM brackets arrive asynchronously -- retry once after 350ms.
+                // The bare stop above protects the position while we wait.
+                // On retry: bare stop is stale (Step B cancels it) + brackets now visible -> OCO pairs submitted.
+                // isRetry guard prevents recursive loop. Position check prevents retry on flat account.
+                if (!isRetry && !IsFlat(FindPosition(acc, instrument)))
+                {
+                    NinjaTrader.Code.Output.Process(
+                        "[BE-DIAG] " + acc.Name + " -- targets=0, queueing 350ms retry for ATM bracket arrival",
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    var capturedAcc  = acc;
+                    var capturedInstr = instrument;
+                    var capturedBuf   = bufferTicks;
+                    var timer = new System.Windows.Threading.DispatcherTimer(
+                        System.Windows.Threading.DispatcherPriority.Background)
+                    {
+                        Interval = System.TimeSpan.FromMilliseconds(350)
+                    };
+                    timer.Tick += (s, e) =>
+                    {
+                        timer.Stop();
+                        MoveStopToBreakEven(capturedAcc, capturedInstr, capturedBuf, isRetry: true);
+                    };
+                    timer.Start();
+                }
                 return;
             }
 
