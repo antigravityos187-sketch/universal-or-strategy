@@ -1061,23 +1061,28 @@ namespace PropTraderTools
         }
 
         // TryEvictFollowerBeSlot: CYC=3. DW-B79-06 stale-slot cleanup.
-        // Clears a _pendingFollowerBeSlots entry when the follower position closes via any path
-        // other than the event-driven retry (e.g. Flatten Everything, PTT-QX-Stop fill).
-        // Prevents a stale slot from firing MoveStopToBreakEven on a subsequent new trade.
-        // DW-B79-08 v3: also resets _beReplaceAttempts so the next trade starts with a clean counter.
-        // CYC=3: (1) state guard, (2) key check, (3) flat guard.
-        // JS-021: ConcurrentDictionary.TryRemove is lock-free. JS-001: no throw. JS-002: void.
+        // Clears _pendingFollowerBeSlots AND _beReplaceAttempts when follower position closes.
+        // DW-B79-08 v8: decouple attempt-counter reset from slot existence.
+        //   v3 bug: guard (2) checked ContainsKey(_pendingFollowerBeSlots) before resetting
+        //   _beReplaceAttempts. After the 500ms fallback timer consumed the slot via TryRemove,
+        //   the slot was gone. On next re-entry, guard (2) returned early and _beReplaceAttempts
+        //   stayed at 3 permanently -- blocking all recovery on subsequent trades.
+        //   Fix: always reset _beReplaceAttempts when flat, regardless of slot existence.
+        //   The slot eviction remains guarded (only remove if it exists), but the counter
+        //   reset is unconditional on flat -- it costs nothing when counter is already 0.
+        // CYC=3: (1) state guard, (2) follower guard, (3) flat guard.
+        // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void.
         private void TryEvictFollowerBeSlot(OrderEventArgs e)
         {
             var o = e?.Order;
             if (o == null || o.OrderState != OrderState.Filled) return;            // (1)
-            string accName = o.Account?.Name ?? string.Empty;
-            if (!_pendingFollowerBeSlots.ContainsKey(accName)) return;             // (2) fast pre-check
+            if (!IsFollowerAccount(o.Account)) return;                             // (2) followers only
             if (!IsFlat(FindPosition(o.Account, o.Instrument))) return;            // (3) only evict if flat
-            _pendingFollowerBeSlots.TryRemove(accName, out _);
-            _beReplaceAttempts.TryRemove(accName, out _);                          // DW-B79-08 v3: reset counter
+            string accName = o.Account?.Name ?? string.Empty;
+            _pendingFollowerBeSlots.TryRemove(accName, out _);                     // no-op if already consumed
+            _beReplaceAttempts.TryRemove(accName, out _);                          // ALWAYS reset on flat
             NinjaTrader.Code.Output.Process(
-                "[BE-RETRY] " + accName + " position closed -- evicted stale BE retry slot + reset attempt counter",
+                "[BE-RETRY] " + accName + " position closed -- evicted BE slot + reset attempt counter",
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
         }
 
