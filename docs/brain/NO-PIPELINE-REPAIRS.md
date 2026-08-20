@@ -125,7 +125,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | DW-B66-BE-01 | `CancelQxBrackets` cancels `PTT-BE-Stop` orders during Quick Exit | P1 | CLOSED -- behaviour confirmed correct (B77 post-sign-off) |
 | DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | CLOSED -- non-issue: Gate 4 blocks StopLimit before dedup path (B77 post-sign-off) |
 | DW-B63-01 | QX places targets but no stop orders on followers (ATM bracket async lag) | P1 | **CLOSED** -- FIXED B78-LaneA + SIM-CONFIRMED 2026-08-20. PTT-QX-Stop+T1/T2/T3 visible on Sim102/103/104/SimAccount1. |
-| DW-B79-01 | `MoveStopToBreakEven` targets=0 on rapid QX->BE-ALL (follower PTT-QX-T orders still Initialized at snapshot time) | P1 | **FIXED** REPAIR-07 commit `343822de` -- awaiting sim test |
+| DW-B79-01 | `MoveStopToBreakEven` targets=0 on rapid QX->BE-ALL (follower PTT-QX-T orders still Initialized at snapshot time) | P1 | **FIXED** REPAIR-07 commit `343822de` -- **QX->BE-ALL combined test NOT yet run** (last test was BE-ALL only). Pending Director test. |
 | DW-B79-02 | `MoveStopToBreakEven` cancel=0 targets=0 on followers after QX->BE-ALL -- PTT-QX-T orders in `CancelSubmitted` state, not in `stateOk` filter | P2 | **ROOT CAUSE IDENTIFIED** (B79 diag session). `CancelSubmitted` orders skipped by both targets snapshot and stale sweep. Positions ARE protected via bare-stop path. `[BE-DIAG]` tracing retained in `CopyEngine.cs` (fires only on failure path). Fix is in QX layer -- see DW-B79-03. |
 | DW-B79-03 | QX follower PTT-QX orders go to `CancelSubmitted` immediately after submission -- conflict with late-arriving ATM brackets not visible at QX snapshot time. BE-ALL cannot find them as targets and falls back to bare-stop path instead of OCO stop+target. Same race class as DW-B63-01, B78-LaneA did not fully close it. **Gap2 sub-item FIXED REPAIR-08 `a3f68559`**: `PttBreakEven.SnapshotTargetsLocal` stateOk widened to Working|Accepted|Submitted|Initialized|TriggerPending -- BE button now symmetric with BE-ALL. | P2 | **FIXED** -- Gap2 FIXED REPAIR-08 `a3f68559` + QX guard FIXED DW-B79-03 (commit `9e2fb3a6`) |
 | DW-B54-01 | ATM auto-inject — blocked, requires `StrategyBase` API unavailable in `AddOnBase` | P1 | OPEN (blocked) |
@@ -2661,7 +2661,7 @@ The DIAG dump sees brackets arrive BETWEEN Step A and the dump (same method call
 places Target1..N in `ChangeSubmitted` state (transient: ATM engine internally pricing the target
 before it reaches `Working`). `ChangeSubmitted` was not in Step A `stateOk` -> missed even when present.
 
-Evidence: DIAG trace without QX button, second BE-ALL press:
+Evidence: DIAG trace -- BE-ALL only test (no QX button pressed), second BE-ALL press:
 ```
 [BE-DIAG] Sim102 order: name=Stop1  state=Accepted        type=StopMarket
 [BE-DIAG] Sim102 order: name=Target1 state=ChangeSubmitted type=Limit
@@ -2671,6 +2671,14 @@ Evidence: DIAG trace without QX button, second BE-ALL press:
 [BE-DIAG] Sim102 order: name=Target3 state=ChangeSubmitted type=Limit
 ```
 Orders are present in acc.Orders during DIAG dump but were NOT present when Step A ran.
+
+**Test scenario note**: Sim result showing OCO pairs (`PTT-BE-Stop/Target`) reaching Working
+on all 4 accounts was a BE-ALL only test. The 3 open positions visible at end of that test
+had NO brackets -- Director confirmed brackets were already absent before Flatten Everything
+was pressed. Flatten Everything was pressed to clean up the unprotected positions, not to
+remove working OCO pairs. This is consistent with the async bracket timing race: some
+positions received bare PTT-BE-Stop only (no OCO targets), and the 350ms retry path either
+fired too early or the bare stop was already cancelled before retry executed.
 
 ### Fix 1 (Sub-bug B) -- one line, no CYC change
 
@@ -2699,4 +2707,4 @@ On retry: bare stop is stale (Step B cancels it), ATM brackets now visible -> OC
 
 ---
 
-| DW-B79-04 | `MoveStopToBreakEven` targets=0 on rapid BE-ALL -- async ATM bracket timing race. Sub-bug A: brackets not yet in acc.Orders. Sub-bug B: ChangeSubmitted state not in stateOk. | P1 | FIXED b8a1961f -- awaiting sim confirm |
+| DW-B79-04 | `MoveStopToBreakEven` targets=0 on rapid BE-ALL -- async ATM bracket timing race. Sub-bug A: brackets not yet in acc.Orders. Sub-bug B: ChangeSubmitted state not in stateOk. | P1 | FIXED b8a1961f -- **PARTIAL SIM CONFIRM** (BE-ALL only test). OCO pairs reached Working on all 4 accounts in that run. However 3 unbracketed positions remained at end -- Director confirmed no brackets present before Flatten Everything press. QX->BE-ALL combined test NOT yet run. Pending Director test. |
