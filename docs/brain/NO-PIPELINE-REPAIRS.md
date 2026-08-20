@@ -85,7 +85,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 
 ## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76 / B77 / B78
 
-**Latest pipeline run: B78 DIRECT REPAIRS (2026-08-20) -- DW-B63-01 + DW-B78-01 + DW-B78-02 all SIM-CONFIRMED**
+**Latest pipeline run: REPAIR-07 DIRECT (2026-08-20) -- DW-B79-01 MoveStopToBreakEven target snapshot fix**
 
 | Block | Lane | Files | Hotfixes | Tests written | Final verdict |
 |-------|------|-------|----------|---------------|---------------|
@@ -101,6 +101,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | B78-LaneA | QX follower stop lag | PttQuickExit.cs + PttGlobalQuickExit.cs | DW-B63-01 fix: ResolveStop + ResolveTargetCount + leaderStop/leaderTargetCount param flow | 8 [Fact] | SIM-CONFIRMED (2026-08-20) -- PTT-QX brackets visible on all 4 followers |
 | REPAIR-05 | IsExitSignalName Target gap | CopyEngine.cs | DW-B78-01: ATM Target1-9 now blocked by Gate 0.5 + order.Name added to dispatch trace | 8 [Fact] | SIM-CONFIRMED (2026-08-20) -- name=Entry only on all dispatches |
 | REPAIR-06 | CancelQxBracketsForFollowers guard | PttQuickExit.cs | DW-B78-02: skipIfFollower guard prevents sibling follower QX orders from being erased by subsequent follower Execute calls | 4 [Fact] | SIM-CONFIRMED (2026-08-20) -- snapshot=0 on all followers, 0 race-skipped |
+| REPAIR-07 | MoveStopToBreakEven target snapshot | CopyEngine.cs | DW-B79-01: stateOk widened from Working/Accepted to +Submitted/Initialized/TriggerPending -- targets=0 on rapid QX->BE-ALL press fixed | 8 [Fact] | DIRECT (Director approved) -- awaiting sim test |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
@@ -124,6 +125,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | DW-B66-BE-01 | `CancelQxBrackets` cancels `PTT-BE-Stop` orders during Quick Exit | P1 | CLOSED -- behaviour confirmed correct (B77 post-sign-off) |
 | DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | CLOSED -- non-issue: Gate 4 blocks StopLimit before dedup path (B77 post-sign-off) |
 | DW-B63-01 | QX places targets but no stop orders on followers (ATM bracket async lag) | P1 | **CLOSED** -- FIXED B78-LaneA + SIM-CONFIRMED 2026-08-20. PTT-QX-Stop+T1/T2/T3 visible on Sim102/103/104/SimAccount1. |
+| DW-B79-01 | `MoveStopToBreakEven` targets=0 on rapid QX->BE-ALL (follower PTT-QX-T orders still Initialized at snapshot time) | P1 | **FIXED** REPAIR-07 commit `343822de` -- awaiting sim test |
 | DW-B54-01 | ATM auto-inject — blocked, requires `StrategyBase` API unavailable in `AddOnBase` | P1 | OPEN (blocked) |
 | DW-B72-01 | `IsAtmBracketName("Stop10")` returns true — acceptable-known edge | P3 | OPEN |
 | DW-B73-B-01 | `RaiseBeAllDisarmed` redundant broadcasts on flat | P2 | OPEN |
