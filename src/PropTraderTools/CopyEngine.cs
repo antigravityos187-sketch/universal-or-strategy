@@ -930,6 +930,20 @@ namespace PropTraderTools
             // DW-B79-06: evict stale BE retry slot when follower position closes via any path.
             TryEvictFollowerBeSlot(e);
 
+            // DW-B79-07 DIAG: log when a PTT-BE-* order is cancelled by anything.
+            // This catches copy-engine bracket sync or NT8 OCO interference cancelling PTT-BE brackets.
+            // Remove once root cause of Sim102/104 bracket loss (Problem 2) is confirmed.
+            if (e.Order.OrderState == OrderState.Cancelled
+                && e.Order.Name != null
+                && e.Order.Name.StartsWith("PTT-BE-", StringComparison.Ordinal))
+            {
+                NinjaTrader.Code.Output.Process(
+                    "[BE-DIAG-CANCEL] " + (e.Order.Account?.Name ?? "?")
+                        + " PTT-BE order cancelled: " + e.Order.Name
+                        + " instr=" + (e.Order.Instrument?.FullName ?? "?"),
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            }
+
             // HOTFIX-B66-COPY-REPLACE / HOTFIX-B66-NATIVE-ATM: re-place follower entry when NT8-ATM
             // cancel sweep wipes it during bracket arming. Predicate logic in IsPttEntryOrderCancelTrigger.
             if (IsPttEntryOrderCancelTrigger(e.Order))
@@ -1041,6 +1055,38 @@ namespace PropTraderTools
             NinjaTrader.Code.Output.Process(
                 "[BE-RETRY] " + accName + " position closed -- evicted stale BE retry slot",
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+        }
+
+        // QueueBeRetryFallback: CYC=1. 200ms DispatcherTimer fallback for the event-driven BE retry.
+        // DW-B79-06/07: fires MoveStopToBreakEven(isRetry:true) if TryFireFollowerBeRetry missed
+        // the trigger event (PTT-QX-T already Cancelled before slot was registered).
+        // TryRemove is the atomic claim gate: if the event-driven path already consumed the slot,
+        // TryRemove returns false and this callback is a no-op. Exactly one path wins.
+        // CYC=1: straight sequence (no branches in method body -- timer lambda is not a branch here).
+        // JS-021: no lock. JS-001: no throw. JS-033: Tick is not async void. ASCII-only.
+        private void QueueBeRetryFallback(Account acc, Instrument instrument, int bufferTicks)
+        {
+            var capturedAcc   = acc;
+            var capturedInstr = instrument;
+            var capturedBuf   = bufferTicks;
+            var timer = new System.Windows.Threading.DispatcherTimer(
+                System.Windows.Threading.DispatcherPriority.Background)
+            {
+                Interval = System.TimeSpan.FromMilliseconds(200)
+            };
+            timer.Tick += (s, e) =>
+            {
+                timer.Stop();
+                if (_pendingFollowerBeSlots.TryRemove(capturedAcc.Name, out var slot))
+                {
+                    NinjaTrader.Code.Output.Process(
+                        "[BE-RETRY] " + capturedAcc.Name + " -- fallback timer fired, event-driven missed",
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    if (!IsFlat(FindPosition(slot.Account, slot.Instrument)))
+                        MoveStopToBreakEven(slot.Account, slot.Instrument, slot.BufferTicks, isRetry: true);
+                }
+            };
+            timer.Start();
         }
 
         // FindMatchingRule: CYC=3. Finds the CopyRule whose Instrument and MasterAccount match the order.
@@ -2608,17 +2654,20 @@ namespace PropTraderTools
                 }
                 catch { /* non-fatal */ }
 
-                // DW-B79-06: event-driven slot for targets=0 path.
+                // DW-B79-06: event-driven slot + 200ms fallback timer for targets=0 path.
                 // Bare PTT-BE-Stop above protects the position while we wait for QX orders to land.
-                // TryFireFollowerBeRetry fires MoveStopToBreakEven(isRetry:true) the instant a
-                // PTT-QX-T* order goes Working -- replaces bare stop with full OCO pairs.
+                // Two-path design: TryFireFollowerBeRetry (OnOrderUpdate) wins if PTT-QX-T* goes
+                // Working AFTER slot registration. Fallback timer wins if PTT-QX-T already Cancelled
+                // before slot was registered (event missed). TryRemove is the atomic claim gate --
+                // exactly one path fires MoveStopToBreakEven(isRetry:true). Other path is a no-op.
                 if (!isRetry && !IsFlat(FindPosition(acc, instrument)))
                 {
                     _pendingFollowerBeSlots[acc.Name] =
                         new PendingFollowerBeSlot(acc, instrument, bufferTicks);
                     NinjaTrader.Code.Output.Process(
-                        "[BE-DIAG] " + acc.Name + " -- targets=0, registered event-driven BE retry slot",
+                        "[BE-DIAG] " + acc.Name + " -- targets=0, registered BE retry slot + 200ms fallback",
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    QueueBeRetryFallback(acc, instrument, bufferTicks);
                 }
                 return;
             }
@@ -2667,12 +2716,14 @@ namespace PropTraderTools
             }
             StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
 
-            // DW-B79-07: partial-target retry slot.
+            // DW-B79-07: partial-target retry slot + 200ms fallback timer.
             // If this is a follower account and we only saw a subset of the expected QX target
-            // orders (some had already transitioned to Cancelled before Step A ran), the OCO
-            // pairs above cover only the visible tranches. Register an event-driven retry slot
-            // so TryFireFollowerBeRetry can re-run MoveStopToBreakEven when the remaining
-            // PTT-QX-T* orders go Working -- completing the missing OCO pairs.
+            // orders (some had already transitioned to Cancelled before Step A ran), OCO pairs
+            // above cover only the visible tranches. Two-path retry fires MoveStopToBreakEven
+            // once the remaining orders settle:
+            //   Path A (event-driven): TryFireFollowerBeRetry fires when next PTT-QX-T* goes Working.
+            //   Path B (fallback timer): QueueBeRetryFallback fires after 200ms if Path A missed.
+            // TryRemove atomic claim: exactly one path wins. Other is a no-op.
             // isRetry guard prevents infinite re-registration. Flat guard prevents ghost slots.
             // CountLeaderTargets queries the leader's Working targets for the authoritative count.
             if (!isRetry && IsFollowerAccount(acc))
@@ -2686,8 +2737,9 @@ namespace PropTraderTools
                     NinjaTrader.Code.Output.Process(
                         "[BE-DIAG] " + acc.Name + " -- partial targets=" + targets.Count
                             + " leader=" + leaderCount
-                            + ", registered event-driven BE retry slot",
+                            + ", registered BE retry slot + 200ms fallback",
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    QueueBeRetryFallback(acc, instrument, bufferTicks);
                 }
             }
         }
