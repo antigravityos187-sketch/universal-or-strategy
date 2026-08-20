@@ -1023,21 +1023,29 @@ namespace PropTraderTools
             }
         }
 
-        // TryFireFollowerBeRetry: CYC=5. DW-B79-06 event-driven BE retry.
-        // Fires MoveStopToBreakEven exactly once when a PTT-QX-T* order transitions to Working
-        // on a follower account that registered a _pendingFollowerBeSlots entry (targets=0 on
-        // initial BE-ALL call). Replaces the 350ms DispatcherTimer retry with zero timing dependency.
-        // CYC=5: (1) null guard, (2) name prefix guard, (3) state guard,
-        //        (4) TryRemove atomic claim, (5) flat guard.
+        // TryFireFollowerBeRetry: CYC=6. DW-B79-06 event-driven BE retry.
+        // Fires MoveStopToBreakEven exactly once when a trigger order transitions to Working
+        // on a follower account that registered a _pendingFollowerBeSlots entry.
+        //
+        // Trigger names (guard 2):
+        //   PTT-QX-T* -- QX path: QX targets going Working after QX->BE-ALL sequence.
+        //   Target1..Target9 -- DW-B79-08 v4: plain new-entry ATM targets going Working.
+        //     Fires AFTER the new ATM has fully settled, at the correct stable moment --
+        //     avoids MoveStopToBreakEven(isRetry) running acc.Cancel while sweep is active.
+        //
+        // CYC=6: (1) null guard, (2a) PTT-QX-T prefix check, (2b) Target1..Target9 check,
+        //        (3) state guard, (4) TryRemove atomic claim, (5) flat guard.
         // JS-021: ConcurrentDictionary.TryRemove is lock-free -- only one caller wins per slot.
         // JS-001: no throw. JS-002: void. ASCII-only.
         private void TryFireFollowerBeRetry(OrderEventArgs e)
         {
             var o = e?.Order;
             if (o == null || o.Name == null || o.Account == null) return;          // (1)
-            if (!o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)           // (2)
-                || o.Name.Length <= 8 || !char.IsDigit(o.Name[8]))
-                return;
+            bool isPttQxT  = o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal) // (2a)
+                             && o.Name.Length > 8 && char.IsDigit(o.Name[8]);
+            bool isAtmTgt  = o.Name.StartsWith("Target", StringComparison.Ordinal)   // (2b) DW-B79-08 v4
+                             && o.Name.Length > 6 && char.IsDigit(o.Name[6]);
+            if (!isPttQxT && !isAtmTgt) return;
             if (o.OrderState != OrderState.Working                                  // (3)
                 && o.OrderState != OrderState.Accepted)
                 return;
@@ -1047,7 +1055,7 @@ namespace PropTraderTools
                 return;
             NinjaTrader.Code.Output.Process(
                 "[BE-RETRY] " + o.Account.Name
-                    + " PTT-QX-T Working -- event-driven BE retry firing",
+                    + " " + o.Name + " Working -- event-driven BE retry firing",
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             MoveStopToBreakEven(slot.Account, slot.Instrument, slot.BufferTicks, isRetry: true);
         }

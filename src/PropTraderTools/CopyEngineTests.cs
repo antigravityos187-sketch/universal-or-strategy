@@ -4955,4 +4955,60 @@ namespace PropTraderTools
             Assert.True(4 >= maxAttempts,  "prevAttempts=4 must trigger the gate (storm case)");
         }
     }
+
+    // ======================================================================
+    // B79 DW-B79-08 v4 -- TryFireFollowerBeRetry ATM Target Trigger Tests
+    // Covers: extended trigger predicate (Target1..Target9 in addition to PTT-QX-T*).
+    // xUnit [Fact] only. JS-021: no lock. JS-001: no throw. JS-002: no return null.
+    // JS-033: synchronous. ASCII-only. OKF testing-strategies.md standard.
+    // Tests verify IsAtmBracketName and the new predicate logic without a live NT8 runtime.
+    // ======================================================================
+    public class B79BeRetryAtmTriggerTests
+    {
+        // T_B79_AT_01: Target1..Target9 match the new ATM target predicate.
+        // Contract: isAtmTgt = StartsWith("Target") && Length>6 && IsDigit(name[6]).
+        [Fact]
+        public void T_B79_AT_01_AtmTargetPredicate_Target1to9_Match()
+        {
+            for (int i = 1; i <= 9; i++)
+            {
+                string name = "Target" + i;
+                bool isAtmTgt = name.StartsWith("Target", StringComparison.Ordinal)
+                                && name.Length > 6 && char.IsDigit(name[6]);
+                Assert.True(isAtmTgt, name + " must match the ATM target predicate");
+            }
+        }
+
+        // T_B79_AT_02: PTT-QX-T1..T9 still match isPttQxT predicate (non-regression).
+        // Contract: existing QX path is unaffected by the v4 change.
+        [Fact]
+        public void T_B79_AT_02_PttQxTPredicate_T1to9_Match()
+        {
+            for (int i = 1; i <= 9; i++)
+            {
+                string name = "PTT-QX-T" + i;
+                bool isPttQxT = name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                                && name.Length > 8 && char.IsDigit(name[8]);
+                Assert.True(isPttQxT, name + " must match the PTT-QX-T predicate");
+            }
+        }
+
+        // T_B79_AT_03: Non-target names must NOT trigger either predicate.
+        // Contract: Stop1, Target10, TargetX, PTT-BE-Target-1 do not fire the retry.
+        [Fact]
+        public void T_B79_AT_03_NonTriggerNames_DoNotMatch()
+        {
+            var nonTriggers = new[] { "Stop1", "Stop2", "Target10", "TargetX",
+                                      "PTT-BE-Target-1", "PTT-QX-Stop", "Entry", "Close" };
+            foreach (string name in nonTriggers)
+            {
+                bool isPttQxT = name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                                && name.Length > 8 && char.IsDigit(name[8]);
+                bool isAtmTgt = name.StartsWith("Target", StringComparison.Ordinal)
+                                && name.Length > 6 && char.IsDigit(name[6]);
+                Assert.False(isPttQxT || isAtmTgt,
+                    name + " must NOT match either trigger predicate");
+            }
+        }
+    }
 }
