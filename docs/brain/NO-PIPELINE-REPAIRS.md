@@ -85,7 +85,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 
 ## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76 / B77 / B78 / B79
 
-**Latest pipeline run: DW-B79-08 DIRECT (2026-08-19) -- TryReplacePttBeBrackets NT8 ATM sweep recovery**
+**Latest pipeline run: DW-B79-08 v2 DIRECT (2026-08-19) -- TryReplacePttBeBrackets slot-registration fix (commit b2685f55)**
 
 | Block | Lane | Files | Hotfixes | Tests written | Final verdict |
 |-------|------|-------|----------|---------------|---------------|
@@ -102,7 +102,8 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | REPAIR-05 | IsExitSignalName Target gap | CopyEngine.cs | DW-B78-01: ATM Target1-9 now blocked by Gate 0.5 + order.Name added to dispatch trace | 8 [Fact] | SIM-CONFIRMED (2026-08-20) -- name=Entry only on all dispatches |
 | REPAIR-06 | CancelQxBracketsForFollowers guard | PttQuickExit.cs | DW-B78-02: skipIfFollower guard prevents sibling follower QX orders from being erased by subsequent follower Execute calls | 4 [Fact] | SIM-CONFIRMED (2026-08-20) -- snapshot=0 on all followers, 0 race-skipped |
 | REPAIR-07 | MoveStopToBreakEven target snapshot | CopyEngine.cs | DW-B79-01: stateOk widened from Working/Accepted to +Submitted/Initialized/TriggerPending -- targets=0 on rapid QX->BE-ALL press fixed | 8 [Fact] | DIRECT (Director approved) -- SIM-CONFIRMED 2026-08-19 (QX->BE-ALL combined test: all 4 accounts cancel=6 targets=3) |
-| DW-B79-08 | PTT-BE bracket wipe recovery | CopyEngine.cs | TryReplacePttBeBrackets: re-place PTT-BE OCO pairs when NT8 StartAtmStrategy sweep cancels them during follower entry copy | 0 [Fact] | DIRECT (Director approved) -- awaiting sim test |
+| DW-B79-08 v1 | PTT-BE bracket wipe recovery (FAILED) | CopyEngine.cs | TryReplacePttBeBrackets v1 commit `938f0faf`: direct MoveStopToBreakEven call -> retry storm, infinite replace/cancel loop | 0 [Fact] | FAILED -- v1 abandoned |
+| DW-B79-08 v2 | PTT-BE bracket wipe recovery (slot-reg) | CopyEngine.cs | TryReplacePttBeBrackets v2 commit `b2685f55`: slot-registration + QueueBeRetryFallback 200ms, no direct MSTBE call, storm-proof | 0 [Fact] | DIRECT (Director approved) -- awaiting sim test |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
@@ -127,7 +128,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | CLOSED -- non-issue: Gate 4 blocks StopLimit before dedup path (B77 post-sign-off) |
 | DW-B63-01 | QX places targets but no stop orders on followers (ATM bracket async lag) | P1 | **CLOSED** -- FIXED B78-LaneA + SIM-CONFIRMED 2026-08-20. PTT-QX-Stop+T1/T2/T3 visible on Sim102/103/104/SimAccount1. |
 | DW-B79-01 | `MoveStopToBreakEven` targets=0 on rapid QX->BE-ALL (follower PTT-QX-T orders still Initialized at snapshot time) | P1 | **CLOSED** REPAIR-07 commit `343822de` -- SIM-CONFIRMED 2026-08-19 (QX->BE-ALL combined test: all 4 accounts cancel=6 targets=3). |
-| DW-B79-08 | PTT-BE brackets wiped by NT8 StartAtmStrategy sweep on follower entry copy -- all 4 accounts lost OCO pairs confirmed 2026-08-19 | P1 | **FIXED** commit `938f0faf` -- TryReplacePttBeBrackets re-places OCO pairs on PTT-BE-Stop-* cancel while follower has position. Awaiting sim test. |
+| DW-B79-08 | PTT-BE brackets wiped by NT8 StartAtmStrategy sweep on follower entry copy -- all 4 accounts lost OCO pairs confirmed 2026-08-19 | P1 | **v1 FAILED** `938f0faf` (retry storm). **v2 FIXED** `b2685f55` -- slot-registration only, QueueBeRetryFallback 200ms consumer, no direct MSTBE call. Awaiting sim test. |
 | DW-B79-02 | `MoveStopToBreakEven` cancel=0 targets=0 on followers after QX->BE-ALL -- PTT-QX-T orders in `CancelSubmitted` state, not in `stateOk` filter | P2 | **ROOT CAUSE IDENTIFIED** (B79 diag session). `CancelSubmitted` orders skipped by both targets snapshot and stale sweep. Positions ARE protected via bare-stop path. `[BE-DIAG]` tracing retained in `CopyEngine.cs` (fires only on failure path). Fix is in QX layer -- see DW-B79-03. |
 | DW-B79-03 | QX follower PTT-QX orders go to `CancelSubmitted` immediately after submission -- conflict with late-arriving ATM brackets not visible at QX snapshot time. BE-ALL cannot find them as targets and falls back to bare-stop path instead of OCO stop+target. Same race class as DW-B63-01, B78-LaneA did not fully close it. **Gap2 sub-item FIXED REPAIR-08 `a3f68559`**: `PttBreakEven.SnapshotTargetsLocal` stateOk widened to Working|Accepted|Submitted|Initialized|TriggerPending -- BE button now symmetric with BE-ALL. | P2 | **FIXED** -- Gap2 FIXED REPAIR-08 `a3f68559` + QX guard FIXED DW-B79-03 (commit `9e2fb3a6`) |
 | DW-B54-01 | ATM auto-inject — blocked, requires `StrategyBase` API unavailable in `AddOnBase` | P1 | OPEN (blocked) |
