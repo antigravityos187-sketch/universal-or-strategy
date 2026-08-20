@@ -1,5 +1,25 @@
 # PTT Deferred Work Backlog
 
+---
+
+## Block B78 -- QX Follower Stop Lag (B78-LaneA) + ATM Target Dispatch Gap (REPAIR-05)
+
+**Block completed**: 2026-08-20
+**Files in scope**: PttQuickExit.cs, PttGlobalQuickExit.cs, CopyEngine.cs
+
+### New Items from B78
+
+| DW-ID | Description | Priority | Status |
+|-------|-------------|----------|--------|
+| DW-B78-01 | ATM Target1..Target9 bracket orders were not filtered by `IsExitSignalName` (Gate 0.5). They are Limit type (pass Gate 4) and had no name guard. On `[PTT-COPY] dispatch: Sell x7 mode=Named` appearing before QX fires: leader's ATM profit target (Sell Limit "Target1") was dispatched to followers in Named ATM mode, closing their Long positions before QX brackets could be placed. **FIXED REPAIR-05**: added `name.StartsWith("Target") && char.IsDigit(name[6])` guard to `IsExitSignalName`. Stop1-Stop9 are StopMarket type and already blocked by Gate 4 -- no change needed there. | P1 | **FIXED** commit `c8c3538c` -- awaiting sim confirmation |
+
+### Resolved Items from B78
+
+| DW-ID | Description | Priority | Resolved-In | Status |
+|-------|-------------|----------|-------------|--------|
+| DW-B63-01 | QX places targets but no stop orders on followers (ATM bracket async lag). `snapshotStop=0` because follower ATM brackets not yet in `acc.Orders` at QX time. | P1 | B78-LaneA | **FIXED** commit `21e4aaa4` -- `ResolveStop`/`ResolveTargetCount` + `leaderStop`/`leaderTargetCount` param flow from `PttGlobalQuickExit`. Awaiting sim confirmation. |
+
+
 This file is maintained by ptt-plan-reviewer (Phase 5). Each block appends its own
 section. Items carry forward until resolved or explicitly closed by Director.
 

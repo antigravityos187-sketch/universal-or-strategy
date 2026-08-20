@@ -99,6 +99,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | B77-LaneB | QX race guard | CancelQxBrackets self-cancel prevention | BuildQxSnapshot + 3-param overload | 8 [Fact] | PIPELINE_COMPLETE |
 | B77 post | REPAIR-03 + tracing | CopyEngine.cs + PttQuickExit.cs + PttGlobalQuickExit.cs + PttGlobalBreakEven.cs + TradeCopierPanel.cs | DW-B75-02 CLOSED + 20 trace lines | -- | DIRECT (Director approved) |
 | B78-LaneA | QX follower stop lag | PttQuickExit.cs + PttGlobalQuickExit.cs | DW-B63-01 fix: ResolveStop + ResolveTargetCount + leaderStop/leaderTargetCount param flow | 8 [Fact] | DIRECT (Director approved) -- awaiting sim test |
+| REPAIR-05 | IsExitSignalName Target gap | CopyEngine.cs | DW-B78-01: ATM Target1-9 now blocked by Gate 0.5 + order.Name added to dispatch trace | 8 [Fact] | DIRECT (Director approved) -- awaiting sim test |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
