@@ -299,9 +299,14 @@ namespace PropTraderTools
         }
 
         /// <summary>
-        /// Read Working/Accepted ATM Target orders from acc for the given instrument.
+        /// Read Working/Accepted/Submitted/Initialized/TriggerPending ATM Target orders
+        /// from acc for the given instrument.
         /// NT8-006: NO LINQ -- foreach only, no .ToList()/.Where()/.Select()/.Any().
-        /// Must be called BEFORE CancelStaleBracketsLocal so targets are still Working.
+        /// Must be called BEFORE CancelStaleBracketsLocal so targets are still in a live state.
+        /// REPAIR-08 DW-B79-03 Gap2: widened stateOk to match MoveStopToBreakEven Step A.
+        ///   Old: Working|Accepted only -- missed targets in Submitted/Initialized/TriggerPending
+        ///   on rapid ATM-fill -> BE press, producing targets=0 -> bare-stop path on BE button.
+        ///   New: Working|Accepted|Submitted|Initialized|TriggerPending -- symmetric with BE-ALL.
         /// JS-002: returns empty list, never null.
         /// CYC=3: (1) null guard, (2) foreach, (3) compound state+instr+name filter.
         /// </summary>
@@ -314,7 +319,10 @@ namespace PropTraderTools
             {
                 if (o == null) continue;
                 bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Accepted;
+                            || o.OrderState == OrderState.Accepted
+                            || o.OrderState == OrderState.Submitted      // REPAIR-08: match MoveStopToBreakEven Step A
+                            || o.OrderState == OrderState.Initialized    // REPAIR-08: pre-Working state
+                            || o.OrderState == OrderState.TriggerPending; // REPAIR-08: pre-submit state
                 bool instrOk = o.Instrument != null
                             && o.Instrument.FullName == instr.FullName;
                 if (!stateOk || !instrOk || (!IsAtmTargetName(o.Name) && !IsPttQxTarget(o.Name))) continue; // (3) BUG-B42-QX-BE-01
