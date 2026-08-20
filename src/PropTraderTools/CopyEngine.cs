@@ -707,8 +707,8 @@ namespace PropTraderTools
         // before submitting a market flatten. No name filter -- all order names cancelled.
         // NT8 precedent: @2Custom-0909edcc EmergencyFlattenSingleFleetAccount [938-EF-GUARD]:
         //   "Step 1: Cancel ALL working orders on this instrument for this account."
-        //   States: Working|Submitted|Accepted|ChangePending|ChangeSubmitted.
-        // CYC=4: null-guard(1) + foreach(2) + stateOk(3) + instrument-name(4). JS-021: no lock.
+        //   States: Working|Submitted|Accepted|ChangePending.
+        // CYC=4: null-guard(1) + foreach(2) + stateOk-4terms(3) + instrument-name(4). JS-021: no lock.
         // JS-001: no throw. JS-002: void. ASCII-only.
         internal void CancelAllAccountOrders(Account acc, NinjaTrader.Cbi.Instrument instr)
         {
@@ -719,13 +719,16 @@ namespace PropTraderTools
                 bool stateOk = o.OrderState == OrderState.Working
                             || o.OrderState == OrderState.Initialized
                             || o.OrderState == OrderState.Submitted
-                            || o.OrderState == OrderState.Accepted
-                            || o.OrderState == OrderState.ChangeSubmitted;
+                            || o.OrderState == OrderState.Accepted;
                 if (!stateOk) continue;                                            // (3)
                 if (o.Instrument == null
                     || o.Instrument.FullName != instr.FullName) continue;          // (4)
                 toCancel.Add(o);
             }
+            // DW-B79-04: belt-and-suspenders race guard -- discard orders that
+            // transitioned to terminal state between snapshot and cancel call.
+            toCancel.RemoveAll(o => o.OrderState == OrderState.Filled
+                                    || o.OrderState == OrderState.Cancelled);
             if (toCancel.Count == 0) return;
             try { acc.Cancel(toCancel); } catch { }
         }
@@ -1070,7 +1073,7 @@ namespace PropTraderTools
         //   Fix: always reset _beReplaceAttempts when flat, regardless of slot existence.
         //   The slot eviction remains guarded (only remove if it exists), but the counter
         //   reset is unconditional on flat -- it costs nothing when counter is already 0.
-        // CYC=3: (1) state guard, (2) follower guard, (3) flat guard.
+        // CYC=4: filled-guard(1) + follower-guard(2) + flat-guard(3) + slotEvicted-gate(4). JS-021: no lock.
         // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void.
         private void TryEvictFollowerBeSlot(OrderEventArgs e)
         {
@@ -1079,11 +1082,14 @@ namespace PropTraderTools
             if (!IsFollowerAccount(o.Account)) return;                             // (2) followers only
             if (!IsFlat(FindPosition(o.Account, o.Instrument))) return;            // (3) only evict if flat
             string accName = o.Account?.Name ?? string.Empty;
-            _pendingFollowerBeSlots.TryRemove(accName, out _);                     // no-op if already consumed
+            bool slotEvicted = _pendingFollowerBeSlots.TryRemove(accName, out _);  // DW-B79-04: capture for log gate
             _beReplaceAttempts.TryRemove(accName, out _);                          // ALWAYS reset on flat
-            NinjaTrader.Code.Output.Process(
-                "[BE-RETRY] " + accName + " position closed -- evicted BE slot + reset attempt counter",
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            if (slotEvicted)                                                        // DW-B79-04: only log if slot was present
+            {
+                NinjaTrader.Code.Output.Process(
+                    "[BE-RETRY] " + accName + " position closed -- evicted BE slot + reset attempt counter",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            }
         }
 
         // QueueBeRetryFallback: CYC=1. Configurable-delay DispatcherTimer fallback for the event-driven BE retry.
