@@ -24,7 +24,7 @@
     <OutputType>Library</OutputType>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <!-- Allow LSP to open files even if NT8 DLLs are absent on a new machine -->
-    <NoWarn>MSB3245;MSB3246;CS0012;CS8632;CS0234;CS0246</NoWarn>
+    <NoWarn>MSB3245;MSB3246;CS0012;CS8632;CS0234;CS0246;CS0436</NoWarn>
     <AssemblyName>PropTraderTools</AssemblyName>
     <RootNamespace>PropTraderTools</RootNamespace>
     <!-- Prevent NETSDK1022 duplicate Compile items (explicit list below) -->
@@ -51,7 +51,7 @@
       <Private>false</Private>
     </Reference>
     <Reference Include="NinjaTrader.Custom">
-      <HintPath>C:\Program Files\NinjaTrader 8\bin\NinjaTrader.Custom.dll</HintPath>
+      <HintPath>$(USERPROFILE)\Documents\NinjaTrader 8\bin\Custom\NinjaTrader.Custom.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
