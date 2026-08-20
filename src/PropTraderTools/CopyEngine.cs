@@ -183,6 +183,14 @@ namespace PropTraderTools
         private readonly ConcurrentDictionary<string, PendingFollowerBeSlot> _pendingFollowerBeSlots
             = new ConcurrentDictionary<string, PendingFollowerBeSlot>();
 
+        // DW-B79-08 v3: per-account retry attempt counter for TryReplacePttBeBrackets.
+        // Prevents unbounded retry storm when NT8's ATM sweep repeatedly cancels every PTT-BE-*
+        // order that TryReplacePttBeBrackets re-places (each re-place gets swept again).
+        // Limit: 3 attempts per account per trade. Reset by TryEvictFollowerBeSlot when flat.
+        // Key = acc.Name. JS-021: ConcurrentDictionary write is lock-free. JS-023: int values.
+        private readonly ConcurrentDictionary<string, int> _beReplaceAttempts
+            = new ConcurrentDictionary<string, int>();
+
         // HOTFIX-MSTBE-OCO-REUSE: monotonic counter for BE OCO IDs -- never reuse a cancelled OCO ID.
         // DW-B40-OCO-02 pattern from PttBreakEven._beOcoSeq. JS-023: volatile int allowed.
         // HOTFIX-BEALL-OCO-SEQ-SHARED-01: shared by BOTH MoveStopToBreakEven AND PttBreakEven.Execute
@@ -1048,6 +1056,7 @@ namespace PropTraderTools
         // Clears a _pendingFollowerBeSlots entry when the follower position closes via any path
         // other than the event-driven retry (e.g. Flatten Everything, PTT-QX-Stop fill).
         // Prevents a stale slot from firing MoveStopToBreakEven on a subsequent new trade.
+        // DW-B79-08 v3: also resets _beReplaceAttempts so the next trade starts with a clean counter.
         // CYC=3: (1) state guard, (2) key check, (3) flat guard.
         // JS-021: ConcurrentDictionary.TryRemove is lock-free. JS-001: no throw. JS-002: void.
         private void TryEvictFollowerBeSlot(OrderEventArgs e)
@@ -1058,8 +1067,9 @@ namespace PropTraderTools
             if (!_pendingFollowerBeSlots.ContainsKey(accName)) return;             // (2) fast pre-check
             if (!IsFlat(FindPosition(o.Account, o.Instrument))) return;            // (3) only evict if flat
             _pendingFollowerBeSlots.TryRemove(accName, out _);
+            _beReplaceAttempts.TryRemove(accName, out _);                          // DW-B79-08 v3: reset counter
             NinjaTrader.Code.Output.Process(
-                "[BE-RETRY] " + accName + " position closed -- evicted stale BE retry slot",
+                "[BE-RETRY] " + accName + " position closed -- evicted stale BE retry slot + reset attempt counter",
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
         }
 
@@ -1712,22 +1722,25 @@ namespace PropTraderTools
         }
 
 
-        // DW-B79-08 v2: TryReplacePttBeBrackets -- register BE retry slot for ATM-sweep wipe recovery.
+        // DW-B79-08 v3: TryReplacePttBeBrackets -- register BE retry slot for ATM-sweep wipe recovery.
         // Called from OnOrderUpdate when PTT-BE-Stop-* transitions to Cancelled while follower has position.
         // Root cause: StartAtmStrategy fires NT8's internal cancel sweep which wipes ALL working orders
         // including PTT-BE brackets placed by a prior BE-ALL.
         //
-        // v1 FAILURE (938f0faf): called MoveStopToBreakEven directly -> placed new PTT-BE-* orders that
-        // NT8 ALSO swept (async, multiple sweeps) -> each sweep triggered another TryReplacePttBeBrackets
-        // -> infinite replace/cancel/replace storm. Sim103/104 ended with cancel=0 targets=0 repeatedly.
+        // v1 FAILURE (938f0faf): called MoveStopToBreakEven directly -> runaway storm (each re-place swept).
+        // v2 FAILURE: slot+timer registered unconditionally -- each re-placed PTT-BE-Stop cancel triggered
+        //   TryReplacePttBeBrackets again -> new slot + new 200ms timer -> MoveStopToBreakEven again ->
+        //   placed more PTT-BE-Stop orders -> swept again -> 5-6+ MoveStopToBreakEven calls per account.
+        //   Root: isRetry=true suppresses slot registration INSIDE MoveStopToBreakEven but NOT the
+        //   external re-entry via OnOrderUpdate->TryReplacePttBeBrackets on new PTT-BE-Stop cancels.
         //
-        // v2 FIX: slot-registration only. Register a _pendingFollowerBeSlots entry then call
-        // QueueBeRetryFallback (200ms). QueueBeRetryFallback.TryRemove is the atomic claim gate --
-        // exactly one path wins, no storm possible. MoveStopToBreakEven fires AFTER NT8 sweep completes
-        // (200ms >> sweep duration). TryFireFollowerBeRetry watches PTT-QX-T* only, so in this path
-        // (plain new-entry copy, no QX) the 200ms fallback is the sole consumer -- by design.
+        // v3 FIX: attempt-count guard. _beReplaceAttempts[acc.Name] counts registrations per trade.
+        // After 3 attempts with no durable PTT-BE-Stop surviving, give up and let the native ATM
+        // brackets (Stop1/Target1) protect the position. Reset when follower goes flat.
+        // Slot+timer path is identical to v2 -- only the entry gate is new.
         //
-        // CYC=5: (1) null guard, (2) follower guard, (3) flat guard, (4) TryRemove+Add, (5) log.
+        // CYC=6: (1) null guard, (2) follower guard, (3) flat guard, (4) attempt guard,
+        //        (5) TryRemove+Add, (6) log.
         // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void. ASCII-only.
         private void TryReplacePttBeBrackets(Order cancelledStop)
         {
@@ -1736,15 +1749,25 @@ namespace PropTraderTools
             if (IsFlat(FindPosition(cancelledStop.Account, cancelledStop.Instrument))) return; // (3)
             var acc   = cancelledStop.Account;
             var instr = cancelledStop.Instrument;
-            // (4) Atomically replace any stale slot then register fresh slot.
-            // TryRemove first (idempotent): if a prior sweep already registered a slot and the
-            // 200ms timer has not fired yet, we discard it and start a fresh 200ms window.
+            // (4) Attempt-count guard: max 3 re-registrations per trade per account.
+            // Prevents unbounded storm when NT8 keeps sweeping every PTT-BE-* order placed.
+            _beReplaceAttempts.TryGetValue(acc.Name, out int prevAttempts);
+            if (prevAttempts >= 3)                                                          // (4)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "[BE-DIAG] TryReplacePttBeBrackets: " + acc.Name
+                        + " -- max 3 attempts reached, giving up (native ATM brackets retain protection)",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                return;
+            }
+            _beReplaceAttempts[acc.Name] = prevAttempts + 1;
+            // (5) Atomically replace any stale slot then register fresh slot.
             _pendingFollowerBeSlots.TryRemove(acc.Name, out _);
             _pendingFollowerBeSlots[acc.Name] = new PendingFollowerBeSlot(acc, instr, bufferTicks: 0);
-            // (5) 200ms fallback is the sole consumer for this path (no PTT-QX-T* trigger in plain re-entry).
+            // (6) 200ms fallback is the sole consumer for this path (no PTT-QX-T* trigger in plain re-entry).
             NinjaTrader.Code.Output.Process(
                 "[BE-DIAG] TryReplacePttBeBrackets: " + acc.Name
-                    + " -- slot registered, queuing 200ms fallback for ATM-sweep recovery",
+                    + " -- attempt " + (prevAttempts + 1) + "/3, slot registered, queuing 200ms fallback",
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             QueueBeRetryFallback(acc, instr, bufferTicks: 0);
         }
