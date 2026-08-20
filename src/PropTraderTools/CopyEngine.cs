@@ -2364,14 +2364,20 @@ namespace PropTraderTools
             double newStop = Math.Round(raw / tickSize) * tickSize;
 
             // -- Step A: snapshot ATM target orders BEFORE cancelling anything ----------
-            // Must read targets while they are still Working/Accepted.
+            // Must read targets while they are still Working/Accepted/Submitted/Initialized.
             // Mirrors PttBreakEven.SnapshotTargetsLocal.
+            // DW-B79-01: widened to match cancel sweep -- Initialized/Submitted/TriggerPending
+            // covers follower PTT-QX-T orders not yet acknowledged by NT8 on rapid QX->BE-ALL
+            // press. Consistent with cancel stateOk (Step B below). CYC unchanged.
             var targets = new List<(double Price, int Qty, OrderAction Action)>();         // (3)
             foreach (Order o in acc.Orders)
             {
                 if (o == null) continue;
                 bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Accepted;                        // (4)
+                            || o.OrderState == OrderState.Accepted
+                            || o.OrderState == OrderState.Submitted
+                            || o.OrderState == OrderState.Initialized
+                            || o.OrderState == OrderState.TriggerPending;                  // (4)
                 bool instrOk = o.Instrument != null
                             && o.Instrument.FullName == instrument.FullName;               // (5)
                 if (!stateOk || !instrOk) continue;
