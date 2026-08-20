@@ -126,6 +126,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | CLOSED -- non-issue: Gate 4 blocks StopLimit before dedup path (B77 post-sign-off) |
 | DW-B63-01 | QX places targets but no stop orders on followers (ATM bracket async lag) | P1 | **CLOSED** -- FIXED B78-LaneA + SIM-CONFIRMED 2026-08-20. PTT-QX-Stop+T1/T2/T3 visible on Sim102/103/104/SimAccount1. |
 | DW-B79-01 | `MoveStopToBreakEven` targets=0 on rapid QX->BE-ALL (follower PTT-QX-T orders still Initialized at snapshot time) | P1 | **FIXED** REPAIR-07 commit `343822de` -- awaiting sim test |
+| DW-B79-02 | `MoveStopToBreakEven` cancel=0 targets=0 on Sim103/Sim104 after QX->BE-ALL (Sim101/Sim102 always get cancel=6 targets=3) | P2 | OPEN -- DIAG tracing added commit `e6d79793`, awaiting sim output |
 | DW-B54-01 | ATM auto-inject — blocked, requires `StrategyBase` API unavailable in `AddOnBase` | P1 | OPEN (blocked) |
 | DW-B72-01 | `IsAtmBracketName("Stop10")` returns true — acceptable-known edge | P3 | OPEN |
 | DW-B73-B-01 | `RaiseBeAllDisarmed` redundant broadcasts on flat | P2 | OPEN |
