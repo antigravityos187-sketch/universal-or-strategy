@@ -24729,10 +24729,10 @@ FINAL_PASS criteria:
     <!-- ══ section-b81 ══════════════════════════════════════════════════════
          DW-B81 | PTT-BE-Stop Rejection Bug + Slot-Leak Root Cause
          Diagnosed 2026-08-21 from NinjaTrader Grid 2026-08-20 04-08 PM.csv
-         Status: OPEN — requires pipeline
-    ══════════════════════════════════════════════════════════════════════════ -->
+         Status: DW-B81-01 CLOSED · DW-B81-02/03 PENDING SIM
+     ══════════════════════════════════════════════════════════════════════════ -->
     <div id="section-b81" class="section-block" style="margin-top:2.5rem;">
-      <div class="section-label" style="color:var(--red);">&#9679; DW-B81 &nbsp;&#9670;&nbsp; PTT-COPIER-B81 &nbsp;&#9670;&nbsp; BE-Stop Rejection + Slot Leak &nbsp;&#9670;&nbsp; <span class="pill pill-red">&#9679; OPEN &nbsp;&middot;&nbsp; Diagnosed 2026-08-21 &nbsp;&middot;&nbsp; Requires Pipeline</span></div>
+      <div class="section-label" style="color:var(--mid);">&#9679; DW-B81 &nbsp;&#9670;&nbsp; PTT-COPIER-B81 &nbsp;&#9670;&nbsp; BE-Stop Rejection + Slot Leak &nbsp;&#9670;&nbsp; <span class="pill pill-green">&#10003; DW-B81-01 CLOSED &nbsp;&middot;&nbsp; DW-B81-02/03 PENDING SIM</span></div>
 
       <!-- Evidence block -->
       <div class="card" style="margin-top:16px; border-left:3px solid var(--red); background:var(--red-lo);">
@@ -24759,33 +24759,33 @@ Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be 
       </div>
 
       <!-- DW-B81-01 ─────────────────────────────────────────────────────── -->
-      <div class="card" style="margin-top:12px; border-left:3px solid var(--red); background:var(--red-lo);">
-        <div class="card-title" style="color:var(--red);">DW-B81-01 &mdash; PTT-BE-Stop Rejection Does Not Evict <code>_pendingFollowerBeSlots</code> Entry (P1)</div>
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--green); background:var(--green-lo);">
+        <div class="card-title" style="color:var(--green);">DW-B81-01 &mdash; PTT-BE-Stop Rejection Does Not Evict <code>_pendingFollowerBeSlots</code> Entry (P1)</div>
         <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
           <strong>Root cause chain:</strong><br>
           1. <code>TryReplacePttBeBrackets</code> (L1817) calls <code>TryAdd</code> to register a slot.<br>
           2. <code>MoveStopToBreakEven</code> submits PTT-BE-Stop for the follower.<br>
           3. NT8 returns <code>Rejected</code> ("Buy stop below market") — market moved in favor before NT8 accepted.<br>
-          4. <code>TryEvictFollowerBeSlot</code> (L1082) only evicts on <code>OrderState.Filled</code>, not <code>Rejected</code>.<br>
-          5. Slot persists in <code>_pendingFollowerBeSlots</code> indefinitely.<br>
-          6. Next BE press on the same account: <code>TryAdd</code> finds existing slot &rarr; returns <code>false</code> &rarr; <code>TryReplacePttBeBrackets</code> returns early &rarr; <strong>no brackets placed</strong>.<br>
-          7. Only the single <code>PTT-BE-Stop</code> from <code>MoveStopToBreakEven</code> is submitted &rarr; follower has stop but NO targets.<br><br>
-          <strong>Affected code:</strong><br>
-          &bull; <code>CopyEngine.cs L1082-1095</code> — <code>TryEvictFollowerBeSlot</code>: add <code>OrderState.Rejected</code> guard<br>
-          &bull; <code>CopyEngine.cs L1817-1818</code> — <code>TryReplacePttBeBrackets</code>: evict stale slot before TryAdd, OR handle Rejected in OnOrderUpdate path<br>
-          &bull; <code>CopyEngine.cs L2782</code> and <code>L2852</code> — direct-assign paths still overwrite slot safely (not affected)<br><br>
-          <strong>Proposed fix (spec-only, no code):</strong><br>
-          In <code>TryEvictFollowerBeSlot</code>: expand the guard to also evict on <code>OrderState.Rejected</code> when order name is <code>PTT-BE-Stop</code>.<br>
-          Additionally: in <code>TryReplacePttBeBrackets</code>, before <code>TryAdd</code>, check if an existing slot's attempt counter has been exhausted or if the slot's bracket was rejected, and evict it first.<br><br>
-          <strong>Risk:</strong> P1 — followers can be left with stops but no targets after any BE press where the market moves
-          faster than NT8 can accept the stop. Gap window = 500ms+. Financial exposure on a single adverse
-          tick during the gap.
+          4. <code>TryEvictFollowerBeSlot</code> (L1082) only evicted on <code>OrderState.Filled</code>, not <code>Rejected</code>.<br>
+          5. Slot persisted in <code>_pendingFollowerBeSlots</code> indefinitely.<br>
+          6. Next BE press on the same account: <code>TryAdd</code> found existing slot &rarr; returned <code>false</code> &rarr; <code>TryReplacePttBeBrackets</code> returned early &rarr; <strong>no brackets placed</strong>.<br>
+          7. Only the single <code>PTT-BE-Stop</code> from <code>MoveStopToBreakEven</code> was submitted &rarr; follower had stop but NO targets.<br><br>
+          <strong>Fix applied:</strong><br>
+          <code>TryEvictFollowerBeSlot</code> (CopyEngine.cs L1093–1113): expanded guard to evict on <code>OrderState.Rejected</code> when order name is <code>"PTT-BE-Stop"</code>.<br>
+          &bull; <code>isFilled</code> + <code>isRejected</code> booleans declared; flat-guard conditioned on <code>isFilled</code> only (bypassed for Rejected — slot is dead even while position open).<br>
+          &bull; <code>_beReplaceAttempts</code> reset on both paths (unconditional on terminal).<br>
+          &bull; CYC: 4 &rarr; 6 (+2 guards: terminal-state-guard, name-guard).<br>
+          &bull; 3 new IL-scan <code>[Fact]</code> tests: T_DW_B81_01_01 (OrderState.Rejected in IL), T_DW_B81_01_02 ("PTT-BE-Stop" string in IL), T_DW_B81_01_03 (OrderState.Filled regression guard).<br><br>
+          <strong>SIM gate:</strong> Pending Director — 5-cycle QX&rarr;BE-ALL test on clean NT8 restart.
         </div>
         <div>
-          <span class="pill pill-red">&#9679; OPEN</span>
+          <span class="pill pill-green">&#10003; CLOSED</span>
           <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
-          <span class="pill pill-amber">Requires PTT Pipeline</span>
-          <span class="pill" style="background:var(--surface);color:var(--mid);">Diagnosed 2026-08-21</span>
+          <span class="pill" style="background:var(--surface);color:var(--mid);">commit e609cfe3 &nbsp;&middot;&nbsp; 304 [Fact]</span>
+          <span class="pill" style="background:var(--surface);color:var(--mid);">SIM gate pending</span>
+        </div>
+        <div style="margin-top:10px; padding:8px 12px; background:var(--green-lo); border-radius:4px; font-size:11px; color:var(--green);">
+          &#10003; CLOSED 2026-08-21 &nbsp;&middot;&nbsp; commit e609cfe3 &nbsp;&middot;&nbsp; 304 [Fact] &nbsp;&middot;&nbsp; CYC: TryEvictFollowerBeSlot 4&rarr;6
         </div>
       </div>
 
