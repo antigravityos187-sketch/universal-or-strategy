@@ -1110,19 +1110,26 @@ namespace PropTraderTools
 
         // B59 T1: IsExitSignalName -- CYC=6. Returns true for names that must not trigger follower copy.
         // Covers: (1) PTT- own signals; (2) NT8 Close button; (3) NT8 Flatten; (4) NT8 Rev reversal;
-        //         (5) NT8 "Exit..." prefix family.
+        //         (5) NT8 "Exit..." prefix family; (6) NT8 ATM bracket Target1..Target9 (B78 DW-B78-01).
         // "Entry" is NOT blocked -- Gate 2 already limits dispatch to master account only.
         // Follower "Entry" orders (SendCopyWithAtm) never pass Gate 2, so no cascade is possible.
+        // Stop1..Stop9 are StopMarket type -- already blocked by Gate 4 before reaching this check.
+        // Only Target1..Target9 (Limit type) need explicit filtering here.
         // JS-001: no throw. JS-002: returns bool.
         // TESTABILITY: internal static with string param -- directly testable without NT8 runtime.
         internal static bool IsExitSignalName(string name)
         {
             if (name == null)                                              return false;
-            if (name.StartsWith("PTT-",  StringComparison.Ordinal))       return true;
-            if (name == "Close")                                           return true;
-            if (name == "Flatten")                                         return true;
-            if (name.StartsWith("Rev", StringComparison.Ordinal))         return true;
-            if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;
+            if (name.StartsWith("PTT-",  StringComparison.Ordinal))       return true;  // (1)
+            if (name == "Close")                                           return true;  // (2)
+            if (name == "Flatten")                                         return true;  // (3)
+            if (name.StartsWith("Rev",  StringComparison.Ordinal))        return true;  // (4)
+            if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;  // (5)
+            // B78 DW-B78-01: ATM profit-target brackets (Target1..Target9) must not trigger follower copy.
+            // Pattern: "Target" prefix + digit at index 6 (same pattern as IsAtmBracketName + SnapshotTargetOrders).
+            if (name.Length > 6
+                && name.StartsWith("Target", StringComparison.Ordinal)
+                && char.IsDigit(name[6]))                                  return true;  // (6)
             // NOTE: "Entry" is intentionally NOT blocked here.
             // Gate 2 already filters to master account only -- follower "Entry" orders never reach DispatchCopy.
             return false;
@@ -1216,7 +1223,8 @@ namespace PropTraderTools
                 NinjaTrader.Code.Output.Process(
                     "[PTT-COPY] dispatch: " + scaledSignal.Action + " x" + scaledSignal.Quantity
                     + " " + order.Instrument.FullName + " -> " + acc.Name
-                    + " mult=" + mult + " mode=" + mode.GetType().Name,
+                    + " mult=" + mult + " mode=" + mode.GetType().Name
+                    + " name=" + (order.Name ?? "null"),
                     NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                 if (mode is FollowerAtmMode.Named namedAtm)               // HOTFIX-B66-NATIVE-ATM: Named mode -> native ATM
                     SendCopyWithAtm(acc, order.Instrument, in scaledSignal, namedAtm);

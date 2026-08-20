@@ -4628,4 +4628,78 @@ namespace PropTraderTools
             Assert.Equal("SnapshotStopPrice", mi.Name);
         }
     }
+
+    /// <summary>
+    /// B78 tests: IsExitSignalName ATM Target bracket guard (DW-B78-01).
+    /// ATM profit-target orders (Target1..Target9) must NOT trigger follower copy --
+    /// they are bracket-management orders on the leader, not entry signals.
+    /// All tests call CopyEngine.IsExitSignalName directly (internal static, no NT8 runtime).
+    /// JS-051: xUnit only. CYC per method = 1. ASCII-only.
+    /// </summary>
+    public class B78TargetDispatchTests
+    {
+        // T_B78_GN_01: Target1 must be blocked -- primary regression guard for DW-B78-01.
+        // Contract: leader's ATM Target1 (Sell Limit "Target1") must not dispatch to followers.
+        [Fact]
+        public void T_B78_GN_01_IsExitSignalName_Target1_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsExitSignalName("Target1"),
+                "Target1 must be blocked by Gate 0.5 -- it is an ATM bracket order, not an entry signal.");
+        }
+
+        // T_B78_GN_02: Target9 (max NT8 ATM target index) must be blocked.
+        [Fact]
+        public void T_B78_GN_02_IsExitSignalName_Target9_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsExitSignalName("Target9"));
+        }
+
+        // T_B78_GN_03: Target2..Target8 all blocked (spot-check Target3).
+        [Fact]
+        public void T_B78_GN_03_IsExitSignalName_Target3_ReturnsTrue()
+        {
+            Assert.True(CopyEngine.IsExitSignalName("Target3"));
+        }
+
+        // T_B78_GN_04: "Target" with no digit suffix must NOT be blocked.
+        // Contract: a hypothetical signal named exactly "Target" (no number) is not an ATM bracket.
+        [Fact]
+        public void T_B78_GN_04_IsExitSignalName_TargetNoDigit_ReturnsFalse()
+        {
+            Assert.False(CopyEngine.IsExitSignalName("Target"),
+                "Bare 'Target' (no digit at [6]) must not be blocked -- length guard prevents it.");
+        }
+
+        // T_B78_GN_05: "TargetX" (letter at position 6, not digit) must NOT be blocked.
+        [Fact]
+        public void T_B78_GN_05_IsExitSignalName_TargetX_ReturnsFalse()
+        {
+            Assert.False(CopyEngine.IsExitSignalName("TargetX"));
+        }
+
+        // T_B78_GN_06: "Entry" must still return false -- regression guard (HOTFIX-B67).
+        // If this returns true, follower entries would be incorrectly blocked.
+        [Fact]
+        public void T_B78_GN_06_IsExitSignalName_Entry_ReturnsFalse_Regression()
+        {
+            Assert.False(CopyEngine.IsExitSignalName("Entry"),
+                "Entry must NOT be blocked -- HOTFIX-B67 invariant.");
+        }
+
+        // T_B78_GN_07: PTT-QX-Stop still blocked (existing behaviour -- non-regression).
+        [Fact]
+        public void T_B78_GN_07_IsExitSignalName_PttQxStop_ReturnsTrue_Regression()
+        {
+            Assert.True(CopyEngine.IsExitSignalName("PTT-QX-Stop"));
+        }
+
+        // T_B78_GN_08: "Stop1" returns false -- StopMarket blocked by Gate 4, not Gate 0.5.
+        // Contract: Gate 0.5 does NOT need to block Stop1; Gate 4 handles it. Verify no over-blocking.
+        [Fact]
+        public void T_B78_GN_08_IsExitSignalName_Stop1_ReturnsFalse_Gate4Handles()
+        {
+            Assert.False(CopyEngine.IsExitSignalName("Stop1"),
+                "Stop1 is blocked by Gate 4 (StopMarket type). IsExitSignalName must not over-block it.");
+        }
+    }
 }
