@@ -627,6 +627,8 @@ namespace PropTraderTools
                     stale.Add(o);
             }
             if (stale.Count == 0) return;
+            stale.RemoveAll(o => o.OrderState == OrderState.Filled
+                              || o.OrderState == OrderState.Cancelled);   // DW-B79-09: race guard
             try { acc.Cancel(stale.ToArray()); }
             catch { }
         }
@@ -699,6 +701,8 @@ namespace PropTraderTools
                 "[PTT-QX] cancel: " + stale.Count + " queued, " + raceSkipped + " race-skipped on " + acc.Name,
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             if (stale.Count == 0) return;                                                  // (7)
+            stale.RemoveAll(o => o.OrderState == OrderState.Filled
+                              || o.OrderState == OrderState.Cancelled);   // DW-B79-09: race guard
             try { acc.Cancel(stale.ToArray()); }
             catch { }
         }

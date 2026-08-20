@@ -1,4 +1,4 @@
-﻿// PTT-COPIER-B7 -- CopyEngineTests.cs
+// PTT-COPIER-B7 -- CopyEngineTests.cs
 // xUnit smoke tests for the CopyEngine singleton.
 // Jane Street rules: JS-001, JS-010, JS-021, JS-023, JS-025
 // B14 T2 -- CopyEngineTests.cs: 4 test method renames (B12 T1 S1.10 contract alignment) + 1 new test.
@@ -5062,6 +5062,106 @@ namespace PropTraderTools
             const string v5Suffix = "waiting for Target Working";
             Assert.Contains("500ms", v6Suffix);
             Assert.DoesNotContain("500ms", v5Suffix);
+        }
+    }
+
+    // ======================================================================
+    // B79 DW-B79-09 -- RemoveAll race guard: CancelQxBrackets x2 + CancelStaleBracketsLocal
+    // Structural IL/reflection tests: each method body must contain a RemoveAll call token.
+    // xUnit [Fact] only. JS-021: no lock. JS-001: no throw. ASCII-only.
+    // ======================================================================
+    public class B79CancelRaceGuardTests
+    {
+        // Helper: scan IL bytes for 0x28 (call) or 0x6F (callvirt) followed by a 4-byte metadata token.
+        private static bool ContainsMethodToken(byte[] il, int token)
+        {
+            for (int i = 0; i < il.Length - 4; i++)
+            {
+                if (il[i] != 0x28 && il[i] != 0x6F) continue;
+                int t = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                if (t == token) return true;
+            }
+            return false;
+        }
+
+        // T_DW_B79_09_01: CancelQxBrackets 2-param IL body must contain RemoveAll call.
+        // Contract: RemoveAll race guard (DW-B79-09) was inserted before acc.Cancel.
+        [Fact]
+        public void T_DW_B79_09_01_CancelQxBrackets2Param_HasRemoveAllGuard()
+        {
+            var type = typeof(CopyEngine);
+            var method = type.GetMethod(
+                "CancelQxBrackets",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+                null,
+                new[] { typeof(Account), typeof(NinjaTrader.Cbi.Instrument) },
+                null);
+            Assert.NotNull(method);
+            var body = method!.GetMethodBody();
+            Assert.NotNull(body);
+            var il = body!.GetILAsByteArray();
+            Assert.NotNull(il);
+            Assert.True(il!.Length > 10,
+                "T_DW_B79_09_01: CancelQxBrackets 2-param IL body is unexpectedly empty");
+            var removeAllToken = typeof(System.Collections.Generic.List<NinjaTrader.Cbi.Order>)
+                .GetMethod("RemoveAll")!.MetadataToken;
+            bool found = ContainsMethodToken(il, removeAllToken);
+            Assert.True(found,
+                "T_DW_B79_09_01: CancelQxBrackets 2-param does not contain RemoveAll call (DW-B79-09 guard missing)");
+        }
+
+        // T_DW_B79_09_02: CancelQxBrackets 3-param IL body must contain RemoveAll call.
+        // Contract: RemoveAll race guard (DW-B79-09) was inserted before acc.Cancel.
+        [Fact]
+        public void T_DW_B79_09_02_CancelQxBrackets3Param_HasRemoveAllGuard()
+        {
+            var type = typeof(CopyEngine);
+            var method = type.GetMethod(
+                "CancelQxBrackets",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+                null,
+                new[]
+                {
+                    typeof(Account),
+                    typeof(NinjaTrader.Cbi.Instrument),
+                    typeof(System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>)
+                },
+                null);
+            Assert.NotNull(method);
+            var body = method!.GetMethodBody();
+            Assert.NotNull(body);
+            var il = body!.GetILAsByteArray();
+            Assert.NotNull(il);
+            Assert.True(il!.Length > 10,
+                "T_DW_B79_09_02: CancelQxBrackets 3-param IL body is unexpectedly empty");
+            var removeAllToken = typeof(System.Collections.Generic.List<NinjaTrader.Cbi.Order>)
+                .GetMethod("RemoveAll")!.MetadataToken;
+            bool found = ContainsMethodToken(il, removeAllToken);
+            Assert.True(found,
+                "T_DW_B79_09_02: CancelQxBrackets 3-param does not contain RemoveAll call (DW-B79-09 guard missing)");
+        }
+
+        // T_DW_B79_09_03: CancelStaleBracketsLocal IL body must contain RemoveAll call.
+        // Contract: RemoveAll race guard (DW-B79-09) was inserted before acc.Cancel.
+        [Fact]
+        public void T_DW_B79_09_03_CancelStaleBracketsLocal_HasRemoveAllGuard()
+        {
+            var type = typeof(PttBreakEven);
+            var method = type.GetMethod(
+                "CancelStaleBracketsLocal",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.NotNull(method);
+            var body = method!.GetMethodBody();
+            Assert.NotNull(body);
+            var il = body!.GetILAsByteArray();
+            Assert.NotNull(il);
+            Assert.True(il!.Length > 10,
+                "T_DW_B79_09_03: CancelStaleBracketsLocal IL body is unexpectedly empty");
+            var removeAllToken = typeof(System.Collections.Generic.List<NinjaTrader.Cbi.Order>)
+                .GetMethod("RemoveAll")!.MetadataToken;
+            bool found = ContainsMethodToken(il, removeAllToken);
+            Assert.True(found,
+                "T_DW_B79_09_03: CancelStaleBracketsLocal does not contain RemoveAll call (DW-B79-09 guard missing)");
         }
     }
 }

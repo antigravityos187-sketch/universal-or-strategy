@@ -190,6 +190,8 @@ namespace PropTraderTools
             if (stale.Count == 0) return;                                         // (3)
             try
             {
+                stale.RemoveAll(o => o.OrderState == OrderState.Filled
+                              || o.OrderState == OrderState.Cancelled);   // DW-B79-09: race guard
                 acc.Cancel(stale.ToArray());
                 NinjaTrader.Code.Output.Process(
                     "[BE] CancelStaleBracketsLocal: " + stale.Count + " orders cancelled",
