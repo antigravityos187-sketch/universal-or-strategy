@@ -2363,6 +2363,15 @@ namespace PropTraderTools
             double raw = pos.AveragePrice + direction * bufferTicks * tickSize;
             double newStop = Math.Round(raw / tickSize) * tickSize;
 
+            // DW-B79-02 DIAG: log total order count for this account+instrument
+            // across all states so we can detect NT8 sim order drops.
+            int diagTotal = 0;
+            foreach (Order o in acc.Orders)
+                if (o?.Instrument?.FullName == instrument?.FullName) diagTotal++;
+            NinjaTrader.Code.Output.Process(
+                "[BE-DIAG] " + acc.Name + " orders-for-instr=" + diagTotal,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+
             // -- Step A: snapshot ATM target orders BEFORE cancelling anything ----------
             // Must read targets while they are still Working/Accepted/Submitted/Initialized.
             // Mirrors PttBreakEven.SnapshotTargetsLocal.
@@ -2422,6 +2431,23 @@ namespace PropTraderTools
             NinjaTrader.Code.Output.Process(
                 "[BE] MoveStopToBreakEven: " + acc.Name + " cancel=" + stale.Count + " targets=" + targets.Count + " newStop=" + newStop.ToString("F2"),
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            // DW-B79-02 DIAG: if nothing found, dump all orders with state
+            // so we can see if they exist in an unexpected state.
+            if (stale.Count == 0 && targets.Count == 0)
+            {
+                foreach (Order o in acc.Orders)
+                {
+                    if (o?.Instrument?.FullName != instrument?.FullName) continue;
+                    NinjaTrader.Code.Output.Process(
+                        "[BE-DIAG] " + acc.Name + " order: name=" + o.Name
+                        + " state=" + o.OrderState + " type=" + o.OrderType,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
+                if (diagTotal == 0)
+                    NinjaTrader.Code.Output.Process(
+                        "[BE-DIAG] " + acc.Name + " -- NO orders for instr (NT8 sim drop suspected)",
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            }
             try                                                                             // (6)
             {
                 if (stale.Count > 0)
