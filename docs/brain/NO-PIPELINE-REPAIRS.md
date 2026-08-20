@@ -2643,3 +2643,60 @@ Run Ph4a ptt-engineer to formally execute + test, Ph4b to verify, Ph5 to sign of
 **Bug**: Em-dash Unicode characters (U+2500) in comments on lines 502 and 717 violated JS-ASCII-only mandate (PRE-EXISTING-01 partial).
 **Fix**: Replaced `// ── B56 BUILD-FIX stubs ...` and `// ── end B56 BUILD-FIX stubs ──` with ASCII triple-hyphen equivalents.
 **Status**: APPLIED -- awaiting pipeline (B77-LaneA cosmetic carry-in)
+
+## DW-B79-04 -- MoveStopToBreakEven targets=0 async ATM bracket timing race (2026-08-19)
+
+**Commit**: b8a1961f
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Method**: `MoveStopToBreakEven`
+
+### Root Cause (two sub-bugs confirmed by DIAG trace)
+
+**Sub-bug A (primary)**: NT8 ATM bracket creation is asynchronous (NT8_FULL_REFERENCE.md line 1320).
+When BE-ALL is pressed within ~300ms of entry fill, follower ATM brackets (Stop1/Target1..N)
+have not yet appeared in `acc.Orders`. Step A snapshot sees 0 targets -> bare-stop path.
+The DIAG dump sees brackets arrive BETWEEN Step A and the dump (same method call, milliseconds later).
+
+**Sub-bug B (secondary)**: When ATM brackets arrive just before Step A scans, NT8 sim
+places Target1..N in `ChangeSubmitted` state (transient: ATM engine internally pricing the target
+before it reaches `Working`). `ChangeSubmitted` was not in Step A `stateOk` -> missed even when present.
+
+Evidence: DIAG trace without QX button, second BE-ALL press:
+```
+[BE-DIAG] Sim102 order: name=Stop1  state=Accepted        type=StopMarket
+[BE-DIAG] Sim102 order: name=Target1 state=ChangeSubmitted type=Limit
+[BE-DIAG] Sim102 order: name=Stop2  state=Accepted        type=StopMarket
+[BE-DIAG] Sim102 order: name=Target2 state=ChangeSubmitted type=Limit
+[BE-DIAG] Sim102 order: name=Stop3  state=Accepted        type=StopMarket
+[BE-DIAG] Sim102 order: name=Target3 state=ChangeSubmitted type=Limit
+```
+Orders are present in acc.Orders during DIAG dump but were NOT present when Step A ran.
+
+### Fix 1 (Sub-bug B) -- one line, no CYC change
+
+Added `OrderState.ChangeSubmitted` to Step A `stateOk` for target collection.
+
+### Fix 2 (Sub-bug A) -- 15 lines, CYC +1
+
+Added `isRetry = false` parameter to `MoveStopToBreakEven`. When `targets.Count == 0`
+and `!isRetry` and position is still open: submits bare `PTT-BE-Stop` (safety net),
+then queues a `DispatcherTimer` one-shot at 350ms to retry `MoveStopToBreakEven(isRetry: true)`.
+On retry: bare stop is stale (Step B cancels it), ATM brackets now visible -> OCO pairs submitted.
+`isRetry=true` prevents recursive loop. Timer fires on Background priority UI thread (same as NT8 callbacks).
+
+### JS-DNA compliance
+
+- No `lock()` added -- `DispatcherTimer` runs on UI thread, no concurrency ✅
+- No `throw new` added ✅
+- No `return null` added ✅
+- ASCII-only ✅
+- CYC delta: +1 (the `if (!isRetry && !IsFlat(...))` guard)
+
+### Pipeline work needed
+
+- None for this fix. No-pipeline repair, Director-approved.
+- DW-B79-04 carry-forward row: see table below.
+
+---
+
+| DW-B79-04 | `MoveStopToBreakEven` targets=0 on rapid BE-ALL -- async ATM bracket timing race. Sub-bug A: brackets not yet in acc.Orders. Sub-bug B: ChangeSubmitted state not in stateOk. | P1 | FIXED b8a1961f -- awaiting sim confirm |
