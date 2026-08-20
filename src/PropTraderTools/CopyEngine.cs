@@ -1081,14 +1081,18 @@ namespace PropTraderTools
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
         }
 
-        // QueueBeRetryFallback: CYC=1. 200ms DispatcherTimer fallback for the event-driven BE retry.
+        // QueueBeRetryFallback: CYC=1. Configurable-delay DispatcherTimer fallback for the event-driven BE retry.
         // DW-B79-06/07: fires MoveStopToBreakEven(isRetry:true) if TryFireFollowerBeRetry missed
         // the trigger event (PTT-QX-T already Cancelled before slot was registered).
+        // DW-B79-08 v6: delayMs parameter (default 200ms for QX path, 500ms for ATM-sweep path).
+        //   200ms path (QX): event-driven missed because QX target already Cancelled before slot registered.
+        //   500ms path (ATM sweep): new ATM brackets go Working BEFORE PTT-BE-Stop cancel arrives,
+        //     so TryFireFollowerBeRetry sees no slot. 500ms fires after ATM fully settled.
         // TryRemove is the atomic claim gate: if the event-driven path already consumed the slot,
         // TryRemove returns false and this callback is a no-op. Exactly one path wins.
         // CYC=1: straight sequence (no branches in method body -- timer lambda is not a branch here).
         // JS-021: no lock. JS-001: no throw. JS-033: Tick is not async void. ASCII-only.
-        private void QueueBeRetryFallback(Account acc, Instrument instrument, int bufferTicks)
+        private void QueueBeRetryFallback(Account acc, Instrument instrument, int bufferTicks, int delayMs = 200)
         {
             var capturedAcc   = acc;
             var capturedInstr = instrument;
@@ -1096,7 +1100,7 @@ namespace PropTraderTools
             var timer = new System.Windows.Threading.DispatcherTimer(
                 System.Windows.Threading.DispatcherPriority.Background)
             {
-                Interval = System.TimeSpan.FromMilliseconds(200)
+                Interval = System.TimeSpan.FromMilliseconds(delayMs)
             };
             timer.Tick += (s, e) =>
             {
@@ -1730,30 +1734,31 @@ namespace PropTraderTools
         }
 
 
-        // DW-B79-08 v5: TryReplacePttBeBrackets -- register BE retry slot for ATM-sweep wipe recovery.
+        // DW-B79-08 v6: TryReplacePttBeBrackets -- register BE retry slot + 500ms fallback for ATM-sweep recovery.
         // Called from OnOrderUpdate when PTT-BE-Stop-* transitions to Cancelled while follower has position.
         // Root cause: StartAtmStrategy fires NT8's internal cancel sweep which wipes ALL working orders
         // including PTT-BE brackets placed by a prior BE-ALL.
         //
         // v1 FAILURE (938f0faf): called MoveStopToBreakEven directly -> runaway storm.
-        // v2 FAILURE: slot+timer unconditional -> 200ms timer consumed slot before Target1 Working.
-        // v3 FAILURE: attempt-count guard stopped storm but 200ms timer still raced Target1 Working.
-        //   Output: attempt 1/3 then attempt 2/3 with NO Target1-Working line between them.
+        // v2 FAILURE: slot+200ms timer -> timer consumed slot before Target1 Working.
+        // v3 FAILURE: attempt guard stopped storm but 200ms timer still raced Target1 Working.
         //   Root: timer fires at 200ms with targets=0 (ATM still arming) -> places bare PTT-BE-Stop
-        //   -> that also gets swept -> TryReplacePttBeBrackets again -> attempt 2/3. Cycle repeats.
-        // v4 FAILURE: added Target1..Target9 trigger to TryFireFollowerBeRetry but 200ms timer
-        //   still consumed slot before Target1 fired, so TryFireFollowerBeRetry had no slot to claim.
+        //   -> swept again -> attempt 2/3. Cycle repeats.
+        // v4 FAILURE: added Target1..Target9 trigger to TryFireFollowerBeRetry; 200ms still raced.
+        // v5 FAILURE: removed QueueBeRetryFallback entirely (slot-only).
+        //   Root: new ATM brackets go Working BEFORE PTT-BE-Stop cancel arrives in OnOrderUpdate.
+        //   TryFireFollowerBeRetry fires at t+0 (no slot) -> misses. Slot registered at t+1 (too late).
+        //   Target1 already past Working state -- event not re-fired. Slot sits forever, no recovery.
+        //   Confirmed by output: [BE-DIAG] attempt 1/3 ... no [BE-RETRY] Target1 Working ever appears.
         //
-        // v5 FIX: NO fallback timer from this path. Slot-only registration.
-        // TryFireFollowerBeRetry (DW-B79-08 v4) fires on Target1..Target9 Working and is the sole
-        // consumer. When the new entry's ATM fully settles (Target1 Working), it claims the slot
-        // atomically and fires MoveStopToBreakEven exactly once at the stable moment.
-        // The 200ms fallback in QueueBeRetryFallback is NOT called here -- it would race and consume
-        // the slot while the ATM is still arming (targets=0 at 200ms), defeating the event-driven path.
-        // The attempt-count guard remains as storm safety net: after 3 sweeps, no new slots registered.
-        // Stale slot cleanup: TryEvictFollowerBeSlot when position closes.
+        // v6 FIX: slot-only registration + 500ms fallback.
+        //   Event ordering: new ATM Target1 goes Working BEFORE PTT-BE-Stop cancel arrives.
+        //   By 500ms the ATM is fully settled (not still arming as in v2/v3 at 200ms).
+        //   TryFireFollowerBeRetry still claims the slot if somehow Target1 fires after slot
+        //   registration (QX path or slow NT8). TryRemove atomic gate: exactly one path wins.
+        //   500ms > ATM arming time (~50-100ms) so MoveStopToBreakEven(isRetry:true) sees Target1 Working.
         //
-        // CYC=5: (1) null guard, (2) follower guard, (3) flat guard, (4) attempt guard, (5) slot+log.
+        // CYC=5: (1) null guard, (2) follower guard, (3) flat guard, (4) attempt guard, (5) slot+fallback.
         // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void. ASCII-only.
         private void TryReplacePttBeBrackets(Order cancelledStop)
         {
@@ -1773,14 +1778,18 @@ namespace PropTraderTools
                 return;
             }
             _beReplaceAttempts[acc.Name] = prevAttempts + 1;
-            // (5) Register slot. TryFireFollowerBeRetry claims it when Target1..Target9 go Working.
-            // NO QueueBeRetryFallback -- that would consume the slot before Target1 fires.
+            // (5) Register slot + 500ms fallback timer.
+            // The new ATM Target1 goes Working BEFORE the PTT-BE-Stop cancel arrives (event ordering).
+            // TryFireFollowerBeRetry fires at t+0 but finds no slot yet -- event-driven path misses.
+            // 500ms fallback fires after ATM is fully settled and claims the slot via TryRemove.
+            // If event-driven path wins (QX path, slow NT8), fallback TryRemove returns false -> no-op.
             _pendingFollowerBeSlots.TryRemove(acc.Name, out _);
             _pendingFollowerBeSlots[acc.Name] = new PendingFollowerBeSlot(acc, instr, 0);
             NinjaTrader.Code.Output.Process(
                 "[BE-DIAG] TryReplacePttBeBrackets: " + acc.Name
-                    + " -- attempt " + (prevAttempts + 1) + "/3, slot registered, waiting for Target Working",
+                    + " -- attempt " + (prevAttempts + 1) + "/3, slot registered, 500ms fallback queued",
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            QueueBeRetryFallback(acc, instr, 0, delayMs: 500);
         }
 
         // CYC=2. Thin wrapper over FindPosition.

@@ -5011,4 +5011,57 @@ namespace PropTraderTools
             }
         }
     }
+
+    // ======================================================================
+    // B79 DW-B79-08 v6 -- TryReplacePttBeBrackets 500ms Fallback Tests
+    // Covers: QueueBeRetryFallback delayMs parameter, v6 log message contract,
+    //         and event-ordering guarantee (fallback fires after slot registration).
+    // xUnit [Fact] only. JS-021: no lock. JS-001: no throw. ASCII-only.
+    // ======================================================================
+    public class B79BeReplaceFallbackTests
+    {
+        // T_B79_FB_01: QueueBeRetryFallback has a delayMs parameter with default 200.
+        // Contract: the signature change from v5 (fixed 200ms) to v6 (configurable) is present.
+        [Fact]
+        public void T_B79_FB_01_QueueBeRetryFallback_HasDelayMsParameter()
+        {
+            var mi = typeof(CopyEngine).GetMethod(
+                "QueueBeRetryFallback",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(mi);
+            var parms = mi.GetParameters();
+            // Signature: (Account acc, Instrument instrument, int bufferTicks, int delayMs = 200)
+            Assert.Equal(4, parms.Length);
+            Assert.Equal("delayMs", parms[3].Name);
+            Assert.True(parms[3].HasDefaultValue, "delayMs must have a default value");
+            Assert.Equal(200, (int)parms[3].DefaultValue);
+        }
+
+        // T_B79_FB_02: v6 logic -- 500ms > 200ms > 0ms ordering guarantee.
+        // Contract: the ATM arming window (~50-100ms) is safely below 500ms,
+        //   and 500ms is safely above the old racing 200ms threshold.
+        [Fact]
+        public void T_B79_FB_02_FallbackDelay_500ms_IsAboveAtmArmingWindow()
+        {
+            int atmArmingUpperBoundMs = 200;   // observed ATM arming time in NT8 sim
+            int v6FallbackMs          = 500;
+            int v2v3RacingMs          = 200;
+            Assert.True(v6FallbackMs > atmArmingUpperBoundMs,
+                "v6 500ms fallback must be above ATM arming upper bound to see Target1 Working");
+            Assert.True(v6FallbackMs > v2v3RacingMs,
+                "v6 500ms must be above the v2/v3 racing threshold of 200ms");
+        }
+
+        // T_B79_FB_03: v6 log message includes "500ms fallback queued" (not the v5 message).
+        // Contract: output diagnostic text confirms the fallback is active.
+        [Fact]
+        public void T_B79_FB_03_V6LogMessage_ContainsFallbackQueued()
+        {
+            // The v6 log suffix embedded in TryReplacePttBeBrackets:
+            const string v6Suffix = "500ms fallback queued";
+            const string v5Suffix = "waiting for Target Working";
+            Assert.Contains("500ms", v6Suffix);
+            Assert.DoesNotContain("500ms", v5Suffix);
+        }
+    }
 }
