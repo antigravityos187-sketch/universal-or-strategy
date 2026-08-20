@@ -1067,8 +1067,8 @@ namespace PropTraderTools
             MoveStopToBreakEven(slot.Account, slot.Instrument, slot.BufferTicks, isRetry: true);
         }
 
-        // TryEvictFollowerBeSlot: CYC=3. DW-B79-06 stale-slot cleanup.
-        // Clears _pendingFollowerBeSlots AND _beReplaceAttempts when follower position closes.
+        // TryEvictFollowerBeSlot: CYC=6. DW-B79-06 stale-slot cleanup.
+        // Clears _pendingFollowerBeSlots AND _beReplaceAttempts when follower slot is terminal.
         // DW-B79-08 v8: decouple attempt-counter reset from slot existence.
         //   v3 bug: guard (2) checked ContainsKey(_pendingFollowerBeSlots) before resetting
         //   _beReplaceAttempts. After the 500ms fallback timer consumed the slot via TryRemove,
@@ -1077,21 +1077,37 @@ namespace PropTraderTools
         //   Fix: always reset _beReplaceAttempts when flat, regardless of slot existence.
         //   The slot eviction remains guarded (only remove if it exists), but the counter
         //   reset is unconditional on flat -- it costs nothing when counter is already 0.
-        // CYC=4: filled-guard(1) + follower-guard(2) + flat-guard(3) + slotEvicted-gate(4). JS-021: no lock.
-        // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void.
+        // DW-B81-01: also evict on PTT-BE-Stop Rejected.
+        //   Root: when BE fires immediately after entry on a short, market can tick below entry
+        //   before NT8 accepts the follower PTT-BE-Stop. NT8 rejects with "Buy stop below market".
+        //   TryEvictFollowerBeSlot only fired on Filled -- leaving a stranded slot in
+        //   _pendingFollowerBeSlots. Next BE press: TryAdd in TryReplacePttBeBrackets finds
+        //   existing slot -> returns early -> NO bracket placed -> follower gets stop-only, no targets.
+        //   Fix: evict slot AND reset attempt counter on Rejected for PTT-BE-Stop specifically.
+        //   Flat-guard bypassed for Rejected: rejection can happen while position is still open
+        //   (stop rejected but trade still live). The retry (500ms fallback) must be free to
+        //   re-register a fresh slot.
+        // CYC=6: null-guard(1) + terminal-state-guard(2) + name-guard(3) + follower-guard(4)
+        //        + flat-guard-for-filled(5) + slotEvicted-gate(6). JS-021: no lock.
+        // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void. ASCII.
         private void TryEvictFollowerBeSlot(OrderEventArgs e)
         {
             var o = e?.Order;
-            if (o == null || o.OrderState != OrderState.Filled) return;            // (1)
-            if (!IsFollowerAccount(o.Account)) return;                             // (2) followers only
-            if (!IsFlat(FindPosition(o.Account, o.Instrument))) return;            // (3) only evict if flat
+            if (o == null) return;                                                  // (1) null guard
+            bool isFilled   = o.OrderState == OrderState.Filled;                   // (2a)
+            bool isRejected = o.OrderState == OrderState.Rejected                  // (2b) DW-B81-01
+                              && o.Name == "PTT-BE-Stop";                          // (3) PTT-BE-Stop only
+            if (!isFilled && !isRejected) return;
+            if (!IsFollowerAccount(o.Account)) return;                             // (4) followers only
+            if (isFilled && !IsFlat(FindPosition(o.Account, o.Instrument))) return; // (5) flat-guard for Filled only
             string accName = o.Account?.Name ?? string.Empty;
             bool slotEvicted = _pendingFollowerBeSlots.TryRemove(accName, out _);  // DW-B79-04: capture for log gate
-            _beReplaceAttempts.TryRemove(accName, out _);                          // ALWAYS reset on flat
+            _beReplaceAttempts.TryRemove(accName, out _);                          // ALWAYS reset on terminal
             if (slotEvicted)                                                        // DW-B79-04: only log if slot was present
             {
+                string reason = isRejected ? "PTT-BE-Stop Rejected" : "position closed";
                 NinjaTrader.Code.Output.Process(
-                    "[BE-RETRY] " + accName + " position closed -- evicted BE slot + reset attempt counter",
+                    "[BE-RETRY] " + accName + " " + reason + " -- evicted BE slot + reset attempt counter",
                     NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             }
         }
