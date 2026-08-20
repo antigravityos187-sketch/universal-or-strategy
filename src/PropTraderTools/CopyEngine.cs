@@ -164,6 +164,25 @@ namespace PropTraderTools
         private readonly ConcurrentDictionary<string, long>           _trailBeLastPnlBits
             = new ConcurrentDictionary<string, long>();
 
+        // DW-B79-06: PendingFollowerBeSlot -- event-driven deferred BE for QX->BE-ALL race fix.
+        // Registered by MoveStopToBreakEven when targets=0 on a follower account (first call only).
+        // Consumed atomically by TryFireFollowerBeRetry in OnOrderUpdate when a PTT-QX-T* order
+        // transitions to Working -- fires MoveStopToBreakEven at the exact correct moment,
+        // not at an arbitrary 350ms offset. Eliminates the QX->BE-ALL race permanently.
+        // Key = acc.Name. JS-021: ConcurrentDictionary TryRemove is lock-free atomic claim.
+        // NT8-004: struct in ConcurrentDictionary confirmed safe in NT8.
+        private struct PendingFollowerBeSlot
+        {
+            internal readonly Account    Account;
+            internal readonly Instrument Instrument;
+            internal readonly int        BufferTicks;
+            internal PendingFollowerBeSlot(Account a, Instrument i, int b)
+            { Account = a; Instrument = i; BufferTicks = b; }
+        }
+
+        private readonly ConcurrentDictionary<string, PendingFollowerBeSlot> _pendingFollowerBeSlots
+            = new ConcurrentDictionary<string, PendingFollowerBeSlot>();
+
         // HOTFIX-MSTBE-OCO-REUSE: monotonic counter for BE OCO IDs -- never reuse a cancelled OCO ID.
         // DW-B40-OCO-02 pattern from PttBreakEven._beOcoSeq. JS-023: volatile int allowed.
         // HOTFIX-BEALL-OCO-SEQ-SHARED-01: shared by BOTH MoveStopToBreakEven AND PttBreakEven.Execute
@@ -904,6 +923,13 @@ namespace PropTraderTools
             // Fires PositionStateChanged when a follower PTT-BE-Stop fills. JS-021: no lock.
             TryFireFollowerBeDisarm(e);
 
+            // DW-B79-06: event-driven BE retry -- fires MoveStopToBreakEven the instant a
+            // PTT-QX-T* order goes Working on a follower with a pending BE slot. Zero timing.
+            TryFireFollowerBeRetry(e);
+
+            // DW-B79-06: evict stale BE retry slot when follower position closes via any path.
+            TryEvictFollowerBeSlot(e);
+
             // HOTFIX-B66-COPY-REPLACE / HOTFIX-B66-NATIVE-ATM: re-place follower entry when NT8-ATM
             // cancel sweep wipes it during bracket arming. Predicate logic in IsPttEntryOrderCancelTrigger.
             if (IsPttEntryOrderCancelTrigger(e.Order))
@@ -967,6 +993,54 @@ namespace PropTraderTools
                     e.Order.Instrument.FullName,
                     new PositionState(hasPos, hasEntries));
             }
+        }
+
+        // TryFireFollowerBeRetry: CYC=5. DW-B79-06 event-driven BE retry.
+        // Fires MoveStopToBreakEven exactly once when a PTT-QX-T* order transitions to Working
+        // on a follower account that registered a _pendingFollowerBeSlots entry (targets=0 on
+        // initial BE-ALL call). Replaces the 350ms DispatcherTimer retry with zero timing dependency.
+        // CYC=5: (1) null guard, (2) name prefix guard, (3) state guard,
+        //        (4) TryRemove atomic claim, (5) flat guard.
+        // JS-021: ConcurrentDictionary.TryRemove is lock-free -- only one caller wins per slot.
+        // JS-001: no throw. JS-002: void. ASCII-only.
+        private void TryFireFollowerBeRetry(OrderEventArgs e)
+        {
+            var o = e?.Order;
+            if (o == null || o.Name == null || o.Account == null) return;          // (1)
+            if (!o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)           // (2)
+                || o.Name.Length <= 8 || !char.IsDigit(o.Name[8]))
+                return;
+            if (o.OrderState != OrderState.Working                                  // (3)
+                && o.OrderState != OrderState.Accepted)
+                return;
+            if (!_pendingFollowerBeSlots.TryRemove(o.Account.Name, out var slot))  // (4) atomic claim
+                return;
+            if (IsFlat(FindPosition(slot.Account, slot.Instrument)))               // (5)
+                return;
+            NinjaTrader.Code.Output.Process(
+                "[BE-RETRY] " + o.Account.Name
+                    + " PTT-QX-T Working -- event-driven BE retry firing",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            MoveStopToBreakEven(slot.Account, slot.Instrument, slot.BufferTicks, isRetry: true);
+        }
+
+        // TryEvictFollowerBeSlot: CYC=3. DW-B79-06 stale-slot cleanup.
+        // Clears a _pendingFollowerBeSlots entry when the follower position closes via any path
+        // other than the event-driven retry (e.g. Flatten Everything, PTT-QX-Stop fill).
+        // Prevents a stale slot from firing MoveStopToBreakEven on a subsequent new trade.
+        // CYC=3: (1) state guard, (2) key check, (3) flat guard.
+        // JS-021: ConcurrentDictionary.TryRemove is lock-free. JS-001: no throw. JS-002: void.
+        private void TryEvictFollowerBeSlot(OrderEventArgs e)
+        {
+            var o = e?.Order;
+            if (o == null || o.OrderState != OrderState.Filled) return;            // (1)
+            string accName = o.Account?.Name ?? string.Empty;
+            if (!_pendingFollowerBeSlots.ContainsKey(accName)) return;             // (2) fast pre-check
+            if (!IsFlat(FindPosition(o.Account, o.Instrument))) return;            // (3) only evict if flat
+            _pendingFollowerBeSlots.TryRemove(accName, out _);
+            NinjaTrader.Code.Output.Process(
+                "[BE-RETRY] " + accName + " position closed -- evicted stale BE retry slot",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
         }
 
         // FindMatchingRule: CYC=3. Finds the CopyRule whose Instrument and MasterAccount match the order.
@@ -2496,29 +2570,21 @@ namespace PropTraderTools
                 }
                 catch { /* non-fatal */ }
 
-                // DW-B79-04: ATM brackets arrive asynchronously -- retry once after 350ms.
-                // The bare stop above protects the position while we wait.
-                // On retry: bare stop is stale (Step B cancels it) + brackets now visible -> OCO pairs submitted.
-                // isRetry guard prevents recursive loop. Position check prevents retry on flat account.
+                // DW-B79-06: Replace 350ms DispatcherTimer with event-driven slot registration.
+                // TryFireFollowerBeRetry (OnOrderUpdate pre-gate) fires MoveStopToBreakEven the
+                // instant a PTT-QX-T* order transitions to Working on this account -- zero timing
+                // dependency, eliminates the QX->BE-ALL race permanently.
+                // Bare PTT-BE-Stop above protects the position during the wait window.
+                // isRetry guard: if retry already ran (e.g. targets=0 on second pass too -- NT8 sim
+                // drop), no further registration. Bare stop remains as final fallback protection.
+                // TryRemove in TryFireFollowerBeRetry is the atomic claim gate: exactly one fire.
                 if (!isRetry && !IsFlat(FindPosition(acc, instrument)))
                 {
+                    _pendingFollowerBeSlots[acc.Name] =
+                        new PendingFollowerBeSlot(acc, instrument, bufferTicks);
                     NinjaTrader.Code.Output.Process(
-                        "[BE-DIAG] " + acc.Name + " -- targets=0, queueing 350ms retry for ATM bracket arrival",
+                        "[BE-DIAG] " + acc.Name + " -- targets=0, registered event-driven BE retry slot",
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                    var capturedAcc  = acc;
-                    var capturedInstr = instrument;
-                    var capturedBuf   = bufferTicks;
-                    var timer = new System.Windows.Threading.DispatcherTimer(
-                        System.Windows.Threading.DispatcherPriority.Background)
-                    {
-                        Interval = System.TimeSpan.FromMilliseconds(350)
-                    };
-                    timer.Tick += (s, e) =>
-                    {
-                        timer.Stop();
-                        MoveStopToBreakEven(capturedAcc, capturedInstr, capturedBuf, isRetry: true);
-                    };
-                    timer.Start();
                 }
                 return;
             }
