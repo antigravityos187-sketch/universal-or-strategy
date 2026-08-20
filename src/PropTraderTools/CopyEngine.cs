@@ -930,9 +930,13 @@ namespace PropTraderTools
             // DW-B79-06: evict stale BE retry slot when follower position closes via any path.
             TryEvictFollowerBeSlot(e);
 
-            // DW-B79-07 DIAG: log when a PTT-BE-* order is cancelled by anything.
-            // This catches copy-engine bracket sync or NT8 OCO interference cancelling PTT-BE brackets.
-            // Remove once root cause of Sim102/104 bracket loss (Problem 2) is confirmed.
+            // DW-B79-08: PTT-BE bracket wipe recovery.
+            // Root cause confirmed 2026-08-19: when leader re-enters after QX->BE-ALL, NT8's
+            // StartAtmStrategy sweep cancels ALL follower working orders -- including PTT-BE-* brackets.
+            // Recovery: on PTT-BE-Stop-* cancel with follower position still open, re-call
+            // MoveStopToBreakEven(isRetry:true) to re-place the OCO pairs.
+            // Only triggers on PTT-BE-Stop-* (not PTT-BE-Target-* which correctly cancels on stop fill).
+            // One re-call per OCO pair (Stop cancel = one trigger per pair).
             if (e.Order.OrderState == OrderState.Cancelled
                 && e.Order.Name != null
                 && e.Order.Name.StartsWith("PTT-BE-", StringComparison.Ordinal))
@@ -942,6 +946,8 @@ namespace PropTraderTools
                         + " PTT-BE order cancelled: " + e.Order.Name
                         + " instr=" + (e.Order.Instrument?.FullName ?? "?"),
                     NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                if (e.Order.Name.StartsWith("PTT-BE-Stop-", StringComparison.Ordinal))
+                    TryReplacePttBeBrackets(e.Order);
             }
 
             // HOTFIX-B66-COPY-REPLACE / HOTFIX-B66-NATIVE-ATM: re-place follower entry when NT8-ATM
@@ -1705,6 +1711,33 @@ namespace PropTraderTools
             StatusUpdate?.Invoke(cancelledOrder.Account.Name + ": re-placed @ " + cancelledOrder.LimitPrice + " (ATM-sweep replace)");
         }
 
+
+        // DW-B79-08: TryReplacePttBeBrackets -- re-place PTT-BE OCO pairs wiped by NT8 ATM sweep.
+        // Called from OnOrderUpdate when PTT-BE-Stop-* transitions to Cancelled while follower has position.
+        // Root cause: StartAtmStrategy fires NT8's internal cancel sweep which wipes ALL working orders,
+        // including PTT-BE brackets placed by a prior BE-ALL. Recovery mirrors MoveStopToBreakEven
+        // but skips the cancel step (there is nothing left to cancel -- NT8 already wiped everything).
+        // CYC=5: (1) null guards, (2) follower rule lookup, (3) follower found, (4) position check, (5) Dispatcher.
+        // JS-021: no lock. JS-001: no throw. JS-002: void. ASCII-only.
+        private void TryReplacePttBeBrackets(Order cancelledStop)
+        {
+            if (cancelledStop?.Account == null || cancelledStop.Instrument == null) return; // (1)
+            if (!IsFollowerAccount(cancelledStop.Account)) return;                          // (2) leaders manage their own BE
+            if (IsFlat(FindPosition(cancelledStop.Account, cancelledStop.Instrument))) return; // (3) position closed = correct cancel
+            NinjaTrader.Code.Output.Process(
+                "[BE] TryReplacePttBeBrackets: " + cancelledStop.Account.Name
+                    + " -- re-placing PTT-BE brackets after ATM sweep",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            var acc   = cancelledStop.Account;
+            var instr = cancelledStop.Instrument;
+            // Dispatch onto UI thread (same pattern as QueueBeRetryFallback / RaiseBeBufferChanged).  (4)
+            // MoveStopToBreakEven reads acc.Orders and calls acc.CreateOrder -- must be on UI thread.
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>                           // (5)
+            {
+                if (!IsFlat(FindPosition(acc, instr)))
+                    MoveStopToBreakEven(acc, instr, bufferTicks: 0, isRetry: true);
+            });
+        }
 
         // CYC=2. Thin wrapper over FindPosition.
         private bool HasOpenPosition(Account acc, Instrument instrument)
