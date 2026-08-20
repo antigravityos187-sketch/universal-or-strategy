@@ -124,7 +124,9 @@
     <Compile Include="Tests\B71Tests.cs" />
     <Compile Include="Tests\B74LaneCTests.cs" />
     <Compile Include="Tests\CopyEngineB72Tests.cs" />
+    <Compile Include="Tests\B73Tests.cs" />
     <Compile Include="Tests\PttBreakEvenB72Tests.cs" />
+    <Compile Include="Tests\B79Tests.cs" />
     <Compile Include="TradeCopierPanelB75Tests.cs" />
     <Compile Include="B76Tests.cs" />
     <Compile Include="TradeCopierPanelB77Tests.cs" />
