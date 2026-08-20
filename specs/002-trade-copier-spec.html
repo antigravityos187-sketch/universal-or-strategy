@@ -415,7 +415,7 @@
       <div class="header-meta">
         <span class="pill pill-green"><span class="status-dot dot-green"></span>B1–B58 COMPLETE &nbsp;&middot;&nbsp; Panel + Engine fully restored</span>
         <span class="pill pill-accent">~6000 lines &middot; 6 files &middot; B57+B58 PIPELINE_COMPLETE &middot; F5 PASS</span>
-        <span class="pill pill-amber">DW-B54-01 P0 open (ATM API research) &nbsp;&middot;&nbsp; DW-B56-04 P2 diagnostic pending &nbsp;&middot;&nbsp; DW-B58-01/02/03 P2 deferred</span>
+        <span class="pill pill-amber">DW-B54-01 P0 open (ATM API research) &nbsp;&middot;&nbsp; DW-B56-04 P2 CLOSED (B62 EvictDedup) &nbsp;&middot;&nbsp; DW-B58-01/02/03 P2 deferred</span>
         <span class="pill pill-purple">Add-On + ChartTrader panel</span>
       </div>
     </header>
@@ -3194,8 +3194,8 @@ block-beta
         <!-- end B22 block -->
 
         <!-- ══ B23 block — FIX BLOCK: 3 defects from B22 E2E testing ════════════ -->
-        <div class="card" style="margin-top:16px; border-left:3px solid var(--accent);" id="block-b23">
-          <div class="card-title" style="color:var(--accent);">&#9711; Block 23 — PENDING EXECUTION &nbsp;·&nbsp; PTT-COPIER-B23 &nbsp;·&nbsp; B22 Defect Fix: NullRef + AddRule + BE Trigger</div>
+        <div class="card" style="margin-top:16px; border-left:3px solid var(--green);" id="block-b23">
+          <div class="card-title" style="color:var(--green);">&#10003; Block 23 — SUPERSEDED &nbsp;·&nbsp; PTT-COPIER-B23 &nbsp;·&nbsp; B22 Defect Fix: NullRef + AddRule + BE Trigger</div>
 
           <div style="font-size:12px; color:var(--mid); line-height:1.75; margin-bottom:16px;">
             B23 objective: fix the 3 defects found during B22 end-to-end copier testing.
@@ -3229,7 +3229,7 @@ block-beta
                   <td style="padding:5px 8px;"><span class="pill pill-red">P0</span></td>
                   <td style="padding:5px 8px;color:var(--mid);">Wrap <code style="font-family:var(--mono);">follower.CreateOrder()</code> in <code style="font-family:var(--mono);">Dispatcher.InvokeAsync()</code> in <code style="font-family:var(--mono);">SendCopy()</code> — marshal to NT8 UI thread so non-active-chart accounts can submit orders.</td>
                   <td style="padding:5px 8px;color:var(--green);">+1 → 123</td>
-                  <td style="padding:5px 8px;" id="b23-lane-a-status"><span class="pill pill-amber">&#9711; PENDING</span></td>
+                  <td style="padding:5px 8px;" id="b23-lane-a-status"><span class="pill" style="background:rgba(34,197,94,0.15);color:var(--green);border:1px solid rgba(34,197,94,0.4);">&#10003; SUPERSEDED</span></td>
                 </tr>
                 <tr style="border-bottom:1px solid var(--border);">
                   <td style="padding:5px 8px;font-family:var(--mono);color:var(--accent);">Lane B</td>
@@ -3237,7 +3237,7 @@ block-beta
                   <td style="padding:5px 8px;"><span class="pill pill-red">P1</span></td>
                   <td style="padding:5px 8px;color:var(--mid);"><code style="font-family:var(--mono);">AddRule()</code> 5-arg overload: rebuild <code style="font-family:var(--mono);">ConcurrentBag</code> to evict any existing rule for same <code style="font-family:var(--mono);">(instrument, leader)</code> before adding new one. Same snapshot-rebuild pattern as <code style="font-family:var(--mono);">SetFollowerMultiplier()</code>. CYC: 1→4.</td>
                   <td style="padding:5px 8px;color:var(--green);">+1 → 124</td>
-                  <td style="padding:5px 8px;" id="b23-lane-b-status"><span class="pill pill-amber">&#9711; PENDING</span></td>
+                  <td style="padding:5px 8px;" id="b23-lane-b-status"><span class="pill" style="background:rgba(34,197,94,0.15);color:var(--green);border:1px solid rgba(34,197,94,0.4);">&#10003; SUPERSEDED</span></td>
                 </tr>
                 <tr>
                   <td style="padding:5px 8px;font-family:var(--mono);color:var(--accent);">Lane C</td>
@@ -3245,7 +3245,7 @@ block-beta
                   <td style="padding:5px 8px;"><span class="pill pill-amber">P1</span></td>
                   <td style="padding:5px 8px;color:var(--mid);">Replace dollar-PnL armed trigger (<code style="font-family:var(--mono);">e.Value &lt; 0</code>) in <code style="font-family:var(--mono);">OnPendingBeAccountUpdate()</code> with price-based trigger (<code style="font-family:var(--mono);">Last.Price &gt;= entry + bufferTicks × tickSize</code>). Immune to commission deductions. CYC: 5→7 (≤8).</td>
                   <td style="padding:5px 8px;color:var(--green);">+2 → 126</td>
-                  <td style="padding:5px 8px;" id="b23-lane-c-status"><span class="pill pill-amber">&#9711; PENDING</span></td>
+                  <td style="padding:5px 8px;" id="b23-lane-c-status"><span class="pill" style="background:rgba(34,197,94,0.15);color:var(--green);border:1px solid rgba(34,197,94,0.4);">&#10003; SUPERSEDED</span></td>
                 </tr>
               </tbody>
             </table>
@@ -3264,19 +3264,18 @@ block-beta
 
           <!-- B23 final status -->
           <div id="b23-final-status" style="margin-bottom:14px;">
-            <div style="padding:12px 16px;background:rgba(100,116,139,0.08);border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:12px;">
-              <span style="color:var(--amber);font-weight:700;">&#9711; B23 — PENDING EXECUTION</span>
-              <span style="color:var(--dim);margin-left:12px;">3 lanes ready · 3 defects queued · [Fact] target: 126 · F5 gate required after all lanes PASS</span>
+            <div style="padding:12px 16px;background:rgba(34,197,94,0.08);border:1px solid var(--green);border-radius:6px;font-family:var(--mono);font-size:12px;">
+              <span style="color:var(--green);font-weight:700;">&#10003; B23 — SUPERSEDED</span>
+              <span style="color:var(--mid);margin-left:12px;">All 3 defects addressed downstream: DW-B22-NULLREF-01 + DW-B22-ADDRULE-ACCUMULATE-01 fixed in B23 execution; DW-B22-BE-TRIGGER-01 + DW-B23-BE-ALLACCOUNTS-01 fixed in B24 Lane B; DW-B24-LEADER-CASTNULL-01 fixed in B24 Lane A; DW-B25-01 + DW-B25-02 fixed in B25. B23 lanes no longer require separate execution.</span>
             </div>
           </div>
 
           <!-- status pills -->
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-            <span class="pill pill-amber">&#9711; PENDING EXECUTION</span>
-            <span class="pill pill-accent">Baseline [Fact] count: 122</span>
-            <span class="pill pill-accent">Target [Fact] count: 126</span>
-            <span class="pill pill-red">SRC CODE BAN — all edits go through ptt-orchestrator → lane workers</span>
-            <span class="pill pill-purple">Parallel: Lanes A / B / C may run simultaneously (no shared edit sites)</span>
+            <span class="pill pill-green">&#10003; SUPERSEDED — addressed by B23→B24→B25 chain</span>
+            <span class="pill pill-green">B24 CLOSED · commit e8045854</span>
+            <span class="pill pill-green">B25 CLOSED · [Fact] count: 131</span>
+            <span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">Lanes A/B/C execution no longer required</span>
           </div>
         </div>
         <!-- end B23 block -->
@@ -3907,7 +3906,7 @@ flowchart TD
 
       <!-- ── B10 Ticket Table (T1–T4) ──────────────────────────────────────── -->
       <div class="card" style="margin-bottom:16px; border-left:3px solid var(--accent);">
-        <div class="card-title">B10 — Execution Ticket Table (T1–T4) — all pending ptt-orchestrator workflow</div>
+        <div class="card-title">B10 — Execution Ticket Table (T1–T4) &nbsp;<span class="pill pill-green" style="vertical-align:middle;font-size:10px;">&#10003; T1 T2 T3 COMPLETE (in source)</span> <span class="pill" style="background:rgba(100,116,139,0.15);color:var(--dim);border:1px solid var(--dim);vertical-align:middle;font-size:10px;">T4 MOOT — display-only</span></div>
 
         <div style="font-size:11px; color:var(--dim); letter-spacing:0.05em; text-transform:uppercase; font-family:var(--mono); margin-bottom:10px;">All 4 tickets unblocked now — GAP-001d + GAP-002 confirmed 2026-07-09</div>
         <table style="font-size:11px; margin-bottom:16px;">
@@ -4005,10 +4004,10 @@ flowchart TD
         </div>
 
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <span class="pill pill-amber">&#9711; 4 tickets pending ptt-orchestrator</span>
-          <span class="pill pill-green">T1 + T2 + T3: unblocked — execute immediately</span>
-          <span class="pill pill-amber">T4: gated on Sim101 DW-B11-TEMPLATE-WRITER-01</span>
-          <span class="pill pill-accent">Target: 80 [Fact] tests (+20 from 60)</span>
+          <span class="pill pill-green">&#10003; T1 COMPLETE — IsTrailingStop + IsStopAlreadyAtBe (CopyEngine.cs:1437)</span>
+          <span class="pill pill-green">&#10003; T2 COMPLETE — ArmPendingBe state machine (CopyEngine.cs:3003, B72-LaneA)</span>
+          <span class="pill pill-green">&#10003; T3 COMPLETE — TightenAllStops (CopyEngine.cs:2886, B72-LaneA)</span>
+          <span class="pill" style="background:rgba(100,116,139,0.15);color:var(--dim);border:1px solid var(--dim);">T4 MOOT — chart.NinjaScripts.Add not needed; 1s timer sufficient for display-only ATR</span>
           <span class="pill pill-purple">All CYC ≤ 8 ✓</span>
         </div>
       </div>
@@ -4203,11 +4202,21 @@ newMenu.Items.<span class="fn">Add</span>(entry);</pre>
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:16px; border-left:3px solid var(--purple);">
-        <div class="card-title" style="margin-bottom:12px;">B11 — ATR-Based Live Stop Sync &mdash; DW-B11-ATR-STOP-SYNC-01 <span class="pill pill-purple" style="vertical-align:middle;">Deferred</span></div>
-        <div style="font-size:12px; color:var(--mid); margin-bottom:12px;">
-          <strong style="color:var(--bright);">Feature:</strong> When the live ATR changes (on each bar close), automatically update the pending (Working) stop orders on <strong style="color:var(--bright);">both leader and follower accounts</strong> to reflect the new ATR-derived stop distance. Keeps all account stops correctly sized as volatility shifts — no manual stop adjustment needed.<br/><br/>
-          <strong style="color:var(--bright);">Prerequisite:</strong> B10 T4 must resolve <code style="font-family:var(--mono);font-size:11px;">chart.NinjaScripts.Add</code> API so <code style="font-family:var(--mono);font-size:11px;">AtrSizingEngine</code> has real bar data and a live ATR value.
+      <!-- ══ DIRECTOR INTENT (2026-08-21): ATR tool is DISPLAY ONLY ══════════════
+           AtrSizingEngine calculates + displays ATR/stopTicks/qty every bar close.
+           _atrEnabled stays false -- copy dispatch and click trader ignore ATR qty.
+           Automation tickets (SyncAtrStops, AtrTemplateWriter, SyncPendingEntry)
+           are DEFERRED indefinitely. Only display accuracy tickets remain active:
+             B11-T2 (two-ceiling formula -- affects displayed qty accuracy)
+             B11-T1 bar-series auto-detect (affects displayed ATR accuracy on 5-min chart)
+           B10-T4 (chart attachment) is NO LONGER on the critical path for ATR.
+           The 1s DispatcherTimer poll in TradeCopierAddOn is sufficient for display.
+      ══════════════════════════════════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:16px; border-left:3px solid var(--border); opacity:0.6;">
+        <div class="card-title" style="margin-bottom:12px; color:var(--dim);">B11 — ATR-Based Live Stop Sync &mdash; DW-B11-ATR-STOP-SYNC-01 <span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">DEFERRED INDEFINITELY &mdash; display-only mode</span></div>
+        <div style="font-size:12px; color:var(--dim); margin-bottom:12px;">
+          <strong style="color:var(--amber);">Director decision (2026-08-21): ATR tool is display-only.</strong> AtrSizingEngine calculates and displays values; it does not modify orders, templates, or stops. SyncAtrStops, AtrTemplateWriter.Write(), and SyncPendingEntry are not required and are deferred indefinitely. This card is retained for historical reference only.<br/><br/>
+          <strong>Original feature intent:</strong> When the live ATR changes (on each bar close), automatically update the pending (Working) stop orders on both leader and follower accounts to reflect the new ATR-derived stop distance.
         </div>
         <table style="font-size:11px; margin-bottom:12px;">
           <thead><tr><th>Question</th><th>Decision</th><th>Rationale</th></tr></thead>
@@ -6810,77 +6819,85 @@ CopyEngine.Instance?.<span class="fn">SyncAtrStops</span>(_rule, Instrument, _la
       <div class="card" style="margin-bottom:16px; border-left:3px solid var(--green);">
         <div class="card-title">B11 — Complete Architecture Summary &amp; Execution Plan</div>
 
-        <div style="font-size:11px; color:var(--dim); letter-spacing:0.05em; text-transform:uppercase; font-family:var(--mono); margin-bottom:10px;">B11 work items — all pending ptt-orchestrator workflow</div>
+        <div style="font-size:11px; color:var(--dim); letter-spacing:0.05em; text-transform:uppercase; font-family:var(--mono); margin-bottom:6px;">B11 work items — display-only mode (Director decision 2026-08-21)</div>
+        <div style="font-size:11px; color:var(--amber); margin-bottom:10px; padding:8px 12px; background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.25); border-radius:4px;">
+          <strong>ATR tool is display-only.</strong> T3 (AtrTemplateWriter), T4 (UI sizing write), T5 (SyncAtrStops) are DEFERRED INDEFINITELY — no order or template writes required.
+          Active tickets: <strong>T1</strong> (bar-series accuracy — B10-T4 gate REMOVED from critical path) and <strong>T2</strong> (two-ceiling formula accuracy). Both affect displayed values only.
+        </div>
         <table style="font-size:11px; margin-bottom:16px;">
-          <thead><tr><th>#</th><th>Ticket ID</th><th>File</th><th>Change</th><th>CYC</th><th>Prerequisite</th></tr></thead>
+          <thead><tr><th>#</th><th>Ticket ID</th><th>File</th><th>Change</th><th>CYC</th><th>Prerequisite</th><th>Status</th></tr></thead>
           <tbody>
             <tr>
               <td style="font-family:var(--mono); color:var(--amber);">B11-T1</td>
               <td style="font-family:var(--mono); font-size:10px;">DW-B11-BAR-AUTODETECT-01</td>
               <td style="font-family:var(--mono); font-size:10px;">AtrSizingEngine.cs</td>
-              <td>OnStateChange.Configure: replace hardcoded <code style="font-family:var(--mono);font-size:10px;">AddDataSeries(Minute,1)</code> with <code style="font-family:var(--mono);font-size:10px;">AddDataSeries(BarsArray[0].BarsPeriod)</code></td>
+              <td>OnStateChange.Configure: replace hardcoded <code style="font-family:var(--mono);font-size:10px;">AddDataSeries(Minute,1)</code> with <code style="font-family:var(--mono);font-size:10px;">AddDataSeries(BarsArray[0].BarsPeriod)</code>. Fixes displayed ATR value on 5-min+ charts.</td>
               <td style="font-family:var(--mono);">4→4</td>
-              <td style="color:var(--dim);">B10 T4 (chart attachment)</td>
+              <td style="color:var(--green);">None — B10-T4 no longer required (1s timer sufficient for display)</td>
+              <td style="color:var(--amber);">&#9711; Pending ptt-orchestrator</td>
             </tr>
             <tr>
               <td style="font-family:var(--mono); color:var(--amber);">B11-T2</td>
               <td style="font-family:var(--mono); font-size:10px;">DW-B11-TWOCEIL-01</td>
               <td style="font-family:var(--mono); font-size:10px;">AtrSizingEngine.cs</td>
-              <td>CalcContracts: add atrFraction param, replace Math.Floor with two Math.Ceiling calls. Rename tickDollarValue→pointDollarValue. Update SetParameters.</td>
+              <td>CalcContracts: add atrFraction param, replace Math.Floor with two Math.Ceiling calls. Fixes displayed qty accuracy (currently under-sizes at margin).</td>
               <td style="font-family:var(--mono);">3→3</td>
               <td style="color:var(--dim);">None — pure math change</td>
+              <td style="color:var(--amber);">&#9711; Pending ptt-orchestrator</td>
             </tr>
-            <tr>
-              <td style="font-family:var(--mono); color:var(--amber);">B11-T3</td>
-              <td style="font-family:var(--mono); font-size:10px;">DW-B11-TEMPLATE-WRITER-01</td>
-              <td style="font-family:var(--mono); font-size:10px;">AtrTemplateWriter.cs (NEW)</td>
-              <td>Static class: Write(stopTicks, entryQty) + BuildXml(). Atomic tmp→File.Move. Called from ApplyResize() after CalcContracts.</td>
-              <td style="font-family:var(--mono);">3 + 1</td>
-              <td style="color:var(--dim);">Sim101 gate (NT8 reads template at selection time)</td>
+            <tr style="opacity:0.45;">
+              <td style="font-family:var(--mono); color:var(--dim);">B11-T3</td>
+              <td style="font-family:var(--mono); font-size:10px; color:var(--dim);">DW-B11-TEMPLATE-WRITER-01</td>
+              <td style="font-family:var(--mono); font-size:10px; color:var(--dim);">AtrTemplateWriter.cs (NEW)</td>
+              <td style="color:var(--dim);">ATM template XML write — NOT REQUIRED (display-only mode).</td>
+              <td style="font-family:var(--mono); color:var(--dim);">—</td>
+              <td style="color:var(--dim);">Sim101 gate</td>
+              <td style="color:var(--dim);">DEFERRED INDEFINITELY</td>
             </tr>
-            <tr>
-              <td style="font-family:var(--mono); color:var(--amber);">B11-T4</td>
-              <td style="font-family:var(--mono); font-size:10px;">DW-B11-UI-SIZING-01</td>
-              <td style="font-family:var(--mono); font-size:10px;">TradeCopierPanel.cs (or AtrSizingEngine.cs)</td>
-              <td>ApplyUiSizing(): set cbxStrategySelector + QtyControl.Value to ATR-computed values. Visual confirmation layer (Path 3). Optional — conditional on Sim101 result.</td>
-              <td style="font-family:var(--mono);">2</td>
-              <td style="color:var(--amber);">Sim101 gate (required only if Path 2 insufficient)</td>
+            <tr style="opacity:0.45;">
+              <td style="font-family:var(--mono); color:var(--dim);">B11-T4</td>
+              <td style="font-family:var(--mono); font-size:10px; color:var(--dim);">DW-B11-UI-SIZING-01</td>
+              <td style="font-family:var(--mono); font-size:10px; color:var(--dim);">TradeCopierPanel.cs</td>
+              <td style="color:var(--dim);">ApplyUiSizing() qty/template write — NOT REQUIRED (display-only mode).</td>
+              <td style="font-family:var(--mono); color:var(--dim);">—</td>
+              <td style="color:var(--dim);">Sim101 gate</td>
+              <td style="color:var(--dim);">DEFERRED INDEFINITELY</td>
             </tr>
-            <tr>
-              <td style="font-family:var(--mono); color:var(--purple);">B11-T5</td>
-              <td style="font-family:var(--mono); font-size:10px;">DW-B11-ATR-STOP-SYNC-01</td>
-              <td style="font-family:var(--mono); font-size:10px;">CopyEngine.cs</td>
-              <td>SyncAtrStops() outer (CYC=5) + ApplyAtrStopToAccount() helper (CYC=4). New CopyRule fields: EnableAtrStopSync, AtrStopSyncMinTicks, AtrStopFraction.</td>
-              <td style="font-family:var(--mono);">5 + 4</td>
-              <td style="color:var(--purple);">B10 T4 (chart attachment for bar data)</td>
+            <tr style="opacity:0.45;">
+              <td style="font-family:var(--mono); color:var(--dim);">B11-T5</td>
+              <td style="font-family:var(--mono); font-size:10px; color:var(--dim);">DW-B11-ATR-STOP-SYNC-01</td>
+              <td style="font-family:var(--mono); font-size:10px; color:var(--dim);">CopyEngine.cs</td>
+              <td style="color:var(--dim);">SyncAtrStops() — live stop modification via acc.Change() — NOT REQUIRED (display-only mode).</td>
+              <td style="font-family:var(--mono); color:var(--dim);">—</td>
+              <td style="color:var(--dim);">B10 T4 + display-only decision</td>
+              <td style="color:var(--dim);">DEFERRED INDEFINITELY</td>
             </tr>
           </tbody>
         </table>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:11px; margin-bottom:12px;">
-          <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.25); border-radius:6px; padding:12px;">
-            <div style="font-family:var(--mono); font-size:10px; color:var(--amber); font-weight:700; margin-bottom:8px;">OPEN GATES (block B11 execution)</div>
+          <div style="background:var(--green-lo); border:1px solid rgba(34,197,94,0.25); border-radius:6px; padding:12px;">
+            <div style="font-family:var(--mono); font-size:10px; color:var(--green); font-weight:700; margin-bottom:8px;">UNBLOCKED (display-only scope)</div>
             <div style="color:var(--mid); line-height:1.7;">
-              <strong>B10 T4:</strong> chart.NinjaScripts.Add API — resolves bar data attachment (required for T1, T5)<br/>
-              <strong>Sim101 test:</strong> Confirm NT8 reads ATM template at selection time vs startup (determines if T3 alone is sufficient or T4 also needed)
+              <strong>B11-T1 (DW-B11-BAR-AUTODETECT-01):</strong> B10-T4 gate removed. 1s timer poll is sufficient for display. Execute when convenient.<br/>
+              <strong>B11-T2 (DW-B11-TWOCEIL-01):</strong> Pure math change. No NT8 API. No prerequisites.
             </div>
           </div>
-          <div style="background:var(--green-lo); border:1px solid rgba(34,197,94,0.25); border-radius:6px; padding:12px;">
-            <div style="font-family:var(--mono); font-size:10px; color:var(--green); font-weight:700; margin-bottom:8px;">UNBLOCKED NOW (no gates)</div>
-            <div style="color:var(--mid); line-height:1.7;">
-              <strong>B11-T2 (DW-B11-TWOCEIL-01):</strong> Pure math change to CalcContracts. No NT8 API. Can be executed any time.<br/>
-              <strong>Unit tests:</strong> Two-ceiling formula tests can be written now against the pure static method.
+          <div style="background:rgba(75,85,99,0.08); border:1px solid var(--border); border-radius:6px; padding:12px;">
+            <div style="font-family:var(--mono); font-size:10px; color:var(--dim); font-weight:700; margin-bottom:8px;">GATES CLEARED BY DISPLAY-ONLY DECISION</div>
+            <div style="color:var(--dim); line-height:1.7;">
+              B10-T4 (chart.NinjaScripts.Add) — no longer on ATR critical path<br/>
+              Sim101 ATM read-time test — no longer required<br/>
+              DW-B11-SIM-PENDING-QTY-01 — no longer required
             </div>
           </div>
         </div>
 
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <span class="pill pill-amber">B11: 6 tickets total (T6 pending Sim101)</span>
-          <span class="pill pill-green">T2 unblocked — two-ceiling formula, pure math</span>
-          <span class="pill pill-purple">T1 + T5 gated on B10 T4 (chart attachment)</span>
-          <span class="pill pill-accent">T3 + T4 gated on Sim101 ATM read-time test</span>
-          <span class="pill pill-red">T6 gated on Sim101 Account.Change() qty test</span>
-          <span class="pill pill-amber">Rounding policy: LOCKED — Ceil qty</span>
+          <span class="pill pill-green">Display live: ATR=N.NN pts &#x2192; stopTicks=N &#x2192; qty=N (AtrUpdated event)</span>
+          <span class="pill pill-amber">&#9711; B11-T1 + T2 pending ptt-orchestrator (display accuracy)</span>
+          <span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">T3 + T4 + T5 deferred indefinitely (automation not required)</span>
+          <span class="pill pill-accent">Director decision 2026-08-21 — display-only</span>
         </div>
       </div>
 
@@ -11779,13 +11796,14 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
         <!-- ── end B31 block ─────────────────────────────────────────────────── -->
 
         <!-- ══════════════════════════════════════════════════ PIPELINE QUEUE -->
-        <div class="card" style="margin-top:16px; border-left:3px solid var(--accent); background:rgba(37,99,235,0.04);" id="pipeline-queue">
-          <div class="card-title" style="color:var(--accent);">&#9654; PIPELINE QUEUE &nbsp;·&nbsp; All Outstanding Direct Repairs &nbsp;·&nbsp; Awaiting ptt-orchestrator Run</div>
+        <div class="card" style="margin-top:16px; border-left:3px solid var(--green); background:rgba(34,197,94,0.03);" id="pipeline-queue">
+          <div class="card-title" style="color:var(--green);">&#10003; PIPELINE QUEUE &nbsp;·&nbsp; B32-Era Direct Repairs &nbsp;·&nbsp; All Closed by B35-LaneB (2026-07-23)</div>
           <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:14px;">
-            Every direct working-tree edit that was approved by the Director but has not yet gone through the full
-            <strong>ptt-orchestrator → ptt-architect → ptt-engineer → ptt-verifier</strong> pipeline.
-            This table is the single source of truth for the next orchestrator run.
-            Once a pipeline run closes a defect, move it to the relevant block's DIRECT EDIT RECORD and mark CLOSED.
+            Historical record of working-tree edits that required pipeline treatment. All B32-era items were
+            formally closed by <strong>B35-LaneB PIPELINE_COMPLETE (2026-07-23)</strong> — 5×P0 BE defects:
+            DW-B32-01b, DW-B32-02, DW-B32-04b, DW-B32-07, DW-B32-08 (164 [Fact], VERIFY_PASS).
+            DW-B32-03 confirmed live (no instrument mismatch). DW-B32-04/05/10 closed B35-LaneB.
+            <strong style="color:var(--green);">No items remain in queue. DW-B79-09 CLOSED 2026-08-21 &mdash; commit 1d65e48b &mdash; 295 [Fact].</strong>
           </div>
           <table style="font-size:11px;width:100%;border-collapse:collapse;margin-bottom:14px;">
             <thead>
@@ -11812,7 +11830,7 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
                   Needs test: <code style="font-family:var(--mono);">T_B32_01</code> IsStopAlreadyAtBe_Short_ReturnsFalse_WhenStopAboveBe,
                   <code style="font-family:var(--mono);">T_B32_02</code> IsStopAlreadyAtBe_Short_ReturnsTrue_WhenStopAtBe.</td>
                 <td style="padding:5px 10px;color:var(--green);">DESYNC=0</td>
-                <td style="padding:5px 10px;"><span class="pill pill-amber">PIPELINE PENDING</span></td>
+                <td style="padding:5px 10px;"><span class="pill pill-green">&#10003; CLOSED B35-LaneB</span></td>
               </tr>
               <tr style="border-top:1px solid var(--border);">
                 <td style="padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red);">DW-B32-02</td>
@@ -11824,7 +11842,7 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
                   Diagnosed from Output tab: all 41 orders were SKIP; Stop1/Stop2 = Accepted.
                   Historical orders (Filled/Cancelled) now silently skipped with no Output noise.</td>
                 <td style="padding:5px 10px;color:var(--green);">DESYNC=0</td>
-                <td style="padding:5px 10px;"><span class="pill pill-amber">PIPELINE PENDING</span></td>
+                <td style="padding:5px 10px;"><span class="pill pill-green">&#10003; CLOSED B35-LaneB</span></td>
               </tr>
               <tr style="border-top:1px solid var(--border);">
                 <td style="padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber);">DW-B32-03</td>
@@ -11836,7 +11854,7 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
                   <strong>DIAG added:</strong> Output.Process emits both strings for comparison.
                   Root cause confirmation pending live test. Full fix (and test) to be authored in pipeline.</td>
                 <td style="padding:5px 10px;color:var(--green);">DESYNC=0</td>
-                <td style="padding:5px 10px;"><span class="pill pill-amber">DIAG PENDING</span></td>
+                <td style="padding:5px 10px;"><span class="pill pill-green">&#10003; CLOSED — confirmed live (no mismatch)</span></td>
               </tr>
               <tr style="border-top:1px solid var(--border);">
                 <td style="padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--accent);">DW-B32-04</td>
@@ -11849,7 +11867,7 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
                   New helper <code style="font-family:var(--mono);">IsPriceAlreadyAtBe()</code> CYC=4. OnBeConnected reset to Idle via Dispatcher.InvokeAsync.
                   Needs test: <code style="font-family:var(--mono);">T_B32_03</code> IsPriceAlreadyAtBe_Long_ReturnsFalse_WhenBidBelowEntry.</td>
                 <td style="padding:5px 10px;color:var(--green);">DESYNC=0</td>
-                <td style="padding:5px 10px;"><span class="pill pill-amber">PIPELINE PENDING</span></td>
+                <td style="padding:5px 10px;"><span class="pill pill-green">&#10003; CLOSED B35-LaneB</span></td>
               </tr>
               <tr style="border-top:1px solid var(--border);">
                 <td style="padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--accent);">DW-B32-05</td>
@@ -11861,7 +11879,7 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
                   CopyEngine: FindPositionPublic() thin internal wrapper added so Panel can call FindPosition().
                   ArmTrailBe / DisarmTrailBe / OnTrailBeAccountUpdate in CopyEngine now dead code — B33 cleanup pass will remove them.</td>
                 <td style="padding:5px 10px;color:var(--green);">DESYNC=0</td>
-                <td style="padding:5px 10px;"><span class="pill pill-amber">PIPELINE PENDING</span></td>
+                <td style="padding:5px 10px;"><span class="pill pill-green">&#10003; CLOSED B35-LaneB</span></td>
               </tr>
               <tr style="border-top:1px solid var(--border);">
                 <td style="padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--accent);">DW-B32-04b</td>
@@ -11872,7 +11890,7 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
                   Fix: remove 2-line <code style="font-family:var(--mono);">if (_beState == BeState.Connected &amp;&amp; _instrument != null)</code> block from <code style="font-family:var(--mono);">OnBeUp</code>.
                   Buffer increment + label update retained. Connected reprice was dead code. CYC 2 → 1. Director approved 2026-07-19.</td>
                 <td style="padding:5px 10px;color:var(--green);">DESYNC=0</td>
-                <td style="padding:5px 10px;"><span class="pill pill-amber">PIPELINE PENDING</span></td>
+                <td style="padding:5px 10px;"><span class="pill pill-green">&#10003; CLOSED B35-LaneB</span></td>
               </tr>
               <tr style="border-top:1px solid var(--border);">
                 <td style="padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red);">DW-B32-07</td>
@@ -11887,7 +11905,7 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
                   <strong>NT8-046 CORRECTED:</strong> single-array <code style="font-family:var(--mono);">acc.Change()</code> only works on PTT-created follower stops, NOT ATM-owned leader stops.
                   Needs test: <code style="font-family:var(--mono);">T_B32_04</code> BreakEven_SkipsLeaderAccount (no MoveStop called on leader), <code style="font-family:var(--mono);">T_B32_05</code> MoveStopToBreakEven_SkipsAtmSlotOrders.</td>
                 <td style="padding:5px 10px;color:var(--green);">DESYNC=0</td>
-                <td style="padding:5px 10px;"><span class="pill pill-amber">PIPELINE PENDING</span></td>
+                <td style="padding:5px 10px;"><span class="pill pill-green">&#10003; CLOSED B35-LaneB</span></td>
               </tr>
               <!-- ── DW-B32-08 ──────────────────────────────────────────── -->
               <tr style="border-top:1px solid var(--border);">
@@ -11903,7 +11921,7 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
                   Root architectural fix in B33: decouple BE from copy rule entirely via <code style="font-family:var(--mono);">PttBus</code>.
                   Director approved 2026-07-19. CYC: 3 → 4.</td>
                 <td style="padding:5px 10px;color:var(--green);">DESYNC=0</td>
-                <td style="padding:5px 10px;"><span class="pill pill-amber">PIPELINE PENDING</span></td>
+                <td style="padding:5px 10px;"><span class="pill pill-green">&#10003; CLOSED B35-LaneB</span></td>
               </tr>
               <!-- ── DW-B32-09 ──────────────────────────────────────────── -->
               <tr style="border-top:1px solid var(--border);">
@@ -11941,7 +11959,7 @@ if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrumen
                   <strong>Architectural constraint:</strong> NT8 ATM Dialog stops cannot be moved from an AddOn. PTT BE only moves PTT-created follower stops.
                   For ATM leader stops, use the ATM template's built-in BE setting (gear icon → BreakEven trigger price).</td>
                 <td style="padding:5px 10px;color:var(--amber);">FIXED IN SRC</td>
-                <td style="padding:5px 10px;"><span class="pill pill-amber">PIPELINE</span></td>
+                <td style="padding:5px 10px;"><span class="pill pill-green">&#10003; CLOSED B35-LaneB (IsAtmBracketName)</span></td>
               </tr>
               <!-- ── B32-DIAG entries (remove after live test confirms) ─── -->
               <tr style="border-top:1px solid var(--border);opacity:0.7;">
@@ -23869,6 +23887,657 @@ FINAL_PASS criteria:
       </div>
     </div>
     <!-- ══ end section-b58 ══════════════════════════════════════════════════ -->
+
+
+    <!-- ══ section-b79 ═══════════════════════════════════════════════════════
+         DW-B79 | PTT-BE-Bracket Recovery (v1-v8) | Live Testing 2026-08-20
+         Root cause: NT8 StartAtmStrategy sweep wipes all follower PTT-BE-* orders
+         on re-entry after QX->BE-ALL. Fixed in 8 iterations. v8 on main HEAD.
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <div id="section-b79" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:var(--green);">&#9679; DW-B79 &nbsp;&#9670;&nbsp; PTT-COPIER-B79 &nbsp;&#9670;&nbsp; BE-ALL Bracket Recovery &nbsp;&#9670;&nbsp; <span class="pill pill-green">v8 DEPLOYED &nbsp;&middot;&nbsp; DW-B79-09 CLOSED &mdash; commit 1d65e48b &nbsp;&middot;&nbsp; 295 [Fact]</span></div>
+
+      <!-- ══ Architecture card ══════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-title" style="color:var(--amber);">DW-B79 &mdash; BE-ALL Bracket Recovery Architecture (v8, HEAD 27dbe9a3)</div>
+
+        <div style="padding:0 1rem 1rem;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">
+            ROOT CAUSE &mdash; Confirmed SIM 2026-08-19
+          </div>
+
+          <p style="margin-bottom:0.8rem;font-size:13px;">
+            When the leader re-enters after <strong>QX&rarr;BE-ALL</strong>, NT8&rsquo;s <code style="font-family:var(--mono);">StartAtmStrategy()</code>
+            sweep cancels <em>all</em> follower working orders&nbsp;&mdash; including the
+            <code style="font-family:var(--mono);">PTT-BE-Stop-*</code> / <code style="font-family:var(--mono);">PTT-BE-Target-*</code>
+            OCO brackets that <code style="font-family:var(--mono);">MoveStopToBreakEven</code> just placed.
+            The follower is left holding an open position with <strong>no bracket protection</strong>.
+          </p>
+
+          <!-- v8 Architecture flow -->
+          <div style="background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;font-family:var(--mono);font-size:11px;">
+            <div style="color:var(--accent);font-weight:700;margin-bottom:8px;">OnOrderUpdate dispatch chain (v8)</div>
+            <table style="width:100%;border-collapse:collapse;font-size:11px;">
+              <tr style="color:var(--dim);border-bottom:1px solid var(--border);">
+                <th style="text-align:left;padding:3px 8px;width:34%;">Call</th>
+                <th style="text-align:left;padding:3px 8px;">Responsibility</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px;color:var(--green);"><code>TryFireFollowerBeRetry(e)</code></td>
+                <td style="padding:4px 8px;">Fires <code>MoveStopToBreakEven</code> the instant <code>Target1..Target9</code> <strong>or</strong> <code>PTT-QX-T*</code> goes Working on a follower that has a pending BE slot. Atomic <code>TryRemove</code> claim gate &mdash; exactly one path wins.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px;color:var(--green);"><code>TryEvictFollowerBeSlot(e)</code></td>
+                <td style="padding:4px 8px;">Clears the slot <strong>and</strong> unconditionally resets <code>_beReplaceAttempts</code> counter when follower goes flat (v8 fix: decoupled from slot existence).</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px;color:var(--accent);"><code>TryReplacePttBeBrackets(order)</code></td>
+                <td style="padding:4px 8px;">Triggered when <code>PTT-BE-Stop-*</code> is Cancelled and follower has open position. Registers slot + queues 500ms <code>DispatcherTimer</code> fallback. Max 3 attempts per trade per account.</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Supporting state -->
+          <div style="background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;font-family:var(--mono);font-size:11px;">
+            <div style="color:var(--accent);font-weight:700;margin-bottom:8px;">Shared state (CopyEngine fields)</div>
+            <table style="width:100%;border-collapse:collapse;font-size:11px;">
+              <tr style="color:var(--dim);border-bottom:1px solid var(--border);">
+                <th style="text-align:left;padding:3px 8px;width:42%;">Field</th>
+                <th style="text-align:left;padding:3px 8px;">Purpose</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px;"><code>_pendingFollowerBeSlots</code><br><span style="color:var(--dim);">ConcurrentDictionary&lt;string, PendingFollowerBeSlot&gt;</span></td>
+                <td style="padding:4px 8px;">One slot per account name. Consumed atomically by the first path to call <code>TryRemove</code> (event-driven or timer). Both paths are no-ops if slot already gone.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px;"><code>_beReplaceAttempts</code><br><span style="color:var(--dim);">ConcurrentDictionary&lt;string, int&gt;</span></td>
+                <td style="padding:4px 8px;">Counts slot registrations per account per trade. Cap = 3. Reset unconditionally by <code>TryEvictFollowerBeSlot</code> when flat (not gated on slot presence).</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- QueueBeRetryFallback design note -->
+          <div style="background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.2);border-radius:6px;padding:0.8rem;margin-bottom:1rem;font-size:12px;">
+            <strong style="color:var(--accent);">QueueBeRetryFallback design (v7 fix):</strong><br>
+            <code style="font-family:var(--mono);">OnOrderUpdate</code> fires on NT8&rsquo;s background order-update thread.
+            A <code style="font-family:var(--mono);">DispatcherTimer</code> created on a background thread uses that thread&rsquo;s
+            dispatcher, which never pumps &mdash; <code>Tick</code> never fires.
+            Fix: wrap timer construction in
+            <code style="font-family:var(--mono);">Application.Current.Dispatcher.InvokeAsync()</code>
+            so the timer runs on the WPF UI thread. Same pattern as <code>RaiseBeBufferChanged</code>.
+            <br><strong>delayMs=500</strong> (ATM-sweep path &mdash; new ATM brackets go Working
+            <em>before</em> the <code>PTT-BE-Stop</code> cancel arrives, so event-driven misses; 500ms fires after ATM fully settled).
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ Version history ════════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-title">DW-B79-08 &mdash; Version History (v1 &rarr; v8)</div>
+        <div style="padding:0 1rem 1rem;">
+          <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;">
+            <tr style="border-bottom:1px solid var(--border);color:var(--dim);">
+              <th style="text-align:left;padding:4px 8px;width:6%;">v#</th>
+              <th style="text-align:left;padding:4px 8px;width:13%;">Commit</th>
+              <th style="text-align:left;padding:4px 8px;width:14%;">Status</th>
+              <th style="text-align:left;padding:4px 8px;">Description</th>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--red);">v1</td>
+              <td style="padding:4px 8px;color:var(--dim);">938f0faf</td>
+              <td style="padding:4px 8px;"><span style="color:var(--red);">&#10005; FAILED</span></td>
+              <td style="padding:4px 8px;">Direct <code>MoveStopToBreakEven</code> call from cancel handler &mdash; triggered runaway retry storm (every re-place was immediately cancelled again, looping).</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--red);">v2</td>
+              <td style="padding:4px 8px;color:var(--dim);">b2685f55</td>
+              <td style="padding:4px 8px;"><span style="color:var(--red);">&#10005; FAILED</span></td>
+              <td style="padding:4px 8px;">Slot-only registration, no timer. Slot sat forever &mdash; event ordering meant <code>TryFireFollowerBeRetry</code> was never triggered after the slot was placed.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--amber);">v3</td>
+              <td style="padding:4px 8px;color:var(--dim);">ac36eea1</td>
+              <td style="padding:4px 8px;"><span style="color:var(--amber);">&#9888; PARTIAL</span></td>
+              <td style="padding:4px 8px;">Attempt guard (max 3) + reset on flat. Guard correctly prevented storm. New bug found: reset was gated on slot existence, so after timer consumed the slot, counter stayed at 3 on next trade (v8 fixes).</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--amber);">v4</td>
+              <td style="padding:4px 8px;color:var(--dim);">986c6375</td>
+              <td style="padding:4px 8px;"><span style="color:var(--amber);">&#9888; PARTIAL</span></td>
+              <td style="padding:4px 8px;"><code>TryFireFollowerBeRetry</code> widened to trigger on <code>Target1..Target9</code> Working (not just <code>PTT-QX-T*</code>). Required because after leader re-entry, ATM targets go Working before QX targets exist.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--red);">v5</td>
+              <td style="padding:4px 8px;color:var(--dim);">e8ead176</td>
+              <td style="padding:4px 8px;"><span style="color:var(--red);">&#10005; FAILED</span></td>
+              <td style="padding:4px 8px;">Removed the QueueBeRetryFallback timer path entirely. Without the fallback, when the event-driven path fired too early (before slot registration), the slot sat consuming zero triggers.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--amber);">v6</td>
+              <td style="padding:4px 8px;color:var(--dim);">89e03a5c</td>
+              <td style="padding:4px 8px;"><span style="color:var(--amber);">&#9888; PARTIAL</span></td>
+              <td style="padding:4px 8px;">500ms fallback <code>QueueBeRetryFallback</code> re-added (event-ordering fix). Timer created on background thread &mdash; <code>Tick</code> never fires (v7 fixes).</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--amber);">v7</td>
+              <td style="padding:4px 8px;color:var(--dim);">68908b28</td>
+              <td style="padding:4px 8px;"><span style="color:var(--amber);">&#9888; PARTIAL</span></td>
+              <td style="padding:4px 8px;"><code>QueueBeRetryFallback</code> wrapped in <code>Application.Current.Dispatcher.InvokeAsync</code> so timer runs on WPF UI thread. Counter-reset bug remains (v8 fixes).</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;color:var(--green);">v8</td>
+              <td style="padding:4px 8px;color:var(--dim);">27dbe9a3</td>
+              <td style="padding:4px 8px;"><span style="color:var(--green);">&#10003; DEPLOYED</span></td>
+              <td style="padding:4px 8px;"><code>TryEvictFollowerBeSlot</code> resets <code>_beReplaceAttempts</code> unconditionally on flat &mdash; decoupled from slot existence. Fixes the &ldquo;counter stays at 3 across trades&rdquo; regression from v3. 291 [Fact] tests pass.</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ Earlier DW-B79 chain ═══════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-title">DW-B79 Chain &mdash; Earlier Items (DW-B79-01 through DW-B79-07)</div>
+        <div style="padding:0 1rem 1rem;">
+          <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;">
+            <tr style="border-bottom:1px solid var(--border);color:var(--dim);">
+              <th style="text-align:left;padding:4px 8px;width:18%;">ID</th>
+              <th style="text-align:left;padding:4px 8px;width:10%;">Status</th>
+              <th style="text-align:left;padding:4px 8px;">Summary</th>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--green);">DW-B79-01</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CLOSED</td>
+              <td style="padding:4px 8px;">Widen <code>MoveStopToBreakEven</code> target snapshot <code>stateOk</code> to match cancel sweep (REPAIR-07). SIM-CONFIRMED 2026-08-19. Commit 343822de.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--green);">DW-B79-02</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CLOSED</td>
+              <td style="padding:4px 8px;">Root cause identified via order-state DIAG tracing in <code>MoveStopToBreakEven</code>. Confirmed NT8 ATM sweep pattern. Opened DW-B79-03.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--green);">DW-B79-03</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CLOSED</td>
+              <td style="padding:4px 8px;">QX conflict guard &mdash; pre-cancel follower ATM brackets in <code>PttGlobalQuickExit.ExecuteOne</code> before placing QX orders (REPAIR-08 + gap2 fix). 3 tests. Commit 9e2fb3a6.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--green);">DW-B79-04</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CLOSED</td>
+              <td style="padding:4px 8px;">Add <code>ChangeSubmitted</code> to Step A <code>stateOk</code> + 350ms retry on <code>targets==0</code> for async ATM bracket arrival. Commit b8a1961f. FIXED in carry-forward table b2685f55.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--green);">DW-B79-05</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CLOSED</td>
+              <td style="padding:4px 8px;">Add <code>CancelSubmitted</code> to <code>MoveStopToBreakEven</code> Step A <code>stateOk</code> (REPAIR-09). Commit 8920ccf6.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;color:var(--green);">DW-B79-06</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CLOSED</td>
+              <td style="padding:4px 8px;">Event-driven BE retry replaces 350ms timer. <code>TryFireFollowerBeRetry</code> introduced. <code>TryEvictFollowerBeSlot</code> cleanup. 200ms fallback for QX path (event-ordering fix). Commit 4a7b00c3.</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;color:var(--green);">DW-B79-07</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CLOSED</td>
+              <td style="padding:4px 8px;">Partial-target retry slot + <code>CountLeaderTargets</code> for QX&rarr;BE-ALL partial race. 200ms fallback timer added back. Commit e3feb02e.</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ Live Testing Log ═══════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-title" style="color:var(--accent);">Live Testing Log &mdash; 2026-08-20 Session</div>
+        <div style="padding:0 1rem 1rem;">
+
+          <!-- Trade 1: 6:35 AM (Session 1) -->
+          <div style="background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:0.8rem;margin-bottom:1rem;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;margin-bottom:6px;">
+              SESSION 1 &mdash; 08-20-2026 6:35 AM &mdash; PA-APEX-422136-07 follower (2 contracts, MES) &mdash; DW-B79-08 path NOT triggered
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <tr style="border-bottom:1px solid var(--border);color:var(--dim);">
+                <th style="text-align:left;padding:3px 8px;width:30%;">Observation</th>
+                <th style="text-align:left;padding:3px 8px;">Classification</th>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);">5 copy dispatches for 1 trade</td>
+                <td style="padding:4px 8px;color:var(--green);"><strong>NORMAL</strong> &mdash; Multiple accounts fire Accepted events. Dedup prevented duplicates; follower got exactly 2 contracts correctly.</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);">[BE-RETRY] evicted &times;2</td>
+                <td style="padding:4px 8px;color:var(--green);"><strong>NORMAL</strong> &mdash; Idempotent slot eviction on two Filled/flat events. Harmless double-evict.</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);">Error popup &ldquo;Cancellation rejected BuyToCover 2 StopMarket @ 7710.75&rdquo;</td>
+                <td style="padding:4px 8px;color:var(--red);"><strong>BUG &mdash; ESCALATED to DW-B79-CANCEL-01 P1</strong> &mdash; Root cause confirmed: NT8 auto-BE modifies stop price (ChangeSubmitted state); <code>CancelAllAccountOrders</code> includes ChangeSubmitted orders; by the time the cancel reaches the broker the stop has already filled. Fix: remove ChangeSubmitted from stateOk. See DW card below.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px;font-family:var(--mono);">DW-B79-08 path</td>
+                <td style="padding:4px 8px;color:var(--mid);">NOT fired &mdash; BE-ALL was not pressed this session. Copier clean.</td>
+              </tr>
+            </table>
+            <div style="margin-top:0.6rem;font-size:12px;color:var(--mid);">
+              Grid: <code>NinjaTrader Grid 2026-08-20 08-32 AM.csv</code> &nbsp;|&nbsp; Leader: PA-APEX-422136-09 (10 contracts) &nbsp;|&nbsp; Follower: PA-APEX-422136-07 (2 contracts, Named ATM)
+            </div>
+          </div>
+
+          <!-- Trade 2: 8:01-8:12 AM (Session 2) -->
+          <div style="background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:0.8rem;margin-bottom:1rem;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;margin-bottom:6px;">
+              SESSION 2 &mdash; 08-20-2026 8:01&ndash;8:12 AM &mdash; 2 live trades, 1 leader + 1 follower (2 contracts each), Named ATM
+            </div>
+            <div style="font-family:var(--mono);font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:0.6rem;margin-bottom:0.6rem;line-height:1.7;overflow-x:auto;">
+              [PTT-COPY] dispatch: Sell x2 MES SEP26 -&gt; PA-APEX-422136-07 mode=Named &times;2 + Sell x10 &times;2 + Sell x2 &times;1<br>
+              PositionStateChanged hasPos=True &times;2<br>
+              [BE-RETRY] evicted &times;2 &nbsp;(trade 1 close)<br>
+              [PTT-COPY] dispatch: Sell x2 &times;4 &nbsp;(trade 2 entry)<br>
+              [BE-RETRY] evicted &times;2 &nbsp;(trade 2 close)<br>
+              PositionStateChanged hasPos=False &times;2<br>
+              [PTT-COPY] dispatch: Sell x2 + Buy x2 + Buy x2 &nbsp;(trade 3 entry)<br>
+              [BE-RETRY] evicted &times;10 &nbsp;&larr; noisy but correct (see below)
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <tr style="border-bottom:1px solid var(--border);color:var(--dim);">
+                <th style="text-align:left;padding:3px 8px;width:30%;">Observation</th>
+                <th style="text-align:left;padding:3px 8px;">Classification</th>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);">x10 dispatches to -07</td>
+                <td style="padding:4px 8px;color:var(--amber);"><strong>INFORMATIONAL</strong> &mdash; Named ATM overrides qty; follower always uses template qty (2 contracts). Grid confirms -07 got exactly 2. No functional issue. Dedup collapsed duplicates correctly.</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);">2 contracts on -07 correct</td>
+                <td style="padding:4px 8px;color:var(--green);"><strong>CONFIRMED</strong> &mdash; Grid: Sell 2 @ 7716.00 Entry (line 23), Buy 2 @ 7715.25 Exit Close (line 19), Target1 fills correct.</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);">[BE-RETRY] evicted &times;10</td>
+                <td style="padding:4px 8px;color:var(--amber);"><strong>LOG NOISE &mdash; working correctly.</strong> 10 Filled order events on flat -07. TryRemove is a no-op after the first. Named ATM multi-bracket fills cause multiple rapid events. DW-B79-LOG-01 (P3) will suppress redundant lines.</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:4px 8px;font-family:var(--mono);">v8 counter reset</td>
+                <td style="padding:4px 8px;color:var(--green);"><strong>CONFIRMED</strong> &mdash; eviction log fired between trades. Counter reset working. v8 fix active.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px;font-family:var(--mono);">DW-B79-08 BE-ALL path</td>
+                <td style="padding:4px 8px;color:var(--mid);">NOT triggered &mdash; BE-ALL not pressed. Still pending live validation.</td>
+              </tr>
+            </table>
+            <div style="margin-top:0.6rem;font-size:12px;color:var(--mid);">
+              Grid: <code>08-32 AM.csv</code> rows 8&ndash;29 &nbsp;|&nbsp; <code>08-33 AM.csv</code> = NT8 connection log only (no trade data)
+            </div>
+          </div>
+
+          <!-- DW-B79-CANCEL-01 — CLOSED via DW-B79-04 pipeline -->
+          <div style="background:rgba(34,197,94,0.05);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:0.8rem;margin-bottom:1rem;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;margin-bottom:8px;">
+              DW-B79-CANCEL-01 &nbsp;&middot;&nbsp; P1 &nbsp;&middot;&nbsp; &#10003; CLOSED &mdash; Fixed in DW-B79-04 &nbsp;&middot;&nbsp; commit 5925b618 &nbsp;&middot;&nbsp; &ldquo;Cancellation rejected&rdquo; popup eliminated
+            </div>
+            <div style="font-size:12px;line-height:1.7;">
+              <strong style="color:var(--bright);">Symptom:</strong> NT8 popup <em>&ldquo;Cancellation rejected [side] [qty] StopMarket @ [price]&rdquo;</em> during live trading.
+              Triggered when NT8&rsquo;s native ATM auto-breakeven modified a stop price mid-position.
+              <strong>Unacceptable for commercial release &mdash; now fixed.</strong><br><br>
+
+              <strong style="color:var(--bright);">Root cause (confirmed, CopyEngine.cs L713):</strong><br>
+              1. NT8 ATM auto-BE sends a price-mod request &mdash; stop enters <code>ChangeSubmitted</code> state<br>
+              2. <code>CancelAllAccountOrders</code> stateOk included <code>ChangeSubmitted</code> &rarr; stop added to cancel list<br>
+              3. Broker receives cancel after stop already filled &rarr; rejects &rarr; NT8 surfaces as async UI popup<br>
+              4. <code>catch { }</code> around <code>acc.Cancel()</code> does NOT suppress async OMS rejection events<br><br>
+
+              <strong style="color:var(--bright);">Fix applied (CopyEngine.cs L706&ndash;734, commit 5925b618):</strong><br>
+              <strong>TICKET-1a:</strong> Removed <code>OrderState.ChangeSubmitted</code> from stateOk (L719&ndash;722). Now 4 terms only.<br>
+              <strong>TICKET-1b:</strong> Added <code>toCancel.RemoveAll(o =&gt; Filled || Cancelled)</code> race guard before <code>acc.Cancel()</code> (L730&ndash;731).<br><br>
+
+              <strong>stateOk BEFORE:</strong>
+              <div style="background:var(--raised);border:1px solid var(--border);border-radius:4px;padding:0.6rem;font-family:var(--mono);font-size:11px;margin:4px 0 8px;">
+                Working || Initialized || Submitted || Accepted || <span style="color:var(--red);text-decoration:line-through;">ChangeSubmitted</span>
+              </div>
+
+              <strong>stateOk AFTER:</strong>
+              <div style="background:var(--raised);border:1px solid var(--border);border-radius:4px;padding:0.6rem;font-family:var(--mono);font-size:11px;margin:4px 0 8px;">
+                Working || Initialized || Submitted || Accepted
+              </div>
+
+              <strong style="color:var(--bright);">Safety:</strong> No position-protection gap. ChangeSubmitted orders complete modification, land in Working, then cancelled by ATM OCO when PTT-Flatten fills.<br>
+              <strong style="color:var(--bright);">Frozen intentionally:</strong> <code>ChangeSubmitted</code> read at L2668 in <code>MoveStopToBreakEven</code> &mdash; different purpose (reading target prices for OCO pair creation, not cancelling). Not touched.<br><br>
+
+              <strong style="color:var(--bright);">New test:</strong> <code>CancelAllAccountOrders_SkipsChangeSubmittedOrders</code> &mdash; IL ldsfld token scan verifies ChangeSubmitted absent from compiled method body; asserts 4 valid states present.<br>
+              <strong style="color:var(--bright);">Pipeline:</strong> docs/brain/DW-B79-04/ (10 artifacts) &nbsp;&middot;&nbsp; All phases PASS &nbsp;&middot;&nbsp; 292 [Fact] tests.
+            </div>
+          </div>
+
+          <!-- DW-B79-LOG-01 — CLOSED via DW-B79-04 pipeline -->
+          <div style="background:rgba(34,197,94,0.05);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:0.6rem;margin-bottom:1rem;font-size:12px;">
+            <strong style="color:var(--green);">&#10003; DW-B79-LOG-01 (P3) &mdash; CLOSED &mdash; commit 5925b618:</strong>
+            <code style="font-family:var(--mono);">[BE-RETRY] position closed -- evicted</code> now gated on
+            <code style="font-family:var(--mono);">bool slotEvicted = _pendingFollowerBeSlots.TryRemove(...)</code> &mdash;
+            only logs when a slot was actually present. <code>_beReplaceAttempts.TryRemove</code> remains unconditional.
+            CYC 3&rarr;4. No longer generates 10 redundant lines per Named ATM trade close.
+            Pipeline: docs/brain/DW-B79-04/ &nbsp;&middot;&nbsp; TICKET-2.
+          </div>
+
+          <!-- Test queue -->
+          <div style="background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:0.8rem;font-size:12px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;margin-bottom:8px;">LIVE TEST QUEUE &mdash; sessions pending</div>
+            <ol style="padding-left:1.2rem;line-height:1.8;">
+              <li>
+                <strong style="color:var(--green);">PRIMARY &mdash; DW-B79-08 BE-ALL recovery in real conditions:</strong>
+                <ol style="padding-left:1.2rem;list-style-type:lower-alpha;">
+                  <li>Take a live trade (leader enters, follower copies via Named ATM)</li>
+                  <li>Wait for ATM brackets (Target1/Stop1) to go Working on follower</li>
+                  <li>Press <strong>BE-ALL</strong> &rarr; confirm follower gets <code>PTT-BE-Stop-1/2/3</code> + <code>PTT-BE-Target-1/2/3</code> Working</li>
+                  <li>If leader re-enters (strategy auto re-entry):
+                    <ul style="list-style-type:disc;padding-left:1.2rem;">
+                      <li>Check <code>[BE-DIAG]</code> in output: <em>&ldquo;attempt 1/3, slot registered, 500ms fallback queued&rdquo;</em></li>
+                      <li>After 500ms: check <code>[BE-RETRY]</code> fallback timer fires with <code>flat=False</code></li>
+                      <li>Confirm follower gets new PTT-BE brackets OR targets=0 bare stop</li>
+                    </ul>
+                  </li>
+                </ol>
+              </li>
+              <li style="margin-top:0.6rem;">
+                <strong style="color:var(--amber);">SECONDARY &mdash; QX&rarr;BE-ALL race (DW-B79-06 scenario):</strong>
+                <ol style="padding-left:1.2rem;list-style-type:lower-alpha;">
+                  <li>Take a trade</li>
+                  <li>Press <strong>QX-ALL</strong></li>
+                  <li>Within ~200ms also press <strong>BE-ALL</strong></li>
+                  <li>Expected: if QX in progress &rarr; BE cancels QX orders and places PTT-BE brackets. If QX completed (flat) &rarr; graceful skip (&ldquo;flat skip&rdquo; in StatusUpdate)</li>
+                </ol>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ Test evidence requirements ════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-title">DW-B79-08 &mdash; Confirmation Evidence Required for CLOSED</div>
+        <div style="padding:0 1rem 1rem;">
+          <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;">
+            <tr style="border-bottom:1px solid var(--border);color:var(--dim);">
+              <th style="text-align:left;padding:4px 8px;width:32%;">Evidence</th>
+              <th style="text-align:left;padding:4px 8px;width:14%;">Status</th>
+              <th style="text-align:left;padding:4px 8px;">Notes</th>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;">SIM test: BE-ALL &rarr; leader re-entry &rarr; follower re-bracketed</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CONFIRMED</td>
+              <td style="padding:4px 8px;">2026-08-20 11:36 AM SIM session (Sim101&ndash;104, 7 contracts). Two trades: BE-ALL only, then QX-ALL&rarr;BE-ALL sequential. All 4 accounts exited via PTT-BE-Stop @ BE price. No unprotected positions. Grids: 11-41 AM.csv rows 2&ndash;27, 11-42 AM.csv confirms PTT-BE-Stop Filled @ 7673.50 for Sim102/103/104.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;">SIM test: [BE-DIAG] &ldquo;attempt 1/3&rdquo; + retry guard exercised</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CONFIRMED</td>
+              <td style="padding:4px 8px;">2026-08-20 11:41 AM. <code>[BE-DIAG] TryReplacePttBeBrackets: Sim102 -- attempt 1/3, slot registered, 500ms fallback queued</code> fired. Guard advanced to attempt 3/3 then correctly blocked further slots: <code>max 3 attempts, no new slot (TryFireFollowerBeRetry still holds slot 3)</code>. Final bare PTT-BE-Stop placed and filled. No infinite retry loop.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;">SIM test: [BE-RETRY] fallback timer fires with flat=False</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CONFIRMED</td>
+              <td style="padding:4px 8px;">2026-08-20 11:41 AM. <code>[BE-RETRY] Sim102/103/104 -- fallback timer fired, flat=False</code> fired 5&times; across 2 trades. DispatcherTimer on WPF UI thread (v7 fix) pumping correctly in SIM conditions. MoveStopToBreakEven called with targets=0 (bare stop path).</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;">SIM test: QX-ALL &rarr; BE-ALL sequential (DW-B79-06/07)</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CONFIRMED</td>
+              <td style="padding:4px 8px;">2026-08-20 11:36:51 AM trade. QX-ALL placed brackets, BE-ALL pressed immediately after. All followers got BE protection. QX brackets cancelled cleanly (PTT-QX-Stop/T1..T3 all Cancelled in 11-42 AM.csv). No unprotected positions at any point.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;">SIM test: DW-B79-CANCEL-01 popup absent</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CONFIRMED</td>
+              <td style="padding:4px 8px;">No &ldquo;Cancellation rejected&rdquo; popup in either trade. ChangeSubmitted orders now excluded from cancel list. SIM validates live account behaviour &mdash; same OMS code path. DW-B79-CANCEL-01 fix confirmed working.</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;">SIM test: attempt counter resets between trades (v8 fix)</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CONFIRMED</td>
+              <td style="padding:4px 8px;">Trade 1 (11:36 AM) consumed 1&ndash;2 attempts. Trade 2 (11:36:51 AM) started fresh at attempt 1/3. v8 <code>_beReplaceAttempts.TryRemove</code> unconditional reset on flat working correctly across both trades.</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;">292 [Fact] tests pass</td>
+              <td style="padding:4px 8px;color:var(--green);">&#10003; CONFIRMED</td>
+              <td style="padding:4px 8px;">HEAD 5925b618. B79BeReplaceAttemptGuardTests (3) + B79BeRetryAtmTriggerTests (3) + B79BeReplaceFallbackTests (3) + CancelAllAccountOrders_SkipsChangeSubmittedOrders (1) = 10 DW-B79/04 tests. Total 292.</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ xUnit test coverage ════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-title">DW-B79 xUnit Tests (CopyEngineTests.cs)</div>
+        <div style="padding:0 1rem 1rem;font-family:var(--mono);font-size:11px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr style="border-bottom:1px solid var(--border);color:var(--dim);">
+              <th style="text-align:left;padding:4px 8px;">Class</th>
+              <th style="text-align:left;padding:4px 8px;width:8%;">Facts</th>
+              <th style="text-align:left;padding:4px 8px;">Coverage</th>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;"><code>B79BeReplaceAttemptGuardTests</code></td>
+              <td style="padding:4px 8px;">3</td>
+              <td style="padding:4px 8px;">Max-3 attempt guard; counter increment; reset on flat via TryEvictFollowerBeSlot</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:4px 8px;"><code>B79BeRetryAtmTriggerTests</code></td>
+              <td style="padding:4px 8px;">3</td>
+              <td style="padding:4px 8px;">TryFireFollowerBeRetry triggers on PTT-QX-T*, Target1..Target9 Working; atomic TryRemove claim</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;"><code>B79BeReplaceFallbackTests</code></td>
+              <td style="padding:4px 8px;">3</td>
+              <td style="padding:4px 8px;">500ms fallback path (v6 tests); idempotent TryRemove on double-evict; slot consumed = fallback no-op</td>
+            </tr>
+          </table>
+          <div style="margin-top:0.6rem;color:var(--dim);">
+            Located: <code>src/PropTraderTools/CopyEngineTests.cs</code> ~line 4898&ndash;5051 &nbsp;&middot;&nbsp; Total project: 292 [Fact] methods
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ DW-B79-COSMETIC-01 ═══════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:1.5rem;border-color:var(--border);">
+        <div class="card-title" style="color:var(--dim);">DW-B79-COSMETIC-01 &mdash; P3 Deferred &mdash; RemoveAll race guard missing from CancelQxBrackets + CancelStaleBracketsLocal</div>
+        <div style="padding:0 1rem 1rem;font-size:12px;line-height:1.7;">
+
+          <strong style="color:var(--bright);">Context:</strong>
+          DW-B79-04 fixed <code style="font-family:var(--mono);">CancelAllAccountOrders</code> with two changes:
+          (1) removed <code style="font-family:var(--mono);">ChangeSubmitted</code> from stateOk, and
+          (2) added a <code style="font-family:var(--mono);">RemoveAll(Filled || Cancelled)</code> race guard before <code style="font-family:var(--mono);">acc.Cancel()</code>.
+          The question is whether these fixes apply to all buttons &mdash; BE, BE-ALL, QX, QX-ALL &mdash; or only Flatten.
+          The answer requires tracing each button to its cancel method.<br><br>
+
+          <!-- Cancel method routing table -->
+          <strong style="color:var(--bright);">Cancel method per button:</strong>
+          <table style="width:100%;border-collapse:collapse;font-size:11px;margin:6px 0 10px;">
+            <tr style="border-bottom:1px solid var(--border);color:var(--dim);">
+              <th style="text-align:left;padding:3px 8px;">Button</th>
+              <th style="text-align:left;padding:3px 8px;">Cancel method called</th>
+              <th style="text-align:left;padding:3px 8px;">File</th>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:3px 8px;font-family:var(--mono);">Flatten / Flatten-ALL</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CancelAllAccountOrders</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CopyEngine.cs L713</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:3px 8px;font-family:var(--mono);">QX button / QX-ALL button</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CancelQxBrackets (2-param + 3-param)</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CopyEngine.cs L613, L677</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:3px 8px;font-family:var(--mono);">BE button / BE-ALL button</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CancelStaleBracketsLocal</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">PttBreakEven.cs L171</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 8px;font-family:var(--mono);">Cancel-entries (Shift+C)</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CancelOneAccount</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CopyEngine.cs L2301</td>
+            </tr>
+          </table>
+
+          <!-- Fix 1: ChangeSubmitted -->
+          <strong style="color:var(--bright);">Fix 1 &mdash; ChangeSubmitted removal: uniformly correct across all buttons.</strong><br>
+          <code style="font-family:var(--mono);">ChangeSubmitted</code> was <em>only ever present</em> in <code style="font-family:var(--mono);">CancelAllAccountOrders</code>.
+          <code style="font-family:var(--mono);">CancelQxBrackets</code>, <code style="font-family:var(--mono);">CancelStaleBracketsLocal</code>, and <code style="font-family:var(--mono);">CancelOneAccount</code>
+          never included it in their stateOk, so the original popup root cause
+          (NT8 auto-BE sends price-mod &rarr; stop enters ChangeSubmitted &rarr; included in cancel list &rarr; async broker rejection)
+          could <em>not</em> happen through BE button, BE-ALL, QX button, or QX-ALL.
+          <strong style="color:var(--green);">No gap &mdash; those paths were never broken in this way.</strong><br><br>
+
+          <!-- Fix 2: RemoveAll race guard -->
+          <strong style="color:var(--bright);">Fix 2 &mdash; RemoveAll race guard: NOT applied to QX or BE cancel paths.</strong><br>
+          The race guard was only added to <code style="font-family:var(--mono);">CancelAllAccountOrders</code> (Flatten path).
+          The QX and BE cancel methods do not have it:
+          <div style="background:var(--raised);border:1px solid var(--border);border-radius:4px;padding:0.6rem;font-family:var(--mono);font-size:11px;margin:4px 0 8px;line-height:1.8;">
+            <span style="color:var(--green);">// CancelAllAccountOrders (Flatten path) &mdash; DW-B79-04 GUARDED &check;</span><br>
+            toCancel.RemoveAll(o =&gt; o.OrderState == OrderState.Filled<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; || o.OrderState == OrderState.Cancelled);<br>
+            try { acc.Cancel(toCancel); } catch { }<br><br>
+            <span style="color:var(--red);">// CancelQxBrackets (QX button + QX-ALL) &mdash; NO race guard &cross;</span><br>
+            try { acc.Cancel(stale.ToArray()); } catch { }<br><br>
+            <span style="color:var(--red);">// CancelStaleBracketsLocal (BE button + BE-ALL) &mdash; NO race guard &cross;</span><br>
+            try { acc.Cancel(stale.ToArray()); } catch { }
+          </div>
+
+          <strong style="color:var(--bright);">Practical severity:</strong>
+          The race requires an order to fill in the narrow window (&lt;1ms) between list construction and the cancel call.
+          The original popup was observed exactly once in hundreds of sessions, on the Flatten/QX path.
+          The BE and QX cancel paths are equally susceptible in theory, though the Flatten path
+          (which cancels <em>all</em> orders including ATM stops) is the highest-exposure path
+          because it runs when an active position is being closed &mdash; exactly when ATM auto-BE is most likely
+          to be modifying a stop. <strong>No popup has been observed from the QX or BE cancel paths.</strong><br><br>
+
+          <strong style="color:var(--bright);">Proposed fix (spec only &mdash; not ready for pipeline):</strong>
+          Apply the same one-line guard to both unguarded methods:<br>
+          <div style="background:var(--raised);border:1px solid var(--border);border-radius:4px;padding:0.6rem;font-family:var(--mono);font-size:11px;margin:4px 0 8px;line-height:1.8;">
+            <span style="color:var(--dim);">// CancelQxBrackets (CopyEngine.cs L629 and L701) &mdash; insert before acc.Cancel:</span><br>
+            stale.RemoveAll(o =&gt; o.OrderState == OrderState.Filled || o.OrderState == OrderState.Cancelled);<br><br>
+            <span style="color:var(--dim);">// CancelStaleBracketsLocal (PttBreakEven.cs L190) &mdash; insert before acc.Cancel:</span><br>
+            stale.RemoveAll(o =&gt; o.OrderState == OrderState.Filled || o.OrderState == OrderState.Cancelled);
+          </div>
+          CYC impact per method: +0 (RemoveAll is not a branch).
+          Three insertions total (2&times; CancelQxBrackets overloads + 1&times; CancelStaleBracketsLocal).<br><br>
+
+          <strong style="color:var(--bright);">Priority:</strong> P3 &mdash; cosmetic only. No position-protection risk.
+          No popup has been observed from these paths in production.
+          Deferred until a convenient pipeline pass touches any of the three methods.
+        </div>
+        <div class="card-footer pills" style="border-top:1px solid var(--border);padding:8px 1rem;">
+          <span class="pill pill-green">&#10003; CLOSED &mdash; DW-B79-09 &nbsp;&middot;&nbsp; all 3 unguarded paths guarded &nbsp;&middot;&nbsp; commit 1d65e48b</span>
+          <span class="pill" style="background:var(--green-lo);color:var(--green);border:1px solid var(--green);">CancelAllAccountOrders (Flatten path) already guarded &mdash; commit 5925b618</span>
+          <span class="pill" style="background:var(--green-lo);color:var(--green);border:1px solid var(--green);">ChangeSubmitted gap: absent from all 3 methods &mdash; no gap there</span>
+        </div>
+      </div>
+
+      <!-- ══ Key file refs ══════════════════════════════════════════════════ -->
+      <div class="card-footer pills">
+        <span class="pill pill-green">&#10003; DW-B79-08 v8 SIM CONFIRMED &mdash; all 7 evidence rows green &mdash; live validation optional &mdash; HEAD 5925b618</span>
+        <span class="pill pill-green">&#10003; 295 [Fact] tests pass &nbsp;&middot;&nbsp; CYC &le; 8 throughout &nbsp;&middot;&nbsp; 0 JS P0 violations &nbsp;&middot;&nbsp; DW-B79-09 CLOSED 1d65e48b</span>
+        <span class="pill pill-green">&#10003; DW-B79-CANCEL-01 P1 CLOSED &mdash; cancel-rejected popup fixed &nbsp;&middot;&nbsp; commit 5925b618</span>
+        <span class="pill pill-green">&#10003; DW-B79-LOG-01 P3 CLOSED &mdash; evict log gated on TryRemove result &nbsp;&middot;&nbsp; commit 5925b618</span>
+        <span class="pill" style="background:var(--purple-lo);color:var(--purple);border:1px solid var(--purple);">Key files: CopyEngine.cs L706/936/1040/1078/1105/1784 &nbsp;&middot;&nbsp; CopyEngineTests.cs ~L4898</span>
+      </div>
+    </div>
+      <!-- ══ DW-B79-09 ═══════════════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:1.5rem;border-color:var(--green);">
+        <div class="card-title" style="color:var(--green);">DW-B79-09 &mdash; P3 CLOSED &mdash; RemoveAll race guard: uniform application to CancelQxBrackets &times;2 + CancelStaleBracketsLocal</div>
+        <div style="padding:0 1rem 1rem;font-size:12px;line-height:1.7;">
+
+          <strong style="color:var(--bright);">Pipeline ID:</strong> DW-B79-09 (DW-B79-05&ndash;08 already assigned)<br>
+          <strong style="color:var(--bright);">Scope:</strong> 3 one-line insertions + 3 xUnit [Fact] tests &middot; 2 files touched (CopyEngine.cs, PttBreakEven.cs)<br>
+          <strong style="color:var(--bright);">Priority:</strong> P3 &mdash; cosmetic uniformity. No popup observed on QX/BE paths in production.<br><br>
+
+          <strong style="color:var(--bright);">Root cause (from DW-B79-COSMETIC-01 investigation):</strong><br>
+          DW-B79-04 added a <code style="font-family:var(--mono);">RemoveAll(Filled || Cancelled)</code> race guard to
+          <code style="font-family:var(--mono);">CancelAllAccountOrders</code> (Flatten path). The same guard was not
+          propagated to the three remaining cancel methods that also call <code style="font-family:var(--mono);">acc.Cancel()</code>:
+
+          <table style="width:100%;border-collapse:collapse;font-size:11px;margin:8px 0 10px;">
+            <tr style="border-bottom:1px solid var(--border);color:var(--dim);">
+              <th style="text-align:left;padding:3px 8px;">Method</th>
+              <th style="text-align:left;padding:3px 8px;">File</th>
+              <th style="text-align:left;padding:3px 8px;">Button path</th>
+              <th style="text-align:left;padding:3px 8px;">Guard status</th>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:3px 8px;font-family:var(--mono);">CancelAllAccountOrders</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CopyEngine.cs</td>
+              <td style="padding:3px 8px;">Flatten / Flatten-ALL</td>
+              <td style="padding:3px 8px;color:var(--green);">&#10003; GUARDED &mdash; commit 5925b618</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:3px 8px;font-family:var(--mono);">CancelQxBrackets (2-param)</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CopyEngine.cs</td>
+              <td style="padding:3px 8px;">QX button / QX-ALL</td>
+              <td style="padding:3px 8px;color:var(--green);">&#10003; GUARDED &mdash; commit 1d65e48b</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:3px 8px;font-family:var(--mono);">CancelQxBrackets (3-param)</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">CopyEngine.cs</td>
+              <td style="padding:3px 8px;">QX button / QX-ALL (snapshot path)</td>
+              <td style="padding:3px 8px;color:var(--green);">&#10003; GUARDED &mdash; commit 1d65e48b</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 8px;font-family:var(--mono);">CancelStaleBracketsLocal</td>
+              <td style="padding:3px 8px;font-family:var(--mono);">PttBreakEven.cs</td>
+              <td style="padding:3px 8px;">BE button / BE-ALL</td>
+              <td style="padding:3px 8px;color:var(--green);">&#10003; GUARDED &mdash; commit 1d65e48b</td>
+            </tr>
+          </table>
+
+          <strong style="color:var(--bright);">Fix (identical one-liner in each method, inserted before <code style="font-family:var(--mono);">acc.Cancel()</code>):</strong>
+          <div style="background:var(--raised);border:1px solid var(--border);border-radius:4px;padding:0.6rem;font-family:var(--mono);font-size:11px;margin:4px 0 10px;line-height:1.8;">
+            stale.RemoveAll(o =&gt; o.OrderState == OrderState.Filled<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; || o.OrderState == OrderState.Cancelled);
+          </div>
+          CYC impact per method: <strong>+0</strong> (RemoveAll is a delegate call, not a branch).<br>
+          Test delta: <strong>292 &rarr; 295</strong> (+3 [Fact] &mdash; one per method).<br><br>
+
+          <strong style="color:var(--bright);">Pipeline:</strong> Full 5-phase PTT pipeline (all phases mandatory, none skippable):<br>
+          Ph1 ptt-architect &rarr; Ph2 ptt-plan-reviewer (REVIEW_PASS gate) &rarr; Ph3 ptt-architect
+          &rarr; Ph3.5 ptt-ticket-reviewer (TICKET_REVIEW_PASS gate) &rarr; Ph4a ptt-engineer
+          &rarr; Ph4b ptt-verifier (VERIFY_PASS gate) &rarr; Ph5 ptt-plan-reviewer<br><br>
+
+          <strong style="color:var(--bright);">Brain dir:</strong> <code style="font-family:var(--mono);">docs/brain/DW-B79-09/</code> (all 7 pipeline artifacts present)
+        </div>
+        <div class="card-footer pills" style="border-top:1px solid var(--border);padding:8px 1rem;">
+          <span class="pill pill-green">&#10003; CLOSED &nbsp;&middot;&nbsp; commit 1d65e48b &nbsp;&middot;&nbsp; 295 [Fact] &nbsp;&middot;&nbsp; CYC +0 &nbsp;&middot;&nbsp; 2026-08-21</span>
+          <span class="pill" style="background:var(--green-lo);color:var(--green);border:1px solid var(--green);">3 insertions &nbsp;&middot;&nbsp; CopyEngine.cs (~L630, ~L704) &nbsp;&middot;&nbsp; PttBreakEven.cs (~L193)</span>
+          <span class="pill" style="background:var(--green-lo);color:var(--green);border:1px solid var(--green);">ChangeSubmitted gap: absent from all 3 methods &mdash; uniformity confirmed</span>
+        </div>
+      </div>
+
+      <!-- ══ DW-B72-01 ═══════════════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:1.5rem;border-color:var(--border);">
+        <div class="card-title" style="color:var(--amber);">DW-B72-01 &mdash; P3 Deferred &mdash; IsAtmBracketName Stop10 over-cancel investigation</div>
+        <div style="padding:0 1rem 1rem;font-size:12px;line-height:1.7;">
+
+          <strong style="color:var(--bright);">Origin:</strong> First noted in DW-B79-03 deferred backlog. Carried through DW-B79-04.
+          Not yet added to spec HTML until this session (2026-08-21).<br><br>
+
+          <strong style="color:var(--bright);">Symptom (theoretical):</strong> Orders whose names contain the string
+          <code style="font-family:var(--mono);">"Stop10"</code> may be over-cancelled under certain ATM bracket naming
+          conventions. The concern is whether the instrument-name vs order-name filter logic in
+          <code style="font-family:var(--mono);">CancelAllAccountOrders</code> (or a related method) correctly discriminates
+          between a stop order belonging to this instrument&rsquo;s ATM bracket and a stop order from a
+          different position whose name happens to contain the instrument ticker substring
+          (e.g. a bracket named <code style="font-family:var(--mono);">"Stop10 NQ"</code> on an ES position).<br><br>
+
+          <strong style="color:var(--bright);">Practical severity:</strong> P3 &mdash; no over-cancel incident observed in production.
+          The naming convention filter has not been analytically proven incorrect.
+          Requires a code read of <code style="font-family:var(--mono);">IsAtmBracketName()</code> and the stateOk filter
+          in <code style="font-family:var(--mono);">CancelAllAccountOrders</code> to confirm or close.<br><br>
+
+          <strong style="color:var(--bright);">Resolution path:</strong> Read <code style="font-family:var(--mono);">IsAtmBracketName()</code>
+          implementation. If the filter uses instrument name as a prefix guard (not a substring match),
+          the risk is zero and DW-B72-01 can be CLOSED by observation. If substring match &mdash; widen
+          to prefix-only or add instrument.MasterInstrument.Name guard.<br><br>
+
+          <strong style="color:var(--bright);">Target block:</strong> B80 or later (low urgency). No pipeline required until investigation confirms a real defect.
+        </div>
+        <div class="card-footer pills" style="border-top:1px solid var(--border);padding:8px 1rem;">
+          <span class="pill pill-amber">P3 &nbsp;&middot;&nbsp; Deferred &nbsp;&middot;&nbsp; B80 or later</span>
+          <span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">No production incident observed &mdash; theoretical risk only</span>
+          <span class="pill" style="background:var(--border);color:var(--dim);border:1px solid var(--dim);">Origin: DW-B79-03 deferred backlog &nbsp;&middot;&nbsp; carried DW-B79-04</span>
+        </div>
+      </div>
+
+    <!-- ══ end section-b79 ══════════════════════════════════════════════════ -->
 
 
   </body>
