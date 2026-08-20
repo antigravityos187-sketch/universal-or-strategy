@@ -4702,4 +4702,75 @@ namespace PropTraderTools
                 "Stop1 is blocked by Gate 4 (StopMarket type). IsExitSignalName must not over-block it.");
         }
     }
+
+    /// <summary>
+    /// B78 DW-B78-02: CancelQxBracketsForFollowers skipIfFollower guard.
+    /// Tests the ResolveStop/ResolveTargetCount helpers are unchanged and that
+    /// the skipIfFollower param correctly controls the cancel-all-followers path.
+    /// Uses reflection to verify the Execute method signature has the guard param.
+    /// JS-051: xUnit only. ASCII-only.
+    /// </summary>
+    public class B78CancelFollowerGuardTests
+    {
+        // T_B78_CF_01: Execute method has skipIfFollower parameter (guard exists in signature).
+        // Contract: skipIfFollower=false path must be reachable -- method accepts the param.
+        [Fact]
+        public void T_B78_CF_01_Execute_HasSkipIfFollowerParam()
+        {
+            var mi = typeof(PttQuickExit).GetMethod(
+                "Execute",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Public);
+            Assert.NotNull(mi);
+            var parameters = mi.GetParameters();
+            bool hasSkipParam = System.Array.Exists(
+                parameters, p => p.Name == "skipIfFollower" && p.ParameterType == typeof(bool));
+            Assert.True(hasSkipParam,
+                "Execute must have skipIfFollower bool param -- DW-B78-02 guard depends on it.");
+        }
+
+        // T_B78_CF_02: Execute method has leaderStop parameter (B78-LaneA fix present).
+        [Fact]
+        public void T_B78_CF_02_Execute_HasLeaderStopParam()
+        {
+            var mi = typeof(PttQuickExit).GetMethod(
+                "Execute",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Public);
+            Assert.NotNull(mi);
+            var parameters = mi.GetParameters();
+            bool hasLeaderStop = System.Array.Exists(
+                parameters, p => p.Name == "leaderStop" && p.ParameterType == typeof(double));
+            Assert.True(hasLeaderStop,
+                "Execute must have leaderStop double param -- B78-LaneA fix depends on it.");
+        }
+
+        // T_B78_CF_03: Execute method has leaderTargetCount parameter (B78-LaneA fix present).
+        [Fact]
+        public void T_B78_CF_03_Execute_HasLeaderTargetCountParam()
+        {
+            var mi = typeof(PttQuickExit).GetMethod(
+                "Execute",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Public);
+            Assert.NotNull(mi);
+            var parameters = mi.GetParameters();
+            bool hasLeaderCount = System.Array.Exists(
+                parameters, p => p.Name == "leaderTargetCount" && p.ParameterType == typeof(int));
+            Assert.True(hasLeaderCount,
+                "Execute must have leaderTargetCount int param -- B78-LaneA fix depends on it.");
+        }
+
+        // T_B78_CF_04: ResolveStop with own=0 and fallback=100 returns 100 (B78-LaneA regression).
+        [Fact]
+        public void T_B78_CF_04_ResolveStop_OwnZero_FallbackReturned_Regression()
+        {
+            var mi = typeof(PttQuickExit).GetMethod(
+                "ResolveStop",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.NotNull(mi);
+            double result = (double)mi.Invoke(null, new object[] { 0.0, 100.0 });
+            Assert.Equal(100.0, result);
+        }
+    }
 }

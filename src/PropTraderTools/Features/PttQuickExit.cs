@@ -25,13 +25,15 @@ namespace PropTraderTools
 
         /// <summary>
         /// Execute: per-chart Quick Exit bracket swap.
-        /// CYC=7: null/flat guard(1) + follower guard(2) + snapshotStop guard(3) + isLong(4)
-        ///        + for-loop(5) + stop-submit null check(6) + target-submit null check(7).
+        /// CYC=8: null/flat guard(1) + follower guard(2) + cancelFollowers guard(3) + snapshotStop guard(4)
+        ///        + isLong(5) + for-loop(6) + stop-submit null check(7) + target-submit null check(8).
         ///        (fallback guard moved to ResolveTargetCount helper -- CYC=2)
         /// HOTFIX-QUICK-T3-01: accepts targets snapshot; submits N OCO pairs instead of always 2.
         /// B71 DW-B71-02: skipIfFollower param added -- default true rejects follower accounts.
         /// B78 DW-B63-01: leaderStop + leaderTargetCount fallbacks for follower accounts whose
         ///   ATM brackets have not yet arrived in acc.Orders at QX fire time (NT8 async lag).
+        /// B78 DW-B78-02: CancelQxBracketsForFollowers guarded by skipIfFollower -- prevents sibling
+        ///   follower QX orders from being cancelled by subsequent follower Execute calls.
         /// JS-001: no throw -- logs instead. JS-021: no lock -- CopyEngine.NextQxOcoId uses Interlocked.
         /// NT8-007: CreateOrder arg12 = (CustomOrder)null. NT8-013: DateTime.MaxValue for GTC.
         /// NT8-014: signal name = "PTT-QX-*". NT8-049: Limit arg6=limitPrice, arg7=0; StopMarket arg6=0, arg7=stopPrice.
@@ -81,8 +83,14 @@ namespace PropTraderTools
                 "[PTT-QX] race-guard: snapshot=" + snapshot.Count + " orders on " + leader.Name,
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             CopyEngine.Instance?.CancelQxBrackets(leader, instr, snapshot);
-            // B70 DW-B70-02: also cancel follower PTT-Copy brackets before re-placing QX orders
-            CopyEngine.Instance?.CancelQxBracketsForFollowers(instr);
+            // B70 DW-B70-02: also cancel follower PTT-Copy brackets before re-placing QX orders.
+            // B78 DW-B78-02: ONLY from the leader execution path (skipIfFollower=true).
+            // When skipIfFollower=false (follower account), CancelQxBracketsForFollowers would
+            // silently erase every previous follower's just-submitted PTT-QX orders, because
+            // each follower's Execute call runs on the same synchronous dispatch loop and the
+            // sibling PTT-QX orders are in Submitted/Initialized state -- IsQxCancelCandidate matches them.
+            if (skipIfFollower)
+                CopyEngine.Instance?.CancelQxBracketsForFollowers(instr);
 
             // Step 4: compute direction and tick
             bool isLong = pos.MarketPosition == MarketPosition.Long;
