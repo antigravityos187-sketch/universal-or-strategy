@@ -277,6 +277,8 @@ namespace PropTraderTools
         private static readonly SolidColorBrush BrushDanger   = MakeBrush(239,  68,  68);  // red    #ef4444
         private static readonly SolidColorBrush BrushCaution  = MakeBrush(245, 158,  11);  // amber  #f59e0b
         private static readonly SolidColorBrush BrushInactive = MakeBrush( 55,  65,  81);  // grey   #4b5563
+        // DW-B73-B-02: teal border/foreground for BE/Quick buttons -- cached per JS-008
+        private static readonly SolidColorBrush BrushTeal = MakeBrush(13, 148, 136);  // teal-600 #0d9488
 
         // -- nested type ----------------------------------------------------------
         private sealed class FollowerItem : INotifyPropertyChanged
@@ -584,7 +586,6 @@ namespace PropTraderTools
             {
                 if (_leaderAccount != null)
                     CopyEngine.Instance.DisarmPendingBe(_leaderAccount);
-                UpdateBeAllVisuals(BeState.Idle);
                 CopyEngine.Instance.RaiseBeAllDisarmed(); // notify all panels unconditionally
             }
             // HOTFIX-ORPHAN-STOP-CLEANUP: cancel any PTT-BE-*/PTT-QX-* orders that survived
@@ -954,8 +955,8 @@ namespace PropTraderTools
             if (_globalBeBtn2 == null) return;
             if (state == BeState.Idle)
             {
-                _globalBeBtn2.BorderBrush = MakeBrush(13, 148, 136);
-                _globalBeBtn2.Foreground  = MakeBrush(13, 148, 136);
+                _globalBeBtn2.BorderBrush = BrushTeal;
+                _globalBeBtn2.Foreground  = BrushTeal;
                 _globalBeBtn2.Background  = System.Windows.Media.Brushes.Transparent;
             }
             else
@@ -1046,8 +1047,8 @@ namespace PropTraderTools
             _beBtn2 = new Button
             {
                 Content         = FormatBuffer("BE", _beBuffer),
-                BorderBrush     = MakeBrush(13, 148, 136),
-                Foreground      = MakeBrush(13, 148, 136),
+                BorderBrush     = BrushTeal,
+                Foreground      = BrushTeal,
                 BorderThickness = new Thickness(2)
             };
             _beBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
@@ -1075,8 +1076,8 @@ namespace PropTraderTools
             _globalBeBtn2 = new Button
             {
                 Content         = FormatGlobalBeBuffer("BE ALL", CopyEngine.Instance.GlobalBe.GlobalBeBuffer),
-                BorderBrush     = MakeBrush(13, 148, 136),
-                Foreground      = MakeBrush(13, 148, 136),
+                BorderBrush     = BrushTeal,
+                Foreground      = BrushTeal,
                 BorderThickness = new Thickness(2)
             };
             _globalBeBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
@@ -1108,8 +1109,8 @@ namespace PropTraderTools
             _quickBtn = new Button
             {
                 Content         = FormatBuffer("Quick", _quickT1),
-                BorderBrush     = MakeBrush(13, 148, 136),
-                Foreground      = MakeBrush(13, 148, 136),
+                BorderBrush     = BrushTeal,
+                Foreground      = BrushTeal,
                 BorderThickness = new Thickness(2)
             };
             _quickBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
@@ -1137,8 +1138,8 @@ namespace PropTraderTools
             _quickAllBtn = new Button
             {
                 Content         = FormatBuffer("Quick ALL", CopyEngine.Instance.GlobalQuickAllT1),
-                BorderBrush     = MakeBrush(13, 148, 136),
-                Foreground      = MakeBrush(13, 148, 136),
+                BorderBrush     = BrushTeal,
+                Foreground      = BrushTeal,
                 BorderThickness = new Thickness(2)
             };
             _quickAllBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");

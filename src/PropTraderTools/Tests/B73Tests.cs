@@ -8,6 +8,7 @@
 using System;
 using System.Reflection;
 using System.Windows.Controls;
+using System.Windows.Media;
 using NinjaTrader.Cbi;
 using Xunit;
 
@@ -325,6 +326,94 @@ namespace PropTraderTools
                 "DockProperty",
                 BindingFlags.Public | BindingFlags.Static);
             Assert.NotNull(field);
+        }
+
+        // -- DW-B73-B-01 tests (Ticket 1) ----------------------------------------
+
+        [Fact]
+        public void RaiseBeAllDisarmed_NoException_WhenCalled()
+        {
+            // Act + Assert: no exception thrown when no subscribers attached
+            var exception = Record.Exception(() => CopyEngine.Instance.RaiseBeAllDisarmed());
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void GlobalBeAllDisarmed_EventExists_AndIsSubscribable()
+        {
+            // Arrange
+            var subscribed = false;
+            Action handler = () => subscribed = true;
+            CopyEngine.Instance.GlobalBeAllDisarmed += handler;
+
+            // Act
+            CopyEngine.Instance.RaiseBeAllDisarmed();
+
+            // Assert
+            Assert.True(subscribed);
+
+            // Cleanup
+            CopyEngine.Instance.GlobalBeAllDisarmed -= handler;
+        }
+
+        [Fact]
+        public void RaiseBeAllDisarmed_FiresSubscriber_ExactlyOnce()
+        {
+            // Arrange
+            var fireCount = 0;
+            Action handler = () => fireCount++;
+            CopyEngine.Instance.GlobalBeAllDisarmed += handler;
+
+            // Act
+            CopyEngine.Instance.RaiseBeAllDisarmed();
+
+            // Assert
+            Assert.Equal(1, fireCount);
+
+            // Cleanup
+            CopyEngine.Instance.GlobalBeAllDisarmed -= handler;
+        }
+
+        // -- DW-B73-B-02 tests (Ticket 2) ----------------------------------------
+
+        private static SolidColorBrush GetBrushTeal()
+        {
+            var field = typeof(TradeCopierPanel)
+                .GetField("BrushTeal", BindingFlags.NonPublic | BindingFlags.Static);
+            return (SolidColorBrush)field!.GetValue(null)!;
+        }
+
+        [Fact]
+        public void BrushTeal_IsNotNull()
+        {
+            // Act
+            var brush = GetBrushTeal();
+
+            // Assert
+            Assert.NotNull(brush);
+        }
+
+        [Fact]
+        public void BrushTeal_IsFrozen()
+        {
+            // Act
+            var brush = GetBrushTeal();
+
+            // Assert
+            Assert.True(brush.IsFrozen);
+        }
+
+        [Fact]
+        public void BrushTeal_Color_MatchesTeal600()
+        {
+            // Act
+            var brush = GetBrushTeal();
+            var color = brush.Color;
+
+            // Assert
+            Assert.Equal(13,  color.R);
+            Assert.Equal(148, color.G);
+            Assert.Equal(136, color.B);
         }
     }
 }
