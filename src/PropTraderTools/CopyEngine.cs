@@ -1712,31 +1712,41 @@ namespace PropTraderTools
         }
 
 
-        // DW-B79-08: TryReplacePttBeBrackets -- re-place PTT-BE OCO pairs wiped by NT8 ATM sweep.
+        // DW-B79-08 v2: TryReplacePttBeBrackets -- register BE retry slot for ATM-sweep wipe recovery.
         // Called from OnOrderUpdate when PTT-BE-Stop-* transitions to Cancelled while follower has position.
-        // Root cause: StartAtmStrategy fires NT8's internal cancel sweep which wipes ALL working orders,
-        // including PTT-BE brackets placed by a prior BE-ALL. Recovery mirrors MoveStopToBreakEven
-        // but skips the cancel step (there is nothing left to cancel -- NT8 already wiped everything).
-        // CYC=5: (1) null guards, (2) follower rule lookup, (3) follower found, (4) position check, (5) Dispatcher.
-        // JS-021: no lock. JS-001: no throw. JS-002: void. ASCII-only.
+        // Root cause: StartAtmStrategy fires NT8's internal cancel sweep which wipes ALL working orders
+        // including PTT-BE brackets placed by a prior BE-ALL.
+        //
+        // v1 FAILURE (938f0faf): called MoveStopToBreakEven directly -> placed new PTT-BE-* orders that
+        // NT8 ALSO swept (async, multiple sweeps) -> each sweep triggered another TryReplacePttBeBrackets
+        // -> infinite replace/cancel/replace storm. Sim103/104 ended with cancel=0 targets=0 repeatedly.
+        //
+        // v2 FIX: slot-registration only. Register a _pendingFollowerBeSlots entry then call
+        // QueueBeRetryFallback (200ms). QueueBeRetryFallback.TryRemove is the atomic claim gate --
+        // exactly one path wins, no storm possible. MoveStopToBreakEven fires AFTER NT8 sweep completes
+        // (200ms >> sweep duration). TryFireFollowerBeRetry watches PTT-QX-T* only, so in this path
+        // (plain new-entry copy, no QX) the 200ms fallback is the sole consumer -- by design.
+        //
+        // CYC=5: (1) null guard, (2) follower guard, (3) flat guard, (4) TryRemove+Add, (5) log.
+        // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void. ASCII-only.
         private void TryReplacePttBeBrackets(Order cancelledStop)
         {
             if (cancelledStop?.Account == null || cancelledStop.Instrument == null) return; // (1)
-            if (!IsFollowerAccount(cancelledStop.Account)) return;                          // (2) leaders manage their own BE
-            if (IsFlat(FindPosition(cancelledStop.Account, cancelledStop.Instrument))) return; // (3) position closed = correct cancel
-            NinjaTrader.Code.Output.Process(
-                "[BE] TryReplacePttBeBrackets: " + cancelledStop.Account.Name
-                    + " -- re-placing PTT-BE brackets after ATM sweep",
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            if (!IsFollowerAccount(cancelledStop.Account)) return;                          // (2)
+            if (IsFlat(FindPosition(cancelledStop.Account, cancelledStop.Instrument))) return; // (3)
             var acc   = cancelledStop.Account;
             var instr = cancelledStop.Instrument;
-            // Dispatch onto UI thread (same pattern as QueueBeRetryFallback / RaiseBeBufferChanged).  (4)
-            // MoveStopToBreakEven reads acc.Orders and calls acc.CreateOrder -- must be on UI thread.
-            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>                           // (5)
-            {
-                if (!IsFlat(FindPosition(acc, instr)))
-                    MoveStopToBreakEven(acc, instr, bufferTicks: 0, isRetry: true);
-            });
+            // (4) Atomically replace any stale slot then register fresh slot.
+            // TryRemove first (idempotent): if a prior sweep already registered a slot and the
+            // 200ms timer has not fired yet, we discard it and start a fresh 200ms window.
+            _pendingFollowerBeSlots.TryRemove(acc.Name, out _);
+            _pendingFollowerBeSlots[acc.Name] = new PendingFollowerBeSlot(acc, instr, bufferTicks: 0);
+            // (5) 200ms fallback is the sole consumer for this path (no PTT-QX-T* trigger in plain re-entry).
+            NinjaTrader.Code.Output.Process(
+                "[BE-DIAG] TryReplacePttBeBrackets: " + acc.Name
+                    + " -- slot registered, queuing 200ms fallback for ATM-sweep recovery",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            QueueBeRetryFallback(acc, instr, bufferTicks: 0);
         }
 
         // CYC=2. Thin wrapper over FindPosition.
