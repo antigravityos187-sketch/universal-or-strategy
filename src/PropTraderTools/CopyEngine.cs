@@ -2345,6 +2345,10 @@ namespace PropTraderTools
         // DW-B79-04 isRetry: prevents recursive retry loops.
         // First call: isRetry=false (default). On targets=0 + open position, one retry queued.
         // Retry call: isRetry=true. No further retry regardless of result.
+        // REPAIR-09 DW-B79-05: CancelSubmitted added to Step A stateOk.
+        //   PTT-QX-T orders transition Working->CancelSubmitted when follower ATM brackets
+        //   arrive async and NT8 cancels them. LimitPrice+Quantity still readable at this state.
+        //   Widening captures them as targets before they fully disappear -> OCO pairs submitted.
         private void MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks, bool isRetry = false)
         {
             var pos = FindPosition(acc, instrument);
@@ -2390,7 +2394,8 @@ namespace PropTraderTools
                             || o.OrderState == OrderState.Submitted
                             || o.OrderState == OrderState.Initialized
                             || o.OrderState == OrderState.TriggerPending                   // (4)
-                            || o.OrderState == OrderState.ChangeSubmitted;                 // DW-B79-04: NT8 sim ATM target transient state on creation
+                            || o.OrderState == OrderState.ChangeSubmitted                  // DW-B79-04: NT8 sim ATM target transient state on creation
+                            || o.OrderState == OrderState.CancelSubmitted;                 // REPAIR-09 DW-B79-05: PTT-QX-T orders in-flight cancel still readable
                 bool instrOk = o.Instrument != null
                             && o.Instrument.FullName == instrument.FullName;               // (5)
                 if (!stateOk || !instrOk) continue;
