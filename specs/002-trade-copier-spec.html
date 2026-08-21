@@ -24866,5 +24866,69 @@ Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be 
     <!-- ══ end section-b81 ══════════════════════════════════════════════════ -->
 
 
+    <!-- ══ section-b82 ══════════════════════════════════════════════════════
+         DW-B82 | _beReplaceAttempts counter never reset on slot consumption
+         Commit A (src):   460bedce | Commit B (brain): 327cc626
+         Status: DW-B82-01 PENDING SIM GATE
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <div id="section-b82" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:var(--amber);">&#9679; DW-B82 &nbsp;&#9670;&nbsp; PTT-COPIER-B82 &nbsp;&#9670;&nbsp; BE-Retry Attempt Counter Leak &nbsp;&#9670;&nbsp; <span class="pill pill-amber">&#9679; DW-B82-01 PENDING SIM GATE</span></div>
+
+      <!-- DW-B82-01 ─────────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--amber); background:var(--amber-lo);">
+        <div class="card-title" style="color:var(--amber);">DW-B82-01 &mdash; <code>_beReplaceAttempts</code> Not Reset on Slot Consumption &mdash; Brackets Lost After First BE&rarr;QX Cycle (P1)</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+          <strong>Root cause:</strong> <code>_beReplaceAttempts[acc]</code> incremented in <code>TryReplacePttBeBrackets</code> (max 3 allowed)
+          but only reset in <code>TryEvictFollowerBeSlot</code> (position-close path). QX sweep cancels all 3 <code>PTT-BE-Stop-*</code>
+          brackets in a single BE&rarr;QX cycle &rarr; counter goes 0&rarr;3 in one trade. On next entry
+          <code>prevAttempts&nbsp;&ge;&nbsp;3</code> gate fires immediately &rarr; no slot registered &rarr; no brackets placed &rarr;
+          follower gets bare <code>PTT-BE-Stop</code> only (stops-only, no targets, no OCO).<br>
+          This failure affected ALL scenarios from trade 2 onward in any session with at least one prior BE&rarr;QX cycle.<br><br>
+          <strong>Fix (2 lines, <code>CopyEngine.cs</code>):</strong><br>
+          &bull; <strong>Location 1</strong> &mdash; <code>TryFireFollowerBeRetry</code> L1067: after <code>_pendingFollowerBeSlots.TryRemove</code>
+          atomic claim, immediately reset counter:
+          <code>_beReplaceAttempts.TryRemove(o.Account.Name, out _);</code><br>
+          &bull; <strong>Location 2</strong> &mdash; <code>QueueBeRetryFallback</code> timer Tick lambda L1156: inside the
+          <code>if (TryRemove)</code> success branch, immediately reset counter:
+          <code>_beReplaceAttempts.TryRemove(capturedAcc.Name, out _);</code><br><br>
+          <strong>Rationale:</strong> Both paths represent successful slot consumption &mdash; the slot is about to be used to fire
+          <code>MoveStopToBreakEven</code>. The attempt counter counted prior attempts on this slot lifecycle; resetting it here
+          ensures <code>TryReplacePttBeBrackets</code> starts from 0 for the next BE cycle on this account.<br><br>
+          <strong>CYC delta:</strong> None &mdash; both insertions are in straight-line code (no new branches).<br>
+          <strong>Tests added:</strong>
+          2 new IL-scan <code>[Fact]</code> tests in <code>B82Tests.cs</code>:<br>
+          &bull; T_DW_B82_01_01: <code>TryFireFollowerBeRetry</code> IL contains exactly 2 <code>TryRemove</code> callvirt instructions (slot + counter reset).<br>
+          &bull; T_DW_B82_01_02: <code>QueueBeRetryFallback</code> timer Tick lambda IL contains &ge; 2 <code>TryRemove</code> callvirt instructions.<br><br>
+          <strong>Commit A (src):</strong> <code>460bedce</code> &mdash; 306 [Fact]<br>
+          <strong>Commit B (brain):</strong> <code>327cc626</code>
+        </div>
+        <div>
+          <span class="pill pill-amber">&#9679; PENDING SIM GATE</span>
+          <span class="pill" style="background:rgba(37,99,235,0.12);color:#60a5fa;">NO-PIPELINE &mdash; Director authorized direct repair</span>
+          <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
+        </div>
+      </div>
+
+      <!-- SIM Gate instructions -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--purple); background:var(--purple-lo);">
+        <div class="card-title" style="color:var(--purple);">SIM Gate &mdash; Director Action Required Before CLOSED Stamp</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
+          <strong>Protocol:</strong><br>
+          1. Clean NT8 restart (close + reopen NinjaTrader).<br>
+          2. Load copier, attach Sim101 (leader) + Sim102/103/104 (followers).<br>
+          3. Enter trade. Press BE-ALL. <em>Cycle 1</em>: verify all followers get PTT-BE-Stop-1/2/3 + PTT-BE-Target-1/2/3 (full OCO brackets).<br>
+          4. Press QX-ALL. Verify followers flatten cleanly.<br>
+          5. Enter again. Press BE-ALL. <em>Cycle 2</em>: verify followers again get PTT-BE-Stop-1/2/3 + targets. (This is the test &mdash; cycle 1 always worked; cycle 2 was the failure.)<br>
+          6. Repeat for cycles 3 and 4 minimum.<br>
+          7. Verify log shows <code>[BE-RETRY]</code> with "event-driven BE retry firing" (not "prevAttempts &ge; 3").<br>
+          <strong>GREEN:</strong> DW-B82-01 &rarr; stamp CLOSED. <strong>RED:</strong> Open DW-B82-02 with fresh NT8 output log.<br>
+          <strong>Note:</strong> Run AFTER HOTFIX-B80 SIM gate and DW-B81-02 SIM gate. DW-B82-01 is the primary root cause
+          for stops-only on cycles 2+; B80/B81 patches addressed secondary symptoms.
+        </div>
+      </div>
+    </div>
+    <!-- ══ end section-b82 ══════════════════════════════════════════════════ -->
+
+
   </body>
 </html>
