@@ -2719,6 +2719,52 @@ namespace PropTraderTools
                 targets.Add((o.LimitPrice, o.Quantity, o.OrderAction));
             }
 
+            // -- DW-B84-01: follower path -- move ATM-owned stops in-place via acc.Change() ------
+            // Root cause: Step B calls acc.Cancel(stale) on Stop1/Stop2/Stop3 (ATM-owned, no PTT-BE-
+            // prefix). NT8 then OCO-cancels Target1/2/3. Step C new PTT-BE-* orders are swept by NT8
+            // because the ATM strategy is still active. Fix: call acc.Change() to reprice the existing
+            // ATM stops without cancellation. Targets survive untouched. The entire Step B+C block and
+            // the TryReplacePttBeBrackets retry subsystem are never triggered on the follower path.
+            // Dependency confirmed: Stop1..Stop9 are Working when BE-ALL fires (cancel=3 in log proves
+            // they were found in cancellable = Working state). acc.Change() requires Working. Gate OK.
+            // JS-021: no lock. JS-001: no throw -- try/catch wraps acc.Change().
+            // CYC: +1 branch (IsFollowerAccount guard) -- absorbed by follower early return.
+            if (IsFollowerAccount(acc))
+            {
+                var beSt = new List<Order>();
+                foreach (Order o in acc.Orders)
+                {
+                    if (o?.OrderState != OrderState.Working) continue;
+                    if (o.Instrument?.FullName != instrument.FullName) continue;
+                    // ATM stop names are exactly "StopN" (length 5): Stop1, Stop2, Stop3 etc.
+                    // Length==5 guard excludes StopLimit, StopMarket, StopLoss and any other prefix.
+                    if (o.Name != null
+                        && o.Name.StartsWith("Stop", StringComparison.Ordinal)
+                        && o.Name.Length == 5
+                        && char.IsDigit(o.Name[4]))
+                    {
+                        o.StopPriceChanged = newStop;
+                        beSt.Add(o);
+                    }
+                }
+                if (beSt.Count > 0)
+                {
+                    try { acc.Change(beSt.ToArray()); }
+                    catch (Exception ex)
+                    {
+                        NinjaTrader.Code.Output.Process(
+                            "[BE] DW-B84-01 acc.Change EXCEPTION " + acc.Name + ": " + ex.Message,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    }
+                }
+                NinjaTrader.Code.Output.Process(
+                    "[BE] DW-B84-01 acc.Change() " + acc.Name
+                        + " stops=" + beSt.Count + " newStop=" + newStop.ToString("F2"),
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
+                return;   // DW-B84-01: skip Step B cancel + Step C submit entirely for followers
+            }
+
             // -- Step B: cancel all stale brackets (mirrors CancelStaleBracketsLocal) ---
             var stale = new List<Order>();
             foreach (Order o in acc.Orders)

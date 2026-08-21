@@ -25011,5 +25011,178 @@ Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be 
     <!-- ══ end section-b83 ══════════════════════════════════════════════════ -->
 
 
+    <!-- ══════════════════════════════════════════════════════════════════════
+         DW-B84 | BE-ALL Follower: Replace cancel+replace with acc.Change()
+         Discovered: 2026-08-21 via log analysis (session recovery)
+         Status: DW-B84-01 OPEN (P0) · POC-AUTHORIZED (Director approval pending)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <div id="section-b84" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:var(--red);">&#9679; DW-B84 &nbsp;&#9670;&nbsp; PTT-COPIER-B84 &nbsp;&#9670;&nbsp; BE-ALL Follower acc.Change() Repair &nbsp;&#9670;&nbsp; <span class="pill pill-red">&#9679; DW-B84-01 OPEN (P0) &nbsp;&middot;&nbsp; POC DIRECT REPAIR AUTHORIZED</span></div>
+
+      <!-- DW-B84-01 ─────────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--red); background:var(--red-lo);">
+        <div class="card-title" style="color:var(--red);">DW-B84-01 &mdash; Follower BE-ALL Fires acc.Cancel() on ATM Stops, Destroying All Brackets (P0)</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+
+          <strong style="color:var(--bright);">Root Cause (confirmed by log analysis, 3 independent BE-ALL cycles):</strong><br>
+          <code>MoveStopToBreakEven</code> Step B calls <code>acc.Cancel(stale)</code> on every Working/Accepted/Submitted/Initialized/TriggerPending order
+          that does <em>not</em> start with <code>"PTT-BE-"</code>. On a follower account the ATM stops are named
+          <code>Stop1</code>, <code>Stop2</code>, <code>Stop3</code> — these pass the <code>notBe</code> guard and are cancelled.
+          NT8 then OCO-cancels the paired targets (<code>Target1/2/3</code>) as a consequence of the stop cancellation.
+          Step C then attempts to submit new <code>PTT-BE-*</code> OCO pairs, which NT8 immediately sweeps because an active
+          ATM strategy is present on the account.<br><br>
+
+          <strong style="color:var(--bright);">Log Evidence (3 cycles, consistent):</strong><br>
+          &bull; Cycle 1: <code>[BE] MoveStopToBreakEven: Sim102 cancel=3 targets=3 newStop=7668.50</code><br>
+          &bull; Cycle 2: <code>[BE] MoveStopToBreakEven: Sim102 cancel=3 targets=3 newStop=7668.75</code><br>
+          &bull; Cycle 3: <code>[BE] MoveStopToBreakEven: Sim102 cancel=5 targets=3 newStop=7668.50</code><br>
+          &bull; <strong style="color:var(--green);">targets=3 always found at Step A</strong> &mdash; snapshot is correct and complete every time<br>
+          &bull; <strong style="color:var(--red);">T+500ms: <code>Stop1/Stop2/Stop3 AND Target1/2/3 all Cancelled</code></strong><br>
+          &bull; Immediately after Step B: <code>[BE-DIAG-CANCEL] Sim102 PTT-BE order cancelled: PTT-BE-Stop-1 → TryReplace attempt 1/3</code><br>
+          (The PTT-BE-* orders placed by Step C are swept by NT8 before they go Working.)<br><br>
+
+          <strong style="color:var(--bright);">Key Insight &mdash; Why cancel+replace is architecturally wrong for followers:</strong><br>
+          The leader uses a <em>different</em> bracket type (AddOn-submitted <code>PTT-BE-*</code> OCO pairs via <code>CreateOrder/Submit</code>).
+          The followers use <em>ATM-owned</em> stops (<code>Stop1/Stop2/Stop3</code>) that are part of an active ATM strategy.
+          Cancelling ATM-owned stops triggers OCO cancellation of the paired targets. NT8 then treats the new
+          <code>PTT-BE-*</code> stops submitted in Step C as foreign orders on an ATM-managed position and sweeps them.<br><br>
+
+          <strong style="color:var(--bright);">Correct Fix — <code>acc.Change()</code> in-place:</strong><br>
+          NT8 <code>account.Change(orders[])</code> modifies the stop price of existing Working orders <em>without cancellation</em>.
+          The ATM strategy treats the change as a normal stop price update and the targets are never touched.<br>
+          Confirmed by T1 analysis (GAP-001d, B25 spec): <code>acc.Change()</code> does NOT kill the ATM trail or OCO link.<br><br>
+
+          <strong style="color:var(--bright);">What gets eliminated:</strong><br>
+          &bull; Step B cancel block (for followers) &rarr; replaced with <code>acc.Change(stops)</code><br>
+          &bull; Step C OCO creation loop (for followers) &rarr; <strong>goes away entirely</strong> (targets stay as-is)<br>
+          &bull; <code>TryReplacePttBeBrackets</code> / <code>TryFireFollowerBeRetry</code> / <code>QueueBeRetryFallback</code>
+          retry subsystem <strong>becomes unnecessary</strong> for the normal BE-ALL path (followers never cancel stops, so no
+          PTT-BE-Stop-* cancel events fire, so the entire retry path is never triggered)<br><br>
+
+          <strong style="color:var(--bright);">DW-B83 relationship:</strong><br>
+          DW-B83-01 (stale bracket accumulation) and DW-B83-02 (cancel-storm counter exhaustion) both become
+          moot for the normal BE-ALL path if acc.Change() is adopted — no new brackets are submitted, so nothing
+          accumulates and the attempt counter is never incremented.<br><br>
+
+          <strong style="color:var(--amber);">Dependency confirmed:</strong>
+          Stop1/Stop2/Stop3 are in state <code>Working</code> at the moment BE-ALL fires (confirmed by cancel=3 in the log —
+          they are being found and cancelled, proving they are in a cancellable = Working state).
+          <code>acc.Change()</code> requires <code>Working</code> state. Gate confirmed &check;<br>
+        </div>
+        <div>
+          <span class="pill pill-red">&#9679; OPEN</span>
+          <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P0</span>
+          <span class="pill" style="background:rgba(245,158,11,0.12);color:var(--amber);">POC DIRECT REPAIR AUTHORIZED</span>
+        </div>
+      </div>
+
+      <!-- DW-B84-01 POC PLAN ──────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--amber); background:var(--amber-lo);">
+        <div class="card-title" style="color:var(--amber);">DW-B84-01 &mdash; Direct Repair POC Plan (Director Approval Required Before src Edit)</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+
+          <strong style="color:var(--bright);">Protocol:</strong>
+          Direct repair &rarr; SIM gate &rarr; if GREEN &rarr; full pipeline to productionize with tests and spec update.<br>
+          Skip the pipeline until the fix is confirmed working in SIM. The evidence is airtight; the change is surgical.<br><br>
+
+          <strong style="color:var(--bright);">Scope (minimal &mdash; followers only, inside <code>MoveStopToBreakEven</code>):</strong><br>
+          Replace the existing Step B cancel + Step C submit block with an <code>acc.Change()</code> call
+          <strong>only when <code>IsFollowerAccount(acc)</code> is true</strong>.
+          The leader retains the existing cancel+replace logic because the leader's bracket type is AddOn-submitted <code>PTT-BE-*</code>
+          (not ATM-owned), so cancel+replace is correct for the leader.<br><br>
+
+          <strong style="color:var(--bright);">Exact change in plain terms (CopyEngine.cs, MoveStopToBreakEven):</strong><br>
+          After Step A snapshot (targets captured), check <code>IsFollowerAccount(acc)</code>.<br>
+          If <strong>follower</strong>: find Working stops by name (Stop1..Stop9 pattern), set <code>o.StopPriceChanged = newStop</code> on each, call <code>acc.Change(stops.ToArray())</code>. Log. Return. Done.<br>
+          If <strong>leader</strong>: run existing Step B + Step C logic unchanged.<br><br>
+
+          <strong style="color:var(--bright);">POC code (spec-only — not src until Director approves):</strong>
+          <pre style="background:var(--surface);padding:12px;border-radius:6px;font-size:11px;margin-top:8px;overflow-x:auto;"><code><span style="color:#8b949e;">// DW-B84-01 POC: for followers, move stops in-place via acc.Change() -- no cancel, no new orders</span>
+<span style="color:#ff7b72;">if</span> (IsFollowerAccount(acc))
+{
+    <span style="color:#ff7b72;">var</span> stops = <span style="color:#ff7b72;">new</span> List&lt;Order&gt;();
+    <span style="color:#ff7b72;">foreach</span> (Order o <span style="color:#ff7b72;">in</span> acc.Orders)
+    {
+        <span style="color:#ff7b72;">if</span> (o?.OrderState != OrderState.Working) <span style="color:#ff7b72;">continue</span>;
+        <span style="color:#ff7b72;">if</span> (o.Instrument?.FullName != instrument.FullName) <span style="color:#ff7b72;">continue</span>;
+        <span style="color:#8b949e;">// ATM stop names: Stop1..Stop9</span>
+        <span style="color:#ff7b72;">if</span> (o.Name != <span style="color:#ff7b72;">null</span>
+            &amp;&amp; o.Name.StartsWith(<span style="color:#a5d6ff;">"Stop"</span>, StringComparison.Ordinal)
+            &amp;&amp; o.Name.Length &gt; 4
+            &amp;&amp; char.IsDigit(o.Name[4])
+            &amp;&amp; o.Name.Length == 5)   <span style="color:#8b949e;">// exactly "StopN" -- not "StopLimit" etc.</span>
+        {
+            o.StopPriceChanged = newStop;
+            stops.Add(o);
+        }
+    }
+    <span style="color:#ff7b72;">if</span> (stops.Count &gt; 0)
+    {
+        acc.Change(stops.ToArray());
+        NinjaTrader.Code.Output.Process(
+            <span style="color:#a5d6ff;">"[BE] DW-B84-01 acc.Change() "</span> + acc.Name
+                + <span style="color:#a5d6ff;">" stops="</span> + stops.Count + <span style="color:#a5d6ff;">" newStop="</span> + newStop.ToString(<span style="color:#a5d6ff;">"F2"</span>),
+            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+    }
+    StatusUpdate?.Invoke(acc.Name + <span style="color:#a5d6ff;">": BE stop @ "</span> + newStop);
+    <span style="color:#ff7b72;">return</span>;   <span style="color:#8b949e;">// skip Step B cancel + Step C submit entirely</span>
+}</code></pre>
+
+          <strong style="color:var(--bright);">Name guard detail — why <code>o.Name.Length == 5</code>:</strong><br>
+          ATM stop names are <code>Stop1</code>, <code>Stop2</code>, <code>Stop3</code> (5 chars exactly).
+          <code>StopLimit</code> (9 chars) and other order names starting with "Stop" are excluded.
+          Alternatively: <code>char.IsDigit(o.Name[4]) &amp;&amp; o.Name.Length == 5</code> is equivalent to checking exactly <code>StopN</code>.<br><br>
+
+          <strong style="color:var(--bright);">SIM Gate criteria (must ALL pass before pipeline is opened):</strong><br>
+          &bull; Cycle 1 BE-ALL: Sim102/103/104 log shows <code>[BE] DW-B84-01 acc.Change() Sim102 stops=3 newStop=X</code><br>
+          &bull; Targets (Target1/2/3) remain <code>Working</code> after BE-ALL fires (not Cancelled)<br>
+          &bull; Stop price on Sim102 account confirms update to <code>newStop</code> in NT8 order grid<br>
+          &bull; No <code>[BE-DIAG-CANCEL] PTT-BE order cancelled</code> log entries (because no new PTT-BE-* are submitted)<br>
+          &bull; No <code>TryReplacePttBeBrackets attempt 1/3</code> entries (because no PTT-BE-Stop-* cancel events)<br>
+          &bull; Position closes cleanly when stop is hit (Target fills → Stop OCO-cancelled by NT8 ATM)<br>
+          &bull; Repeat for 3 independent BE-ALL cycles without restart — no bracket accumulation<br><br>
+
+          <strong style="color:var(--bright);">What to check if SIM gate fails:</strong><br>
+          &bull; If <code>acc.Change()</code> is called but stop doesn't move: verify <code>o.StopPriceChanged</code> is being set before <code>acc.Change()</code> (not after)<br>
+          &bull; If stops=0 logged: ATM stop names may differ from <code>StopN</code> — add <code>[BE-DIAG]</code> dump to confirm names before the guard<br>
+          &bull; If NT8 throws on <code>acc.Change()</code>: wrap in try/catch same as Step B<br><br>
+
+          <strong style="color:var(--bright);">After SIM gate passes:</strong><br>
+          Open the full PTT pipeline on DW-B84-01:<br>
+          &bull; Ph1 ptt-architect &rarr; 02-architecture-plan.md (formalize leader vs follower split in MoveStopToBreakEven)<br>
+          &bull; Ph2 ptt-plan-reviewer &rarr; 02-plan-review.md (REVIEW_PASS gate)<br>
+          &bull; Ph3 ptt-architect &rarr; 04-tickets.md (2 tickets: T1 follower Change path, T2 leader path no-op + tests)<br>
+          &bull; Ph3.5 ptt-ticket-reviewer &rarr; 04-ticket-review.md (TICKET_REVIEW_PASS gate)<br>
+          &bull; Ph4a ptt-engineer &rarr; src edits + completion.md<br>
+          &bull; Ph4b ptt-verifier &rarr; verification.md (VERIFY_PASS gate)<br>
+          &bull; Ph5 ptt-plan-reviewer &rarr; 05-final-review.md + 06-deferred-backlog.md<br>
+          Also: evaluate whether DW-B83-01/02 + TryReplacePttBeBrackets subsystem can be fully removed.<br>
+        </div>
+        <div>
+          <span class="pill" style="background:rgba(245,158,11,0.12);color:var(--amber);">&#9888; AWAITING DIRECTOR APPROVAL FOR src EDIT</span>
+          <span class="pill" style="background:rgba(37,99,235,0.12);color:#60a5fa;">SIM GATE BEFORE PIPELINE</span>
+        </div>
+      </div>
+
+      <!-- DW-B84-01 DIAG LOG EXPECTED ─────────────────────────────────────── -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--dim); background:rgba(75,85,99,0.08);">
+        <div class="card-title" style="color:var(--mid);">DW-B84-01 &mdash; Expected NT8 Output After POC Fix (Sim102 example)</div>
+        <pre style="background:var(--surface);padding:12px;border-radius:6px;font-size:11px;overflow-x:auto;"><code><span style="color:#8b949e;">[BE] MoveStopToBreakEven: Sim102 buf=0t</span>
+<span style="color:#8b949e;">[BE-DIAG] Sim102 orders-for-instr=6</span>
+<span style="color:#22c55e;">[BE] DW-B84-01 acc.Change() Sim102 stops=3 newStop=7668.50</span>
+<span style="color:#8b949e;">  &lt;-- NO [BE] MoveStopToBreakEven: Sim102 cancel=3 targets=3 --&gt;</span>
+<span style="color:#8b949e;">  &lt;-- NO [BE-DIAG-CANCEL] PTT-BE order cancelled --&gt;</span>
+<span style="color:#8b949e;">  &lt;-- NO [BE-DIAG] TryReplacePttBeBrackets attempt 1/3 --&gt;</span>
+<span style="color:#8b949e;">  &lt;-- Target1/Target2/Target3 remain Working --&gt;</span></code></pre>
+        <div style="color:var(--mid);font-size:12px;">
+          The critical confirmation: <code>cancel=</code> line disappears entirely for followers.
+          The retry subsystem never triggers. All brackets remain intact.
+        </div>
+      </div>
+
+    </div>
+    <!-- ══ end section-b84 ══════════════════════════════════════════════════ -->
+
+
   </body>
 </html>
