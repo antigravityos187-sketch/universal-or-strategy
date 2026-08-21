@@ -25017,7 +25017,7 @@ Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be 
          Status: DW-B84-01 OPEN (P0) · POC-AUTHORIZED (Director approval pending)
     ══════════════════════════════════════════════════════════════════════════ -->
     <div id="section-b84" class="section-block" style="margin-top:2.5rem;">
-      <div class="section-label" style="color:var(--red);">&#9679; DW-B84 &nbsp;&#9670;&nbsp; PTT-COPIER-B84 &nbsp;&#9670;&nbsp; BE-ALL Follower acc.Change() Repair &nbsp;&#9670;&nbsp; <span class="pill pill-red">&#9679; DW-B84-01 OPEN (P0) &nbsp;&middot;&nbsp; POC DIRECT REPAIR AUTHORIZED</span></div>
+      <div class="section-label" style="color:var(--red);">&#9679; DW-B84 &nbsp;&#9670;&nbsp; PTT-COPIER-B84 &nbsp;&#9670;&nbsp; BE-ALL Follower acc.Change() Repair &nbsp;&#9670;&nbsp; <span class="pill pill-red">&#9679; DW-B84-01 OPEN (P0) &nbsp;&middot;&nbsp; v2 DEPLOYED &nbsp;&middot;&nbsp; SIM GATE IN PROGRESS</span></div>
 
       <!-- DW-B84-01 ─────────────────────────────────────────────────────── -->
       <div class="card" style="margin-top:16px; border-left:3px solid var(--red); background:var(--red-lo);">
@@ -25067,12 +25067,24 @@ Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be 
           <strong style="color:var(--amber);">Dependency confirmed:</strong>
           Stop1/Stop2/Stop3 are in state <code>Working</code> at the moment BE-ALL fires (confirmed by cancel=3 in the log —
           they are being found and cancelled, proving they are in a cancellable = Working state).
-          <code>acc.Change()</code> requires <code>Working</code> state. Gate confirmed &check;<br>
+          <code>acc.Change()</code> requires <code>Working</code> state. Gate confirmed &check;<br><br>
+
+          <strong style="color:var(--bright);">v1 SIM result (commit 944da22a) &mdash; <span style="color:var(--red);">stops=0</span>:</strong><br>
+          <code>BreakEven()</code> ran leader first. Leader Step B <code>acc.Cancel()</code> triggered NT8 ATM cascade putting
+          follower <code>Stop1/Stop2/Stop3</code> into <code>CancelSubmitted</code> state before the follower path iterated them.
+          <code>Working</code>-only guard rejected them &rarr; <code>stops=0</code> &rarr; fell through to Step B &rarr; same failure.<br><br>
+
+          <strong style="color:var(--bright);">v2 fix (commit 14e93055) &mdash; two changes:</strong><br>
+          1. <strong>Swap execution order</strong> in <code>BreakEven(Account, Instrument, int)</code>: run all followers first
+          (<code>acc.Change()</code> while stops still <code>Working</code>), then run leader cancel+replace.<br>
+          2. <strong>Widen state guard</strong>: <code>Working || ChangeSubmitted</code> (belt-and-suspenders;
+          <code>CancelSubmitted</code> excluded &mdash; NT8 rejects <code>acc.Change()</code> on cancelling orders).<br>
+          3. <strong>Diagnostic dump</strong>: <code>[BE-DIAG-F]</code> logs all instr orders with name+state+type if <code>stops=0</code>.<br>
         </div>
         <div>
           <span class="pill pill-red">&#9679; OPEN</span>
           <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P0</span>
-          <span class="pill" style="background:rgba(245,158,11,0.12);color:var(--amber);">POC DIRECT REPAIR AUTHORIZED</span>
+          <span class="pill" style="background:rgba(245,158,11,0.12);color:var(--amber);">v2 DEPLOYED &nbsp;&middot;&nbsp; commit 14e93055</span>
         </div>
       </div>
 
