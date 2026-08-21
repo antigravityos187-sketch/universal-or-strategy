@@ -1744,9 +1744,10 @@ namespace PropTraderTools
         // then re-fires SendCopy or SendCopyWithAtm at the same LimitPrice.
         // Named mode (Clone ATM): uses SendCopyWithAtm so re-placed order arms native ATM brackets.
         // All other modes: uses SendCopy ("PTT-Copy" bare Limit).
-        // CYC=7: (1) !_isCopyEnabled guard, (2) foreach rules, (3) follower match loop,
-        //        (4) follower found check, (5) hasOpenPosition check, (6) Named-mode branch,
-        //        (7) SendCopyWithAtm vs SendCopy.
+        // CYC=8: (1) !_isCopyEnabled guard, (2) foreach rules, (3) follower match loop,
+        //        (4) follower found check, (5) leader hasOpenPosition check,
+        //        (5b) follower hasOpenPosition guard (DW-B84-02: blocks NT8-internal ATM-arming cancel loop),
+        //        (6) HasWorkingPttCopy check, (7) Named-mode branch.
         // JS-021: no lock. JS-001: no throw. JS-002: no return null (void).
         private void ReplaceFollowerCopyOnAtmCancel(Order cancelledOrder)
         {
@@ -1771,8 +1772,9 @@ namespace PropTraderTools
             var leader = matchedRule.Value.MasterAccount;
             if (leader == null) return;
             if (!HasOpenPosition(leader, cancelledOrder.Instrument)) return;     // (5) leader flat = normal close cancel, skip
+            if (HasOpenPosition(cancelledOrder.Account, cancelledOrder.Instrument)) return; // (5b) DW-B84-02: follower already has position = NT8-internal ATM-arming cancel, not a sweep; skip re-place to prevent infinite loop
             if (HasWorkingPttCopy(cancelledOrder.Account, cancelledOrder.Instrument)) return; // (6) drag-cancel: replacement already in flight
-            // Leader has open position and no replacement in flight -- this is an ATM-sweep cancel, re-place the entry.
+            // Leader has open position, follower has NO position, no replacement in flight -- genuine ATM-sweep cancel, re-place the entry.
             int qty  = (int)cancelledOrder.Quantity;  // original qty already includes multiplier
             var signal = CopySignal.Create(
                 cancelledOrder.OrderAction,
