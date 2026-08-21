@@ -2358,3 +2358,1206 @@ using NinjaTrader.Gui.Chart;   // ChartTrader lives here
 // AtmStrategySelector lives at NinjaTrader.Gui.NinjaScript.AtmStrategy (assembly=NinjaTrader.Gui)
 // AtmStrategy (the strategy object) lives at NinjaTrader.NinjaScript.AtmStrategy
 ```
+
+
+---
+
+## Account.Change()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/change
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Changes specified **Order** object(s).
+
+## Syntax
+
+`Change(IEnumerable<`order`> orders)`
+
+## Parameters
+
+{% table %}
+
+---
+
+* orders
+* Order(s) to change
+
+---
+
+{% /table %}
+
+## Examples
+
+```csharp
+// Example code
+Order stopOrder;
+stopOrder.StopPriceChanged = stopOrder.StopPrice - 4 * stopOrder.Instrument.MasterInstrument.TickSize;
+
+private void OnExecutionUpdate(object sender, ExecutionEventArgs e)
+{
+    // Change the stop order if an execution results in a long position
+    if(e.MarketPosition == MarketPosition.Long)
+        myAccount.Change(new[] { stopOrder });
+}
+```
+
+---
+
+## Account.Cancel()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/cancel
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Cancels specified **Order** object(s).
+
+## Syntax
+
+`Cancel(IEnumerable<`order`> orders)`
+
+## Parameters
+
+{% table %}
+
+---
+* orders
+* Order(s) to cancel
+---
+
+{% /table %}
+
+## Examples
+
+```csharp
+private Account myAccount;
+Order stopOrder = null;
+
+protected override void OnStateChange()
+{
+    if (State == State.SetDefaults)
+    {
+        // Initialize myAccount
+    }
+}
+
+private void OnExecutionUpdate(object sender, ExecutionEventArgs e)
+{
+    // Cancel the stop order if an execution results in a long position
+    if(e.MarketPosition == MarketPosition.Long)
+        myAccount.Cancel(new[] { stopOrder });
+}
+```
+
+---
+
+## OrderUpdate Event (AddOn)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/orderupdate
+> **Scraped**: 2026-08-20
+
+## Definition
+
+**OrderUpdate** can be used for subscribing to order update events.
+
+## Syntax
+
+`OrderUpdate`
+
+## Examples
+
+```csharp
+/* Example of subscribing/unsubscribing to order update events from an Add On. The concept
+   can be carried over to any NinjaScript object you may be working on. */
+public class MyAddOnTab : NTTabPage
+{
+    private Account account;
+    private Order myEntryOrder;
+    private Order profitTarget;
+    private Order stopLoss;
+
+    public MyAddOnTab()
+    {
+        // Find our Sim101 account
+        lock (Account.All)
+            account = Account.All.FirstOrDefault(a => a.Name == "Sim101");
+
+        if (account != null)
+        {
+            account.OrderUpdate += OnOrderUpdate;
+        }
+    }
+
+    private void OnOrderUpdate(object sender, OrderEventArgs e)
+    {
+        // Handle the order update event
+        Order order = e.Order;
+        // e.g., track fill state, update UI, etc.
+    }
+
+    // Unsubscribe on cleanup
+    public override void Cleanup()
+    {
+        if (account != null)
+            account.OrderUpdate -= OnOrderUpdate;
+    }
+}
+```
+
+---
+
+## GetAtmStrategyStopTargetOrderStatus()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/getatmstrategystoptargetorderstatus
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Gets the current order state(s) of the specified stop or target order of a still-active ATM strategy.
+
+## Method Return Value
+
+A `string[,]` multi-dimensional array holding three dimensions that represent average fill price, filled amount and **order state**. The length (number of elements) represents the number of orders that represent the specified name.
+
+## Syntax
+
+`GetAtmStrategyStopTargetOrderStatus(string orderName, string atmStrategyId)`
+
+## Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| **orderName** | The order name such as "Stop1", "Target1", "Target2", etc. |
+| **atmStrategyId** | The unique identifier for the ATM strategy |
+
+## Return Array Structure
+
+`string[orderIndex, dimension]` where:
+- dimension 0 = average fill price (as string)
+- dimension 1 = filled quantity (as string)
+- dimension 2 = order state (as string, e.g. "Working", "Filled", "Cancelled")
+
+## Examples
+
+```csharp
+protected override void OnBarUpdate()
+{
+    string[,] orders = GetAtmStrategyStopTargetOrderStatus("Stop1", atmStrategyId);
+    if (orders.GetLength(0) > 0)
+    {
+        // orders[0, 2] contains the state of the first stop order
+        if (orders[0, 2] == "Filled")
+            Print("Stop order was filled at " + orders[0, 0]);
+    }
+}
+```
+
+---
+
+## GetAtmStrategyPositionAveragePrice()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/getatmstrategypositionaverageprice
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Gets the current position's average price of the specified ATM Strategy.
+
+{% callout type="note" %}
+
+Changes to positions will not be reflected till at least the next **OnBarUpdate()** event after an order fill.
+
+{% /callout %}
+
+## Method Return Value
+
+A **double** value representing the average price.
+
+## Syntax
+
+`GetAtmStrategyPositionAveragePrice(string atmStrategyId)`
+
+## Parameters
+
+{% table %}
+
+---
+
+* **atmStrategyId**
+* The unique identifier for the ATM strategy
+
+---
+
+{% /table %}
+
+## Examples
+
+```csharp
+protected override void OnBarUpdate()
+{
+     // Check if flat
+     if (GetAtmStrategyMarketPosition("id") != MarketPosition.Flat)
+         Print("Average price is " + GetAtmStrategyPositionAveragePrice("id").ToString());
+}
+```
+
+---
+
+## GetAtmStrategyPositionQuantity()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/getatmstrategypositionquantity
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Gets the current position quantity of the specified ATM Strategy.
+
+{% callout type="note" %}
+
+Changes to positions will not be reflected till at least the next **OnBarUpdate()** event after an order fill.
+
+{% /callout %}
+
+## Method Return Value
+
+An **int** value representing the quantity.
+
+## Syntax
+
+`GetAtmStrategyPositionQuantity(string atmStrategyId)`
+
+## Parameters
+
+{% table %}
+
+---
+
+* **atmStrategyId**
+* The unique identifier for the ATM strategy
+
+---
+
+{% /table %}
+
+## Examples
+
+```csharp
+protected override void OnBarUpdate()
+{
+     // Check if flat
+     if (GetAtmStrategyMarketPosition("idValue") != MarketPosition.Flat)
+         Print("Position size is " + GetAtmStrategyPositionQuantity("idValue").ToString());
+}
+```
+
+---
+
+## GetAtmStrategyRealizedProfitLoss()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/getatmstrategyrealizedprofitloss
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Gets the realized profit and loss value of the specified ATM Strategy.
+
+## Method Return Value
+
+A **double** value representing the realized profit and loss.
+
+## Syntax
+
+`GetAtmStrategyRealizedProfitLoss(string atmStrategyId)`
+
+## Parameters
+
+{% table %}
+
+---
+
+* **atmStrategyId**
+* The unique identifier for the ATM strategy
+
+---
+
+{% /table %}
+
+## Examples
+
+```csharp
+protected override void OnBarUpdate()
+{
+     Print("PnL is " + GetAtmStrategyRealizedProfitLoss("id").ToString());
+}
+```
+
+---
+
+## GetAtmStrategyUnrealizedProfitLoss()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/getatmstrategyunrealizedprofitloss
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Gets the unrealized profit and loss value of the specified ATM Strategy.
+
+## Method Return Value
+
+A **double** value representing the unrealized profit and loss.
+
+## Syntax
+
+`GetAtmStrategyUnrealizedProfitLoss(string atmStrategyId)`
+
+## Parameters
+
+{% table %}
+
+---
+
+* **atmStrategyId**
+* The unique identifier for the ATM strategy
+
+---
+
+{% /table %}
+
+## Examples
+
+```csharp
+protected override void OnBarUpdate()
+{
+     Print("Unrealized PnL is " + GetAtmStrategyUnrealizedProfitLoss("id").ToString());
+}
+```
+
+---
+
+## GetAtmStrategyUniqueId()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/getatmstrategyuniqueid
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Generates a unique ATM Strategy ID value.
+
+## Method Return Value
+
+A **string** value representing a unique id value.
+
+## Syntax
+
+`GetAtmStrategyUniqueId()`
+
+## Parameters
+
+This method does not take any parameters.
+
+## Examples
+
+```csharp
+protected override void OnBarUpdate()
+{
+    string orderId = GetAtmStrategyUniqueId();
+}
+```
+
+---
+
+## Using ATM Strategies (Guide)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/using_atm_strategies
+> **Scraped**: 2026-08-20
+
+## There is a Clear Line
+
+There is a clear line between a NinjaScript Strategy and an ATM Strategy. The use model for creating an ATM Strategy within a NinjaScript Strategy is when you want to programmatically monitor and generate an entry signal and then manually manage the resulting open position via an ATM Strategy in one of NinjaTrader's order entry windows.
+
+**Important**: The methods `AtmStrategyCreate()`, `AtmStrategyClose()`, `GetAtmStrategyUniqueId()`, and the related `GetAtmStrategy*` query methods are available in **StrategyBase**-derived NinjaScript strategies only. They are **NOT** available on `AddOnBase`.
+
+## ATM Strategy Workflow
+
+1. Use `GetAtmStrategyUniqueId()` to generate a unique ID for the strategy.
+2. Use `GetAtmStrategyUniqueId()` again (or the same ID) for the entry order ID.
+3. Call `AtmStrategyCreate()` with the unique strategy ID — this submits the entry order.
+4. Poll `GetAtmStrategyMarketPosition()` to monitor position status.
+5. Query `GetAtmStrategyPositionAveragePrice()`, `GetAtmStrategyPositionQuantity()`, `GetAtmStrategyUnrealizedProfitLoss()`, etc. for live position data.
+6. Call `AtmStrategyClose()` to close the position and cancel all ATM orders when done.
+
+## Key Notes
+
+- Changes to positions are not reflected until at least the next `OnBarUpdate()` event after an order fill.
+- `GetAtmStrategyEntryOrderStatus()` returns entry order states before the ATM bracket activates.
+- `GetAtmStrategyStopTargetOrderStatus()` returns stop/target order states once the bracket is active.
+- A return value of `true` from `AtmStrategyClose()` only indicates the strategy was found, NOT that it is fully closed.
+
+---
+
+## Orders Collection (Account)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/orders
+> **Scraped**: 2026-08-20
+
+## Definition
+
+A collection of Order objects generated for the specified account
+
+## Property Value
+
+An **Collection** of Order objects
+
+{% callout type="note" %}
+
+Please keep in mind that orders placed when in **State.Historical** are not submitted live to an account.
+
+{% /callout %}
+
+## Syntax
+
+`<account>.Orders`
+
+## Examples
+
+```csharp
+private Account myAccount;
+
+protected override void OnStateChange()
+{
+ Ã‚Â  if (State == State.SetDefaults)
+ Ã‚Â  {
+ Ã‚Â  Ã‚Â  Ã‚Â  // Initialize myAccount
+ Ã‚Â  }
+}
+
+private void OnAccountItemUpdate(object sender, AccountItemEventArgs e)
+{
+ Ã‚Â  // Print the name and order action of each order processed on the account
+ Ã‚Â  foreach (Order order in myAccount.Orders)
+ Ã‚Â  {
+ Ã‚Â  Ã‚Â  Ã‚Â  Print(String.Format("Order placed: {0} - {1}", order.Name, order.OrderAction));
+ Ã‚Â  }
+}
+```
+
+---
+
+## Positions Collection (Account)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/positions
+> **Scraped**: 2026-08-20
+
+## Definition
+
+A collection of Position objects generated for the specified account
+
+## Property Value
+
+An **Collection** of Position objects
+
+## Syntax
+
+`Account.Positions`
+
+`<account>.Positions`
+
+## Examples
+
+```csharp
+private Account myAccount;
+
+protected override void OnStateChange()
+{
+    if (State == State.SetDefaults)
+    {
+        // Find our Sim101 account
+        lock (Account.All)
+            myAccount = Account.All.FirstOrDefault(a => a.Name == "Sim101");
+    }
+
+    if (State == State.DataLoaded)
+    {
+        lock (myAccount.Positions)
+        {
+            Print("Positions in State.DataLoaded:");
+
+            foreach (Position position in myAccount.Positions)
+            {
+                Print(String.Format("Position: {0} at {1}", position.MarketPosition, position.AveragePrice));
+            }
+        }
+    }
+}
+
+```
+
+---
+
+## Account.Flatten()
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/flatten
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Flattens the account on an instrument.
+
+## Syntax
+
+`Flatten(ICollection<instrument> instruments)`
+
+## Parameters
+
+{% table %}
+
+---
+
+* instruments
+* A collection of Instruments for orders to be cancelled and positions closed
+
+---
+
+{% /table %}
+
+## Examples
+
+### Flatten a single instrument
+
+```csharp
+Account.Flatten(new [] { Instrument.GetInstrument("ES 12-15") });
+```
+
+### Flatten a list of instruments
+
+```csharp
+// Please note that your 'Using declarations' section needs to have
+//
+// using System.Collections.ObjectModel;
+//
+//added in order for this example to compile correctly
+
+// instantiate a list of instruments
+Collection<cbi.instrument> instrumentsToClose = new Collection<instrument>();
+
+// add instruments to the collection
+instrumentsToClose.Add(Instrument.GetInstrument("AAPL"));
+instrumentsToClose.Add(Instrument.GetInstrument("MSFT"));
+
+// pass the instrument collection to the Flatten() method to be flattened
+Account.Flatten(instrumentsToClose);
+```
+
+---
+
+## Execution Class
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/execution
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Represents a read only interface that exposes information regarding an execution (filled order) resulting from an order and is passed as a parameter in the **OnExecutionUpdate()** method.
+
+## Methods and Properties
+
+| Property | Description |
+|----------|-------------|
+| Account | The **Account** the execution occurred |
+| BarsInProgress | An **int** value representing the **BarsArray** in which the execution occurred |
+| Commission | A **double** value representing the commission of an execution |
+| ExecutionId | A **string** value representing the exchange generated execution id |
+| Instrument | An **Instrument** value representing the instrument of an order |
+| MarketPosition | The position of the execution: `MarketPosition.Long` or `MarketPosition.Short` |
+| Name | A string representing the name of an order (provided by entry or exit signal name) |
+| Order | An **Order** value representing an order associated to the execution |
+| OrderId | A string representing the unique id of the order which was executed |
+| Position | An **int** value representing the current quantity of account position at time of execution |
+| PositionStrategy | An **int** value representing the current quantity of strategy position at time of execution |
+| Price | A **double** value representing the price of an execution |
+| Quantity | An **int** value representing quantity of an execution |
+| Rate | A **double** value representing the exchange rate for non-USD base products (1 if none applied) |
+| Slippage | A **double** value representing ticks between last trade price and execution price |
+| Time | A **DateTime** structure representing the time the execution occurred |
+| ToString() | A string representation of an execution |
+
+## Examples
+
+### Finding the executions of a particular Order object
+
+```csharp
+// Example #1
+private Order entryOrder = null;
+
+protected override void OnBarUpdate()
+{
+    if (entryOrder == null && Close[0] > Open[0])
+        EnterLong(1, "myEntry");
+}
+
+protected override void OnOrderUpdate(Order order, double limitPrice, double stopPrice,
+    int quantity, int filled, double averageFillPrice,
+    OrderState orderState, DateTime time, ErrorCode error, string comment)
+{
+    if (entryOrder == null && order.Name == "myEntry")
+        entryOrder = order;
+}
+
+protected override void OnExecutionUpdate(Execution execution, string executionId, double price,
+    int quantity, MarketPosition marketPosition, string orderId, DateTime time)
+{
+    if (execution.Order != null && execution.Order == entryOrder)
+        Print("Entry filled at: " + execution.Price);
+}
+```
+
+### Generic execution logic not specific to a particular Order object
+
+```csharp
+// Example #2
+protected override void OnExecutionUpdate(Execution execution, string executionId, double price,
+    int quantity, MarketPosition marketPosition, string orderId, DateTime time)
+{
+    // Remember to check the underlying Order object for null before trying to access its properties
+    if (execution.Order != null && execution.Order.OrderState == OrderState.Filled)
+        Print(execution.ToString());
+}
+```
+
+---
+
+## ExecutionUpdate Event (AddOn)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/executionupdate
+> **Scraped**: 2026-08-20
+
+## Definition
+
+**ExecutionUpdate** is used for subscribing to execution update events.
+
+## Syntax
+
+`ExecutionUpdate`
+
+## Examples
+
+```csharp
+/* Example of subscribing/unsubscribing to execution update events from an Add On. The concept
+   can be carried over to any NinjaScript object you may be working on. */
+public class MyAddOnTab : NTTabPage
+{
+    private Account account;
+
+    public MyAddOnTab()
+    {
+        // Find our Sim101 account
+        lock (Account.All)
+            account = Account.All.FirstOrDefault(a => a.Name == "Sim101");
+
+        if (account != null)
+        {
+            account.ExecutionUpdate += OnExecutionUpdate;
+        }
+    }
+
+    private void OnExecutionUpdate(object sender, ExecutionEventArgs e)
+    {
+        Execution execution = e.Execution;
+        // Handle execution — e.g. update a fill log, refresh UI
+        Print(String.Format("Execution: {0} @ {1} x {2}",
+            execution.Name, execution.Price, execution.Quantity));
+    }
+
+    public override void Cleanup()
+    {
+        if (account != null)
+            account.ExecutionUpdate -= OnExecutionUpdate;
+    }
+}
+```
+
+---
+
+## Strategies Collection (Account)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/strategies
+> **Scraped**: 2026-08-20
+
+## Definition
+
+A collection of **StrategyBase** objects generated for the specified account
+
+## Property Value
+
+An [Collection](https://msdn.microsoft.com/en-us/library/ms132397(v=vs.110).aspx) of **StrategyBase** objects
+
+## Syntax
+
+`<account>.Strategies`
+
+## Examples
+
+```csharp
+private Account myAccount;
+
+protected override void OnStateChange()
+{
+    if (State == State.SetDefaults)
+    {
+        // Initialize myAccount
+    }
+}
+
+private void OnAccountStatusUpdate(object sender, AccountStatusEventArgs e)
+{
+    foreach (StrategyBase strategy in myAccount.Strategies)
+    {
+        Print(String.Format("Account status updated. {0} strategy applied with position {1}", strategy.Name, strategy.Position));
+    }
+}
+```
+
+
+---
+
+## AtmStrategyClose() [completeness re-scrape]
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/atmstrategyclose
+> **Scraped**: 2026-08-20
+
+## Definition
+
+Cancels any working orders and closes any open position of a strategy using the default [ATM strategy close behavior](https://ninjatrader.com/support/helpGuides/nt8/NT%20HelpGuide%20English.html?closing_a_position_or_atm_stra.htm).
+
+## Method Return Value
+
+Returns true if the specified ATM strategy was found; otherwise false.
+
+{% callout type="note" %}
+
+A method return value of true in NO WAY indicates that the strategy in fact is closed. It indicates that the the specified ATM strategy was found and the internal close routine was triggered.
+{% /callout %}
+
+## Syntax
+
+`AtmStrategyClose(string atmStrategyId)`
+
+## Parameters
+
+{% table %}
+
+---
+
+* atmStrategyId
+* The unique identifier for the ATM strategy
+
+---
+
+{% /table %}
+
+## Examples
+
+```csharp
+protected override void OnBarUpdate()
+{
+     // Check for valid condition and create an ATM Strategy
+     if (GetAtmStrategyUnrealizedProfitLoss("idValue") > 500)
+         AtmStrategyClose("idValue");
+}
+```
+
+---
+
+## NTTabPage Class
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/nttabpage
+> **Scraped**: 2026-08-20
+
+## Definition
+
+`NTTabPage` is the base class for creating custom tab pages within NinjaTrader AddOn windows. It provides the framework for embedding WPF content inside NinjaTrader's tabbed UI infrastructure.
+
+## Key Interfaces
+
+- `IInstrumentProvider` — implement to receive instrument selection changes from the window toolbar
+- `IIntervalProvider` — implement to receive bar interval changes from the window toolbar
+
+## Lifecycle Methods to Override
+
+| Method | Description |
+|--------|-------------|
+| `OnRestoreValues()` | Called when tab page is being restored; restore saved state here |
+| `Cleanup()` | Called when the tab page is being closed; unsubscribe events here |
+
+## Examples
+
+```csharp
+public class MyWindowTabPage : NTTabPage, NinjaTrader.Gui.Tools.IInstrumentProvider, IIntervalProvider
+{
+    private Instrument instrument;
+
+    public MyWindowTabPage()
+    {
+        /* Define the content for our NTTabPage. We can load loose XAML to define controls
+           and layouts if we so choose here as well.
+
+           Note: XAML with event handlers defined inside WILL FAIL when attempted to load.
+           Note: XAML with x:Class attributes WILL FAIL when attempted to load.
+           Only use XAML for layout/control structure, handle events in code-behind. */
+
+        Button myButton = new Button { Content = "Click Me" };
+        myButton.Click += OnButtonClick;
+        Content = myButton;
+    }
+
+    private void OnButtonClick(object sender, RoutedEventArgs e)
+    {
+        // Handle button click
+    }
+
+    // IInstrumentProvider implementation
+    public Instrument Instrument
+    {
+        get { return instrument; }
+        set
+        {
+            instrument = value;
+            // React to instrument change
+        }
+    }
+
+    public override void Cleanup()
+    {
+        // Unsubscribe from any events here to prevent memory leaks
+    }
+
+    protected override string TabHeader { get { return "My Tab"; } }
+}
+```
+
+---
+
+## Using OnOrderUpdate and OnExecution (Guide)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/using_onorderupdate_and_onexec
+> **Scraped**: 2026-08-20
+
+## Key Concepts in This Example
+
+- Submitting live-until-cancelled entry orders
+- Modifying stop-loss order to breakeven after a certain amount in profit
+
+## Important Related Documentation
+
+- [Order](https://developer.ninjatrader.com/docs/desktop/order)
+- [Execution](https://developer.ninjatrader.com/docs/desktop/execution)
+- [OnOrderUpdate()](https://developer.ninjatrader.com/docs/desktop/onorderupdate)
+- [OnExecutionUpdate()](https://developer.ninjatrader.com/docs/desktop/onexecutionupdate)
+- [SetStopLoss()](https://developer.ninjatrader.com/docs/desktop/setstoploss)
+- [SetProfitTarget()](https://developer.ninjatrader.com/docs/desktop/setprofittarget)
+
+## Import Instructions
+
+1. Download the file contained in this Help Guide topic to your PC desktop
+2. From the Control Center window, select the menu Tools > Import > NinjaScript
+3. Select the downloaded file
+
+[SampleOnOrderUpdate_NT8.zip](https://ninjatrader.com/support/helpGuides/nt8/samples/SampleOnOrderUpdate_NT8.zip)
+
+## OnOrderUpdate() Signature
+
+```csharp
+protected override void OnOrderUpdate(Order order, double limitPrice, double stopPrice,
+    int quantity, int filled, double averageFillPrice,
+    OrderState orderState, DateTime time, ErrorCode error, string comment)
+```
+
+## OnExecutionUpdate() Signature
+
+```csharp
+protected override void OnExecutionUpdate(Execution execution, string executionId, double price,
+    int quantity, MarketPosition marketPosition, string orderId, DateTime time)
+```
+
+## Breakeven Stop Pattern
+
+```csharp
+private Order entryOrder  = null;
+private Order stopOrder   = null;
+
+protected override void OnBarUpdate()
+{
+    // Entry signal
+    if (entryOrder == null && Close[0] > SMA(20)[0])
+        entryOrder = EnterLong(1, "LongEntry");
+}
+
+protected override void OnOrderUpdate(Order order, double limitPrice, double stopPrice,
+    int quantity, int filled, double averageFillPrice,
+    OrderState orderState, DateTime time, ErrorCode error, string comment)
+{
+    // Assign stop order reference once it appears
+    if (order.Name == "Stop loss" && stopOrder == null)
+        stopOrder = order;
+}
+
+protected override void OnExecutionUpdate(Execution execution, string executionId, double price,
+    int quantity, MarketPosition marketPosition, string orderId, DateTime time)
+{
+    // Move stop to breakeven when 4 ticks in profit
+    if (stopOrder != null && Position.MarketPosition == MarketPosition.Long
+        && stopOrder.StopPrice < Position.AveragePrice
+        && Close[0] >= Position.AveragePrice + 4 * TickSize)
+    {
+        MoveStopToBreakEven();
+    }
+}
+```
+
+---
+
+## OnOrderUpdate() (Strategy Method)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/onorderupdate
+> **Scraped**: 2026-08-20
+
+## Definition
+
+An event driven method which is called each time an order managed by a strategy changes state. An order will change state when a change in order quantity, price or state (working to filled) occurs. You can use this method to program your own **order rejection handling**.
+
+## Method Return Value
+
+This method does not return a value.
+
+## Syntax
+
+```csharp
+protected override void OnOrderUpdate(Order order, double limitPrice, double stopPrice,
+    int quantity, int filled, double averageFillPrice,
+    OrderState orderState, DateTime time, ErrorCode error, string comment)
+```
+
+## Method Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| order | Order | An **Order** object passed by reference representing the order |
+| limitPrice | double | The limit price of the order update |
+| stopPrice | double | The stop price of the order update |
+| quantity | int | The quantity of the order update |
+| filled | int | The filled amount of the order update |
+| averageFillPrice | double | The average fill price of the order update |
+| orderState | OrderState | The state of the order (see table below) |
+| time | DateTime | The last time the order changed state |
+| error | ErrorCode | Error received from broker (`ErrorCode.NoError`, `ErrorCode.OrderRejected`, etc.) |
+| comment | string | Error message provided directly from the broker |
+
+## OrderState Values
+
+| OrderState | Description |
+|------------|-------------|
+| OrderState.Initialized | Order is initialized in NinjaTrader |
+| OrderState.Submitted | Order is submitted to the broker |
+| OrderState.Accepted | Order is accepted by the broker or exchange |
+| OrderState.TriggerPending | Order is pending submission |
+| OrderState.Working | Order is working in the exchange queue |
+| OrderState.ChangePending | Order change is pending in NinjaTrader |
+| OrderState.ChangeSubmitted | Order change is submitted to the broker |
+| OrderState.CancelPending | Order cancellation is pending in NinjaTrader |
+| OrderState.CancelSubmitted | Order cancellation is submitted to the broker |
+| OrderState.Cancelled | Order cancellation confirmed by broker |
+| OrderState.Rejected | Order is rejected |
+| OrderState.PartFilled | Order is partially filled |
+| OrderState.Filled | Order is completely filled |
+| OrderState.Unknown | Unknown order state (default if broker does not report) |
+
+## ErrorCode Values
+
+`ErrorCode.LoginExpired`, `ErrorCode.LogOnFailed`, `ErrorCode.NoError`, `ErrorCode.OrderRejected`, `ErrorCode.OrderRejectedByRisk`, `ErrorCode.Panic`, `ErrorCode.UnableToCancelOrder`, `ErrorCode.UnableToChangeOrder`, `ErrorCode.UnableToSubmitOrder`, `ErrorCode.UserAbort`
+
+## Examples
+
+### Understanding the order object parameter vs. updating value parameters
+
+```csharp
+protected override void OnOrderUpdate(Order order, double limitPrice, double stopPrice,
+    int quantity, int filled, double averageFillPrice,
+    OrderState orderState, DateTime time, ErrorCode error, string comment)
+{
+    Print(String.Format("Order: {0} State: {1} Filled: {2} AvgFill: {3}",
+        order.Name, orderState, filled, averageFillPrice));
+
+    // Handle rejections
+    if (orderState == OrderState.Rejected)
+        Print("Order rejected: " + comment);
+}
+```
+
+### Properly assigning order object values
+
+```csharp
+private Order entryOrder = null;
+
+protected override void OnBarUpdate()
+{
+    if (entryOrder == null && Close[0] > Open[0])
+        entryOrder = EnterLong(1, "myEntry");
+}
+
+protected override void OnOrderUpdate(Order order, double limitPrice, double stopPrice,
+    int quantity, int filled, double averageFillPrice,
+    OrderState orderState, DateTime time, ErrorCode error, string comment)
+{
+    // Keep entryOrder reference updated even after fills
+    if (entryOrder != null && order.Name == "myEntry")
+    {
+        entryOrder = order;
+        if (orderState == OrderState.Filled || orderState == OrderState.Cancelled)
+            entryOrder = null;
+    }
+}
+```
+
+---
+
+## OnExecutionUpdate() (Strategy Method)
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/onexecutionupdate
+> **Scraped**: 2026-08-20
+
+## Definition
+
+An event driven method which is called on an incoming execution of an order managed by a strategy. An execution is another name for a fill of an order.
+
+- An order can generate multiple executions (partial fills)
+- **OnExecutionUpdate** is typically called after [**OnOrderUpdate()**](https://developer.ninjatrader.com/docs/desktop/onorderupdate)
+- Only orders which have been submitted and managed by the strategy will call **OnExecutionUpdate()**
+- Executions drive the strategy **Position** object, which is updated when this method is called
+
+## Method Return Value
+
+This method does not return a value.
+
+## Syntax
+
+```csharp
+protected override void OnExecutionUpdate(Execution execution, string executionId, double price,
+    int quantity, MarketPosition marketPosition, string orderId, DateTime time)
+```
+
+## Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| execution | Execution | An **Execution** object passed by reference representing the execution |
+| executionId | string | A string value representing the execution id |
+| price | double | A double value representing the execution price |
+| quantity | int | An int value representing the execution quantity |
+| marketPosition | MarketPosition | `MarketPosition.Long` or `MarketPosition.Short` |
+| orderId | string | A string representing the order id |
+| time | DateTime | A DateTime value representing the time of the execution |
+
+## Examples
+
+```csharp
+protected override void OnExecutionUpdate(Execution execution, string executionId, double price,
+    int quantity, MarketPosition marketPosition, string orderId, DateTime time)
+{
+    // Remember to check the underlying Order object for null before trying to access its properties
+    if (execution.Order != null && execution.Order.OrderState == OrderState.Filled)
+        Print(execution.ToString());
+}
+```
+
+---
+
+## Unmanaged Order Approach
+
+> **URL**: https://developer.ninjatrader.com/docs/desktop/unmanaged_approach
+> **Scraped**: 2026-08-20
+
+## Getting Started with Unmanaged Order Methods
+
+To be able to offer you the flexibility required to achieve more complex order submission techniques, NinjaTrader needs to be able to know if you are going to be using the Unmanaged approach beforehand.
+
+In the `OnStateChange()` method, designating the `IsUnmanaged` property as `true` signifies to NinjaTrader that you will be using the Unmanaged approach. Setting this will effectively prevent any of the signal tracking and internal order handling rules that were present in the Managed approach.
+
+```csharp
+protected override void OnStateChange()
+{
+    if (State == State.SetDefaults)
+    {
+        IsUnmanaged = true;
+    }
+}
+```
+
+**Note**: You will **not** be able to mix order methods from the two approaches. When setting `IsUnmanaged` to `true`, you can only use Unmanaged order methods in the strategy.
+
+## Order Submission
+
+Order submission with the Unmanaged approach is done solely from a single order method. Parameterizing the `SubmitOrderUnmanaged()` method differently will determine what kind of order you will be submitting. These orders are live-until-cancelled. To cancel them use `CancelOrder()` or wait till the orders expire due to the strategy's time-in-force setting.
+
+```csharp
+protected override void OnBarUpdate()
+{
+    // Entry condition
+    if (Close[0] > SMA(20)[0] && entryOrder == null)
+        entryOrder = SubmitOrderUnmanaged(0, OrderAction.Buy, OrderType.Limit, 1,
+            GetCurrentBid(), 0, "", "UnmanagedEntry");
+}
+```
+
+## Order Modification
+
+Unlike the Managed approach where you could modify a working order by calling the entry order method again with new parameters, the Unmanaged approach requires the `ChangeOrder()` method. You must hold onto the Order object for any active order.
+
+```csharp
+protected override void OnBarUpdate()
+{
+    // Raise stop loss to breakeven when you are at least 4 ticks in profit
+    if (stopOrder != null && stopOrder.StopPrice < Position.AveragePrice
+        && Close[0] >= Position.AveragePrice + 4 * TickSize)
+    {
+        ChangeOrder(stopOrder, stopOrder.Quantity, 0, Position.AveragePrice);
+    }
+}
+```
+
+## Order Cancellation
+
+```csharp
+protected override void OnBarUpdate()
+{
+    // Cancel entry order if price is moving away from our limit price
+    if (entryOrder != null && Close[0] < entryOrder.LimitPrice - 4 * TickSize)
+    {
+        CancelOrder(entryOrder);
+        // Reset to null inside OnOrderUpdate() when state reaches Cancelled
+    }
+}
+```
+
+## Signal Tracking
+
+Since the Unmanaged approach does not utilize NinjaScript's signal tracking, the following properties and their associated concepts **cannot** be used with Unmanaged order methods:
+
+- `EntriesPerDirection`
+- `EntryHandling`
+- `SetOrderQuantity`
+
+Methods utilizing signal names like `BarsSinceEntryExecution()` and `BarsSinceExitExecution()` can still be used.
+
+## Unmanaged Order Methods Reference
+
+| Method | Description |
+|--------|-------------|
+| `CancelOrder()` | Cancels a specified order |
+| `ChangeOrder()` | Amends a specified Order |
+| `IgnoreOverfill` | Defines behavior when an overfill is detected |
+| `IsUnmanaged` | Determines if the strategy will be using Unmanaged order methods |
+| `SubmitOrderUnmanaged()` | Generates an Unmanaged order |
+
+---
