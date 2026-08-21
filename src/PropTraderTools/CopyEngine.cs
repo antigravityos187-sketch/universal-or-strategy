@@ -2730,6 +2730,11 @@ namespace PropTraderTools
             // DW-B84-01 v2: BreakEven() now runs followers BEFORE leader so stops are still Working
             //   when this block executes. State guard also accepts ChangeSubmitted (belt-and-suspenders:
             //   acc.Change() on a ChangeSubmitted order is a no-op but does not throw).
+            // DW-B84-03: also accept Accepted state.
+            //   NT8_FULL_REFERENCE.md (line 1005): "In real-time, some stop orders may only reach
+            //   Accepted state if they are simulated/held on a broker's server." On SIM accounts ATM
+            //   stop orders can stay at Accepted indefinitely and never transition to Working.
+            //   acc.Change() is valid on Accepted orders -- broker has acknowledged the order.
             // JS-021: no lock. JS-001: no throw -- try/catch wraps acc.Change().
             // CYC: +1 branch (IsFollowerAccount guard) -- absorbed by follower early return.
             if (IsFollowerAccount(acc))
@@ -2737,9 +2742,11 @@ namespace PropTraderTools
                 var beSt = new List<Order>();
                 foreach (Order o in acc.Orders)
                 {
-                    // DW-B84-01 v2: accept Working (normal) and ChangeSubmitted (in-flight change).
+                    // DW-B84-03: accept Working (normal), Accepted (SIM broker-held stops), and
+                    //   ChangeSubmitted (in-flight change).
                     // CancelSubmitted NOT included -- acc.Change() on a cancelling order is rejected by NT8.
                     bool beStOk = o?.OrderState == OrderState.Working
+                               || o?.OrderState == OrderState.Accepted
                                || o?.OrderState == OrderState.ChangeSubmitted;
                     if (!beStOk) continue;
                     if (o.Instrument?.FullName != instrument.FullName) continue;
