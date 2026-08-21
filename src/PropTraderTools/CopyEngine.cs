@@ -3402,14 +3402,15 @@ namespace PropTraderTools
             var followers = new Account[dto.FollowerAccountNames.Length];
             for (int i = 0; i < dto.FollowerAccountNames.Length; i++)
             {
-                foreach (var acc in Account.All)
-                {
-                    if (acc.Name == dto.FollowerAccountNames[i])
-                    {
-                        followers[i] = acc;
-                        break;
-                    }
-                }
+                followers[i] = FindFollowerAccount(dto.FollowerAccountNames[i]);
+                // DW-B85 Option B: warn when follower account is not yet in Account.All at load time.
+                // Workaround: uncheck + re-check the follower in the panel after NT8 finishes connecting.
+                if (followers[i] == null)
+                    NinjaTrader.Code.Output.Process(
+                        "[PTT-COPY] WARNING: follower '" + dto.FollowerAccountNames[i]
+                            + "' not found in Account.All at load time"
+                            + " -- will be skipped until rule is re-applied (uncheck + re-check in panel).",
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
             }
 
             // B8 T1: null-safe multiplier read (B6/B7 XML has no FollowerMultipliers element)
@@ -3435,6 +3436,20 @@ namespace PropTraderTools
 
             return CopyRule.Create(dto.InstrumentName, master, followers, dto.IsEnabled, multipliers, atmMap,
                 tightenTicks);
+        }
+
+        // DW-B85: extracted from DtoToRule inner foreach to keep DtoToRule CYC at 7.
+        // Returns null (Account?) when account name is not found in Account.All.
+        // CYC=2: foreach(1) + if(1).
+        // JS-002 compliant: Account? return type makes nullability explicit end-to-end.
+        private static Account? FindFollowerAccount(string name)
+        {
+            foreach (var acc in Account.All)
+            {
+                if (acc.Name == name)
+                    return acc;
+            }
+            return null;
         }
 
         // -- B6: Public persistence API --------------------------------------
