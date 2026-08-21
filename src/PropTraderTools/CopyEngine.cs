@@ -2725,8 +2725,9 @@ namespace PropTraderTools
             // because the ATM strategy is still active. Fix: call acc.Change() to reprice the existing
             // ATM stops without cancellation. Targets survive untouched. The entire Step B+C block and
             // the TryReplacePttBeBrackets retry subsystem are never triggered on the follower path.
-            // Dependency confirmed: Stop1..Stop9 are Working when BE-ALL fires (cancel=3 in log proves
-            // they were found in cancellable = Working state). acc.Change() requires Working. Gate OK.
+            // DW-B84-01 v2: BreakEven() now runs followers BEFORE leader so stops are still Working
+            //   when this block executes. State guard also accepts ChangeSubmitted (belt-and-suspenders:
+            //   acc.Change() on a ChangeSubmitted order is a no-op but does not throw).
             // JS-021: no lock. JS-001: no throw -- try/catch wraps acc.Change().
             // CYC: +1 branch (IsFollowerAccount guard) -- absorbed by follower early return.
             if (IsFollowerAccount(acc))
@@ -2734,7 +2735,11 @@ namespace PropTraderTools
                 var beSt = new List<Order>();
                 foreach (Order o in acc.Orders)
                 {
-                    if (o?.OrderState != OrderState.Working) continue;
+                    // DW-B84-01 v2: accept Working (normal) and ChangeSubmitted (in-flight change).
+                    // CancelSubmitted NOT included -- acc.Change() on a cancelling order is rejected by NT8.
+                    bool beStOk = o?.OrderState == OrderState.Working
+                               || o?.OrderState == OrderState.ChangeSubmitted;
+                    if (!beStOk) continue;
                     if (o.Instrument?.FullName != instrument.FullName) continue;
                     // ATM stop names are exactly "StopN" (length 5): Stop1, Stop2, Stop3 etc.
                     // Length==5 guard excludes StopLimit, StopMarket, StopLoss and any other prefix.
@@ -2745,6 +2750,18 @@ namespace PropTraderTools
                     {
                         o.StopPriceChanged = newStop;
                         beSt.Add(o);
+                    }
+                }
+                // DW-B84-01 v2 DIAG: if stops=0 dump all instr orders with state+name to diagnose.
+                if (beSt.Count == 0)
+                {
+                    foreach (Order o in acc.Orders)
+                    {
+                        if (o?.Instrument?.FullName != instrument?.FullName) continue;
+                        NinjaTrader.Code.Output.Process(
+                            "[BE-DIAG-F] " + acc.Name + " order: name=" + o.Name
+                                + " state=" + o.OrderState + " type=" + o.OrderType,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                     }
                 }
                 if (beSt.Count > 0)
@@ -2938,7 +2955,12 @@ namespace PropTraderTools
         }
 
         // B24 T1 -- BreakEven(Account,Instrument,int): fires leader directly, no rule needed.
-        // CYC=4: null guard(1), MoveStop leader(no branch), foreach acc(2), acc==leader skip(3).
+        // DW-B84-01 FIX: followers run BEFORE leader.
+        //   Root cause of stops=0: leader Step B acc.Cancel() triggers NT8 ATM cascade that puts
+        //   follower Stop1/Stop2/Stop3 into CancelSubmitted before the follower path iterates them.
+        //   Fix: run all follower acc.Change() calls first (while stops are still Working),
+        //   then run leader cancel+replace. Order of operations is now: followers -> leader.
+        // CYC=4: null guard(1), foreach followers(2), acc==leader skip(3), MoveStop leader(4).
         // JS-021: no lock. JS-002: null leader fires StatusUpdate + early return.
         internal void BreakEven(Account leader, Instrument instrument, int bufferTicks)
         {
@@ -2947,12 +2969,12 @@ namespace PropTraderTools
                 StatusUpdate?.Invoke("PTT-BE: leader null -- BE skipped");
                 return;
             }
-            MoveStopToBreakEven(leader, instrument, bufferTicks);   // leader direct, no rule needed
-            foreach (var acc in AllAccounts(instrument))            // (2) follower fan-out
+            foreach (var acc in AllAccounts(instrument))            // (2) followers first -- DW-B84-01
             {
-                if (acc == leader) continue;                        // (3) skip duplicate
-                MoveStopToBreakEven(acc, instrument, bufferTicks);
+                if (acc == leader) continue;                        // (3) skip leader
+                MoveStopToBreakEven(acc, instrument, bufferTicks);  // acc.Change() while stops Working
             }
+            MoveStopToBreakEven(leader, instrument, bufferTicks);   // (4) leader last -- cancel+replace
         }
 
 
