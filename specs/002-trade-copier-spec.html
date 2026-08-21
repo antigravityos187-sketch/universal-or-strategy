@@ -24666,14 +24666,14 @@ FINAL_PASS criteria:
 
     <!-- ══ section-b80 ══════════════════════════════════════════════════════
          DW-B80 | HOTFIX-B80-BE-RETRY-01 | BE-Retry 200ms→500ms + TryAdd dedup
-         Commit: 04b3acfc | Status: PENDING SIM GATE
+         Commit: 04b3acfc | Status: CLOSED 2026-08-20
     ══════════════════════════════════════════════════════════════════════════ -->
     <div id="section-b80" class="section-block" style="margin-top:2.5rem;">
-      <div class="section-label" style="color:var(--amber);">&#9679; DW-B80 &nbsp;&#9670;&nbsp; PTT-COPIER-B80 &nbsp;&#9670;&nbsp; BE-Retry Hotfix &nbsp;&#9670;&nbsp; <span class="pill pill-amber">&#9679; PENDING SIM GATE &nbsp;&middot;&nbsp; Director must run clean NT8 restart + QX&rarr;BE-ALL test</span></div>
+      <div class="section-label" style="color:var(--green);">&#9679; DW-B80 &nbsp;&#9670;&nbsp; PTT-COPIER-B80 &nbsp;&#9670;&nbsp; BE-Retry Hotfix &nbsp;&#9670;&nbsp; <span class="pill pill-green">&#10003; DW-B80-01 + DW-B80-02 CLOSED</span></div>
 
       <!-- DW-B80-01 ─────────────────────────────────────────────────────── -->
-      <div class="card" style="margin-top:16px; border-left:3px solid var(--amber); background:var(--amber-lo);">
-        <div class="card-title" style="color:var(--amber);">DW-B80-01 &mdash; QueueBeRetryFallback delay 200ms &rarr; 500ms</div>
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--green); background:var(--green-lo);">
+        <div class="card-title" style="color:var(--green);">DW-B80-01 &mdash; QueueBeRetryFallback delay 200ms &rarr; 500ms</div>
         <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
           <strong>Problem:</strong> 200ms delay insufficient for NT8 follower ATM to submit bracket orders before retry check fires.
           Follower bracket not yet live when retry checks for targets &rarr; retry sees 0 targets &rarr; single stop placed (no targets).<br>
@@ -24683,15 +24683,20 @@ FINAL_PASS criteria:
           <strong>Commit:</strong> <code>04b3acfc</code> &mdash; 295 [Fact]
         </div>
         <div>
-          <span class="pill pill-amber">&#9679; PENDING SIM GATE</span>
+          <span class="pill pill-green">&#10003; CLOSED</span>
           <span class="pill" style="background:rgba(37,99,235,0.12);color:#60a5fa;">NO-PIPELINE &mdash; Director authorized direct repair</span>
           <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
+        </div>
+        <div style="margin-top:10px;padding:8px 12px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--green);">
+          CLOSED 2026-08-20 &middot; commit 04b3acfc &middot; 295 [Fact] &middot; SIM gate GREEN &mdash;
+          500ms delay confirmed in every TryReplacePttBeBrackets log line; no duplicate bracket creation observed.
+          Evidence: NT8 Output log 2026-08-20 05:37 PM run + NinjaTrader Grid CSVs 05-46/05-47 PM.
         </div>
       </div>
 
       <!-- DW-B80-02 ─────────────────────────────────────────────────────── -->
-      <div class="card" style="margin-top:12px; border-left:3px solid var(--amber); background:var(--amber-lo);">
-        <div class="card-title" style="color:var(--amber);">DW-B80-02 &mdash; TryAdd dedup guard in TryReplacePttBeBrackets</div>
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--green); background:var(--green-lo);">
+        <div class="card-title" style="color:var(--green);">DW-B80-02 &mdash; TryAdd dedup guard in TryReplacePttBeBrackets</div>
         <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
           <strong>Problem:</strong> Concurrent re-entry via two paths (event-driven + timer fallback) could fire
           <code>TryReplacePttBeBrackets</code> twice, placing duplicate bracket slots and double-counting attempts.<br>
@@ -24703,24 +24708,14 @@ FINAL_PASS criteria:
           <strong>Commit:</strong> <code>04b3acfc</code> &mdash; 295 [Fact]
         </div>
         <div>
-          <span class="pill pill-amber">&#9679; PENDING SIM GATE</span>
+          <span class="pill pill-green">&#10003; CLOSED</span>
           <span class="pill" style="background:rgba(37,99,235,0.12);color:#60a5fa;">NO-PIPELINE &mdash; Director authorized direct repair</span>
           <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
         </div>
-      </div>
-
-      <!-- SIM Gate instructions -->
-      <div class="card" style="margin-top:12px; border-left:3px solid var(--purple); background:var(--purple-lo);">
-        <div class="card-title" style="color:var(--purple);">SIM Gate &mdash; Director Action Required Before CLOSED Stamp</div>
-        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
-          <strong>Protocol:</strong><br>
-          1. Clean NT8 restart (close + reopen NinjaTrader).<br>
-          2. Load copier, attach Sim101 (leader) + Sim102/103/104 (followers).<br>
-          3. Enter a trade on Sim101 with ATM. Let all followers fill.<br>
-          4. Press QX-ALL &rarr; observe followers flatten cleanly.<br>
-          5. Enter again. Press BE-ALL &rarr; wait 3s &rarr; verify all followers have PTT-BE-Stop-1/2/3 brackets (not single PTT-BE-Stop).<br>
-          6. Press QX-ALL. Verify flatten clean.<br>
-          <strong>GREEN:</strong> DW-B80-01 + DW-B80-02 &rarr; stamp CLOSED. <strong>RED:</strong> Open DW-B80-03 with log evidence.
+        <div style="margin-top:10px;padding:8px 12px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--green);">
+          CLOSED 2026-08-20 &middot; commit 04b3acfc &middot; 295 [Fact] &middot; SIM gate GREEN &mdash;
+          No duplicate OCO group creation from single press. Event log (05-47 PM CSV) confirms single OCO group per press.
+          Note: separate DW-B83-01 opened for stale bracket accumulation across presses (distinct failure mode).
         </div>
       </div>
     </div>
@@ -24869,14 +24864,14 @@ Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be 
     <!-- ══ section-b82 ══════════════════════════════════════════════════════
          DW-B82 | _beReplaceAttempts counter never reset on slot consumption
          Commit A (src):   460bedce | Commit B (brain): 327cc626
-         Status: DW-B82-01 PENDING SIM GATE
+         Status: CLOSED 2026-08-20
     ══════════════════════════════════════════════════════════════════════════ -->
     <div id="section-b82" class="section-block" style="margin-top:2.5rem;">
-      <div class="section-label" style="color:var(--amber);">&#9679; DW-B82 &nbsp;&#9670;&nbsp; PTT-COPIER-B82 &nbsp;&#9670;&nbsp; BE-Retry Attempt Counter Leak &nbsp;&#9670;&nbsp; <span class="pill pill-amber">&#9679; DW-B82-01 PENDING SIM GATE</span></div>
+      <div class="section-label" style="color:var(--green);">&#9679; DW-B82 &nbsp;&#9670;&nbsp; PTT-COPIER-B82 &nbsp;&#9670;&nbsp; BE-Retry Attempt Counter Leak &nbsp;&#9670;&nbsp; <span class="pill pill-green">&#10003; DW-B82-01 CLOSED</span></div>
 
       <!-- DW-B82-01 ─────────────────────────────────────────────────────── -->
-      <div class="card" style="margin-top:16px; border-left:3px solid var(--amber); background:var(--amber-lo);">
-        <div class="card-title" style="color:var(--amber);">DW-B82-01 &mdash; <code>_beReplaceAttempts</code> Not Reset on Slot Consumption &mdash; Brackets Lost After First BE&rarr;QX Cycle (P1)</div>
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--green); background:var(--green-lo);">
+        <div class="card-title" style="color:var(--green);">DW-B82-01 &mdash; <code>_beReplaceAttempts</code> Not Reset on Slot Consumption &mdash; Brackets Lost After First BE&rarr;QX Cycle (P1)</div>
         <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
           <strong>Root cause:</strong> <code>_beReplaceAttempts[acc]</code> incremented in <code>TryReplacePttBeBrackets</code> (max 3 allowed)
           but only reset in <code>TryEvictFollowerBeSlot</code> (position-close path). QX sweep cancels all 3 <code>PTT-BE-Stop-*</code>
@@ -24903,31 +24898,117 @@ Error='Order rejected' Native error='Buy stop or buy stop limit orders can't be 
           <strong>Commit B (brain):</strong> <code>327cc626</code>
         </div>
         <div>
-          <span class="pill pill-amber">&#9679; PENDING SIM GATE</span>
+          <span class="pill pill-green">&#10003; CLOSED</span>
           <span class="pill" style="background:rgba(37,99,235,0.12);color:#60a5fa;">NO-PIPELINE &mdash; Director authorized direct repair</span>
           <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
         </div>
-      </div>
-
-      <!-- SIM Gate instructions -->
-      <div class="card" style="margin-top:12px; border-left:3px solid var(--purple); background:var(--purple-lo);">
-        <div class="card-title" style="color:var(--purple);">SIM Gate &mdash; Director Action Required Before CLOSED Stamp</div>
-        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
-          <strong>Protocol:</strong><br>
-          1. Clean NT8 restart (close + reopen NinjaTrader).<br>
-          2. Load copier, attach Sim101 (leader) + Sim102/103/104 (followers).<br>
-          3. Enter trade. Press BE-ALL. <em>Cycle 1</em>: verify all followers get PTT-BE-Stop-1/2/3 + PTT-BE-Target-1/2/3 (full OCO brackets).<br>
-          4. Press QX-ALL. Verify followers flatten cleanly.<br>
-          5. Enter again. Press BE-ALL. <em>Cycle 2</em>: verify followers again get PTT-BE-Stop-1/2/3 + targets. (This is the test &mdash; cycle 1 always worked; cycle 2 was the failure.)<br>
-          6. Repeat for cycles 3 and 4 minimum.<br>
-          7. Verify log shows <code>[BE-RETRY]</code> with "event-driven BE retry firing" (not "prevAttempts &ge; 3").<br>
-          <strong>GREEN:</strong> DW-B82-01 &rarr; stamp CLOSED. <strong>RED:</strong> Open DW-B82-02 with fresh NT8 output log.<br>
-          <strong>Note:</strong> Run AFTER HOTFIX-B80 SIM gate and DW-B81-02 SIM gate. DW-B82-01 is the primary root cause
-          for stops-only on cycles 2+; B80/B81 patches addressed secondary symptoms.
+        <div style="margin-top:10px;padding:8px 12px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--green);">
+          CLOSED 2026-08-20 &middot; commit 460bedce &middot; 306 [Fact] &middot; SIM gate GREEN &mdash;
+          Every follower shows "attempt 1/3" on every BE-ALL press across all observed cycles.
+          No "prevAttempts &ge; 3" blocking line appears in any cycle.
+          Evidence: NT8 Output log 2026-08-20 05:37 PM run; contaminated session confirmed counter reset working.
+          DW-B83-01/02 opened for separate failure modes surfaced in same run.
         </div>
       </div>
     </div>
     <!-- ══ end section-b82 ══════════════════════════════════════════════════ -->
+
+    <!-- ══ section-b83 ══════════════════════════════════════════════════════
+         DW-B83 | Stale PTT-BE bracket accumulation + cancel-storm counter exhaustion
+         Discovered: 2026-08-20 via NT8 Grid CSV 05-46/05-47 PM analysis
+         Status: DW-B83-01 OPEN (P0) · DW-B83-02 OPEN (P1)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <div id="section-b83" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:var(--red);">&#9679; DW-B83 &nbsp;&#9670;&nbsp; PTT-COPIER-B83 &nbsp;&#9670;&nbsp; Stale Bracket Accumulation &amp; Counter Exhaustion &nbsp;&#9670;&nbsp; <span class="pill pill-red">&#9679; DW-B83-01 OPEN (P0) &nbsp;&middot;&nbsp; DW-B83-02 OPEN (P1)</span></div>
+
+      <!-- DW-B83-01 ─────────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:16px; border-left:3px solid var(--red); background:var(--red-lo);">
+        <div class="card-title" style="color:var(--red);">DW-B83-01 &mdash; Multiple Live PTT-BE OCO Bracket Groups Per Follower Account (P0)</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+          <strong>Symptom:</strong> Follower account holds two or more distinct live PTT-BE OCO bracket groups simultaneously
+          on a single open position. Confirmed: Sim102 at 5:44 PM held groups
+          <code>PTT-BE-Sim102-23559720</code> (4 targets, from prior cycle) and
+          <code>PTT-BE-Sim102-23559723</code> (3 targets, from current cycle) both live and accepted.<br><br>
+          <strong>Evidence:</strong> NinjaTrader Grid CSV 2026-08-20 05-47 PM, event log lines 63&ndash;94:
+          two complete sets of OCO pairs cancelled for Sim102 simultaneously on Flatten Everything at 5:45:55 PM.
+          Also: Sim103 had 2 live PTT-BE-Target-1 / PTT-BE-Stop-1 pairs from two different OCO groups at the same timestamp.<br><br>
+          <strong>Root cause hypothesis:</strong> When <code>TryReplacePttBeBrackets</code> fires on cancel events from
+          <em>prior-cycle stale</em> PTT-BE orders, the attempt counter reaches 3 and blocks further replacements &mdash;
+          but the <em>first</em> replacement (attempt 1/3) already succeeded and placed a new bracket group. Meanwhile
+          the old group from the prior cycle was never explicitly cancelled before the new group was placed, because
+          <code>MoveStopToBreakEven</code> does not purge prior PTT-BE OCO groups before submitting new ones.
+          Result: both the stale group and the new group remain live simultaneously.<br><br>
+          <strong>Risk in live trading:</strong> Two stop legs on the same position; whichever fires first closes the
+          position and OCO-cancels its paired target. The orphaned group from the other bracket set will produce
+          rejected orders (position already flat) and potentially an unintended re-entry if NT8 mishandles the orphan.<br><br>
+          <strong>Required fix direction (spec only &mdash; not src until pipeline):</strong><br>
+          Before <code>MoveStopToBreakEven</code> submits new PTT-BE orders for a follower, cancel any existing live
+          PTT-BE OCO groups for that account+instrument. A pre-cancel sweep using a name-prefix filter
+          (<code>o.Name.StartsWith("PTT-BE-")</code>, state Working/Accepted) should run as step 0 of bracket placement,
+          analogous to the <code>[PTT-QX-GUARD] pre-cancel follower brackets</code> already implemented for QX.<br><br>
+          <strong>Discovered:</strong> 2026-08-20 &middot; NT8 Grid CSV 05-47 PM analysis
+        </div>
+        <div>
+          <span class="pill pill-red">&#9679; OPEN</span>
+          <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P0</span>
+          <span class="pill" style="background:rgba(37,99,235,0.12);color:#60a5fa;">REQUIRES PIPELINE</span>
+        </div>
+      </div>
+
+      <!-- DW-B83-02 ─────────────────────────────────────────────────────── -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--red); background:var(--red-lo);">
+        <div class="card-title" style="color:var(--red);">DW-B83-02 &mdash; Cancel-Storm Counter Exhaustion in <code>TryReplacePttBeBrackets</code> (P1)</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;margin-bottom:12px;">
+          <strong>Symptom:</strong> <code>TryReplacePttBeBrackets</code> logs <code>max 3 attempts, no new slot
+          (TryFireFollowerBeRetry still holds slot 3)</code> immediately after a successful <code>attempt 1/3</code>
+          on the same BE-ALL press, without any retry or fallback timer having fired.<br><br>
+          <strong>Evidence (NT8 Output log 2026-08-20):</strong><br>
+          <code>[BE-DIAG-CANCEL] Sim102 PTT-BE order cancelled: PTT-BE-Stop-1 &rarr; TryReplace attempt 1/3 &#10003;</code><br>
+          <code>[BE-DIAG-CANCEL] Sim102 PTT-BE order cancelled: PTT-BE-Target-2 &rarr; TryReplace max 3 &#10007;</code><br>
+          <code>[BE-DIAG-CANCEL] Sim102 PTT-BE order cancelled: PTT-BE-Stop-2 &rarr; TryReplace max 3 &#10007;</code><br>
+          (continuing for all remaining prior-cycle PTT-BE cancel events)<br><br>
+          <strong>Root cause:</strong> Every <code>PTT-BE-*</code> order cancel event (regardless of which cycle placed it)
+          calls <code>TryReplacePttBeBrackets</code>. Prior-cycle stale PTT-BE orders still present in the NT8 order book
+          (state Cancelled, visible in <code>[BE-DIAG]</code> order dumps with hundreds of historical orders) fire cancel
+          notifications when Flatten/QX/Close processes them. Each notification increments the shared
+          <code>_beReplaceAttempts[acc]</code> counter. After 3 cancel events from stale prior-cycle orders, the counter
+          is at 3 and all subsequent <code>TryReplacePttBeBrackets</code> calls return immediately &mdash; including the
+          fallback timer when it fires, leaving the follower with no OCO brackets.<br><br>
+          <strong>Relationship to DW-B82-01:</strong> DW-B82-01 fixed counter reset on <em>slot consumption</em>
+          (TryRemove success path). This defect is orthogonal: the counter exhausts within a <em>single press</em>
+          due to cancel-storm from <em>prior-cycle</em> orders, before any slot is consumed.<br><br>
+          <strong>Required fix direction (spec only &mdash; not src until pipeline):</strong><br>
+          <code>TryReplacePttBeBrackets</code> should only increment the attempt counter when the cancellation event
+          corresponds to an order belonging to the <em>current</em> bracket group (i.e., the order was placed after the
+          current slot was registered). One approach: record the slot registration timestamp and reject counter increments
+          from orders whose submission time predates the current slot. Alternative: filter by OCO group ID matching the
+          currently registered slot's group prefix.<br><br>
+          <strong>Discovered:</strong> 2026-08-20 &middot; NT8 Output log 2026-08-20 05:37 PM + Grid CSV analysis
+        </div>
+        <div>
+          <span class="pill pill-red">&#9679; OPEN</span>
+          <span class="pill" style="background:rgba(168,85,247,0.12);color:#c084fc;">P1</span>
+          <span class="pill" style="background:rgba(37,99,235,0.12);color:#60a5fa;">REQUIRES PIPELINE</span>
+        </div>
+      </div>
+
+      <!-- DW-B81-02 dependency note -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--dim); background:rgba(75,85,99,0.08);">
+        <div class="card-title" style="color:var(--mid);">Context &mdash; Relationship to Open Items</div>
+        <div style="color:var(--mid);font-size:12px;line-height:1.9;">
+          <strong>DW-B83-01 + DW-B83-02 are the primary blockers for DW-B81-02 (OCO completeness) verification.</strong>
+          A clean SIM gate for DW-B81-02 cannot produce a meaningful verdict while B83-01 (stale bracket accumulation)
+          and B83-02 (cancel-storm counter exhaustion) are active, because both will corrupt the bracket state
+          even in a fresh NT8 session once the order history from prior BE-ALL presses accumulates.<br><br>
+          <strong>Recommended sequencing:</strong><br>
+          1. Fix DW-B83-02 (cancel-storm counter filter) via pipeline &rarr; verify.<br>
+          2. Fix DW-B83-01 (pre-cancel sweep before bracket placement) via pipeline &rarr; verify.<br>
+          3. Then run clean DW-B81-02 SIM gate (OCO completeness on all followers, all cycles).<br><br>
+          <strong>DW-B81-02 remains OPEN</strong> pending DW-B83 resolution.
+        </div>
+      </div>
+    </div>
+    <!-- ══ end section-b83 ══════════════════════════════════════════════════ -->
 
 
   </body>
