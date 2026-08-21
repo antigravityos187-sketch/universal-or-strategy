@@ -1817,6 +1817,8 @@ namespace PropTraderTools
         //
         // CYC=5: (1) null guard, (2) follower guard, (3) flat guard, (4) attempt guard, (5) slot+fallback.
         // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void. ASCII-only.
+        // DW-T4: structurally unreachable from follower path. Followers use acc.Change() (early
+        // return at follower block end, L2791) and never hold PTT-BE-Stop-* orders. No guard needed.
         private void TryReplacePttBeBrackets(Order cancelledStop)
         {
             if (cancelledStop?.Account == null || cancelledStop.Instrument == null) return; // (1)
@@ -2750,12 +2752,16 @@ namespace PropTraderTools
                                || o?.OrderState == OrderState.ChangeSubmitted;
                     if (!beStOk) continue;
                     if (o.Instrument?.FullName != instrument.FullName) continue;
-                    // ATM stop names are exactly "StopN" (length 5): Stop1, Stop2, Stop3 etc.
-                    // Length==5 guard excludes StopLimit, StopMarket, StopLoss and any other prefix.
-                    if (o.Name != null
-                        && o.Name.StartsWith("Stop", StringComparison.Ordinal)
-                        && o.Name.Length == 5
-                        && char.IsDigit(o.Name[4]))
+                    // DW-B86: extend stop name guard to match PTT-QX-Stop* orders placed after QX-ALL.
+                    // ATM stop names are exactly Stop1..Stop9 (length 5, IsDigit guard).
+                    // After QX-ALL follower has PTT-QX-Stop, PTT-QX-Stop2, PTT-QX-Stop3, PTT-QX-Stop4.
+                    // State guard (Working||Accepted||ChangeSubmitted) already handles both sets.
+                    bool isBeStop = o.Name != null
+                        && (   (o.Name.StartsWith("Stop", StringComparison.Ordinal)
+                                && o.Name.Length == 5
+                                && char.IsDigit(o.Name[4]))
+                             || o.Name.StartsWith("PTT-QX-Stop", StringComparison.Ordinal));
+                    if (isBeStop)
                     {
                         o.StopPriceChanged = newStop;
                         beSt.Add(o);
