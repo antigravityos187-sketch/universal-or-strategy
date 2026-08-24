@@ -701,6 +701,7 @@ namespace PropTraderTools
                 _followersDropDown.ItemsSource = _followerItems; // kept; harmless on non-visual ComboBox
             UpdateDropDownHeader();
             LoadFollowers(); // B47 T1-B: populate inline ScrollViewer rows
+            _engine.LoadRules(); // DW-B98-C: restore rules + _isCopyEnabled from XML on panel path (Account.All populated above)
 
             // HOTFIX-B67-CHECKBOX-RESTORE: after LoadRules, engine _rules already contain the
             // persisted follower list. Restore IsSelected on matching _followerItems so that
@@ -2765,6 +2766,7 @@ namespace PropTraderTools
             }
 
             _engine.AddRule(_instrument.FullName, _leaderAccount, followers, multipliers, atmMap);
+            _engine.SaveRules(); // DW-B98-B: persist rule immediately from Apply button path
             if (_statusText != null)
                 _statusText.Text =
                     "Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name;

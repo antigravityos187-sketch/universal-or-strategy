@@ -469,6 +469,7 @@ namespace PropTraderTools
             _isCopyEnabled = enabled;
             StatusUpdate?.Invoke("Copy " + (enabled ? "ON" : "OFF"));
             CopyEnabledChanged?.Invoke(enabled);
+            SaveRules(); // DW-B98-A: persist enabled state immediately so F5 restores it
         }
 
         // B54 -- IsEnabled: read-only view of _isCopyEnabled (JS-023: volatile bool read).
