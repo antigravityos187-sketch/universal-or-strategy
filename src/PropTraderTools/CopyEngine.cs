@@ -167,6 +167,14 @@ namespace PropTraderTools
         // JS-025: ConcurrentDictionary is the canonical lock-free set pattern.
         private readonly ConcurrentDictionary<string, byte> _entryDispatchedOrders =
             new ConcurrentDictionary<string, byte>();
+
+        // DW-B92: count of PTT-BE-Target-* fills per account for this trade slot.
+        // Incremented synchronously in OnOrderUpdate BEFORE the OCO cancel event
+        // arrives, eliminating the HasFilledBeTarget acc.Orders scan race.
+        // Key = acc.Name. Cleared in TryEvictFollowerBeSlot on position flat.
+        // JS-025: ConcurrentDictionary is lock-free. JS-021: no lock.
+        private readonly ConcurrentDictionary<string, int> _filledBeTargetCount =
+            new ConcurrentDictionary<string, int>();
         private ConcurrentBag<CopyRule> _rules = new ConcurrentBag<CopyRule>(); // Change 1: removed readonly
         private double _dailyCapFloor = -500.0; // Change 4
 
@@ -708,8 +716,7 @@ namespace PropTraderTools
         // IsQxCancelCandidate: returns true if order should be cancelled by CancelQxBrackets.
         // Covers: ATM bracket names (via IsAtmBracketName), PTT-QX-* prefix, PTT-BE-* prefix,
         //         PTT-Copy* prefix (B70 DW-B70-02: follower copy-dispatched entry orders).
-        // CYC=6: 1 (base) + 5 if-branches. Roslyn: || inside single if = 1 decision point.
-        // JS-021: no lock. JS-001: no throw. JS-002: returns bool (never null). ASCII-only.
+        // CYC=7: 1 (base) + 6 if-branches. JS-021: no lock. JS-001: no throw. ASCII-only.
         internal static bool IsQxCancelCandidate(Order o)
         {
             if (o == null || o.Name == null)
@@ -722,6 +729,8 @@ namespace PropTraderTools
                 return true; // (4)
             if (o.Name.StartsWith("PTT-Copy", StringComparison.Ordinal))
                 return true; // (5) B70 DW-B70-02
+            if (o.Name == "Entry")
+                return true; // (6) DW-B93: Named ATM follower entry Limit
             return false;
         }
 
@@ -1178,6 +1187,17 @@ namespace PropTraderTools
             // MoveStopToBreakEven(isRetry:true) to re-place the OCO pairs.
             // Only triggers on PTT-BE-Stop-* (not PTT-BE-Target-* which correctly cancels on stop fill).
             // One re-call per OCO pair (Stop cancel = one trigger per pair).
+            // DW-B92: record PTT-BE-Target-* fill BEFORE OCO partner cancel arrives.
+            if (
+                e.Order.OrderState == OrderState.Filled
+                && e.Order.Name != null
+                && e.Order.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
+                && e.Order.Account != null
+            )
+            {
+                _filledBeTargetCount.AddOrUpdate(e.Order.Account.Name, 1, (_, prev) => prev + 1);
+            }
+
             if (
                 e.Order.OrderState == OrderState.Cancelled
                 && e.Order.Name != null
@@ -1195,8 +1215,8 @@ namespace PropTraderTools
                 );
                 if (
                     e.Order.Name.StartsWith("PTT-BE-Stop-", StringComparison.Ordinal)
-                    && !HasFilledBeTarget(e.Order.Account, e.Order.Instrument)
-                ) // DW-B90: skip if OCO cancel from target fill
+                    && !HasFilledBeTargetFast(e.Order.Account)
+                ) // DW-B90: skip if OCO cancel from target fill; DW-B92: race-free counter
                     TryReplacePttBeBrackets(e.Order);
             }
 
@@ -1372,13 +1392,15 @@ namespace PropTraderTools
                 && o.Name == "PTT-BE-Stop"; // (3) PTT-BE-Stop only
             if (!isFilled && !isRejected)
                 return;
+            _entryDispatchedOrders.Clear(); // DW-B95: instrument-level reset -- fires for ALL accounts (leader + follower)
             if (!IsFollowerAccount(o.Account))
-                return; // (4) followers only
+                return; // (4) follower-only evictions below
             if (isFilled && !IsFlat(FindPosition(o.Account, o.Instrument)))
                 return; // (5) flat-guard for Filled only
             string accName = o.Account?.Name ?? string.Empty;
             bool slotEvicted = _pendingFollowerBeSlots.TryRemove(accName, out _); // DW-B79-04: capture for log gate
             _beReplaceAttempts.TryRemove(accName, out _); // ALWAYS reset on terminal
+            _filledBeTargetCount.TryRemove(accName, out _); // DW-B92: clear on flat
             if (slotEvicted) // DW-B79-04: only log if slot was present
             {
                 string reason = isRejected ? "PTT-BE-Stop Rejected" : "position closed";
@@ -1627,12 +1649,21 @@ namespace PropTraderTools
         // HOTFIX-MARKET-DEDUP-01: Market orders must dispatch on Submitted ONLY.
         //   NT8/Rithmic changes OrderId from GUID (Submitted) to numeric (Accepted).
         //   Without type-awareness, both states pass the dedup cache with different keys -> double dispatch.
-        // AddOn limit orders skip Submitted; they arrive first as Accepted -- dispatch on Accepted only.
+        // AddOn limit orders skip Submitted; arrive first as Accepted -- dispatch on Accepted (AddOn path).
+        // ChartTrader limit orders skip Accepted entirely; Working is first event -- dispatch on Working (DW-B96).
+        // _dedupCache in DispatchCopy (Gate 5) prevents double-dispatch for AddOn path:
+        //   Accepted keys the orderId; subsequent Working event deduped by IsDedup -> early return.
         // JS-002: returns bool (not null). JS-021: no lock.
         // TESTABILITY: internal static with primitive params -- directly testable without NT8 runtime.
         internal static bool IsDispatchTriggerState(OrderState state, OrderType type) =>
             (type == OrderType.Market && state == OrderState.Submitted) // Market: GUID-keyed, Submitted only
-            || (type == OrderType.Limit && state == OrderState.Accepted); // Limit: first exchange ack
+            || (
+                type == OrderType.Limit
+                && (
+                    state == OrderState.Accepted // AddOn path (unchanged)
+                    || state == OrderState.Working
+                )
+            ); // ChartTrader path (DW-B96)
 
         // B59 T1: IsExitSignalName -- CYC=6. Returns true for names that must not trigger follower copy.
         // Covers: (1) PTT- own signals; (2) NT8 Close button; (3) NT8 Flatten; (4) NT8 Rev reversal;
@@ -1695,17 +1726,20 @@ namespace PropTraderTools
             return false;
         }
 
-        // IsNonFlatDispatchName: CYC=2. Returns true when orderName must NOT trigger follower flatten.
-        // Combines HOTFIX-B63-FLATTEN-01 (PTT- prefix) and HOTFIX-B64-ENTRY-FLATTEN-01 ("Entry").
-        // Both represent orders that mean "open a position" or "manage exit" - never "go flat now".
-        // JS-001: no throw. JS-002: returns bool (never null). JS-021: no lock. ASCII-only.
-        // TESTABILITY: internal static, string parameter, no NT8 runtime deps.
+        // IsNonFlatDispatchName: CYC=3. Returns true when orderName must NOT trigger follower flatten.
+        // Combines HOTFIX-B63-FLATTEN-01 (PTT- prefix), HOTFIX-B64-ENTRY-FLATTEN-01 ("Entry"),
+        // and DW-B94 (ATM bracket names Stop1..Stop9 / Target1..Target9).
+        // ATM bracket cancel events arrive during NT8 position update gap (NT8_FULL_REFERENCE line 1721)
+        // and must never trigger a follower flatten -- the position is still live.
+        // JS-001: no throw. JS-002: returns bool. JS-021: no lock. ASCII-only.
         internal static bool IsNonFlatDispatchName(string orderName)
         {
             if (orderName != null && orderName.StartsWith("PTT-", StringComparison.Ordinal))
                 return true; // (1)
             if (orderName == "Entry")
                 return true; // (2)
+            if (IsAtmBracketName(orderName))
+                return true; // (3) DW-B94: Stop1..Stop9 / Target1..Target9 -- ATM cancel must not flatten followers
             return false;
         }
 
@@ -2215,26 +2249,15 @@ namespace PropTraderTools
         //   registration (QX path or slow NT8). TryRemove atomic gate: exactly one path wins.
         //   500ms > ATM arming time (~50-100ms) so MoveStopToBreakEven(isRetry:true) sees Target1 Working.
         //
-        // DW-B90: returns true if any PTT-BE-Target-* is Filled on acc for instr.
-        // Distinguishes ATM-sweep PTT-BE-Stop cancel (no fills -- should retry brackets) from
-        // OCO partner cancel after target fill (should NOT retry -- loop trigger).
-        // CYC=2: (1) null guard, (2) foreach. JS-021: no lock. JS-001: no throw. ASCII-only.
-        private static bool HasFilledBeTarget(Account acc, Instrument instr)
+        // DW-B92: race-free alternative to HasFilledBeTarget.
+        // Uses synchronous counter incremented in OnOrderUpdate before OCO cancel arrives.
+        // CYC=2: (1) null guard, (2) count check. JS-021: no lock. ASCII-only.
+        private bool HasFilledBeTargetFast(Account acc)
         {
-            if (acc == null || instr == null)
-                return false;
-            foreach (Order o in acc.Orders)
-            {
-                if (o == null)
-                    continue;
-                if (o.OrderState != OrderState.Filled)
-                    continue;
-                if (o.Instrument?.FullName != instr.FullName)
-                    continue;
-                if (o.Name != null && o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal))
-                    return true;
-            }
-            return false;
+            if (acc == null)
+                return false; // (1)
+            _filledBeTargetCount.TryGetValue(acc.Name, out int count);
+            return count > 0; // (2)
         }
 
         // CYC=5: (1) null guard, (2) follower guard, (3) flat guard, (4) attempt guard, (5) slot+fallback.
@@ -3085,7 +3108,8 @@ namespace PropTraderTools
                 return;
 
             _dedupCache.TryRemove(orderId, out _);
-            _entryDispatchedOrders.TryRemove(orderId, out _); // DW-B91-A: co-evict with _dedupCache
+            // DW-B91-A-v2: eviction moved to TryEvictFollowerBeSlot (position-flat).
+            // Prevents partial-fill re-dispatch: Filled fires before Submitted re-submit on Rithmic.
         }
 
         private IEnumerable<Account> AllAccounts(Instrument instrument)
