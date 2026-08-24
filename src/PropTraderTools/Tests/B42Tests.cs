@@ -23,25 +23,33 @@ namespace PropTraderTools
     internal class TestFollowerStrategy : PttFollowerStrategy
     {
         // Injectable: replaces Account.Name on the strategy side
-        public string StrategyAccountName    { get; set; } = "AccA";
+        public string StrategyAccountName { get; set; } = "AccA";
+
         // Injectable: replaces Instrument.FullName on the strategy side
         public string StrategyInstrumentName { get; set; } = "MES 09-26";
+
         // Injectable: replaces args.Account?.Name on the signal side
-        public string SignalAccountName      { get; set; } = "AccA";
+        public string SignalAccountName { get; set; } = "AccA";
+
         // Injectable: replaces args.Instrument?.FullName on the signal side
-        public string SignalInstrumentName   { get; set; } = "MES 09-26";
+        public string SignalInstrumentName { get; set; } = "MES 09-26";
 
         // Counter incremented when CallAtmStrategyCreate is invoked
         public int AtmInvokedCount { get; private set; }
 
         // Test seam: bypass real NT8 Account.Name
-        protected override string GetStrategyAccountName()    => StrategyAccountName;
+        protected override string GetStrategyAccountName() => StrategyAccountName;
+
         // Test seam: bypass real NT8 Instrument.FullName
         protected override string GetStrategyInstrumentName() => StrategyInstrumentName;
+
         // Test seam: bypass real args.Account?.Name
-        protected override string GetSignalAccountName(FillSignalEventArgs args)    => SignalAccountName;
+        protected override string GetSignalAccountName(FillSignalEventArgs args) =>
+            SignalAccountName;
+
         // Test seam: bypass real args.Instrument?.FullName
-        protected override string GetSignalInstrumentName(FillSignalEventArgs args) => SignalInstrumentName;
+        protected override string GetSignalInstrumentName(FillSignalEventArgs args) =>
+            SignalInstrumentName;
 
         // Test seam: capture ATM call without NT8 runtime
         protected override void CallAtmStrategyCreate(FillSignalEventArgs args)
@@ -58,7 +66,8 @@ namespace PropTraderTools
         {
             var mi = typeof(PttFollowerStrategy).GetMethod(
                 "OnFillSignal",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             if (mi == null)
                 throw new InvalidOperationException("OnFillSignal not found via reflection");
             mi.Invoke(this, new object[] { args });
@@ -74,23 +83,30 @@ namespace PropTraderTools
         public void FillSignalEventArgs_CarriesAllFields()
         {
             // Arrange: null Account + null Instrument (struct holds reference -- valid stub)
-            Account    account    = null;
+            Account account = null;
             Instrument instrument = null;
-            string     atmName    = "MyATM";
-            OrderAction action    = OrderAction.Buy;
-            int        qty        = 3;
-            string     orderId    = "PTT-Copy-001";
+            string atmName = "MyATM";
+            OrderAction action = OrderAction.Buy;
+            int qty = 3;
+            string orderId = "PTT-Copy-001";
 
             // Act
-            var args = FillSignalEventArgs.Create(account, instrument, atmName, action, qty, orderId);
+            var args = FillSignalEventArgs.Create(
+                account,
+                instrument,
+                atmName,
+                action,
+                qty,
+                orderId
+            );
 
             // Assert: all 6 fields round-trip
-            Assert.Equal(account,    args.Account);
+            Assert.Equal(account, args.Account);
             Assert.Equal(instrument, args.Instrument);
-            Assert.Equal(atmName,    args.AtmTemplateName);
-            Assert.Equal(action,     args.OrderAction);
-            Assert.Equal(qty,        args.Quantity);
-            Assert.Equal(orderId,    args.EntryOrderId);
+            Assert.Equal(atmName, args.AtmTemplateName);
+            Assert.Equal(action, args.OrderAction);
+            Assert.Equal(qty, args.Quantity);
+            Assert.Equal(orderId, args.EntryOrderId);
         }
 
         [Fact]
@@ -122,13 +138,28 @@ namespace PropTraderTools
             FillSignalEventArgs captured1 = default;
             FillSignalEventArgs captured2 = default;
 
-            _handler1 = a => { callCount1++; captured1 = a; };
-            _handler2 = a => { callCount2++; captured2 = a; };
+            _handler1 = a =>
+            {
+                callCount1++;
+                captured1 = a;
+            };
+            _handler2 = a =>
+            {
+                callCount2++;
+                captured2 = a;
+            };
 
             PttBus.FillSignal += _handler1;
             PttBus.FillSignal += _handler2;
 
-            var expected = FillSignalEventArgs.Create(null, null, "ATM1", OrderAction.Sell, 2, "ORD-002");
+            var expected = FillSignalEventArgs.Create(
+                null,
+                null,
+                "ATM1",
+                OrderAction.Sell,
+                2,
+                "ORD-002"
+            );
 
             try
             {
@@ -139,7 +170,7 @@ namespace PropTraderTools
                 Assert.Equal(1, callCount1);
                 Assert.Equal(1, callCount2);
                 Assert.Equal(expected.AtmTemplateName, captured1.AtmTemplateName);
-                Assert.Equal(expected.Quantity,        captured2.Quantity);
+                Assert.Equal(expected.Quantity, captured2.Quantity);
             }
             finally
             {
@@ -150,8 +181,16 @@ namespace PropTraderTools
 
         public void Dispose()
         {
-            if (_handler1 != null) { PttBus.FillSignal -= _handler1; _handler1 = null; }
-            if (_handler2 != null) { PttBus.FillSignal -= _handler2; _handler2 = null; }
+            if (_handler1 != null)
+            {
+                PttBus.FillSignal -= _handler1;
+                _handler1 = null;
+            }
+            if (_handler2 != null)
+            {
+                PttBus.FillSignal -= _handler2;
+                _handler2 = null;
+            }
         }
     }
 
@@ -171,12 +210,19 @@ namespace PropTraderTools
             // Arrange: strategy bound to "AccA"; signal carries "AccB" (wrong account)
             var strategy = new TestFollowerStrategy
             {
-                StrategyAccountName    = "AccA",
+                StrategyAccountName = "AccA",
                 StrategyInstrumentName = "MES 09-26",
-                SignalAccountName      = "AccB",       // MISMATCH -- guard must reject
-                SignalInstrumentName   = "MES 09-26"
+                SignalAccountName = "AccB", // MISMATCH -- guard must reject
+                SignalInstrumentName = "MES 09-26",
             };
-            var args = FillSignalEventArgs.Create(null, null, string.Empty, OrderAction.Buy, 1, "ORD-003");
+            var args = FillSignalEventArgs.Create(
+                null,
+                null,
+                string.Empty,
+                OrderAction.Buy,
+                1,
+                "ORD-003"
+            );
 
             // Act: route through OnFillSignal via reflection
             strategy.SimulateFillSignal(args);
@@ -195,12 +241,19 @@ namespace PropTraderTools
             // Arrange: strategy bound to "AccA" / "MES 09-26"; signal carries right account, wrong instrument
             var strategy = new TestFollowerStrategy
             {
-                StrategyAccountName    = "AccA",
+                StrategyAccountName = "AccA",
                 StrategyInstrumentName = "MES 09-26",
-                SignalAccountName      = "AccA",       // MATCH -- account guard passes
-                SignalInstrumentName   = "MNQ 09-26"  // MISMATCH -- instrument guard must reject
+                SignalAccountName = "AccA", // MATCH -- account guard passes
+                SignalInstrumentName = "MNQ 09-26", // MISMATCH -- instrument guard must reject
             };
-            var args = FillSignalEventArgs.Create(null, null, string.Empty, OrderAction.Buy, 1, "ORD-004");
+            var args = FillSignalEventArgs.Create(
+                null,
+                null,
+                string.Empty,
+                OrderAction.Buy,
+                1,
+                "ORD-004"
+            );
 
             // Act
             strategy.SimulateFillSignal(args);
@@ -219,12 +272,19 @@ namespace PropTraderTools
             // Arrange: all four names match
             var strategy = new TestFollowerStrategy
             {
-                StrategyAccountName    = "AccA",
+                StrategyAccountName = "AccA",
                 StrategyInstrumentName = "MES 09-26",
-                SignalAccountName      = "AccA",       // MATCH
-                SignalInstrumentName   = "MES 09-26"   // MATCH
+                SignalAccountName = "AccA", // MATCH
+                SignalInstrumentName = "MES 09-26", // MATCH
             };
-            var args = FillSignalEventArgs.Create(null, null, "MyATM", OrderAction.Buy, 2, "ORD-005");
+            var args = FillSignalEventArgs.Create(
+                null,
+                null,
+                "MyATM",
+                OrderAction.Buy,
+                2,
+                "ORD-005"
+            );
 
             // Act: route through the full OnFillSignal guard chain
             strategy.SimulateFillSignal(args);
@@ -260,10 +320,21 @@ namespace PropTraderTools
             // Arrange: subscribe a counter and capture handler
             int signalCount = 0;
             FillSignalEventArgs captured = default;
-            _fillHandler = a => { signalCount++; captured = a; };
+            _fillHandler = a =>
+            {
+                signalCount++;
+                captured = a;
+            };
             PttBus.FillSignal += _fillHandler;
 
-            var expected = FillSignalEventArgs.Create(null, null, "ScalpATM", OrderAction.Buy, 3, "PTT-ORD-006");
+            var expected = FillSignalEventArgs.Create(
+                null,
+                null,
+                "ScalpATM",
+                OrderAction.Buy,
+                3,
+                "PTT-ORD-006"
+            );
 
             try
             {
@@ -273,9 +344,9 @@ namespace PropTraderTools
                 // Assert: subscriber received exactly 1 call with matching args
                 Assert.Equal(1, signalCount);
                 Assert.Equal(expected.AtmTemplateName, captured.AtmTemplateName);
-                Assert.Equal(expected.Quantity,        captured.Quantity);
-                Assert.Equal(expected.EntryOrderId,    captured.EntryOrderId);
-                Assert.Equal(expected.OrderAction,     captured.OrderAction);
+                Assert.Equal(expected.Quantity, captured.Quantity);
+                Assert.Equal(expected.EntryOrderId, captured.EntryOrderId);
+                Assert.Equal(expected.OrderAction, captured.OrderAction);
             }
             finally
             {
@@ -304,15 +375,14 @@ namespace PropTraderTools
             // Locate SendCopy via reflection (private instance method, 4 parameters)
             var mi = typeof(CopyEngine).GetMethod(
                 "SendCopy",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             // Build a minimal CopySignal via reflection (private struct) to pass as arg3
             // Strategy: use an AddRule + retrieve a CopyRule fixture, then build a CopySignal.
             // CopySignal is a private struct on CopyEngine -- access via nested type reflection.
-            var signalType = typeof(CopyEngine).GetNestedType(
-                "CopySignal",
-                BindingFlags.NonPublic);
+            var signalType = typeof(CopyEngine).GetNestedType("CopySignal", BindingFlags.NonPublic);
             Assert.NotNull(signalType); // CopySignal must exist as a private nested type
 
             // Create a default CopySignal instance (all fields default/zero -- sufficient to

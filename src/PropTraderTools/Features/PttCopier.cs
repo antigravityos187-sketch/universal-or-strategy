@@ -17,20 +17,23 @@ namespace PropTraderTools
     /// </summary>
     public class PttCopier : IPttModule
     {
-        public string ModuleId  { get; private set; }
-        public bool   IsEnabled { get; private set; }
+        public string ModuleId { get; private set; }
+        public bool IsEnabled { get; private set; }
 
         private readonly ICopyEngine _engine;
 
         public PttCopier(ICopyEngine engine)
         {
-            ModuleId  = "COPY";
+            ModuleId = "COPY";
             IsEnabled = true;
-            _engine   = engine;
+            _engine = engine;
         }
 
         /// <summary>Set enabled state (wired by TradeCopierPanel license bool). CYC=1.</summary>
-        public void SetEnabled(bool enabled) { IsEnabled = enabled; }
+        public void SetEnabled(bool enabled)
+        {
+            IsEnabled = enabled;
+        }
 
         /// <summary>
         /// Subscribe to all 4 PttBus events. Called on UI thread only.
@@ -39,9 +42,9 @@ namespace PropTraderTools
         /// </summary>
         public void Initialize(IPttHostContext ctx)
         {
-            PttBus.BeFired     += OnBeFired;
-            PttBus.TrimFired   += OnTrimFired;
-            PttBus.FlatFired   += OnFlatFired;
+            PttBus.BeFired += OnBeFired;
+            PttBus.TrimFired += OnTrimFired;
+            PttBus.FlatFired += OnFlatFired;
             PttBus.CancelFired += OnCancelFired;
         }
 
@@ -57,9 +60,9 @@ namespace PropTraderTools
         /// </summary>
         public void Teardown()
         {
-            PttBus.BeFired     -= OnBeFired;
-            PttBus.TrimFired   -= OnTrimFired;
-            PttBus.FlatFired   -= OnFlatFired;
+            PttBus.BeFired -= OnBeFired;
+            PttBus.TrimFired -= OnTrimFired;
+            PttBus.FlatFired -= OnFlatFired;
             PttBus.CancelFired -= OnCancelFired;
         }
 
@@ -69,22 +72,26 @@ namespace PropTraderTools
 
         private void OnBeFired(object sender, BeEventArgs e)
         {
-            if (_engine != null) _engine.RelayBe(e);
+            if (_engine != null)
+                _engine.RelayBe(e);
         }
 
         private void OnTrimFired(object sender, TrimEventArgs e)
         {
-            if (_engine != null) _engine.RelayTrim(e);
+            if (_engine != null)
+                _engine.RelayTrim(e);
         }
 
         private void OnFlatFired(object sender, FlatEventArgs e)
         {
-            if (_engine != null) _engine.RelayFlatten(e);
+            if (_engine != null)
+                _engine.RelayFlatten(e);
         }
 
         private void OnCancelFired(object sender, CancelEventArgs e)
         {
-            if (_engine != null) _engine.RelayCancel(e);
+            if (_engine != null)
+                _engine.RelayCancel(e);
         }
     }
 }

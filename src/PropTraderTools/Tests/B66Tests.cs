@@ -4,9 +4,9 @@
 // JS-021: no lock. JS-001: no throw. JS-002: no return null. JS-033: no async void.
 // xUnit only -- no NUnit, no MSTest. ASCII identifiers only.
 
-using Xunit;
-using NinjaTrader.Cbi;
 using System.Collections.Generic;
+using NinjaTrader.Cbi;
+using Xunit;
 
 namespace PropTraderTools
 {
@@ -46,7 +46,10 @@ namespace PropTraderTools
             {
                 thrown = true;
             }
-            Assert.False(thrown, "SubmitBeStop null guard must return immediately without throwing");
+            Assert.False(
+                thrown,
+                "SubmitBeStop null guard must return immediately without throwing"
+            );
         }
 
         // T_B66_BE_04: PttGlobalBreakEven test-seam constructor accepts 4-arg delegate.
@@ -57,11 +60,15 @@ namespace PropTraderTools
         {
             bool? capturedIsLong = null;
             var gbe = new PttGlobalBreakEven(
-                (acc, instr, price, lng) => { capturedIsLong = lng; });
+                (acc, instr, price, lng) =>
+                {
+                    capturedIsLong = lng;
+                }
+            );
             // Empty account list -- delegate is never invoked. Confirms constructor compiles
             // with 4-arg Action and no phantom helper methods are needed.
             gbe.Execute(new List<Account>(), 0);
-            Assert.Null(capturedIsLong);   // no delegate call made -- list was empty
+            Assert.Null(capturedIsLong); // no delegate call made -- list was empty
         }
 
         // T_B66_BE_05: BeEventArgs.IsLong property exists and stores the correct value.

@@ -28,7 +28,7 @@ namespace PropTraderTools
         internal AtrSizingEngine(int testContracts)
         {
             _lastContracts = testContracts;
-            _hasData       = true;
+            _hasData = true;
         }
 
         // Parameterless constructor for NT8 (required by NinjaScript)
@@ -37,17 +37,17 @@ namespace PropTraderTools
         // Cross-thread fields -- written on data thread, read on UI thread (JS-023)
         // NT8 constraint: volatile is forbidden on double (64-bit); _lastAtr uses non-volatile with
         // understood staleness tolerance (sizing hint, not order-safety critical path).
-        private volatile int  _lastContracts = 1;
-        private          double _lastAtr     = 0.0;   // non-volatile: sizing hint only
-        private volatile bool  _hasData      = false;
+        private volatile int _lastContracts = 1;
+        private double _lastAtr = 0.0; // non-volatile: sizing hint only
+        private volatile bool _hasData = false;
 
         // Configuration -- single-writer UI thread, set before attachment
-        private double _maxRiskDollars  = 200.0;
+        private double _maxRiskDollars = 200.0;
         private double _tickDollarValue = 5.0;
 
         // B12 T3 -- ATR fraction multiplier. Plain double; single-writer UI thread.
         // No volatile: NT8-003 bans volatile double. Same staleness-tolerance pattern as _lastAtr.
-        private double _atrFraction = 0.75;   // DW-ATR-DEFAULTS-01: default matches StartAtrEngine call-site
+        private double _atrFraction = 0.75; // DW-ATR-DEFAULTS-01: default matches StartAtrEngine call-site
 
         [NinjaTrader.NinjaScript.NinjaScriptProperty]
         public int Period { get; set; } = 14;
@@ -58,8 +58,8 @@ namespace PropTraderTools
             if (State == NinjaTrader.NinjaScript.State.SetDefaults)
             {
                 Description = "PTT ATR Sizing Engine";
-                Name        = "AtrSizingEngine";
-                Period      = 14;
+                Name = "AtrSizingEngine";
+                Period = 14;
             }
             else if (State == NinjaTrader.NinjaScript.State.Configure)
             {
@@ -71,9 +71,9 @@ namespace PropTraderTools
             }
             else if (State == NinjaTrader.NinjaScript.State.Terminated)
             {
-                _hasData       = false;
+                _hasData = false;
                 _lastContracts = 1;
-                _lastAtr       = 0.0;
+                _lastAtr = 0.0;
             }
         }
 
@@ -84,12 +84,13 @@ namespace PropTraderTools
         // CYC=2 (CurrentBar guard + straight-line body)
         protected override void OnBarUpdate()
         {
-            if (CurrentBar < Period) return;
-            double atr     = ATR(Period)[0];
-            _lastAtr       = atr;
-            int    qty     = CalcContracts(atr * _atrFraction, _maxRiskDollars, _tickDollarValue);   // B12 T3: scale by _atrFraction
+            if (CurrentBar < Period)
+                return;
+            double atr = ATR(Period)[0];
+            _lastAtr = atr;
+            int qty = CalcContracts(atr * _atrFraction, _maxRiskDollars, _tickDollarValue); // B12 T3: scale by _atrFraction
             _lastContracts = qty;
-            _hasData       = true;
+            _hasData = true;
             FireAtrUpdated(atr, qty);
         }
 
@@ -106,12 +107,14 @@ namespace PropTraderTools
         // stopTicks = max_risk_dollars / tick_dollar_value (risk budget expressed as tick count).
         private void FireAtrUpdated(double atr, int qty)
         {
-            int stopTicks = (int)Math.Round(_maxRiskDollars / (_tickDollarValue > 0 ? _tickDollarValue : 1.0));
+            int stopTicks = (int)
+                Math.Round(_maxRiskDollars / (_tickDollarValue > 0 ? _tickDollarValue : 1.0));
             string display = string.Format(
                 "ATR={0:F2} pts -> stopTicks={1} -> qty={2}",
                 atr,
                 stopTicks,
-                qty);
+                qty
+            );
             AtrUpdated?.Invoke(display);
         }
 
@@ -133,14 +136,15 @@ namespace PropTraderTools
         // CYC=1 -- straight-line, single-writer UI thread
         internal void SetParameters(double maxRiskDollars, double tickDollarValue)
         {
-            _maxRiskDollars  = maxRiskDollars;
+            _maxRiskDollars = maxRiskDollars;
             _tickDollarValue = tickDollarValue;
         }
 
         // CYC=2 -- guard (!_hasData) + return path
         internal int GetSuggestedQty()
         {
-            if (!_hasData) return 1;
+            if (!_hasData)
+                return 1;
             return _lastContracts;
         }
 
@@ -150,8 +154,10 @@ namespace PropTraderTools
         // Pure static math -- unit-testable without NT8 context. CYC=3.
         internal static int CalcContracts(double atrPoints, double maxRisk, double tickDollarValue)
         {
-            if (atrPoints       <= 0) return 1;   // guard (1): zero or negative ATR
-            if (tickDollarValue <= 0) return 1;   // guard (2): zero tick dollar value
+            if (atrPoints <= 0)
+                return 1; // guard (1): zero or negative ATR
+            if (tickDollarValue <= 0)
+                return 1; // guard (2): zero tick dollar value
             double riskPerContract = atrPoints * tickDollarValue;
             int contracts = (int)Math.Floor(maxRisk / riskPerContract);
             return contracts < 1 ? 1 : contracts; // guard (3): clamp minimum to 1

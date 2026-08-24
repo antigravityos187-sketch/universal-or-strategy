@@ -21,7 +21,8 @@ namespace PropTraderTools
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 new[] { typeof(string), typeof(double) },
-                null);
+                null
+            );
             return (bool)mi.Invoke(engine, new object[] { orderId, limitPrice });
         }
 

@@ -62,7 +62,8 @@ namespace PropTraderTools
             // Verify the static predicate is accessible and callable via reflection.
             MethodInfo mi = typeof(CopyEngine).GetMethod(
                 "IsQxCancelCandidate",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
+            );
             Assert.NotNull(mi);
             bool result = (bool)mi.Invoke(null, new object[] { null });
             Assert.False(result);
@@ -83,7 +84,9 @@ namespace PropTraderTools
             // skipIfFollower=true (default) must not break the existing null-leader fast-exit path.
             _engine.SetEnabled(false);
             var executor = new PttQuickExit();
-            var ex = Record.Exception(() => executor.Execute(null, null, 4, 8, skipIfFollower: true));
+            var ex = Record.Exception(() =>
+                executor.Execute(null, null, 4, 8, skipIfFollower: true)
+            );
             Assert.Null(ex);
         }
 
@@ -94,7 +97,9 @@ namespace PropTraderTools
             // null/flat guard still fires immediately for null leader -- no crash.
             _engine.SetEnabled(false);
             var executor = new PttQuickExit();
-            var ex = Record.Exception(() => executor.Execute(null, null, 4, 8, skipIfFollower: false));
+            var ex = Record.Exception(() =>
+                executor.Execute(null, null, 4, 8, skipIfFollower: false)
+            );
             Assert.Null(ex);
         }
 
@@ -151,9 +156,12 @@ namespace PropTraderTools
             var gqx = new PttGlobalQuickExit();
             MethodInfo mi = typeof(PttGlobalQuickExit).GetMethod(
                 "ExecuteOne",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
-            var ex = Record.Exception(() => mi.Invoke(gqx, new object[] { null, null, 4, 8, false }));
+            var ex = Record.Exception(() =>
+                mi.Invoke(gqx, new object[] { null, null, 4, 8, false })
+            );
             Assert.Null(ex);
         }
     }

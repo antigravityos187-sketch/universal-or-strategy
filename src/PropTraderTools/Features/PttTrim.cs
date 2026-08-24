@@ -17,17 +17,20 @@ namespace PropTraderTools
     /// </summary>
     public class PttTrim : IPttModule
     {
-        public string ModuleId  { get; private set; }
-        public bool   IsEnabled { get; private set; }
+        public string ModuleId { get; private set; }
+        public bool IsEnabled { get; private set; }
 
         public PttTrim()
         {
-            ModuleId  = "TRIM";
+            ModuleId = "TRIM";
             IsEnabled = true;
         }
 
         /// <summary>Set enabled state (wired by TradeCopierPanel license bool). CYC=1.</summary>
-        public void SetEnabled(bool enabled) { IsEnabled = enabled; }
+        public void SetEnabled(bool enabled)
+        {
+            IsEnabled = enabled;
+        }
 
         /// <summary>No PttBus subscriptions. CYC=1.</summary>
         public void Initialize(IPttHostContext ctx) { }
@@ -43,21 +46,37 @@ namespace PropTraderTools
         /// </summary>
         public void Execute(IPttHostContext ctx)
         {
-            if (!IsEnabled) return;                                               // (1)
+            if (!IsEnabled)
+                return; // (1)
 
             Position pos = FindPositionLocal(ctx.LeaderAccount, ctx.Instrument);
-            if (pos == null || pos.Quantity == 0) return;                         // (2)
+            if (pos == null || pos.Quantity == 0)
+                return; // (2)
 
-            int    trimQty  = Math.Max(1, pos.Quantity / 2);                      // 50% trim
-            int    buf      = ctx.TrimBuffer;                                      // DW-B33-02
-            double ask      = ctx.Ask;
-            double bid      = ctx.Bid;
+            int trimQty = Math.Max(1, pos.Quantity / 2); // 50% trim
+            int buf = ctx.TrimBuffer; // DW-B33-02
+            double ask = ctx.Ask;
+            double bid = ctx.Bid;
             double tickSize = ctx.Instrument.MasterInstrument.TickSize;
-            TrimPositionLocal(ctx.LeaderAccount, ctx.Instrument, trimQty, pos,   // (3a)
-                              buf, ask, bid, tickSize);
+            TrimPositionLocal(
+                ctx.LeaderAccount,
+                ctx.Instrument,
+                trimQty,
+                pos, // (3a)
+                buf,
+                ask,
+                bid,
+                tickSize
+            );
 
-            PttBus.RaiseTrim(this, new TrimEventArgs(                             // (3b)
-                ctx.Instrument, 50, trimQty));
+            PttBus.RaiseTrim(
+                this,
+                new TrimEventArgs( // (3b)
+                    ctx.Instrument,
+                    50,
+                    trimQty
+                )
+            );
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -72,40 +91,51 @@ namespace PropTraderTools
         /// CYC=5: (1) null guard, (2) useLimitOrder bool, (3) if(useLimitOrder) branch,
         ///         (4) MarketPosition ternary for limitPrice, (5) try/catch.
         /// </summary>
-        private static void TrimPositionLocal(Account acc, Instrument instr,
-                                              int qty, Position pos,
-                                              int buffer, double ask, double bid, double tickSize)
+        private static void TrimPositionLocal(
+            Account acc,
+            Instrument instr,
+            int qty,
+            Position pos,
+            int buffer,
+            double ask,
+            double bid,
+            double tickSize
+        )
         {
-            if (acc == null || instr == null || qty <= 0) return;                 // (1)
+            if (acc == null || instr == null || qty <= 0)
+                return; // (1)
 
-            OrderAction direction = pos.MarketPosition == MarketPosition.Long
-                ? OrderAction.Sell
-                : OrderAction.BuyToCover;
+            OrderAction direction =
+                pos.MarketPosition == MarketPosition.Long
+                    ? OrderAction.Sell
+                    : OrderAction.BuyToCover;
 
-            bool useLimitOrder = tickSize > 0.0                                   // (2)
+            bool useLimitOrder =
+                tickSize > 0.0 // (2)
                 && (pos.MarketPosition == MarketPosition.Long ? ask > 0.0 : bid > 0.0);
 
             OrderType orderType;
-            double    limitPrice;
-            double    stopPrice;
-            if (useLimitOrder)                                                    // (3)
+            double limitPrice;
+            double stopPrice;
+            if (useLimitOrder) // (3)
             {
                 orderType = OrderType.Limit;
                 // Long sell limit: ask - buffer*tick (aggressive taker). Short buy-to-cover: bid + buffer*tick.
                 // NT8-049: arg6=limitPrice, arg7=0 for Limit orders.
-                limitPrice = pos.MarketPosition == MarketPosition.Long           // (4)
-                    ? ask - buffer * tickSize
-                    : bid + buffer * tickSize;
-                stopPrice  = 0;
+                limitPrice =
+                    pos.MarketPosition == MarketPosition.Long // (4)
+                        ? ask - buffer * tickSize
+                        : bid + buffer * tickSize;
+                stopPrice = 0;
             }
             else
             {
-                orderType  = OrderType.Market;
+                orderType = OrderType.Market;
                 limitPrice = 0;
-                stopPrice  = 0;
+                stopPrice = 0;
             }
 
-            try                                                                   // (5)
+            try // (5)
             {
                 var order = acc.CreateOrder(
                     instr,
@@ -113,36 +143,49 @@ namespace PropTraderTools
                     orderType,
                     OrderEntry.Manual,
                     TimeInForce.Gtc,
-                    qty,                                   // partial qty
-                    limitPrice,                            // arg6: limitPrice (NT8-049)
-                    stopPrice,                             // arg7: stopPrice  (NT8-049)
-                    string.Empty,                          // arg8: oco group
-                    "PTT-Trim",                            // arg9: signal name (NT8-014)
-                    DateTime.MaxValue,                     // arg10: gtd (NT8-013)
-                    (NinjaTrader.Cbi.CustomOrder)null);    // arg11 (NT8-007)
+                    qty, // partial qty
+                    limitPrice, // arg6: limitPrice (NT8-049)
+                    stopPrice, // arg7: stopPrice  (NT8-049)
+                    string.Empty, // arg8: oco group
+                    "PTT-Trim", // arg9: signal name (NT8-014)
+                    DateTime.MaxValue, // arg10: gtd (NT8-013)
+                    (NinjaTrader.Cbi.CustomOrder)null
+                ); // arg11 (NT8-007)
                 if (order != null)
                 {
                     acc.Submit(new[] { order });
                     NinjaTrader.Code.Output.Process(
-                        "[TRIM] TrimPositionLocal " + orderType + " " + direction + " " + qty
-                        + " @ " + (useLimitOrder ? limitPrice.ToString("F2") : "mkt")
-                        + " on " + acc.Name,
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        "[TRIM] TrimPositionLocal "
+                            + orderType
+                            + " "
+                            + direction
+                            + " "
+                            + qty
+                            + " @ "
+                            + (useLimitOrder ? limitPrice.ToString("F2") : "mkt")
+                            + " on "
+                            + acc.Name,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
                 }
             }
             catch (Exception ex)
             {
                 NinjaTrader.Code.Output.Process(
-                    "[TRIM] TrimPositionLocal EXCEPTION on " + (acc != null ? acc.Name : "null")
-                    + ": " + ex.Message,
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    "[TRIM] TrimPositionLocal EXCEPTION on "
+                        + (acc != null ? acc.Name : "null")
+                        + ": "
+                        + ex.Message,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
             }
         }
 
         /// <summary>NT8-050: foreach-based position lookup, never acc.Positions[instr]. CYC=2.</summary>
         private static Position FindPositionLocal(Account acc, Instrument instr)
         {
-            if (acc == null || instr == null) return null;
+            if (acc == null || instr == null)
+                return null;
             foreach (Position p in acc.Positions)
                 if (p.Instrument == instr)
                     return p;

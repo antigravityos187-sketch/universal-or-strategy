@@ -20,19 +20,22 @@ namespace PropTraderTools
 
         // Reflection accessors for private static format methods on TradeCopierPanel.
         private static MethodInfo GetFormatGlobalBeBuffer() =>
-            typeof(TradeCopierPanel)
-                .GetMethod("FormatGlobalBeBuffer",
-                           BindingFlags.NonPublic | BindingFlags.Static)!;
+            typeof(TradeCopierPanel).GetMethod(
+                "FormatGlobalBeBuffer",
+                BindingFlags.NonPublic | BindingFlags.Static
+            )!;
 
         private static MethodInfo GetFormatQuickAllBuffer() =>
-            typeof(TradeCopierPanel)
-                .GetMethod("FormatQuickAllBuffer",
-                           BindingFlags.NonPublic | BindingFlags.Static)!;
+            typeof(TradeCopierPanel).GetMethod(
+                "FormatQuickAllBuffer",
+                BindingFlags.NonPublic | BindingFlags.Static
+            )!;
 
         private static MethodInfo GetFormatBuffer() =>
-            typeof(TradeCopierPanel)
-                .GetMethod("FormatBuffer",
-                           BindingFlags.NonPublic | BindingFlags.Static)!;
+            typeof(TradeCopierPanel).GetMethod(
+                "FormatBuffer",
+                BindingFlags.NonPublic | BindingFlags.Static
+            )!;
 
         // -- Group 1: B73-B-01 (2 tests) ----------------------------------------
 
@@ -77,7 +80,7 @@ namespace PropTraderTools
         [Fact]
         public void T_NO_DISARM_02_IsPendingSlotsEmpty_IsIdempotent()
         {
-            bool first  = CopyEngine.Instance.IsPendingSlotsEmpty();
+            bool first = CopyEngine.Instance.IsPendingSlotsEmpty();
             bool second = CopyEngine.Instance.IsPendingSlotsEmpty();
             Assert.Equal(first, second);
         }
@@ -106,7 +109,8 @@ namespace PropTraderTools
         {
             var field = typeof(CopyEngine).GetField(
                 "PendingBeArmed",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(field);
         }
 
@@ -115,7 +119,8 @@ namespace PropTraderTools
         {
             var field = typeof(CopyEngine).GetField(
                 "GlobalBeAllDisarmed",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(field);
         }
 
@@ -140,7 +145,8 @@ namespace PropTraderTools
         {
             var field = typeof(CopyEngine).GetField(
                 "GlobalBeAllDisarmed",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(field);
         }
 
@@ -216,7 +222,8 @@ namespace PropTraderTools
         {
             var field = typeof(CopyEngine).GetField(
                 "GlobalQuickAllBufferChanged",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(field);
         }
 
@@ -264,14 +271,15 @@ namespace PropTraderTools
         {
             var field = typeof(CopyEngine).GetField(
                 "GlobalBeBufferChanged",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(field);
         }
 
         [Fact]
         public void T_BEALL_FLAT_02_IsPendingSlotsEmpty_IsIdempotentOnTwoCalls()
         {
-            bool first  = CopyEngine.Instance.IsPendingSlotsEmpty();
+            bool first = CopyEngine.Instance.IsPendingSlotsEmpty();
             bool second = CopyEngine.Instance.IsPendingSlotsEmpty();
             Assert.Equal(first, second);
         }
@@ -297,7 +305,8 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "IsQxCancelCandidate",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
+            );
             Assert.NotNull(mi);
         }
 
@@ -315,7 +324,8 @@ namespace PropTraderTools
         {
             var field = typeof(DockPanel).GetField(
                 "LastChildFillProperty",
-                BindingFlags.Public | BindingFlags.Static);
+                BindingFlags.Public | BindingFlags.Static
+            );
             Assert.NotNull(field);
         }
 
@@ -324,7 +334,8 @@ namespace PropTraderTools
         {
             var field = typeof(DockPanel).GetField(
                 "DockProperty",
-                BindingFlags.Public | BindingFlags.Static);
+                BindingFlags.Public | BindingFlags.Static
+            );
             Assert.NotNull(field);
         }
 
@@ -378,8 +389,10 @@ namespace PropTraderTools
 
         private static SolidColorBrush GetBrushTeal()
         {
-            var field = typeof(TradeCopierPanel)
-                .GetField("BrushTeal", BindingFlags.NonPublic | BindingFlags.Static);
+            var field = typeof(TradeCopierPanel).GetField(
+                "BrushTeal",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
             return (SolidColorBrush)field!.GetValue(null)!;
         }
 
@@ -411,7 +424,7 @@ namespace PropTraderTools
             var color = brush.Color;
 
             // Assert
-            Assert.Equal(13,  color.R);
+            Assert.Equal(13, color.R);
             Assert.Equal(148, color.G);
             Assert.Equal(136, color.B);
         }

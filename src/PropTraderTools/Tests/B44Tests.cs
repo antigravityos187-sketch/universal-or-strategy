@@ -27,16 +27,14 @@ namespace PropTraderTools
         private readonly CopyEngine _engine = CopyEngine.Instance;
 
         // Reflection accessor for private _subscribed field (B42Tests.cs:304-306 pattern)
-        private static readonly FieldInfo _subscribedField =
-            typeof(CopyEngine).GetField(
-                "_subscribed",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo _subscribedField = typeof(CopyEngine).GetField(
+            "_subscribed",
+            BindingFlags.NonPublic | BindingFlags.Instance
+        );
 
-        private bool GetSubscribed() =>
-            (bool)_subscribedField.GetValue(_engine);
+        private bool GetSubscribed() => (bool)_subscribedField.GetValue(_engine);
 
-        private void SetSubscribed(bool value) =>
-            _subscribedField.SetValue(_engine, value);
+        private void SetSubscribed(bool value) => _subscribedField.SetValue(_engine, value);
 
         // IDisposable: xUnit calls Dispose() after each [Fact] -- resets singleton state
         public void Dispose()
@@ -85,13 +83,13 @@ namespace PropTraderTools
 
             // Act + intermediate asserts through full cycle
             _engine.Subscribe();
-            Assert.True(GetSubscribed());   // after first Subscribe
+            Assert.True(GetSubscribed()); // after first Subscribe
 
             _engine.Unsubscribe();
-            Assert.False(GetSubscribed());  // after Unsubscribe
+            Assert.False(GetSubscribed()); // after Unsubscribe
 
             _engine.Subscribe();
-            Assert.True(GetSubscribed());   // after re-Subscribe
+            Assert.True(GetSubscribed()); // after re-Subscribe
 
             // Final assert -- flag is true after full cycle
             Assert.True(GetSubscribed());

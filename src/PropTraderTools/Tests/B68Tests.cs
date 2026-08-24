@@ -26,7 +26,8 @@ namespace PropTraderTools
             // Arrange
             var mi = typeof(CopyEngine).GetMethod(
                 "CancelQxBracketsForFollowers",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
 
             // Assert: method must exist on CopyEngine
             Assert.NotNull(mi);
@@ -51,18 +52,21 @@ namespace PropTraderTools
             // Arrange: both called methods must exist on CopyEngine
             var cancelMi = typeof(CopyEngine).GetMethod(
                 "CancelQxBrackets",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(cancelMi);
 
             var submitMi = typeof(CopyEngine).GetMethod(
                 "SubmitBeStop",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(submitMi);
 
             // Act: get RelayBe IL body
             var relayBeMi = typeof(CopyEngine).GetMethod(
                 "RelayBe",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(relayBeMi);
 
             var body = relayBeMi.GetMethodBody();
@@ -86,12 +90,14 @@ namespace PropTraderTools
             // Arrange: locate DispatchCopy and CancelQxBracketsForFollowers on CopyEngine
             var dispatchMi = typeof(CopyEngine).GetMethod(
                 "DispatchCopy",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(dispatchMi);
 
             var cancelFollowersMi = typeof(CopyEngine).GetMethod(
                 "CancelQxBracketsForFollowers",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(cancelFollowersMi);
 
             int cancelToken = cancelFollowersMi.MetadataToken;
@@ -108,7 +114,8 @@ namespace PropTraderTools
                 // call (0x28) or callvirt (0x6F) opcode
                 if (il[i] == 0x28 || il[i] == 0x6F)
                 {
-                    int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                    int token =
+                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     if (token == cancelToken)
                     {
                         foundCancelFollowers = true;
@@ -118,8 +125,10 @@ namespace PropTraderTools
             }
 
             // Assert: DispatchCopy must NOT call CancelQxBracketsForFollowers
-            Assert.False(foundCancelFollowers,
-                "DispatchCopy must not call CancelQxBracketsForFollowers -- normal copy path must not cancel brackets");
+            Assert.False(
+                foundCancelFollowers,
+                "DispatchCopy must not call CancelQxBracketsForFollowers -- normal copy path must not cancel brackets"
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -146,7 +155,10 @@ namespace PropTraderTools
             }
 
             // Assert: guard (1) fires, method returns cleanly, no exception
-            Assert.False(thrown, "CancelQxBracketsForFollowers(null) must not throw -- null guard (1) returns immediately");
+            Assert.False(
+                thrown,
+                "CancelQxBracketsForFollowers(null) must not throw -- null guard (1) returns immediately"
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -171,7 +183,10 @@ namespace PropTraderTools
             }
 
             // Assert: null guard fires, no exception, no side effects
-            Assert.False(thrown, "CancelQxBracketsForFollowers(null) must return cleanly -- null guard (1)");
+            Assert.False(
+                thrown,
+                "CancelQxBracketsForFollowers(null) must return cleanly -- null guard (1)"
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -190,7 +205,14 @@ namespace PropTraderTools
             {
                 // BeEventArgs.Instrument = null -> AllAccounts(null) -> empty enumerable.
                 // Foreach body never entered; neither CancelQxBrackets nor SubmitBeStop is called.
-                engine.RelayBe(new BeEventArgs { Instrument = null, BePrice = 99.0, IsLong = true });
+                engine.RelayBe(
+                    new BeEventArgs
+                    {
+                        Instrument = null,
+                        BePrice = 99.0,
+                        IsLong = true,
+                    }
+                );
             }
             catch
             {
@@ -198,7 +220,10 @@ namespace PropTraderTools
             }
 
             // Assert: RelayBe must handle null instrument gracefully -- no exception
-            Assert.False(thrown, "RelayBe with null instrument must return cleanly -- no rule found, no side effects");
+            Assert.False(
+                thrown,
+                "RelayBe with null instrument must return cleanly -- no rule found, no side effects"
+            );
         }
     }
 }

@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <!-- ============================================================
        PropTraderTools.csproj
        PURPOSE: OmniSharp / LSP reference project ONLY.
@@ -105,6 +104,7 @@
     <Compile Include="Features\PttFollowerStrategy.cs" />
     <Compile Include="Features\PttGlobalBreakEven.cs" />
     <Compile Include="Features\PttGlobalQuickExit.cs" />
+    <Compile Include="Features\PttBreakEvenSwap.cs" />
     <Compile Include="Features\PttQuickExit.cs" />
     <Compile Include="Features\PttTrim.cs" />
     <Compile Include="Tests\B42Tests.cs" />
@@ -131,5 +131,4 @@
     <Compile Include="B76Tests.cs" />
     <Compile Include="TradeCopierPanelB77Tests.cs" />
   </ItemGroup>
-
 </Project>

@@ -144,16 +144,18 @@ namespace PropTraderTools
         [Fact]
         public void T_QX_DOUBLE_03_CancelQxBrackets_SubmittedAndAccepted_InStateOkSet()
         {
-            bool subOk = OrderState.Submitted == OrderState.Working
-                      || OrderState.Submitted == OrderState.Initialized
-                      || OrderState.Submitted == OrderState.Accepted
-                      || OrderState.Submitted == OrderState.Submitted
-                      || OrderState.Submitted == OrderState.TriggerPending;
-            bool accOk = OrderState.Accepted == OrderState.Working
-                      || OrderState.Accepted == OrderState.Initialized
-                      || OrderState.Accepted == OrderState.Accepted
-                      || OrderState.Accepted == OrderState.Submitted
-                      || OrderState.Accepted == OrderState.TriggerPending;
+            bool subOk =
+                OrderState.Submitted == OrderState.Working
+                || OrderState.Submitted == OrderState.Initialized
+                || OrderState.Submitted == OrderState.Accepted
+                || OrderState.Submitted == OrderState.Submitted
+                || OrderState.Submitted == OrderState.TriggerPending;
+            bool accOk =
+                OrderState.Accepted == OrderState.Working
+                || OrderState.Accepted == OrderState.Initialized
+                || OrderState.Accepted == OrderState.Accepted
+                || OrderState.Accepted == OrderState.Submitted
+                || OrderState.Accepted == OrderState.TriggerPending;
             Assert.True(subOk);
             Assert.True(accOk);
         }
@@ -161,9 +163,11 @@ namespace PropTraderTools
         [Fact]
         public void T_DRAG_DEDUP_02_HandleEntryChange_UpsertKeepsKey_InDedupCache()
         {
-            var cache = (ConcurrentDictionary<string, double>)typeof(CopyEngine)
-                .GetField("_dedupCache", BindingFlags.Instance | BindingFlags.NonPublic)
-                .GetValue(CopyEngine.Instance);
+            var cache =
+                (ConcurrentDictionary<string, double>)
+                    typeof(CopyEngine)
+                        .GetField("_dedupCache", BindingFlags.Instance | BindingFlags.NonPublic)
+                        .GetValue(CopyEngine.Instance);
             cache["ord-b72-drag-01"] = 100.0;
             cache["ord-b72-drag-01"] = 200.0;
             Assert.True(cache.ContainsKey("ord-b72-drag-01"));
@@ -173,9 +177,11 @@ namespace PropTraderTools
         [Fact]
         public void T_DRAG_DEDUP_03_HandleEntryChange_NewOrderId_CacheMiss_AllowsDispatch()
         {
-            var cache = (ConcurrentDictionary<string, double>)typeof(CopyEngine)
-                .GetField("_dedupCache", BindingFlags.Instance | BindingFlags.NonPublic)
-                .GetValue(CopyEngine.Instance);
+            var cache =
+                (ConcurrentDictionary<string, double>)
+                    typeof(CopyEngine)
+                        .GetField("_dedupCache", BindingFlags.Instance | BindingFlags.NonPublic)
+                        .GetValue(CopyEngine.Instance);
             cache.TryRemove("ord-b72-drag-02", out _);
             bool present = cache.ContainsKey("ord-b72-drag-02");
             Assert.False(present);
@@ -184,9 +190,11 @@ namespace PropTraderTools
         [Fact]
         public void T_DRAG_DEDUP_04_HandleEntryChange_NoTryRemove_KeyPersistsAfterUpsert()
         {
-            var cache = (ConcurrentDictionary<string, double>)typeof(CopyEngine)
-                .GetField("_dedupCache", BindingFlags.Instance | BindingFlags.NonPublic)
-                .GetValue(CopyEngine.Instance);
+            var cache =
+                (ConcurrentDictionary<string, double>)
+                    typeof(CopyEngine)
+                        .GetField("_dedupCache", BindingFlags.Instance | BindingFlags.NonPublic)
+                        .GetValue(CopyEngine.Instance);
             cache["ord-b72-drag-03"] = 150.0;
             cache["ord-b72-drag-03"] = 150.0;
             Assert.True(cache.ContainsKey("ord-b72-drag-03"));
@@ -342,11 +350,12 @@ namespace PropTraderTools
         [Fact]
         public void T_BE_MOVE_04_MoveStopToBreakEven_StepB_TriggerPendingInStateOk()
         {
-            bool tpInFilter = OrderState.TriggerPending == OrderState.Working
-                           || OrderState.TriggerPending == OrderState.Initialized
-                           || OrderState.TriggerPending == OrderState.Submitted
-                           || OrderState.TriggerPending == OrderState.Accepted
-                           || OrderState.TriggerPending == OrderState.TriggerPending;
+            bool tpInFilter =
+                OrderState.TriggerPending == OrderState.Working
+                || OrderState.TriggerPending == OrderState.Initialized
+                || OrderState.TriggerPending == OrderState.Submitted
+                || OrderState.TriggerPending == OrderState.Accepted
+                || OrderState.TriggerPending == OrderState.TriggerPending;
             Assert.True(tpInFilter);
         }
 
@@ -354,12 +363,20 @@ namespace PropTraderTools
         public void T_BE_MOVE_05_MoveStopToBreakEven_StepA_PttQxT1_IsAtmTarget()
         {
             string name = "PTT-QX-T1";
-            bool isAtmTarget = !string.IsNullOrEmpty(name)
+            bool isAtmTarget =
+                !string.IsNullOrEmpty(name)
                 && (
-                    (name.Length >= 7 && name.StartsWith("Target", StringComparison.Ordinal)
-                        && char.IsDigit(name[6]) && name[6] != '0')
-                    || (name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                        && name.Length > 8 && char.IsDigit(name[8]))
+                    (
+                        name.Length >= 7
+                        && name.StartsWith("Target", StringComparison.Ordinal)
+                        && char.IsDigit(name[6])
+                        && name[6] != '0'
+                    )
+                    || (
+                        name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                        && name.Length > 8
+                        && char.IsDigit(name[8])
+                    )
                     || name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
                 );
             Assert.True(isAtmTarget);
@@ -373,12 +390,20 @@ namespace PropTraderTools
         public void T_MSTBE_CR_01_MoveStopToBreakEven_StepA_Target1_IsAtmTarget()
         {
             string name = "Target1";
-            bool isAtmTarget = !string.IsNullOrEmpty(name)
+            bool isAtmTarget =
+                !string.IsNullOrEmpty(name)
                 && (
-                    (name.Length >= 7 && name.StartsWith("Target", StringComparison.Ordinal)
-                        && char.IsDigit(name[6]) && name[6] != '0')
-                    || (name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                        && name.Length > 8 && char.IsDigit(name[8]))
+                    (
+                        name.Length >= 7
+                        && name.StartsWith("Target", StringComparison.Ordinal)
+                        && char.IsDigit(name[6])
+                        && name[6] != '0'
+                    )
+                    || (
+                        name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                        && name.Length > 8
+                        && char.IsDigit(name[8])
+                    )
                     || name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
                 );
             Assert.True(isAtmTarget);
@@ -389,8 +414,12 @@ namespace PropTraderTools
         {
             var ex = Record.Exception(() =>
                 typeof(CopyEngine)
-                    .GetMethod("MoveStopToBreakEven", BindingFlags.NonPublic | BindingFlags.Instance)
-                    .Invoke(CopyEngine.Instance, new object[] { null, null, 0 }));
+                    .GetMethod(
+                        "MoveStopToBreakEven",
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    )
+                    .Invoke(CopyEngine.Instance, new object[] { null, null, 0 })
+            );
             Assert.Null(ex);
         }
 
@@ -408,7 +437,10 @@ namespace PropTraderTools
         [Fact]
         public void T_OCO_SEED_01_MstbeOcoSeq_TickCountSeed_IsNonZero()
         {
-            var fi = typeof(CopyEngine).GetField("_mstbeOcoSeq", BindingFlags.Instance | BindingFlags.NonPublic);
+            var fi = typeof(CopyEngine).GetField(
+                "_mstbeOcoSeq",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
             int seed = (int)fi.GetValue(CopyEngine.Instance);
             Assert.NotEqual(0, seed);
         }
@@ -421,12 +453,12 @@ namespace PropTraderTools
         }
 
         [Fact]
-        public void T_OCO_SEED_03_NextBeOcoSeq_D5Format_FiveDigitPadding()
+        public void T_OCO_SEED_03_NextBeOcoSeq_D7Format_SevenDigitPadding()
         {
             int seq = 1;
-            string formatted = seq.ToString("D5");
-            Assert.Equal("00001", formatted);
-            Assert.Equal(5, formatted.Length);
+            string formatted = seq.ToString("D7");
+            Assert.Equal("0000001", formatted);
+            Assert.Equal(7, formatted.Length);
         }
 
         [Fact]
@@ -443,7 +475,9 @@ namespace PropTraderTools
             var results = new ConcurrentBag<int>();
             var tasks = new System.Threading.Tasks.Task[10];
             for (int i = 0; i < 10; i++)
-                tasks[i] = System.Threading.Tasks.Task.Run(() => results.Add(CopyEngine.Instance.NextBeOcoSeq()));
+                tasks[i] = System.Threading.Tasks.Task.Run(() =>
+                    results.Add(CopyEngine.Instance.NextBeOcoSeq())
+                );
             System.Threading.Tasks.Task.WaitAll(tasks);
             Assert.Equal(10, results.Distinct().Count());
         }
@@ -452,12 +486,20 @@ namespace PropTraderTools
         public void T_QX_TARGETS_01_MoveStopToBreakEven_StepA_PttQxT1_Matches()
         {
             string name = "PTT-QX-T1";
-            bool isAtmTarget = !string.IsNullOrEmpty(name)
+            bool isAtmTarget =
+                !string.IsNullOrEmpty(name)
                 && (
-                    (name.Length >= 7 && name.StartsWith("Target", StringComparison.Ordinal)
-                        && char.IsDigit(name[6]) && name[6] != '0')
-                    || (name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                        && name.Length > 8 && char.IsDigit(name[8]))
+                    (
+                        name.Length >= 7
+                        && name.StartsWith("Target", StringComparison.Ordinal)
+                        && char.IsDigit(name[6])
+                        && name[6] != '0'
+                    )
+                    || (
+                        name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                        && name.Length > 8
+                        && char.IsDigit(name[8])
+                    )
                     || name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
                 );
             Assert.True(isAtmTarget);
@@ -467,9 +509,10 @@ namespace PropTraderTools
         public void T_QX_TARGETS_02_MoveStopToBreakEven_StepA_PttQxT2_Matches()
         {
             string name = "PTT-QX-T2";
-            bool isAtmTarget = name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                            && name.Length > 8
-                            && char.IsDigit(name[8]);
+            bool isAtmTarget =
+                name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                && name.Length > 8
+                && char.IsDigit(name[8]);
             Assert.True(isAtmTarget);
         }
 

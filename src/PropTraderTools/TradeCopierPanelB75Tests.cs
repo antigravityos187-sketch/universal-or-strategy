@@ -168,7 +168,9 @@ namespace PropTraderTools
             Assert.Equal(string.Empty, result);
         }
 
-        [Fact(Skip = "NT8-HOST-REQUIRED: Guard-2 (FindVisualChild<ChartTrader> returns null) requires live WPF visual tree")]
+        [Fact(
+            Skip = "NT8-HOST-REQUIRED: Guard-2 (FindVisualChild<ChartTrader> returns null) requires live WPF visual tree"
+        )]
         public void T_B66TPL_02_Integration_NoChartTrader_ReturnsEmpty()
         {
             // Integration skeleton (documents intent):
@@ -182,7 +184,9 @@ namespace PropTraderTools
         // Requires live Chart + ChartTrader with AtmStrategy set. NT8-HOST-REQUIRED.
         // ----------------------------------------------------------------
 
-        [Fact(Skip = "NT8-HOST-REQUIRED: FindVisualChild<ChartTrader> + ct.AtmStrategy require live NT8 chart")]
+        [Fact(
+            Skip = "NT8-HOST-REQUIRED: FindVisualChild<ChartTrader> + ct.AtmStrategy require live NT8 chart"
+        )]
         public void T_B66TPL_03_PrimaryPath_AtmStrategyNonNull_ReturnsName()
         {
             // Arrange: real Chart whose ChartTrader.AtmStrategy.Name == "MES $200 SL6"
@@ -195,7 +199,9 @@ namespace PropTraderTools
         // NT8-HOST-REQUIRED.
         // ----------------------------------------------------------------
 
-        [Fact(Skip = "NT8-HOST-REQUIRED: FindVisualChild<AtmStrategySelector> requires live NT8 chart")]
+        [Fact(
+            Skip = "NT8-HOST-REQUIRED: FindVisualChild<AtmStrategySelector> requires live NT8 chart"
+        )]
         public void T_B66TPL_04_Fallback1_AtmStrategySelectorFound_ReturnsName()
         {
             // Arrange: real Chart with ChartTrader where ct.AtmStrategy==null
@@ -224,7 +230,9 @@ namespace PropTraderTools
         // Requires NinjaTrader.NinjaScript.AtmStrategy instance. NT8-HOST-REQUIRED.
         // ----------------------------------------------------------------
 
-        [Fact(Skip = "NT8-HOST-REQUIRED: NinjaTrader.NinjaScript.AtmStrategy cannot be instantiated without NT8 host")]
+        [Fact(
+            Skip = "NT8-HOST-REQUIRED: NinjaTrader.NinjaScript.AtmStrategy cannot be instantiated without NT8 host"
+        )]
         public void T_B66OBJ_P01_SetNonNull_GetCloneAtmMode_ReturnsNamedWithObject()
         {
             // Arrange:
@@ -259,7 +267,9 @@ namespace PropTraderTools
         // Requires Account objects for AddRule. NT8-HOST-REQUIRED.
         // ----------------------------------------------------------------
 
-        [Fact(Skip = "NT8-HOST-REQUIRED: NinjaTrader.Cbi.Account cannot be constructed without NT8 host")]
+        [Fact(
+            Skip = "NT8-HOST-REQUIRED: NinjaTrader.Cbi.Account cannot be constructed without NT8 host"
+        )]
         public void T_B67_01_MatchingRule_ReturnsBothFollowerNames()
         {
             // Arrange:
@@ -312,8 +322,14 @@ namespace PropTraderTools
 
             // Assert: phantom instrument has no followers -- both items unselected (empty-set baseline).
             // This verifies the predicate mechanics: Contains returns false for items not in saved set.
-            Assert.False(sim102Selected, "Sim102 is NOT in the saved rule -- must remain unselected");
-            Assert.False(sim103Selected, "Sim103 is NOT in the saved rule -- must remain unselected");
+            Assert.False(
+                sim102Selected,
+                "Sim102 is NOT in the saved rule -- must remain unselected"
+            );
+            Assert.False(
+                sim103Selected,
+                "Sim103 is NOT in the saved rule -- must remain unselected"
+            );
         }
     }
 }

@@ -33,7 +33,8 @@ namespace PropTraderTools
             // Arrange: locate private TryFireFollowerBeRetry method via reflection
             var method = typeof(CopyEngine).GetMethod(
                 "TryFireFollowerBeRetry",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(method);
 
             var body = method.GetMethodBody();
@@ -46,7 +47,8 @@ namespace PropTraderTools
             int tryRemoveCount = 0;
             for (int i = 0; i < il.Length - 4; i++)
             {
-                if (il[i] != 0x6F) continue;  // callvirt opcode
+                if (il[i] != 0x6F)
+                    continue; // callvirt opcode
                 int token = System.BitConverter.ToInt32(il, i + 1);
                 try
                 {
@@ -77,9 +79,13 @@ namespace PropTraderTools
         {
             // Arrange: find all nested types declared on CopyEngine (compiler-generated lambdas)
             var nestedTypes = typeof(CopyEngine).GetNestedTypes(
-                BindingFlags.NonPublic | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Public
+            );
             Assert.NotNull(nestedTypes);
-            Assert.True(nestedTypes.Length > 0, "Expected compiler-generated nested types on CopyEngine.");
+            Assert.True(
+                nestedTypes.Length > 0,
+                "Expected compiler-generated nested types on CopyEngine."
+            );
 
             var module = typeof(CopyEngine).Module;
             System.Reflection.MethodBase lambdaMethod = null;
@@ -87,20 +93,25 @@ namespace PropTraderTools
 
             foreach (var nestedType in nestedTypes)
             {
-                foreach (var m in nestedType.GetMethods(
-                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public))
+                foreach (
+                    var m in nestedType.GetMethods(
+                        BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
+                    )
+                )
                 {
                     var mBody = m.GetMethodBody();
-                    if (mBody == null) continue;
+                    if (mBody == null)
+                        continue;
                     var mIl = mBody.GetILAsByteArray();
-                    if (mIl == null) continue;
+                    if (mIl == null)
+                        continue;
 
                     bool hasFallbackMarker = false;
                     int localTryRemoveCount = 0;
 
                     for (int i = 0; i < mIl.Length - 4; i++)
                     {
-                        if (mIl[i] == 0x72)  // ldstr opcode
+                        if (mIl[i] == 0x72) // ldstr opcode
                         {
                             int token = System.BitConverter.ToInt32(mIl, i + 1);
                             try
@@ -111,7 +122,7 @@ namespace PropTraderTools
                             }
                             catch { }
                         }
-                        if (mIl[i] == 0x6F)  // callvirt opcode
+                        if (mIl[i] == 0x6F) // callvirt opcode
                         {
                             int token = System.BitConverter.ToInt32(mIl, i + 1);
                             try
@@ -131,16 +142,21 @@ namespace PropTraderTools
                         break;
                     }
                 }
-                if (lambdaMethod != null) break;
+                if (lambdaMethod != null)
+                    break;
             }
 
             // Assert: found the lambda
             Assert.NotNull(lambdaMethod);
 
             // Assert: >= 2 TryRemove calls (slot + counter reset)
-            Assert.True(tryRemoveCount >= 2,
-                "Expected >= 2 TryRemove calls in QueueBeRetryFallback timer lambda, found " + tryRemoveCount + ". " +
-                "DW-B82-01: _beReplaceAttempts reset missing from fallback path.");
+            Assert.True(
+                tryRemoveCount >= 2,
+                "Expected >= 2 TryRemove calls in QueueBeRetryFallback timer lambda, found "
+                    + tryRemoveCount
+                    + ". "
+                    + "DW-B82-01: _beReplaceAttempts reset missing from fallback path."
+            );
         }
     }
 }

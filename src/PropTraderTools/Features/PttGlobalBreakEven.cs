@@ -15,7 +15,7 @@ namespace PropTraderTools
     {
         // JS-023: volatile int is allowed. NT8-003: volatile double is BANNED -- not used here.
         // _globalBeBuffer: UI-thread only (set from button handlers on dispatcher).
-        private volatile int _globalBeBuffer = 0;   // default 0 = exact entry price
+        private volatile int _globalBeBuffer = 0; // default 0 = exact entry price
 
         // B40: execution counter. Incremented in Execute() via Interlocked.Increment.
         // JS-023: volatile int allowed. NT8-003: volatile double banned -- not used here.
@@ -32,7 +32,9 @@ namespace PropTraderTools
         // The lambda captures nothing at construction time; CopyEngine.Instance is resolved at call time.
         // B66: lambda extended to accept isLong (4th arg) and forward to SubmitBeStop.
         internal PttGlobalBreakEven()
-            : this((acc, instr, price, lng) => CopyEngine.Instance.SubmitBeStop(acc, instr, price, lng)) { }
+            : this(
+                (acc, instr, price, lng) => CopyEngine.Instance.SubmitBeStop(acc, instr, price, lng)
+            ) { }
 
         // Test injection constructor. B66: delegate updated to 4-arg Action.
         internal PttGlobalBreakEven(Action<Account, Instrument, double, bool> submitBeStop)
@@ -47,7 +49,8 @@ namespace PropTraderTools
             System.Threading.Interlocked.Increment(ref _ocoSeq);
             NinjaTrader.Code.Output.Process(
                 "[BE-ALL] GlobalBreakEven: ArmAllPendingBe buf=" + bufferTicks + "t",
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
             CopyEngine.Instance.ArmAllPendingBe(bufferTicks);
         }
 
@@ -59,7 +62,8 @@ namespace PropTraderTools
             {
                 foreach (var pos in acc.Positions)
                 {
-                    if (pos == null || pos.Quantity == 0) continue;
+                    if (pos == null || pos.Quantity == 0)
+                        continue;
                     ExecuteOne(acc, pos, bufferTicks);
                 }
             }
@@ -69,12 +73,14 @@ namespace PropTraderTools
         // CYC=4 (1 base + if + || + ternary direction). JS-002: early return void (not return null).
         private void ExecuteOne(Account acc, Position pos, int bufferTicks)
         {
-            if (pos == null || pos.Quantity == 0) return;              // defensive re-check
-            bool   isLong   = pos.MarketPosition == MarketPosition.Long;
+            if (pos == null || pos.Quantity == 0)
+                return; // defensive re-check
+            bool isLong = pos.MarketPosition == MarketPosition.Long;
             double tickSize = pos.Instrument.MasterInstrument?.TickSize ?? 0.25;
-            double bePrice  = Math.Round(
-                (pos.AveragePrice + (isLong ? bufferTicks : -bufferTicks) * tickSize) / tickSize
-            ) * tickSize;
+            double bePrice =
+                Math.Round(
+                    (pos.AveragePrice + (isLong ? bufferTicks : -bufferTicks) * tickSize) / tickSize
+                ) * tickSize;
             _submitBeStop(acc, pos.Instrument, bePrice, isLong);
         }
 
@@ -85,20 +91,22 @@ namespace PropTraderTools
         // pairIndex = i from the beTargets loop in SubmitBeStop (appended as ocoOverride+"-"+i in caller)
         // CYC=1: pure expression. ASCII-only. No hex. No FontFamily.
         // internal static so CopyEngine.ArmAllPendingBe can call it without circular dependency.
-        internal static string BuildGlobalBeOcoId(int seq, int accIdx, int pairIndex)
-            => "PTT-BEG-" + seq.ToString("D5") + "-" + accIdx + "-" + pairIndex;
+        internal static string BuildGlobalBeOcoId(int seq, int accIdx, int pairIndex) =>
+            "PTT-BEG-" + seq.ToString("D5") + "-" + accIdx + "-" + pairIndex;
 
-        internal int GlobalBeBuffer => _globalBeBuffer;               // CYC=1
+        internal int GlobalBeBuffer => _globalBeBuffer; // CYC=1
 
-        internal void IncrementBuffer()                               // CYC=2
+        internal void IncrementBuffer() // CYC=2
         {
-            if (_globalBeBuffer < 10) _globalBeBuffer++;
+            if (_globalBeBuffer < 10)
+                _globalBeBuffer++;
             CopyEngine.Instance.RaiseBeBufferChanged(_globalBeBuffer); // HOTFIX-CS0070: relay -- CS0070 forbids external event invoke
         }
 
-        internal void DecrementBuffer()                               // CYC=2
+        internal void DecrementBuffer() // CYC=2
         {
-            if (_globalBeBuffer > -10) _globalBeBuffer--;
+            if (_globalBeBuffer > -10)
+                _globalBeBuffer--;
             CopyEngine.Instance.RaiseBeBufferChanged(_globalBeBuffer); // HOTFIX-CS0070: relay -- CS0070 forbids external event invoke
         }
     }

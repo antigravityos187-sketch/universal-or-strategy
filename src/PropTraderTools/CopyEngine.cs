@@ -47,12 +47,12 @@ namespace PropTraderTools
     // JS-003: readonly struct prevents field transposition
     internal struct FollowerBinding
     {
-        internal Account FollowerAccount     { get; private set; }
-        internal string  FromEntrySignalName { get; private set; }
+        internal Account FollowerAccount { get; private set; }
+        internal string FromEntrySignalName { get; private set; }
 
         internal FollowerBinding(Account account, string signalName)
         {
-            FollowerAccount     = account;
+            FollowerAccount = account;
             FromEntrySignalName = signalName;
         }
     }
@@ -60,12 +60,12 @@ namespace PropTraderTools
     // V05: Position truth snapshot -- JS-003 (readonly struct prevents bool transposition)
     public struct PositionState
     {
-        public bool HasOpenPosition   { get; private set; }
+        public bool HasOpenPosition { get; private set; }
         public bool HasWorkingEntries { get; private set; }
 
         public PositionState(bool hasOpen, bool hasWorking)
         {
-            HasOpenPosition   = hasOpen;
+            HasOpenPosition = hasOpen;
             HasWorkingEntries = hasWorking;
         }
     }
@@ -74,28 +74,50 @@ namespace PropTraderTools
     // NT8 Roslyn: records with positional params generate IsExternalInit (CS0518). Use abstract class instead.
     public abstract class FollowerAtmMode
     {
-        private FollowerAtmMode() { }   // JS-010: private base constructor -- no external subclassing
-        public sealed class Inherit  : FollowerAtmMode { public Inherit() { } }   // B7 default
-        public sealed class Market   : FollowerAtmMode { public Market()  { } }   // pure market
-        public sealed class Named    : FollowerAtmMode
+        private FollowerAtmMode() { } // JS-010: private base constructor -- no external subclassing
+
+        public sealed class Inherit : FollowerAtmMode
+        {
+            public Inherit() { }
+        } // B7 default
+
+        public sealed class Market : FollowerAtmMode
+        {
+            public Market() { }
+        } // pure market
+
+        public sealed class Named : FollowerAtmMode
         {
             public string TemplateName { get; }
+
             // HOTFIX-B66-ATM-OBJ: AtmObject carries the live ChartTrader.AtmStrategy instance.
             // When non-null, SendCopyWithAtm uses StartAtmStrategy(atm, order) object overload
             // instead of StartAtmStrategy(string, order) -- avoids reading .Name (returns class name).
             public NinjaTrader.NinjaScript.AtmStrategy AtmObject { get; }
-            public Named(string templateName) { TemplateName = templateName; AtmObject = null; }
+
+            public Named(string templateName)
+            {
+                TemplateName = templateName;
+                AtmObject = null;
+            }
+
             public Named(string templateName, NinjaTrader.NinjaScript.AtmStrategy atmObj)
             {
                 TemplateName = templateName;
-                AtmObject    = atmObj;
+                AtmObject = atmObj;
             }
         }
     }
+
     // B8: SendCopy switch + UI dropdown wired in T2.
 
     // B9 T3 -- Copy mode discriminated union (JS-023: volatile int backing for thread-safe reads/writes)
-    internal enum CopyMode { Signal = 0, Mirror = 1, Clone = 2 }
+    internal enum CopyMode
+    {
+        Signal = 0,
+        Mirror = 1,
+        Clone = 2,
+    }
 
     internal sealed class CopyEngine : ICopyEngine
     {
@@ -105,27 +127,46 @@ namespace PropTraderTools
 
         // --- State ---
         private volatile bool _isCopyEnabled; // JS-023
+
         // B9 T1 -- ATR sizing engine integration (JS-023: volatile, ADV-002 fix)
-        private volatile bool            _atrEnabled = false;   // JS-023
-        private volatile AtrSizingEngine _atrEngine  = null;    // write/read on UI thread only
+        private volatile bool _atrEnabled = false; // JS-023
+        private volatile AtrSizingEngine _atrEngine = null; // write/read on UI thread only
+
         // B9 T3 -- Mirror mode (JS-023: volatile int backing for CopyMode enum)
-        private volatile int _copyModeValue = 0;   // 0=Signal (default), 1=Mirror
+        private volatile int _copyModeValue = 0; // 0=Signal (default), 1=Mirror
+
         // B50 -- _cloneAtmCache: volatile string holds ATM template name for display/logging only.
         // volatile string: reference-type writes are atomic on CLR 4.0+ (JS-023 compliant).
         // NT8-003: volatile double/float BANNED -- string is safe.
         private volatile string _cloneAtmCache = string.Empty;
+
         // HOTFIX-B66-ATM-OBJ: volatile reference to live ChartTrader.AtmStrategy object.
         // Captured at Clone mode click; used in StartAtmStrategy(atm, order) object overload.
         // volatile object reference write/read: atomic on CLR 4.0+ (JS-023 compliant).
         private volatile NinjaTrader.NinjaScript.AtmStrategy _cloneAtmObject = null;
+
         // B39 -- _globalBe: singleton reference to shared Global BE execution engine.
         // Lazily initialized; Panel and Window read via GlobalBe property (UI thread only).
         // JS-023: volatile null-check safe for singleton reads on CLR 4.0+.
         private PttGlobalBreakEven _globalBe = null;
+
         // B62: value changed from long (timestamp) to double (last dispatched LimitPrice).
         // Enables drag detection: same orderId + different price = leader dragged.
         // JS-025: ConcurrentDictionary is lock-free.
-        private readonly ConcurrentDictionary<string, double> _dedupCache = new ConcurrentDictionary<string, double>(); // JS-025
+        private readonly ConcurrentDictionary<string, double> _dedupCache =
+            new ConcurrentDictionary<string, double>(); // JS-025
+
+        // DW-B91-A: per-orderId dispatch guard -- survives EvictDedup terminal-state eviction.
+        // After DispatchCopy commits a copy dispatch for orderId, TryAdd records it here.
+        // On a second dispatch-triggering event for the same orderId (e.g. Rithmic re-submit),
+        // ContainsKey returns true before DispatchCopy can fire again.
+        // Eviction is co-located with _dedupCache eviction in EvictDedup -- both cleared on
+        // Filled/Cancelled/Rejected so the slot is reclaimed when the order lifecycle closes.
+        // Key = order.OrderId.ToString(). Value = byte (minimum footprint -- presence-only set).
+        // JS-021: ConcurrentDictionary.ContainsKey and TryAdd are lock-free atomic operations.
+        // JS-025: ConcurrentDictionary is the canonical lock-free set pattern.
+        private readonly ConcurrentDictionary<string, byte> _entryDispatchedOrders =
+            new ConcurrentDictionary<string, byte>();
         private ConcurrentBag<CopyRule> _rules = new ConcurrentBag<CopyRule>(); // Change 1: removed readonly
         private double _dailyCapFloor = -500.0; // Change 4
 
@@ -134,35 +175,45 @@ namespace PropTraderTools
         // NT8-004: struct in ConcurrentDictionary<string,TSlot> confirmed safe in NT8.
         private struct PendingBeSlot
         {
-            internal readonly Account    Account;
+            internal readonly Account Account;
             internal readonly Instrument Instrument;
-            internal readonly int        BufferTicks;
+            internal readonly int BufferTicks;
+
             internal PendingBeSlot(Account a, Instrument i, int b)
-            { Account = a; Instrument = i; BufferTicks = b; }
+            {
+                Account = a;
+                Instrument = i;
+                BufferTicks = b;
+            }
         }
 
         private struct TrailBeSlot
         {
-            internal readonly Account    Account;
+            internal readonly Account Account;
             internal readonly Instrument Instrument;
-            internal readonly int        BufferTicks;
+            internal readonly int BufferTicks;
+
             internal TrailBeSlot(Account a, Instrument i, int b)
-            { Account = a; Instrument = i; BufferTicks = b; }
+            {
+                Account = a;
+                Instrument = i;
+                BufferTicks = b;
+            }
         }
 
         // B27 -- Pending BE slot dictionary (DW-B27-01: replaces 4 singleton fields).
         // Key = account.Name. JS-021: TryGetValue/TryRemove/AddOrUpdate are lock-free.
-        private readonly ConcurrentDictionary<string, PendingBeSlot> _pendingBeSlots
-            = new ConcurrentDictionary<string, PendingBeSlot>();
+        private readonly ConcurrentDictionary<string, PendingBeSlot> _pendingBeSlots =
+            new ConcurrentDictionary<string, PendingBeSlot>();
 
         // B27 -- Trail BE slot dictionary (DW-B27-01: replaces 5 singleton fields).
         // LastPnlBits lives in _trailBeLastPnlBits (separate dict) because struct values
         // in ConcurrentDictionary are value types -- Interlocked CAS requires a ref to a
         // field, impossible on a boxed struct. NT8-003: no volatile on long.
-        private readonly ConcurrentDictionary<string, TrailBeSlot>   _trailBeSlots
-            = new ConcurrentDictionary<string, TrailBeSlot>();
-        private readonly ConcurrentDictionary<string, long>           _trailBeLastPnlBits
-            = new ConcurrentDictionary<string, long>();
+        private readonly ConcurrentDictionary<string, TrailBeSlot> _trailBeSlots =
+            new ConcurrentDictionary<string, TrailBeSlot>();
+        private readonly ConcurrentDictionary<string, long> _trailBeLastPnlBits =
+            new ConcurrentDictionary<string, long>();
 
         // DW-B79-06: PendingFollowerBeSlot -- event-driven deferred BE for QX->BE-ALL race fix.
         // Registered by MoveStopToBreakEven when targets=0 on a follower account (first call only).
@@ -173,36 +224,46 @@ namespace PropTraderTools
         // NT8-004: struct in ConcurrentDictionary confirmed safe in NT8.
         private struct PendingFollowerBeSlot
         {
-            internal readonly Account    Account;
+            internal readonly Account Account;
             internal readonly Instrument Instrument;
-            internal readonly int        BufferTicks;
+            internal readonly int BufferTicks;
+
             internal PendingFollowerBeSlot(Account a, Instrument i, int b)
-            { Account = a; Instrument = i; BufferTicks = b; }
+            {
+                Account = a;
+                Instrument = i;
+                BufferTicks = b;
+            }
         }
 
-        private readonly ConcurrentDictionary<string, PendingFollowerBeSlot> _pendingFollowerBeSlots
-            = new ConcurrentDictionary<string, PendingFollowerBeSlot>();
+        private readonly ConcurrentDictionary<
+            string,
+            PendingFollowerBeSlot
+        > _pendingFollowerBeSlots = new ConcurrentDictionary<string, PendingFollowerBeSlot>();
 
         // DW-B79-08 v3: per-account retry attempt counter for TryReplacePttBeBrackets.
         // Prevents unbounded retry storm when NT8's ATM sweep repeatedly cancels every PTT-BE-*
         // order that TryReplacePttBeBrackets re-places (each re-place gets swept again).
         // Limit: 3 attempts per account per trade. Reset by TryEvictFollowerBeSlot when flat.
         // Key = acc.Name. JS-021: ConcurrentDictionary write is lock-free. JS-023: int values.
-        private readonly ConcurrentDictionary<string, int> _beReplaceAttempts
-            = new ConcurrentDictionary<string, int>();
+        private readonly ConcurrentDictionary<string, int> _beReplaceAttempts =
+            new ConcurrentDictionary<string, int>();
 
         // HOTFIX-MSTBE-OCO-REUSE: monotonic counter for BE OCO IDs -- never reuse a cancelled OCO ID.
         // DW-B40-OCO-02 pattern from PttBreakEven._beOcoSeq. JS-023: volatile int allowed.
         // HOTFIX-BEALL-OCO-SEQ-SHARED-01: shared by BOTH MoveStopToBreakEven AND PttBreakEven.Execute
         // so the two paths never collide on the same OCO ID. PttBreakEven calls NextBeOcoSeq() instead
         // of its own _beOcoSeq, ensuring global uniqueness across all BE code paths.
-        // HOTFIX-MSTBE-OCO-TICKSEED-01: seed from Environment.TickCount (ms since OS boot).
+        // DW-B89-01 SEED FIX: XOR Environment.TickCount with low 31 bits of DateTime.UtcNow.Ticks.
         // NT8 keeps cancelled OCO IDs for the entire NT8 session. When NT8 recompiles an AddOn
-        // within a running session, CopyEngine is GC'd and re-created -- if seeded at 0 the counter
-        // restarts at 1 and immediately collides with pre-recompile OCO IDs still in NT8 memory.
-        // Environment.TickCount advances even during recompile so post-recompile seq starts far above
-        // any value used in the prior run. JS-023: volatile int. TickCount returns int -- no cast needed.
-        private volatile int _mstbeOcoSeq = Environment.TickCount;
+        // within a running session, CopyEngine is GC'd and re-created. TickCount alone can repeat
+        // within the same millisecond on fast recompile. XOR with Ticks (100ns resolution) ensures
+        // post-recompile seed is statistically unique. Math.Abs: XOR can set sign bit; wraps safely.
+        // JS-023: volatile int. Interlocked.Increment in NextBeOcoSeq() unchanged. No lock added.
+        private volatile int _mstbeOcoSeq = Math.Abs(
+            Environment.TickCount ^ (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF)
+        );
+
         internal int NextBeOcoSeq() => System.Threading.Interlocked.Increment(ref _mstbeOcoSeq);
 
         // HOTFIX-B76-POSSTATE-DEDUP-01: atomic hasPos dedup per instrument.
@@ -211,14 +272,14 @@ namespace PropTraderTools
         // GetOrAdd allocates the array once per instrument on first fill (not per-fill).
         // Interlocked.Exchange is the only write -- one winner per transition, all others
         // see the new value already written and return without invoking. JS-021: lock-free.
-        private readonly ConcurrentDictionary<string, int[]> _lastHasPos
-            = new ConcurrentDictionary<string, int[]>();
+        private readonly ConcurrentDictionary<string, int[]> _lastHasPos =
+            new ConcurrentDictionary<string, int[]>();
 
         // V01: order map for follower bracket lookup
         // JS-025: ConcurrentDictionary (atomic GetOrAdd) + ConcurrentBag (lock-free Add/iterate)
         // JS-021: NO lock keyword anywhere
-        private readonly ConcurrentDictionary<string, ConcurrentBag<FollowerBinding>> _orderMap
-            = new ConcurrentDictionary<string, ConcurrentBag<FollowerBinding>>();
+        private readonly ConcurrentDictionary<string, ConcurrentBag<FollowerBinding>> _orderMap =
+            new ConcurrentDictionary<string, ConcurrentBag<FollowerBinding>>();
 
         // --- Status event ---
         internal event Action<string> StatusUpdate;
@@ -229,34 +290,46 @@ namespace PropTraderTools
 
         // B10 T2 -- Pending BE fired notification (fires on NT8 account bg thread; Panel marshals to UI)
         internal event Action<string, string> PendingBeFired;
-        internal event Action<string, string> PendingBeArmed;   // HOTFIX-BEALL-SYNC-01: instr, accName
-        internal event Action<int> GlobalBeBufferChanged;  // HOTFIX-BEALL-BUFFER-SYNC-01: fires on buffer +/- spin, int = new buffer value
+        internal event Action<string, string> PendingBeArmed; // HOTFIX-BEALL-SYNC-01: instr, accName
+        internal event Action<int> GlobalBeBufferChanged; // HOTFIX-BEALL-BUFFER-SYNC-01: fires on buffer +/- spin, int = new buffer value
+
         // CS0070 fix: event can only be raised from declaring class (CopyEngine). PttGlobalBreakEven calls this relay.
-        internal void RaiseBeBufferChanged(int newValue)
-            => System.Windows.Application.Current.Dispatcher.InvokeAsync(
-                () => GlobalBeBufferChanged?.Invoke(newValue));  // HOTFIX-DISPATCH-FIX-01: fire on app UI thread
+        internal void RaiseBeBufferChanged(int newValue) =>
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                GlobalBeBufferChanged?.Invoke(newValue)
+            ); // HOTFIX-DISPATCH-FIX-01: fire on app UI thread
+
         // HOTFIX-QUICKALL-SINGLETON-01: Quick ALL tick buffer — singleton so all panels share the same value.
         // JS-023: volatile int allowed. NT8-003: volatile double banned — not used here.
-        private volatile int _globalQuickAllT1 = 4;  // default 4 ticks (same as per-panel default)
-        internal int  GlobalQuickAllT1 => _globalQuickAllT1;
+        private volatile int _globalQuickAllT1 = 4; // default 4 ticks (same as per-panel default)
+        internal int GlobalQuickAllT1 => _globalQuickAllT1;
+
         internal void IncrementQuickAll()
         {
-            if (_globalQuickAllT1 < 99) _globalQuickAllT1++;
+            if (_globalQuickAllT1 < 99)
+                _globalQuickAllT1++;
             int v = _globalQuickAllT1;
-            System.Windows.Application.Current.Dispatcher.InvokeAsync(
-                () => GlobalQuickAllBufferChanged?.Invoke(v));  // HOTFIX-DISPATCH-FIX-01
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                GlobalQuickAllBufferChanged?.Invoke(v)
+            ); // HOTFIX-DISPATCH-FIX-01
         }
+
         internal void DecrementQuickAll()
         {
-            if (_globalQuickAllT1 > 1) _globalQuickAllT1--;
+            if (_globalQuickAllT1 > 1)
+                _globalQuickAllT1--;
             int v = _globalQuickAllT1;
-            System.Windows.Application.Current.Dispatcher.InvokeAsync(
-                () => GlobalQuickAllBufferChanged?.Invoke(v));  // HOTFIX-DISPATCH-FIX-01
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                GlobalQuickAllBufferChanged?.Invoke(v)
+            ); // HOTFIX-DISPATCH-FIX-01
         }
-        internal event Action<int> GlobalQuickAllBufferChanged;  // HOTFIX-QUICKALL-SINGLETON-01
+
+        internal event Action<int> GlobalQuickAllBufferChanged; // HOTFIX-QUICKALL-SINGLETON-01
+
         // HOTFIX-BEALL-DISARM-SYNC-01: broadcast so all panels reset BE ALL visual to Idle on disarm.
         // Fired from OnGlobalBeClick disarm path AND from UpdateButtonColors HOTFIX-F3 branch (position close).
         internal event Action GlobalBeAllDisarmed;
+
         internal void RaiseBeAllDisarmed() => GlobalBeAllDisarmed?.Invoke();
 
         // B20-LANE-A T2: Copy ON/OFF sync event (DW-B17-SYNC-01)
@@ -296,15 +369,16 @@ namespace PropTraderTools
                 bool enabled,
                 int[] multipliers,
                 Dictionary<string, FollowerAtmMode> atmTemplates,
-                int tightenTicks)
+                int tightenTicks
+            )
             {
-                Instrument          = instrument;
-                MasterAccount       = master;
-                FollowerAccounts    = followers;
-                Enabled             = enabled;
+                Instrument = instrument;
+                MasterAccount = master;
+                FollowerAccounts = followers;
+                Enabled = enabled;
                 FollowerMultipliers = multipliers;
                 FollowerAtmTemplates = atmTemplates ?? new Dictionary<string, FollowerAtmMode>();
-                TightenTicks        = tightenTicks > 0 ? tightenTicks : 5;
+                TightenTicks = tightenTicks > 0 ? tightenTicks : 5;
             }
 
             // B8 T1: updated factory -- new optional params preserve backward compat with all 27 existing tests
@@ -316,9 +390,17 @@ namespace PropTraderTools
                 bool enabled = true,
                 int[] multipliers = null,
                 Dictionary<string, FollowerAtmMode> atmTemplates = null,
-                int tightenTicks = 5)
-                => new CopyRule(instrument, master, followers, enabled, multipliers,
-                    atmTemplates ?? new Dictionary<string, FollowerAtmMode>(), tightenTicks);
+                int tightenTicks = 5
+            ) =>
+                new CopyRule(
+                    instrument,
+                    master,
+                    followers,
+                    enabled,
+                    multipliers,
+                    atmTemplates ?? new Dictionary<string, FollowerAtmMode>(),
+                    tightenTicks
+                );
         }
 
         private readonly struct CopySignal
@@ -329,7 +411,13 @@ namespace PropTraderTools
             internal readonly double LimitPrice;
             internal readonly string OrderId;
 
-            private CopySignal(OrderAction action, OrderType type, int qty, double limitPrice, string orderId)
+            private CopySignal(
+                OrderAction action,
+                OrderType type,
+                int qty,
+                double limitPrice,
+                string orderId
+            )
             {
                 Action = action;
                 Type = type;
@@ -402,22 +490,24 @@ namespace PropTraderTools
         // B9 T1: CYC=1 -- straight-line assignment
         internal void SetAtrEngine(AtrSizingEngine engine, bool enabled)
         {
-            _atrEngine  = engine;
+            _atrEngine = engine;
             _atrEnabled = enabled;
         }
 
         // B12 T3 -- UpdateMaxRisk: pass-through to _atrEngine. Null-guarded. CYC=2.
         internal void UpdateMaxRisk(double maxRiskDollars)
         {
-            if (_atrEngine == null) return;            // (1)
-            _atrEngine.UpdateMaxRisk(maxRiskDollars);  // (2)
+            if (_atrEngine == null)
+                return; // (1)
+            _atrEngine.UpdateMaxRisk(maxRiskDollars); // (2)
         }
 
         // B12 T3 -- UpdateAtrFraction: pass-through to _atrEngine.SetAtrFraction. Null-guarded. CYC=2.
         internal void UpdateAtrFraction(double fraction)
         {
-            if (_atrEngine == null) return;            // (1)
-            _atrEngine.SetAtrFraction(fraction);       // (2)
+            if (_atrEngine == null)
+                return; // (1)
+            _atrEngine.SetAtrFraction(fraction); // (2)
         }
 
         // B9 T3: CYC=1 -- straight-line cast and assign
@@ -444,8 +534,14 @@ namespace PropTraderTools
             foreach (var acc in AllAccounts(e.Instrument))
             {
                 NinjaTrader.Code.Output.Process(
-                    "[BE] RelayBe: " + acc.Name + " @ " + e.BePrice.ToString("F2") + " isLong=" + e.IsLong,
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    "[BE] RelayBe: "
+                        + acc.Name
+                        + " @ "
+                        + e.BePrice.ToString("F2")
+                        + " isLong="
+                        + e.IsLong,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 CancelQxBrackets(acc, e.Instrument);
                 SubmitBeStop(acc, e.Instrument, e.BePrice, e.IsLong);
             }
@@ -490,10 +586,10 @@ namespace PropTraderTools
         internal FollowerAtmMode GetCloneAtmMode()
         {
             var atmObj = _cloneAtmObject;
-            if (atmObj != null)                         // branch (1) -- preferred: object overload
+            if (atmObj != null) // branch (1) -- preferred: object overload
                 return new FollowerAtmMode.Named(_cloneAtmCache, atmObj);
             var cache = _cloneAtmCache;
-            if (cache != null && cache.Length > 0)      // branch (2) -- fallback: string overload
+            if (cache != null && cache.Length > 0) // branch (2) -- fallback: string overload
                 return new FollowerAtmMode.Named(cache);
             return new FollowerAtmMode.Inherit();
         }
@@ -517,14 +613,14 @@ namespace PropTraderTools
             var result = new HashSet<string>();
             foreach (var rule in _rules)
             {
-                if (rule.Instrument != instrument || rule.MasterAccount?.Name != masterName) continue;
+                if (rule.Instrument != instrument || rule.MasterAccount?.Name != masterName)
+                    continue;
                 foreach (var f in rule.FollowerAccounts)
-                    if (f?.Name != null) result.Add(f.Name);
+                    if (f?.Name != null)
+                        result.Add(f.Name);
             }
             return result;
         }
-
-
 
         // --- B56 BUILD-FIX stubs (pre-existing callers referenced these before they were added) ---
 
@@ -533,10 +629,12 @@ namespace PropTraderTools
         // CYC=3: null guard(1) + foreach(2) + inner foreach(3). JS-021: no lock.
         internal bool IsFollowerAccount(Account acc)
         {
-            if (acc == null) return false;                          // (1)
-            foreach (var rule in _rules)                           // (2)
-                foreach (var f in rule.FollowerAccounts)           // (3)
-                    if (f != null && f.Name == acc.Name) return true;
+            if (acc == null)
+                return false; // (1)
+            foreach (var rule in _rules) // (2)
+            foreach (var f in rule.FollowerAccounts) // (3)
+                if (f != null && f.Name == acc.Name)
+                    return true;
             return false;
         }
 
@@ -545,9 +643,11 @@ namespace PropTraderTools
         // CYC=2: null guard(1) + delegate(2). JS-002: returns tuple (not null).
         internal (int t1, int t2) GetQuickTicksForInstrument(NinjaTrader.Cbi.Instrument instr)
         {
-            if (instr == null) return (4, 8);                      // (1)
-            return InstrumentDefaults.GetQuickTicks(               // (2)
-                instr.MasterInstrument?.Name ?? string.Empty);
+            if (instr == null)
+                return (4, 8); // (1)
+            return InstrumentDefaults.GetQuickTicks( // (2)
+                instr.MasterInstrument?.Name ?? string.Empty
+            );
         }
 
         // IsAtmBracketName: true if name is a standard NT8 ATM bracket order name.
@@ -558,9 +658,18 @@ namespace PropTraderTools
         // CYC=1: expression body -- Roslyn counts the compound bool expression as 1 decision point.
         // JS-021: no lock. JS-001: no throw. ASCII-only string literals.
         internal static bool IsAtmBracketName(string name) =>
-            !string.IsNullOrEmpty(name) && (
-                (name.StartsWith("Stop",   StringComparison.Ordinal) && name.Length > 4 && char.IsDigit(name[4]))
-             || (name.StartsWith("Target", StringComparison.Ordinal) && name.Length > 6 && char.IsDigit(name[6]))
+            !string.IsNullOrEmpty(name)
+            && (
+                (
+                    name.StartsWith("Stop", StringComparison.Ordinal)
+                    && name.Length > 4
+                    && char.IsDigit(name[4])
+                )
+                || (
+                    name.StartsWith("Target", StringComparison.Ordinal)
+                    && name.Length > 6
+                    && char.IsDigit(name[6])
+                )
             );
 
         // IsBeDisarmCandidate: CYC=4. Returns true when order is a PTT-BE-Stop fill on a non-null instrument.
@@ -568,10 +677,16 @@ namespace PropTraderTools
         // JS-001: no throw. JS-002: returns bool. JS-021: no lock. TESTABILITY: internal static.
         internal static bool IsBeDisarmCandidate(Order order)
         {
-            if (order == null) return false;                                                           // (1)
-            if (order.OrderState != OrderState.Filled) return false;                                  // (2)
-            if (order.Name == null || !order.Name.StartsWith("PTT-BE-Stop", StringComparison.Ordinal)) return false; // (3)
-            return order.Instrument?.FullName != null;                                                 // (4)
+            if (order == null)
+                return false; // (1)
+            if (order.OrderState != OrderState.Filled)
+                return false; // (2)
+            if (
+                order.Name == null
+                || !order.Name.StartsWith("PTT-BE-Stop", StringComparison.Ordinal)
+            )
+                return false; // (3)
+            return order.Instrument?.FullName != null; // (4)
         }
 
         // IsPttEntryOrderCancelTrigger: CYC=3. Returns true when a follower entry cancel should trigger re-place.
@@ -581,9 +696,12 @@ namespace PropTraderTools
         // TESTABILITY: internal static, Order parameter, no NT8 runtime deps beyond field reads.
         internal static bool IsPttEntryOrderCancelTrigger(Order order)
         {
-            if (order == null) return false;                                                               // (1)
-            if (order.OrderState != OrderState.Cancelled) return false;                                    // (2)
-            if (order.Name != "PTT-Copy" && order.Name != "Entry") return false;                          // (3)
+            if (order == null)
+                return false; // (1)
+            if (order.OrderState != OrderState.Cancelled)
+                return false; // (2)
+            if (order.Name != "PTT-Copy" && order.Name != "Entry")
+                return false; // (3)
             return order.LimitPrice > 0 && order.Instrument?.FullName != null;
         }
 
@@ -594,11 +712,16 @@ namespace PropTraderTools
         // JS-021: no lock. JS-001: no throw. JS-002: returns bool (never null). ASCII-only.
         internal static bool IsQxCancelCandidate(Order o)
         {
-            if (o == null || o.Name == null) return false;                               // (1)
-            if (IsAtmBracketName(o.Name)) return true;                                   // (2)
-            if (o.Name.StartsWith("PTT-QX-", StringComparison.Ordinal)) return true;    // (3)
-            if (o.Name.StartsWith("PTT-BE-", StringComparison.Ordinal)) return true;    // (4)
-            if (o.Name.StartsWith("PTT-Copy", StringComparison.Ordinal)) return true;   // (5) B70 DW-B70-02
+            if (o == null || o.Name == null)
+                return false; // (1)
+            if (IsAtmBracketName(o.Name))
+                return true; // (2)
+            if (o.Name.StartsWith("PTT-QX-", StringComparison.Ordinal))
+                return true; // (3)
+            if (o.Name.StartsWith("PTT-BE-", StringComparison.Ordinal))
+                return true; // (4)
+            if (o.Name.StartsWith("PTT-Copy", StringComparison.Ordinal))
+                return true; // (5) B70 DW-B70-02
             return false;
         }
 
@@ -612,24 +735,33 @@ namespace PropTraderTools
         // JS-021: no lock. Predicate logic in IsQxCancelCandidate (CYC=5) + IsAtmBracketName (CYC=1).
         internal void CancelQxBrackets(Account acc, NinjaTrader.Cbi.Instrument instr)
         {
-            if (acc == null || instr == null) return;              // (1)
+            if (acc == null || instr == null)
+                return; // (1)
             var stale = new System.Collections.Generic.List<Order>();
-            foreach (Order o in acc.Orders)                        // (2)
+            foreach (Order o in acc.Orders) // (2)
             {
-                bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Initialized
-                            || o.OrderState == OrderState.Accepted
-                            || o.OrderState == OrderState.Submitted      // B71: catch ATM brackets placed <800ms ago
-                            || o.OrderState == OrderState.TriggerPending; // HOTFIX-QX-DOUBLE-01: pre-submit state
-                if (!stateOk) continue;                            // (3)
-                if (o.Instrument == null || o.Instrument.FullName != instr.FullName) continue;
-                if (IsQxCancelCandidate(o))                           // (5) widened via helper
+                bool stateOk =
+                    o.OrderState == OrderState.Working
+                    || o.OrderState == OrderState.Initialized
+                    || o.OrderState == OrderState.Accepted
+                    || o.OrderState == OrderState.Submitted // B71: catch ATM brackets placed <800ms ago
+                    || o.OrderState == OrderState.TriggerPending; // HOTFIX-QX-DOUBLE-01: pre-submit state
+                if (!stateOk)
+                    continue; // (3)
+                if (o.Instrument == null || o.Instrument.FullName != instr.FullName)
+                    continue;
+                if (IsQxCancelCandidate(o)) // (5) widened via helper
                     stale.Add(o);
             }
-            if (stale.Count == 0) return;
-            stale.RemoveAll(o => o.OrderState == OrderState.Filled
-                              || o.OrderState == OrderState.Cancelled);   // DW-B79-09: race guard
-            try { acc.Cancel(stale.ToArray()); }
+            if (stale.Count == 0)
+                return;
+            stale.RemoveAll(o =>
+                o.OrderState == OrderState.Filled || o.OrderState == OrderState.Cancelled
+            ); // DW-B79-09: race guard
+            try
+            {
+                acc.Cancel(stale.ToArray());
+            }
             catch { }
         }
 
@@ -644,26 +776,31 @@ namespace PropTraderTools
         // JS-001: no throw. JS-033: synchronous static. ASCII-only.
         internal static System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order> BuildQxSnapshot(
             NinjaTrader.Cbi.Account acc,
-            NinjaTrader.Cbi.Instrument instr)
+            NinjaTrader.Cbi.Instrument instr
+        )
         {
-            if (acc == null || instr == null)                                              // (1)
-                return new System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>();   // never null -- JS-002
+            if (acc == null || instr == null) // (1)
+                return new System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>(); // never null -- JS-002
             var result = new System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>();
-            foreach (Order o in acc.Orders)                                                // (2)
+            foreach (Order o in acc.Orders) // (2)
             {
-                bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Initialized
-                            || o.OrderState == OrderState.Accepted
-                            || o.OrderState == OrderState.Submitted
-                            || o.OrderState == OrderState.TriggerPending;
-                if (!stateOk) continue;                                                    // (3)
-                if (o.Instrument == null || o.Instrument.FullName != instr.FullName) continue;
-                if (IsQxCancelCandidate(o))                                                // (4)
+                bool stateOk =
+                    o.OrderState == OrderState.Working
+                    || o.OrderState == OrderState.Initialized
+                    || o.OrderState == OrderState.Accepted
+                    || o.OrderState == OrderState.Submitted
+                    || o.OrderState == OrderState.TriggerPending;
+                if (!stateOk)
+                    continue; // (3)
+                if (o.Instrument == null || o.Instrument.FullName != instr.FullName)
+                    continue;
+                if (IsQxCancelCandidate(o)) // (4)
                     result.Add(o);
             }
             NinjaTrader.Code.Output.Process(
                 "[PTT-QX] snapshot: " + result.Count + " cancellable orders for " + instr.FullName,
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
             return result;
         }
 
@@ -679,31 +816,51 @@ namespace PropTraderTools
         internal void CancelQxBrackets(
             NinjaTrader.Cbi.Account acc,
             NinjaTrader.Cbi.Instrument instr,
-            System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order> snapshot)
+            System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order> snapshot
+        )
         {
-            if (acc == null || instr == null) return;                                      // (1)
+            if (acc == null || instr == null)
+                return; // (1)
             var stale = new System.Collections.Generic.List<Order>();
             int raceSkipped = 0;
-            foreach (Order o in acc.Orders)                                                // (2)
+            foreach (Order o in acc.Orders) // (2)
             {
-                bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Initialized
-                            || o.OrderState == OrderState.Accepted
-                            || o.OrderState == OrderState.Submitted
-                            || o.OrderState == OrderState.TriggerPending;
-                if (!stateOk) continue;                                                    // (3)
-                if (o.Instrument == null || o.Instrument.FullName != instr.FullName) continue; // (4)
-                if (snapshot != null && !snapshot.Contains(o)) { raceSkipped++; continue; } // (5)
-                if (IsQxCancelCandidate(o))                                                 // (6)
+                bool stateOk =
+                    o.OrderState == OrderState.Working
+                    || o.OrderState == OrderState.Initialized
+                    || o.OrderState == OrderState.Accepted
+                    || o.OrderState == OrderState.Submitted
+                    || o.OrderState == OrderState.TriggerPending;
+                if (!stateOk)
+                    continue; // (3)
+                if (o.Instrument == null || o.Instrument.FullName != instr.FullName)
+                    continue; // (4)
+                if (snapshot != null && !snapshot.Contains(o))
+                {
+                    raceSkipped++;
+                    continue;
+                } // (5)
+                if (IsQxCancelCandidate(o)) // (6)
                     stale.Add(o);
             }
             NinjaTrader.Code.Output.Process(
-                "[PTT-QX] cancel: " + stale.Count + " queued, " + raceSkipped + " race-skipped on " + acc.Name,
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            if (stale.Count == 0) return;                                                  // (7)
-            stale.RemoveAll(o => o.OrderState == OrderState.Filled
-                              || o.OrderState == OrderState.Cancelled);   // DW-B79-09: race guard
-            try { acc.Cancel(stale.ToArray()); }
+                "[PTT-QX] cancel: "
+                    + stale.Count
+                    + " queued, "
+                    + raceSkipped
+                    + " race-skipped on "
+                    + acc.Name,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            if (stale.Count == 0)
+                return; // (7)
+            stale.RemoveAll(o =>
+                o.OrderState == OrderState.Filled || o.OrderState == OrderState.Cancelled
+            ); // DW-B79-09: race guard
+            try
+            {
+                acc.Cancel(stale.ToArray());
+            }
             catch { }
         }
 
@@ -716,25 +873,34 @@ namespace PropTraderTools
         // JS-001: no throw. JS-002: void. ASCII-only.
         internal void CancelAllAccountOrders(Account acc, NinjaTrader.Cbi.Instrument instr)
         {
-            if (acc == null || instr == null) return;                              // (1)
+            if (acc == null || instr == null)
+                return; // (1)
             var toCancel = new System.Collections.Generic.List<Order>();
-            foreach (Order o in acc.Orders)                                        // (2)
+            foreach (Order o in acc.Orders) // (2)
             {
-                bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Initialized
-                            || o.OrderState == OrderState.Submitted
-                            || o.OrderState == OrderState.Accepted;
-                if (!stateOk) continue;                                            // (3)
-                if (o.Instrument == null
-                    || o.Instrument.FullName != instr.FullName) continue;          // (4)
+                bool stateOk =
+                    o.OrderState == OrderState.Working
+                    || o.OrderState == OrderState.Initialized
+                    || o.OrderState == OrderState.Submitted
+                    || o.OrderState == OrderState.Accepted;
+                if (!stateOk)
+                    continue; // (3)
+                if (o.Instrument == null || o.Instrument.FullName != instr.FullName)
+                    continue; // (4)
                 toCancel.Add(o);
             }
             // DW-B79-04: belt-and-suspenders race guard -- discard orders that
             // transitioned to terminal state between snapshot and cancel call.
-            toCancel.RemoveAll(o => o.OrderState == OrderState.Filled
-                                    || o.OrderState == OrderState.Cancelled);
-            if (toCancel.Count == 0) return;
-            try { acc.Cancel(toCancel); } catch { }
+            toCancel.RemoveAll(o =>
+                o.OrderState == OrderState.Filled || o.OrderState == OrderState.Cancelled
+            );
+            if (toCancel.Count == 0)
+                return;
+            try
+            {
+                acc.Cancel(toCancel);
+            }
+            catch { }
         }
 
         // B68 DW-B68-01: CancelQxBracketsForFollowers -- cancel stale brackets on all followers.
@@ -746,13 +912,16 @@ namespace PropTraderTools
         // NT8-REF: Account.Cancel -- via CancelQxBrackets (existing, tested, line 462).
         internal void CancelQxBracketsForFollowers(NinjaTrader.Cbi.Instrument instr)
         {
-            if (instr == null) return;                                   // (1)
+            if (instr == null)
+                return; // (1)
             var rule = FindRule(instr);
-            if (rule == null) return;                                    // (2)
-            foreach (var acc in rule.Value.FollowerAccounts)            // (3)
+            if (rule == null)
+                return; // (2)
+            foreach (var acc in rule.Value.FollowerAccounts) // (3)
             {
-                if (acc == null) continue;                               // (4)
-                CancelQxBrackets(acc, instr);                            // (5)
+                if (acc == null)
+                    continue; // (4)
+                CancelQxBrackets(acc, instr); // (5)
             }
         }
 
@@ -761,8 +930,9 @@ namespace PropTraderTools
         // CYC=1: straight expression. JS-021: no lock -- Interlocked.
         // B70 DW-B70-01: seed with TickCount & 0x7FFF (0..32767) to avoid ID reuse on session reconnect.
         private int _qxOcoSeq = Environment.TickCount & 0x7FFF;
-        internal string NextQxOcoId()
-            => "PTT-QX-" + System.Threading.Interlocked.Increment(ref _qxOcoSeq).ToString("D5");
+
+        internal string NextQxOcoId() =>
+            "PTT-QX-" + System.Threading.Interlocked.Increment(ref _qxOcoSeq).ToString("D5");
 
         // B66 DW-B66-BE-01: SubmitBeStop -- submit a StopMarket order at bePrice for acc+instr.
         // FIX: isLong is now a parameter -- callers pass direction at their own snapshot-read time.
@@ -775,30 +945,58 @@ namespace PropTraderTools
         // JS-001: no throw. JS-002: void. JS-033: synchronous void.
         // B69 DW-B69-02: pos-find uses FullName comparison (not reference equality).
         // NT8: same contract can exist as 2 different Instrument objects across account contexts.
-        internal void SubmitBeStop(Account acc, NinjaTrader.Cbi.Instrument instr, double bePrice, bool isLong)
+        internal void SubmitBeStop(
+            Account acc,
+            NinjaTrader.Cbi.Instrument instr,
+            double bePrice,
+            bool isLong
+        )
         {
-            if (acc == null || instr == null) return;              // (1)
+            if (acc == null || instr == null)
+                return; // (1)
             NinjaTrader.Cbi.Position pos = null;
             foreach (NinjaTrader.Cbi.Position p in acc.Positions) // (2)
-                if (p.Instrument != null                                                          // (3)
-                    && p.Instrument.FullName == instr.FullName) { pos = p; break; }
-            if (pos == null || pos.Quantity == 0) return;          // (4)
+                if (
+                    p.Instrument != null // (3)
+                    && p.Instrument.FullName == instr.FullName
+                )
+                {
+                    pos = p;
+                    break;
+                }
+            if (pos == null || pos.Quantity == 0)
+                return; // (4)
             OrderAction dir = isLong ? OrderAction.Sell : OrderAction.BuyToCover; // (5)
-            try                                                    // (6) CreateOrder call
+            try // (6) CreateOrder call
             {
                 var order = acc.CreateOrder(
-                    instr, dir, OrderType.StopMarket,
-                    OrderEntry.Manual, TimeInForce.Gtc,
-                    pos.Quantity, 0, bePrice,
-                    string.Empty, "PTT-BE-Stop",
+                    instr,
+                    dir,
+                    OrderType.StopMarket,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    pos.Quantity,
+                    0,
+                    bePrice,
+                    string.Empty,
+                    "PTT-BE-Stop",
                     DateTime.MaxValue,
-                    (NinjaTrader.Cbi.CustomOrder)null);
-                if (order != null)                                 // (6) inner if
+                    (NinjaTrader.Cbi.CustomOrder)null
+                );
+                if (order != null) // (6) inner if
                 {
                     acc.Submit(new[] { order });
                     NinjaTrader.Code.Output.Process(
-                        "[BE] SubmitBeStop: " + dir + " " + pos.Quantity + " @ " + bePrice.ToString("F2") + " on " + acc.Name,
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        "[BE] SubmitBeStop: "
+                            + dir
+                            + " "
+                            + pos.Quantity
+                            + " @ "
+                            + bePrice.ToString("F2")
+                            + " on "
+                            + acc.Name,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
                 }
             }
             catch { }
@@ -814,12 +1012,14 @@ namespace PropTraderTools
         // CYC=3: foreach(1) + follower skip(2) + delegate(3). JS-021: no lock.
         internal void ArmAllPendingBe(int bufferTicks)
         {
-            foreach (Account acc in Account.All)                   // (1)
+            foreach (Account acc in Account.All) // (1)
             {
-                if (IsFollowerAccount(acc)) continue;              // (2) skip followers
-                foreach (NinjaTrader.Cbi.Position pos in acc.Positions)  // (3)
+                if (IsFollowerAccount(acc))
+                    continue; // (2) skip followers
+                foreach (NinjaTrader.Cbi.Position pos in acc.Positions) // (3)
                 {
-                    if (pos == null || pos.Quantity == 0) continue; // (4) skip flat
+                    if (pos == null || pos.Quantity == 0)
+                        continue; // (4) skip flat
                     ArmPendingBe(pos.Instrument, acc, bufferTicks); // (5) HOTFIX-BE-ALL-01
                 }
             }
@@ -844,8 +1044,15 @@ namespace PropTraderTools
             {
                 var updated =
                     r.Instrument == instrument
-                        ? CopyRule.Create(r.Instrument, r.MasterAccount, r.FollowerAccounts, enabled,
-                            r.FollowerMultipliers, r.FollowerAtmTemplates, r.TightenTicks)
+                        ? CopyRule.Create(
+                            r.Instrument,
+                            r.MasterAccount,
+                            r.FollowerAccounts,
+                            enabled,
+                            r.FollowerMultipliers,
+                            r.FollowerAtmTemplates,
+                            r.TightenTicks
+                        )
                         : r;
                 _rules.Add(updated);
             }
@@ -866,7 +1073,8 @@ namespace PropTraderTools
             Account master,
             Account[] followers,
             int[] multipliers,
-            Dictionary<string, FollowerAtmMode> atmMap)
+            Dictionary<string, FollowerAtmMode> atmMap
+        )
         {
             var snapshot = new List<CopyRule>(_rules);
             _rules = new ConcurrentBag<CopyRule>();
@@ -894,16 +1102,34 @@ namespace PropTraderTools
                     _rules.Add(r);
                     continue;
                 }
-                var newMults = BuildUpdatedMultipliers(r.FollowerMultipliers, followerIndex, clamped,
-                    r.FollowerAccounts?.Length ?? 0);
-                _rules.Add(CopyRule.Create(r.Instrument, r.MasterAccount, r.FollowerAccounts, r.Enabled,
-                    newMults, r.FollowerAtmTemplates, r.TightenTicks));
+                var newMults = BuildUpdatedMultipliers(
+                    r.FollowerMultipliers,
+                    followerIndex,
+                    clamped,
+                    r.FollowerAccounts?.Length ?? 0
+                );
+                _rules.Add(
+                    CopyRule.Create(
+                        r.Instrument,
+                        r.MasterAccount,
+                        r.FollowerAccounts,
+                        r.Enabled,
+                        newMults,
+                        r.FollowerAtmTemplates,
+                        r.TightenTicks
+                    )
+                );
             }
         }
 
         // Helper for SetFollowerMultiplier -- builds a new multiplier array with one entry updated.
         // CYC=3 (null guard + bounds guard + copy loop). No throw, no return null.
-        private static int[] BuildUpdatedMultipliers(int[] existing, int index, int value, int count)
+        private static int[] BuildUpdatedMultipliers(
+            int[] existing,
+            int index,
+            int value,
+            int count
+        )
         {
             int len = count > 0 ? count : (existing != null ? existing.Length : 0);
             if (len == 0)
@@ -952,16 +1178,25 @@ namespace PropTraderTools
             // MoveStopToBreakEven(isRetry:true) to re-place the OCO pairs.
             // Only triggers on PTT-BE-Stop-* (not PTT-BE-Target-* which correctly cancels on stop fill).
             // One re-call per OCO pair (Stop cancel = one trigger per pair).
-            if (e.Order.OrderState == OrderState.Cancelled
+            if (
+                e.Order.OrderState == OrderState.Cancelled
                 && e.Order.Name != null
-                && e.Order.Name.StartsWith("PTT-BE-", StringComparison.Ordinal))
+                && e.Order.Name.StartsWith("PTT-BE-", StringComparison.Ordinal)
+            )
             {
                 NinjaTrader.Code.Output.Process(
-                    "[BE-DIAG-CANCEL] " + (e.Order.Account?.Name ?? "?")
-                        + " PTT-BE order cancelled: " + e.Order.Name
-                        + " instr=" + (e.Order.Instrument?.FullName ?? "?"),
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                if (e.Order.Name.StartsWith("PTT-BE-Stop-", StringComparison.Ordinal))
+                    "[BE-DIAG-CANCEL] "
+                        + (e.Order.Account?.Name ?? "?")
+                        + " PTT-BE order cancelled: "
+                        + e.Order.Name
+                        + " instr="
+                        + (e.Order.Instrument?.FullName ?? "?"),
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
+                if (
+                    e.Order.Name.StartsWith("PTT-BE-Stop-", StringComparison.Ordinal)
+                    && !HasFilledBeTarget(e.Order.Account, e.Order.Instrument)
+                ) // DW-B90: skip if OCO cancel from target fill
                     TryReplacePttBeBrackets(e.Order);
             }
 
@@ -991,16 +1226,27 @@ namespace PropTraderTools
 
             // B56 T1: propagate leader cancel to follower entry orders.
             // Extracted to TryCancelFollowerEntries (CYC=4). Includes HOTFIX-B63-COPY-CANCEL-01 guard.
-            if (TryCancelFollowerEntries(e.Order, matchedRule.Value)) return;
+            if (TryCancelFollowerEntries(e.Order, matchedRule.Value))
+                return;
 
             // DW-B60-01: leader went flat -- propagate close to followers
-            if (TryDispatchLeaderFlat(
-                    e.Order.Account, e.Order.Instrument, e.Order.OrderState, e.Order.Name,
+            if (
+                TryDispatchLeaderFlat(
+                    e.Order.Account,
+                    e.Order.Instrument,
+                    e.Order.OrderState,
+                    e.Order.Name,
                     matchedRule.Value,
-                    IsFollowerAccount, HasOpenPosition, FlattenOneAccount)) return;
+                    IsFollowerAccount,
+                    HasOpenPosition,
+                    FlattenOneAccount
+                )
+            )
+                return;
 
             // Gate B+C: bracket drag then entry drag -- consolidated into TryHandleDrag (one branch here).
-            if (TryHandleDrag(e.Order, matchedRule.Value)) return;
+            if (TryHandleDrag(e.Order, matchedRule.Value))
+                return;
 
             // No bracket, no drag -- normal copy dispatch
             DispatchCopy(e.Order, matchedRule.Value);
@@ -1012,21 +1258,27 @@ namespace PropTraderTools
         // JS-021: no lock. JS-001: no throw. JS-002: void.
         private void TryFireFollowerBeDisarm(OrderEventArgs e)
         {
-            if (!IsBeDisarmCandidate(e.Order)) return;                       // (1)
+            if (!IsBeDisarmCandidate(e.Order))
+                return; // (1)
 
             bool isLeader = false;
-            foreach (var r in _rules)                                        // (2)
+            foreach (var r in _rules) // (2)
             {
-                if (e.Order.Account.Name == r.MasterAccount?.Name) { isLeader = true; break; } // (3)
+                if (e.Order.Account.Name == r.MasterAccount?.Name)
+                {
+                    isLeader = true;
+                    break;
+                } // (3)
             }
-            if (!isLeader)                                                   // (4)
+            if (!isLeader) // (4)
             {
                 // Follower PTT-BE stop filled -- fire position state so panel resets BE visual.
                 bool hasPos = HasOpenPosition(e.Order.Account, e.Order.Instrument);
                 bool hasEntries = HasWorkingEntries(e.Order.Account, e.Order.Instrument);
                 PositionStateChanged?.Invoke(
                     e.Order.Instrument.FullName,
-                    new PositionState(hasPos, hasEntries));
+                    new PositionState(hasPos, hasEntries)
+                );
             }
         }
 
@@ -1053,24 +1305,36 @@ namespace PropTraderTools
         private void TryFireFollowerBeRetry(OrderEventArgs e)
         {
             var o = e?.Order;
-            if (o == null || o.Name == null || o.Account == null) return;          // (1)
-            bool isPttQxT  = o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal) // (2a)
-                             && o.Name.Length > 8 && char.IsDigit(o.Name[8]);
-            bool isAtmTgt  = o.Name.StartsWith("Target", StringComparison.Ordinal)   // (2b) DW-B79-08 v4
-                             && o.Name.Length > 6 && char.IsDigit(o.Name[6]);
-            if (!isPttQxT && !isAtmTgt) return;
-            if (o.OrderState != OrderState.Working                                  // (3)
-                && o.OrderState != OrderState.Accepted)
+            if (o == null || o.Name == null || o.Account == null)
+                return; // (1)
+            bool isPttQxT =
+                o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal) // (2a)
+                && o.Name.Length > 8
+                && char.IsDigit(o.Name[8]);
+            bool isAtmTgt =
+                o.Name.StartsWith("Target", StringComparison.Ordinal) // (2b) DW-B79-08 v4
+                && o.Name.Length > 6
+                && char.IsDigit(o.Name[6]);
+            if (!isPttQxT && !isAtmTgt)
                 return;
-            if (!_pendingFollowerBeSlots.TryRemove(o.Account.Name, out var slot))  // (4) atomic claim
+            if (
+                o.OrderState != OrderState.Working // (3)
+                && o.OrderState != OrderState.Accepted
+            )
                 return;
-            _beReplaceAttempts.TryRemove(o.Account.Name, out _);                   // DW-B82-01: reset on slot consumption
-            if (IsFlat(FindPosition(slot.Account, slot.Instrument)))               // (5)
+            if (!_pendingFollowerBeSlots.TryRemove(o.Account.Name, out var slot)) // (4) atomic claim
+                return;
+            _beReplaceAttempts.TryRemove(o.Account.Name, out _); // DW-B82-01: reset on slot consumption
+            if (IsFlat(FindPosition(slot.Account, slot.Instrument))) // (5)
                 return;
             NinjaTrader.Code.Output.Process(
-                "[BE-RETRY] " + o.Account.Name
-                    + " " + o.Name + " Working -- event-driven BE retry firing",
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                "[BE-RETRY] "
+                    + o.Account.Name
+                    + " "
+                    + o.Name
+                    + " Working -- event-driven BE retry firing",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
             MoveStopToBreakEven(slot.Account, slot.Instrument, slot.BufferTicks, isRetry: true);
         }
 
@@ -1100,22 +1364,32 @@ namespace PropTraderTools
         private void TryEvictFollowerBeSlot(OrderEventArgs e)
         {
             var o = e?.Order;
-            if (o == null) return;                                                  // (1) null guard
-            bool isFilled   = o.OrderState == OrderState.Filled;                   // (2a)
-            bool isRejected = o.OrderState == OrderState.Rejected                  // (2b) DW-B81-01
-                              && o.Name == "PTT-BE-Stop";                          // (3) PTT-BE-Stop only
-            if (!isFilled && !isRejected) return;
-            if (!IsFollowerAccount(o.Account)) return;                             // (4) followers only
-            if (isFilled && !IsFlat(FindPosition(o.Account, o.Instrument))) return; // (5) flat-guard for Filled only
+            if (o == null)
+                return; // (1) null guard
+            bool isFilled = o.OrderState == OrderState.Filled; // (2a)
+            bool isRejected =
+                o.OrderState == OrderState.Rejected // (2b) DW-B81-01
+                && o.Name == "PTT-BE-Stop"; // (3) PTT-BE-Stop only
+            if (!isFilled && !isRejected)
+                return;
+            if (!IsFollowerAccount(o.Account))
+                return; // (4) followers only
+            if (isFilled && !IsFlat(FindPosition(o.Account, o.Instrument)))
+                return; // (5) flat-guard for Filled only
             string accName = o.Account?.Name ?? string.Empty;
-            bool slotEvicted = _pendingFollowerBeSlots.TryRemove(accName, out _);  // DW-B79-04: capture for log gate
-            _beReplaceAttempts.TryRemove(accName, out _);                          // ALWAYS reset on terminal
-            if (slotEvicted)                                                        // DW-B79-04: only log if slot was present
+            bool slotEvicted = _pendingFollowerBeSlots.TryRemove(accName, out _); // DW-B79-04: capture for log gate
+            _beReplaceAttempts.TryRemove(accName, out _); // ALWAYS reset on terminal
+            if (slotEvicted) // DW-B79-04: only log if slot was present
             {
                 string reason = isRejected ? "PTT-BE-Stop Rejected" : "position closed";
                 NinjaTrader.Code.Output.Process(
-                    "[BE-RETRY] " + accName + " " + reason + " -- evicted BE slot + reset attempt counter",
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    "[BE-RETRY] "
+                        + accName
+                        + " "
+                        + reason
+                        + " -- evicted BE slot + reset attempt counter",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
             }
         }
 
@@ -1135,37 +1409,55 @@ namespace PropTraderTools
         // TryRemove returns false and this callback is a no-op. Exactly one path wins.
         // CYC=1: straight sequence (no branches in method body -- timer lambda is not a branch here).
         // JS-021: no lock. JS-001: no throw. JS-033: Tick is not async void. ASCII-only.
-        private void QueueBeRetryFallback(Account acc, Instrument instrument, int bufferTicks, int delayMs = 200)
+        private void QueueBeRetryFallback(
+            Account acc,
+            Instrument instrument,
+            int bufferTicks,
+            int delayMs = 200
+        )
         {
-            var capturedAcc   = acc;
+            var capturedAcc = acc;
             var capturedInstr = instrument;
-            var capturedBuf   = bufferTicks;
+            var capturedBuf = bufferTicks;
             // DW-B79-08 v7: marshal onto WPF UI thread so DispatcherTimer.Tick actually fires.
             System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 var timer = new System.Windows.Threading.DispatcherTimer(
-                    System.Windows.Threading.DispatcherPriority.Background)
+                    System.Windows.Threading.DispatcherPriority.Background
+                )
                 {
-                    Interval = System.TimeSpan.FromMilliseconds(delayMs)
+                    Interval = System.TimeSpan.FromMilliseconds(delayMs),
                 };
                 timer.Tick += (s, e) =>
                 {
                     timer.Stop();
                     if (_pendingFollowerBeSlots.TryRemove(capturedAcc.Name, out var slot))
                     {
-                        _beReplaceAttempts.TryRemove(capturedAcc.Name, out _);     // DW-B82-01: reset on slot consumption
+                        _beReplaceAttempts.TryRemove(capturedAcc.Name, out _); // DW-B82-01: reset on slot consumption
                         bool flat = IsFlat(FindPosition(slot.Account, slot.Instrument));
                         NinjaTrader.Code.Output.Process(
-                            "[BE-RETRY] " + capturedAcc.Name + " -- fallback timer fired, flat=" + flat,
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                            "[BE-RETRY] "
+                                + capturedAcc.Name
+                                + " -- fallback timer fired, flat="
+                                + flat,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                        );
                         if (!flat)
-                            MoveStopToBreakEven(slot.Account, slot.Instrument, slot.BufferTicks, isRetry: true);
+                            MoveStopToBreakEven(
+                                slot.Account,
+                                slot.Instrument,
+                                slot.BufferTicks,
+                                isRetry: true
+                            );
                     }
                     else
                     {
                         NinjaTrader.Code.Output.Process(
-                            "[BE-RETRY] " + capturedAcc.Name + " -- fallback TryRemove=false (slot already consumed or evicted)",
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                            "[BE-RETRY] "
+                                + capturedAcc.Name
+                                + " -- fallback TryRemove=false (slot already consumed or evicted)",
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                        );
                     }
                 };
                 timer.Start();
@@ -1179,8 +1471,10 @@ namespace PropTraderTools
         {
             foreach (var rule in _rules)
             {
-                if (order.Instrument.FullName == rule.Instrument
-                    && order.Account.Name == rule.MasterAccount?.Name)
+                if (
+                    order.Instrument.FullName == rule.Instrument
+                    && order.Account.Name == rule.MasterAccount?.Name
+                )
                     return rule;
             }
             return null;
@@ -1192,11 +1486,14 @@ namespace PropTraderTools
         // JS-021: no lock. JS-001: no throw.
         private bool TryCancelFollowerEntries(Order order, CopyRule rule)
         {
-            if (order.OrderState != OrderState.Cancelled) return false;
-            if (IsAtmBracketName(order.Name)) return true; // HOTFIX-B63-COPY-CANCEL-01
+            if (order.OrderState != OrderState.Cancelled)
+                return false;
+            if (IsAtmBracketName(order.Name))
+                return true; // HOTFIX-B63-COPY-CANCEL-01
             foreach (var acc in rule.FollowerAccounts)
             {
-                if (acc == null) continue;
+                if (acc == null)
+                    continue;
                 CancelOneAccount(acc, order.Instrument);
             }
             return true;
@@ -1207,7 +1504,8 @@ namespace PropTraderTools
         // JS-021: no lock. JS-001: no throw.
         private bool TryHandleBracketDrag(Order order, CopyRule rule)
         {
-            if (!IsWorkingBracket(order)) return false;
+            if (!IsWorkingBracket(order))
+                return false;
             if (order.FromEntrySignal != null)
                 PopulateOrderMap(order.FromEntrySignal, order.Account);
             HandleBracketChange(order, rule);
@@ -1220,8 +1518,10 @@ namespace PropTraderTools
         // JS-021: no lock. JS-001: no throw. JS-002: returns bool.
         private bool TryHandleDrag(Order order, CopyRule rule)
         {
-            if (TryHandleBracketDrag(order, rule)) return true;   // (1)
-            if (TryHandleEntryDrag(order, rule)) return true;     // (2)
+            if (TryHandleBracketDrag(order, rule))
+                return true; // (1)
+            if (TryHandleEntryDrag(order, rule))
+                return true; // (2)
             return false;
         }
 
@@ -1232,12 +1532,20 @@ namespace PropTraderTools
         // JS-021: no lock. JS-001: no throw.
         private bool TryHandleEntryDrag(Order order, CopyRule rule)
         {
-            if (order.OrderType != OrderType.Limit && order.OrderType != OrderType.StopLimit) return false;
-            if (order.OrderState != OrderState.Accepted && order.OrderState != OrderState.Working) return false;
-            if (order.Filled != 0) return false; // HOTFIX-B65-GATE-C-FILL-GUARD-01
+            if (order.OrderType != OrderType.Limit && order.OrderType != OrderType.StopLimit)
+                return false;
+            if (order.OrderState != OrderState.Accepted && order.OrderState != OrderState.Working)
+                return false;
+            if (order.Filled != 0)
+                return false; // HOTFIX-B65-GATE-C-FILL-GUARD-01
             double currentPrice = GetOrderPrice(order);
-            if (!_dedupCache.TryGetValue(order.OrderId.ToString(), out double storedPrice)) return false;
-            if (Math.Abs(currentPrice - storedPrice) < (order.Instrument?.MasterInstrument?.TickSize ?? 0.01)) return false;
+            if (!_dedupCache.TryGetValue(order.OrderId.ToString(), out double storedPrice))
+                return false;
+            if (
+                Math.Abs(currentPrice - storedPrice)
+                < (order.Instrument?.MasterInstrument?.TickSize ?? 0.01)
+            )
+                return false;
             // DW-B64-01 fix: re-insert new price BEFORE HandleEntryChange removes old key.
             // HandleEntryChange calls TryRemove(orderId) -- without this line the second state
             // transition (Working after Accepted) sees no cache entry and falls through to
@@ -1259,15 +1567,16 @@ namespace PropTraderTools
         // CYC=3 -- null guard + ShouldMirrorClose branch + IsWorkingBracket branch
         private void MirrorOrderUpdate(Order masterOrder, CopyRule rule)
         {
-            if (masterOrder == null) return;                                          // guard (1)
+            if (masterOrder == null)
+                return; // guard (1)
             bool isBracket = IsBracketLeg(masterOrder);
-            if (ShouldMirrorClose(masterOrder.OrderState, isBracket))                // branch (2)
+            if (ShouldMirrorClose(masterOrder.OrderState, isBracket)) // branch (2)
             {
                 MirrorClose(masterOrder, rule);
                 return;
             }
-            if (IsWorkingBracket(masterOrder))                                       // branch (3)
-                HandleBracketChange(masterOrder, rule);  // reuse existing -- no duplication
+            if (IsWorkingBracket(masterOrder)) // branch (3)
+                HandleBracketChange(masterOrder, rule); // reuse existing -- no duplication
         }
 
         // CYC=4 -- instr null guard + foreach loop + acc null guard + pos null/qty guard
@@ -1276,21 +1585,35 @@ namespace PropTraderTools
         private void MirrorClose(Order masterOrder, CopyRule rule)
         {
             var instr = masterOrder.Instrument;
-            if (instr == null) return;                                                // guard (1)
-            foreach (var acc in rule.FollowerAccounts)                               // loop (2)
+            if (instr == null)
+                return; // guard (1)
+            foreach (var acc in rule.FollowerAccounts) // loop (2)
             {
-                if (acc == null) continue;                                            // guard (3)
+                if (acc == null)
+                    continue; // guard (3)
                 var pos = FindPosition(acc, instr);
-                if (pos == null || pos.Quantity == 0) continue;                      // guard (4)
-                var action = pos.MarketPosition == MarketPosition.Long
-                    ? OrderAction.Sell : OrderAction.BuyToCover;                     // ternary: not a branch
+                if (pos == null || pos.Quantity == 0)
+                    continue; // guard (4)
+                var action =
+                    pos.MarketPosition == MarketPosition.Long
+                        ? OrderAction.Sell
+                        : OrderAction.BuyToCover; // ternary: not a branch
                 try
                 {
-                    acc.CreateOrder(instr, action, OrderType.Market,
-                        OrderEntry.Manual, TimeInForce.Gtc,  // B29 fix: Gtc matches ATM bracket TIF
-                        pos.Quantity, 0, 0, null,
-                        "PTT-Mirror-Close",    // signal name starts with "PTT-" (NT8 constraint)
-                        DateTime.MaxValue, null);
+                    acc.CreateOrder(
+                        instr,
+                        action,
+                        OrderType.Market,
+                        OrderEntry.Manual,
+                        TimeInForce.Gtc, // B29 fix: Gtc matches ATM bracket TIF
+                        pos.Quantity,
+                        0,
+                        0,
+                        null,
+                        "PTT-Mirror-Close", // signal name starts with "PTT-" (NT8 constraint)
+                        DateTime.MaxValue,
+                        null
+                    );
                     StatusUpdate?.Invoke(acc.Name + ": mirror-close " + pos.Quantity);
                 }
                 catch (Exception ex)
@@ -1307,9 +1630,9 @@ namespace PropTraderTools
         // AddOn limit orders skip Submitted; they arrive first as Accepted -- dispatch on Accepted only.
         // JS-002: returns bool (not null). JS-021: no lock.
         // TESTABILITY: internal static with primitive params -- directly testable without NT8 runtime.
-        internal static bool IsDispatchTriggerState(OrderState state, OrderType type)
-            => (type == OrderType.Market && state == OrderState.Submitted)   // Market: GUID-keyed, Submitted only
-            || (type == OrderType.Limit  && state == OrderState.Accepted);   // Limit: first exchange ack
+        internal static bool IsDispatchTriggerState(OrderState state, OrderType type) =>
+            (type == OrderType.Market && state == OrderState.Submitted) // Market: GUID-keyed, Submitted only
+            || (type == OrderType.Limit && state == OrderState.Accepted); // Limit: first exchange ack
 
         // B59 T1: IsExitSignalName -- CYC=6. Returns true for names that must not trigger follower copy.
         // Covers: (1) PTT- own signals; (2) NT8 Close button; (3) NT8 Flatten; (4) NT8 Rev reversal;
@@ -1322,17 +1645,26 @@ namespace PropTraderTools
         // TESTABILITY: internal static with string param -- directly testable without NT8 runtime.
         internal static bool IsExitSignalName(string name)
         {
-            if (name == null)                                              return false;
-            if (name.StartsWith("PTT-",  StringComparison.Ordinal))       return true;  // (1)
-            if (name == "Close")                                           return true;  // (2)
-            if (name == "Flatten")                                         return true;  // (3)
-            if (name.StartsWith("Rev",  StringComparison.Ordinal))        return true;  // (4)
-            if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;  // (5)
+            if (name == null)
+                return false;
+            if (name.StartsWith("PTT-", StringComparison.Ordinal))
+                return true; // (1)
+            if (name == "Close")
+                return true; // (2)
+            if (name == "Flatten")
+                return true; // (3)
+            if (name.StartsWith("Rev", StringComparison.Ordinal))
+                return true; // (4)
+            if (name.StartsWith("Exit", StringComparison.Ordinal))
+                return true; // (5)
             // B78 DW-B78-01: ATM profit-target brackets (Target1..Target9) must not trigger follower copy.
             // Pattern: "Target" prefix + digit at index 6 (same pattern as IsAtmBracketName + SnapshotTargetOrders).
-            if (name.Length > 6
+            if (
+                name.Length > 6
                 && name.StartsWith("Target", StringComparison.Ordinal)
-                && char.IsDigit(name[6]))                                  return true;  // (6)
+                && char.IsDigit(name[6])
+            )
+                return true; // (6)
             // NOTE: "Entry" is intentionally NOT blocked here.
             // Gate 2 already filters to master account only -- follower "Entry" orders never reach DispatchCopy.
             return false;
@@ -1350,11 +1682,16 @@ namespace PropTraderTools
         // JS-001: no throw. JS-002: returns bool (never null). JS-021: no lock.
         internal static bool IsNativeExitName(string name)
         {
-            if (name == null)                                              return false;
-            if (name == "Close")                                           return true;
-            if (name == "Flatten")                                         return true;
-            if (name.StartsWith("Rev",  StringComparison.Ordinal))        return true;
-            if (name.StartsWith("Exit", StringComparison.Ordinal))        return true;
+            if (name == null)
+                return false;
+            if (name == "Close")
+                return true;
+            if (name == "Flatten")
+                return true;
+            if (name.StartsWith("Rev", StringComparison.Ordinal))
+                return true;
+            if (name.StartsWith("Exit", StringComparison.Ordinal))
+                return true;
             return false;
         }
 
@@ -1365,12 +1702,12 @@ namespace PropTraderTools
         // TESTABILITY: internal static, string parameter, no NT8 runtime deps.
         internal static bool IsNonFlatDispatchName(string orderName)
         {
-            if (orderName != null && orderName.StartsWith("PTT-", StringComparison.Ordinal)) return true; // (1)
-            if (orderName == "Entry") return true;                                                          // (2)
+            if (orderName != null && orderName.StartsWith("PTT-", StringComparison.Ordinal))
+                return true; // (1)
+            if (orderName == "Entry")
+                return true; // (2)
             return false;
         }
-
-
 
         // --- B7-F0: Bracket mirroring methods ---
 
@@ -1380,21 +1717,28 @@ namespace PropTraderTools
         private void DispatchCopy(Order order, CopyRule rule)
         {
             // Gate 0.5: block PTT- cascade AND known NT8 exit signal names (B59). CYC: 7->8 (unchanged).
-            if (IsExitSignalName(order.Name)) return;
+            if (IsExitSignalName(order.Name))
+                return;
 
             // Gate 3: must be a dispatch-trigger state (Submitted for market; Accepted for AddOn limit)
-            if (!IsDispatchTriggerState(order.OrderState, order.OrderType))  // HOTFIX-MARKET-DEDUP-01
+            if (!IsDispatchTriggerState(order.OrderState, order.OrderType)) // HOTFIX-MARKET-DEDUP-01
                 return;
 
             // Gate 4: market or limit order type only
             bool isMarket = order.OrderType == OrderType.Market;
-            bool isLimit  = order.OrderType == OrderType.Limit;
+            bool isLimit = order.OrderType == OrderType.Limit;
             if (!isMarket && !isLimit)
                 return;
 
-            // Gate 5: dedup -- reject duplicate event for same orderId
-            // B62: pass limitPrice as second arg (price-keyed dedup).
-            if (IsDedup(order.OrderId.ToString(), order.LimitPrice))
+            // Gate 5: dedup -- reject duplicate event for same orderId (B62: price-keyed dedup).
+            // DW-B91-A: IsEntryDispatched extends dedup across EvictDedup eviction boundary.
+            // Compound OR: single McCabe branch -- DispatchCopy CYC stays at 8.
+            // Short-circuit: IsEntryDispatched only called when IsDedup returns false (new event).
+            //   - IsDedup false + IsEntryDispatched false: first time -- TryAdd marks dispatched, proceed.
+            //   - IsDedup false + IsEntryDispatched true:  eviction-bypass attempt -- blocked.
+            //   - IsDedup true:  duplicate same-event -- blocked, IsEntryDispatched not called.
+            var orderId = order.OrderId.ToString();
+            if (IsDedup(orderId, order.LimitPrice) || IsEntryDispatched(orderId))
                 return;
 
             // All gates passed -- build base signal
@@ -1403,7 +1747,7 @@ namespace PropTraderTools
                 order.OrderType,
                 order.Quantity,
                 order.LimitPrice,
-                order.OrderId.ToString()
+                orderId
             );
 
             // B9 T1: ATR base qty -- overrides signal qty when ATR enabled, else uses signal qty
@@ -1413,23 +1757,43 @@ namespace PropTraderTools
             int idx = 0;
             foreach (var acc in rule.FollowerAccounts)
             {
-                if (acc == null) { idx++; continue; }
-                if (!PassesDailyCapCheck(acc)) { idx++; continue; }
+                if (acc == null)
+                {
+                    idx++;
+                    continue;
+                }
+                if (!PassesDailyCapCheck(acc))
+                {
+                    idx++;
+                    continue;
+                }
                 int mult = GetMultiplier(rule, idx);
                 var scaledSignal = CopySignal.Create(
                     baseSignal.Action,
                     baseSignal.Type,
                     baseQty * mult,
                     baseSignal.LimitPrice,
-                    baseSignal.OrderId);
+                    baseSignal.OrderId
+                );
                 var mode = ResolveAtmMode(rule, acc.Name);
                 NinjaTrader.Code.Output.Process(
-                    "[PTT-COPY] dispatch: " + scaledSignal.Action + " x" + scaledSignal.Quantity
-                    + " " + order.Instrument.FullName + " -> " + acc.Name
-                    + " mult=" + mult + " mode=" + mode.GetType().Name
-                    + " name=" + (order.Name ?? "null"),
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                if (mode is FollowerAtmMode.Named namedAtm)               // HOTFIX-B66-NATIVE-ATM: Named mode -> native ATM
+                    "[PTT-COPY] dispatch: "
+                        + scaledSignal.Action
+                        + " x"
+                        + scaledSignal.Quantity
+                        + " "
+                        + order.Instrument.FullName
+                        + " -> "
+                        + acc.Name
+                        + " mult="
+                        + mult
+                        + " mode="
+                        + mode.GetType().Name
+                        + " name="
+                        + (order.Name ?? "null"),
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
+                if (mode is FollowerAtmMode.Named namedAtm) // HOTFIX-B66-NATIVE-ATM: Named mode -> native ATM
                     SendCopyWithAtm(acc, order.Instrument, in scaledSignal, namedAtm);
                 else
                     SendCopy(acc, order.Instrument, in scaledSignal, mode);
@@ -1457,9 +1821,10 @@ namespace PropTraderTools
         // JS-021: no lock. JS-001: no throw.
         internal static bool IsWorkingBracket(Order order)
         {
-            return (order.OrderState == OrderState.Working
-                    || order.OrderState == OrderState.Accepted)
-                   && IsBracketLegStatic(order);
+            return (
+                    order.OrderState == OrderState.Working
+                    || order.OrderState == OrderState.Accepted
+                ) && IsBracketLegStatic(order);
         }
 
         // B10 T1 -- IsTrailingStop: trailing stop detection predicate.
@@ -1488,18 +1853,23 @@ namespace PropTraderTools
         // CYC=5: fo null(1), price delta(2), TrailPrice>0(3), isStop branch(4), try block(0).
         // JS-001: try/catch around acc.Change() -- no throw in hot path.
         // DW-B9-GAP-001a: trailing stop follower orders are skipped (Option B: skip is safer).
-        private void SyncFollowerBracket(Account acc, Order leaderOrder,
-            bool isStop, double newPrice, double tickSize)
+        private void SyncFollowerBracket(
+            Account acc,
+            Order leaderOrder,
+            bool isStop,
+            double newPrice,
+            double tickSize
+        )
         {
             var fo = FindFollowerBracketOrder(acc, leaderOrder.FromEntrySignal, isStop);
-            if (fo == null)                                                                // (1)
+            if (fo == null) // (1)
                 return;
 
             double currentPrice = isStop ? fo.StopPrice : fo.LimitPrice;
-            if (Math.Abs(newPrice - currentPrice) < tickSize)                             // (2)
+            if (Math.Abs(newPrice - currentPrice) < tickSize) // (2)
                 return;
 
-            if (isStop && IsTrailingStop(fo))                                             // (3)
+            if (isStop && IsTrailingStop(fo)) // (3)
             {
                 StatusUpdate?.Invoke("HandleBracketChange: skip trailing stop " + fo.Name);
                 return;
@@ -1507,12 +1877,18 @@ namespace PropTraderTools
 
             try
             {
-                if (isStop)                                                                // (4)
+                if (isStop) // (4)
                     fo.StopPrice = newPrice;
                 else
                     fo.LimitPrice = newPrice;
                 acc.Change(new Order[] { fo });
-                StatusUpdate?.Invoke(acc.Name + ": bracket synced " + (isStop ? "stop" : "target") + " -> " + newPrice);
+                StatusUpdate?.Invoke(
+                    acc.Name
+                        + ": bracket synced "
+                        + (isStop ? "stop" : "target")
+                        + " -> "
+                        + newPrice
+                );
             }
             catch (Exception ex)
             {
@@ -1527,22 +1903,20 @@ namespace PropTraderTools
         // V02: tick-rounded price applied BEFORE price-delta guard (preserved in SyncFollowerBracket).
         private void HandleBracketChange(Order leaderOrder, CopyRule rule)
         {
-            bool isStop = IsStopLeg(leaderOrder);                                          // (1)
+            bool isStop = IsStopLeg(leaderOrder); // (1)
 
             var instrument = leaderOrder.Instrument;
-            if (instrument == null)                                                        // (2)
+            if (instrument == null) // (2)
                 return;
 
-            double tickSize = instrument.MasterInstrument?.TickSize ?? 0.0;               // (3)
-            double rawPrice = isStop ? leaderOrder.StopPrice : leaderOrder.LimitPrice;    // (4)
+            double tickSize = instrument.MasterInstrument?.TickSize ?? 0.0; // (3)
+            double rawPrice = isStop ? leaderOrder.StopPrice : leaderOrder.LimitPrice; // (4)
             // V02: tick rounding applied BEFORE price-delta guard
-            double newPrice = tickSize > 0
-                ? Math.Round(rawPrice / tickSize) * tickSize
-                : rawPrice;
+            double newPrice = tickSize > 0 ? Math.Round(rawPrice / tickSize) * tickSize : rawPrice;
 
-            foreach (var acc in rule.FollowerAccounts)                                    // (5)
+            foreach (var acc in rule.FollowerAccounts) // (5)
             {
-                if (acc == null)                                                           // (6)
+                if (acc == null) // (6)
                     continue;
                 SyncFollowerBracket(acc, leaderOrder, isStop, newPrice, tickSize);
             }
@@ -1551,17 +1925,24 @@ namespace PropTraderTools
         // CYC=4. Returns first matching working bracket order for the follower.
         // V03: return type is Order? (nullable) -- null contract explicit (JS-002 compliant).
         // V01: matching by FromEntrySignal name -- not leg-type scan.
-        private Order? FindFollowerBracketOrder(Account follower, string fromEntrySignalName, bool isStop)
+        private Order? FindFollowerBracketOrder(
+            Account follower,
+            string fromEntrySignalName,
+            bool isStop
+        )
         {
-            foreach (var order in follower.Orders.ToList())                                     // (1) branch
+            foreach (var order in follower.Orders.ToList()) // (1) branch
             {
-                if (order.FromEntrySignal != fromEntrySignalName)                              // (1) branch
+                if (order.FromEntrySignal != fromEntrySignalName) // (1) branch
                     continue;
-                if (order.OrderState != OrderState.Working)                                    // (1) branch
+                if (order.OrderState != OrderState.Working) // (1) branch
                     continue;
                 if (isStop)
                 {
-                    if (order.OrderType == OrderType.StopMarket || order.OrderType == OrderType.StopLimit) // (1) branch
+                    if (
+                        order.OrderType == OrderType.StopMarket
+                        || order.OrderType == OrderType.StopLimit
+                    ) // (1) branch
                         return order;
                 }
                 else
@@ -1577,8 +1958,8 @@ namespace PropTraderTools
         // NT8 fact: StopLimit.LimitPrice==0 always; drag price lives in StopPrice (Fact 1).
         // B66-LaneC: DW-B64-01 fix -- GetOrderPrice used in Gate C and HandleEntryChange.
         // JS-021: no lock. JS-001: no throw. Pure computation. Zero heap allocation (JS-036).
-        private static double GetOrderPrice(Order order)
-            => order.OrderType == OrderType.StopLimit ? order.StopPrice : order.LimitPrice;
+        private static double GetOrderPrice(Order order) =>
+            order.OrderType == OrderType.StopLimit ? order.StopPrice : order.LimitPrice;
 
         // CYC=2. Sets StopPrice for StopLimit follower orders, LimitPrice for all others.
         // NT8: for Account.Change() on StopLimit, assign StopPrice not LimitPrice
@@ -1600,13 +1981,20 @@ namespace PropTraderTools
         // JS-002: returns null when not found -- callers must null-guard.
         private static Order? FindFollowerEntryOrder(Account follower, Instrument instrument)
         {
-            foreach (var order in follower.Orders.ToList())                       // (1)
+            foreach (var order in follower.Orders.ToList()) // (1)
             {
-                if (order.Instrument != instrument)                               // (2)
+                if (order.Instrument != instrument) // (2)
                     continue;
-                if ((order.OrderState == OrderState.Working || order.OrderState == OrderState.Accepted) // (3)
-                    && (order.OrderType == OrderType.Limit || order.OrderType == OrderType.StopLimit)
-                    && (order.Name == "PTT-Copy" || order.Name == "Entry"))
+                if (
+                    (
+                        order.OrderState == OrderState.Working
+                        || order.OrderState == OrderState.Accepted
+                    ) // (3)
+                    && (
+                        order.OrderType == OrderType.Limit || order.OrderType == OrderType.StopLimit
+                    )
+                    && (order.Name == "PTT-Copy" || order.Name == "Entry")
+                )
                     return order;
             }
             return null;
@@ -1626,14 +2014,12 @@ namespace PropTraderTools
         private void HandleEntryChange(Order leaderOrder, CopyRule rule)
         {
             var instrument = leaderOrder.Instrument;
-            if (instrument == null)                                                    // (1)
+            if (instrument == null) // (1)
                 return;
 
-            double tickSize = instrument.MasterInstrument?.TickSize ?? 0.0;           // (2)
+            double tickSize = instrument.MasterInstrument?.TickSize ?? 0.0; // (2)
             double rawPrice = GetOrderPrice(leaderOrder); // B66-LaneC: StopLimit price in StopPrice
-            double newPrice = tickSize > 0
-                ? Math.Round(rawPrice / tickSize) * tickSize
-                : rawPrice;
+            double newPrice = tickSize > 0 ? Math.Round(rawPrice / tickSize) * tickSize : rawPrice;
 
             // HOTFIX-ENTRY-DRAG-DEDUP: keep leader orderId in cache at newPrice (upsert, not remove).
             // TryRemove caused Working-state re-entry to fall through Gate C into DispatchCopy,
@@ -1642,23 +2028,23 @@ namespace PropTraderTools
             // since Accepted), and returns without dispatching. DispatchCopy's IsDedup also blocks it.
             _dedupCache[leaderOrder.OrderId.ToString()] = newPrice;
 
-            foreach (var acc in rule.FollowerAccounts)                                // (3)
+            foreach (var acc in rule.FollowerAccounts) // (3)
             {
-                if (acc == null)                                                       // (4)
+                if (acc == null) // (4)
                     continue;
 
                 var fo = FindFollowerEntryOrder(acc, instrument);
-                if (fo == null)                                                        // (5)
+                if (fo == null) // (5)
                     continue;
 
                 double currentPrice = GetOrderPrice(fo); // B66-LaneC: StopLimit price in StopPrice
-                if (tickSize > 0 && Math.Abs(newPrice - currentPrice) < tickSize)    // (6)
+                if (tickSize > 0 && Math.Abs(newPrice - currentPrice) < tickSize) // (6)
                     continue;
 
                 // B67-LaneB DW-B67-02: Cancel+CreateOrder+Submit (acc.Change() is Apex/Rithmic no-op).
                 // NT8_FULL_REFERENCE.md lines 898-899: StopLimit price in StopPrice not LimitPrice.
                 double limitPx = fo.OrderType == OrderType.StopLimit ? 0.0 : newPrice; // (7a)
-                double stopPx  = fo.OrderType == OrderType.StopLimit ? newPrice : 0.0; // (7b)
+                double stopPx = fo.OrderType == OrderType.StopLimit ? newPrice : 0.0; // (7b)
                 acc.Cancel(new Order[] { fo });
                 var order = acc.CreateOrder(
                     instrument,
@@ -1672,8 +2058,9 @@ namespace PropTraderTools
                     null,
                     fo.Name,
                     DateTime.MaxValue,
-                    null);
-                if (order != null)                                                       // (7)
+                    null
+                );
+                if (order != null) // (7)
                 {
                     acc.Submit(new[] { order });
                     // B69 DW-B69-03: preload new orderId into _dedupCache at newPrice.
@@ -1693,9 +2080,10 @@ namespace PropTraderTools
         {
             var bag = _orderMap.GetOrAdd(
                 fromEntrySignalName,
-                _ => new ConcurrentBag<FollowerBinding>());
+                _ => new ConcurrentBag<FollowerBinding>()
+            );
             // Dedup guard: prevent accumulating duplicate bindings on repeated Working state events
-            if (!bag.Any(b => b.FollowerAccount?.Name == followerAccount?.Name))         // (1) branch
+            if (!bag.Any(b => b.FollowerAccount?.Name == followerAccount?.Name)) // (1) branch
                 bag.Add(new FollowerBinding(followerAccount, fromEntrySignalName));
         }
 
@@ -1712,15 +2100,14 @@ namespace PropTraderTools
         {
             // Fire ONLY on Filled/PartFilled -- the only states that alter position quantity.
             var state = e.OrderState;
-            if (state != OrderState.Filled &&
-                state != OrderState.PartFilled)                            // (1) branch
+            if (state != OrderState.Filled && state != OrderState.PartFilled) // (1) branch
                 return;
 
-            if (e.Order?.Instrument?.FullName == null)                     // (1) branch
+            if (e.Order?.Instrument?.FullName == null) // (1) branch
                 return;
 
-            string instr   = e.Order.Instrument.FullName;
-            bool hasPos     = HasOpenPosition(e.Order.Account, e.Order.Instrument);
+            string instr = e.Order.Instrument.FullName;
+            bool hasPos = HasOpenPosition(e.Order.Account, e.Order.Instrument);
 
             // HOTFIX-B76-POSSTATE-DEDUP-01: Interlocked CAS dedup.
             // GetOrAdd returns the stable int[1] box for this instrument (allocates once).
@@ -1728,14 +2115,14 @@ namespace PropTraderTools
             // If prior == newVal: no transition -- another thread already wrote it, skip.
             // 0=False, 1=True, 2=unknown (initial sentinel -- always fires on first fill).
             int newVal = hasPos ? 1 : 0;
-            var box    = _lastHasPos.GetOrAdd(instr, _ => new int[] { 2 });
-            int prior  = System.Threading.Interlocked.Exchange(ref box[0], newVal);
-            if (prior == newVal) return;
+            var box = _lastHasPos.GetOrAdd(instr, _ => new int[] { 2 });
+            int prior = System.Threading.Interlocked.Exchange(ref box[0], newVal);
+            if (prior == newVal)
+                return;
 
             bool hasEntries = HasWorkingEntries(e.Order.Account, e.Order.Instrument);
             PositionStateChanged?.Invoke(instr, new PositionState(hasPos, hasEntries));
         }
-
 
         // HOTFIX-B66-COPY-REPLACE / HOTFIX-B66-NATIVE-ATM: re-places a cancelled follower entry order.
         // Called from pre-Gate-1 block when follower "PTT-Copy" or "Entry" is cancelled while leader is long.
@@ -1751,45 +2138,58 @@ namespace PropTraderTools
         // JS-021: no lock. JS-001: no throw. JS-002: no return null (void).
         private void ReplaceFollowerCopyOnAtmCancel(Order cancelledOrder)
         {
-            if (!_isCopyEnabled) return;                                          // (1)
+            if (!_isCopyEnabled)
+                return; // (1)
             CopyRule? matchedRule = null;
             int followerIndex = -1;
-            foreach (var rule in _rules)                                          // (2)
+            foreach (var rule in _rules) // (2)
             {
-                if (rule.Instrument != cancelledOrder.Instrument.FullName) continue;
-                for (int i = 0; i < (rule.FollowerAccounts?.Length ?? 0); i++)   // (3)
+                if (rule.Instrument != cancelledOrder.Instrument.FullName)
+                    continue;
+                for (int i = 0; i < (rule.FollowerAccounts?.Length ?? 0); i++) // (3)
                 {
                     if (rule.FollowerAccounts[i]?.Name == cancelledOrder.Account.Name)
                     {
-                        matchedRule    = rule;
-                        followerIndex  = i;
+                        matchedRule = rule;
+                        followerIndex = i;
                         break;
                     }
                 }
-                if (matchedRule.HasValue) break;
+                if (matchedRule.HasValue)
+                    break;
             }
-            if (!matchedRule.HasValue || followerIndex < 0) return;              // (4) not a follower order
+            if (!matchedRule.HasValue || followerIndex < 0)
+                return; // (4) not a follower order
             var leader = matchedRule.Value.MasterAccount;
-            if (leader == null) return;
-            if (!HasOpenPosition(leader, cancelledOrder.Instrument)) return;     // (5) leader flat = normal close cancel, skip
-            if (HasOpenPosition(cancelledOrder.Account, cancelledOrder.Instrument)) return; // (5b) DW-B84-02: follower already has position = NT8-internal ATM-arming cancel, not a sweep; skip re-place to prevent infinite loop
-            if (HasWorkingPttCopy(cancelledOrder.Account, cancelledOrder.Instrument)) return; // (6) drag-cancel: replacement already in flight
+            if (leader == null)
+                return;
+            if (!HasOpenPosition(leader, cancelledOrder.Instrument))
+                return; // (5) leader flat = normal close cancel, skip
+            if (HasOpenPosition(cancelledOrder.Account, cancelledOrder.Instrument))
+                return; // (5b) DW-B84-02: follower already has position = NT8-internal ATM-arming cancel, not a sweep; skip re-place to prevent infinite loop
+            if (HasWorkingPttCopy(cancelledOrder.Account, cancelledOrder.Instrument))
+                return; // (6) drag-cancel: replacement already in flight
             // Leader has open position, follower has NO position, no replacement in flight -- genuine ATM-sweep cancel, re-place the entry.
-            int qty  = (int)cancelledOrder.Quantity;  // original qty already includes multiplier
+            int qty = (int)cancelledOrder.Quantity; // original qty already includes multiplier
             var signal = CopySignal.Create(
                 cancelledOrder.OrderAction,
                 OrderType.Limit,
                 qty,
                 cancelledOrder.LimitPrice,
-                cancelledOrder.OrderId.ToString() + "-R");  // "-R" suffix = replacement, avoids dedup collision
+                cancelledOrder.OrderId.ToString() + "-R"
+            ); // "-R" suffix = replacement, avoids dedup collision
             var mode = ResolveAtmMode(matchedRule.Value, cancelledOrder.Account.Name);
-            if (mode is FollowerAtmMode.Named namedAtm)                          // (7) Named -> native ATM re-place
+            if (mode is FollowerAtmMode.Named namedAtm) // (7) Named -> native ATM re-place
                 SendCopyWithAtm(cancelledOrder.Account, cancelledOrder.Instrument, in signal, namedAtm); // (8)
             else
-                SendCopy(cancelledOrder.Account, cancelledOrder.Instrument, in signal, mode);                        // (8)
-            StatusUpdate?.Invoke(cancelledOrder.Account.Name + ": re-placed @ " + cancelledOrder.LimitPrice + " (ATM-sweep replace)");
+                SendCopy(cancelledOrder.Account, cancelledOrder.Instrument, in signal, mode); // (8)
+            StatusUpdate?.Invoke(
+                cancelledOrder.Account.Name
+                    + ": re-placed @ "
+                    + cancelledOrder.LimitPrice
+                    + " (ATM-sweep replace)"
+            );
         }
-
 
         // DW-B79-08 v6: TryReplacePttBeBrackets -- register BE retry slot + 500ms fallback for ATM-sweep recovery.
         // Called from OnOrderUpdate when PTT-BE-Stop-* transitions to Cancelled while follower has position.
@@ -1815,25 +2215,54 @@ namespace PropTraderTools
         //   registration (QX path or slow NT8). TryRemove atomic gate: exactly one path wins.
         //   500ms > ATM arming time (~50-100ms) so MoveStopToBreakEven(isRetry:true) sees Target1 Working.
         //
+        // DW-B90: returns true if any PTT-BE-Target-* is Filled on acc for instr.
+        // Distinguishes ATM-sweep PTT-BE-Stop cancel (no fills -- should retry brackets) from
+        // OCO partner cancel after target fill (should NOT retry -- loop trigger).
+        // CYC=2: (1) null guard, (2) foreach. JS-021: no lock. JS-001: no throw. ASCII-only.
+        private static bool HasFilledBeTarget(Account acc, Instrument instr)
+        {
+            if (acc == null || instr == null)
+                return false;
+            foreach (Order o in acc.Orders)
+            {
+                if (o == null)
+                    continue;
+                if (o.OrderState != OrderState.Filled)
+                    continue;
+                if (o.Instrument?.FullName != instr.FullName)
+                    continue;
+                if (o.Name != null && o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal))
+                    return true;
+            }
+            return false;
+        }
+
         // CYC=5: (1) null guard, (2) follower guard, (3) flat guard, (4) attempt guard, (5) slot+fallback.
         // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void. ASCII-only.
         // DW-T4: structurally unreachable from follower path. Followers use acc.Change() (early
         // return at follower block end, L2791) and never hold PTT-BE-Stop-* orders. No guard needed.
         private void TryReplacePttBeBrackets(Order cancelledStop)
         {
-            if (cancelledStop?.Account == null || cancelledStop.Instrument == null) return; // (1)
-            if (!IsFollowerAccount(cancelledStop.Account)) return;                          // (2)
-            if (IsFlat(FindPosition(cancelledStop.Account, cancelledStop.Instrument))) return; // (3)
-            var acc   = cancelledStop.Account;
+            if (cancelledStop?.Account == null || cancelledStop.Instrument == null)
+                return; // (1)
+            if (!IsFollowerAccount(cancelledStop.Account))
+                return; // (2)
+            if (IsFlat(FindPosition(cancelledStop.Account, cancelledStop.Instrument)))
+                return; // (3)
+            var acc = cancelledStop.Account;
             var instr = cancelledStop.Instrument;
             // (4) Attempt-count guard: max 3 slot registrations per trade per account.
             _beReplaceAttempts.TryGetValue(acc.Name, out int prevAttempts);
-            if (prevAttempts >= 3)                                                          // (4)
+            if (prevAttempts >= 3) // (4)
             {
                 NinjaTrader.Code.Output.Process(
-                    "[BE-DIAG] TryReplacePttBeBrackets: " + acc.Name
-                        + " -- max 3 attempts, no new slot (TryFireFollowerBeRetry still holds slot " + prevAttempts + ")",
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    "[BE-DIAG] TryReplacePttBeBrackets: "
+                        + acc.Name
+                        + " -- max 3 attempts, no new slot (TryFireFollowerBeRetry still holds slot "
+                        + prevAttempts
+                        + ")",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 return;
             }
             _beReplaceAttempts[acc.Name] = prevAttempts + 1;
@@ -1845,23 +2274,29 @@ namespace PropTraderTools
             if (!_pendingFollowerBeSlots.TryAdd(acc.Name, new PendingFollowerBeSlot(acc, instr, 0)))
                 return;
             NinjaTrader.Code.Output.Process(
-                "[BE-DIAG] TryReplacePttBeBrackets: " + acc.Name
-                    + " -- attempt " + (prevAttempts + 1) + "/3, slot registered, 500ms fallback queued",
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                "[BE-DIAG] TryReplacePttBeBrackets: "
+                    + acc.Name
+                    + " -- attempt "
+                    + (prevAttempts + 1)
+                    + "/3, slot registered, 500ms fallback queued",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
             QueueBeRetryFallback(acc, instr, 0, delayMs: 500);
         }
 
         // CYC=2. Thin wrapper over FindPosition.
         private bool HasOpenPosition(Account acc, Instrument instrument)
         {
-            var pos = FindPosition(acc, instrument);                        // (1) branch
+            var pos = FindPosition(acc, instrument); // (1) branch
             if (pos == null)
                 return false;
             return pos.Quantity > 0;
         }
 
-        // B65 T1: TryDispatchLeaderFlat -- CYC=8 (strict McCabe: loop + null guard + 5 early returns + IsNativeExitName branch).
+        // B65 T1 / DW-B91-B: TryDispatchLeaderFlat -- CYC=6 (strict McCabe after DW-B91-B extraction).
         // (1) state guard, (2) follower guard, (3) open-position race-safe guard, (4) foreach follower.
+        // DW-B91-B: foreach body extracted to FlattenFollower (CYC=3) which adds per-follower
+        // hasOpenPosition guard to skip already-flat followers. Null guard moved into FlattenFollower.
         // Guard (3) change: bypass hasOpenPosition when orderName is a native NT8 exit.
         // Rationale: NT8_FULL_REFERENCE.md line 1721 -- position state is not updated until the next
         // OnBarUpdate() after an order fill. When leader fills a native close order (Name="Close",
@@ -1869,32 +2304,57 @@ namespace PropTraderTools
         // Bypassing the guard here ensures followers are flattened immediately (DW-B65-01 fix).
         // JS-021: no lock. JS-001: no throw. JS-002: no null return.
         private static bool TryDispatchLeaderFlat(
-            Account account, Instrument instrument, OrderState state, string orderName,
+            Account account,
+            Instrument instrument,
+            OrderState state,
+            string orderName,
             CopyRule rule,
             Func<Account, bool> isFollower,
             Func<Account, Instrument, bool> hasOpenPosition,
-            Action<Account, Instrument> flattenOne)
+            Action<Account, Instrument> flattenOne
+        )
         {
-            if (state != OrderState.Filled && state != OrderState.Cancelled) return false; // (1)
-            if (isFollower(account)) return false;                                           // (2)
-            if (IsNonFlatDispatchName(orderName)) return false;                             // (2.5+2.6) combines HOTFIX-B63-FLATTEN-01 + HOTFIX-B64-ENTRY-FLATTEN-01
-            if (!IsNativeExitName(orderName) && hasOpenPosition(account, instrument)) return false; // (3)
-            foreach (var acc in rule.FollowerAccounts)                                       // (4)
-            {
-                if (acc == null) continue;
-                flattenOne(acc, instrument);
-            }
+            if (state != OrderState.Filled && state != OrderState.Cancelled)
+                return false; // (1)
+            if (isFollower(account))
+                return false; // (2)
+            if (IsNonFlatDispatchName(orderName))
+                return false; // (2.5+2.6) combines HOTFIX-B63-FLATTEN-01 + HOTFIX-B64-ENTRY-FLATTEN-01
+            if (!IsNativeExitName(orderName) && hasOpenPosition(account, instrument))
+                return false; // (3)
+            foreach (var acc in rule.FollowerAccounts) // (4)
+                FlattenFollower(acc, instrument, hasOpenPosition, flattenOne); // DW-B91-B
             return true;
+        }
+
+        // DW-B91-B: extracted foreach body from TryDispatchLeaderFlat.
+        // Absorbs (a) null guard (moved from caller loop) and (b) new per-follower open-position guard.
+        // Prevents spurious flattenOne call on already-flat followers (re-entry bug).
+        // CYC=3: 1 base + if (acc == null) + if (!hasOpenPosition).
+        // JS-021: no lock. JS-001: no throw. JS-002: no null return (void).
+        // private static: no instance state captured -- explicit delegate injection for testability.
+        private static void FlattenFollower(
+            Account acc,
+            Instrument instrument,
+            Func<Account, Instrument, bool> hasOpenPosition,
+            Action<Account, Instrument> flattenOne
+        )
+        {
+            if (acc == null)
+                return; // (a) null guard (moved from caller)
+            if (!hasOpenPosition(acc, instrument))
+                return; // (b) DW-B91-B: skip already-flat follower
+            flattenOne(acc, instrument);
         }
 
         // CYC=3. Returns true if any working non-bracket order exists for the instrument.
         private bool HasWorkingEntries(Account acc, Instrument instrument)
         {
-            foreach (var order in acc.Orders)                               // (1) branch
+            foreach (var order in acc.Orders) // (1) branch
             {
-                if (order.Instrument != instrument)                         // (1) branch
+                if (order.Instrument != instrument) // (1) branch
                     continue;
-                if (order.OrderState != OrderState.Working)                 // (1) branch
+                if (order.OrderState != OrderState.Working) // (1) branch
                     continue;
                 if (!IsBracketLeg(order))
                     return true;
@@ -1913,11 +2373,16 @@ namespace PropTraderTools
         {
             foreach (var order in acc.Orders.ToList())
             {
-                if (order.Instrument?.FullName != instrument.FullName) continue;
-                if (order.OrderState != OrderState.Working
+                if (order.Instrument?.FullName != instrument.FullName)
+                    continue;
+                if (
+                    order.OrderState != OrderState.Working
                     && order.OrderState != OrderState.Accepted
-                    && order.OrderState != OrderState.Submitted) continue;
-                if (order.Name == "PTT-Copy" || order.Name == "Entry") return true;
+                    && order.OrderState != OrderState.Submitted
+                )
+                    continue;
+                if (order.Name == "PTT-Copy" || order.Name == "Entry")
+                    return true;
             }
             return false;
         }
@@ -1928,15 +2393,20 @@ namespace PropTraderTools
         // JS-001: catch logs and returns false -- no throw in dispatch path.
         // JS-002: mode=null treated as Inherit (no null return, no throw).
         // B23 T1: Dispatcher marshal added
-        private bool SendCopy(Account follower, Instrument instrument, in CopySignal signal, FollowerAtmMode mode)
+        private bool SendCopy(
+            Account follower,
+            Instrument instrument,
+            in CopySignal signal,
+            FollowerAtmMode mode
+        )
         {
-            OrderType orderType  = signal.Type;
-            double    limitPrice = signal.LimitPrice;
-            string    signalName = "PTT-Copy";    // SCAN-05: PTT- prefix mandatory for ALL modes
+            OrderType orderType = signal.Type;
+            double limitPrice = signal.LimitPrice;
+            string signalName = "PTT-Copy"; // SCAN-05: PTT- prefix mandatory for ALL modes
 
-            if (mode is FollowerAtmMode.Market)   // branch (1)
+            if (mode is FollowerAtmMode.Market) // branch (1)
             {
-                orderType  = OrderType.Market;
+                orderType = OrderType.Market;
                 limitPrice = 0;
             }
             // Inherit: use original signal values unchanged (no branch needed)
@@ -1945,7 +2415,7 @@ namespace PropTraderTools
                 ? named.TemplateName
                 : null;
 
-            try                                   // branch (3)
+            try // branch (3)
             {
                 // NT8 AddOn constraint: 12-arg CreateOrder requires CustomOrder as arg12, not string.
                 // Named ATM mode is not applicable from AddOn context -- pass null CustomOrder.
@@ -1959,7 +2429,7 @@ namespace PropTraderTools
                     signal.Action,
                     orderType,
                     OrderEntry.Manual,
-                    TimeInForce.Gtc,  // B29 fix: Day orders expire mid-session on overnight futures
+                    TimeInForce.Gtc, // B29 fix: Day orders expire mid-session on overnight futures
                     signal.Quantity,
                     limitPrice,
                     0,
@@ -1987,9 +2457,14 @@ namespace PropTraderTools
         // HOTFIX-B66-ATM-OBJ: AtmObject overload preferred -- passes live object, avoids .Name class-name trap.
         // CYC=4: (1) try/catch outer, (2) order null guard, (3) AtmObject branch, (4) string branch.
         // JS-021: no lock. JS-001: catch logs, returns false. JS-002: no return null (void return path).
-        private bool SendCopyWithAtm(Account follower, Instrument instrument, in CopySignal signal, FollowerAtmMode.Named namedMode)
+        private bool SendCopyWithAtm(
+            Account follower,
+            Instrument instrument,
+            in CopySignal signal,
+            FollowerAtmMode.Named namedMode
+        )
         {
-            try                                                                    // (1)
+            try // (1)
             {
                 var order = follower.CreateOrder(
                     instrument,
@@ -2001,15 +2476,23 @@ namespace PropTraderTools
                     signal.LimitPrice,
                     0,
                     string.Empty,
-                    "Entry",                    // NT8: MUST be "Entry" for StartAtmStrategy to arm
+                    "Entry", // NT8: MUST be "Entry" for StartAtmStrategy to arm
                     DateTime.MaxValue,
-                    (NinjaTrader.Cbi.CustomOrder)null);
-                if (order == null) return false;                                   // (2)
-                if (namedMode.AtmObject != null)                                   // (3) preferred: object overload
+                    (NinjaTrader.Cbi.CustomOrder)null
+                );
+                if (order == null)
+                    return false; // (2)
+                if (namedMode.AtmObject != null) // (3) preferred: object overload
                     NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(namedMode.AtmObject, order);
-                else                                                               // (4) fallback: string overload
+                else // (4) fallback: string overload
                     NinjaTrader.NinjaScript.AtmStrategy.StartAtmStrategy(namedMode.TemplateName, order);
-                StatusUpdate?.Invoke(follower.Name + ": PTT-ATM entry @ " + signal.LimitPrice + " atm=" + namedMode.TemplateName);
+                StatusUpdate?.Invoke(
+                    follower.Name
+                        + ": PTT-ATM entry @ "
+                        + signal.LimitPrice
+                        + " atm="
+                        + namedMode.TemplateName
+                );
                 return true;
             }
             catch (Exception ex)
@@ -2018,8 +2501,6 @@ namespace PropTraderTools
                 return false;
             }
         }
-
-
 
         // B8 T2: GetAtmMode -- bounds-safe ATM mode retrieval. CYC=2.
         // Returns Inherit if accountName not found -- never null, never throws (JS-001, JS-002).
@@ -2037,7 +2518,7 @@ namespace PropTraderTools
         // JS-002: never returns null -- all branches return a FollowerAtmMode subtype.
         private FollowerAtmMode ResolveAtmMode(CopyRule rule, string accountName)
         {
-            if (GetCopyMode() == CopyMode.Clone)  // branch (1)
+            if (GetCopyMode() == CopyMode.Clone) // branch (1)
                 return GetCloneAtmMode();
             return GetAtmMode(rule, accountName);
         }
@@ -2046,11 +2527,11 @@ namespace PropTraderTools
         // CYC=3. Returns Inherit for null/empty/unrecognized input -- never null, never throws.
         internal static FollowerAtmMode ParseAtmModeName(string name)
         {
-            if (string.IsNullOrEmpty(name))           // branch (1)
+            if (string.IsNullOrEmpty(name)) // branch (1)
                 return new FollowerAtmMode.Inherit();
-            if (name == "Market")                      // branch (2)
+            if (name == "Market") // branch (2)
                 return new FollowerAtmMode.Market();
-            if (name.StartsWith("Named:"))             // branch (3)
+            if (name.StartsWith("Named:")) // branch (3)
                 return new FollowerAtmMode.Named(name.Substring(6));
             return new FollowerAtmMode.Inherit();
         }
@@ -2059,17 +2540,21 @@ namespace PropTraderTools
         // CYC=3. Sealed hierarchy is exhaustive -- all variants covered.
         internal static string AtmModeToString(FollowerAtmMode mode)
         {
-            if (mode is FollowerAtmMode.Market)             // branch (1)
+            if (mode is FollowerAtmMode.Market) // branch (1)
                 return "Market";
-            if (mode is FollowerAtmMode.Named namedMode)    // branch (2)
+            if (mode is FollowerAtmMode.Named namedMode) // branch (2)
                 return "Named:" + namedMode.TemplateName;
-            return "Inherit";                               // branch (3): Inherit or null-fallback
+            return "Inherit"; // branch (3): Inherit or null-fallback
         }
 
         // B8 T2: SetAtmMode -- post-create mutation of a single follower's ATM mode.
         // ConcurrentBag rebuild pattern -- no lock (JS-021).
         // ImmutableDictionary.SetItem returns a NEW dictionary (immutable -- no mutation).
-        internal void SetAtmMode(string instrument, string followerAccountName, FollowerAtmMode mode)
+        internal void SetAtmMode(
+            string instrument,
+            string followerAccountName,
+            FollowerAtmMode mode
+        )
         {
             var snapshot = new List<CopyRule>(_rules);
             _rules = new ConcurrentBag<CopyRule>();
@@ -2082,8 +2567,17 @@ namespace PropTraderTools
                 }
                 var newMap = new Dictionary<string, FollowerAtmMode>(r.FollowerAtmTemplates);
                 newMap[followerAccountName] = mode;
-                _rules.Add(CopyRule.Create(r.Instrument, r.MasterAccount, r.FollowerAccounts, r.Enabled,
-                    r.FollowerMultipliers, newMap, r.TightenTicks));
+                _rules.Add(
+                    CopyRule.Create(
+                        r.Instrument,
+                        r.MasterAccount,
+                        r.FollowerAccounts,
+                        r.Enabled,
+                        r.FollowerMultipliers,
+                        newMap,
+                        r.TightenTicks
+                    )
+                );
             }
         }
 
@@ -2111,7 +2605,8 @@ namespace PropTraderTools
             TrimOneAccount(leader, instrument);
             foreach (var acc in AllAccounts(instrument))
             {
-                if (acc == leader) continue;
+                if (acc == leader)
+                    continue;
                 TrimOneAccount(acc, instrument);
             }
         }
@@ -2128,7 +2623,8 @@ namespace PropTraderTools
             FlattenOneAccount(leader, instrument);
             foreach (var acc in AllAccounts(instrument))
             {
-                if (acc == leader) continue;
+                if (acc == leader)
+                    continue;
                 FlattenOneAccount(acc, instrument);
             }
         }
@@ -2145,43 +2641,66 @@ namespace PropTraderTools
             CancelOneAccount(leader, instrument);
             foreach (var acc in AllAccounts(instrument))
             {
-                if (acc == leader) continue;
+                if (acc == leader)
+                    continue;
                 CancelOneAccount(acc, instrument);
             }
         }
 
         // B28 T1 -- Trim(Account,Instrument,int,double,double): leader-account limit overload.
         // CYC=5: (1) leader null guard, (2) ask/bid/buffer guard, (3) leader direct call, (4) foreach, (5) acc==leader skip.
-        internal void Trim(Account leader, Instrument instrument, int exitBuffer, double ask, double bid)
+        internal void Trim(
+            Account leader,
+            Instrument instrument,
+            int exitBuffer,
+            double ask,
+            double bid
+        )
         {
             if (leader == null)
             {
                 StatusUpdate?.Invoke("PTT-TrimLimit: leader null -- skipping");
                 return;
             }
-            if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Trim(leader, instrument); return; }
+            if (ask <= 0 || bid <= 0 || exitBuffer == 0)
+            {
+                Trim(leader, instrument);
+                return;
+            }
             TrimOneAccountLimit(leader, instrument, exitBuffer, ask, bid);
             foreach (var acc in AllAccounts(instrument))
             {
-                if (acc == leader) continue;
+                if (acc == leader)
+                    continue;
                 TrimOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
             }
         }
 
         // B28 T1 -- Flatten(Account,Instrument,int,double,double): leader-account limit overload.
         // CYC=5: (1) leader null guard, (2) ask/bid/buffer guard, (3) leader direct call, (4) foreach, (5) acc==leader skip.
-        internal void Flatten(Account leader, Instrument instrument, int exitBuffer, double ask, double bid)
+        internal void Flatten(
+            Account leader,
+            Instrument instrument,
+            int exitBuffer,
+            double ask,
+            double bid
+        )
         {
             if (leader == null)
             {
                 StatusUpdate?.Invoke("PTT-FlattenLimit: leader null -- skipping");
                 return;
             }
-            if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Flatten(leader, instrument); return; }
+            if (ask <= 0 || bid <= 0 || exitBuffer == 0)
+            {
+                Flatten(leader, instrument);
+                return;
+            }
             FlattenOneAccountLimit(leader, instrument, exitBuffer, ask, bid);
             foreach (var acc in AllAccounts(instrument))
             {
-                if (acc == leader) continue;
+                if (acc == leader)
+                    continue;
                 FlattenOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
             }
         }
@@ -2198,13 +2717,26 @@ namespace PropTraderTools
                 return;
             }
             int trimQty = (int)Math.Ceiling(pos.Quantity / 2.0);
-            var action = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.BuyToCover;
+            var action =
+                pos.MarketPosition == MarketPosition.Long
+                    ? OrderAction.Sell
+                    : OrderAction.BuyToCover;
             try
             {
                 acc.CreateOrder(
-                    instrument, action, OrderType.Market, OrderEntry.Manual,
-                    TimeInForce.Gtc, trimQty, 0, 0, null, "PTT-Trim",
-                    DateTime.MaxValue, null);
+                    instrument,
+                    action,
+                    OrderType.Market,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    trimQty,
+                    0,
+                    0,
+                    null,
+                    "PTT-Trim",
+                    DateTime.MaxValue,
+                    null
+                );
                 StatusUpdate?.Invoke(acc.Name + ": trim " + trimQty);
             }
             catch (Exception ex)
@@ -2242,11 +2774,15 @@ namespace PropTraderTools
             // HasWorkingPttCopy). JS-021: no lock.
             foreach (var o in acc.Orders.ToList())
             {
-                if (o.Name != "PTT-Flatten") continue;
-                if (o.Instrument?.FullName != instrument.FullName) continue;
-                if (o.OrderState == OrderState.Submitted
+                if (o.Name != "PTT-Flatten")
+                    continue;
+                if (o.Instrument?.FullName != instrument.FullName)
+                    continue;
+                if (
+                    o.OrderState == OrderState.Submitted
                     || o.OrderState == OrderState.Accepted
-                    || o.OrderState == OrderState.Working)
+                    || o.OrderState == OrderState.Working
+                )
                 {
                     StatusUpdate?.Invoke(acc.Name + ": flat-guard: in-flight skip");
                     return;
@@ -2267,15 +2803,26 @@ namespace PropTraderTools
                 StatusUpdate?.Invoke(acc.Name + ": flat-race skip (pos cleared by bracket fill)");
                 return;
             }
-            var action = posAfterCancel.MarketPosition == MarketPosition.Long
-                ? OrderAction.Sell
-                : OrderAction.BuyToCover;
+            var action =
+                posAfterCancel.MarketPosition == MarketPosition.Long
+                    ? OrderAction.Sell
+                    : OrderAction.BuyToCover;
             try
             {
                 var order = acc.CreateOrder(
-                    instrument, action, OrderType.Market, OrderEntry.Manual,
-                    TimeInForce.Gtc, posAfterCancel.Quantity, 0, 0, null, "PTT-Flatten",
-                    DateTime.MaxValue, null);
+                    instrument,
+                    action,
+                    OrderType.Market,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    posAfterCancel.Quantity,
+                    0,
+                    0,
+                    null,
+                    "PTT-Flatten",
+                    DateTime.MaxValue,
+                    null
+                );
                 if (order != null)
                     acc.Submit(new[] { order });
                 StatusUpdate?.Invoke(acc.Name + ": flatten " + posAfterCancel.Quantity);
@@ -2292,10 +2839,13 @@ namespace PropTraderTools
         // DW-B29-01: original used ask+buffer for long, placing passive limit ABOVE market (never filled).
         // CYC=1: single ternary. No NT8 deps, no state, no nulls.
         // internal static -- CopyEngineTests.cs calls CopyEngine.ComputeLimitPx(...) directly.
-        internal static double ComputeLimitPx(bool isLong, double ask, double bid, int exitBuffer, double tickSize)
-            => isLong
-                ? bid - exitBuffer * tickSize
-                : ask + exitBuffer * tickSize;
+        internal static double ComputeLimitPx(
+            bool isLong,
+            double ask,
+            double bid,
+            int exitBuffer,
+            double tickSize
+        ) => isLong ? bid - exitBuffer * tickSize : ask + exitBuffer * tickSize;
 
         // B19 T1 -- Trim 4-arg: exit half position at limit price anchored to ask (long) or bid (short).
         // Long: Sell Limit @ ask + exitBuffer*tick.   Short: BuyToCover @ bid - exitBuffer*tick.
@@ -2306,7 +2856,11 @@ namespace PropTraderTools
         // JS-001: try/catch wraps acc.CreateOrder -- no rethrow.
         internal void Trim(Instrument instrument, int exitBuffer, double ask, double bid)
         {
-            if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Trim(instrument); return; }
+            if (ask <= 0 || bid <= 0 || exitBuffer == 0)
+            {
+                Trim(instrument);
+                return;
+            }
             foreach (var acc in AllAccounts(instrument))
                 TrimOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
         }
@@ -2316,7 +2870,11 @@ namespace PropTraderTools
         // NT8-014: signal name = "PTT-FlattenLimit".
         internal void Flatten(Instrument instrument, int exitBuffer, double ask, double bid)
         {
-            if (ask <= 0 || bid <= 0 || exitBuffer == 0) { Flatten(instrument); return; }
+            if (ask <= 0 || bid <= 0 || exitBuffer == 0)
+            {
+                Flatten(instrument);
+                return;
+            }
             foreach (var acc in AllAccounts(instrument))
                 FlattenOneAccountLimit(acc, instrument, exitBuffer, ask, bid);
         }
@@ -2334,12 +2892,16 @@ namespace PropTraderTools
         {
             foreach (var order in acc.Orders.ToList())
             {
-                if (order.Instrument != instrument) continue;
-                // B18 T3: DW-B18-CANCEL-01 -- also cancel Initialized orders.
-                if (order.OrderState != OrderState.Working &&
-                    order.OrderState != OrderState.Initialized)
+                if (order.Instrument != instrument)
                     continue;
-                if (IsBracketLeg(order)) continue;
+                // B18 T3: DW-B18-CANCEL-01 -- also cancel Initialized orders.
+                if (
+                    order.OrderState != OrderState.Working
+                    && order.OrderState != OrderState.Initialized
+                )
+                    continue;
+                if (IsBracketLeg(order))
+                    continue;
                 try
                 {
                     acc.Cancel(new Order[] { order });
@@ -2361,11 +2923,16 @@ namespace PropTraderTools
         {
             foreach (var order in acc.Orders.ToList())
             {
-                if (order.Instrument != instrument) continue;                        // (1)
-                if (order.Name != signalName) continue;                              // (2)
-                if (order.OrderState != OrderState.Working &&
-                    order.OrderState != OrderState.Initialized) continue;
-                try                                                                  // (3)
+                if (order.Instrument != instrument)
+                    continue; // (1)
+                if (order.Name != signalName)
+                    continue; // (2)
+                if (
+                    order.OrderState != OrderState.Working
+                    && order.OrderState != OrderState.Initialized
+                )
+                    continue;
+                try // (3)
                 {
                     acc.Cancel(new Order[] { order });
                     StatusUpdate?.Invoke(acc.Name + ": stale exit pulled " + order.Name);
@@ -2377,17 +2944,20 @@ namespace PropTraderTools
             }
         }
 
-
-
         // B28 T1 -- TrimOneAccountLimit: per-account limit trim helper. CYC=3.
         // (1) pos null/qty guard, (2) isLong ternary, (3) try/catch CreateOrder.
         // NT8-007: arg12 = (NinjaTrader.Cbi.CustomOrder)null.
         // HOTFIX-F4: cancel any stale PTT-TrimLimit orders before posting new one.
         // Stale limits from a prior click stay live on the book and compete with ATM Close.
-        private void TrimOneAccountLimit(Account acc, Instrument instrument,
-            int exitBuffer, double ask, double bid)
+        private void TrimOneAccountLimit(
+            Account acc,
+            Instrument instrument,
+            int exitBuffer,
+            double ask,
+            double bid
+        )
         {
-            CancelStaleExitOrders(acc, instrument, "PTT-TrimLimit");    // HOTFIX-F4
+            CancelStaleExitOrders(acc, instrument, "PTT-TrimLimit"); // HOTFIX-F4
             var pos = FindPosition(acc, instrument);
             if (pos == null || pos.Quantity == 0)
             {
@@ -2396,15 +2966,25 @@ namespace PropTraderTools
             }
             int trimQty = (int)Math.Ceiling(pos.Quantity / 2.0);
             bool isLong = pos.MarketPosition == MarketPosition.Long;
-            var action  = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+            var action = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
             double tickSize = instrument.MasterInstrument.TickSize;
-            double limitPx  = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
+            double limitPx = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
             try
             {
                 acc.CreateOrder(
-                    instrument, action, OrderType.Limit, OrderEntry.Manual,
-                    TimeInForce.Gtc, trimQty, limitPx, 0, null, "PTT-TrimLimit",
-                    DateTime.MaxValue, (NinjaTrader.Cbi.CustomOrder)null);
+                    instrument,
+                    action,
+                    OrderType.Limit,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    trimQty,
+                    limitPx,
+                    0,
+                    null,
+                    "PTT-TrimLimit",
+                    DateTime.MaxValue,
+                    (NinjaTrader.Cbi.CustomOrder)null
+                );
                 StatusUpdate?.Invoke(acc.Name + ": trim-limit " + trimQty + " @ " + limitPx);
             }
             catch (Exception ex)
@@ -2418,8 +2998,13 @@ namespace PropTraderTools
         // NT8-007: arg12 = (NinjaTrader.Cbi.CustomOrder)null.
         // HOTFIX-F4: cancel any stale PTT-FlattenLimit orders before posting new one.
         // Stale limits from a prior click stay live on the book and compete with ATM Close.
-        private void FlattenOneAccountLimit(Account acc, Instrument instrument,
-            int exitBuffer, double ask, double bid)
+        private void FlattenOneAccountLimit(
+            Account acc,
+            Instrument instrument,
+            int exitBuffer,
+            double ask,
+            double bid
+        )
         {
             CancelStaleExitOrders(acc, instrument, "PTT-FlattenLimit"); // HOTFIX-F4
             var pos = FindPosition(acc, instrument);
@@ -2429,16 +3014,28 @@ namespace PropTraderTools
                 return;
             }
             bool isLong = pos.MarketPosition == MarketPosition.Long;
-            var action  = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+            var action = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
             double tickSize = instrument.MasterInstrument.TickSize;
-            double limitPx  = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
+            double limitPx = ComputeLimitPx(isLong, ask, bid, exitBuffer, tickSize);
             try
             {
                 acc.CreateOrder(
-                    instrument, action, OrderType.Limit, OrderEntry.Manual,
-                    TimeInForce.Gtc, pos.Quantity, limitPx, 0, null, "PTT-FlattenLimit",
-                    DateTime.MaxValue, (NinjaTrader.Cbi.CustomOrder)null);
-                StatusUpdate?.Invoke(acc.Name + ": flatten-limit " + pos.Quantity + " @ " + limitPx);
+                    instrument,
+                    action,
+                    OrderType.Limit,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    pos.Quantity,
+                    limitPx,
+                    0,
+                    null,
+                    "PTT-FlattenLimit",
+                    DateTime.MaxValue,
+                    (NinjaTrader.Cbi.CustomOrder)null
+                );
+                StatusUpdate?.Invoke(
+                    acc.Name + ": flatten-limit " + pos.Quantity + " @ " + limitPx
+                );
             }
             catch (Exception ex)
             {
@@ -2461,6 +3058,18 @@ namespace PropTraderTools
             return false;
         }
 
+        // DW-B91-A: guard -- returns true if this orderId was already dispatched (blocks re-dispatch).
+        // Side-effect on first call: TryAdd records the orderId as dispatched.
+        // CYC=2: 1 base + 1 if (ContainsKey).
+        // JS-021: ContainsKey + TryAdd are lock-free. JS-001: no throw. JS-002: returns bool.
+        private bool IsEntryDispatched(string orderId)
+        {
+            if (_entryDispatchedOrders.ContainsKey(orderId))
+                return true;
+            _entryDispatchedOrders.TryAdd(orderId, 0);
+            return false;
+        }
+
         // B62: evict dedup entry when order reaches terminal state (Filled/Cancelled/Rejected).
         // Called unconditionally from OnOrderUpdate pre-gate, after TryFirePositionState.
         // Ensures evicted orderId can be re-used for the next fresh order on the same instrument.
@@ -2468,10 +3077,15 @@ namespace PropTraderTools
         // JS-025: ConcurrentDictionary.TryRemove is lock-free.
         internal void EvictDedup(string orderId, OrderState state)
         {
-            if (state != OrderState.Filled && state != OrderState.Cancelled && state != OrderState.Rejected)
+            if (
+                state != OrderState.Filled
+                && state != OrderState.Cancelled
+                && state != OrderState.Rejected
+            )
                 return;
 
             _dedupCache.TryRemove(orderId, out _);
+            _entryDispatchedOrders.TryRemove(orderId, out _); // DW-B91-A: co-evict with _dedupCache
         }
 
         private IEnumerable<Account> AllAccounts(Instrument instrument)
@@ -2528,7 +3142,10 @@ namespace PropTraderTools
         {
             return order.FromEntrySignal != null
                 || (order.Name != null && order.Name.StartsWith("Stop"))
-                || (order.Name != null && order.Name.EndsWith("STP", StringComparison.OrdinalIgnoreCase));
+                || (
+                    order.Name != null
+                    && order.Name.EndsWith("STP", StringComparison.OrdinalIgnoreCase)
+                );
         }
 
         // Static version of IsBracketLeg for use in static method IsWorkingBracket
@@ -2555,25 +3172,23 @@ namespace PropTraderTools
             return order.FromEntrySignal != null
                 || (
                     order.Name != null
-                    && (
-                        order.Name.StartsWith("Stop")
-                        || order.Name.StartsWith("Target")
-                    )
+                    && (order.Name.StartsWith("Stop") || order.Name.StartsWith("Target"))
                 );
         }
 
         private Position FindPosition(Account acc, Instrument instrument)
         {
             foreach (Position p in acc.Positions)
-                if (p.Instrument != null && p.Instrument.FullName == instrument.FullName) return p;
+                if (p.Instrument != null && p.Instrument.FullName == instrument.FullName)
+                    return p;
             return null;
         }
 
         // B58 -- FindPositionPublic: thin wrapper over private FindPosition for panel access.
         // CYC=1. Returns null if no position (pre-existing FindPosition behavior -- not new).
         // JS-002: null return is pre-existing contract of FindPosition, not a new null-return site.
-        internal Position FindPositionPublic(Account acc, Instrument instrument)
-            => FindPosition(acc, instrument);
+        internal Position FindPositionPublic(Account acc, Instrument instrument) =>
+            FindPosition(acc, instrument);
 
         // B58 -- SnapshotTargetsPublic: collects Working orders with PTT-QX-T or PTT-TGT- prefix.
         // CYC=3 (1 base + foreach + prefix check). Returns List<Order> -- panel uses .Count.
@@ -2582,14 +3197,19 @@ namespace PropTraderTools
         internal List<Order> SnapshotTargetsPublic(Account acc, Instrument instr)
         {
             var result = new List<Order>();
-            if (acc == null || instr == null) return result;             // (1) null guard
-            foreach (Order o in acc.Orders)                              // (2) foreach
+            if (acc == null || instr == null)
+                return result; // (1) null guard
+            foreach (Order o in acc.Orders) // (2) foreach
             {
-                if (o.Instrument != instr) continue;
-                if (o.OrderState != OrderState.Working) continue;
+                if (o.Instrument != instr)
+                    continue;
+                if (o.OrderState != OrderState.Working)
+                    continue;
                 string n = o.Name ?? string.Empty;
-                if (n.StartsWith("PTT-QX-T", StringComparison.Ordinal)  // (3) prefix check
-                 || n.StartsWith("PTT-TGT-", StringComparison.Ordinal))
+                if (
+                    n.StartsWith("PTT-QX-T", StringComparison.Ordinal) // (3) prefix check
+                    || n.StartsWith("PTT-TGT-", StringComparison.Ordinal)
+                )
                     result.Add(o);
             }
             return result;
@@ -2616,28 +3236,41 @@ namespace PropTraderTools
         private int CountLeaderTargets(Instrument instrument)
         {
             var rule = FindRule(instrument);
-            if (rule == null) return 0;                                        // (1)
+            if (rule == null)
+                return 0; // (1)
             var leader = rule.Value.MasterAccount;
-            if (leader == null) return 0;                                      // (2)
+            if (leader == null)
+                return 0; // (2)
             int count = 0;
-            foreach (Order o in leader.Orders)                                 // (3)
+            foreach (Order o in leader.Orders) // (3)
             {
-                if (o == null) continue;
-                bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Accepted
-                            || o.OrderState == OrderState.Submitted;
-                bool instrOk = o.Instrument != null
-                            && o.Instrument.FullName == instrument.FullName;
-                if (!stateOk || !instrOk || o.OrderType != OrderType.Limit) continue;
-                bool isTarget = !string.IsNullOrEmpty(o.Name)
-                    && (   (o.Name.Length >= 7
+                if (o == null)
+                    continue;
+                bool stateOk =
+                    o.OrderState == OrderState.Working
+                    || o.OrderState == OrderState.Accepted
+                    || o.OrderState == OrderState.Submitted;
+                bool instrOk = o.Instrument != null && o.Instrument.FullName == instrument.FullName;
+                if (!stateOk || !instrOk || o.OrderType != OrderType.Limit)
+                    continue;
+                bool isTarget =
+                    !string.IsNullOrEmpty(o.Name)
+                    && (
+                        (
+                            o.Name.Length >= 7
                             && o.Name.StartsWith("Target", StringComparison.Ordinal)
-                            && char.IsDigit(o.Name[6]) && o.Name[6] != '0')
-                        || (o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                            && o.Name.Length > 8 && char.IsDigit(o.Name[8]))
+                            && char.IsDigit(o.Name[6])
+                            && o.Name[6] != '0'
+                        )
+                        || (
+                            o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                            && o.Name.Length > 8
+                            && char.IsDigit(o.Name[8])
+                        )
                         || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
-                       );
-                if (isTarget) count++;                                         // (4)
+                    );
+                if (isTarget)
+                    count++; // (4)
             }
             return count;
         }
@@ -2652,17 +3285,23 @@ namespace PropTraderTools
         //   Follower may see 1 or 2 of 3 PTT-QX-T orders before the rest land. OCO pairs are
         //   submitted for visible targets immediately (position partially protected), then retry
         //   fires when remaining PTT-QX-T orders go Working to complete the remaining pairs.
-        private void MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks, bool isRetry = false)
+        private void MoveStopToBreakEven(
+            Account acc,
+            Instrument instrument,
+            int bufferTicks,
+            bool isRetry = false
+        )
         {
             var pos = FindPosition(acc, instrument);
-            if (IsFlat(pos))                                                               // (1)
+            if (IsFlat(pos)) // (1)
             {
                 StatusUpdate?.Invoke(acc.Name + ": flat skip");
                 return;
             }
             NinjaTrader.Code.Output.Process(
                 "[BE] MoveStopToBreakEven: " + acc.Name + " buf=" + bufferTicks + "t",
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
             double tickSize = instrument.MasterInstrument.TickSize;
             bool isLong = pos.MarketPosition == MarketPosition.Long;
             // HOTFIX-BUG-BE-STOP-SHORT (MoveStopToBreakEven): align sign with PttBreakEven fix.
@@ -2677,10 +3316,12 @@ namespace PropTraderTools
             // across all states so we can detect NT8 sim order drops.
             int diagTotal = 0;
             foreach (Order o in acc.Orders)
-                if (o?.Instrument?.FullName == instrument?.FullName) diagTotal++;
+                if (o?.Instrument?.FullName == instrument?.FullName)
+                    diagTotal++;
             NinjaTrader.Code.Output.Process(
                 "[BE-DIAG] " + acc.Name + " orders-for-instr=" + diagTotal,
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
 
             // -- Step A: snapshot ATM target orders BEFORE cancelling anything ----------
             // Must read targets while they are still Working/Accepted/Submitted/Initialized.
@@ -2688,279 +3329,142 @@ namespace PropTraderTools
             // DW-B79-01: widened to match cancel sweep -- Initialized/Submitted/TriggerPending
             // covers follower PTT-QX-T orders not yet acknowledged by NT8 on rapid QX->BE-ALL
             // press. Consistent with cancel stateOk (Step B below). CYC unchanged.
-            var targets = new List<(double Price, int Qty, OrderAction Action)>();         // (3)
+            var targets = new List<(double Price, int Qty, OrderAction Action)>(); // (3)
             foreach (Order o in acc.Orders)
             {
-                if (o == null) continue;
-                bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Accepted
-                            || o.OrderState == OrderState.Submitted
-                            || o.OrderState == OrderState.Initialized
-                            || o.OrderState == OrderState.TriggerPending                   // (4)
-                            || o.OrderState == OrderState.ChangeSubmitted                  // DW-B79-04: NT8 sim ATM target transient state on creation
-                            || o.OrderState == OrderState.CancelSubmitted;                 // REPAIR-09 DW-B79-05: PTT-QX-T orders in-flight cancel still readable
-                bool instrOk = o.Instrument != null
-                            && o.Instrument.FullName == instrument.FullName;               // (5)
-                if (!stateOk || !instrOk) continue;
-                if (o.OrderType != OrderType.Limit) continue;
+                if (o == null)
+                    continue;
+                bool stateOk =
+                    o.OrderState == OrderState.Working
+                    || o.OrderState == OrderState.Accepted
+                    || o.OrderState == OrderState.Submitted
+                    || o.OrderState == OrderState.Initialized
+                    || o.OrderState == OrderState.TriggerPending // (4)
+                    || o.OrderState == OrderState.ChangeSubmitted // DW-B79-04: NT8 sim ATM target transient state on creation
+                    || o.OrderState == OrderState.CancelSubmitted; // REPAIR-09 DW-B79-05: PTT-QX-T orders in-flight cancel still readable
+                bool instrOk = o.Instrument != null && o.Instrument.FullName == instrument.FullName; // (5)
+                if (!stateOk || !instrOk)
+                    continue;
+                if (o.OrderType != OrderType.Limit)
+                    continue;
                 // HOTFIX-MSTBE-QX-TARGETS-01: also snapshot PTT-QX-T* and PTT-BE-Target-* limits.
                 // After QX, ATM targets are replaced by PTT-QX-T1/T2 (not "Target1/Target2").
                 // Without this, BE ALL after QX always takes the 0-targets bare-stop path.
-                bool isAtmTarget = !string.IsNullOrEmpty(o.Name)
-                                && (
-                                    // ATM target names: Target1..Target9
-                                    (o.Name.Length >= 7
-                                     && o.Name.StartsWith("Target", StringComparison.Ordinal)
-                                     && char.IsDigit(o.Name[6]) && o.Name[6] != '0')
-                                    // QX target names: PTT-QX-T1, PTT-QX-T2, etc.
-                                    || (o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                                        && o.Name.Length > 8
-                                        && char.IsDigit(o.Name[8]))
-                                    // Prior PTT-BE target names (re-arming after a prior BE)
-                                    || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
-                                   );
-                if (!isAtmTarget) continue;
+                bool isAtmTarget =
+                    !string.IsNullOrEmpty(o.Name)
+                    && (
+                        // ATM target names: Target1..Target9
+                        (
+                            o.Name.Length >= 7
+                            && o.Name.StartsWith("Target", StringComparison.Ordinal)
+                            && char.IsDigit(o.Name[6])
+                            && o.Name[6] != '0'
+                        )
+                        // QX target names: PTT-QX-T1, PTT-QX-T2, etc.
+                        || (
+                            o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                            && o.Name.Length > 8
+                            && char.IsDigit(o.Name[8])
+                        )
+                        // Prior PTT-BE target names (re-arming after a prior BE)
+                        || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
+                    );
+                if (!isAtmTarget)
+                    continue;
                 targets.Add((o.LimitPrice, o.Quantity, o.OrderAction));
             }
 
-            // -- DW-B84-01: follower path -- move ATM-owned stops in-place via acc.Change() ------
-            // Root cause: Step B calls acc.Cancel(stale) on Stop1/Stop2/Stop3 (ATM-owned, no PTT-BE-
-            // prefix). NT8 then OCO-cancels Target1/2/3. Step C new PTT-BE-* orders are swept by NT8
-            // because the ATM strategy is still active. Fix: call acc.Change() to reprice the existing
-            // ATM stops without cancellation. Targets survive untouched. The entire Step B+C block and
-            // the TryReplacePttBeBrackets retry subsystem are never triggered on the follower path.
-            // DW-B84-01 v2: BreakEven() now runs followers BEFORE leader so stops are still Working
-            //   when this block executes. State guard also accepts ChangeSubmitted (belt-and-suspenders:
-            //   acc.Change() on a ChangeSubmitted order is a no-op but does not throw).
-            // DW-B84-03: also accept Accepted state.
-            //   NT8_FULL_REFERENCE.md (line 1005): "In real-time, some stop orders may only reach
-            //   Accepted state if they are simulated/held on a broker's server." On SIM accounts ATM
-            //   stop orders can stay at Accepted indefinitely and never transition to Working.
-            //   acc.Change() is valid on Accepted orders -- broker has acknowledged the order.
-            // JS-021: no lock. JS-001: no throw -- try/catch wraps acc.Change().
-            // CYC: +1 branch (IsFollowerAccount guard) -- absorbed by follower early return.
-            if (IsFollowerAccount(acc))
-            {
-                var beSt = new List<Order>();
-                foreach (Order o in acc.Orders)
-                {
-                    // DW-B84-03: accept Working (normal), Accepted (SIM broker-held stops), and
-                    //   ChangeSubmitted (in-flight change).
-                    // CancelSubmitted NOT included -- acc.Change() on a cancelling order is rejected by NT8.
-                    bool beStOk = o?.OrderState == OrderState.Working
-                               || o?.OrderState == OrderState.Accepted
-                               || o?.OrderState == OrderState.ChangeSubmitted;
-                    if (!beStOk) continue;
-                    if (o.Instrument?.FullName != instrument.FullName) continue;
-                    // DW-B86: extend stop name guard to match PTT-QX-Stop* orders placed after QX-ALL.
-                    // ATM stop names are exactly Stop1..Stop9 (length 5, IsDigit guard).
-                    // After QX-ALL follower has PTT-QX-Stop, PTT-QX-Stop2, PTT-QX-Stop3, PTT-QX-Stop4.
-                    // State guard (Working||Accepted||ChangeSubmitted) already handles both sets.
-                    bool isBeStop = o.Name != null
-                        && (   (o.Name.StartsWith("Stop", StringComparison.Ordinal)
-                                && o.Name.Length == 5
-                                && char.IsDigit(o.Name[4]))
-                             || o.Name.StartsWith("PTT-QX-Stop", StringComparison.Ordinal));
-                    if (isBeStop)
-                    {
-                        o.StopPriceChanged = newStop;
-                        beSt.Add(o);
-                    }
-                }
-                // DW-B84-01 v2 DIAG: if stops=0 dump all instr orders with state+name to diagnose.
-                if (beSt.Count == 0)
-                {
-                    foreach (Order o in acc.Orders)
-                    {
-                        if (o?.Instrument?.FullName != instrument?.FullName) continue;
-                        NinjaTrader.Code.Output.Process(
-                            "[BE-DIAG-F] " + acc.Name + " order: name=" + o.Name
-                                + " state=" + o.OrderState + " type=" + o.OrderType,
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                    }
-                }
-                if (beSt.Count > 0)
-                {
-                    try { acc.Change(beSt.ToArray()); }
-                    catch (Exception ex)
-                    {
-                        NinjaTrader.Code.Output.Process(
-                            "[BE] DW-B84-01 acc.Change EXCEPTION " + acc.Name + ": " + ex.Message,
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                    }
-                }
-                NinjaTrader.Code.Output.Process(
-                    "[BE] DW-B84-01 acc.Change() " + acc.Name
-                        + " stops=" + beSt.Count + " newStop=" + newStop.ToString("F2"),
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
-                return;   // DW-B84-01: skip Step B cancel + Step C submit entirely for followers
-            }
+            // DW-B88: unified cancel+resubmit -- replaces follower acc.Change() path and leader Step B/C.
+            // Old follower block (L2742-2797) and leader Step B/C (L2800-2963) preserved below as
+            // DW-B88 LEGACY comments for one-line rollback.
+            PttBreakEvenSwap.Execute(acc, instrument, newStop, targets);
+            StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
 
-            // -- Step B: cancel all stale brackets (mirrors CancelStaleBracketsLocal) ---
-            var stale = new List<Order>();
-            foreach (Order o in acc.Orders)
-            {
-                if (o == null) continue;
-                bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Initialized
-                            || o.OrderState == OrderState.Submitted
-                            || o.OrderState == OrderState.Accepted
-                            || o.OrderState == OrderState.TriggerPending;
-                bool instrOk = o.Instrument != null
-                            && o.Instrument.FullName == instrument.FullName;
-                bool notBe   = o.Name == null
-                            || !o.Name.StartsWith("PTT-BE-", StringComparison.Ordinal);
-                if (stateOk && instrOk && notBe)
-                    stale.Add(o);
-            }
-            NinjaTrader.Code.Output.Process(
-                "[BE] MoveStopToBreakEven: " + acc.Name + " cancel=" + stale.Count + " targets=" + targets.Count + " newStop=" + newStop.ToString("F2"),
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            // DW-B79-02 DIAG: if no targets found, dump all orders with state
-            // so we can see what state PTT-QX/ATM orders are in.
-            // Widened from (stale==0 && targets==0) to (targets==0) -- covers cancel=1 targets=0 case.
+            // DW-B79-06: event-driven slot + 200ms fallback timer for targets=0 path.
+            // Private CopyEngine members (_pendingFollowerBeSlots, QueueBeRetryFallback) stay here.
             if (targets.Count == 0)
             {
-                foreach (Order o in acc.Orders)
-                {
-                    if (o?.Instrument?.FullName != instrument?.FullName) continue;
-                    NinjaTrader.Code.Output.Process(
-                        "[BE-DIAG] " + acc.Name + " order: name=" + o.Name
-                        + " state=" + o.OrderState + " type=" + o.OrderType,
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-                }
-                if (diagTotal == 0)
-                    NinjaTrader.Code.Output.Process(
-                        "[BE-DIAG] " + acc.Name + " -- NO orders for instr (NT8 sim drop suspected)",
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            }
-            try                                                                             // (6)
-            {
-                if (stale.Count > 0)
-                    acc.Cancel(stale.ToArray());
-            }
-            catch { /* cancel on already-filled orders is non-fatal */ }
-
-            // -- Step C: submit new BE stop+target OCO pairs ----------------------------
-            // Mirrors PttBreakEven.SubmitBeTargetsLocal.
-            // NT8-049: StopMarket arg6=0 (limitPrice), arg7=newStop (stopPrice). NEVER swap.
-            //          Limit      arg6=t.Price (limitPrice), arg7=0 (stopPrice). NEVER swap.
-            // NT8-007: arg11=(NinjaTrader.Cbi.CustomOrder)null.
-            // NT8-013: DateTime.MaxValue for GTC.
-            // NT8-014: signal names start with "PTT-".
-            OrderAction stopDirection = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
-
-            if (targets.Count == 0)                                                        // (7)
-            {
-                // 0-targets: submit one bare PTT-BE-Stop for full pos quantity, no OCO.
-                try
-                {
-                    var bareStop = acc.CreateOrder(
-                        instrument, stopDirection, OrderType.StopMarket, OrderEntry.Manual,
-                        TimeInForce.Gtc, pos.Quantity,
-                        0,                                           // arg6: limitPrice=0  (NT8-049)
-                        newStop,                                     // arg7: stopPrice     (NT8-049)
-                        string.Empty,                                // arg8: no OCO
-                        "PTT-BE-Stop",                              // arg9: signal name   (NT8-014)
-                        DateTime.MaxValue,                           // arg10: GTC          (NT8-013)
-                        (NinjaTrader.Cbi.CustomOrder)null);          // arg11: cast         (NT8-007)
-                    if (bareStop != null)
-                    {
-                        acc.Submit(new[] { bareStop });
-                        StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
-                    }
-                }
-                catch { /* non-fatal */ }
-
-                // DW-B79-06: event-driven slot + 200ms fallback timer for targets=0 path.
-                // Bare PTT-BE-Stop above protects the position while we wait for QX orders to land.
-                // Two-path design: TryFireFollowerBeRetry (OnOrderUpdate) wins if PTT-QX-T* goes
-                // Working AFTER slot registration. Fallback timer wins if PTT-QX-T already Cancelled
-                // before slot was registered (event missed). TryRemove is the atomic claim gate --
-                // exactly one path fires MoveStopToBreakEven(isRetry:true). Other path is a no-op.
                 if (!isRetry && !IsFlat(FindPosition(acc, instrument)))
                 {
-                    _pendingFollowerBeSlots[acc.Name] =
-                        new PendingFollowerBeSlot(acc, instrument, bufferTicks);
+                    _pendingFollowerBeSlots[acc.Name] = new PendingFollowerBeSlot(
+                        acc,
+                        instrument,
+                        bufferTicks
+                    );
                     NinjaTrader.Code.Output.Process(
-                        "[BE-DIAG] " + acc.Name + " -- targets=0, registered BE retry slot + 200ms fallback",
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        "[BE-DIAG] "
+                            + acc.Name
+                            + " -- targets=0, registered BE retry slot + 200ms fallback",
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
                     QueueBeRetryFallback(acc, instrument, bufferTicks, delayMs: 500);
                 }
                 return;
             }
 
-            int seq = System.Threading.Interlocked.Increment(ref _mstbeOcoSeq);
-            for (int i = 0; i < targets.Count; i++)                                       // (8)
-            {
-                var t = targets[i];
-                string ocoId_i = "PTT-BE-"
-                    + acc.Name.Substring(0, Math.Min(8, acc.Name.Length))
-                    + "-" + seq.ToString("D5") + "-" + i;
-
-                // Submit PTT-BE-Stop-{i+1}: StopMarket for this tranche qty.
-                try
-                {
-                    var sOrd = acc.CreateOrder(
-                        instrument, stopDirection, OrderType.StopMarket, OrderEntry.Manual,
-                        TimeInForce.Gtc, t.Qty,
-                        0,                                           // arg6: limitPrice=0  (NT8-049)
-                        newStop,                                     // arg7: stopPrice     (NT8-049)
-                        ocoId_i,                                     // arg8: OCO pair i
-                        "PTT-BE-Stop-" + (i + 1),                  // arg9: signal name   (NT8-014)
-                        DateTime.MaxValue,                           // arg10: GTC          (NT8-013)
-                        (NinjaTrader.Cbi.CustomOrder)null);          // arg11: cast         (NT8-007)
-                    if (sOrd != null)
-                        acc.Submit(new[] { sOrd });
-                }
-                catch { /* non-fatal */ }
-
-                // Submit PTT-BE-Target-{i+1}: Limit order for this tranche.
-                try
-                {
-                    var tOrd = acc.CreateOrder(
-                        instrument, t.Action, OrderType.Limit, OrderEntry.Manual,
-                        TimeInForce.Gtc, t.Qty,
-                        t.Price,                                     // arg6: limitPrice    (NT8-049)
-                        0,                                           // arg7: stopPrice=0   (NT8-049)
-                        ocoId_i,                                     // arg8: OCO pair i
-                        "PTT-BE-Target-" + (i + 1),                // arg9: signal name   (NT8-014)
-                        DateTime.MaxValue,                           // arg10: GTC          (NT8-013)
-                        (NinjaTrader.Cbi.CustomOrder)null);          // arg11: cast         (NT8-007)
-                    if (tOrd != null)
-                        acc.Submit(new[] { tOrd });
-                }
-                catch { /* non-fatal */ }
-            }
-            StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
-
             // DW-B79-07: partial-target retry slot + 200ms fallback timer.
-            // If this is a follower account and we only saw a subset of the expected QX target
-            // orders (some had already transitioned to Cancelled before Step A ran), OCO pairs
-            // above cover only the visible tranches. Two-path retry fires MoveStopToBreakEven
-            // once the remaining orders settle:
-            //   Path A (event-driven): TryFireFollowerBeRetry fires when next PTT-QX-T* goes Working.
-            //   Path B (fallback timer): QueueBeRetryFallback fires after 200ms if Path A missed.
-            // TryRemove atomic claim: exactly one path wins. Other is a no-op.
-            // isRetry guard prevents infinite re-registration. Flat guard prevents ghost slots.
-            // CountLeaderTargets queries the leader's Working targets for the authoritative count.
             if (!isRetry && IsFollowerAccount(acc))
             {
                 int leaderCount = CountLeaderTargets(instrument);
-                if (leaderCount > 0 && targets.Count < leaderCount
-                    && !IsFlat(FindPosition(acc, instrument)))
+                if (
+                    leaderCount > 0
+                    && targets.Count < leaderCount
+                    && !IsFlat(FindPosition(acc, instrument))
+                )
                 {
-                    _pendingFollowerBeSlots[acc.Name] =
-                        new PendingFollowerBeSlot(acc, instrument, bufferTicks);
+                    _pendingFollowerBeSlots[acc.Name] = new PendingFollowerBeSlot(
+                        acc,
+                        instrument,
+                        bufferTicks
+                    );
                     NinjaTrader.Code.Output.Process(
-                        "[BE-DIAG] " + acc.Name + " -- partial targets=" + targets.Count
-                            + " leader=" + leaderCount
+                        "[BE-DIAG] "
+                            + acc.Name
+                            + " -- partial targets="
+                            + targets.Count
+                            + " leader="
+                            + leaderCount
                             + ", registered BE retry slot + 200ms fallback",
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
                     QueueBeRetryFallback(acc, instrument, bufferTicks);
                 }
             }
+
+            // DW-B88 LEGACY follower path (acc.Change) -- COMMENTED OUT:
+            // if (IsFollowerAccount(acc))
+            // {
+            //     var beSt = new List<Order>();
+            //     foreach (Order o in acc.Orders)
+            //     {
+            //         bool beStOk = o?.OrderState == OrderState.Working
+            //                    || o?.OrderState == OrderState.Accepted
+            //                    || o?.OrderState == OrderState.ChangeSubmitted;
+            //         if (!beStOk) continue;
+            //         if (o.Instrument?.FullName != instrument.FullName) continue;
+            //         bool isBeStop = o.Name != null
+            //             && (   (o.Name.StartsWith("Stop", StringComparison.Ordinal)
+            //                     && o.Name.Length == 5
+            //                     && char.IsDigit(o.Name[4]))
+            //                  || o.Name.StartsWith("PTT-QX-Stop", StringComparison.Ordinal));
+            //         if (isBeStop) { o.StopPriceChanged = newStop; beSt.Add(o); }
+            //     }
+            //     if (beSt.Count == 0) { /* dump diag */ }
+            //     if (beSt.Count > 0) { try { acc.Change(beSt.ToArray()); } catch { } }
+            //     StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
+            //     return;
+            // }
+            //
+            // DW-B88 LEGACY leader path (Step B/C) -- COMMENTED OUT:
+            // // -- Step B: cancel all stale brackets --
+            // // var stale = new List<Order>(); ... acc.Cancel(stale.ToArray());
+            // //
+            // // -- Step C: submit new BE stop+target OCO pairs --
+            // // OrderAction stopDirection = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
+            // // if (targets.Count == 0) { /* bare PTT-BE-Stop */ ... return; }
+            // // int seq = System.Threading.Interlocked.Increment(ref _mstbeOcoSeq);
+            // // for (int i = 0; i < targets.Count; i++) { /* OCO pairs */ }
+            // // StatusUpdate?.Invoke(acc.Name + ": BE stop @ " + newStop);
         }
 
         internal void BreakEven(Instrument instrument, int bufferTicks)
@@ -2979,20 +3483,19 @@ namespace PropTraderTools
         // JS-021: no lock. JS-002: null leader fires StatusUpdate + early return.
         internal void BreakEven(Account leader, Instrument instrument, int bufferTicks)
         {
-            if (leader == null)                                      // (1) null guard
+            if (leader == null) // (1) null guard
             {
                 StatusUpdate?.Invoke("PTT-BE: leader null -- BE skipped");
                 return;
             }
-            foreach (var acc in AllAccounts(instrument))            // (2) followers first -- DW-B84-01
+            foreach (var acc in AllAccounts(instrument)) // (2) followers first -- DW-B84-01
             {
-                if (acc == leader) continue;                        // (3) skip leader
-                MoveStopToBreakEven(acc, instrument, bufferTicks);  // acc.Change() while stops Working
+                if (acc == leader)
+                    continue; // (3) skip leader
+                MoveStopToBreakEven(acc, instrument, bufferTicks); // acc.Change() while stops Working
             }
-            MoveStopToBreakEven(leader, instrument, bufferTicks);   // (4) leader last -- cancel+replace
+            MoveStopToBreakEven(leader, instrument, bufferTicks); // (4) leader last -- cancel+replace
         }
-
-
 
         // B10 T3 -- TightenStop: moves all working stops on follower accounts to currentPrice +/- N ticks.
         // JS-001: try/catch inside TightenOneStop -- no throw in hot path.
@@ -3003,25 +3506,30 @@ namespace PropTraderTools
         internal void TightenStop(Instrument instrument, int ticks)
         {
             var rule = FindRule(instrument);
-            if (rule == null)                                                               // (1)
+            if (rule == null) // (1)
                 return;
-            foreach (var acc in AllAccounts(instrument))                                   // (2)
+            foreach (var acc in AllAccounts(instrument)) // (2)
                 TightenOneAccountStops(acc, instrument, ticks);
         }
 
         // B10 T3 -- TightenOneStop: applies tighten to a single stop order.
         // B31: in-place price move via order.StopPrice + acc.Change(new Order[]{order}).
         // CYC=2: null guard(1), alreadyTighter(2). tightenAction ternary removed.
-        private void TightenOneStop(Account acc, Instrument instr,
-            Order order, double targetPrice, double tickSize)
+        private void TightenOneStop(
+            Account acc,
+            Instrument instr,
+            Order order,
+            double targetPrice,
+            double tickSize
+        )
         {
-            if (order == null)                                                          // (1)
+            if (order == null) // (1)
                 return;
-            bool isLong = order.OrderAction == OrderAction.Sell;  // stop-sell = long pos
+            bool isLong = order.OrderAction == OrderAction.Sell; // stop-sell = long pos
             bool alreadyTighter = isLong
                 ? order.StopPrice >= targetPrice
                 : order.StopPrice <= targetPrice;
-            if (alreadyTighter)                                                         // (2)
+            if (alreadyTighter) // (2)
                 return;
             // B31 NT8-046: property-set + single-array acc.Change() -- preserves ATM OCO.
             try
@@ -3041,14 +3549,13 @@ namespace PropTraderTools
         private static bool ShouldTightenOrder(Order order, Instrument instrument)
         {
             if (order.OrderState != OrderState.Working)
-                return false;                                                               // (1)
-            if (order.OrderType != OrderType.StopMarket &&
-                order.OrderType != OrderType.StopLimit)
-                return false;                                                               // (2)
+                return false; // (1)
+            if (order.OrderType != OrderType.StopMarket && order.OrderType != OrderType.StopLimit)
+                return false; // (2)
             if (order.Instrument != instrument)
-                return false;                                                               // (3)
+                return false; // (3)
             if (!IsStopLeg(order))
-                return false;                                                               // (4)
+                return false; // (4)
             return true;
         }
 
@@ -3059,8 +3566,8 @@ namespace PropTraderTools
         {
             double bid = instrument.MarketData?.Bid?.Price ?? 0.0;
             double ask = instrument.MarketData?.Ask?.Price ?? 0.0;
-            return bid > 0 && ask > 0                                                      // (1)(2)
-                ? (isLong ? ask : bid)                                                     // (3)(4)
+            return bid > 0 && ask > 0 // (1)(2)
+                ? (isLong ? ask : bid) // (3)(4)
                 : 0.0;
         }
 
@@ -3071,22 +3578,22 @@ namespace PropTraderTools
         private void TightenOneAccountStops(Account acc, Instrument instrument, int tightenTicks)
         {
             var pos = FindPosition(acc, instrument);
-            if (IsFlat(pos))                                                               // (1)
+            if (IsFlat(pos)) // (1)
                 return;
             bool isLong = pos.MarketPosition == MarketPosition.Long;
             double tickSize = instrument.MasterInstrument.TickSize;
             double refPrice = GetRefPrice(instrument, isLong);
-            if (refPrice == 0.0)                                                           // (2)
+            if (refPrice == 0.0) // (2)
             {
                 StatusUpdate?.Invoke("PTT-Tighten: no market data -- " + acc.Name);
                 return;
             }
-            double targetPrice = isLong                                                    // (3)
+            double targetPrice = isLong // (3)
                 ? refPrice - tightenTicks * tickSize
                 : refPrice + tightenTicks * tickSize;
-            foreach (var order in acc.Orders.ToList())                                     // (4)
+            foreach (var order in acc.Orders.ToList()) // (4)
             {
-                if (!ShouldTightenOrder(order, instrument))                                // (5)
+                if (!ShouldTightenOrder(order, instrument)) // (5)
                     continue;
                 TightenOneStop(acc, instrument, order, targetPrice, tickSize);
             }
@@ -3098,15 +3605,16 @@ namespace PropTraderTools
         // JS-021: no lock. JS-002: no return null -- StatusUpdate log on null leader.
         internal void TightenStop(Account leader, Instrument instrument, int tightenTicks)
         {
-            if (leader == null)                                                            // (1)
+            if (leader == null) // (1)
             {
                 StatusUpdate?.Invoke("PTT-Tighten: leader null -- skipping");
                 return;
             }
-            TightenOneAccountStops(leader, instrument, tightenTicks);                     // (2)
-            foreach (var acc in AllAccounts(instrument))                                   // (3)
+            TightenOneAccountStops(leader, instrument, tightenTicks); // (2)
+            foreach (var acc in AllAccounts(instrument)) // (3)
             {
-                if (acc == leader) continue;                                               // (4)
+                if (acc == leader)
+                    continue; // (4)
                 TightenOneAccountStops(acc, instrument, tightenTicks);
             }
         }
@@ -3123,15 +3631,15 @@ namespace PropTraderTools
         // JS-021: no lock -- ConcurrentDictionary indexer write is lock-free.
         internal void ArmPendingBe(Instrument instr, Account masterAcc, int bufferTicks)
         {
-            if (instr == null)                                  // (1)
+            if (instr == null) // (1)
                 return;
-            if (masterAcc == null)                              // (2)
+            if (masterAcc == null) // (2)
             {
                 StatusUpdate?.Invoke("PTT-BE: leader null -- skipped");
                 return;
             }
             var pos = FindPosition(masterAcc, instr);
-            if (IsFlat(pos))                                    // (3)
+            if (IsFlat(pos)) // (3)
             {
                 StatusUpdate?.Invoke("PTT-BE: no open position for " + masterAcc.Name);
                 return;
@@ -3141,28 +3649,41 @@ namespace PropTraderTools
             // Short: ask <= avgPrice - buf*tick  (price already at or below entry)
             // If true, fire immediately -- no need to arm and wait.
             double tickSize = instr.MasterInstrument?.TickSize ?? 0.0;
-            if (tickSize > 0.0)                                 // (5) guard -- no market data = arm normally
+            if (tickSize > 0.0) // (5) guard -- no market data = arm normally
             {
-                bool isLong  = pos.MarketPosition == NinjaTrader.Cbi.MarketPosition.Long;
+                bool isLong = pos.MarketPosition == NinjaTrader.Cbi.MarketPosition.Long;
                 double target = pos.AveragePrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
                 double refBid = instr.MarketData?.Bid?.Price ?? 0.0;
                 double refAsk = instr.MarketData?.Ask?.Price ?? 0.0;
-                double refPx  = isLong ? refBid : refAsk;
-                bool alreadyAtBe = refPx > 0.0
-                    && (isLong ? (refPx >= target) : (refPx <= target));
+                double refPx = isLong ? refBid : refAsk;
+                bool alreadyAtBe = refPx > 0.0 && (isLong ? (refPx >= target) : (refPx <= target));
                 if (alreadyAtBe)
                 {
-                    StatusUpdate?.Invoke("PTT-BE: price already at BE for " + masterAcc.Name + " -- firing immediately");
+                    StatusUpdate?.Invoke(
+                        "PTT-BE: price already at BE for "
+                            + masterAcc.Name
+                            + " -- firing immediately"
+                    );
                     BreakEven(masterAcc, instr, bufferTicks);
-                    PendingBeFired?.Invoke(instr.FullName ?? string.Empty, masterAcc.Name ?? string.Empty);
+                    PendingBeFired?.Invoke(
+                        instr.FullName ?? string.Empty,
+                        masterAcc.Name ?? string.Empty
+                    );
                     return;
                 }
             }
             NinjaTrader.Code.Output.Process(
-                "[BE] ArmPendingBe: " + masterAcc.Name + " " + instr.FullName + " buf=" + bufferTicks + "t -- ARMED",
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                "[BE] ArmPendingBe: "
+                    + masterAcc.Name
+                    + " "
+                    + instr.FullName
+                    + " buf="
+                    + bufferTicks
+                    + "t -- ARMED",
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
             _pendingBeSlots[masterAcc.Name] = new PendingBeSlot(masterAcc, instr, bufferTicks); // (6)
-            PendingBeArmed?.Invoke(instr.FullName ?? string.Empty, masterAcc.Name ?? string.Empty);  // HOTFIX-BEALL-SYNC-01
+            PendingBeArmed?.Invoke(instr.FullName ?? string.Empty, masterAcc.Name ?? string.Empty); // HOTFIX-BEALL-SYNC-01
             masterAcc.AccountItemUpdate += OnPendingBeAccountUpdate;
         }
 
@@ -3173,14 +3694,14 @@ namespace PropTraderTools
         // NT8-043: explicit if (acc != null) guard -- no ?.Event -= pattern.
         internal void DisarmPendingBe(Account leader)
         {
-            if (leader == null)                                                       // (1)
+            if (leader == null) // (1)
             {
                 StatusUpdate?.Invoke("DisarmPendingBe: leader null -- no-op");
                 return;
             }
-            if (!_pendingBeSlots.TryRemove(leader.Name, out var slot))               // (2)
+            if (!_pendingBeSlots.TryRemove(leader.Name, out var slot)) // (2)
                 return;
-            if (slot.Account != null)                                                 // (3)
+            if (slot.Account != null) // (3)
                 slot.Account.AccountItemUpdate -= OnPendingBeAccountUpdate;
         }
 
@@ -3196,17 +3717,18 @@ namespace PropTraderTools
         // NT8-003: BitConverter bits in ConcurrentDictionary<string,long>; AddOrUpdate provides barrier.
         internal void ArmTrailBe(Instrument instr, Account masterAcc, int bufferTicks)
         {
-            if (instr == null)                                    // (1)
+            if (instr == null) // (1)
                 return;
-            if (masterAcc == null)                                // (2)
+            if (masterAcc == null) // (2)
                 return;
             var pos = FindPosition(masterAcc, instr);
-            if (IsFlat(pos))                                      // (3)
+            if (IsFlat(pos)) // (3)
                 return;
             double currentPnl = masterAcc.Get(AccountItem.UnrealizedProfitLoss, Currency.UsDollar);
-            if (currentPnl == double.MinValue) currentPnl = 0.0;
+            if (currentPnl == double.MinValue)
+                currentPnl = 0.0;
             long pnlBits = BitConverter.DoubleToInt64Bits(currentPnl);
-            _trailBeSlots[masterAcc.Name]       = new TrailBeSlot(masterAcc, instr, bufferTicks); // (4)
+            _trailBeSlots[masterAcc.Name] = new TrailBeSlot(masterAcc, instr, bufferTicks); // (4)
             _trailBeLastPnlBits[masterAcc.Name] = pnlBits;
             masterAcc.AccountItemUpdate += OnTrailBeAccountUpdate;
         }
@@ -3219,14 +3741,14 @@ namespace PropTraderTools
         // Idempotent: safe to call when already Off or with null leader.
         internal void DisarmTrailBe(Account leader)
         {
-            if (leader == null)                                                       // (1)
+            if (leader == null) // (1)
             {
                 StatusUpdate?.Invoke("DisarmTrailBe: leader null -- no-op");
                 return;
             }
-            if (!_trailBeSlots.TryRemove(leader.Name, out var slot))                 // (2)
+            if (!_trailBeSlots.TryRemove(leader.Name, out var slot)) // (2)
                 return;
-            if (slot.Account != null)                                                 // (3)
+            if (slot.Account != null) // (3)
                 slot.Account.AccountItemUpdate -= OnTrailBeAccountUpdate;
             _trailBeLastPnlBits.TryRemove(leader.Name, out _);
         }
@@ -3240,26 +3762,30 @@ namespace PropTraderTools
         // STAYS SUBSCRIBED until DisarmTrailBe() is called -- unlike OnPendingBeAccountUpdate (one-shot).
         private void OnTrailBeAccountUpdate(object sender, NinjaTrader.Cbi.AccountItemEventArgs e)
         {
-            if (e.AccountItem != AccountItem.UnrealizedProfitLoss)                          // (1)
+            if (e.AccountItem != AccountItem.UnrealizedProfitLoss) // (1)
                 return;
             string accName = (sender as NinjaTrader.Cbi.Account)?.Name ?? string.Empty;
-            if (!_trailBeSlots.TryGetValue(accName, out var slot))                          // (2)
+            if (!_trailBeSlots.TryGetValue(accName, out var slot)) // (2)
                 return;
             double newPnl = e.Value;
-            if (!_trailBeLastPnlBits.TryGetValue(accName, out long oldBits))                // (3a)
+            if (!_trailBeLastPnlBits.TryGetValue(accName, out long oldBits)) // (3a)
                 return;
             double oldPnl = BitConverter.Int64BitsToDouble(oldBits);
-            if (newPnl <= oldPnl)                                                            // (3b)
+            if (newPnl <= oldPnl) // (3b)
                 return;
             long newBits = BitConverter.DoubleToInt64Bits(newPnl);
-            long actual  = _trailBeLastPnlBits.AddOrUpdate(                                 // (4)
-                accName, newBits, (k, cur) => cur < newBits ? newBits : cur);
-            if (actual != newBits)                                                           // lost race
+            long actual = _trailBeLastPnlBits.AddOrUpdate( // (4)
+                accName,
+                newBits,
+                (k, cur) => cur < newBits ? newBits : cur
+            );
+            if (actual != newBits) // lost race
                 return;
-            _trailBeSlots.AddOrUpdate(                                                       // (5)
+            _trailBeSlots.AddOrUpdate( // (5)
                 accName,
                 new TrailBeSlot(slot.Account, slot.Instrument, slot.BufferTicks + 1),
-                (k, old) => new TrailBeSlot(old.Account, old.Instrument, old.BufferTicks + 1));
+                (k, old) => new TrailBeSlot(old.Account, old.Instrument, old.BufferTicks + 1)
+            );
             BreakEven(slot.Account, slot.Instrument, slot.BufferTicks + 1);
         }
 
@@ -3271,42 +3797,44 @@ namespace PropTraderTools
         // sender is the NT8 Account object in AccountItemUpdate callbacks.
         private void OnPendingBeAccountUpdate(object sender, NinjaTrader.Cbi.AccountItemEventArgs e)
         {
-            if (e.AccountItem != AccountItem.UnrealizedProfitLoss)                          // (1)
+            if (e.AccountItem != AccountItem.UnrealizedProfitLoss) // (1)
                 return;
             string accName = (sender as NinjaTrader.Cbi.Account)?.Name ?? string.Empty;
-            if (!_pendingBeSlots.TryGetValue(accName, out var slot))                        // (2)
+            if (!_pendingBeSlots.TryGetValue(accName, out var slot)) // (2)
                 return;
-            var acc   = slot.Account;
+            var acc = slot.Account;
             var instr = slot.Instrument;
-            var buf   = slot.BufferTicks;
-            var pos   = FindPosition(acc, instr);
-            if (IsFlat(pos))                                                                 // (3)
+            var buf = slot.BufferTicks;
+            var pos = FindPosition(acc, instr);
+            if (IsFlat(pos)) // (3)
                 return;
             double tickSize = instr?.MasterInstrument?.TickSize ?? 0.0;
-            if (tickSize <= 0.0)                                                             // (4)
+            if (tickSize <= 0.0) // (4)
                 return;
             // HOTFIX-F2: Last.Price is 0 on Sim accounts and stale on reconnect.
             // Use Bid for long (price must reach entry from below) and Ask for short.
             // Falls back to Ask/Bid respectively if primary is 0 -- never blocks on 0.
-            bool isLong   = pos.MarketPosition == MarketPosition.Long;
+            bool isLong = pos.MarketPosition == MarketPosition.Long;
             double refBid = instr?.MarketData?.Bid?.Price ?? 0.0;
             double refAsk = instr?.MarketData?.Ask?.Price ?? 0.0;
-            double refPx  = isLong
-                ? (refBid > 0 ? refBid : refAsk)   // long: use bid; fallback ask
-                : (refAsk > 0 ? refAsk : refBid);   // short: use ask; fallback bid
-            if (refPx <= 0.0)                                                                // (5)
+            double refPx = isLong
+                ? (refBid > 0 ? refBid : refAsk) // long: use bid; fallback ask
+                : (refAsk > 0 ? refAsk : refBid); // short: use ask; fallback bid
+            if (refPx <= 0.0) // (5)
                 return;
             double target = pos.AveragePrice + (isLong ? 1.0 : -1.0) * buf * tickSize;
             bool triggered = isLong ? (refPx >= target) : (refPx <= target);
-            if (!triggered)                                                                  // (6)
+            if (!triggered) // (6)
                 return;
-            if (!_pendingBeSlots.TryRemove(accName, out var removed))                       // (7) atomic claim
+            if (!_pendingBeSlots.TryRemove(accName, out var removed)) // (7) atomic claim
                 return;
             if (removed.Account != null)
                 removed.Account.AccountItemUpdate -= OnPendingBeAccountUpdate;
             BreakEven(removed.Account, removed.Instrument, removed.BufferTicks);
-            PendingBeFired?.Invoke(removed.Instrument?.FullName ?? string.Empty,
-                                   removed.Account?.Name ?? string.Empty);
+            PendingBeFired?.Invoke(
+                removed.Instrument?.FullName ?? string.Empty,
+                removed.Account?.Name ?? string.Empty
+            );
         }
 
         // -- B6: Persistence field -------------------------------------------
@@ -3322,12 +3850,15 @@ namespace PropTraderTools
             public string MasterAccountName { get; set; } = string.Empty;
             public string[] FollowerAccountNames { get; set; } = new string[0];
             public bool IsEnabled { get; set; } = true;
+
             // B8 T1: per-follower quantity multipliers (parallel to FollowerAccountNames[])
             // Default empty = all followers 1x. Backward compat: null on B6/B7 XML = treat as all-1s.
             public int[] FollowerMultipliers { get; set; } = new int[0];
+
             // B8 T2 (pre-declared here for single DTO edit pass per plan S3.1):
             // FollowerAtmModeNames serializes "Inherit"|"Market"|"Named:XXX" per follower.
             public string[] FollowerAtmModeNames { get; set; } = new string[0];
+
             // B10 T3: TightenTicks serialization -- default 0 here (DtoToRule converts 0 to 5).
             // Backward compat: old XML without this element -> XmlSerializer sets to 0 -> DtoToRule maps to 5.
             public int TightenTicks { get; set; } = 0;
@@ -3337,6 +3868,7 @@ namespace PropTraderTools
         private sealed class CopyRulesContainer
         {
             public List<CopyRuleDto> Rules { get; set; } = new List<CopyRuleDto>();
+
             // B54 -- persists copy-enabled state so F5 cycle restores button color correctly.
             // NT8-001: { get; set; } (not init accessor). XmlSerializer requires public { set; }.
             public bool CopyEnabled { get; set; } = false;
@@ -3347,7 +3879,11 @@ namespace PropTraderTools
         private static string GetPersistencePath(string overridePath = null)
         {
             return overridePath
-                ?? Path.Combine(NinjaTrader.Core.Globals.UserDataDir, "PropTraderTools", "copy_rules.xml");
+                ?? Path.Combine(
+                    NinjaTrader.Core.Globals.UserDataDir,
+                    "PropTraderTools",
+                    "copy_rules.xml"
+                );
         }
 
         // -- B6/B8: Conversion helpers -----------------------------------------
@@ -3358,31 +3894,36 @@ namespace PropTraderTools
         {
             var followerNames = new string[rule.FollowerAccounts.Length];
             for (int i = 0; i < rule.FollowerAccounts.Length; i++)
-                followerNames[i] = rule.FollowerAccounts[i] != null ? rule.FollowerAccounts[i].Name : string.Empty;
+                followerNames[i] =
+                    rule.FollowerAccounts[i] != null ? rule.FollowerAccounts[i].Name : string.Empty;
 
             // B8 T1: serialize multipliers parallel to account names
             var mults = new int[rule.FollowerAccounts.Length];
             for (int i = 0; i < rule.FollowerAccounts.Length; i++)
-                mults[i] = (rule.FollowerMultipliers != null && i < rule.FollowerMultipliers.Length)
-                    ? rule.FollowerMultipliers[i] : 1;
+                mults[i] =
+                    (rule.FollowerMultipliers != null && i < rule.FollowerMultipliers.Length)
+                        ? rule.FollowerMultipliers[i]
+                        : 1;
 
             // B8 T2: serialize ATM mode names using AtmModeToString + GetAtmMode per follower
             var atmNames = new string[rule.FollowerAccounts.Length];
             for (int i = 0; i < rule.FollowerAccounts.Length; i++)
             {
-                string accName = rule.FollowerAccounts[i] != null ? rule.FollowerAccounts[i].Name : string.Empty;
+                string accName =
+                    rule.FollowerAccounts[i] != null ? rule.FollowerAccounts[i].Name : string.Empty;
                 atmNames[i] = AtmModeToString(GetAtmMode(rule, accName));
             }
 
             return new CopyRuleDto
             {
-                InstrumentName       = rule.Instrument,
-                MasterAccountName    = rule.MasterAccount != null ? rule.MasterAccount.Name : string.Empty,
+                InstrumentName = rule.Instrument,
+                MasterAccountName =
+                    rule.MasterAccount != null ? rule.MasterAccount.Name : string.Empty,
                 FollowerAccountNames = followerNames,
-                IsEnabled            = rule.Enabled,
-                FollowerMultipliers  = mults,
+                IsEnabled = rule.Enabled,
+                FollowerMultipliers = mults,
                 FollowerAtmModeNames = atmNames,
-                TightenTicks         = rule.TightenTicks,  // B10 T3: emit tighten ticks
+                TightenTicks = rule.TightenTicks, // B10 T3: emit tighten ticks
             };
         }
 
@@ -3407,10 +3948,12 @@ namespace PropTraderTools
                 // Workaround: uncheck + re-check the follower in the panel after NT8 finishes connecting.
                 if (followers[i] == null)
                     NinjaTrader.Code.Output.Process(
-                        "[PTT-COPY] WARNING: follower '" + dto.FollowerAccountNames[i]
+                        "[PTT-COPY] WARNING: follower '"
+                            + dto.FollowerAccountNames[i]
                             + "' not found in Account.All at load time"
                             + " -- will be skipped until rule is re-applied (uncheck + re-check in panel).",
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
             }
 
             // B8 T1: null-safe multiplier read (B6/B7 XML has no FollowerMultipliers element)
@@ -3422,7 +3965,11 @@ namespace PropTraderTools
             var atmMap = new Dictionary<string, FollowerAtmMode>();
             if (dto.FollowerAtmModeNames != null)
             {
-                for (int i = 0; i < dto.FollowerAtmModeNames.Length && i < dto.FollowerAccountNames.Length; i++)
+                for (
+                    int i = 0;
+                    i < dto.FollowerAtmModeNames.Length && i < dto.FollowerAccountNames.Length;
+                    i++
+                )
                 {
                     string accName = dto.FollowerAccountNames[i];
                     if (!string.IsNullOrEmpty(accName))
@@ -3434,8 +3981,15 @@ namespace PropTraderTools
             // DtoToRule converts: 0 -> default 5. Any positive value is preserved as-is.
             int tightenTicks = dto.TightenTicks > 0 ? dto.TightenTicks : 5;
 
-            return CopyRule.Create(dto.InstrumentName, master, followers, dto.IsEnabled, multipliers, atmMap,
-                tightenTicks);
+            return CopyRule.Create(
+                dto.InstrumentName,
+                master,
+                followers,
+                dto.IsEnabled,
+                multipliers,
+                atmMap,
+                tightenTicks
+            );
         }
 
         // DW-B85: extracted from DtoToRule inner foreach to keep DtoToRule CYC at 7.
@@ -3473,7 +4027,7 @@ namespace PropTraderTools
                 var container = new CopyRulesContainer();
                 foreach (var rule in _rules)
                     container.Rules.Add(RuleToDto(rule));
-                container.CopyEnabled = _isCopyEnabled;  // B54: persist enabled state
+                container.CopyEnabled = _isCopyEnabled; // B54: persist enabled state
 
                 var serializer = new XmlSerializer(typeof(CopyRulesContainer));
                 var xml = string.Empty;
@@ -3518,8 +4072,8 @@ namespace PropTraderTools
                     {
                         foreach (var dto in container.Rules)
                             _rules.Add(DtoToRule(dto));
-                        _isCopyEnabled = container.CopyEnabled;             // B54: restore enabled state
-                        CopyEnabledChanged?.Invoke(_isCopyEnabled);         // B54: sync UI buttons
+                        _isCopyEnabled = container.CopyEnabled; // B54: restore enabled state
+                        CopyEnabledChanged?.Invoke(_isCopyEnabled); // B54: sync UI buttons
                     }
                 }
             }

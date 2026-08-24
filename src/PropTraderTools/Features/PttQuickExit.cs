@@ -39,22 +39,30 @@ namespace PropTraderTools
         /// NT8-014: signal name = "PTT-QX-*". NT8-049: Limit arg6=limitPrice, arg7=0; StopMarket arg6=0, arg7=stopPrice.
         /// </summary>
         internal void Execute(
-            Account leader, Instrument instr, int t1Ticks,
+            Account leader,
+            Instrument instr,
+            int t1Ticks,
             System.Collections.Generic.List<(double Price, int Qty)> targets,
             bool skipIfFollower = true,
             double leaderStop = 0,
-            int leaderTargetCount = 0)
+            int leaderTargetCount = 0
+        )
         {
             // Step 1: null/flat guard
             Position pos = null;
             if (leader != null)
                 foreach (Position p in leader.Positions)
-                    if (p.Instrument == instr) { pos = p; break; }
+                    if (p.Instrument == instr)
+                    {
+                        pos = p;
+                        break;
+                    }
             if (pos == null || pos.Quantity == 0)
             {
                 NinjaTrader.Code.Output.Process(
                     "PTT-QX: flat skip -- " + (leader != null ? leader.Name : "NULL"),
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 return;
             }
 
@@ -63,7 +71,8 @@ namespace PropTraderTools
             {
                 NinjaTrader.Code.Output.Process(
                     "PTT-QX: follower guard -- skip " + (leader != null ? leader.Name : "NULL"),
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 return;
             }
 
@@ -71,8 +80,12 @@ namespace PropTraderTools
             // B78 DW-B63-01: ResolveStop falls back to leaderStop when follower has no working stop yet.
             double snapshotStop = ResolveStop(SnapshotStopPrice(leader, instr), leaderStop);
             NinjaTrader.Code.Output.Process(
-                "[PTT-QX] stop resolved: " + snapshotStop + " on " + (leader != null ? leader.Name : "NULL"),
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                "[PTT-QX] stop resolved: "
+                    + snapshotStop
+                    + " on "
+                    + (leader != null ? leader.Name : "NULL"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
 
             // Step 3: cancel ATM bracket + previous PTT-QX orders
             // B77 DW-B77-01: capture snapshot of current QX candidates BEFORE cancelling.
@@ -81,7 +94,8 @@ namespace PropTraderTools
             var snapshot = CopyEngine.BuildQxSnapshot(leader, instr);
             NinjaTrader.Code.Output.Process(
                 "[PTT-QX] race-guard: snapshot=" + snapshot.Count + " orders on " + leader.Name,
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
             CopyEngine.Instance?.CancelQxBrackets(leader, instr, snapshot);
             // B70 DW-B70-02: also cancel follower PTT-Copy brackets before re-placing QX orders.
             // B78 DW-B78-02: ONLY from the leader execution path (skipIfFollower=true).
@@ -105,21 +119,24 @@ namespace PropTraderTools
             // tN = t1 * N ticks from entry (T1=t1, T2=t1*2, T3=t1*3 ... TN=t1*N).
             // Each pair gets its own OCO ID so T1 fill only cancels Stop1, not Stop2/Stop3.
             string firstOcoId = string.Empty;
-            for (int i = 0; i < targetCount; i++)                                         // (6)
+            for (int i = 0; i < targetCount; i++) // (6)
             {
                 int tNTicks = t1Ticks * (i + 1);
                 double rawTN = isLong ? entryPx + tNTicks * tick : entryPx - tNTicks * tick;
                 double tNPrice = Math.Round(rawTN / tick) * tick;
 
-                int tNQty = (targets != null && i < targets.Count)
-                    ? targets[i].Qty
-                    : Math.Max(1, pos.Quantity / targetCount);
+                int tNQty =
+                    (targets != null && i < targets.Count)
+                        ? targets[i].Qty
+                        : Math.Max(1, pos.Quantity / targetCount);
 
-                string ocoId_i = CopyEngine.Instance?.NextQxOcoId()
+                string ocoId_i =
+                    CopyEngine.Instance?.NextQxOcoId()
                     ?? ("PTT-QX-" + Guid.NewGuid().ToString("N").Substring(0, 8));
-                if (i == 0) firstOcoId = ocoId_i;
+                if (i == 0)
+                    firstOcoId = ocoId_i;
 
-                string stopName   = i == 0 ? "PTT-QX-Stop" : "PTT-QX-Stop" + (i + 1);
+                string stopName = i == 0 ? "PTT-QX-Stop" : "PTT-QX-Stop" + (i + 1);
                 string targetName = "PTT-QX-T" + (i + 1);
 
                 if (snapshotStop > 0)
@@ -138,15 +155,22 @@ namespace PropTraderTools
                             ocoId_i,
                             stopName,
                             DateTime.MaxValue,
-                            (CustomOrder)null);
-                        if (stopOrd != null)                                               // (7)
+                            (CustomOrder)null
+                        );
+                        if (stopOrd != null) // (7)
                             leader.Submit(new[] { stopOrd });
                         else
-                            NinjaTrader.Code.Output.Process("PTT-QX: " + stopName + " null", NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                            NinjaTrader.Code.Output.Process(
+                                "PTT-QX: " + stopName + " null",
+                                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                            );
                     }
                     catch (Exception ex)
                     {
-                        NinjaTrader.Code.Output.Process("PTT-QX: " + stopName + " ex -- " + ex.Message, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        NinjaTrader.Code.Output.Process(
+                            "PTT-QX: " + stopName + " ex -- " + ex.Message,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                        );
                     }
                 }
 
@@ -164,23 +188,32 @@ namespace PropTraderTools
                         ocoId_i,
                         targetName,
                         DateTime.MaxValue,
-                        (CustomOrder)null);
-                    if (tNOrd != null)                                                     // (8)
+                        (CustomOrder)null
+                    );
+                    if (tNOrd != null) // (8)
                         leader.Submit(new[] { tNOrd });
                     else
-                        NinjaTrader.Code.Output.Process("PTT-QX: " + targetName + " null", NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        NinjaTrader.Code.Output.Process(
+                            "PTT-QX: " + targetName + " null",
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                        );
                 }
                 catch (Exception ex)
                 {
-                    NinjaTrader.Code.Output.Process("PTT-QX: " + targetName + " ex -- " + ex.Message, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.Code.Output.Process(
+                        "PTT-QX: " + targetName + " ex -- " + ex.Message,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
                 }
             }
 
             // Step 7: raise PttBus.QuickExitFired (Card B: back-calc using T1 and T2 prices)
             double t1Price = isLong ? entryPx + t1Ticks * tick : entryPx - t1Ticks * tick;
             double t2Price = isLong ? entryPx + t1Ticks * 2 * tick : entryPx - t1Ticks * 2 * tick;
-            PttBus.RaiseQuickExit(this, new QuickExitEventArgs(
-                instr, entryPx, t1Price, t2Price, isLong, firstOcoId, tick));
+            PttBus.RaiseQuickExit(
+                this,
+                new QuickExitEventArgs(instr, entryPx, t1Price, t2Price, isLong, firstOcoId, tick)
+            );
         }
 
         /// <summary>
@@ -190,11 +223,21 @@ namespace PropTraderTools
         /// CYC=1: straight delegation. HOTFIX-QUICK-T3-01: TradeCopierPanel.cs is off-limits;
         /// this shim preserves its 4-arg call without modifying that file.
         /// </summary>
-        internal void Execute(Account leader, Instrument instr, int t1Ticks, int t2Ticks, bool skipIfFollower = true)
+        internal void Execute(
+            Account leader,
+            Instrument instr,
+            int t1Ticks,
+            int t2Ticks,
+            bool skipIfFollower = true
+        )
         {
-            Execute(leader, instr, t1Ticks,
+            Execute(
+                leader,
+                instr,
+                t1Ticks,
                 new System.Collections.Generic.List<(double Price, int Qty)>(),
-                skipIfFollower);
+                skipIfFollower
+            );
         }
 
         /// <summary>
@@ -202,8 +245,7 @@ namespace PropTraderTools
         /// B78 DW-B63-01: follower ATM brackets may not be in acc.Orders at QX fire time.
         /// CYC=1: single ternary. JS-002: returns double (never null).
         /// </summary>
-        private static double ResolveStop(double own, double fallback) =>
-            own > 0 ? own : fallback;
+        private static double ResolveStop(double own, double fallback) => own > 0 ? own : fallback;
 
         /// <summary>
         /// ResolveTargetCount: returns own count if > 0, else leaderCount if > 0, else 2.
@@ -212,8 +254,8 @@ namespace PropTraderTools
         /// </summary>
         private static int ResolveTargetCount(
             System.Collections.Generic.List<(double Price, int Qty)> own,
-            int leaderCount) =>
-            own?.Count > 0 ? own.Count : (leaderCount > 0 ? leaderCount : 2);
+            int leaderCount
+        ) => own?.Count > 0 ? own.Count : (leaderCount > 0 ? leaderCount : 2);
 
         /// <summary>
         /// SnapshotStopPrice: returns the stop price of any Working/Accepted stop order for this instrument.
@@ -224,9 +266,11 @@ namespace PropTraderTools
         {
             foreach (var o in acc.Orders)
             {
-                if (o.Instrument == null || o.Instrument.FullName != instr?.FullName) continue;  // HOTFIX-SNAPSHOT-STOP-INSTRREF: FullName comparison (NT8 creates separate Instrument instances per account context)
-                if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted) continue;
-                if (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)  // (2)
+                if (o.Instrument == null || o.Instrument.FullName != instr?.FullName)
+                    continue; // HOTFIX-SNAPSHOT-STOP-INSTRREF: FullName comparison (NT8 creates separate Instrument instances per account context)
+                if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted)
+                    continue;
+                if (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit) // (2)
                     return o.StopPrice;
             }
             return 0.0;
@@ -247,9 +291,12 @@ namespace PropTraderTools
         /// </summary>
         internal static (int t1, int t2) GetQuickTicks(string masterName)
         {
-            if (string.IsNullOrEmpty(masterName)) return (4, 8);                         // (1)
-            if (masterName.StartsWith("MES")) return (4, 8);                             // (2)
-            if (masterName.StartsWith("MGC")) return (2, 4);                             // (3)
+            if (string.IsNullOrEmpty(masterName))
+                return (4, 8); // (1)
+            if (masterName.StartsWith("MES"))
+                return (4, 8); // (2)
+            if (masterName.StartsWith("MGC"))
+                return (2, 4); // (3)
             return (4, 8);
         }
     }

@@ -37,8 +37,8 @@ namespace PropTraderTools
             // Proxy: mirrors GetSelectedFollowers() predicate: item.IsSelected && item.Account != null
             var items = new[]
             {
-                new { IsSelected = true,  Account = (object)"Sim101" },
-                new { IsSelected = false, Account = (object)"Sim102" }
+                new { IsSelected = true, Account = (object)"Sim101" },
+                new { IsSelected = false, Account = (object)"Sim102" },
             };
             var selected = items.Where(i => i.IsSelected && i.Account != null).ToArray();
             Assert.Single(selected);
@@ -77,7 +77,8 @@ namespace PropTraderTools
             // Proxy: mirrors TryAutoApply guard [1]: if (_leaderAccount == null) return;
             object leader = null;
             bool addRuleCalled = false;
-            if (leader != null) addRuleCalled = true;
+            if (leader != null)
+                addRuleCalled = true;
             Assert.False(addRuleCalled);
         }
 
@@ -90,16 +91,18 @@ namespace PropTraderTools
             var items = new List<(bool IsSelected, string Name)>
             {
                 (false, "Sim103"),
-                (true,  "Sim102"),
+                (true, "Sim102"),
                 (false, "Sim101"),
-                (true,  "Sim100")
+                (true, "Sim100"),
             };
-            items.Sort((a, b) =>
-            {
-                if (a.IsSelected != b.IsSelected)
-                    return a.IsSelected ? -1 : 1;
-                return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
-            });
+            items.Sort(
+                (a, b) =>
+                {
+                    if (a.IsSelected != b.IsSelected)
+                        return a.IsSelected ? -1 : 1;
+                    return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+                }
+            );
             Assert.True(items[0].IsSelected);
             Assert.True(items[1].IsSelected);
             Assert.False(items[2].IsSelected);
@@ -117,10 +120,11 @@ namespace PropTraderTools
         {
             // Pure logic — mirrors CountActiveFollowers() + UpdateCopierHeader() text format
             // (TradeCopierPanel.cs:1725): "\u25B6 Copier  (" + CountActiveFollowers() + " active)"
-            var items = new[] {
-                new { IsSelected = true  },
-                new { IsSelected = true  },
-                new { IsSelected = false }
+            var items = new[]
+            {
+                new { IsSelected = true },
+                new { IsSelected = true },
+                new { IsSelected = false },
             };
             int active = items.Count(i => i.IsSelected);
             string header = "\u25B6 Copier  (" + active + " active)";
@@ -135,7 +139,7 @@ namespace PropTraderTools
             // NT8-runtime-only — structural test only
             // Proxy: mirrors BuildInlineFollowerRow(item) line 1631: IsEnabled = item.IsSelected
             bool isSelected = false;
-            bool isEnabled  = isSelected;
+            bool isEnabled = isSelected;
             Assert.False(isEnabled);
         }
 

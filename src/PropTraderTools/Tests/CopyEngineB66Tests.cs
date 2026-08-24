@@ -26,10 +26,11 @@ namespace PropTraderTools
         public void T_B66_C_01_GateC_LimitAccepted_EvaluatesTrue()
         {
             // Act -- replay Gate C predicate with Limit + Accepted
-            var orderType  = OrderType.Limit;
+            var orderType = OrderType.Limit;
             var orderState = OrderState.Accepted;
-            bool gateC = (orderType == OrderType.Limit || orderType == OrderType.StopLimit)
-                      && (orderState == OrderState.Accepted || orderState == OrderState.Working);
+            bool gateC =
+                (orderType == OrderType.Limit || orderType == OrderType.StopLimit)
+                && (orderState == OrderState.Accepted || orderState == OrderState.Working);
             // Assert
             Assert.True(gateC);
         }
@@ -43,10 +44,11 @@ namespace PropTraderTools
         public void T_B66_C_02_GateC_StopLimitWorking_EvaluatesTrue()
         {
             // Act -- replay Gate C predicate with StopLimit + Working
-            var orderType  = OrderType.StopLimit;
+            var orderType = OrderType.StopLimit;
             var orderState = OrderState.Working;
-            bool gateC = (orderType == OrderType.Limit || orderType == OrderType.StopLimit)
-                      && (orderState == OrderState.Accepted || orderState == OrderState.Working);
+            bool gateC =
+                (orderType == OrderType.Limit || orderType == OrderType.StopLimit)
+                && (orderState == OrderState.Accepted || orderState == OrderState.Working);
             // Assert
             Assert.True(gateC);
         }
@@ -59,10 +61,11 @@ namespace PropTraderTools
         public void T_B66_C_03_GateC_MarketOrder_EvaluatesFalse()
         {
             // Act -- replay Gate C predicate with Market + Working
-            var orderType  = OrderType.Market;
+            var orderType = OrderType.Market;
             var orderState = OrderState.Working;
-            bool gateC = (orderType == OrderType.Limit || orderType == OrderType.StopLimit)
-                      && (orderState == OrderState.Accepted || orderState == OrderState.Working);
+            bool gateC =
+                (orderType == OrderType.Limit || orderType == OrderType.StopLimit)
+                && (orderState == OrderState.Accepted || orderState == OrderState.Working);
             // Assert
             Assert.False(gateC);
         }
@@ -76,10 +79,11 @@ namespace PropTraderTools
         public void T_B66_C_04_GateC_LimitFilled_EvaluatesFalse()
         {
             // Act -- replay Gate C predicate with Limit + Filled
-            var orderType  = OrderType.Limit;
+            var orderType = OrderType.Limit;
             var orderState = OrderState.Filled;
-            bool gateC = (orderType == OrderType.Limit || orderType == OrderType.StopLimit)
-                      && (orderState == OrderState.Accepted || orderState == OrderState.Working);
+            bool gateC =
+                (orderType == OrderType.Limit || orderType == OrderType.StopLimit)
+                && (orderState == OrderState.Accepted || orderState == OrderState.Working);
             // Assert
             Assert.False(gateC);
         }
@@ -113,11 +117,12 @@ namespace PropTraderTools
         public void T_B66_C_06_FindFollowerEntryOrder_StopLimitAccepted_MatchesGuard()
         {
             // Arrange: StopLimit + Accepted (broker-simulated StopLimit stays Accepted per NT8 docs line 1005)
-            var orderType  = OrderType.StopLimit;
+            var orderType = OrderType.StopLimit;
             var orderState = OrderState.Accepted;
             // Act -- replay FindFollowerEntryOrder inner predicate
-            bool guard = (orderState == OrderState.Working || orderState == OrderState.Accepted)
-                      && (orderType == OrderType.Limit || orderType == OrderType.StopLimit);
+            bool guard =
+                (orderState == OrderState.Working || orderState == OrderState.Accepted)
+                && (orderType == OrderType.Limit || orderType == OrderType.StopLimit);
             // Assert
             Assert.True(guard);
         }
@@ -133,15 +138,15 @@ namespace PropTraderTools
         {
             // StopLimit path: drag price lives in StopPrice (NT8 fact: StopLimit.LimitPrice==0)
             var stopLimitType = OrderType.StopLimit;
-            double stopPrice  = 4500.25;
+            double stopPrice = 4500.25;
             double limitPrice = 0.0;
             double resultStopLimit = stopLimitType == OrderType.StopLimit ? stopPrice : limitPrice;
             Assert.Equal(4500.25, resultStopLimit);
 
             // Limit path: drag price lives in LimitPrice
-            var limitType      = OrderType.Limit;
+            var limitType = OrderType.Limit;
             double limitPrice2 = 4500.50;
-            double stopPrice2  = 0.0;
+            double stopPrice2 = 0.0;
             double resultLimit = limitType == OrderType.StopLimit ? stopPrice2 : limitPrice2;
             Assert.Equal(4500.50, resultLimit);
         }
@@ -155,9 +160,9 @@ namespace PropTraderTools
         [Fact]
         public void T_B66_C_08_SetFollowerPrice_SetsCorrectFieldByOrderType()
         {
-            double capturedStopPrice  = 0.0;
+            double capturedStopPrice = 0.0;
             double capturedLimitPrice = 0.0;
-            double newPrice           = 4501.75;
+            double newPrice = 4501.75;
 
             // StopLimit path: SetFollowerPrice should assign fo.StopPrice
             var foTypeA = OrderType.StopLimit;
@@ -166,10 +171,10 @@ namespace PropTraderTools
             else
                 capturedLimitPrice = newPrice;
             Assert.Equal(4501.75, capturedStopPrice);
-            Assert.Equal(0.0,     capturedLimitPrice);
+            Assert.Equal(0.0, capturedLimitPrice);
 
             // Reset
-            capturedStopPrice  = 0.0;
+            capturedStopPrice = 0.0;
             capturedLimitPrice = 0.0;
 
             // Limit path: SetFollowerPrice should assign fo.LimitPrice
@@ -178,7 +183,7 @@ namespace PropTraderTools
                 capturedStopPrice = newPrice;
             else
                 capturedLimitPrice = newPrice;
-            Assert.Equal(0.0,     capturedStopPrice);
+            Assert.Equal(0.0, capturedStopPrice);
             Assert.Equal(4501.75, capturedLimitPrice);
         }
     }

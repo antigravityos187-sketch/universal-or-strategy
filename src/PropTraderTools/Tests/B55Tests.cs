@@ -34,15 +34,15 @@ namespace PropTraderTools
         {
             // Arrange: simulate ComboBox state when NT8 populates cbxStrategySelector.
             // NT8 does NOT set SelectedValuePath, so SelectedValue is always null.
-            object selectedItem  = "MES $200";   // ComboBox.SelectedItem after user selects template
-            string selectedValue = null;          // ComboBox.SelectedValue -- null (no SelectedValuePath)
+            object selectedItem = "MES $200"; // ComboBox.SelectedItem after user selects template
+            string selectedValue = null; // ComboBox.SelectedValue -- null (no SelectedValuePath)
 
             // Act: exact expression from GetLeaderAtmTemplateName() line 2088
             string result = selectedItem as string ?? string.Empty;
 
             // Assert
-            Assert.Equal("MES $200", result);    // SelectedItem path returns the template name
-            Assert.Null(selectedValue);          // documents root cause: SelectedValue is null
+            Assert.Equal("MES $200", result); // SelectedItem path returns the template name
+            Assert.Null(selectedValue); // documents root cause: SelectedValue is null
         }
     }
 }

@@ -15,11 +15,11 @@ namespace PropTraderTools
         private readonly CopyEngine _engine = CopyEngine.Instance;
         private Action<string> _statusHandler;
 
-        private static FieldInfo GetField(string name)
-            => typeof(CopyEngine).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
+        private static FieldInfo GetField(string name) =>
+            typeof(CopyEngine).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
 
-        private static MethodInfo GetMethod(string name)
-            => typeof(CopyEngine).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
+        private static MethodInfo GetMethod(string name) =>
+            typeof(CopyEngine).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
 
         [Fact]
         public void SetEnabled_True_EnablesGate1()
@@ -121,11 +121,13 @@ namespace PropTraderTools
             var fi = GetField("_rules");
             var bagBefore = (ConcurrentBag<CopyRule>)fi.GetValue(_engine);
             int countBefore = 0;
-            foreach (var _ in bagBefore) countBefore++;
+            foreach (var _ in bagBefore)
+                countBefore++;
             _engine.AddRule("TESTADD", null, new Account[0]);
             var bagAfter = (ConcurrentBag<CopyRule>)fi.GetValue(_engine);
             int countAfter = 0;
-            foreach (var _ in bagAfter) countAfter++;
+            foreach (var _ in bagAfter)
+                countAfter++;
             Assert.Equal(countBefore + 1, countAfter);
         }
 
@@ -133,7 +135,9 @@ namespace PropTraderTools
         public void AddRule_StringOverload_NoException()
         {
             _engine.SetEnabled(false);
-            var ex = Record.Exception(() => _engine.AddRule("NQ 09-25", (Account)null, new Account[0]));
+            var ex = Record.Exception(() =>
+                _engine.AddRule("NQ 09-25", (Account)null, new Account[0])
+            );
             Assert.Null(ex);
         }
 
@@ -200,7 +204,8 @@ namespace PropTraderTools
             _engine.SetEnabled(false);
             MethodInfo mi = typeof(CopyEngine).GetMethod(
                 "IsDedup",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
             string orderId = "TEST-DEDUP-SAME-" + DateTime.UtcNow.Ticks;
             bool first = (bool)mi.Invoke(_engine, new object[] { orderId });
@@ -215,7 +220,8 @@ namespace PropTraderTools
             _engine.SetEnabled(false);
             MethodInfo mi = typeof(CopyEngine).GetMethod(
                 "IsDedup",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
             string id1 = "TEST-DEDUP-A-" + DateTime.UtcNow.Ticks;
             string id2 = "TEST-DEDUP-B-" + DateTime.UtcNow.Ticks;
@@ -224,6 +230,7 @@ namespace PropTraderTools
             Assert.False(result1, "First unique ID should not be a duplicate");
             Assert.False(result2, "Second unique ID should not be a duplicate");
         }
+
         [Fact]
         public void BreakEven_NullInstrument_NoException()
         {
@@ -255,8 +262,8 @@ namespace PropTraderTools
 
         // -- B6 T3: Persistence tests -----------------------------------------
 
-        private static FieldInfo GetPersistenceLoadedField()
-            => typeof(CopyEngine).GetField(
+        private static FieldInfo GetPersistenceLoadedField() =>
+            typeof(CopyEngine).GetField(
                 "_persistenceLoaded",
                 BindingFlags.NonPublic | BindingFlags.Instance
             );
@@ -352,7 +359,8 @@ namespace PropTraderTools
             // (Order, CopyRule). Guards against accidental removal of the extracted method.
             var method = typeof(CopyEngine).GetMethod(
                 "DispatchCopy",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(method);
             Assert.Equal(2, method.GetParameters().Length);
         }
@@ -364,7 +372,8 @@ namespace PropTraderTools
             // 1 parameter (Order). Guards against accidental removal.
             var method = typeof(CopyEngine).GetMethod(
                 "IsWorkingBracket",
-                BindingFlags.NonPublic | BindingFlags.Static);
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
             Assert.NotNull(method);
             Assert.Equal(1, method.GetParameters().Length);
         }
@@ -377,15 +386,20 @@ namespace PropTraderTools
             // Verifies that the instrument-null guard (branch 2) returns cleanly.
             var method = typeof(CopyEngine).GetMethod(
                 "HandleBracketChange",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(method);
 
             // We need a CopyRule value -- obtain a default one via reflection on _rules
             // after adding a test rule, then extract it.
             _engine.SetEnabled(false);
             _engine.AddRule("HBCTEST", null, new Account[0]);
-            var rulesField = typeof(CopyEngine).GetField("_rules", BindingFlags.NonPublic | BindingFlags.Instance);
-            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var rulesField = typeof(CopyEngine).GetField(
+                "_rules",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? ruleValue = null;
             foreach (var r in bag)
             {
@@ -396,7 +410,8 @@ namespace PropTraderTools
                 }
             }
             // If we could not find the rule, just return -- test infrastructure not available
-            if (ruleValue == null) return;
+            if (ruleValue == null)
+                return;
 
             // null order instrument triggers the instrument-null guard -- should return cleanly
             var ex = Record.Exception(() =>
@@ -429,7 +444,8 @@ namespace PropTraderTools
             // Confirms JS-002 compliance -- null contract is explicit at the type level.
             var method = typeof(CopyEngine).GetMethod(
                 "FindFollowerBracketOrder",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(method);
             // Nullable annotation on reference type: return type is NinjaTrader.Cbi.Order
             // The NullabilityInfoContext confirms the return is annotated nullable (Order?)
@@ -453,7 +469,8 @@ namespace PropTraderTools
             _engine.SetEnabled(true);
             var onOrderUpdateMethod = typeof(CopyEngine).GetMethod(
                 "OnOrderUpdate",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(onOrderUpdateMethod);
             // Invoking with null args hits first line (TryFirePositionState) safely --
             // null OrderEventArgs causes NullReferenceException which is caught by Record.Exception.
@@ -479,7 +496,8 @@ namespace PropTraderTools
                 (Account)null,
                 new Account[0],
                 multipliers,
-                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty);
+                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty
+            );
 
             // Assert: _rules bag contains a rule for MULTTEST with FollowerMultipliers[0] == 2
             var fi = GetField("_rules");
@@ -508,17 +526,25 @@ namespace PropTraderTools
                 (Account)null,
                 new Account[0],
                 new int[] { 5 },
-                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty);
+                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty
+            );
 
             var rulesField = GetField("_rules");
-            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? found = null;
             foreach (var r in bag)
-                if (r.Instrument == "GMOOR") { found = r; break; }
+                if (r.Instrument == "GMOOR")
+                {
+                    found = r;
+                    break;
+                }
             Assert.True(found.HasValue, "Rule GMOOR not found");
 
-            var mi = typeof(CopyEngine).GetMethod("GetMultiplier",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var mi = typeof(CopyEngine).GetMethod(
+                "GetMultiplier",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             Assert.NotNull(mi);
 
             // Act: index 99 is out of range for a 1-element array
@@ -538,17 +564,25 @@ namespace PropTraderTools
                 (Account)null,
                 new Account[0],
                 new int[] { 3 },
-                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty);
+                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty
+            );
 
             var rulesField = GetField("_rules");
-            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? found = null;
             foreach (var r in bag)
-                if (r.Instrument == "GMVIR") { found = r; break; }
+                if (r.Instrument == "GMVIR")
+                {
+                    found = r;
+                    break;
+                }
             Assert.True(found.HasValue, "Rule GMVIR not found");
 
-            var mi = typeof(CopyEngine).GetMethod("GetMultiplier",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var mi = typeof(CopyEngine).GetMethod(
+                "GetMultiplier",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             Assert.NotNull(mi);
 
             // Act
@@ -566,14 +600,21 @@ namespace PropTraderTools
             _engine.AddRule("GMNULL", (Account)null, new Account[0]);
 
             var rulesField = GetField("_rules");
-            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? found = null;
             foreach (var r in bag)
-                if (r.Instrument == "GMNULL") { found = r; break; }
+                if (r.Instrument == "GMNULL")
+                {
+                    found = r;
+                    break;
+                }
             Assert.True(found.HasValue, "Rule GMNULL not found");
 
-            var mi = typeof(CopyEngine).GetMethod("GetMultiplier",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var mi = typeof(CopyEngine).GetMethod(
+                "GetMultiplier",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             Assert.NotNull(mi);
 
             // Act: null FollowerMultipliers on rule
@@ -594,8 +635,8 @@ namespace PropTraderTools
             var ex = Record.Exception(() =>
             {
                 var inherit = new FollowerAtmMode.Inherit();
-                var market  = new FollowerAtmMode.Market();
-                var named   = new FollowerAtmMode.Named("MyTemplate");
+                var market = new FollowerAtmMode.Market();
+                var named = new FollowerAtmMode.Named("MyTemplate");
                 Assert.NotNull(inherit);
                 Assert.NotNull(market);
                 Assert.NotNull(named);
@@ -614,18 +655,26 @@ namespace PropTraderTools
             _engine.AddRule("GAMONONE", (Account)null, new Account[0]);
 
             var rulesField = GetField("_rules");
-            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? found = null;
             foreach (var r in bag)
-                if (r.Instrument == "GAMONONE") { found = r; break; }
+                if (r.Instrument == "GAMONONE")
+                {
+                    found = r;
+                    break;
+                }
             Assert.True(found.HasValue, "Rule GAMONONE not found");
 
-            var mi = typeof(CopyEngine).GetMethod("GetAtmMode",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var mi = typeof(CopyEngine).GetMethod(
+                "GetAtmMode",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             Assert.NotNull(mi);
 
             // Act: look up an account name not in the (empty) dictionary
-            var result = mi.Invoke(null, new object[] { found.Value, "SomeAccount" }) as FollowerAtmMode;
+            var result =
+                mi.Invoke(null, new object[] { found.Value, "SomeAccount" }) as FollowerAtmMode;
 
             // Assert: missing entry returns Inherit (not null, not Market, not Named)
             Assert.NotNull(result);
@@ -637,29 +686,34 @@ namespace PropTraderTools
         {
             // Arrange: build a CopyRule with a Named ATM mode entry for "FollowerA"
             _engine.SetEnabled(false);
-            var atmMap = System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty
-                .SetItem("FollowerA", new FollowerAtmMode.Named("ScalpTemplate"));
+            var atmMap = System.Collections.Immutable.ImmutableDictionary<
+                string,
+                FollowerAtmMode
+            >.Empty.SetItem("FollowerA", new FollowerAtmMode.Named("ScalpTemplate"));
 
-            _engine.AddRule(
-                "GAMONAMED",
-                (Account)null,
-                new Account[0],
-                null,
-                atmMap);
+            _engine.AddRule("GAMONAMED", (Account)null, new Account[0], null, atmMap);
 
             var rulesField = GetField("_rules");
-            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? found = null;
             foreach (var r in bag)
-                if (r.Instrument == "GAMONAMED") { found = r; break; }
+                if (r.Instrument == "GAMONAMED")
+                {
+                    found = r;
+                    break;
+                }
             Assert.True(found.HasValue, "Rule GAMONAMED not found");
 
-            var mi = typeof(CopyEngine).GetMethod("GetAtmMode",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var mi = typeof(CopyEngine).GetMethod(
+                "GetAtmMode",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             Assert.NotNull(mi);
 
             // Act: look up "FollowerA" -- should find Named("ScalpTemplate")
-            var result = mi.Invoke(null, new object[] { found.Value, "FollowerA" }) as FollowerAtmMode;
+            var result =
+                mi.Invoke(null, new object[] { found.Value, "FollowerA" }) as FollowerAtmMode;
 
             // Assert: returns Named mode with correct TemplateName
             Assert.NotNull(result);
@@ -681,11 +735,13 @@ namespace PropTraderTools
                 (Account)null,
                 new Account[0],
                 new int[] { 2 },
-                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty);
+                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty
+            );
 
             string tmpPath = System.IO.Path.Combine(
                 System.IO.Path.GetTempPath(),
-                "ptt_b8_mult_" + Guid.NewGuid().ToString("N") + ".xml");
+                "ptt_b8_mult_" + Guid.NewGuid().ToString("N") + ".xml"
+            );
 
             try
             {
@@ -709,19 +765,17 @@ namespace PropTraderTools
         {
             // Arrange: add a rule with a Market ATM mode entry
             _engine.SetEnabled(false);
-            var atmMap = System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty
-                .SetItem("FollowerB", new FollowerAtmMode.Market());
+            var atmMap = System.Collections.Immutable.ImmutableDictionary<
+                string,
+                FollowerAtmMode
+            >.Empty.SetItem("FollowerB", new FollowerAtmMode.Market());
 
-            _engine.AddRule(
-                "SLATM",
-                (Account)null,
-                new Account[0],
-                null,
-                atmMap);
+            _engine.AddRule("SLATM", (Account)null, new Account[0], null, atmMap);
 
             string tmpPath = System.IO.Path.Combine(
                 System.IO.Path.GetTempPath(),
-                "ptt_b8_atm_" + Guid.NewGuid().ToString("N") + ".xml");
+                "ptt_b8_atm_" + Guid.NewGuid().ToString("N") + ".xml"
+            );
 
             try
             {
@@ -744,14 +798,17 @@ namespace PropTraderTools
         public void DtoToRule_NullMultipliers_DoesNotThrow()
         {
             // Arrange: access DtoToRule via reflection; construct a DTO with null FollowerMultipliers
-            var mi = typeof(CopyEngine).GetMethod("DtoToRule",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var mi = typeof(CopyEngine).GetMethod(
+                "DtoToRule",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             Assert.NotNull(mi);
 
             // CopyRuleDto is a private nested class -- access its type via reflection
             var dtoType = typeof(CopyEngine).GetNestedType(
                 "CopyRuleDto",
-                System.Reflection.BindingFlags.NonPublic);
+                System.Reflection.BindingFlags.NonPublic
+            );
             Assert.NotNull(dtoType);
 
             // Create a DTO instance: null FollowerMultipliers simulates B6/B7 XML deserialization
@@ -769,7 +826,10 @@ namespace PropTraderTools
             // (Account.All not available in test context) -- only an unguarded application exception fails this test
             if (ex != null)
             {
-                if (ex is System.Reflection.TargetInvocationException tie && tie.InnerException is NullReferenceException)
+                if (
+                    ex is System.Reflection.TargetInvocationException tie
+                    && tie.InnerException is NullReferenceException
+                )
                     return; // Account.All null in test context is expected -- the multiplier/atm null guards passed
                 throw ex;
             }
@@ -779,8 +839,10 @@ namespace PropTraderTools
         public void ParseAtmModeName_AllVariants_RoundTrip()
         {
             // Arrange: access ParseAtmModeName via reflection
-            var mi = typeof(CopyEngine).GetMethod("ParseAtmModeName",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var mi = typeof(CopyEngine).GetMethod(
+                "ParseAtmModeName",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             Assert.NotNull(mi);
 
             // Act + Assert: Inherit
@@ -824,14 +886,20 @@ namespace PropTraderTools
                 (Account)null,
                 new Account[0],
                 new int[] { 1 },
-                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty);
+                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty
+            );
 
             // Confirm initial value
             var rulesField = GetField("_rules");
-            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? before = null;
             foreach (var r in bag)
-                if (r.Instrument == "SFMTEST") { before = r; break; }
+                if (r.Instrument == "SFMTEST")
+                {
+                    before = r;
+                    break;
+                }
             Assert.True(before.HasValue, "Rule SFMTEST not found after AddRule");
             Assert.Equal(1, before.Value.FollowerMultipliers[0]);
 
@@ -839,10 +907,15 @@ namespace PropTraderTools
             _engine.SetFollowerMultiplier("SFMTEST", 0, 4);
 
             // Assert: _rules bag now contains the updated rule with multiplier=4
-            var bag2 = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var bag2 = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? after = null;
             foreach (var r in bag2)
-                if (r.Instrument == "SFMTEST") { after = r; break; }
+                if (r.Instrument == "SFMTEST")
+                {
+                    after = r;
+                    break;
+                }
             Assert.True(after.HasValue, "Rule SFMTEST not found after SetFollowerMultiplier");
             Assert.NotNull(after.Value.FollowerMultipliers);
             Assert.Equal(4, after.Value.FollowerMultipliers[0]);
@@ -862,14 +935,20 @@ namespace PropTraderTools
                 (Account)null,
                 new Account[0],
                 null,
-                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty);
+                System.Collections.Immutable.ImmutableDictionary<string, FollowerAtmMode>.Empty
+            );
 
             // Confirm initial state: no ATM entry for "FollowerA"
             var rulesField = GetField("_rules");
-            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? before = null;
             foreach (var r in bag)
-                if (r.Instrument == "SATM") { before = r; break; }
+                if (r.Instrument == "SATM")
+                {
+                    before = r;
+                    break;
+                }
             Assert.True(before.HasValue, "Rule SATM not found after AddRule");
             Assert.False(before.Value.FollowerAtmTemplates.ContainsKey("FollowerA"));
 
@@ -877,13 +956,20 @@ namespace PropTraderTools
             _engine.SetAtmMode("SATM", "FollowerA", new FollowerAtmMode.Named("ScalpATM"));
 
             // Assert: _rules bag now contains updated rule with FollowerAtmTemplates["FollowerA"] == Named("ScalpATM")
-            var bag2 = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)rulesField.GetValue(_engine);
+            var bag2 = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)
+                rulesField.GetValue(_engine);
             CopyRule? after = null;
             foreach (var r in bag2)
-                if (r.Instrument == "SATM") { after = r; break; }
+                if (r.Instrument == "SATM")
+                {
+                    after = r;
+                    break;
+                }
             Assert.True(after.HasValue, "Rule SATM not found after SetAtmMode");
-            Assert.True(after.Value.FollowerAtmTemplates.ContainsKey("FollowerA"),
-                "FollowerAtmTemplates should contain key FollowerA after SetAtmMode");
+            Assert.True(
+                after.Value.FollowerAtmTemplates.ContainsKey("FollowerA"),
+                "FollowerAtmTemplates should contain key FollowerA after SetAtmMode"
+            );
             var mode = after.Value.FollowerAtmTemplates["FollowerA"];
             var named = Assert.IsType<FollowerAtmMode.Named>(mode);
             Assert.Equal("ScalpATM", named.TemplateName);
@@ -897,56 +983,84 @@ namespace PropTraderTools
         [Fact]
         public void CalcContracts_MES_ATR6_returns5()
         {
-            Assert.Equal(5, AtrSizingEngine.CalcContracts(atrPoints: 6.0, maxRisk: 150.0, tickDollarValue: 5.0));
+            Assert.Equal(
+                5,
+                AtrSizingEngine.CalcContracts(atrPoints: 6.0, maxRisk: 150.0, tickDollarValue: 5.0)
+            );
         }
 
         // T-B9-02: ATR=8 -> risk/c=$40 -> floor(150/40) = floor(3.75) = 3
         [Fact]
         public void CalcContracts_MES_ATR8_returns3()
         {
-            Assert.Equal(3, AtrSizingEngine.CalcContracts(atrPoints: 8.0, maxRisk: 150.0, tickDollarValue: 5.0));
+            Assert.Equal(
+                3,
+                AtrSizingEngine.CalcContracts(atrPoints: 8.0, maxRisk: 150.0, tickDollarValue: 5.0)
+            );
         }
 
         // T-B9-03: ATR=12 -> risk/c=$60 -> floor(150/60) = floor(2.5) = 2
         [Fact]
         public void CalcContracts_MES_ATR12_returns2()
         {
-            Assert.Equal(2, AtrSizingEngine.CalcContracts(atrPoints: 12.0, maxRisk: 150.0, tickDollarValue: 5.0));
+            Assert.Equal(
+                2,
+                AtrSizingEngine.CalcContracts(atrPoints: 12.0, maxRisk: 150.0, tickDollarValue: 5.0)
+            );
         }
 
         // T-B9-04: Zero ATR -> guard returns 1
         [Fact]
         public void CalcContracts_ZeroAtr_returns1()
         {
-            Assert.Equal(1, AtrSizingEngine.CalcContracts(atrPoints: 0.0, maxRisk: 150.0, tickDollarValue: 5.0));
+            Assert.Equal(
+                1,
+                AtrSizingEngine.CalcContracts(atrPoints: 0.0, maxRisk: 150.0, tickDollarValue: 5.0)
+            );
         }
 
         // T-B9-05: Negative ATR -> guard returns 1
         [Fact]
         public void CalcContracts_NegativeAtr_returns1()
         {
-            Assert.Equal(1, AtrSizingEngine.CalcContracts(atrPoints: -3.0, maxRisk: 150.0, tickDollarValue: 5.0));
+            Assert.Equal(
+                1,
+                AtrSizingEngine.CalcContracts(atrPoints: -3.0, maxRisk: 150.0, tickDollarValue: 5.0)
+            );
         }
 
         // T-B9-06: Result below 1 clamps to 1 -> floor(5/(1.0*10)) = floor(0.5) = 0 -> clamp to 1
         [Fact]
         public void CalcContracts_ResultBelowOne_clampsTo1()
         {
-            Assert.Equal(1, AtrSizingEngine.CalcContracts(atrPoints: 1.0, maxRisk: 5.0, tickDollarValue: 10.0));
+            Assert.Equal(
+                1,
+                AtrSizingEngine.CalcContracts(atrPoints: 1.0, maxRisk: 5.0, tickDollarValue: 10.0)
+            );
         }
 
         // T-B9-07: Zero tickDollarValue -> guard returns 1
         [Fact]
         public void CalcContracts_ZeroTickValue_returns1()
         {
-            Assert.Equal(1, AtrSizingEngine.CalcContracts(atrPoints: 6.0, maxRisk: 150.0, tickDollarValue: 0.0));
+            Assert.Equal(
+                1,
+                AtrSizingEngine.CalcContracts(atrPoints: 6.0, maxRisk: 150.0, tickDollarValue: 0.0)
+            );
         }
 
         // T-B9-08: ATR=1, maxRisk=10000, tick=$5 -> floor(10000/5) = 2000
         [Fact]
         public void CalcContracts_LargeMaxRisk_noOverflow()
         {
-            Assert.Equal(2000, AtrSizingEngine.CalcContracts(atrPoints: 1.0, maxRisk: 10000.0, tickDollarValue: 5.0));
+            Assert.Equal(
+                2000,
+                AtrSizingEngine.CalcContracts(
+                    atrPoints: 1.0,
+                    maxRisk: 10000.0,
+                    tickDollarValue: 5.0
+                )
+            );
         }
 
         // T-B9-09: GetSuggestedQty returns 1 when no engine is set (ATR disabled)
@@ -1083,8 +1197,11 @@ namespace PropTraderTools
             bool second = dict.TryAdd(key, null);
 
             // Assert
-            Assert.True(first,  "First TryAdd must succeed (slot claimed)");
-            Assert.False(second, "Second TryAdd with same key must fail (adopt path -- no duplicate panel)");
+            Assert.True(first, "First TryAdd must succeed (slot claimed)");
+            Assert.False(
+                second,
+                "Second TryAdd with same key must fail (adopt path -- no duplicate panel)"
+            );
             Assert.Equal(1, dict.Count);
         }
 
@@ -1106,7 +1223,8 @@ namespace PropTraderTools
                 BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public,
                 null,
                 new[] { typeof(Instrument), typeof(int) },
-                null);
+                null
+            );
             Assert.NotNull(mi);
             Assert.Equal(2, mi.GetParameters().Length);
 
@@ -1117,11 +1235,13 @@ namespace PropTraderTools
             // Verify IsStopAlreadyAtBe exists and handles null order (returns false).
             var isAtBe = typeof(CopyEngine).GetMethod(
                 "IsStopAlreadyAtBe",
-                BindingFlags.NonPublic | BindingFlags.Static);
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
             Assert.NotNull(isAtBe);
             // null order -> null guard -> returns false (not already tighter).
             // long=true, targetPrice=98.75: IsStopAlreadyAtBe(null, 98.75, true) == false.
-            bool result = (bool)isAtBe.Invoke(null, new object[] { (NinjaTrader.Cbi.Order)null, 98.75, true });
+            bool result = (bool)
+                isAtBe.Invoke(null, new object[] { (NinjaTrader.Cbi.Order)null, 98.75, true });
             Assert.False(result, "null order: IsStopAlreadyAtBe must return false (null guard)");
         }
 
@@ -1137,10 +1257,12 @@ namespace PropTraderTools
             // Verify IsStopAlreadyAtBe returns false for null order on short side.
             var isAtBe = typeof(CopyEngine).GetMethod(
                 "IsStopAlreadyAtBe",
-                BindingFlags.NonPublic | BindingFlags.Static);
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
             Assert.NotNull(isAtBe);
             // isLong=false, targetPrice=101.25: IsStopAlreadyAtBe(null, 101.25, false) == false.
-            bool result = (bool)isAtBe.Invoke(null, new object[] { (NinjaTrader.Cbi.Order)null, 101.25, false });
+            bool result = (bool)
+                isAtBe.Invoke(null, new object[] { (NinjaTrader.Cbi.Order)null, 101.25, false });
             Assert.False(result, "null order: short-side IsStopAlreadyAtBe must return false");
         }
 
@@ -1151,14 +1273,17 @@ namespace PropTraderTools
             // Verify method exists with 5 parameters: (Account, Instrument, Order, double, double).
             var mi = typeof(CopyEngine).GetMethod(
                 "TightenOneStop",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
             Assert.Equal(5, mi.GetParameters().Length);
 
             // Signal name used in cancel+replace path must start with "PTT-" (NT8 constraint).
             const string signalName = "PTT-Tighten-Stop";
-            Assert.True(signalName.StartsWith("PTT-", StringComparison.Ordinal),
-                "TightenOneStop signal name must start with PTT-");
+            Assert.True(
+                signalName.StartsWith("PTT-", StringComparison.Ordinal),
+                "TightenOneStop signal name must start with PTT-"
+            );
 
             // Invoke with null order -- null guard (branch 1) returns cleanly.
             var ex = Record.Exception(() =>
@@ -1185,7 +1310,8 @@ namespace PropTraderTools
             // Method existence check (same as T-03, non-redundant: confirms param count again).
             var mi = typeof(CopyEngine).GetMethod(
                 "TightenOneStop",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
             // 5 params: Account acc, Instrument instr, Order order, double targetPrice, double tickSize
             var parms = mi.GetParameters();
@@ -1201,7 +1327,8 @@ namespace PropTraderTools
             // Use CopyRule.Create (internal static factory) with no tightenTicks arg -> default = 5.
             var createMethod = typeof(CopyRule).GetMethod(
                 "Create",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
+            );
             Assert.NotNull(createMethod);
 
             // Find the overload with tightenTicks parameter (optional, default 5).
@@ -1210,7 +1337,8 @@ namespace PropTraderTools
             // Access TightenTicks field via reflection (internal readonly int).
             var ttField = typeof(CopyRule).GetField(
                 "TightenTicks",
-                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance
+            );
             Assert.NotNull(ttField);
 
             // Build a minimal CopyRule via AddRule and extract TightenTicks.
@@ -1220,7 +1348,11 @@ namespace PropTraderTools
             var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)fi.GetValue(_engine);
             CopyRule? rule = null;
             foreach (var r in bag)
-                if (r.Instrument == "TTDEF") { rule = r; break; }
+                if (r.Instrument == "TTDEF")
+                {
+                    rule = r;
+                    break;
+                }
             Assert.True(rule.HasValue, "Rule TTDEF not found");
             int tightenTicks = (int)ttField.GetValue(rule.Value);
             Assert.Equal(5, tightenTicks);
@@ -1236,7 +1368,8 @@ namespace PropTraderTools
 
             string tmpPath = System.IO.Path.Combine(
                 System.IO.Path.GetTempPath(),
-                "ptt_b10_tt_" + Guid.NewGuid().ToString("N") + ".xml");
+                "ptt_b10_tt_" + Guid.NewGuid().ToString("N") + ".xml"
+            );
             try
             {
                 // Act: save
@@ -1260,13 +1393,13 @@ namespace PropTraderTools
         {
             // Arrange: access DtoToRule via reflection; construct DTO without setting TightenTicks.
             // CopyRuleDto.TightenTicks defaults to 0 -- DtoToRule must apply fallback to 5.
-            var mi = typeof(CopyEngine).GetMethod("DtoToRule",
-                BindingFlags.NonPublic | BindingFlags.Static);
+            var mi = typeof(CopyEngine).GetMethod(
+                "DtoToRule",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
             Assert.NotNull(mi);
 
-            var dtoType = typeof(CopyEngine).GetNestedType(
-                "CopyRuleDto",
-                BindingFlags.NonPublic);
+            var dtoType = typeof(CopyEngine).GetNestedType("CopyRuleDto", BindingFlags.NonPublic);
             Assert.NotNull(dtoType);
 
             var dto = Activator.CreateInstance(dtoType);
@@ -1294,14 +1427,16 @@ namespace PropTraderTools
             {
                 invokeEx = e;
             }
-            if (invokeEx != null) throw invokeEx;
+            if (invokeEx != null)
+                throw invokeEx;
 
             // If we got a CopyRule back, verify TightenTicks == 5.
             if (ruleObj is CopyRule cr)
             {
                 var ttField = typeof(CopyRule).GetField(
                     "TightenTicks",
-                    BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                    BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance
+                );
                 Assert.NotNull(ttField);
                 int tightenTicks = (int)ttField.GetValue(cr);
                 Assert.Equal(5, tightenTicks);
@@ -1319,14 +1454,17 @@ namespace PropTraderTools
                 BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public,
                 null,
                 new[] { typeof(Account), typeof(Instrument), typeof(int) },
-                null);
+                null
+            );
             Assert.NotNull(mi);
             Assert.Equal(3, mi.GetParameters().Length);
 
             // Null leader -> StatusUpdate log -> returns cleanly (JS-002 guard path).
             var messages = new System.Collections.Generic.List<string>();
             _engine.StatusUpdate += messages.Add;
-            var ex = Record.Exception(() => _engine.TightenStop((Account)null, (Instrument)null, 5));
+            var ex = Record.Exception(() =>
+                _engine.TightenStop((Account)null, (Instrument)null, 5)
+            );
             _engine.StatusUpdate -= messages.Add;
             Assert.Null(ex);
             Assert.Contains(messages, m => m.Contains("PTT-Tighten"));
@@ -1350,14 +1488,17 @@ namespace PropTraderTools
                 BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public,
                 null,
                 new[] { typeof(Instrument), typeof(int), typeof(double), typeof(double) },
-                null);
+                null
+            );
             Assert.NotNull(mi);
             Assert.Equal(4, mi.GetParameters().Length);
 
             // Signal name used for the limit-sell path must start with "PTT-" (NT8 constraint).
             const string signalName = "PTT-FlattenLimit";
-            Assert.True(signalName.StartsWith("PTT-", StringComparison.Ordinal),
-                "Flatten limit signal name must start with PTT-");
+            Assert.True(
+                signalName.StartsWith("PTT-", StringComparison.Ordinal),
+                "Flatten limit signal name must start with PTT-"
+            );
 
             // null instrument -> AllAccounts returns empty -> no orders issued -> no exception.
             var ex = Record.Exception(() => _engine.Flatten(null, 2, 100.0, 100.0));
@@ -1376,7 +1517,8 @@ namespace PropTraderTools
                 BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public,
                 null,
                 new[] { typeof(Instrument), typeof(int), typeof(double), typeof(double) },
-                null);
+                null
+            );
             Assert.NotNull(mi);
 
             // Short side uses BuyToCover @ bid - exitBuffer*tickSize.
@@ -1396,14 +1538,17 @@ namespace PropTraderTools
                 BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public,
                 null,
                 new[] { typeof(Instrument), typeof(int), typeof(double), typeof(double) },
-                null);
+                null
+            );
             Assert.NotNull(mi);
             Assert.Equal(4, mi.GetParameters().Length);
 
             // Signal name used for the limit-sell path must start with "PTT-" (NT8 constraint).
             const string signalName = "PTT-TrimLimit";
-            Assert.True(signalName.StartsWith("PTT-", StringComparison.Ordinal),
-                "Trim limit signal name must start with PTT-");
+            Assert.True(
+                signalName.StartsWith("PTT-", StringComparison.Ordinal),
+                "Trim limit signal name must start with PTT-"
+            );
 
             // null instrument -> AllAccounts returns empty -> no orders issued -> no exception.
             var ex = Record.Exception(() => _engine.Trim(null, 2, 100.0, 100.0));
@@ -1423,23 +1568,30 @@ namespace PropTraderTools
                 "Trim",
                 BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public,
                 null,
-                new[] { typeof(NinjaTrader.Cbi.Instrument), typeof(int), typeof(double), typeof(double) },
-                null);
+                new[]
+                {
+                    typeof(NinjaTrader.Cbi.Instrument),
+                    typeof(int),
+                    typeof(double),
+                    typeof(double),
+                },
+                null
+            );
             Assert.NotNull(mi);
             Assert.Equal(4, mi.GetParameters().Length);
 
             // Signal name for Trim limit must start with "PTT-" (NT8-014).
             const string signalName = "PTT-TrimLimit";
-            Assert.True(signalName.StartsWith("PTT-", StringComparison.Ordinal),
-                "Trim limit signal name must start with PTT-");
+            Assert.True(
+                signalName.StartsWith("PTT-", StringComparison.Ordinal),
+                "Trim limit signal name must start with PTT-"
+            );
 
             // Short path: BuyToCover Limit @ bid - exitBuffer*tickSize.
             // null instrument -> FindRule null guard fires -> no orders issued -> no exception.
             var ex = Record.Exception(() => _engine.Trim(null, 2, 100.0, 100.0));
             Assert.Null(ex);
         }
-
-
 
         // T-B12-04: PTT-prefix Gate 0.5 in DispatchCopy prevents cascade copy of PTT- signals.
         // Verifies the gate exists in the source by checking the DispatchCopy method still has
@@ -1450,7 +1602,8 @@ namespace PropTraderTools
             // DispatchCopy must still exist with 2 parameters (unchanged from B7).
             var method = typeof(CopyEngine).GetMethod(
                 "DispatchCopy",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(method);
             Assert.Equal(2, method.GetParameters().Length);
 
@@ -1458,12 +1611,18 @@ namespace PropTraderTools
             // Any order whose Name starts with "PTT-" must be filtered before copy dispatch.
             // Verify the sentinel string itself matches the contract.
             const string pttSentinel = "PTT-";
-            Assert.True("PTT-Copy".StartsWith(pttSentinel, StringComparison.Ordinal),
-                "PTT-Copy signal would be blocked by Gate 0.5");
-            Assert.True("PTT-TrimLimit".StartsWith(pttSentinel, StringComparison.Ordinal),
-                "PTT-TrimLimit signal would be blocked by Gate 0.5");
-            Assert.False("MySignal".StartsWith(pttSentinel, StringComparison.Ordinal),
-                "Non-PTT- signal must pass through Gate 0.5");
+            Assert.True(
+                "PTT-Copy".StartsWith(pttSentinel, StringComparison.Ordinal),
+                "PTT-Copy signal would be blocked by Gate 0.5"
+            );
+            Assert.True(
+                "PTT-TrimLimit".StartsWith(pttSentinel, StringComparison.Ordinal),
+                "PTT-TrimLimit signal would be blocked by Gate 0.5"
+            );
+            Assert.False(
+                "MySignal".StartsWith(pttSentinel, StringComparison.Ordinal),
+                "Non-PTT- signal must pass through Gate 0.5"
+            );
         }
 
         // T-B12-05: Flatten(Instrument, int=0, double, double) falls back to market overload.
@@ -1496,7 +1655,13 @@ namespace PropTraderTools
         public void TrimLimit_Long_PlacesBelowBid()
         {
             // Long: bid - 1 tick = 5000.00 - 0.25 = 4999.75
-            double px = CopyEngine.ComputeLimitPx(isLong: true, ask: 5000.25, bid: 5000.00, exitBuffer: 1, tickSize: 0.25);
+            double px = CopyEngine.ComputeLimitPx(
+                isLong: true,
+                ask: 5000.25,
+                bid: 5000.00,
+                exitBuffer: 1,
+                tickSize: 0.25
+            );
             Assert.Equal(4999.75, px, precision: 10);
         }
 
@@ -1505,7 +1670,13 @@ namespace PropTraderTools
         public void TrimLimit_Short_PlacesAboveAsk()
         {
             // Short: ask + 1 tick = 5000.25 + 0.25 = 5000.50
-            double px = CopyEngine.ComputeLimitPx(isLong: false, ask: 5000.25, bid: 5000.00, exitBuffer: 1, tickSize: 0.25);
+            double px = CopyEngine.ComputeLimitPx(
+                isLong: false,
+                ask: 5000.25,
+                bid: 5000.00,
+                exitBuffer: 1,
+                tickSize: 0.25
+            );
             Assert.Equal(5000.50, px, precision: 10);
         }
 
@@ -1514,7 +1685,13 @@ namespace PropTraderTools
         public void FlattenLimit_Long_PlacesBelowBid()
         {
             // Long: bid - 2 ticks = 5000.00 - 0.50 = 4999.50
-            double px = CopyEngine.ComputeLimitPx(isLong: true, ask: 5000.25, bid: 5000.00, exitBuffer: 2, tickSize: 0.25);
+            double px = CopyEngine.ComputeLimitPx(
+                isLong: true,
+                ask: 5000.25,
+                bid: 5000.00,
+                exitBuffer: 2,
+                tickSize: 0.25
+            );
             Assert.Equal(4999.50, px, precision: 10);
         }
 
@@ -1523,7 +1700,13 @@ namespace PropTraderTools
         public void FlattenLimit_Short_PlacesAboveAsk()
         {
             // Short: ask + 2 ticks = 5000.25 + 0.50 = 5000.75
-            double px = CopyEngine.ComputeLimitPx(isLong: false, ask: 5000.25, bid: 5000.00, exitBuffer: 2, tickSize: 0.25);
+            double px = CopyEngine.ComputeLimitPx(
+                isLong: false,
+                ask: 5000.25,
+                bid: 5000.00,
+                exitBuffer: 2,
+                tickSize: 0.25
+            );
             Assert.Equal(5000.75, px, precision: 10);
         }
 
@@ -1583,14 +1766,23 @@ namespace PropTraderTools
         {
             // Verify the format string tokens independently of the NT8 bar lifecycle.
             string expected = string.Format(
-                "ATR={0:F2} pts -> stopTicks={1} -> qty={2}", 6.0, 30, 5);
+                "ATR={0:F2} pts -> stopTicks={1} -> qty={2}",
+                6.0,
+                30,
+                5
+            );
             Assert.Contains("ATR=", expected);
             Assert.Contains("pts", expected);
             Assert.Contains("stopTicks=", expected);
             // Also verify CalcContracts is consistent with the expected qty.
-            int qty = AtrSizingEngine.CalcContracts(atrPoints: 6.0, maxRisk: 150.0, tickDollarValue: 5.0);
+            int qty = AtrSizingEngine.CalcContracts(
+                atrPoints: 6.0,
+                maxRisk: 150.0,
+                tickDollarValue: 5.0
+            );
             Assert.Equal(5, qty);
         }
+
         // =====================================================================
         // B12 T3: Risk/ATR input tests  (T-B12-T3-01 through T-B12-T3-03)
         // DW-B12-RISK-ATR-INPUTS-01 -- AtrSizingEngine fraction + CopyEngine pass-through.
@@ -1670,7 +1862,8 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "ArmTrailBe",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(mi);
             Assert.Equal(3, mi.GetParameters().Length);
         }
@@ -1683,12 +1876,18 @@ namespace PropTraderTools
             {
                 var mi = typeof(CopyEngine).GetMethod(
                     "ArmTrailBe",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    System.Reflection.BindingFlags.NonPublic
+                        | System.Reflection.BindingFlags.Instance
+                );
                 Assert.NotNull(mi);
-                try { mi.Invoke(_engine, new object[] { null, null, 2 }); }
+                try
+                {
+                    mi.Invoke(_engine, new object[] { null, null, 2 });
+                }
                 catch (System.Reflection.TargetInvocationException tie)
                 {
-                    if (tie.InnerException is NullReferenceException) return;
+                    if (tie.InnerException is NullReferenceException)
+                        return;
                     throw;
                 }
             });
@@ -1696,7 +1895,8 @@ namespace PropTraderTools
             // _trailBeSlots must remain empty (null instrument guard fires before slot write)
             var fi = typeof(CopyEngine).GetField(
                 "_trailBeSlots",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(fi);
             var dict2 = fi.GetValue(_engine);
             Assert.NotNull(dict2);
@@ -1741,12 +1941,16 @@ namespace PropTraderTools
             double newPnl = 75.0;
             long oldBits = BitConverter.DoubleToInt64Bits(oldPnl);
             long newBits = BitConverter.DoubleToInt64Bits(newPnl);
-            long field   = oldBits;
-            bool success = System.Threading.Interlocked.CompareExchange(ref field, newBits, oldBits) == oldBits;
-            Assert.True(success, "CAS must succeed when new bits differ from old (PnL improvement wins)");
+            long field = oldBits;
+            bool success =
+                System.Threading.Interlocked.CompareExchange(ref field, newBits, oldBits)
+                == oldBits;
+            Assert.True(
+                success,
+                "CAS must succeed when new bits differ from old (PnL improvement wins)"
+            );
             Assert.Equal(newBits, field);
         }
-
 
         // B15 T2 -- Tick-align pure-math tests (DW-B8-04 closure).
         // Formula: Math.Round(price / tickSize) * tickSize
@@ -1754,27 +1958,27 @@ namespace PropTraderTools
         [Fact]
         public void T_B15_01_TickAlign_MesPriceBelowTick_RoundsDown()
         {
-            double price    = 4502.12;
+            double price = 4502.12;
             double tickSize = 0.25;
-            double result   = Math.Round(price / tickSize) * tickSize;
+            double result = Math.Round(price / tickSize) * tickSize;
             Assert.Equal(4502.00, result, 5);
         }
 
         [Fact]
         public void T_B15_02_TickAlign_MesPriceAboveHalfTick_RoundsUp()
         {
-            double price    = 4502.14;
+            double price = 4502.14;
             double tickSize = 0.25;
-            double result   = Math.Round(price / tickSize) * tickSize;
+            double result = Math.Round(price / tickSize) * tickSize;
             Assert.Equal(4502.25, result, 5);
         }
 
         [Fact]
         public void T_B15_03_TickAlign_PriceExactTick_Unchanged()
         {
-            double price    = 4502.25;
+            double price = 4502.25;
             double tickSize = 0.25;
-            double result   = Math.Round(price / tickSize) * tickSize;
+            double result = Math.Round(price / tickSize) * tickSize;
             Assert.Equal(4502.25, result, 5);
         }
 
@@ -1783,18 +1987,18 @@ namespace PropTraderTools
         {
             // Math.Round default is MidpointRounding.ToEven (banker's rounding).
             // 4502.125 / 0.25 = 18008.5 -> rounds to 18008 (even) -> * 0.25 = 4502.00
-            double price    = 4502.125;
+            double price = 4502.125;
             double tickSize = 0.25;
-            double result   = Math.Round(price / tickSize) * tickSize;
+            double result = Math.Round(price / tickSize) * tickSize;
             Assert.Equal(4502.00, result, 5);
         }
 
         [Fact]
         public void T_B15_05_TickAlign_CrudePriceRoundTrip()
         {
-            double price    = 4502.37;
+            double price = 4502.37;
             double tickSize = 0.25;
-            double result   = Math.Round(price / tickSize) * tickSize;
+            double result = Math.Round(price / tickSize) * tickSize;
             Assert.Equal(4502.25, result, 5);
         }
 
@@ -1803,31 +2007,42 @@ namespace PropTraderTools
         {
             // guard (3) in GetPriceAtY catches rawPrice <= 0.0 before tick-align.
             // This test confirms tick-align formula itself is safe for zero input.
-            double price    = 0.0;
+            double price = 0.0;
             double tickSize = 0.25;
-            double result   = Math.Round(price / tickSize) * tickSize;
+            double result = Math.Round(price / tickSize) * tickSize;
             Assert.Equal(0.0, result, 5);
         }
-
-
 
         // B16 T2 -- reflection helpers for internal static methods --
 
         private static double CallLinearYToPrice(
-            double y, double panelH, double maxVal, double minVal, double cf)
+            double y,
+            double panelH,
+            double maxVal,
+            double minVal,
+            double cf
+        )
         {
-            return (double)typeof(TradeCopierPanel)
-                .GetMethod("LinearYToPrice",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                .Invoke(null, new object[] { y, panelH, maxVal, minVal, cf });
+            return (double)
+                typeof(TradeCopierPanel)
+                    .GetMethod(
+                        "LinearYToPrice",
+                        System.Reflection.BindingFlags.NonPublic
+                            | System.Reflection.BindingFlags.Static
+                    )
+                    .Invoke(null, new object[] { y, panelH, maxVal, minVal, cf });
         }
 
         private static double CallAlignToTick(double raw, double tickSize)
         {
-            return (double)typeof(TradeCopierPanel)
-                .GetMethod("AlignToTick",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                .Invoke(null, new object[] { raw, tickSize });
+            return (double)
+                typeof(TradeCopierPanel)
+                    .GetMethod(
+                        "AlignToTick",
+                        System.Reflection.BindingFlags.NonPublic
+                            | System.Reflection.BindingFlags.Static
+                    )
+                    .Invoke(null, new object[] { raw, tickSize });
         }
 
         private static bool IsAlreadyTighter(bool isLong, double stopPrice, double targetPrice)
@@ -1907,7 +2122,6 @@ namespace PropTraderTools
             Assert.False(result);
         }
 
-
         // =====================================================================
         // B17 T2: LinearYToPrice and AlignToTick pure-math coverage
         //         (T_B17_01 through T_B17_07)
@@ -1977,8 +2191,6 @@ namespace PropTraderTools
             Assert.Equal(5023.25, result, 5);
         }
 
-
-
         // =====================================================================
         // B19 T1: Gate 2 account name equality contract (DW-B19-COPIER-BUG-01)
         // =====================================================================
@@ -1991,8 +2203,10 @@ namespace PropTraderTools
         public void Gate2_UsesAccountName_SourceContractVerified()
         {
             // Get _rules field -- ConcurrentBag<CopyRule>
-            var fi = typeof(CopyEngine).GetField("_rules",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+            var fi = typeof(CopyEngine).GetField(
+                "_rules",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(fi);
 
             // CopyRule is the generic element type of the bag
@@ -2000,8 +2214,10 @@ namespace PropTraderTools
             Assert.NotNull(copyRuleType);
 
             // MasterAccount field must exist on CopyRule
-            var masterField = copyRuleType.GetField("MasterAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+            var masterField = copyRuleType.GetField(
+                "MasterAccount",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(masterField);
 
             // MasterAccount must be of type Account
@@ -2009,8 +2225,10 @@ namespace PropTraderTools
             Assert.Equal("Account", accountType.Name);
 
             // Account.Name must be a public instance string property
-            var nameProp = accountType.GetProperty("Name",
-                BindingFlags.Public | BindingFlags.Instance);
+            var nameProp = accountType.GetProperty(
+                "Name",
+                BindingFlags.Public | BindingFlags.Instance
+            );
             Assert.NotNull(nameProp);
             Assert.Equal(typeof(string), nameProp.PropertyType);
         }
@@ -2026,20 +2244,28 @@ namespace PropTraderTools
             _engine.StatusUpdate += _statusHandler;
 
             // AddRule with null master -- accepted input pattern (5+ existing tests use this)
-            var addEx = Record.Exception(() => _engine.AddRule("B19NULL", (Account)null, new Account[0]));
+            var addEx = Record.Exception(() =>
+                _engine.AddRule("B19NULL", (Account)null, new Account[0])
+            );
             Assert.Null(addEx);
 
             // Get _rules bag via reflection
-            var fi = typeof(CopyEngine).GetField("_rules",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+            var fi = typeof(CopyEngine).GetField(
+                "_rules",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(fi);
             var bag = fi.GetValue(_engine);
             var copyRuleType = fi.FieldType.GetGenericArguments()[0];
-            var masterField = copyRuleType.GetField("MasterAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+            var masterField = copyRuleType.GetField(
+                "MasterAccount",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(masterField);
-            var instrField = copyRuleType.GetField("Instrument",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+            var instrField = copyRuleType.GetField(
+                "Instrument",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(instrField);
 
             // Walk the bag and verify null-conditional .Name evaluation does not throw
@@ -2047,12 +2273,18 @@ namespace PropTraderTools
             foreach (var boxed in (System.Collections.IEnumerable)bag)
             {
                 var instr = (string)instrField.GetValue(boxed);
-                if (instr != "B19NULL") continue;
+                if (instr != "B19NULL")
+                    continue;
                 var masterAccount = masterField.GetValue(boxed);
                 // Simulate rule.MasterAccount?.Name
-                string name = masterAccount == null ? null
-                    : (string)masterAccount.GetType().GetProperty("Name",
-                        BindingFlags.Public | BindingFlags.Instance).GetValue(masterAccount);
+                string name =
+                    masterAccount == null
+                        ? null
+                        : (string)
+                            masterAccount
+                                .GetType()
+                                .GetProperty("Name", BindingFlags.Public | BindingFlags.Instance)
+                                .GetValue(masterAccount);
                 Assert.Null(name); // null master -> null name -> Gate 2 no-match (correct)
                 foundNullMaster = true;
             }
@@ -2061,7 +2293,6 @@ namespace PropTraderTools
             // No StatusUpdate must have fired from copy dispatch path
             Assert.False(statusFired);
         }
-
 
         // ===================================================================
         // B20-LANE-A T1: PopulateOrderMap dedup guard uses Name equality
@@ -2079,26 +2310,29 @@ namespace PropTraderTools
             // PopulateOrderMap is private -- invoke via reflection
             var mi = typeof(CopyEngine).GetMethod(
                 "PopulateOrderMap",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
             mi.Invoke(_engine, new object[] { signalName, a1 });
             mi.Invoke(_engine, new object[] { signalName, a2 });
             // Read _orderMap bag for signalName
             var mapField = typeof(CopyEngine).GetField(
                 "_orderMap",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mapField);
-            var map = mapField.GetValue(_engine)
+            var map =
+                mapField.GetValue(_engine)
                 as System.Collections.Concurrent.ConcurrentDictionary<
                     string,
-                    System.Collections.Concurrent.ConcurrentBag<FollowerBinding>>;
+                    System.Collections.Concurrent.ConcurrentBag<FollowerBinding>
+                >;
             Assert.NotNull(map);
             System.Collections.Concurrent.ConcurrentBag<FollowerBinding> bag;
             Assert.True(map.TryGetValue(signalName, out bag), "Signal key not found in _orderMap");
             // With name equality, calling twice with same-name accounts → exactly 1 entry
             Assert.Equal(1, bag.Count);
         }
-
 
         // ===================================================================
         // B20-LANE-A T2: SetEnabled fires CopyEnabledChanged event
@@ -2124,8 +2358,6 @@ namespace PropTraderTools
             }
         }
 
-
-
         // ===================================================================
         // B21-LANE-B T1: Complementary dedup guard contract verification
         // ===================================================================
@@ -2142,18 +2374,22 @@ namespace PropTraderTools
             var a2 = new Account { Name = "Sim101-B21" };
             var mi = typeof(CopyEngine).GetMethod(
                 "PopulateOrderMap",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
             mi.Invoke(_engine, new object[] { signalName, a1 });
             mi.Invoke(_engine, new object[] { signalName, a2 });
             var mapField = typeof(CopyEngine).GetField(
                 "_orderMap",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mapField);
-            var map = mapField.GetValue(_engine)
+            var map =
+                mapField.GetValue(_engine)
                 as System.Collections.Concurrent.ConcurrentDictionary<
                     string,
-                    System.Collections.Concurrent.ConcurrentBag<FollowerBinding>>;
+                    System.Collections.Concurrent.ConcurrentBag<FollowerBinding>
+                >;
             Assert.NotNull(map);
             System.Collections.Concurrent.ConcurrentBag<FollowerBinding> bag;
             Assert.True(map.TryGetValue(signalName, out bag), "Signal key not found in _orderMap");
@@ -2170,15 +2406,17 @@ namespace PropTraderTools
             // Read the actual default field values via reflection.
             // NOTE: the class-level GetField() helper (line 18-19) is hard-bound to
             // typeof(CopyEngine) -- cannot reuse. Use typeof(AtrSizingEngine) directly.
-            double fraction = (double)typeof(AtrSizingEngine)
-                .GetField("_atrFraction",    BindingFlags.NonPublic | BindingFlags.Instance)
-                .GetValue(engine);
-            double maxRisk = (double)typeof(AtrSizingEngine)
-                .GetField("_maxRiskDollars", BindingFlags.NonPublic | BindingFlags.Instance)
-                .GetValue(engine);
+            double fraction = (double)
+                typeof(AtrSizingEngine)
+                    .GetField("_atrFraction", BindingFlags.NonPublic | BindingFlags.Instance)
+                    .GetValue(engine);
+            double maxRisk = (double)
+                typeof(AtrSizingEngine)
+                    .GetField("_maxRiskDollars", BindingFlags.NonPublic | BindingFlags.Instance)
+                    .GetValue(engine);
 
             // Act: call the pure static method with the engine's actual defaults.
-            const double atrPoints  = 10.0;
+            const double atrPoints = 10.0;
             const double tickDollar = 5.0;
             int lhs = AtrSizingEngine.CalcContracts(atrPoints * fraction, maxRisk, tickDollar);
 
@@ -2203,11 +2441,12 @@ namespace PropTraderTools
                 // CopySignal is private; skip reflection call. Assert directly -- no throw from this block.
                 // This satisfies the ticket requirement: Assert.False(threw) verifies no unhandled exception.
             }
-            catch { threw = true; }
+            catch
+            {
+                threw = true;
+            }
             Assert.False(threw);
         }
-
-
 
         // =====================================================================
         // B23 T1 -- Price-based BE trigger tests (DW-B22-BE-TRIGGER-01)
@@ -2223,19 +2462,22 @@ namespace PropTraderTools
             // Target = 5000.00 + 2 * 0.25 = 5000.50.
             // Last.Price = 5000.50 (at target exactly).
             // UPnL = -1.25 (negative -- commission already deducted, old trigger would NOT fire).
-            double avgPrice    = 5000.00;
-            int    bufferTicks = 2;
-            double tickSize    = 0.25;
-            bool   isLong      = true;
-            double last        = 5000.50;   // at target
-            double upnl        = -1.25;     // negative -- old trigger returns here; new one must not
+            double avgPrice = 5000.00;
+            int bufferTicks = 2;
+            double tickSize = 0.25;
+            bool isLong = true;
+            double last = 5000.50; // at target
+            double upnl = -1.25; // negative -- old trigger returns here; new one must not
 
-            double target   = avgPrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
-            bool triggered  = isLong ? (last >= target) : (last <= target);
+            double target = avgPrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
+            bool triggered = isLong ? (last >= target) : (last <= target);
 
             // Assert: new price trigger fires (true) even though UPnL is negative.
             // This is the exact logic from OnPendingBeAccountUpdate after the B23 fix.
-            Assert.True(triggered, $"Expected triggered=true: last={last} >= target={target}, upnl={upnl} (negative UPnL must not block)");
+            Assert.True(
+                triggered,
+                $"Expected triggered=true: last={last} >= target={target}, upnl={upnl} (negative UPnL must not block)"
+            );
         }
 
         [Fact]
@@ -2243,20 +2485,23 @@ namespace PropTraderTools
         {
             // Arrange: same setup but Last.Price = 5000.25 (1 tick below target of 5000.50).
             // UPnL = +1.25 (positive -- old trigger WOULD fire here; new one must NOT).
-            double avgPrice    = 5000.00;
-            int    bufferTicks = 2;
-            double tickSize    = 0.25;
-            bool   isLong      = true;
-            double last        = 5000.25;   // 1 tick short of target
-            double upnl        = 1.25;      // positive -- old trigger fires here; new must not
+            double avgPrice = 5000.00;
+            int bufferTicks = 2;
+            double tickSize = 0.25;
+            bool isLong = true;
+            double last = 5000.25; // 1 tick short of target
+            double upnl = 1.25; // positive -- old trigger fires here; new must not
 
-            double target   = avgPrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
-            bool triggered  = isLong ? (last >= target) : (last <= target);
+            double target = avgPrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
+            bool triggered = isLong ? (last >= target) : (last <= target);
 
             // Assert: new price trigger does NOT fire when price is 1 tick short.
             // The old dollar-PnL trigger (e.Value >= 0) would fire here because upnl=+1.25 >= 0.
             // The new price trigger correctly does not fire (last < target).
-            Assert.False(triggered, $"Expected triggered=false: last={last} < target={target}, upnl={upnl} (old trigger would fire at positive UPnL)");
+            Assert.False(
+                triggered,
+                $"Expected triggered=false: last={last} < target={target}, upnl={upnl} (old trigger would fire at positive UPnL)"
+            );
         }
 
         // B23 T1 (DW-B22-ADDRULE-ACCUMULATE-01): second AddRule for same (instrument, leader) replaces, not appends.
@@ -2274,33 +2519,41 @@ namespace PropTraderTools
                 (Account)null,
                 new Account[0],
                 new int[] { 11 },
-                new Dictionary<string, FollowerAtmMode>());
+                new Dictionary<string, FollowerAtmMode>()
+            );
             _engine.AddRule(
                 "MES SEP26",
                 (Account)null,
                 new Account[0],
                 new int[] { 99 },
-                new Dictionary<string, FollowerAtmMode>());
+                new Dictionary<string, FollowerAtmMode>()
+            );
 
             // Assert: only 1 rule remains for "MES SEP26" (not 2).
-            var fi = typeof(CopyEngine)
-                .GetField("_rules", BindingFlags.NonPublic | BindingFlags.Instance);
+            var fi = typeof(CopyEngine).GetField(
+                "_rules",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var bag = (ConcurrentBag<CopyRule>)fi.GetValue(_engine);
             int count = 0;
             foreach (var _ in bag)
-                if (_.Instrument == "MES SEP26") count++;
+                if (_.Instrument == "MES SEP26")
+                    count++;
             Assert.Equal(1, count);
 
             // Assert: the surviving rule carries the second multiplier (99), not the first (11).
             // This confirms replace-not-append: the most recent Apply Rule wins.
             CopyRule? surviving = null;
             foreach (var r in bag)
-                if (r.Instrument == "MES SEP26") { surviving = r; break; }
+                if (r.Instrument == "MES SEP26")
+                {
+                    surviving = r;
+                    break;
+                }
             Assert.True(surviving.HasValue, "Rule 'MES SEP26' not found after two AddRule calls");
             Assert.NotNull(surviving.Value.FollowerMultipliers);
             Assert.Equal(99, surviving.Value.FollowerMultipliers[0]);
         }
-
 
         // B24 T2 -- DW-B23-BE-ALLACCOUNTS-01: verify new BreakEven(Account,Instrument,int) overload.
         [Fact]
@@ -2325,7 +2578,9 @@ namespace PropTraderTools
             if (stub == null)
             {
                 // If no accounts available in test harness, skip gracefully (no throw)
-                var skipEx = Record.Exception(() => _engine.BreakEven((Account)null, (Instrument)null, 0));
+                var skipEx = Record.Exception(() =>
+                    _engine.BreakEven((Account)null, (Instrument)null, 0)
+                );
                 Assert.Null(skipEx);
                 return;
             }
@@ -2334,7 +2589,6 @@ namespace PropTraderTools
             // Assert: no exception
             Assert.Null(ex);
         }
-
 
         // B25 T1 -- DW-B25-01: gate 4 StopLimit fix + IsStopLeg STP hardening
         [Fact]
@@ -2367,14 +2621,14 @@ namespace PropTraderTools
             // DW-B25-01: ATM bracket stops have Name="12s Buy STP", FromEntrySignal=null.
             // Before Edit 3, IsStopLeg returned false for this pattern. After Edit 3, must return true.
             // Access via reflection since IsStopLeg is private.
-            var method = typeof(CopyEngine).GetMethod("IsStopLeg",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var method = typeof(CopyEngine).GetMethod(
+                "IsStopLeg",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(method); // method must exist
             // If method cannot be called due to NT8 harness constraints, assert NotNull is sufficient
             // to confirm the method signature exists and the STP arm is compiled in.
         }
-
-
 
         // =====================================================================
         // B26-AB T1 -- DW-B26-AB-01: Trail-BE 3-arg BreakEven + PendingBeFired signature
@@ -2395,14 +2649,21 @@ namespace PropTraderTools
                 {
                     typeof(NinjaTrader.Cbi.Account),
                     typeof(NinjaTrader.NinjaScript.Instruments.Instrument),
-                    typeof(int)
+                    typeof(int),
                 },
-                null);
+                null
+            );
             Assert.NotNull(mi);
             Assert.Equal(3, mi.GetParameters().Length);
 
             // Null instrument -> FindRule guard -> returns cleanly (no exception, no copy attempt).
-            var ex = Record.Exception(() => _engine.BreakEven((NinjaTrader.Cbi.Account)null, (NinjaTrader.NinjaScript.Instruments.Instrument)null, 2));
+            var ex = Record.Exception(() =>
+                _engine.BreakEven(
+                    (NinjaTrader.Cbi.Account)null,
+                    (NinjaTrader.NinjaScript.Instruments.Instrument)null,
+                    2
+                )
+            );
             Assert.Null(ex);
         }
 
@@ -2412,32 +2673,34 @@ namespace PropTraderTools
         public void T_B26_02_PendingBeFired_CarriesAccountName()
         {
             // Arrange: subscribe with a 2-parameter lambda -- compile-time proof of Action<string,string>.
-            string capturedInstrName   = null;
+            string capturedInstrName = null;
             string capturedAccountName = null;
             Action<string, string> handler = (instrName, accountName) =>
             {
-                capturedInstrName   = instrName;
+                capturedInstrName = instrName;
                 capturedAccountName = accountName;
             };
 
             // Wire via reflection (event is internal) to confirm the delegate type matches.
             var evtField = typeof(CopyEngine).GetField(
                 "PendingBeFired",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(evtField);
 
             // The field type must be assignable from Action<string, string>.
             var fieldType = evtField.FieldType;
             Assert.True(
-                fieldType == typeof(Action<string, string>) || fieldType.IsAssignableFrom(typeof(Action<string, string>)),
-                "PendingBeFired field type must be Action<string,string>");
+                fieldType == typeof(Action<string, string>)
+                    || fieldType.IsAssignableFrom(typeof(Action<string, string>)),
+                "PendingBeFired field type must be Action<string,string>"
+            );
 
             // If handler is unused in the lambda body the compiler keeps it -- suppress warning.
-            Assert.Null(capturedInstrName);    // not fired yet -- confirming initial state
-            Assert.Null(capturedAccountName);  // not fired yet -- confirming initial state
+            Assert.Null(capturedInstrName); // not fired yet -- confirming initial state
+            Assert.Null(capturedAccountName); // not fired yet -- confirming initial state
             _ = handler; // suppress unused-variable hint
         }
-
 
         // T-B27-01 (DW-B27-01): PendingBeSlot nested struct must exist on CopyEngine.
         // Verifies the per-account slot architecture is structurally present.
@@ -2448,16 +2711,24 @@ namespace PropTraderTools
             // Verify _pendingBeSlots field exists.
             var fi = typeof(CopyEngine).GetField(
                 "_pendingBeSlots",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(fi);
             // Verify PendingBeSlot nested type exists with correct fields.
             var slotType = typeof(CopyEngine).GetNestedType(
                 "PendingBeSlot",
-                BindingFlags.NonPublic);
+                BindingFlags.NonPublic
+            );
             Assert.NotNull(slotType);
-            Assert.NotNull(slotType.GetField("Account",     BindingFlags.NonPublic | BindingFlags.Instance));
-            Assert.NotNull(slotType.GetField("Instrument",  BindingFlags.NonPublic | BindingFlags.Instance));
-            Assert.NotNull(slotType.GetField("BufferTicks", BindingFlags.NonPublic | BindingFlags.Instance));
+            Assert.NotNull(
+                slotType.GetField("Account", BindingFlags.NonPublic | BindingFlags.Instance)
+            );
+            Assert.NotNull(
+                slotType.GetField("Instrument", BindingFlags.NonPublic | BindingFlags.Instance)
+            );
+            Assert.NotNull(
+                slotType.GetField("BufferTicks", BindingFlags.NonPublic | BindingFlags.Instance)
+            );
             // Per-account isolation: ConcurrentDictionary keys are independent by design.
             // Two distinct keys never collide -- structural invariant proven by type system.
             var dict = fi.GetValue(_engine) as System.Collections.IDictionary;
@@ -2472,39 +2743,48 @@ namespace PropTraderTools
             // _pendingBeSlots
             var fi1 = typeof(CopyEngine).GetField(
                 "_pendingBeSlots",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(fi1);
             // _trailBeSlots
             var fi2 = typeof(CopyEngine).GetField(
                 "_trailBeSlots",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(fi2);
             // _trailBeLastPnlBits
             var fi3 = typeof(CopyEngine).GetField(
                 "_trailBeLastPnlBits",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(fi3);
             // TrailBeSlot nested type must also exist.
-            var slotType = typeof(CopyEngine).GetNestedType(
-                "TrailBeSlot",
-                BindingFlags.NonPublic);
+            var slotType = typeof(CopyEngine).GetNestedType("TrailBeSlot", BindingFlags.NonPublic);
             Assert.NotNull(slotType);
-            Assert.NotNull(slotType.GetField("Account",     BindingFlags.NonPublic | BindingFlags.Instance));
-            Assert.NotNull(slotType.GetField("Instrument",  BindingFlags.NonPublic | BindingFlags.Instance));
-            Assert.NotNull(slotType.GetField("BufferTicks", BindingFlags.NonPublic | BindingFlags.Instance));
+            Assert.NotNull(
+                slotType.GetField("Account", BindingFlags.NonPublic | BindingFlags.Instance)
+            );
+            Assert.NotNull(
+                slotType.GetField("Instrument", BindingFlags.NonPublic | BindingFlags.Instance)
+            );
+            Assert.NotNull(
+                slotType.GetField("BufferTicks", BindingFlags.NonPublic | BindingFlags.Instance)
+            );
         }
-
 
         [Fact]
         public void T_B28_01_Trim_LeaderOverload_Exists()
         {
             var methods = typeof(CopyEngine).GetMethods(
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var overload = methods.FirstOrDefault(m =>
-                m.Name == "Trim" &&
-                m.GetParameters().Length == 2 &&
-                m.GetParameters()[0].ParameterType == typeof(NinjaTrader.Cbi.Account) &&
-                m.GetParameters()[1].ParameterType == typeof(NinjaTrader.NinjaScript.Instruments.Instrument));
+                m.Name == "Trim"
+                && m.GetParameters().Length == 2
+                && m.GetParameters()[0].ParameterType == typeof(NinjaTrader.Cbi.Account)
+                && m.GetParameters()[1].ParameterType
+                    == typeof(NinjaTrader.NinjaScript.Instruments.Instrument)
+            );
             Assert.NotNull(overload);
         }
 
@@ -2512,12 +2792,15 @@ namespace PropTraderTools
         public void T_B28_02_Flatten_LeaderOverload_Exists()
         {
             var methods = typeof(CopyEngine).GetMethods(
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var overload = methods.FirstOrDefault(m =>
-                m.Name == "Flatten" &&
-                m.GetParameters().Length == 2 &&
-                m.GetParameters()[0].ParameterType == typeof(NinjaTrader.Cbi.Account) &&
-                m.GetParameters()[1].ParameterType == typeof(NinjaTrader.NinjaScript.Instruments.Instrument));
+                m.Name == "Flatten"
+                && m.GetParameters().Length == 2
+                && m.GetParameters()[0].ParameterType == typeof(NinjaTrader.Cbi.Account)
+                && m.GetParameters()[1].ParameterType
+                    == typeof(NinjaTrader.NinjaScript.Instruments.Instrument)
+            );
             Assert.NotNull(overload);
         }
 
@@ -2525,15 +2808,17 @@ namespace PropTraderTools
         public void T_B28_03_CancelPendingEntries_LeaderOverload_Exists()
         {
             var methods = typeof(CopyEngine).GetMethods(
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var overload = methods.FirstOrDefault(m =>
-                m.Name == "CancelPendingEntries" &&
-                m.GetParameters().Length == 2 &&
-                m.GetParameters()[0].ParameterType == typeof(NinjaTrader.Cbi.Account) &&
-                m.GetParameters()[1].ParameterType == typeof(NinjaTrader.NinjaScript.Instruments.Instrument));
+                m.Name == "CancelPendingEntries"
+                && m.GetParameters().Length == 2
+                && m.GetParameters()[0].ParameterType == typeof(NinjaTrader.Cbi.Account)
+                && m.GetParameters()[1].ParameterType
+                    == typeof(NinjaTrader.NinjaScript.Instruments.Instrument)
+            );
             Assert.NotNull(overload);
         }
-
 
         // =====================================================================
         // B30-LaneB: TryResolveLeaderAccount structural contract (DW-B30-03)
@@ -2548,7 +2833,8 @@ namespace PropTraderTools
             // TryResolveLeaderAccount must be private (panel-internal late-resolve helper).
             var mi = typeof(TradeCopierPanel).GetMethod(
                 "TryResolveLeaderAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             // Return type must be Account (JS-002: returns null on miss, not throw).
@@ -2558,7 +2844,6 @@ namespace PropTraderTools
             Assert.Equal(0, mi.GetParameters().Length);
         }
 
-
         // T-B30-C-01 (DW-B30-01): TryCreateStopWithRetry helper exists with correct 7-param signature.
         // Proves the retry-safety helper is compiled and callable via reflection.
         // NT8 Account/CreateOrder are not injectable -- reflection is the correct test approach.
@@ -2567,18 +2852,22 @@ namespace PropTraderTools
         {
             var helperMethod = typeof(CopyEngine).GetMethod(
                 "TryCreateStopWithRetry",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(helperMethod);
             var parameters = helperMethod.GetParameters();
             Assert.Equal(7, parameters.Length);
             Assert.Equal(typeof(bool), helperMethod.ReturnType);
-            Assert.Equal(typeof(NinjaTrader.Cbi.Account),                             parameters[0].ParameterType);
-            Assert.Equal(typeof(NinjaTrader.NinjaScript.Instruments.Instrument),      parameters[1].ParameterType);
-            Assert.Equal(typeof(NinjaTrader.Cbi.Order),                               parameters[2].ParameterType);
-            Assert.Equal(typeof(NinjaTrader.Cbi.OrderAction),                         parameters[3].ParameterType);
-            Assert.Equal(typeof(int),                                                  parameters[4].ParameterType);
-            Assert.Equal(typeof(double),                                               parameters[5].ParameterType);
-            Assert.Equal(typeof(string),                                               parameters[6].ParameterType);
+            Assert.Equal(typeof(NinjaTrader.Cbi.Account), parameters[0].ParameterType);
+            Assert.Equal(
+                typeof(NinjaTrader.NinjaScript.Instruments.Instrument),
+                parameters[1].ParameterType
+            );
+            Assert.Equal(typeof(NinjaTrader.Cbi.Order), parameters[2].ParameterType);
+            Assert.Equal(typeof(NinjaTrader.Cbi.OrderAction), parameters[3].ParameterType);
+            Assert.Equal(typeof(int), parameters[4].ParameterType);
+            Assert.Equal(typeof(double), parameters[5].ParameterType);
+            Assert.Equal(typeof(string), parameters[6].ParameterType);
         }
 
         // T-B30-C-02 (DW-B30-06): CancelOneAccount accepts (Account,Instrument) and dereferences acc.
@@ -2589,20 +2878,25 @@ namespace PropTraderTools
         {
             var cancelMethod = typeof(CopyEngine).GetMethod(
                 "CancelOneAccount",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(cancelMethod);
             var parameters = cancelMethod.GetParameters();
             Assert.Equal(2, parameters.Length);
-            Assert.Equal(typeof(NinjaTrader.Cbi.Account),                             parameters[0].ParameterType);
-            Assert.Equal(typeof(NinjaTrader.NinjaScript.Instruments.Instrument),      parameters[1].ParameterType);
+            Assert.Equal(typeof(NinjaTrader.Cbi.Account), parameters[0].ParameterType);
+            Assert.Equal(
+                typeof(NinjaTrader.NinjaScript.Instruments.Instrument),
+                parameters[1].ParameterType
+            );
             var ex = Record.Exception(() =>
-                cancelMethod.Invoke(CopyEngine.Instance, new object[] { null, null }));
+                cancelMethod.Invoke(CopyEngine.Instance, new object[] { null, null })
+            );
             Assert.NotNull(ex);
             Assert.IsType<System.Reflection.TargetInvocationException>(ex);
             Assert.IsType<NullReferenceException>(
-                ((System.Reflection.TargetInvocationException)ex).InnerException);
+                ((System.Reflection.TargetInvocationException)ex).InnerException
+            );
         }
-
 
         // T-B30-D-01 (DW-B30-05): ArmPendingBe does NOT arm when position is flat (null or qty==0).
         // Verifies the IsFlat guard path: _pendingBeSlots must NOT contain the key after the call.
@@ -2615,19 +2909,24 @@ namespace PropTraderTools
             var engine = CopyEngine.Instance;
             var slotsField = typeof(CopyEngine).GetField(
                 "_pendingBeSlots",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(slotsField);
             // Act: call ArmPendingBe with a null instrument to hit the instr==null early-return
             //      OR call with a real (null-position) account -- reflection approach:
             var method = typeof(CopyEngine).GetMethod(
                 "ArmPendingBe",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(method);
             Assert.Equal(3, method.GetParameters().Length);
             // Assert method signature: (Instrument, Account, int)
-            Assert.Equal(typeof(NinjaTrader.NinjaScript.Instruments.Instrument), method.GetParameters()[0].ParameterType);
-            Assert.Equal(typeof(NinjaTrader.Cbi.Account),                        method.GetParameters()[1].ParameterType);
-            Assert.Equal(typeof(int),                                             method.GetParameters()[2].ParameterType);
+            Assert.Equal(
+                typeof(NinjaTrader.NinjaScript.Instruments.Instrument),
+                method.GetParameters()[0].ParameterType
+            );
+            Assert.Equal(typeof(NinjaTrader.Cbi.Account), method.GetParameters()[1].ParameterType);
+            Assert.Equal(typeof(int), method.GetParameters()[2].ParameterType);
         }
 
         // T-B30-D-02 (DW-B30-05): ArmPendingBe emits StatusUpdate on both null-leader and flat paths.
@@ -2641,7 +2940,8 @@ namespace PropTraderTools
             // Act: call with null masterAcc -- must emit "PTT-BE: leader null -- skipped"
             var method = typeof(CopyEngine).GetMethod(
                 "ArmPendingBe",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(method);
             method.Invoke(engine, new object[] { null, null, 0 });
             // Assert: no exception thrown, StatusUpdate NOT fired (instr==null exits before leader check)
@@ -2658,8 +2958,8 @@ namespace PropTraderTools
         {
             var method = typeof(CopyEngine).GetMethod(
                 "TryCreateStopWithRetry",
-                System.Reflection.BindingFlags.NonPublic |
-                System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.Null(method);
         }
 
@@ -2669,13 +2969,14 @@ namespace PropTraderTools
         {
             var method = typeof(CopyEngine).GetMethod(
                 "MoveStopToBreakEven",
-                System.Reflection.BindingFlags.NonPublic |
-                System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(method);
             var body = method.GetMethodBody();
             Assert.NotNull(body);
-            bool hasOrderActionLocal = body.LocalVariables
-                .Any(lv => lv.LocalType == typeof(NinjaTrader.Cbi.OrderAction));
+            bool hasOrderActionLocal = body.LocalVariables.Any(lv =>
+                lv.LocalType == typeof(NinjaTrader.Cbi.OrderAction)
+            );
             Assert.False(hasOrderActionLocal);
         }
 
@@ -2686,16 +2987,34 @@ namespace PropTraderTools
         public void IsDispatchTriggerState_ReturnsTrueForSubmittedAndAccepted()
         {
             // Act + Assert -- INV-1: Submitted triggers follower dispatch (market orders)
-            Assert.True(CopyEngine.IsDispatchTriggerState(OrderState.Submitted),    "Submitted must be true");
+            Assert.True(
+                CopyEngine.IsDispatchTriggerState(OrderState.Submitted),
+                "Submitted must be true"
+            );
 
             // INV-2: Accepted triggers follower dispatch (AddOn limit orders -- skip Submitted state)
-            Assert.True(CopyEngine.IsDispatchTriggerState(OrderState.Accepted),     "Accepted must be true");
+            Assert.True(
+                CopyEngine.IsDispatchTriggerState(OrderState.Accepted),
+                "Accepted must be true"
+            );
 
             // INV-3..6: all other states must NOT trigger dispatch
-            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Initialized), "Initialized must be false");
-            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Working),     "Working must be false");
-            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Filled),      "Filled must be false");
-            Assert.False(CopyEngine.IsDispatchTriggerState(OrderState.Cancelled),   "Cancelled must be false");
+            Assert.False(
+                CopyEngine.IsDispatchTriggerState(OrderState.Initialized),
+                "Initialized must be false"
+            );
+            Assert.False(
+                CopyEngine.IsDispatchTriggerState(OrderState.Working),
+                "Working must be false"
+            );
+            Assert.False(
+                CopyEngine.IsDispatchTriggerState(OrderState.Filled),
+                "Filled must be false"
+            );
+            Assert.False(
+                CopyEngine.IsDispatchTriggerState(OrderState.Cancelled),
+                "Cancelled must be false"
+            );
         }
 
         // -----------------------------------------------------------------
@@ -2716,7 +3035,8 @@ namespace PropTraderTools
             // Arrange: verify _rules is empty via reflection on _rules field
             var rulesField = typeof(CopyEngine).GetField(
                 "_rules",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(rulesField);
             var rulesValue = rulesField.GetValue(_engine);
             Assert.NotNull(rulesValue);
@@ -2728,7 +3048,8 @@ namespace PropTraderTools
             // Arrange: get FindRule via reflection
             var mi = typeof(CopyEngine).GetMethod(
                 "FindRule",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             // Verify parameter count and type
@@ -2743,8 +3064,10 @@ namespace PropTraderTools
             // Assert: null-return contract confirmed.
             // result is boxed CopyRule? -- use HasValue check (NOT Assert.Null which may mis-behave
             // on boxed nullable structs when the boxed value is non-null but the inner nullable is null).
-            Assert.False(((CopyRule?)result).HasValue,
-                "FindRule must return null when _rules is empty (JS-002 null contract)");
+            Assert.False(
+                ((CopyRule?)result).HasValue,
+                "FindRule must return null when _rules is empty (JS-002 null contract)"
+            );
         }
 
         // =====================================================================
@@ -2833,7 +3156,6 @@ namespace PropTraderTools
             Assert.True(CopyEngine.IsExitSignalName("RevShort"));
         }
 
-
         // ── B61 tests: TryDispatchLeaderFlat state guard + follower-only flatten ──
         // CopyRule is a private struct inside CopyEngine -- tests must use _engine.AddRule()
         // to obtain a CopyRule value, then invoke TryDispatchLeaderFlat via reflection.
@@ -2841,11 +3163,15 @@ namespace PropTraderTools
         // Helper: get a CopyRule value from the engine bag by instrument name.
         private static object GetRuleValue(CopyEngine engine, string instrument)
         {
-            var fi = typeof(CopyEngine).GetField("_rules", BindingFlags.NonPublic | BindingFlags.Instance);
+            var fi = typeof(CopyEngine).GetField(
+                "_rules",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var bag = fi.GetValue(engine) as System.Collections.IEnumerable;
             foreach (var r in bag)
             {
-                var instrProp = r.GetType().GetField("Instrument", BindingFlags.NonPublic | BindingFlags.Instance);
+                var instrProp = r.GetType()
+                    .GetField("Instrument", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (instrProp != null && (string)instrProp.GetValue(r) == instrument)
                     return r;
             }
@@ -2853,10 +3179,11 @@ namespace PropTraderTools
         }
 
         // Helper: get MethodInfo for TryDispatchLeaderFlat (private static, 8 params).
-        private static System.Reflection.MethodInfo GetTryDispatchLeaderFlat()
-            => typeof(CopyEngine).GetMethod(
+        private static System.Reflection.MethodInfo GetTryDispatchLeaderFlat() =>
+            typeof(CopyEngine).GetMethod(
                 "TryDispatchLeaderFlat",
-                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static
+            );
 
         [Fact]
         public void T_B61_01_LeaderHasOpenPosition_ReturnsFalse()
@@ -2872,17 +3199,21 @@ namespace PropTraderTools
             Assert.NotNull(mi);
 
             // Act
-            var result = (bool)mi.Invoke(null, new object[]
-            {
-                null,                                  // account
-                null,                                  // instrument
-                OrderState.Filled,                     // state
-                "BuyLimit",                            // orderName (non-native: guard applies)
-                ruleVal,                               // rule (boxed CopyRule)
-                (Func<Account, bool>)(_ => false),     // isFollower
-                (Func<Account, Instrument, bool>)((_, __) => true),   // hasOpenPosition: leader still open
-                (Action<Account, Instrument>)((_, __) => flattenCallCount++) // flattenOne
-            });
+            var result = (bool)
+                mi.Invoke(
+                    null,
+                    new object[]
+                    {
+                        null, // account
+                        null, // instrument
+                        OrderState.Filled, // state
+                        "BuyLimit", // orderName (non-native: guard applies)
+                        ruleVal, // rule (boxed CopyRule)
+                        (Func<Account, bool>)(_ => false), // isFollower
+                        (Func<Account, Instrument, bool>)((_, __) => true), // hasOpenPosition: leader still open
+                        (Action<Account, Instrument>)((_, __) => flattenCallCount++), // flattenOne
+                    }
+                );
 
             // Assert
             Assert.False(result);
@@ -2903,17 +3234,21 @@ namespace PropTraderTools
             Assert.NotNull(mi);
 
             // Act
-            var result = (bool)mi.Invoke(null, new object[]
-            {
-                null,                                  // account
-                null,                                  // instrument
-                OrderState.Working,                    // state (non-terminal)
-                "BuyLimit",                            // orderName
-                ruleVal,                               // rule
-                (Func<Account, bool>)(_ => false),     // isFollower
-                (Func<Account, Instrument, bool>)((_, __) => false),  // hasOpenPosition
-                (Action<Account, Instrument>)((_, __) => flattenCallCount++) // flattenOne
-            });
+            var result = (bool)
+                mi.Invoke(
+                    null,
+                    new object[]
+                    {
+                        null, // account
+                        null, // instrument
+                        OrderState.Working, // state (non-terminal)
+                        "BuyLimit", // orderName
+                        ruleVal, // rule
+                        (Func<Account, bool>)(_ => false), // isFollower
+                        (Func<Account, Instrument, bool>)((_, __) => false), // hasOpenPosition
+                        (Action<Account, Instrument>)((_, __) => flattenCallCount++), // flattenOne
+                    }
+                );
 
             // Assert
             Assert.False(result);
@@ -2934,17 +3269,21 @@ namespace PropTraderTools
             Assert.NotNull(mi);
 
             // Act
-            var result = (bool)mi.Invoke(null, new object[]
-            {
-                null,                                  // account
-                null,                                  // instrument
-                OrderState.Filled,                     // state
-                "BuyLimit",                            // orderName (non-native)
-                ruleVal,                               // rule
-                (Func<Account, bool>)(_ => true),      // isFollower: account IS a follower
-                (Func<Account, Instrument, bool>)((_, __) => false),  // hasOpenPosition
-                (Action<Account, Instrument>)((_, __) => flattenCallCount++) // flattenOne
-            });
+            var result = (bool)
+                mi.Invoke(
+                    null,
+                    new object[]
+                    {
+                        null, // account
+                        null, // instrument
+                        OrderState.Filled, // state
+                        "BuyLimit", // orderName (non-native)
+                        ruleVal, // rule
+                        (Func<Account, bool>)(_ => true), // isFollower: account IS a follower
+                        (Func<Account, Instrument, bool>)((_, __) => false), // hasOpenPosition
+                        (Action<Account, Instrument>)((_, __) => flattenCallCount++), // flattenOne
+                    }
+                );
 
             // Assert
             Assert.False(result);
@@ -2976,17 +3315,21 @@ namespace PropTraderTools
             Assert.NotNull(mi);
 
             // Act: 0 follower accounts -- loop runs 0 times, but method returns true (all guards passed)
-            var result = (bool)mi.Invoke(null, new object[]
-            {
-                null,                                  // account (leader)
-                null,                                  // instrument
-                OrderState.Filled,                     // state (terminal)
-                "BuyLimit",                            // orderName (non-native exit)
-                ruleVal,                               // rule (0 followers -- guards still exercised)
-                (Func<Account, bool>)(_ => false),     // isFollower: leader is NOT a follower
-                (Func<Account, Instrument, bool>)((_, __) => false),  // hasOpenPosition: leader is flat
-                (Action<Account, Instrument>)((_, __) => flattenCallCount++) // flattenOne
-            });
+            var result = (bool)
+                mi.Invoke(
+                    null,
+                    new object[]
+                    {
+                        null, // account (leader)
+                        null, // instrument
+                        OrderState.Filled, // state (terminal)
+                        "BuyLimit", // orderName (non-native exit)
+                        ruleVal, // rule (0 followers -- guards still exercised)
+                        (Func<Account, bool>)(_ => false), // isFollower: leader is NOT a follower
+                        (Func<Account, Instrument, bool>)((_, __) => false), // hasOpenPosition: leader is flat
+                        (Action<Account, Instrument>)((_, __) => flattenCallCount++), // flattenOne
+                    }
+                );
 
             // Assert: all 3 guards passed, method returned true
             Assert.True(result);
@@ -2994,13 +3337,21 @@ namespace PropTraderTools
             Assert.Equal(0, flattenCallCount);
 
             // Also verify Cancelled state passes the state guard (CYC branch 1b)
-            var resultCancelled = (bool)mi.Invoke(null, new object[]
-            {
-                null, null, OrderState.Cancelled, "BuyLimit", ruleVal,
-                (Func<Account, bool>)(_ => false),
-                (Func<Account, Instrument, bool>)((_, __) => false),
-                (Action<Account, Instrument>)((_, __) => { })
-            });
+            var resultCancelled = (bool)
+                mi.Invoke(
+                    null,
+                    new object[]
+                    {
+                        null,
+                        null,
+                        OrderState.Cancelled,
+                        "BuyLimit",
+                        ruleVal,
+                        (Func<Account, bool>)(_ => false),
+                        (Func<Account, Instrument, bool>)((_, __) => false),
+                        (Action<Account, Instrument>)((_, __) => { }),
+                    }
+                );
             Assert.True(resultCancelled);
         }
 
@@ -3075,19 +3426,23 @@ namespace PropTraderTools
             var mi = GetTryDispatchLeaderFlat();
             Assert.NotNull(mi);
 
-            var result = (bool)mi.Invoke(null, new object[]
-            {
-                null,                                           // account
-                null,                                           // instrument
-                OrderState.Filled,                              // state
-                "Close",                                        // orderName (native NT8 exit)
-                ruleVal,                                        // rule
-                (Func<Account, bool>)(_ => false),              // isFollower: NOT a follower
-                (Func<Account, Instrument, bool>)((_, __) => true),  // hasOpenPosition: TRUE (race condition)
-                (Action<Account, Instrument>)((_, __) => flattenCallCount++)
-            });
+            var result = (bool)
+                mi.Invoke(
+                    null,
+                    new object[]
+                    {
+                        null, // account
+                        null, // instrument
+                        OrderState.Filled, // state
+                        "Close", // orderName (native NT8 exit)
+                        ruleVal, // rule
+                        (Func<Account, bool>)(_ => false), // isFollower: NOT a follower
+                        (Func<Account, Instrument, bool>)((_, __) => true), // hasOpenPosition: TRUE (race condition)
+                        (Action<Account, Instrument>)((_, __) => flattenCallCount++),
+                    }
+                );
 
-            Assert.True(result);          // race bypassed -- method returned true
+            Assert.True(result); // race bypassed -- method returned true
             Assert.Equal(0, flattenCallCount); // 0 followers in rule, but guards all passed
         }
 
@@ -3105,22 +3460,25 @@ namespace PropTraderTools
             var mi = GetTryDispatchLeaderFlat();
             Assert.NotNull(mi);
 
-            var result = (bool)mi.Invoke(null, new object[]
-            {
-                null,                                           // account
-                null,                                           // instrument
-                OrderState.Filled,                              // state
-                "BuyLimit",                                     // orderName (NOT a native exit)
-                ruleVal,                                        // rule
-                (Func<Account, bool>)(_ => false),              // isFollower
-                (Func<Account, Instrument, bool>)((_, __) => true),  // hasOpenPosition: TRUE
-                (Action<Account, Instrument>)((_, __) => flattenCallCount++)
-            });
+            var result = (bool)
+                mi.Invoke(
+                    null,
+                    new object[]
+                    {
+                        null, // account
+                        null, // instrument
+                        OrderState.Filled, // state
+                        "BuyLimit", // orderName (NOT a native exit)
+                        ruleVal, // rule
+                        (Func<Account, bool>)(_ => false), // isFollower
+                        (Func<Account, Instrument, bool>)((_, __) => true), // hasOpenPosition: TRUE
+                        (Action<Account, Instrument>)((_, __) => flattenCallCount++),
+                    }
+                );
 
-            Assert.False(result);         // guard (3) blocked -- non-native exit with open position
+            Assert.False(result); // guard (3) blocked -- non-native exit with open position
             Assert.Equal(0, flattenCallCount);
         }
-
 
         // =====================================================================
         // B63 T1: IsWorkingBracket -- widen to Accepted state (T_B63_01-04)
@@ -3134,14 +3492,16 @@ namespace PropTraderTools
         {
             // NT8 Order is sealed -- use FormatterServices to bypass constructor.
             var order = (NinjaTrader.Cbi.Order)
-                System.Runtime.Serialization.FormatterServices
-                    .GetUninitializedObject(typeof(NinjaTrader.Cbi.Order));
+                System.Runtime.Serialization.FormatterServices.GetUninitializedObject(
+                    typeof(NinjaTrader.Cbi.Order)
+                );
 
             // Set OrderState: first try property (public getter, private setter pattern),
             // then fall back to backing field if setter is absent.
-            var stateProp = typeof(NinjaTrader.Cbi.Order)
-                .GetProperty("OrderState",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var stateProp = typeof(NinjaTrader.Cbi.Order).GetProperty(
+                "OrderState",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+            );
             if (stateProp != null && stateProp.CanWrite)
             {
                 stateProp.SetValue(order, state);
@@ -3152,20 +3512,24 @@ namespace PropTraderTools
                 var stateField =
                     typeof(NinjaTrader.Cbi.Order).GetField(
                         "orderState",
-                        BindingFlags.NonPublic | BindingFlags.Instance)
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    )
                     ?? typeof(NinjaTrader.Cbi.Order).GetField(
                         "_orderState",
-                        BindingFlags.NonPublic | BindingFlags.Instance)
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    )
                     ?? typeof(NinjaTrader.Cbi.Order).GetField(
                         "OrderState",
-                        BindingFlags.NonPublic | BindingFlags.Instance);
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    );
                 stateField?.SetValue(order, state);
             }
 
             // Set Name property.
-            var nameProp = typeof(NinjaTrader.Cbi.Order)
-                .GetProperty("Name",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var nameProp = typeof(NinjaTrader.Cbi.Order).GetProperty(
+                "Name",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+            );
             if (nameProp != null && nameProp.CanWrite)
             {
                 nameProp.SetValue(order, name);
@@ -3175,13 +3539,16 @@ namespace PropTraderTools
                 var nameField =
                     typeof(NinjaTrader.Cbi.Order).GetField(
                         "name",
-                        BindingFlags.NonPublic | BindingFlags.Instance)
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    )
                     ?? typeof(NinjaTrader.Cbi.Order).GetField(
                         "_name",
-                        BindingFlags.NonPublic | BindingFlags.Instance)
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    )
                     ?? typeof(NinjaTrader.Cbi.Order).GetField(
                         "Name",
-                        BindingFlags.NonPublic | BindingFlags.Instance);
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    );
                 nameField?.SetValue(order, name);
             }
 
@@ -3216,8 +3583,10 @@ namespace PropTraderTools
                 // Regression coverage is provided by IsWorkingBracket_MethodExists (line 361).
                 return;
             }
-            Assert.True(result,
-                "IsWorkingBracket: OrderState.Working + Name='Target1' must return true (regression)");
+            Assert.True(
+                result,
+                "IsWorkingBracket: OrderState.Working + Name='Target1' must return true (regression)"
+            );
         }
 
         [Fact]
@@ -3237,8 +3606,10 @@ namespace PropTraderTools
                 // STUB_REQUIRED: see T_B63_01 note.
                 return;
             }
-            Assert.True(result,
-                "IsWorkingBracket: OrderState.Accepted + Name='Target1' must return true (the B63 fix)");
+            Assert.True(
+                result,
+                "IsWorkingBracket: OrderState.Accepted + Name='Target1' must return true (the B63 fix)"
+            );
         }
 
         [Fact]
@@ -3258,8 +3629,10 @@ namespace PropTraderTools
                 // STUB_REQUIRED: see T_B63_01 note.
                 return;
             }
-            Assert.False(result,
-                "IsWorkingBracket: OrderState.Accepted + Name='Entry' must return false (not a bracket leg)");
+            Assert.False(
+                result,
+                "IsWorkingBracket: OrderState.Accepted + Name='Entry' must return false (not a bracket leg)"
+            );
         }
 
         [Fact]
@@ -3279,10 +3652,11 @@ namespace PropTraderTools
                 // STUB_REQUIRED: see T_B63_01 note.
                 return;
             }
-            Assert.False(result,
-                "IsWorkingBracket: OrderState.Submitted + Name='Target1' must return false (Submitted not in scope)");
+            Assert.False(
+                result,
+                "IsWorkingBracket: OrderState.Submitted + Name='Target1' must return false (Submitted not in scope)"
+            );
         }
-
 
         // =====================================================================
         // B66 Ticket-1: IsQxCancelCandidate -- widen CancelQxBrackets to ATM+BE brackets
@@ -3295,7 +3669,10 @@ namespace PropTraderTools
         {
             var order = MakeOrder(OrderState.Working, "PTT-QX-Stop01");
             bool result = CopyEngine.IsQxCancelCandidate(order);
-            Assert.True(result, "IsQxCancelCandidate: 'PTT-QX-Stop01' must return true (PTT-QX- prefix)");
+            Assert.True(
+                result,
+                "IsQxCancelCandidate: 'PTT-QX-Stop01' must return true (PTT-QX- prefix)"
+            );
         }
 
         [Fact]
@@ -3319,7 +3696,10 @@ namespace PropTraderTools
         {
             var order = MakeOrder(OrderState.Working, "Target1");
             bool result = CopyEngine.IsQxCancelCandidate(order);
-            Assert.True(result, "IsQxCancelCandidate: 'Target1' must return true (ATM bracket name)");
+            Assert.True(
+                result,
+                "IsQxCancelCandidate: 'Target1' must return true (ATM bracket name)"
+            );
         }
 
         [Fact]
@@ -3327,7 +3707,10 @@ namespace PropTraderTools
         {
             var order = MakeOrder(OrderState.Working, "Target2");
             bool result = CopyEngine.IsQxCancelCandidate(order);
-            Assert.True(result, "IsQxCancelCandidate: 'Target2' must return true (ATM bracket name)");
+            Assert.True(
+                result,
+                "IsQxCancelCandidate: 'Target2' must return true (ATM bracket name)"
+            );
         }
 
         [Fact]
@@ -3335,7 +3718,10 @@ namespace PropTraderTools
         {
             var order = MakeOrder(OrderState.Working, "PTT-BE-Stop");
             bool result = CopyEngine.IsQxCancelCandidate(order);
-            Assert.True(result, "IsQxCancelCandidate: 'PTT-BE-Stop' must return true (PTT-BE- prefix)");
+            Assert.True(
+                result,
+                "IsQxCancelCandidate: 'PTT-BE-Stop' must return true (PTT-BE- prefix)"
+            );
         }
 
         [Fact]
@@ -3343,9 +3729,11 @@ namespace PropTraderTools
         {
             var order = MakeOrder(OrderState.Working, "SomeOtherOrder");
             bool result = CopyEngine.IsQxCancelCandidate(order);
-            Assert.False(result, "IsQxCancelCandidate: 'SomeOtherOrder' must return false (no matching prefix or name)");
+            Assert.False(
+                result,
+                "IsQxCancelCandidate: 'SomeOtherOrder' must return false (no matching prefix or name)"
+            );
         }
-
 
         // =====================================================================
         // B67 T1: FlattenOneAccount -- CancelQxBrackets called before CreateOrder (DW-B67-01)
@@ -3363,14 +3751,18 @@ namespace PropTraderTools
             // Arrange: locate private FlattenOneAccount via reflection
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             // Verify parameter types: (Account, Instrument)
             var ps = mi.GetParameters();
             Assert.Equal(2, ps.Length);
-            Assert.Equal(typeof(NinjaTrader.Cbi.Account),                             ps[0].ParameterType);
-            Assert.Equal(typeof(NinjaTrader.NinjaScript.Instruments.Instrument),      ps[1].ParameterType);
+            Assert.Equal(typeof(NinjaTrader.Cbi.Account), ps[0].ParameterType);
+            Assert.Equal(
+                typeof(NinjaTrader.NinjaScript.Instruments.Instrument),
+                ps[1].ParameterType
+            );
 
             // IL body inspection: FlattenOneAccount must declare an OrderAction local variable.
             // The ternary `pos.MarketPosition == Long ? OrderAction.Sell : OrderAction.BuyToCover`
@@ -3378,15 +3770,19 @@ namespace PropTraderTools
             // Absence of OrderAction local = method was rewritten without the ternary = DW-B67-01 broken.
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
-            bool hasCancelQxCallSite = body.LocalVariables
-                .Any(lv => lv.LocalType == typeof(NinjaTrader.Cbi.OrderAction));
-            Assert.True(hasCancelQxCallSite,
-                "FlattenOneAccount must declare an OrderAction local (proves ternary after CancelQxBrackets is compiled)");
+            bool hasCancelQxCallSite = body.LocalVariables.Any(lv =>
+                lv.LocalType == typeof(NinjaTrader.Cbi.OrderAction)
+            );
+            Assert.True(
+                hasCancelQxCallSite,
+                "FlattenOneAccount must declare an OrderAction local (proves ternary after CancelQxBrackets is compiled)"
+            );
 
             // Verify CancelQxBrackets method exists on CopyEngine and is reachable
             var cancelMi = typeof(CopyEngine).GetMethod(
                 "CancelQxBrackets",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(cancelMi);
         }
 
@@ -3400,11 +3796,14 @@ namespace PropTraderTools
             // Arrange: locate private FlattenOneAccount via reflection
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             // Act: invoke with (null, null) -- FindPosition(null, null) calls null.Positions -> NRE
-            var ex = Record.Exception(() => mi.Invoke(CopyEngine.Instance, new object[] { null, null }));
+            var ex = Record.Exception(() =>
+                mi.Invoke(CopyEngine.Instance, new object[] { null, null })
+            );
 
             // Assert: method throws TargetInvocationException wrapping NullReferenceException
             // (not a NotImplementedException, not a compilation stub -- real code is in place)
@@ -3426,7 +3825,8 @@ namespace PropTraderTools
             // Arrange
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             // Assert: method is void (no return value -- CreateOrder side-effectful)
@@ -3435,10 +3835,13 @@ namespace PropTraderTools
             // Assert: IL body has an OrderAction local (Long ternary -> Sell branch is compiled)
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
-            bool hasOrderActionLocal = body.LocalVariables
-                .Any(lv => lv.LocalType == typeof(NinjaTrader.Cbi.OrderAction));
-            Assert.True(hasOrderActionLocal,
-                "FlattenOneAccount must have an OrderAction local variable (Sell/BuyToCover ternary)");
+            bool hasOrderActionLocal = body.LocalVariables.Any(lv =>
+                lv.LocalType == typeof(NinjaTrader.Cbi.OrderAction)
+            );
+            Assert.True(
+                hasOrderActionLocal,
+                "FlattenOneAccount must have an OrderAction local variable (Sell/BuyToCover ternary)"
+            );
 
             // Structural: OrderAction.Sell == 0 in NT8 enum (Sell is for Long position exit)
             Assert.Equal(0, (int)NinjaTrader.Cbi.OrderAction.Sell);
@@ -3453,7 +3856,8 @@ namespace PropTraderTools
             // Arrange
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             // Assert: method is void
@@ -3463,15 +3867,19 @@ namespace PropTraderTools
             // (proves the ternary has two distinct branches for Long vs Short)
             Assert.NotEqual(
                 (int)NinjaTrader.Cbi.OrderAction.Sell,
-                (int)NinjaTrader.Cbi.OrderAction.BuyToCover);
+                (int)NinjaTrader.Cbi.OrderAction.BuyToCover
+            );
 
             // Assert: IL body has an OrderAction local (both ternary branches compiled)
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
-            bool hasOrderActionLocal = body.LocalVariables
-                .Any(lv => lv.LocalType == typeof(NinjaTrader.Cbi.OrderAction));
-            Assert.True(hasOrderActionLocal,
-                "FlattenOneAccount must declare OrderAction local -- BuyToCover branch requires it");
+            bool hasOrderActionLocal = body.LocalVariables.Any(lv =>
+                lv.LocalType == typeof(NinjaTrader.Cbi.OrderAction)
+            );
+            Assert.True(
+                hasOrderActionLocal,
+                "FlattenOneAccount must declare OrderAction local -- BuyToCover branch requires it"
+            );
         }
 
         // ---- B67-LaneB: DW-B67-02 HandleEntryChange cancel+CreateOrder+Submit ---
@@ -3483,18 +3891,27 @@ namespace PropTraderTools
             // Since Account is NT8-sealed, we test the _dedupCache TryRemove behavior directly:
             // seed a key, call TryRemove inline (as HandleEntryChange now does), confirm key gone.
             // This mirrors the B66-LaneC inline boolean replay pattern.
-            var fi = typeof(CopyEngine).GetField("_dedupCache",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            var cache = fi.GetValue(_engine)
+            var fi = typeof(CopyEngine).GetField(
+                "_dedupCache",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            var cache =
+                fi.GetValue(_engine)
                 as System.Collections.Concurrent.ConcurrentDictionary<string, double>;
             const string orderId = "B67-B01-cancel-test";
             // Seed: simulate entry previously stored by DispatchCopy
             cache.TryAdd(orderId, 100.0);
-            Assert.True(cache.ContainsKey(orderId), "pre-condition: key must be present before TryRemove");
+            Assert.True(
+                cache.ContainsKey(orderId),
+                "pre-condition: key must be present before TryRemove"
+            );
             // Act: the new HandleEntryChange code calls TryRemove (not assignment)
             cache.TryRemove(orderId, out _);
             // Assert: key is gone -- confirms cancel+resubmit model (no stale key kept)
-            Assert.False(cache.ContainsKey(orderId), "TryRemove must evict key -- acc.Change path would have kept it");
+            Assert.False(
+                cache.ContainsKey(orderId),
+                "TryRemove must evict key -- acc.Change path would have kept it"
+            );
         }
 
         [Fact]
@@ -3506,9 +3923,9 @@ namespace PropTraderTools
             var foOrderType = OrderType.Limit;
             // Replicate lines 1087-1088
             double limitPx = foOrderType == OrderType.StopLimit ? 0.0 : newPrice; // (7a)
-            double stopPx  = foOrderType == OrderType.StopLimit ? newPrice : 0.0; // (7b)
+            double stopPx = foOrderType == OrderType.StopLimit ? newPrice : 0.0; // (7b)
             Assert.Equal(105.0, limitPx);
-            Assert.Equal(0.0,   stopPx);
+            Assert.Equal(0.0, stopPx);
         }
 
         [Fact]
@@ -3521,8 +3938,8 @@ namespace PropTraderTools
             var foOrderType = OrderType.StopLimit;
             // Replicate lines 1087-1088
             double limitPx = foOrderType == OrderType.StopLimit ? 0.0 : newPrice; // (7a)
-            double stopPx  = foOrderType == OrderType.StopLimit ? newPrice : 0.0; // (7b)
-            Assert.Equal(0.0,  limitPx);
+            double stopPx = foOrderType == OrderType.StopLimit ? newPrice : 0.0; // (7b)
+            Assert.Equal(0.0, limitPx);
             Assert.Equal(98.0, stopPx);
         }
 
@@ -3532,12 +3949,15 @@ namespace PropTraderTools
             // Verifies: price delta guard (6) prevents Cancel+CreateOrder when delta < tickSize.
             // tickSize = 0.25 (ES). followerPrice = 100.0, leaderNewPrice = 100.125, delta = 0.125.
             // Inline replay of the guard at HandleEntryChange line 1082.
-            const double tickSize     = 0.25;
+            const double tickSize = 0.25;
             const double currentPrice = 100.0;
-            const double newPrice     = 100.125;
+            const double newPrice = 100.125;
             // Replicate line 1082
             bool shouldSkip = tickSize > 0 && Math.Abs(newPrice - currentPrice) < tickSize; // (6)
-            Assert.True(shouldSkip, "delta 0.125 < tickSize 0.25 -- guard must fire (no Cancel, no CreateOrder)");
+            Assert.True(
+                shouldSkip,
+                "delta 0.125 < tickSize 0.25 -- guard must fire (no Cancel, no CreateOrder)"
+            );
         }
 
         [Fact]
@@ -3548,107 +3968,126 @@ namespace PropTraderTools
             // FindFollowerEntryOrder returns null when account has no matching PTT-Copy Working/Accepted order.
             Order fo = null; // simulates FindFollowerEntryOrder returning null
             bool shouldSkip = fo == null; // (5) -- the guard that prevents acc.Cancel/CreateOrder calls
-            Assert.True(shouldSkip, "null follower order must trigger skip -- no Cancel, no CreateOrder");
+            Assert.True(
+                shouldSkip,
+                "null follower order must trigger skip -- no Cancel, no CreateOrder"
+            );
         }
 
+        // =====================================================================
+        // B69-LaneA Tests: DW-B69-01 / DW-B69-02 / DW-B69-03
+        // =====================================================================
 
-    // =====================================================================
-    // B69-LaneA Tests: DW-B69-01 / DW-B69-02 / DW-B69-03
-    // =====================================================================
+        [Fact]
+        public void T_B69_01_CancelAllAccountOrders_cancels_PTT_Copy_orders()
+        {
+            // Verifies: CancelAllAccountOrders includes PTT-Copy Working limit orders in cancel list.
+            // State=Working, Name="PTT-Copy", Instrument.FullName matches -> stateOk=true, FullName match -> included.
+            var engine = new CopyEngine();
+            bool stateOk =
+                OrderState.Working == OrderState.Working
+                || OrderState.Working == OrderState.Initialized
+                || OrderState.Working == OrderState.Submitted
+                || OrderState.Working == OrderState.Accepted
+                || OrderState.Working == OrderState.ChangeSubmitted;
+            Assert.True(
+                stateOk,
+                "Working state must be in CancelAllAccountOrders cancel-eligible set"
+            );
+        }
 
-    [Fact]
-    public void T_B69_01_CancelAllAccountOrders_cancels_PTT_Copy_orders()
-    {
-        // Verifies: CancelAllAccountOrders includes PTT-Copy Working limit orders in cancel list.
-        // State=Working, Name="PTT-Copy", Instrument.FullName matches -> stateOk=true, FullName match -> included.
-        var engine = new CopyEngine();
-        bool stateOk = OrderState.Working == OrderState.Working
-                    || OrderState.Working == OrderState.Initialized
-                    || OrderState.Working == OrderState.Submitted
-                    || OrderState.Working == OrderState.Accepted
-                    || OrderState.Working == OrderState.ChangeSubmitted;
-        Assert.True(stateOk, "Working state must be in CancelAllAccountOrders cancel-eligible set");
-    }
+        [Fact]
+        public void T_B69_02_CancelAllAccountOrders_cancels_ChangeSubmitted_orders()
+        {
+            // Verifies: ChangeSubmitted is included in cancel-eligible states.
+            bool stateOk =
+                OrderState.ChangeSubmitted == OrderState.Working
+                || OrderState.ChangeSubmitted == OrderState.Initialized
+                || OrderState.ChangeSubmitted == OrderState.Submitted
+                || OrderState.ChangeSubmitted == OrderState.Accepted
+                || OrderState.ChangeSubmitted == OrderState.ChangeSubmitted;
+            Assert.True(
+                stateOk,
+                "ChangeSubmitted must be in CancelAllAccountOrders cancel-eligible set"
+            );
+        }
 
-    [Fact]
-    public void T_B69_02_CancelAllAccountOrders_cancels_ChangeSubmitted_orders()
-    {
-        // Verifies: ChangeSubmitted is included in cancel-eligible states.
-        bool stateOk = OrderState.ChangeSubmitted == OrderState.Working
-                    || OrderState.ChangeSubmitted == OrderState.Initialized
-                    || OrderState.ChangeSubmitted == OrderState.Submitted
-                    || OrderState.ChangeSubmitted == OrderState.Accepted
-                    || OrderState.ChangeSubmitted == OrderState.ChangeSubmitted;
-        Assert.True(stateOk, "ChangeSubmitted must be in CancelAllAccountOrders cancel-eligible set");
-    }
+        [Fact]
+        public void T_B69_03_CancelAllAccountOrders_skips_Filled_orders()
+        {
+            // Verifies: Filled state is NOT in the cancel-eligible set -- stateOk=false.
+            bool stateOk =
+                OrderState.Filled == OrderState.Working
+                || OrderState.Filled == OrderState.Initialized
+                || OrderState.Filled == OrderState.Submitted
+                || OrderState.Filled == OrderState.Accepted
+                || OrderState.Filled == OrderState.ChangeSubmitted;
+            Assert.False(
+                stateOk,
+                "Filled must NOT be in CancelAllAccountOrders cancel-eligible set"
+            );
+        }
 
-    [Fact]
-    public void T_B69_03_CancelAllAccountOrders_skips_Filled_orders()
-    {
-        // Verifies: Filled state is NOT in the cancel-eligible set -- stateOk=false.
-        bool stateOk = OrderState.Filled == OrderState.Working
-                    || OrderState.Filled == OrderState.Initialized
-                    || OrderState.Filled == OrderState.Submitted
-                    || OrderState.Filled == OrderState.Accepted
-                    || OrderState.Filled == OrderState.ChangeSubmitted;
-        Assert.False(stateOk, "Filled must NOT be in CancelAllAccountOrders cancel-eligible set");
-    }
+        [Fact]
+        public void T_B69_04_CancelAllAccountOrders_skips_different_instrument()
+        {
+            // Verifies: FullName comparison skips orders on a different instrument.
+            // MES FullName = "MES SEP26 CME"; MGC FullName = "MGC OCT26 CME"
+            const string mesFullName = "MES SEP26 CME";
+            const string mgcFullName = "MGC OCT26 CME";
+            bool instrumentMatch = mgcFullName == mesFullName;
+            Assert.False(
+                instrumentMatch,
+                "Different instrument FullName must not match -- order skipped"
+            );
+        }
 
-    [Fact]
-    public void T_B69_04_CancelAllAccountOrders_skips_different_instrument()
-    {
-        // Verifies: FullName comparison skips orders on a different instrument.
-        // MES FullName = "MES SEP26 CME"; MGC FullName = "MGC OCT26 CME"
-        const string mesFullName = "MES SEP26 CME";
-        const string mgcFullName = "MGC OCT26 CME";
-        bool instrumentMatch = mgcFullName == mesFullName;
-        Assert.False(instrumentMatch, "Different instrument FullName must not match -- order skipped");
-    }
+        [Fact]
+        public void T_B69_05_SubmitBeStop_finds_position_by_FullName()
+        {
+            // Verifies: FullName comparison returns true when names match but objects differ.
+            // NT8 can produce two distinct Instrument objects for the same contract.
+            const string fullName = "MES SEP26 CME";
+            // Two independent string instances simulating different Instrument object references
+            string nameA = string.Copy(fullName); // "leader" instrument FullName
+            string nameB = string.Copy(fullName); // "follower" Account.Positions instrument FullName
+            // Reference inequality (simulating two distinct Instrument objects)
+            bool referenceEqual = object.ReferenceEquals(nameA, nameB);
+            // FullName equality (the correct pattern)
+            bool fullNameEqual = nameA == nameB;
+            Assert.False(referenceEqual, "Distinct string instances must not be reference-equal");
+            Assert.True(
+                fullNameEqual,
+                "FullName comparison must find the position across distinct instrument objects"
+            );
+        }
 
-    [Fact]
-    public void T_B69_05_SubmitBeStop_finds_position_by_FullName()
-    {
-        // Verifies: FullName comparison returns true when names match but objects differ.
-        // NT8 can produce two distinct Instrument objects for the same contract.
-        const string fullName = "MES SEP26 CME";
-        // Two independent string instances simulating different Instrument object references
-        string nameA = string.Copy(fullName); // "leader" instrument FullName
-        string nameB = string.Copy(fullName); // "follower" Account.Positions instrument FullName
-        // Reference inequality (simulating two distinct Instrument objects)
-        bool referenceEqual = object.ReferenceEquals(nameA, nameB);
-        // FullName equality (the correct pattern)
-        bool fullNameEqual = nameA == nameB;
-        Assert.False(referenceEqual, "Distinct string instances must not be reference-equal");
-        Assert.True(fullNameEqual, "FullName comparison must find the position across distinct instrument objects");
-    }
+        [Fact]
+        public void T_B69_06_HandleEntryChange_preloads_new_orderId_into_dedupCache()
+        {
+            // Verifies: _dedupCache[order.OrderId.ToString()] = newPrice is applied after resubmit.
+            // Uses a ConcurrentDictionary as stand-in for the engine's _dedupCache field.
+            var cache = new System.Collections.Concurrent.ConcurrentDictionary<string, double>();
+            const string newOrderId = "order-b69-001";
+            const double newPrice = 105.0;
+            // Simulate the preload inserted by DW-B69-03
+            cache[newOrderId] = newPrice;
+            Assert.True(
+                cache.TryGetValue(newOrderId, out double stored),
+                "New orderId must be present in dedupCache after HandleEntryChange resubmit"
+            );
+            Assert.Equal(newPrice, stored);
+        }
 
-    [Fact]
-    public void T_B69_06_HandleEntryChange_preloads_new_orderId_into_dedupCache()
-    {
-        // Verifies: _dedupCache[order.OrderId.ToString()] = newPrice is applied after resubmit.
-        // Uses a ConcurrentDictionary as stand-in for the engine's _dedupCache field.
-        var cache = new System.Collections.Concurrent.ConcurrentDictionary<string, double>();
-        const string newOrderId = "order-b69-001";
-        const double newPrice   = 105.0;
-        // Simulate the preload inserted by DW-B69-03
-        cache[newOrderId] = newPrice;
-        Assert.True(cache.TryGetValue(newOrderId, out double stored),
-            "New orderId must be present in dedupCache after HandleEntryChange resubmit");
-        Assert.Equal(newPrice, stored);
-    }
-
-    [Fact]
-    public void T_B69_07_CancelAllAccountOrders_null_acc_noOp()
-    {
-        // Verifies: null acc guard returns immediately (null-guard branch (1)).
-        // No exception should be thrown when acc is null.
-        var engine = new CopyEngine();
-        var exception = Record.Exception(() =>
-            engine.CancelAllAccountOrders(null, null));
-        Assert.Null(exception);
-    }
-
-
+        [Fact]
+        public void T_B69_07_CancelAllAccountOrders_null_acc_noOp()
+        {
+            // Verifies: null acc guard returns immediately (null-guard branch (1)).
+            // No exception should be thrown when acc is null.
+            var engine = new CopyEngine();
+            var exception = Record.Exception(() => engine.CancelAllAccountOrders(null, null));
+            Assert.Null(exception);
+        }
     }
 
     // B75-LaneA: 60 xUnit tests covering TryDispatchLeaderFlat gates, IsAtmBracketName,
@@ -3665,10 +4104,11 @@ namespace PropTraderTools
         public void Dispose() { }
 
         // Helper: reflect private static TryDispatchLeaderFlat
-        private static System.Reflection.MethodInfo GetTryDispatchLeaderFlat()
-            => typeof(CopyEngine).GetMethod(
+        private static System.Reflection.MethodInfo GetTryDispatchLeaderFlat() =>
+            typeof(CopyEngine).GetMethod(
                 "TryDispatchLeaderFlat",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
 
         // Helper: invoke TryDispatchLeaderFlat with test doubles
         private static bool InvokeTryDispatchLeaderFlat(
@@ -3676,25 +4116,31 @@ namespace PropTraderTools
             string orderName,
             Func<Account, bool> isFollower,
             Func<Account, Instrument, bool> hasOpenPosition,
-            Account[] followers)
+            Account[] followers
+        )
         {
             var mi = GetTryDispatchLeaderFlat();
             Assert.NotNull(mi);
             var rule = CopyRule.Create(
                 instrument: "TEST",
                 master: null,
-                followers: followers ?? new Account[0]);
-            return (bool)mi.Invoke(null, new object[]
-            {
-                null,                                                    // account
-                null,                                                    // instrument
-                state,
-                orderName,
-                rule,
-                isFollower,
-                hasOpenPosition,
-                (Action<Account, Instrument>)((a, i) => { })            // flattenOne no-op
-            });
+                followers: followers ?? new Account[0]
+            );
+            return (bool)
+                mi.Invoke(
+                    null,
+                    new object[]
+                    {
+                        null, // account
+                        null, // instrument
+                        state,
+                        orderName,
+                        rule,
+                        isFollower,
+                        hasOpenPosition,
+                        (Action<Account, Instrument>)((a, i) => { }), // flattenOne no-op
+                    }
+                );
         }
 
         // =================================================================
@@ -3710,7 +4156,8 @@ namespace PropTraderTools
                 "PTT-QX-T2",
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => false,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.False(result);
         }
 
@@ -3723,7 +4170,8 @@ namespace PropTraderTools
                 "PTT-Flatten",
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => false,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.False(result);
         }
 
@@ -3736,7 +4184,8 @@ namespace PropTraderTools
                 "PTT-Copy",
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => false,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.False(result);
         }
 
@@ -3751,7 +4200,8 @@ namespace PropTraderTools
                 "Close",
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => false,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.True(result);
         }
 
@@ -3766,7 +4216,8 @@ namespace PropTraderTools
                 "Close",
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => true,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.True(result);
         }
 
@@ -3781,7 +4232,8 @@ namespace PropTraderTools
                 null,
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => false,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.True(result);
         }
 
@@ -3834,7 +4286,8 @@ namespace PropTraderTools
                 "Entry",
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => false,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.False(result);
         }
 
@@ -3847,7 +4300,8 @@ namespace PropTraderTools
                 "Entry",
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => true,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.False(result);
         }
 
@@ -3861,7 +4315,8 @@ namespace PropTraderTools
                 "Close",
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => false,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.True(result);
         }
 
@@ -3874,7 +4329,8 @@ namespace PropTraderTools
                 "Close",
                 isFollower: _ => false,
                 hasOpenPosition: (a, i) => true,
-                followers: new Account[0]);
+                followers: new Account[0]
+            );
             Assert.True(result);
         }
 
@@ -3942,25 +4398,33 @@ namespace PropTraderTools
             // order.OrderState = Filled (not Cancelled) -> guard (2) fires -> false.
         }
 
-        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument")]
+        [Fact(
+            Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument"
+        )]
         public void T_B66R_03_IsPttEntryOrderCancelTrigger_CancelledEntryNoPrice_ReturnsFalse()
         {
             // Cancelled + Name="Entry" + LimitPrice=0 -> LimitPrice>0 fails -> false.
         }
 
-        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument")]
+        [Fact(
+            Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument"
+        )]
         public void T_B66R_04_IsPttEntryOrderCancelTrigger_CancelledPttCopyWithPrice_ReturnsTrue()
         {
             // Cancelled + Name="PTT-Copy" + LimitPrice=5050.25 + non-null Instrument -> true.
         }
 
-        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument")]
+        [Fact(
+            Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument"
+        )]
         public void T_B66R_05_IsPttEntryOrderCancelTrigger_CancelledEntryWithPrice_ReturnsTrue()
         {
             // Cancelled + Name="Entry" + LimitPrice=5050.25 + non-null Instrument -> true.
         }
 
-        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument")]
+        [Fact(
+            Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with Name, LimitPrice, Instrument"
+        )]
         public void T_B66R_06_IsPttEntryOrderCancelTrigger_CancelledStop1WithPrice_ReturnsFalse()
         {
             // Cancelled + Name="Stop1" + LimitPrice>0 -- name guard (3) fires -> false.
@@ -4212,20 +4676,26 @@ namespace PropTraderTools
             Assert.False(CopyEngine.IsBeDisarmCandidate(null));
         }
 
-        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState, Name, Instrument")]
+        [Fact(
+            Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState, Name, Instrument"
+        )]
         public void T_CYC_02_IsBeDisarmCandidate_FilledPttBeStopWithInstrument_ReturnsTrue()
         {
             // order.OrderState=Filled, Name="PTT-BE-Stop", Instrument.FullName="MES SEP26" -> true.
         }
 
-        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState, Name, Instrument")]
+        [Fact(
+            Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState, Name, Instrument"
+        )]
         public void T_CYC_03_IsBeDisarmCandidate_FilledPttBeStop2WithInstrument_ReturnsTrue()
         {
             // order.OrderState=Filled, Name="PTT-BE-Stop2", Instrument.FullName="NQ SEP26" -> true.
             // StartsWith("PTT-BE-Stop") matches "PTT-BE-Stop2" suffix variants.
         }
 
-        [Fact(Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState, Name, Instrument")]
+        [Fact(
+            Skip = "NT8-runtime: requires live NinjaTrader.Cbi.Order with OrderState, Name, Instrument"
+        )]
         public void T_CYC_04_IsBeDisarmCandidate_CancelledOrder_ReturnsFalse()
         {
             // order.OrderState=Cancelled -- guard (2) fires -> false.
@@ -4270,17 +4740,23 @@ namespace PropTraderTools
     // ======================================================================
     public class B77QxRaceGuardTests
     {
-        private static System.Reflection.MethodInfo GetStaticMethod(string name)
-            => typeof(CopyEngine).GetMethod(
+        private static System.Reflection.MethodInfo GetStaticMethod(string name) =>
+            typeof(CopyEngine).GetMethod(
                 name,
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
 
-        private static System.Reflection.MethodInfo GetInstanceMethod(string name,
-            System.Type[] paramTypes)
-            => typeof(CopyEngine).GetMethod(
+        private static System.Reflection.MethodInfo GetInstanceMethod(
+            string name,
+            System.Type[] paramTypes
+        ) =>
+            typeof(CopyEngine).GetMethod(
                 name,
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                null, paramTypes, null);
+                null,
+                paramTypes,
+                null
+            );
 
         // T_B77_QX_01: Race-guard positive path.
         // Contract: BuildQxSnapshot only captures orders present at snapshot time.
@@ -4320,12 +4796,15 @@ namespace PropTraderTools
         public void T_B77_QX_02_RaceGuard_StaleOrderInSnapshot_IsCancelled()
         {
             // Arrange: locate the 3-param CancelQxBrackets overload.
-            var mi = GetInstanceMethod("CancelQxBrackets", new System.Type[]
-            {
-                typeof(NinjaTrader.Cbi.Account),
-                typeof(NinjaTrader.Cbi.Instrument),
-                typeof(System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>)
-            });
+            var mi = GetInstanceMethod(
+                "CancelQxBrackets",
+                new System.Type[]
+                {
+                    typeof(NinjaTrader.Cbi.Account),
+                    typeof(NinjaTrader.Cbi.Instrument),
+                    typeof(System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>),
+                }
+            );
             Assert.NotNull(mi);
 
             // Assert: 3-param overload exists and has exactly 3 parameters.
@@ -4334,7 +4813,8 @@ namespace PropTraderTools
             // Assert: parameter 3 type is HashSet<Order> (the snapshot parameter -- stale orders pass through).
             Assert.Equal(
                 typeof(System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>),
-                mi.GetParameters()[2].ParameterType);
+                mi.GetParameters()[2].ParameterType
+            );
         }
 
         // T_B77_QX_03: Non-PTT-QX orders are unaffected regardless of snapshot contents.
@@ -4422,12 +4902,15 @@ namespace PropTraderTools
         public void T_B77_QX_07_CancelQxBrackets_EmptySnapshot_NoExceptionZeroCancels()
         {
             // Arrange: null account + null instrument + empty (non-null) snapshot.
-            var mi = GetInstanceMethod("CancelQxBrackets", new System.Type[]
-            {
-                typeof(NinjaTrader.Cbi.Account),
-                typeof(NinjaTrader.Cbi.Instrument),
-                typeof(System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>)
-            });
+            var mi = GetInstanceMethod(
+                "CancelQxBrackets",
+                new System.Type[]
+                {
+                    typeof(NinjaTrader.Cbi.Account),
+                    typeof(NinjaTrader.Cbi.Instrument),
+                    typeof(System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>),
+                }
+            );
             Assert.NotNull(mi);
 
             var emptySnapshot = new System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>();
@@ -4453,17 +4936,21 @@ namespace PropTraderTools
             Assert.NotNull(mi);
 
             // Act: two calls with identical null inputs.
-            var result1 = mi.Invoke(null, new object[] { null, null })
+            var result1 =
+                mi.Invoke(null, new object[] { null, null })
                 as System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>;
-            var result2 = mi.Invoke(null, new object[] { null, null })
+            var result2 =
+                mi.Invoke(null, new object[] { null, null })
                 as System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>;
 
             // Assert: both non-null; same Count; SetEquals (both empty -> trivially equal).
             Assert.NotNull(result1);
             Assert.NotNull(result2);
             Assert.Equal(result1.Count, result2.Count);
-            Assert.True(result1.SetEquals(result2),
-                "BuildQxSnapshot must be deterministic: two calls with same state return equal sets.");
+            Assert.True(
+                result1.SetEquals(result2),
+                "BuildQxSnapshot must be deterministic: two calls with same state return equal sets."
+            );
         }
     }
 
@@ -4477,16 +4964,23 @@ namespace PropTraderTools
     public class B78QxFollowerStopTests
     {
         // Reflection helpers targeting PttQuickExit private statics.
-        private static System.Reflection.MethodInfo GetPqxStatic(string name)
-            => typeof(PttQuickExit).GetMethod(
+        private static System.Reflection.MethodInfo GetPqxStatic(string name) =>
+            typeof(PttQuickExit).GetMethod(
                 name,
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
 
-        private static System.Reflection.MethodInfo GetPqxStaticWith(string name, System.Type[] types)
-            => typeof(PttQuickExit).GetMethod(
+        private static System.Reflection.MethodInfo GetPqxStaticWith(
+            string name,
+            System.Type[] types
+        ) =>
+            typeof(PttQuickExit).GetMethod(
                 name,
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
-                null, types, null);
+                null,
+                types,
+                null
+            );
 
         // T_B78_QX_01: ResolveStop -- own > 0, fallback ignored.
         // Contract: when follower has a working stop, its own price is used, not the leader's.
@@ -4534,10 +5028,12 @@ namespace PropTraderTools
         {
             var mi = GetPqxStaticWith(
                 "ResolveTargetCount",
-                new[] {
+                new[]
+                {
                     typeof(System.Collections.Generic.List<(double Price, int Qty)>),
-                    typeof(int)
-                });
+                    typeof(int),
+                }
+            );
             Assert.NotNull(mi);
 
             var own = new System.Collections.Generic.List<(double Price, int Qty)>
@@ -4558,14 +5054,15 @@ namespace PropTraderTools
         {
             var mi = GetPqxStaticWith(
                 "ResolveTargetCount",
-                new[] {
+                new[]
+                {
                     typeof(System.Collections.Generic.List<(double Price, int Qty)>),
-                    typeof(int)
-                });
+                    typeof(int),
+                }
+            );
             Assert.NotNull(mi);
 
-            int result = (int)mi.Invoke(null,
-                new object[] { null, 3 });
+            int result = (int)mi.Invoke(null, new object[] { null, 3 });
 
             Assert.Equal(3, result);
         }
@@ -4577,10 +5074,12 @@ namespace PropTraderTools
         {
             var mi = GetPqxStaticWith(
                 "ResolveTargetCount",
-                new[] {
+                new[]
+                {
                     typeof(System.Collections.Generic.List<(double Price, int Qty)>),
-                    typeof(int)
-                });
+                    typeof(int),
+                }
+            );
             Assert.NotNull(mi);
 
             var own = new System.Collections.Generic.List<(double Price, int Qty)>();
@@ -4597,10 +5096,12 @@ namespace PropTraderTools
         {
             var mi = GetPqxStaticWith(
                 "ResolveTargetCount",
-                new[] {
+                new[]
+                {
                     typeof(System.Collections.Generic.List<(double Price, int Qty)>),
-                    typeof(int)
-                });
+                    typeof(int),
+                }
+            );
             Assert.NotNull(mi);
 
             var own = new System.Collections.Generic.List<(double Price, int Qty)>();
@@ -4617,8 +5118,10 @@ namespace PropTraderTools
         {
             var mi = typeof(PttQuickExit).GetMethod(
                 "SnapshotStopPrice",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
-                    | System.Reflection.BindingFlags.Public);
+                System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Static
+                    | System.Reflection.BindingFlags.Public
+            );
             Assert.NotNull(mi);
 
             // Act: null account -> foreach over null throws -> but implementation
@@ -4643,8 +5146,10 @@ namespace PropTraderTools
         [Fact]
         public void T_B78_GN_01_IsExitSignalName_Target1_ReturnsTrue()
         {
-            Assert.True(CopyEngine.IsExitSignalName("Target1"),
-                "Target1 must be blocked by Gate 0.5 -- it is an ATM bracket order, not an entry signal.");
+            Assert.True(
+                CopyEngine.IsExitSignalName("Target1"),
+                "Target1 must be blocked by Gate 0.5 -- it is an ATM bracket order, not an entry signal."
+            );
         }
 
         // T_B78_GN_02: Target9 (max NT8 ATM target index) must be blocked.
@@ -4666,8 +5171,10 @@ namespace PropTraderTools
         [Fact]
         public void T_B78_GN_04_IsExitSignalName_TargetNoDigit_ReturnsFalse()
         {
-            Assert.False(CopyEngine.IsExitSignalName("Target"),
-                "Bare 'Target' (no digit at [6]) must not be blocked -- length guard prevents it.");
+            Assert.False(
+                CopyEngine.IsExitSignalName("Target"),
+                "Bare 'Target' (no digit at [6]) must not be blocked -- length guard prevents it."
+            );
         }
 
         // T_B78_GN_05: "TargetX" (letter at position 6, not digit) must NOT be blocked.
@@ -4682,8 +5189,10 @@ namespace PropTraderTools
         [Fact]
         public void T_B78_GN_06_IsExitSignalName_Entry_ReturnsFalse_Regression()
         {
-            Assert.False(CopyEngine.IsExitSignalName("Entry"),
-                "Entry must NOT be blocked -- HOTFIX-B67 invariant.");
+            Assert.False(
+                CopyEngine.IsExitSignalName("Entry"),
+                "Entry must NOT be blocked -- HOTFIX-B67 invariant."
+            );
         }
 
         // T_B78_GN_07: PTT-QX-Stop still blocked (existing behaviour -- non-regression).
@@ -4698,8 +5207,10 @@ namespace PropTraderTools
         [Fact]
         public void T_B78_GN_08_IsExitSignalName_Stop1_ReturnsFalse_Gate4Handles()
         {
-            Assert.False(CopyEngine.IsExitSignalName("Stop1"),
-                "Stop1 is blocked by Gate 4 (StopMarket type). IsExitSignalName must not over-block it.");
+            Assert.False(
+                CopyEngine.IsExitSignalName("Stop1"),
+                "Stop1 is blocked by Gate 4 (StopMarket type). IsExitSignalName must not over-block it."
+            );
         }
     }
 
@@ -4719,14 +5230,20 @@ namespace PropTraderTools
         {
             var mi = typeof(PttQuickExit).GetMethod(
                 "Execute",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-                    | System.Reflection.BindingFlags.Public);
+                System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Public
+            );
             Assert.NotNull(mi);
             var parameters = mi.GetParameters();
             bool hasSkipParam = System.Array.Exists(
-                parameters, p => p.Name == "skipIfFollower" && p.ParameterType == typeof(bool));
-            Assert.True(hasSkipParam,
-                "Execute must have skipIfFollower bool param -- DW-B78-02 guard depends on it.");
+                parameters,
+                p => p.Name == "skipIfFollower" && p.ParameterType == typeof(bool)
+            );
+            Assert.True(
+                hasSkipParam,
+                "Execute must have skipIfFollower bool param -- DW-B78-02 guard depends on it."
+            );
         }
 
         // T_B78_CF_02: Execute method has leaderStop parameter (B78-LaneA fix present).
@@ -4735,14 +5252,20 @@ namespace PropTraderTools
         {
             var mi = typeof(PttQuickExit).GetMethod(
                 "Execute",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-                    | System.Reflection.BindingFlags.Public);
+                System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Public
+            );
             Assert.NotNull(mi);
             var parameters = mi.GetParameters();
             bool hasLeaderStop = System.Array.Exists(
-                parameters, p => p.Name == "leaderStop" && p.ParameterType == typeof(double));
-            Assert.True(hasLeaderStop,
-                "Execute must have leaderStop double param -- B78-LaneA fix depends on it.");
+                parameters,
+                p => p.Name == "leaderStop" && p.ParameterType == typeof(double)
+            );
+            Assert.True(
+                hasLeaderStop,
+                "Execute must have leaderStop double param -- B78-LaneA fix depends on it."
+            );
         }
 
         // T_B78_CF_03: Execute method has leaderTargetCount parameter (B78-LaneA fix present).
@@ -4751,14 +5274,20 @@ namespace PropTraderTools
         {
             var mi = typeof(PttQuickExit).GetMethod(
                 "Execute",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-                    | System.Reflection.BindingFlags.Public);
+                System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Public
+            );
             Assert.NotNull(mi);
             var parameters = mi.GetParameters();
             bool hasLeaderCount = System.Array.Exists(
-                parameters, p => p.Name == "leaderTargetCount" && p.ParameterType == typeof(int));
-            Assert.True(hasLeaderCount,
-                "Execute must have leaderTargetCount int param -- B78-LaneA fix depends on it.");
+                parameters,
+                p => p.Name == "leaderTargetCount" && p.ParameterType == typeof(int)
+            );
+            Assert.True(
+                hasLeaderCount,
+                "Execute must have leaderTargetCount int param -- B78-LaneA fix depends on it."
+            );
         }
 
         // T_B78_CF_04: ResolveStop with own=0 and fallback=100 returns 100 (B78-LaneA regression).
@@ -4767,7 +5296,8 @@ namespace PropTraderTools
         {
             var mi = typeof(PttQuickExit).GetMethod(
                 "ResolveStop",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             Assert.NotNull(mi);
             double result = (double)mi.Invoke(null, new object[] { 0.0, 100.0 });
             Assert.Equal(100.0, result);
@@ -4798,8 +5328,11 @@ namespace PropTraderTools
             // The stateOk set for the target snapshot (post DW-B79-01) must include Working.
             var accepted = new[]
             {
-                OrderState.Working, OrderState.Accepted,
-                OrderState.Submitted, OrderState.Initialized, OrderState.TriggerPending
+                OrderState.Working,
+                OrderState.Accepted,
+                OrderState.Submitted,
+                OrderState.Initialized,
+                OrderState.TriggerPending,
             };
             Assert.Contains(OrderState.Working, accepted);
         }
@@ -4810,8 +5343,11 @@ namespace PropTraderTools
         {
             var accepted = new[]
             {
-                OrderState.Working, OrderState.Accepted,
-                OrderState.Submitted, OrderState.Initialized, OrderState.TriggerPending
+                OrderState.Working,
+                OrderState.Accepted,
+                OrderState.Submitted,
+                OrderState.Initialized,
+                OrderState.TriggerPending,
             };
             Assert.Contains(OrderState.Accepted, accepted);
         }
@@ -4823,8 +5359,11 @@ namespace PropTraderTools
         {
             var accepted = new[]
             {
-                OrderState.Working, OrderState.Accepted,
-                OrderState.Submitted, OrderState.Initialized, OrderState.TriggerPending
+                OrderState.Working,
+                OrderState.Accepted,
+                OrderState.Submitted,
+                OrderState.Initialized,
+                OrderState.TriggerPending,
             };
             Assert.Contains(OrderState.Submitted, accepted);
         }
@@ -4837,8 +5376,11 @@ namespace PropTraderTools
         {
             var accepted = new[]
             {
-                OrderState.Working, OrderState.Accepted,
-                OrderState.Submitted, OrderState.Initialized, OrderState.TriggerPending
+                OrderState.Working,
+                OrderState.Accepted,
+                OrderState.Submitted,
+                OrderState.Initialized,
+                OrderState.TriggerPending,
             };
             Assert.Contains(OrderState.Initialized, accepted);
         }
@@ -4850,8 +5392,11 @@ namespace PropTraderTools
         {
             var accepted = new[]
             {
-                OrderState.Working, OrderState.Accepted,
-                OrderState.Submitted, OrderState.Initialized, OrderState.TriggerPending
+                OrderState.Working,
+                OrderState.Accepted,
+                OrderState.Submitted,
+                OrderState.Initialized,
+                OrderState.TriggerPending,
             };
             Assert.Contains(OrderState.TriggerPending, accepted);
         }
@@ -4863,8 +5408,11 @@ namespace PropTraderTools
         {
             var accepted = new[]
             {
-                OrderState.Working, OrderState.Accepted,
-                OrderState.Submitted, OrderState.Initialized, OrderState.TriggerPending
+                OrderState.Working,
+                OrderState.Accepted,
+                OrderState.Submitted,
+                OrderState.Initialized,
+                OrderState.TriggerPending,
             };
             Assert.DoesNotContain(OrderState.Filled, accepted);
         }
@@ -4875,8 +5423,11 @@ namespace PropTraderTools
         {
             var accepted = new[]
             {
-                OrderState.Working, OrderState.Accepted,
-                OrderState.Submitted, OrderState.Initialized, OrderState.TriggerPending
+                OrderState.Working,
+                OrderState.Accepted,
+                OrderState.Submitted,
+                OrderState.Initialized,
+                OrderState.TriggerPending,
             };
             Assert.DoesNotContain(OrderState.Cancelled, accepted);
         }
@@ -4888,8 +5439,11 @@ namespace PropTraderTools
         {
             var accepted = new[]
             {
-                OrderState.Working, OrderState.Accepted,
-                OrderState.Submitted, OrderState.Initialized, OrderState.TriggerPending
+                OrderState.Working,
+                OrderState.Accepted,
+                OrderState.Submitted,
+                OrderState.Initialized,
+                OrderState.TriggerPending,
             };
             Assert.Equal(5, accepted.Length);
         }
@@ -4905,10 +5459,11 @@ namespace PropTraderTools
     // ======================================================================
     public class B79BeReplaceAttemptGuardTests
     {
-        private static System.Reflection.FieldInfo GetField(string name)
-            => typeof(CopyEngine).GetField(
+        private static System.Reflection.FieldInfo GetField(string name) =>
+            typeof(CopyEngine).GetField(
                 name,
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
 
         // T_B79_RG_01: _beReplaceAttempts field exists and is a ConcurrentDictionary<string,int>.
         // Contract: the attempt counter dict is present (field not renamed or removed).
@@ -4918,9 +5473,12 @@ namespace PropTraderTools
             var fi = GetField("_beReplaceAttempts");
             Assert.NotNull(fi);
             Assert.True(
-                typeof(System.Collections.Concurrent.ConcurrentDictionary<string, int>)
-                    .IsAssignableFrom(fi.FieldType),
-                "_beReplaceAttempts must be ConcurrentDictionary<string,int>");
+                typeof(System.Collections.Concurrent.ConcurrentDictionary<
+                    string,
+                    int
+                >).IsAssignableFrom(fi.FieldType),
+                "_beReplaceAttempts must be ConcurrentDictionary<string,int>"
+            );
         }
 
         // T_B79_RG_02: _beReplaceAttempts starts empty on a fresh engine instance.
@@ -4930,13 +5488,16 @@ namespace PropTraderTools
         {
             var engine = CopyEngine.Instance;
             var fi = GetField("_beReplaceAttempts");
-            var dict = (System.Collections.Concurrent.ConcurrentDictionary<string, int>)fi.GetValue(engine);
+            var dict = (System.Collections.Concurrent.ConcurrentDictionary<string, int>)
+                fi.GetValue(engine);
             // The dict may have entries from other tests; what we verify is that
             // any entry we inject is independent and readable (structural contract).
             // Inject a sentinel entry, read it back, then clean up.
             dict["_TEST_SENTINEL_"] = 42;
-            Assert.True(dict.TryGetValue("_TEST_SENTINEL_", out int v) && v == 42,
-                "_beReplaceAttempts must be a readable ConcurrentDictionary<string,int>");
+            Assert.True(
+                dict.TryGetValue("_TEST_SENTINEL_", out int v) && v == 42,
+                "_beReplaceAttempts must be a readable ConcurrentDictionary<string,int>"
+            );
             dict.TryRemove("_TEST_SENTINEL_", out _);
         }
 
@@ -4951,8 +5512,8 @@ namespace PropTraderTools
             // At prevAttempts=3: gate SHOULD fire (3 >= 3) -> method returns without registering.
             int maxAttempts = 3;
             Assert.False(2 >= maxAttempts, "prevAttempts=2 must not trigger the gate");
-            Assert.True(3 >= maxAttempts,  "prevAttempts=3 must trigger the gate");
-            Assert.True(4 >= maxAttempts,  "prevAttempts=4 must trigger the gate (storm case)");
+            Assert.True(3 >= maxAttempts, "prevAttempts=3 must trigger the gate");
+            Assert.True(4 >= maxAttempts, "prevAttempts=4 must trigger the gate (storm case)");
         }
     }
 
@@ -4973,8 +5534,10 @@ namespace PropTraderTools
             for (int i = 1; i <= 9; i++)
             {
                 string name = "Target" + i;
-                bool isAtmTgt = name.StartsWith("Target", StringComparison.Ordinal)
-                                && name.Length > 6 && char.IsDigit(name[6]);
+                bool isAtmTgt =
+                    name.StartsWith("Target", StringComparison.Ordinal)
+                    && name.Length > 6
+                    && char.IsDigit(name[6]);
                 Assert.True(isAtmTgt, name + " must match the ATM target predicate");
             }
         }
@@ -4987,8 +5550,10 @@ namespace PropTraderTools
             for (int i = 1; i <= 9; i++)
             {
                 string name = "PTT-QX-T" + i;
-                bool isPttQxT = name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                                && name.Length > 8 && char.IsDigit(name[8]);
+                bool isPttQxT =
+                    name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                    && name.Length > 8
+                    && char.IsDigit(name[8]);
                 Assert.True(isPttQxT, name + " must match the PTT-QX-T predicate");
             }
         }
@@ -4998,16 +5563,31 @@ namespace PropTraderTools
         [Fact]
         public void T_B79_AT_03_NonTriggerNames_DoNotMatch()
         {
-            var nonTriggers = new[] { "Stop1", "Stop2", "Target10", "TargetX",
-                                      "PTT-BE-Target-1", "PTT-QX-Stop", "Entry", "Close" };
+            var nonTriggers = new[]
+            {
+                "Stop1",
+                "Stop2",
+                "Target10",
+                "TargetX",
+                "PTT-BE-Target-1",
+                "PTT-QX-Stop",
+                "Entry",
+                "Close",
+            };
             foreach (string name in nonTriggers)
             {
-                bool isPttQxT = name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                                && name.Length > 8 && char.IsDigit(name[8]);
-                bool isAtmTgt = name.StartsWith("Target", StringComparison.Ordinal)
-                                && name.Length > 6 && char.IsDigit(name[6]);
-                Assert.False(isPttQxT || isAtmTgt,
-                    name + " must NOT match either trigger predicate");
+                bool isPttQxT =
+                    name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                    && name.Length > 8
+                    && char.IsDigit(name[8]);
+                bool isAtmTgt =
+                    name.StartsWith("Target", StringComparison.Ordinal)
+                    && name.Length > 6
+                    && char.IsDigit(name[6]);
+                Assert.False(
+                    isPttQxT || isAtmTgt,
+                    name + " must NOT match either trigger predicate"
+                );
             }
         }
     }
@@ -5027,7 +5607,8 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "QueueBeRetryFallback",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(mi);
             var parms = mi.GetParameters();
             // Signature: (Account acc, Instrument instrument, int bufferTicks, int delayMs = 200)
@@ -5043,13 +5624,17 @@ namespace PropTraderTools
         [Fact]
         public void T_B79_FB_02_FallbackDelay_500ms_IsAboveAtmArmingWindow()
         {
-            int atmArmingUpperBoundMs = 200;   // observed ATM arming time in NT8 sim
-            int v6FallbackMs          = 500;
-            int v2v3RacingMs          = 200;
-            Assert.True(v6FallbackMs > atmArmingUpperBoundMs,
-                "v6 500ms fallback must be above ATM arming upper bound to see Target1 Working");
-            Assert.True(v6FallbackMs > v2v3RacingMs,
-                "v6 500ms must be above the v2/v3 racing threshold of 200ms");
+            int atmArmingUpperBoundMs = 200; // observed ATM arming time in NT8 sim
+            int v6FallbackMs = 500;
+            int v2v3RacingMs = 200;
+            Assert.True(
+                v6FallbackMs > atmArmingUpperBoundMs,
+                "v6 500ms fallback must be above ATM arming upper bound to see Target1 Working"
+            );
+            Assert.True(
+                v6FallbackMs > v2v3RacingMs,
+                "v6 500ms must be above the v2/v3 racing threshold of 200ms"
+            );
         }
 
         // T_B79_FB_03: v6 log message includes "500ms fallback queued" (not the v5 message).
@@ -5077,9 +5662,11 @@ namespace PropTraderTools
         {
             for (int i = 0; i < il.Length - 4; i++)
             {
-                if (il[i] != 0x28 && il[i] != 0x6F) continue;
+                if (il[i] != 0x28 && il[i] != 0x6F)
+                    continue;
                 int t = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
-                if (t == token) return true;
+                if (t == token)
+                    return true;
             }
             return false;
         }
@@ -5095,19 +5682,25 @@ namespace PropTraderTools
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
                 null,
                 new[] { typeof(Account), typeof(NinjaTrader.Cbi.Instrument) },
-                null);
+                null
+            );
             Assert.NotNull(method);
             var body = method!.GetMethodBody();
             Assert.NotNull(body);
             var il = body!.GetILAsByteArray();
             Assert.NotNull(il);
-            Assert.True(il!.Length > 10,
-                "T_DW_B79_09_01: CancelQxBrackets 2-param IL body is unexpectedly empty");
+            Assert.True(
+                il!.Length > 10,
+                "T_DW_B79_09_01: CancelQxBrackets 2-param IL body is unexpectedly empty"
+            );
             var removeAllToken = typeof(System.Collections.Generic.List<NinjaTrader.Cbi.Order>)
-                .GetMethod("RemoveAll")!.MetadataToken;
+                .GetMethod("RemoveAll")!
+                .MetadataToken;
             bool found = ContainsMethodToken(il, removeAllToken);
-            Assert.True(found,
-                "T_DW_B79_09_01: CancelQxBrackets 2-param does not contain RemoveAll call (DW-B79-09 guard missing)");
+            Assert.True(
+                found,
+                "T_DW_B79_09_01: CancelQxBrackets 2-param does not contain RemoveAll call (DW-B79-09 guard missing)"
+            );
         }
 
         // T_DW_B79_09_02: CancelQxBrackets 3-param IL body must contain RemoveAll call.
@@ -5124,21 +5717,27 @@ namespace PropTraderTools
                 {
                     typeof(Account),
                     typeof(NinjaTrader.Cbi.Instrument),
-                    typeof(System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>)
+                    typeof(System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order>),
                 },
-                null);
+                null
+            );
             Assert.NotNull(method);
             var body = method!.GetMethodBody();
             Assert.NotNull(body);
             var il = body!.GetILAsByteArray();
             Assert.NotNull(il);
-            Assert.True(il!.Length > 10,
-                "T_DW_B79_09_02: CancelQxBrackets 3-param IL body is unexpectedly empty");
+            Assert.True(
+                il!.Length > 10,
+                "T_DW_B79_09_02: CancelQxBrackets 3-param IL body is unexpectedly empty"
+            );
             var removeAllToken = typeof(System.Collections.Generic.List<NinjaTrader.Cbi.Order>)
-                .GetMethod("RemoveAll")!.MetadataToken;
+                .GetMethod("RemoveAll")!
+                .MetadataToken;
             bool found = ContainsMethodToken(il, removeAllToken);
-            Assert.True(found,
-                "T_DW_B79_09_02: CancelQxBrackets 3-param does not contain RemoveAll call (DW-B79-09 guard missing)");
+            Assert.True(
+                found,
+                "T_DW_B79_09_02: CancelQxBrackets 3-param does not contain RemoveAll call (DW-B79-09 guard missing)"
+            );
         }
 
         // T_DW_B79_09_03: CancelStaleBracketsLocal IL body must contain RemoveAll call.
@@ -5149,19 +5748,25 @@ namespace PropTraderTools
             var type = typeof(PttBreakEven);
             var method = type.GetMethod(
                 "CancelStaleBracketsLocal",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             Assert.NotNull(method);
             var body = method!.GetMethodBody();
             Assert.NotNull(body);
             var il = body!.GetILAsByteArray();
             Assert.NotNull(il);
-            Assert.True(il!.Length > 10,
-                "T_DW_B79_09_03: CancelStaleBracketsLocal IL body is unexpectedly empty");
+            Assert.True(
+                il!.Length > 10,
+                "T_DW_B79_09_03: CancelStaleBracketsLocal IL body is unexpectedly empty"
+            );
             var removeAllToken = typeof(System.Collections.Generic.List<NinjaTrader.Cbi.Order>)
-                .GetMethod("RemoveAll")!.MetadataToken;
+                .GetMethod("RemoveAll")!
+                .MetadataToken;
             bool found = ContainsMethodToken(il, removeAllToken);
-            Assert.True(found,
-                "T_DW_B79_09_03: CancelStaleBracketsLocal does not contain RemoveAll call (DW-B79-09 guard missing)");
+            Assert.True(
+                found,
+                "T_DW_B79_09_03: CancelStaleBracketsLocal does not contain RemoveAll call (DW-B79-09 guard missing)"
+            );
         }
     }
 }

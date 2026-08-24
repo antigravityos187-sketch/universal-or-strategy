@@ -115,40 +115,69 @@ namespace PropTraderTools
     public class TradeCopierPanel : UserControl, IPttHostContext
     {
         // -- state ----------------------------------------------------------------
-        private CopyEngine  _engine;
-        private Instrument  _instrument;
-        private Account     _leaderAccount;   // Set by TradeCopierAddOn from ChartTrader.Account
+        private CopyEngine _engine;
+        private Instrument _instrument;
+        private Account _leaderAccount; // Set by TradeCopierAddOn from ChartTrader.Account
 
         // B33 T7 -- IPttHostContext implementation (for module Execute() calls)
         // AllAccounts populated in OnLoaded (UI thread). LeaderAccount + Instrument delegate to fields.
-        private readonly List<Account>    _allAccounts = new List<Account>();
-        private readonly List<IPttModule> _modules     = new List<IPttModule>();
+        private readonly List<Account> _allAccounts = new List<Account>();
+        private readonly List<IPttModule> _modules = new List<IPttModule>();
 
         // IPttHostContext
-        Account                          IPttHostContext.LeaderAccount { get { return _leaderAccount; } }
-        Instrument                       IPttHostContext.Instrument    { get { return _instrument; } }
-        IReadOnlyList<Account>           IPttHostContext.AllAccounts   { get { return _allAccounts; } }
+        Account IPttHostContext.LeaderAccount
+        {
+            get { return _leaderAccount; }
+        }
+        Instrument IPttHostContext.Instrument
+        {
+            get { return _instrument; }
+        }
+        IReadOnlyList<Account> IPttHostContext.AllAccounts
+        {
+            get { return _allAccounts; }
+        }
 
         // B34 T2 -- Buffer props and market quote props wired to existing private fields/methods.
-        int    IPttHostContext.BeBuffer   { get { return _beBuffer; } }
-        int    IPttHostContext.TrimBuffer { get { return _trimBuffer; } }
-        int    IPttHostContext.FlatBuffer { get { return _flattenBuffer; } }
-        double IPttHostContext.Ask        { get { return GetAsk(); } }
-        double IPttHostContext.Bid        { get { return GetBid(); } }
+        int IPttHostContext.BeBuffer
+        {
+            get { return _beBuffer; }
+        }
+        int IPttHostContext.TrimBuffer
+        {
+            get { return _trimBuffer; }
+        }
+        int IPttHostContext.FlatBuffer
+        {
+            get { return _flattenBuffer; }
+        }
+        double IPttHostContext.Ask
+        {
+            get { return GetAsk(); }
+        }
+        double IPttHostContext.Bid
+        {
+            get { return GetBid(); }
+        }
+
         void IPttHostContext.WarnUser(string message)
         {
-            if (_statusText != null) _statusText.Text = message;
+            if (_statusText != null)
+                _statusText.Text = message;
         }
 
         // B33 T7 -- License bools (default: all enabled). Wire to module.SetEnabled() in OnLoaded.
-        public bool IsBeLicensed      { get; set; } = true;
-        public bool IsTrimLicensed    { get; set; } = true;
+        public bool IsBeLicensed { get; set; } = true;
+        public bool IsTrimLicensed { get; set; } = true;
         public bool IsFlattenLicensed { get; set; } = true;
-        public bool IsCancelLicensed  { get; set; } = true;
-        public bool IsCopierLicensed  { get; set; } = true;
+        public bool IsCancelLicensed { get; set; } = true;
+        public bool IsCopierLicensed { get; set; } = true;
 
         // B33 T7 -- Module registry helper. CYC=1.
-        private void AddModule(IPttModule m) { _modules.Add(m); }
+        private void AddModule(IPttModule m)
+        {
+            _modules.Add(m);
+        }
 
         // B33 T7 -- DispatchModule: finds the module by ID and calls Execute(this). CYC=3.
         // UI-thread only -- called from WPF button handlers.
@@ -165,73 +194,78 @@ namespace PropTraderTools
             }
         }
 
-        private ComboBox    _accountCombo;    // B30-B: stored at WireAccountCombo for Detach unsubscribe
-        private SelectionChangedEventHandler _accountComboSelectionChanged;  // B30-B: named handler for leak-free Detach
-        private TextBlock   _statusText;
-        private bool        _copyEnabled;
-        private TextBox     _beBufferBox;
+        private ComboBox _accountCombo; // B30-B: stored at WireAccountCombo for Detach unsubscribe
+        private SelectionChangedEventHandler _accountComboSelectionChanged; // B30-B: named handler for leak-free Detach
+        private TextBlock _statusText;
+        private bool _copyEnabled;
+        private TextBox _beBufferBox;
 
         // Checkmark dropdown
-        private ComboBox                   _followersDropDown;
+        private ComboBox _followersDropDown;
         private readonly List<FollowerItem> _followerItems = new List<FollowerItem>();
 
         // B47 T1-B: Inline followers ScrollViewer (replaces _followersDropDown in visual tree)
-        private ScrollViewer _followerScrollViewer       = null;
-        private StackPanel   _followerScrollViewerPanel  = null;
+        private ScrollViewer _followerScrollViewer = null;
+        private StackPanel _followerScrollViewerPanel = null;
 
         // B47 T3-B: Collapsible Copier header
         private Button _copierCollapseBtn = null;
-        private bool   _copierCollapsed   = false;  // default: Copier section expanded
+        private bool _copierCollapsed = false; // default: Copier section expanded
 
         // B9 T2 -- Click trader (JS-023: volatile cross-thread fields)
-        private volatile bool    _clickArmed  = false;
-        private volatile bool    _clickBuy    = true;    // true=Buy, false=SellShort
-        private          Chart   _currentChart = null;   // single-writer UI thread
-        private          Button        _armBtn     = null;
-        private          ToggleButton  _buyToggle  = null;
-        private          ToggleButton  _sellToggle = null;
+        private volatile bool _clickArmed = false;
+        private volatile bool _clickBuy = true; // true=Buy, false=SellShort
+        private Chart _currentChart = null; // single-writer UI thread
+        private Button _armBtn = null;
+        private ToggleButton _buyToggle = null;
+        private ToggleButton _sellToggle = null;
 
         // B9 T3 -- Copy mode selector radio buttons
         private RadioButton _signalModeBtn = null;
         private RadioButton _mirrorModeBtn = null;
-        private RadioButton _cloneModeBtn  = null;   // B50: Clone mode radio button
+        private RadioButton _cloneModeBtn = null; // B50: Clone mode radio button
 
         // B50: Tracks per-follower ATM ComboBox refs for Clone mode visibility toggle.
         // B52: WeakReference<ComboBox> prevents detached combo accumulation on panel rebuild.
         // Populated in OnFollowerAtmTemplateComboLoaded. UI-thread-only -- no volatile.
-        private readonly System.Collections.Generic.List<WeakReference<System.Windows.Controls.ComboBox>> _atmComboRefs
-            = new System.Collections.Generic.List<WeakReference<System.Windows.Controls.ComboBox>>();
+        private readonly System.Collections.Generic.List<
+            WeakReference<System.Windows.Controls.ComboBox>
+        > _atmComboRefs = new System.Collections.Generic.List<
+            WeakReference<System.Windows.Controls.ComboBox>
+        >();
 
         // B10 T3 -- Tighten Stop fields (UI-thread-only)
-        private Button  _tightenBtn      = null;
+        private Button _tightenBtn = null;
         private TextBox _tightenTicksBox = null;
 
         // B12 T1 -- Buffered button state (plain int; UI-thread-only; no volatile per NT8-003)
-        private int  _trimBuffer     = 0;   // HOTFIX-F5: default market (0 ticks), not limit (+1)
-        private int  _flattenBuffer  = 0;   // HOTFIX-F5: default market (0 ticks), not limit (+1)
-        private int  _beBuffer       = 1;
+        private int _trimBuffer = 0; // HOTFIX-F5: default market (0 ticks), not limit (+1)
+        private int _flattenBuffer = 0; // HOTFIX-F5: default market (0 ticks), not limit (+1)
+        private int _beBuffer = 1;
 
         // B12 T1 -- BE 3-state FSM (UI-thread-only; no volatile)
         private BeState _beState = BeState.Idle;
 
         // B12 T1 -- Button refs for buffered section
-        private Button  _trimBtn2;
-        private Button  _flattenBtn2;
-        private Button  _beBtn2;
-        private Button  _cancelBtn2;
-        private Button  _copyToggleBtn2;
+        private Button _trimBtn2;
+        private Button _flattenBtn2;
+        private Button _beBtn2;
+        private Button _cancelBtn2;
+        private Button _copyToggleBtn2;
 
         // B41: Quick Exit button refs (UI-thread-only; no volatile per NT8-003)
-        private Button _quickBtn     = null;
-        private Button _quickAllBtn  = null;
+        private Button _quickBtn = null;
+        private Button _quickAllBtn = null;
         private StackPanel _quickT3Row = null;
+
         // B41: Quick tick display values (session-only, not persisted to CopyRule)
-        private int _quickT1 = 4;  // default MES: 4t
-        private int _quickT2 = 8;  // default MES: 8t
+        private int _quickT1 = 4; // default MES: 4t
+        private int _quickT2 = 8; // default MES: 8t
 
         // B47 T5-B: Root-level BE and Quick row panels (extracted from _contentPanel in T6-B)
-        private UniformGrid _beRowPanel   = null;  // 2-col: BE cluster | BE ALL cluster
-        private UniformGrid _quickRowPanel = null;  // 2-col: Quick cluster | Quick ALL cluster
+        private UniformGrid _beRowPanel = null; // 2-col: BE cluster | BE ALL cluster
+        private UniformGrid _quickRowPanel = null; // 2-col: Quick cluster | Quick ALL cluster
+
         // HOTFIX-QUICKALL-SINGLETON-01: Quick ALL buffer is now a CopyEngine singleton.
         // _quickAllT1 per-panel field removed. Read CopyEngine.Instance.GlobalQuickAllT1 instead.
 
@@ -246,13 +280,13 @@ namespace PropTraderTools
         // All panels read the shared _pendingBeSlots dict -- no per-panel shadow state needed.
 
         // B12 T2 -- Collapse state and refs (plain bool; UI-thread-only; no volatile per NT8-003)
-        private bool       _isCollapsed        = false;
-        private Button     _collapseToggleBtn;
+        private bool _isCollapsed = false;
+        private Button _collapseToggleBtn;
         private StackPanel _contentPanel;
 
         // B12 T3 -- Risk/ATR spinners (plain double; UI-thread-only; no volatile per NT8-003)
-        private double  _maxRiskDollars = 200.0;
-        private double  _atrFraction    = 0.75;
+        private double _maxRiskDollars = 200.0;
+        private double _atrFraction = 0.75;
         private TextBox _riskDollarsBox;
         private TextBox _atrFractionBox;
 
@@ -273,29 +307,30 @@ namespace PropTraderTools
 
         // Canonical semantic button brushes (V08: corrected RGB per PTT_DESIGN_PILLAR lines 192-198)
         // JS-008: all Freeze()d via MakeBrush(), static readonly = zero allocation on re-render
-        private static readonly SolidColorBrush BrushActive   = MakeBrush( 34, 197,  94);  // green  #22c55e
-        private static readonly SolidColorBrush BrushDanger   = MakeBrush(239,  68,  68);  // red    #ef4444
-        private static readonly SolidColorBrush BrushCaution  = MakeBrush(245, 158,  11);  // amber  #f59e0b
-        private static readonly SolidColorBrush BrushInactive = MakeBrush( 55,  65,  81);  // grey   #4b5563
+        private static readonly SolidColorBrush BrushActive = MakeBrush(34, 197, 94); // green  #22c55e
+        private static readonly SolidColorBrush BrushDanger = MakeBrush(239, 68, 68); // red    #ef4444
+        private static readonly SolidColorBrush BrushCaution = MakeBrush(245, 158, 11); // amber  #f59e0b
+        private static readonly SolidColorBrush BrushInactive = MakeBrush(55, 65, 81); // grey   #4b5563
+
         // DW-B73-B-02: teal border/foreground for BE/Quick buttons -- cached per JS-008
-        private static readonly SolidColorBrush BrushTeal = MakeBrush(13, 148, 136);  // teal-600 #0d9488
+        private static readonly SolidColorBrush BrushTeal = MakeBrush(13, 148, 136); // teal-600 #0d9488
 
         // -- nested type ----------------------------------------------------------
         private sealed class FollowerItem : INotifyPropertyChanged
         {
             // Frozen brush constants (JS-008) -- shared across all instances
-            private static readonly SolidColorBrush BrushPos = MakeBrush(34,  197, 94);  // green
-            private static readonly SolidColorBrush BrushNeg = MakeBrush(239, 68,  68);  // red
+            private static readonly SolidColorBrush BrushPos = MakeBrush(34, 197, 94); // green
+            private static readonly SolidColorBrush BrushNeg = MakeBrush(239, 68, 68); // red
             private static readonly SolidColorBrush BrushDim = MakeBrush(107, 114, 128); // grey
 
             // Cached PropertyChangedEventArgs -- zero alloc per fire
-            private static readonly PropertyChangedEventArgs PnlTextArgs  =
+            private static readonly PropertyChangedEventArgs PnlTextArgs =
                 new PropertyChangedEventArgs(nameof(DailyPnlText));
             private static readonly PropertyChangedEventArgs PnlColorArgs =
                 new PropertyChangedEventArgs(nameof(DailyPnlColor));
 
-            public Account Account    { get; set; }
-            public bool    IsSelected { get; set; }
+            public Account Account { get; set; }
+            public bool IsSelected { get; set; }
 
             // B8 T1: per-follower quantity multiplier -- default 1x, range [1,10]
             public int Multiplier { get; set; } = 1;
@@ -303,12 +338,12 @@ namespace PropTraderTools
             // B8 T2: per-follower ATM mode name -- default "Inherit"
             public string AtmModeName { get; set; } = "Inherit";
 
-            private string _dailyPnlText  = "$0.00";
-            private Brush  _dailyPnlColor;  // set in constructor
+            private string _dailyPnlText = "$0.00";
+            private Brush _dailyPnlColor; // set in constructor
 
             public FollowerItem()
             {
-                _dailyPnlColor = BrushDim;  // dim until first AccountItemUpdate fires
+                _dailyPnlColor = BrushDim; // dim until first AccountItemUpdate fires
             }
 
             public string DailyPnlText
@@ -336,9 +371,12 @@ namespace PropTraderTools
             // Called on UI thread via Dispatcher.InvokeAsync -- no lock needed
             public void UpdatePnl(double value)
             {
-                string sign  = value > 0 ? "+" : "";
-                DailyPnlText  = sign + "$" + value.ToString("0.00");
-                DailyPnlColor = value > 0 ? BrushPos : value < 0 ? BrushNeg : (Brush)BrushDim;
+                string sign = value > 0 ? "+" : "";
+                DailyPnlText = sign + "$" + value.ToString("0.00");
+                DailyPnlColor =
+                    value > 0 ? BrushPos
+                    : value < 0 ? BrushNeg
+                    : (Brush)BrushDim;
             }
 
             // B20-LANE-C T3 -- DW-B17-ACCOUNT-NAME-01: strip !<suffix> at display layer only.
@@ -356,8 +394,8 @@ namespace PropTraderTools
         // ATM trail owns stop after BE placement. PTT does not trail. (DW-B32-05)
         internal enum BeState
         {
-            Idle,       // BE button shows "BE +N" -- inactive
-            Armed,      // Watching price; fires once when entry+buffer crossed; amber border
+            Idle, // BE button shows "BE +N" -- inactive
+            Armed, // Watching price; fires once when entry+buffer crossed; amber border
         }
 
         // -- construction ---------------------------------------------------------
@@ -387,25 +425,30 @@ namespace PropTraderTools
         // CYC=5: cc null(1), panel null(2), height<=0(3), raw<=0(4), instrument null(5).
         private static double GetPriceAtY(ChartControl cc, double y, Instrument instrument)
         {
-            if (cc == null) return 0.0;                                        // guard (1)
+            if (cc == null)
+                return 0.0; // guard (1)
 
-            var panel = FindPriceCanvasPanel(cc);    // B17 T2: heuristic selects widest ChartPanel with MaxValue>0
-            if (panel == null) return 0.0;                                     // guard (2)
+            var panel = FindPriceCanvasPanel(cc); // B17 T2: heuristic selects widest ChartPanel with MaxValue>0
+            if (panel == null)
+                return 0.0; // guard (2)
 
             double panelH = panel.ActualHeight;
-            if (panelH <= 0.0) return 0.0;                                     // guard (3): no divide by zero
+            if (panelH <= 0.0)
+                return 0.0; // guard (3): no divide by zero
 
             // CORRECTION_FACTOR = 1.0: T1 confirmed ContentPresenter fills full ChartPanel height.
             const double CORRECTION_FACTOR = 1.0;
 
-            double maxVal   = panel.MaxValue;
-            double minVal   = panel.MinValue;
-            double yRatio   = y / (panelH * CORRECTION_FACTOR);
+            double maxVal = panel.MaxValue;
+            double minVal = panel.MinValue;
+            double yRatio = y / (panelH * CORRECTION_FACTOR);
             double rawPrice = maxVal - yRatio * (maxVal - minVal);
 
-            if (rawPrice <= 0.0) return 0.0;                                   // guard (4): sanity
+            if (rawPrice <= 0.0)
+                return 0.0; // guard (4): sanity
 
-            if (instrument == null) return 0.0;                                // guard (5)
+            if (instrument == null)
+                return 0.0; // guard (5)
             return AlignToTick(rawPrice, instrument.MasterInstrument.TickSize);
         }
 
@@ -414,12 +457,19 @@ namespace PropTraderTools
         // Formula: rawPrice = maxVal - (y / (panelH * correctionFactor)) * (maxVal - minVal)
         // CYC=2: height guard(1), raw guard(2).
         internal static double LinearYToPrice(
-            double y, double panelH, double maxVal, double minVal, double correctionFactor)
+            double y,
+            double panelH,
+            double maxVal,
+            double minVal,
+            double correctionFactor
+        )
         {
-            if (panelH <= 0.0) return 0.0;                                     // guard (1)
-            double yRatio   = y / (panelH * correctionFactor);
+            if (panelH <= 0.0)
+                return 0.0; // guard (1)
+            double yRatio = y / (panelH * correctionFactor);
             double rawPrice = maxVal - yRatio * (maxVal - minVal);
-            if (rawPrice <= 0.0) return 0.0;                                   // guard (2)
+            if (rawPrice <= 0.0)
+                return 0.0; // guard (2)
             return rawPrice;
         }
 
@@ -429,7 +479,8 @@ namespace PropTraderTools
         // CYC=2: tickSize guard(1), straight-line(2).
         internal static double AlignToTick(double raw, double tickSize)
         {
-            if (tickSize <= 0.0) return raw;                                    // guard (1)
+            if (tickSize <= 0.0)
+                return raw; // guard (1)
             return Math.Round(raw / tickSize, MidpointRounding.AwayFromZero) * tickSize;
         }
 
@@ -440,31 +491,32 @@ namespace PropTraderTools
         // CYC=5: root null(1), while loop(2), type+predicate(3), for loop(4), child null(5).
         private static ChartPanel FindPriceCanvasPanel(DependencyObject root)
         {
-            if (root == null) return null;                                 // guard (1)
-            ChartPanel best  = null;
-            double     bestW = 0.0;
-            var        stack = new Stack<DependencyObject>();
+            if (root == null)
+                return null; // guard (1)
+            ChartPanel best = null;
+            double bestW = 0.0;
+            var stack = new Stack<DependencyObject>();
             stack.Push(root);
 
-            while (stack.Count > 0)                                        // branch (2): loop
+            while (stack.Count > 0) // branch (2): loop
             {
                 var node = stack.Pop();
                 var cp = node as ChartPanel;
-                if (cp != null && cp.MaxValue > 0 && cp.ActualWidth > bestW)  // branch (3): predicate
+                if (cp != null && cp.MaxValue > 0 && cp.ActualWidth > bestW) // branch (3): predicate
                 {
-                    best  = cp;
+                    best = cp;
                     bestW = cp.ActualWidth;
                 }
                 int n = VisualTreeHelper.GetChildrenCount(node);
-                for (int i = 0; i < n; i++)                                // branch (4): child loop
+                for (int i = 0; i < n; i++) // branch (4): child loop
                 {
                     var child = VisualTreeHelper.GetChild(node, i) as DependencyObject;
-                    if (child != null) stack.Push(child);                  // branch (5): null guard
+                    if (child != null)
+                        stack.Push(child); // branch (5): null guard
                 }
             }
             return best;
         }
-
 
         public void SetInstrument(Instrument instrument)
         {
@@ -499,11 +551,14 @@ namespace PropTraderTools
         // JS-002: returns null (not throw) -- callers use null as a no-op sentinel.
         private NinjaTrader.Cbi.Account TryResolveLeaderAccount()
         {
-            if (_accountCombo == null) return null;                                        // (1)
-            if (_accountCombo.SelectedItem is NinjaTrader.Cbi.Account acc) return acc;    // (2)
-            var name = _accountCombo.SelectedItem as string ?? _accountCombo.Text;        // NT8 string fallback
-            if (string.IsNullOrEmpty(name)) return null;                                  // (3)
-            foreach (var a in NinjaTrader.Cbi.Account.All)                                // (4)
+            if (_accountCombo == null)
+                return null; // (1)
+            if (_accountCombo.SelectedItem is NinjaTrader.Cbi.Account acc)
+                return acc; // (2)
+            var name = _accountCombo.SelectedItem as string ?? _accountCombo.Text; // NT8 string fallback
+            if (string.IsNullOrEmpty(name))
+                return null; // (3)
+            foreach (var a in NinjaTrader.Cbi.Account.All) // (4)
                 if (string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase))
                     return a;
             return null;
@@ -511,17 +566,17 @@ namespace PropTraderTools
 
         public void Detach()
         {
-            _engine.Unsubscribe();  // B44: unsubscribe from order events before teardown
+            _engine.Unsubscribe(); // B44: unsubscribe from order events before teardown
             // B9 T2: unregister click trader before clearing state
             if (_currentChart != null)
                 TradeCopierAddOn.UnregisterClickTrader(_currentChart);
-            _engine.StatusUpdate              -= OnStatusUpdate;
-            _engine.PositionStateChanged      -= OnPositionStateChanged;
-            _engine.PendingBeFired            -= OnPendingBeFiredDispatch;
-            _engine.PendingBeArmed            -= OnPendingBeArmedDispatch;   // HOTFIX-BEALL-SYNC-01
-            _engine.GlobalBeBufferChanged       -= OnGlobalBeBufferChanged;     // HOTFIX-BEALL-BUFFER-SYNC-01
-            _engine.GlobalQuickAllBufferChanged -= OnQuickAllBufferChanged;     // HOTFIX-QUICKALL-SINGLETON-01
-            _engine.GlobalBeAllDisarmed         -= OnGlobalBeAllDisarmed;       // HOTFIX-BEALL-DISARM-SYNC-01
+            _engine.StatusUpdate -= OnStatusUpdate;
+            _engine.PositionStateChanged -= OnPositionStateChanged;
+            _engine.PendingBeFired -= OnPendingBeFiredDispatch;
+            _engine.PendingBeArmed -= OnPendingBeArmedDispatch; // HOTFIX-BEALL-SYNC-01
+            _engine.GlobalBeBufferChanged -= OnGlobalBeBufferChanged; // HOTFIX-BEALL-BUFFER-SYNC-01
+            _engine.GlobalQuickAllBufferChanged -= OnQuickAllBufferChanged; // HOTFIX-QUICKALL-SINGLETON-01
+            _engine.GlobalBeAllDisarmed -= OnGlobalBeAllDisarmed; // HOTFIX-BEALL-DISARM-SYNC-01
             foreach (var item in _followerItems)
                 if (item.Account != null)
                     item.Account.AccountItemUpdate -= OnAccountItemUpdate;
@@ -531,7 +586,7 @@ namespace PropTraderTools
             // B41: unsubscribe leader order/position update handlers (memory-leak prevention).
             if (_leaderAccount != null)
             {
-                _leaderAccount.OrderUpdate   -= OnLeaderOrderUpdate;
+                _leaderAccount.OrderUpdate -= OnLeaderOrderUpdate;
                 _leaderAccount.PositionUpdate -= OnLeaderPositionUpdate;
             }
             // B30-B: unsubscribe ComboBox SelectionChanged to prevent memory leak (DW-B30-03).
@@ -539,7 +594,7 @@ namespace PropTraderTools
                 _accountCombo.SelectionChanged -= _accountComboSelectionChanged;
             _accountCombo = null;
             _accountComboSelectionChanged = null;
-            _instrument    = null;
+            _instrument = null;
             _leaderAccount = null;
 
             // B40: disarm all accounts on detach (BE ALL global cleanup). NT8-043: no null-conditional compound.
@@ -564,11 +619,15 @@ namespace PropTraderTools
         // stayed amber/blue after ATM or native Close flattened the position.
         private void UpdateButtonColors(bool hasPosition, bool hasEntries)
         {
-            if (_copyToggleBtn2 != null) _copyToggleBtn2.Background = _copyEnabled ? BrushActive   : BrushInactive;
-            if (_flattenBtn2    != null) _flattenBtn2.Background    = hasPosition  ? BrushDanger   : BrushInactive;
-            if (_cancelBtn2     != null) _cancelBtn2.Background     = hasEntries   ? BrushDanger   : BrushInactive;
-            if (_trimBtn2       != null) _trimBtn2.Background       = hasPosition  ? BrushCaution  : BrushInactive;
-            if (!hasPosition && _beState != BeState.Idle)           // HOTFIX-F3: reset per-chart BE on flat
+            if (_copyToggleBtn2 != null)
+                _copyToggleBtn2.Background = _copyEnabled ? BrushActive : BrushInactive;
+            if (_flattenBtn2 != null)
+                _flattenBtn2.Background = hasPosition ? BrushDanger : BrushInactive;
+            if (_cancelBtn2 != null)
+                _cancelBtn2.Background = hasEntries ? BrushDanger : BrushInactive;
+            if (_trimBtn2 != null)
+                _trimBtn2.Background = hasPosition ? BrushCaution : BrushInactive;
+            if (!hasPosition && _beState != BeState.Idle) // HOTFIX-F3: reset per-chart BE on flat
             {
                 _beState = BeState.Idle;
                 UpdateBeVisuals(BeState.Idle);
@@ -605,12 +664,19 @@ namespace PropTraderTools
         private void OnPositionStateChanged(string instr, PositionState state)
         {
             NinjaTrader.Code.Output.Process(
-                "PositionStateChanged instr=" + instr
-                + " panel=" + (_instrument?.FullName ?? "null")
-                + " hasPos=" + state.HasOpenPosition,
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            if (_instrument == null || _instrument.FullName != instr) return;
-            Dispatcher.InvokeAsync(() => UpdateButtonColors(state.HasOpenPosition, state.HasWorkingEntries));
+                "PositionStateChanged instr="
+                    + instr
+                    + " panel="
+                    + (_instrument?.FullName ?? "null")
+                    + " hasPos="
+                    + state.HasOpenPosition,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            if (_instrument == null || _instrument.FullName != instr)
+                return;
+            Dispatcher.InvokeAsync(() =>
+                UpdateButtonColors(state.HasOpenPosition, state.HasWorkingEntries)
+            );
         }
 
         // -- private: deferred account population ---------------------------------
@@ -618,22 +684,23 @@ namespace PropTraderTools
         {
             Loaded -= OnLoaded;
             _engine.PositionStateChanged += OnPositionStateChanged;
-            _engine.PendingBeFired       += OnPendingBeFiredDispatch;
-            _engine.PendingBeArmed       += OnPendingBeArmedDispatch;   // HOTFIX-BEALL-SYNC-01
-            _engine.GlobalBeBufferChanged       += OnGlobalBeBufferChanged;     // HOTFIX-BEALL-BUFFER-SYNC-01
-            _engine.GlobalQuickAllBufferChanged += OnQuickAllBufferChanged;     // HOTFIX-QUICKALL-SINGLETON-01
-            _engine.GlobalBeAllDisarmed         += OnGlobalBeAllDisarmed;       // HOTFIX-BEALL-DISARM-SYNC-01
+            _engine.PendingBeFired += OnPendingBeFiredDispatch;
+            _engine.PendingBeArmed += OnPendingBeArmedDispatch; // HOTFIX-BEALL-SYNC-01
+            _engine.GlobalBeBufferChanged += OnGlobalBeBufferChanged; // HOTFIX-BEALL-BUFFER-SYNC-01
+            _engine.GlobalQuickAllBufferChanged += OnQuickAllBufferChanged; // HOTFIX-QUICKALL-SINGLETON-01
+            _engine.GlobalBeAllDisarmed += OnGlobalBeAllDisarmed; // HOTFIX-BEALL-DISARM-SYNC-01
             _followerItems.Clear();
-            if (Account.All == null) return;
+            if (Account.All == null)
+                return;
             foreach (var acc in Account.All)
             {
                 _followerItems.Add(new FollowerItem { Account = acc, IsSelected = false });
                 acc.AccountItemUpdate += OnAccountItemUpdate;
             }
             if (_followersDropDown != null)
-                _followersDropDown.ItemsSource = _followerItems;  // kept; harmless on non-visual ComboBox
+                _followersDropDown.ItemsSource = _followerItems; // kept; harmless on non-visual ComboBox
             UpdateDropDownHeader();
-            LoadFollowers();  // B47 T1-B: populate inline ScrollViewer rows
+            LoadFollowers(); // B47 T1-B: populate inline ScrollViewer rows
 
             // HOTFIX-B67-CHECKBOX-RESTORE: after LoadRules, engine _rules already contain the
             // persisted follower list. Restore IsSelected on matching _followerItems so that
@@ -643,14 +710,16 @@ namespace PropTraderTools
             if (_instrument != null && _leaderAccount != null)
             {
                 var saved = _engine.GetSavedFollowerNames(
-                    _instrument.FullName, _leaderAccount.Name);
+                    _instrument.FullName,
+                    _leaderAccount.Name
+                );
                 if (saved.Count > 0)
                 {
                     foreach (var item in _followerItems)
                         if (item.Account != null && saved.Contains(item.Account.Name))
                             item.IsSelected = true;
-                    SortFollowerRows();   // re-sort so checked rows float to top
-                    TryAutoApply();       // re-register live rule with restored followers
+                    SortFollowerRows(); // re-sort so checked rows float to top
+                    TryAutoApply(); // re-register live rule with restored followers
                 }
             }
 
@@ -660,7 +729,7 @@ namespace PropTraderTools
             NotifyRiskChanged();
             NotifyAtrFractionChanged();
             _engine.CopyEnabledChanged += OnCopyEnabledChanged;
-            ApplyCopyState(_engine.IsEnabled);  // B54: snap to current engine truth on surface create/F5
+            ApplyCopyState(_engine.IsEnabled); // B54: snap to current engine truth on surface create/F5
 
             // B33 T7 -- Build AllAccounts (leader + followers) for IPttHostContext.
             // Must be done here (UI thread, after Account.All is available) per NT8-021.
@@ -686,19 +755,29 @@ namespace PropTraderTools
             {
                 switch (m.ModuleId)
                 {
-                    case "BE":     m.SetEnabled(IsBeLicensed);      break;
-                    case "TRIM":   m.SetEnabled(IsTrimLicensed);     break;
-                    case "FLAT":   m.SetEnabled(IsFlattenLicensed);  break;
-                    case "CANCEL": m.SetEnabled(IsCancelLicensed);   break;
-                    case "COPY":   m.SetEnabled(IsCopierLicensed);   break;
+                    case "BE":
+                        m.SetEnabled(IsBeLicensed);
+                        break;
+                    case "TRIM":
+                        m.SetEnabled(IsTrimLicensed);
+                        break;
+                    case "FLAT":
+                        m.SetEnabled(IsFlattenLicensed);
+                        break;
+                    case "CANCEL":
+                        m.SetEnabled(IsCancelLicensed);
+                        break;
+                    case "COPY":
+                        m.SetEnabled(IsCopierLicensed);
+                        break;
                 }
             }
-            _engine.Subscribe();   // B44: wire order stream to CopyEngine (panel path)
+            _engine.Subscribe(); // B44: wire order stream to CopyEngine (panel path)
 
             // B41: Site 3 -- initial display sync after panel wires up.
             if (_leaderAccount != null)
             {
-                _leaderAccount.OrderUpdate   += OnLeaderOrderUpdate;
+                _leaderAccount.OrderUpdate += OnLeaderOrderUpdate;
                 _leaderAccount.PositionUpdate += OnLeaderPositionUpdate;
                 RefreshQuickDisplay(_leaderAccount, _instrument);
             }
@@ -708,13 +787,16 @@ namespace PropTraderTools
         // Fires on background thread -- must Dispatcher.InvokeAsync before touching UI/items
         private void OnAccountItemUpdate(object sender, AccountItemEventArgs e)
         {
-            if (e.AccountItem != AccountItem.RealizedProfitLoss) return;
+            if (e.AccountItem != AccountItem.RealizedProfitLoss)
+                return;
             var acc = sender as Account;
-            if (acc == null) return;
+            if (acc == null)
+                return;
             double val = e.Value;
             foreach (var item in _followerItems)
             {
-                if (item.Account != acc) continue;
+                if (item.Account != acc)
+                    continue;
                 Dispatcher.InvokeAsync(() => item.UpdatePnl(val));
                 break;
             }
@@ -729,21 +811,17 @@ namespace PropTraderTools
 
             // B47 T1-B: _followersDropDown kept as field (ItemsSource still set in OnLoaded for compat)
             // but NOT added to visual tree (replaced by _followerScrollViewer inline panel).
-            _followersDropDown = new ComboBox
-            {
-                IsEditable = false,
-                Text       = "0 selected"
-            };
+            _followersDropDown = new ComboBox { IsEditable = false, Text = "0 selected" };
             _followersDropDown.ItemTemplate = BuildCheckItemTemplate();
 
             // B47 T1-B: Inline ScrollViewer replacing ComboBox in visual tree.
             _followerScrollViewerPanel = new StackPanel();
             _followerScrollViewer = new ScrollViewer
             {
-                MaxHeight                   = 66,
+                MaxHeight = 66,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Content                     = _followerScrollViewerPanel,
-                Margin                      = new Thickness(0, 0, 0, 2)
+                Content = _followerScrollViewerPanel,
+                Margin = new Thickness(0, 0, 0, 2),
             };
             // *** T1-B IMPLEMENTATION NOTE -- DO NOT ADD _followerScrollViewer TO root HERE ***
             // _followerScrollViewer enters the visual tree ONLY via BuildCopierSection(root) in T6-B.
@@ -754,14 +832,13 @@ namespace PropTraderTools
             // Apply button: HIDDEN (Visibility.Collapsed). Event handler OnApplyRule stays wired.
             var applyBtn = new Button
             {
-                Content    = "Add Followers",
-                Margin     = new Thickness(0, 2, 0, 2),
-                Visibility = Visibility.Collapsed
+                Content = "Add Followers",
+                Margin = new Thickness(0, 2, 0, 2),
+                Visibility = Visibility.Collapsed,
             };
             applyBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             applyBtn.Click += OnApplyRule;
-            root.Children.Add(applyBtn);  // in tree but invisible -- preserves OnApplyRule wiring
-
+            root.Children.Add(applyBtn); // in tree but invisible -- preserves OnApplyRule wiring
 
             // B12 T1/T2: _contentPanel wraps all collapsible content rows
             _contentPanel = new StackPanel();
@@ -770,7 +847,11 @@ namespace PropTraderTools
             BuildBufferedButtonsRow(_contentPanel);
 
             // --- Status line ---
-            _statusText = new TextBlock { Text = "Open chart -- Trim/Flatten/Cancel/BE ready", Margin = new Thickness(0, 2, 0, 0) };
+            _statusText = new TextBlock
+            {
+                Text = "Open chart -- Trim/Flatten/Cancel/BE ready",
+                Margin = new Thickness(0, 2, 0, 0),
+            };
             _statusText.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
             // B47 T6-B: do NOT add _statusText to _contentPanel here.
             // It is added to root after BuildCopierSection (see tail of BuildUI).
@@ -782,45 +863,48 @@ namespace PropTraderTools
             var tightenRow = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin      = new Thickness(0, 4, 0, 0)
+                Margin = new Thickness(0, 4, 0, 0),
             };
             _tightenTicksBox = new TextBox
             {
-                Text  = "5",
+                Text = "5",
                 Width = 30,
-                VerticalContentAlignment = VerticalAlignment.Center
+                VerticalContentAlignment = VerticalAlignment.Center,
             };
             _tightenBtn = new Button
             {
-                Content    = "Tighten",
-                Margin     = new Thickness(0, 0, 4, 0),
-                Background = BrushInactive
+                Content = "Tighten",
+                Margin = new Thickness(0, 0, 4, 0),
+                Background = BrushInactive,
             };
             _tightenBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _tightenBtn.Click += OnTightenStop;
             var tightenLabel = new TextBlock
             {
-                Text              = "tks",
+                Text = "tks",
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(2, 0, 0, 0)
+                Margin = new Thickness(2, 0, 0, 0),
             };
-            tightenLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
+            tightenLabel.SetResourceReference(
+                TextBlock.ForegroundProperty,
+                "NTBrushes.SubtleBrush"
+            );
             tightenRow.Children.Add(_tightenBtn);
             tightenRow.Children.Add(_tightenTicksBox);
             tightenRow.Children.Add(tightenLabel);
             _contentPanel.Children.Add(tightenRow);
-            tightenRow.Visibility = Visibility.Collapsed;  // B47 T5-B: HIDE NOT DELETE
+            tightenRow.Visibility = Visibility.Collapsed; // B47 T5-B: HIDE NOT DELETE
 
             // B12 T3: Risk $ + ATR % spinner row (last row in _contentPanel)
             BuildRiskAtrRow(_contentPanel);
 
             // B49: Buttons first (BE/Quick rows), then Copier, then Position Tools.
-            root.Children.Add(_beRowPanel);    // B49: moved from tail -- buttons first
+            root.Children.Add(_beRowPanel); // B49: moved from tail -- buttons first
             root.Children.Add(_quickRowPanel); // B49: moved from tail -- buttons first
-            BuildCopierSection(root);          // B49: Copier second (Mode row now inside)
-            root.Children.Add(_statusText);    // status below Copier
-            BuildCollapsibleHeader(root);      // B49: Position Tools moved to bottom
-            root.Children.Add(_contentPanel);  // B49: contentPanel follows its header
+            BuildCopierSection(root); // B49: Copier second (Mode row now inside)
+            root.Children.Add(_statusText); // status below Copier
+            BuildCollapsibleHeader(root); // B49: Position Tools moved to bottom
+            root.Children.Add(_contentPanel); // B49: contentPanel follows its header
             Content = root;
 
             // V04: ensure consistent initial state
@@ -834,36 +918,36 @@ namespace PropTraderTools
             var row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin      = new Thickness(0, 4, 0, 0)
+                Margin = new Thickness(0, 4, 0, 0),
             };
 
             _buyToggle = new ToggleButton
             {
-                Content   = "Buy",
+                Content = "Buy",
                 IsChecked = true,
-                Width     = 45,
-                Height    = 22
+                Width = 45,
+                Height = 22,
             };
             _buyToggle.SetResourceReference(Control.StyleProperty, "NTToggleButtonStyle");
 
             _sellToggle = new ToggleButton
             {
                 Content = "Sell",
-                Width   = 45,
-                Height  = 22
+                Width = 45,
+                Height = 22,
             };
             _sellToggle.SetResourceReference(Control.StyleProperty, "NTToggleButtonStyle");
 
-            _buyToggle.Click  += OnBuyToggleClick;
+            _buyToggle.Click += OnBuyToggleClick;
             _sellToggle.Click += OnSellToggleClick;
 
             _armBtn = new Button
             {
-                Content    = "Arm",
-                Width      = 48,
-                Height     = 22,
-                Margin     = new Thickness(6, 0, 0, 0),
-                Background = MakeBrush(28, 33, 51)
+                Content = "Arm",
+                Width = 48,
+                Height = 22,
+                Margin = new Thickness(6, 0, 0, 0),
+                Background = MakeBrush(28, 33, 51),
             };
             _armBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _armBtn.Click += OnArmClick;
@@ -871,12 +955,12 @@ namespace PropTraderTools
             // B41: Cancel button relocated from BuildBufferedButtonsRow Row 3 to Click Trader row.
             _cancelBtn2 = new Button
             {
-                Content         = "Cancel",
-                Width           = 48,
-                Height          = 22,
-                Margin          = new Thickness(6, 0, 0, 0),
-                BorderBrush     = BrushDanger,
-                BorderThickness = new Thickness(2)
+                Content = "Cancel",
+                Width = 48,
+                Height = 22,
+                Margin = new Thickness(6, 0, 0, 0),
+                BorderBrush = BrushDanger,
+                BorderThickness = new Thickness(2),
             };
             _cancelBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _cancelBtn2.Click += OnCancel2;
@@ -886,7 +970,7 @@ namespace PropTraderTools
             row.Children.Add(_armBtn);
             row.Children.Add(_cancelBtn2);
             root.Children.Add(row);
-            row.Visibility = Visibility.Collapsed;  // B47 T5-B: HIDE NOT DELETE (handlers preserved)
+            row.Visibility = Visibility.Collapsed; // B47 T5-B: HIDE NOT DELETE (handlers preserved)
         }
 
         // B12 T1 -- OnPendingBeFiredDispatch: marshals PendingBeFired from NT8 account bg thread to UI.
@@ -952,16 +1036,17 @@ namespace PropTraderTools
         // BrushPurple and BrushCaution are pre-defined Panel brush fields.
         private void UpdateBeAllVisuals(BeState state)
         {
-            if (_globalBeBtn2 == null) return;
+            if (_globalBeBtn2 == null)
+                return;
             if (state == BeState.Idle)
             {
                 _globalBeBtn2.BorderBrush = BrushTeal;
-                _globalBeBtn2.Foreground  = BrushTeal;
-                _globalBeBtn2.Background  = System.Windows.Media.Brushes.Transparent;
+                _globalBeBtn2.Foreground = BrushTeal;
+                _globalBeBtn2.Background = System.Windows.Media.Brushes.Transparent;
             }
             else
             {
-                _globalBeBtn2.Background  = BrushCaution;
+                _globalBeBtn2.Background = BrushCaution;
             }
         }
 
@@ -974,16 +1059,30 @@ namespace PropTraderTools
         private void BuildBufferedButtonsRow(StackPanel root)
         {
             // Row 1: Trim | Flatten -- HIDDEN (Visibility.Collapsed). Event handlers preserved.
-            var row1 = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 2),
-                                         Visibility = Visibility.Collapsed };
+            var row1 = new UniformGrid
+            {
+                Columns = 2,
+                Margin = new Thickness(0, 2, 0, 2),
+                Visibility = Visibility.Collapsed,
+            };
 
             // Col 0: Trim cluster
             var trimCluster = new DockPanel { LastChildFill = true };
             var trimArrows = new Grid();
             trimArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             trimArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var trimUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Width = 18, Height = 12 };
-            var trimDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Width = 18, Height = 12 };
+            var trimUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var trimDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
             trimUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             trimDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             trimUp.Click += OnTrimUp;
@@ -993,7 +1092,11 @@ namespace PropTraderTools
             trimArrows.Children.Add(trimUp);
             trimArrows.Children.Add(trimDn);
             DockPanel.SetDock(trimArrows, Dock.Right);
-            _trimBtn2 = new Button { Content = FormatBuffer("Trim", _trimBuffer), Background = BrushInactive };
+            _trimBtn2 = new Button
+            {
+                Content = FormatBuffer("Trim", _trimBuffer),
+                Background = BrushInactive,
+            };
             _trimBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _trimBtn2.Click += OnTrimClick;
             trimCluster.Children.Add(trimArrows);
@@ -1005,8 +1108,18 @@ namespace PropTraderTools
             var flatArrows = new Grid();
             flatArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             flatArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var flatUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Width = 18, Height = 12 };
-            var flatDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Width = 18, Height = 12 };
+            var flatUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var flatDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
             flatUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             flatDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             flatUp.Click += OnFlattenUp;
@@ -1016,14 +1129,18 @@ namespace PropTraderTools
             flatArrows.Children.Add(flatUp);
             flatArrows.Children.Add(flatDn);
             DockPanel.SetDock(flatArrows, Dock.Right);
-            _flattenBtn2 = new Button { Content = FormatBuffer("Flatten", _flattenBuffer), Background = BrushInactive };
+            _flattenBtn2 = new Button
+            {
+                Content = FormatBuffer("Flatten", _flattenBuffer),
+                Background = BrushInactive,
+            };
             _flattenBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _flattenBtn2.Click += OnFlattenClick;
             flatCluster.Children.Add(flatArrows);
             flatCluster.Children.Add(_flattenBtn2);
             row1.Children.Add(flatCluster);
 
-            root.Children.Add(row1);  // in tree but collapsed
+            root.Children.Add(row1); // in tree but collapsed
 
             // _beRowPanel: 2-col [BE cluster | BE ALL cluster]
             _beRowPanel = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 2) };
@@ -1033,8 +1150,18 @@ namespace PropTraderTools
             var beArrows = new Grid();
             beArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             beArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var beUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Width = 18, Height = 12 };
-            var beDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Width = 18, Height = 12 };
+            var beUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var beDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
             beUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             beDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             beUp.Click += OnBeUp;
@@ -1046,10 +1173,10 @@ namespace PropTraderTools
             DockPanel.SetDock(beArrows, Dock.Right);
             _beBtn2 = new Button
             {
-                Content         = FormatBuffer("BE", _beBuffer),
-                BorderBrush     = BrushTeal,
-                Foreground      = BrushTeal,
-                BorderThickness = new Thickness(2)
+                Content = FormatBuffer("BE", _beBuffer),
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
             };
             _beBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _beBtn2.Click += OnBeClick;
@@ -1062,8 +1189,18 @@ namespace PropTraderTools
             var globalBeArrows = new Grid();
             globalBeArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             globalBeArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var globalBeUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Width = 18, Height = 12 };
-            var globalBeDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Width = 18, Height = 12 };
+            var globalBeUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var globalBeDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
             globalBeUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             globalBeDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             globalBeUp.Click += OnGlobalBeUp;
@@ -1075,10 +1212,13 @@ namespace PropTraderTools
             DockPanel.SetDock(globalBeArrows, Dock.Right);
             _globalBeBtn2 = new Button
             {
-                Content         = FormatGlobalBeBuffer("BE ALL", CopyEngine.Instance.GlobalBe.GlobalBeBuffer),
-                BorderBrush     = BrushTeal,
-                Foreground      = BrushTeal,
-                BorderThickness = new Thickness(2)
+                Content = FormatGlobalBeBuffer(
+                    "BE ALL",
+                    CopyEngine.Instance.GlobalBe.GlobalBeBuffer
+                ),
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
             };
             _globalBeBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _globalBeBtn2.Click += OnGlobalBeClick;
@@ -1092,11 +1232,21 @@ namespace PropTraderTools
 
             // Quick cluster
             var quickCluster = new DockPanel { LastChildFill = true };
-            var quickArrows  = new Grid();
+            var quickArrows = new Grid();
             quickArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             quickArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var quickUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Width = 18, Height = 12 };
-            var quickDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Width = 18, Height = 12 };
+            var quickUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var quickDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
             quickUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             quickDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             quickUp.Click += OnQuickUp;
@@ -1108,10 +1258,10 @@ namespace PropTraderTools
             DockPanel.SetDock(quickArrows, Dock.Right);
             _quickBtn = new Button
             {
-                Content         = FormatBuffer("Quick", _quickT1),
-                BorderBrush     = BrushTeal,
-                Foreground      = BrushTeal,
-                BorderThickness = new Thickness(2)
+                Content = FormatBuffer("Quick", _quickT1),
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
             };
             _quickBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _quickBtn.Click += OnQuickClick;
@@ -1121,11 +1271,21 @@ namespace PropTraderTools
 
             // Quick ALL cluster (new: DockPanel with spinners; was full-width plain button)
             var quickAllCluster = new DockPanel { LastChildFill = true };
-            var quickAllArrows  = new Grid();
+            var quickAllArrows = new Grid();
             quickAllArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             quickAllArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var quickAllUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Width = 18, Height = 12 };
-            var quickAllDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Width = 18, Height = 12 };
+            var quickAllUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var quickAllDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
             quickAllUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             quickAllDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             quickAllUp.Click += OnQuickAllUp;
@@ -1137,10 +1297,10 @@ namespace PropTraderTools
             DockPanel.SetDock(quickAllArrows, Dock.Right);
             _quickAllBtn = new Button
             {
-                Content         = FormatBuffer("Quick ALL", CopyEngine.Instance.GlobalQuickAllT1),
-                BorderBrush     = BrushTeal,
-                Foreground      = BrushTeal,
-                BorderThickness = new Thickness(2)
+                Content = FormatBuffer("Quick ALL", CopyEngine.Instance.GlobalQuickAllT1),
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
             };
             _quickAllBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _quickAllBtn.Click += OnQuickAllClick;
@@ -1153,14 +1313,14 @@ namespace PropTraderTools
             _quickT3Row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin      = new Thickness(0, 2, 0, 2),
-                Visibility  = Visibility.Collapsed
+                Margin = new Thickness(0, 2, 0, 2),
+                Visibility = Visibility.Collapsed,
             };
             var quickT3Lbl = new TextBlock
             {
-                Text              = "T3 hidden",
+                Text = "T3 hidden",
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(4, 0, 0, 0)
+                Margin = new Thickness(4, 0, 0, 0),
             };
             quickT3Lbl.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
             _quickT3Row.Children.Add(quickT3Lbl);
@@ -1188,9 +1348,11 @@ namespace PropTraderTools
         // CYC=3 (1 base + 2 if branches).
         private static string FormatGlobalBeBuffer(string name, int ticks)
         {
-            if (ticks == 0) return name;
-            if (ticks > 0)  return name + " +" + ticks;
-            return name + " " + ticks;    // int.ToString() of negative auto-includes "-"
+            if (ticks == 0)
+                return name;
+            if (ticks > 0)
+                return name + " +" + ticks;
+            return name + " " + ticks; // int.ToString() of negative auto-includes "-"
         }
 
         // B40: OnGlobalBeClick -- armed/wait FSM for BE ALL. CYC=4.
@@ -1208,7 +1370,8 @@ namespace PropTraderTools
                 // Currently Idle -- arm
                 NinjaTrader.Code.Output.Process(
                     "[BE-ALL] button: arm buf=" + CopyEngine.Instance.GlobalBe.GlobalBeBuffer,
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 CopyEngine.Instance.GlobalBe.Execute(CopyEngine.Instance.GlobalBe.GlobalBeBuffer);
             }
             else
@@ -1216,7 +1379,8 @@ namespace PropTraderTools
                 // Currently Armed -- disarm
                 NinjaTrader.Code.Output.Process(
                     "[BE-ALL] button: disarm all",
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 if (Account.All != null)
                     foreach (var acc in Account.All)
                         CopyEngine.Instance.DisarmPendingBe(acc);
@@ -1238,65 +1402,77 @@ namespace PropTraderTools
             CopyEngine.Instance.GlobalBe.DecrementBuffer();
         }
 
-
-
         // B12 T1 -- OnTrimUp: increment _trimBuffer, clamp, update label. CYC=1.
         private void OnTrimUp(object sender, RoutedEventArgs e)
         {
-            _trimBuffer = Math.Max(Math.Min(_trimBuffer + 1, 20), 0);   // no Math.Clamp (NT8 .NET 4.8)
-            if (_trimBtn2 != null) _trimBtn2.Content = FormatBuffer("Trim", _trimBuffer);
+            _trimBuffer = Math.Max(Math.Min(_trimBuffer + 1, 20), 0); // no Math.Clamp (NT8 .NET 4.8)
+            if (_trimBtn2 != null)
+                _trimBtn2.Content = FormatBuffer("Trim", _trimBuffer);
         }
 
         // B12 T1 -- OnTrimDown: decrement _trimBuffer, clamp, update label. CYC=1.
         private void OnTrimDown(object sender, RoutedEventArgs e)
         {
             _trimBuffer = Math.Max(Math.Min(_trimBuffer - 1, 20), 0);
-            if (_trimBtn2 != null) _trimBtn2.Content = FormatBuffer("Trim", _trimBuffer);
+            if (_trimBtn2 != null)
+                _trimBtn2.Content = FormatBuffer("Trim", _trimBuffer);
         }
 
         // B33 T7 -- OnTrimClick: dispatches to PttTrim module. CYC=2.
         // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnTrimClick(object sender, RoutedEventArgs e)
         {
-            if (_instrument == null) return;                                               // (1)
-            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();                 // B30-B
+            if (_instrument == null)
+                return; // (1)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B30-B
             NinjaTrader.Code.Output.Process(
-                "[TRIM] button: " + (_leaderAccount?.Name ?? "null") + " " + (_instrument?.FullName ?? "null"),
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            DispatchModule("TRIM");                                                        // (2)
+                "[TRIM] button: "
+                    + (_leaderAccount?.Name ?? "null")
+                    + " "
+                    + (_instrument?.FullName ?? "null"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            DispatchModule("TRIM"); // (2)
         }
 
         // B12 T1 -- OnFlattenUp: increment _flattenBuffer, clamp, update label. CYC=1.
         private void OnFlattenUp(object sender, RoutedEventArgs e)
         {
             _flattenBuffer = Math.Max(Math.Min(_flattenBuffer + 1, 20), 0);
-            if (_flattenBtn2 != null) _flattenBtn2.Content = FormatBuffer("Flatten", _flattenBuffer);
+            if (_flattenBtn2 != null)
+                _flattenBtn2.Content = FormatBuffer("Flatten", _flattenBuffer);
         }
 
         // B12 T1 -- OnFlattenDown: decrement _flattenBuffer, clamp, update label. CYC=1.
         private void OnFlattenDown(object sender, RoutedEventArgs e)
         {
             _flattenBuffer = Math.Max(Math.Min(_flattenBuffer - 1, 20), 0);
-            if (_flattenBtn2 != null) _flattenBtn2.Content = FormatBuffer("Flatten", _flattenBuffer);
+            if (_flattenBtn2 != null)
+                _flattenBtn2.Content = FormatBuffer("Flatten", _flattenBuffer);
         }
 
         // B33 T7 -- OnFlattenClick: dispatches to PttFlatten module. CYC=2.
         // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnFlattenClick(object sender, RoutedEventArgs e)
         {
-            if (_instrument == null) return;                                               // (1)
-            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();                 // B30-B
+            if (_instrument == null)
+                return; // (1)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B30-B
             NinjaTrader.Code.Output.Process(
-                "[FLAT] button: " + (_leaderAccount?.Name ?? "null") + " " + (_instrument?.FullName ?? "null"),
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            DispatchModule("FLAT");                                                        // (2)
+                "[FLAT] button: "
+                    + (_leaderAccount?.Name ?? "null")
+                    + " "
+                    + (_instrument?.FullName ?? "null"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            DispatchModule("FLAT"); // (2)
         }
 
         // B12 T1 -- OnBeUp: increment _beBuffer, clamp. CYC=1.
         // B32/B35-LaneB: Connected state removed -- buffer change no longer triggers live reprice (DW-B32-04b closed).
         private void OnBeUp(object sender, RoutedEventArgs e)
         {
-            _beBuffer = Math.Max(Math.Min(_beBuffer + 1, 20), 0);       // no Math.Clamp
+            _beBuffer = Math.Max(Math.Min(_beBuffer + 1, 20), 0); // no Math.Clamp
             UpdateBeLabel();
         }
 
@@ -1316,19 +1492,25 @@ namespace PropTraderTools
         // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnBeClick(object sender, RoutedEventArgs e)
         {
-            if (_instrument == null) return;                                               // (1)
-            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();                 // B30-B
-            if (_leaderAccount == null) return;                                           // (2)
+            if (_instrument == null)
+                return; // (1)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B30-B
+            if (_leaderAccount == null)
+                return; // (2)
             switch (_beState)
             {
-                case BeState.Idle:                                                         // (3)
+                case BeState.Idle: // (3)
                     // DW-B32-04: if price already past BE target, fire immediately -- no arm needed.
                     // Otherwise arm and wait for price to cross.
-                    if (IsPriceAlreadyAtBe(_leaderAccount, _instrument, _beBuffer))       // (4)
+                    if (IsPriceAlreadyAtBe(_leaderAccount, _instrument, _beBuffer)) // (4)
                     {
                         NinjaTrader.Code.Output.Process(
-                            "[BE] button: immediate fire " + _leaderAccount.Name + " buf=" + _beBuffer,
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                            "[BE] button: immediate fire "
+                                + _leaderAccount.Name
+                                + " buf="
+                                + _beBuffer,
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                        );
                         DispatchModule("BE");
                         // stay Idle -- ATM owns stop from here
                     }
@@ -1336,16 +1518,18 @@ namespace PropTraderTools
                     {
                         NinjaTrader.Code.Output.Process(
                             "[BE] button: arming " + _leaderAccount.Name + " buf=" + _beBuffer,
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                        );
                         _engine.ArmPendingBe(_instrument, _leaderAccount, _beBuffer);
                         _beState = BeState.Armed;
                         UpdateBeVisuals(BeState.Armed);
                     }
                     break;
-                case BeState.Armed:                                                        // (5)
+                case BeState.Armed: // (5)
                     NinjaTrader.Code.Output.Process(
                         "[BE] button: disarming " + _leaderAccount.Name,
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
                     _engine.DisarmPendingBe(_leaderAccount);
                     _beState = BeState.Idle;
                     UpdateBeVisuals(BeState.Idle);
@@ -1361,20 +1545,24 @@ namespace PropTraderTools
         private bool IsPriceAlreadyAtBe(Account leader, Instrument instrument, int bufferTicks)
         {
             var pos = _engine.FindPositionPublic(leader, instrument);
-            if (pos == null) return false;                                                // (1)
+            if (pos == null)
+                return false; // (1)
             double tickSize = instrument?.MasterInstrument?.TickSize ?? 0.0;
-            if (tickSize <= 0.0) return false;                                            // (2)
-            bool isLong  = pos.MarketPosition == NinjaTrader.Cbi.MarketPosition.Long;
+            if (tickSize <= 0.0)
+                return false; // (2)
+            bool isLong = pos.MarketPosition == NinjaTrader.Cbi.MarketPosition.Long;
             double target = pos.AveragePrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
-            double refPx  = isLong ? GetBid() : GetAsk();
-            if (refPx <= 0.0) return false;                                               // (3)
-            return isLong ? (refPx >= target) : (refPx <= target);                       // (4)
+            double refPx = isLong ? GetBid() : GetAsk();
+            if (refPx <= 0.0)
+                return false; // (3)
+            return isLong ? (refPx >= target) : (refPx <= target); // (4)
         }
 
         // B12 T1 -- UpdateBeLabel: sets _beBtn2 label. CYC=1.
         private void UpdateBeLabel()
         {
-            if (_beBtn2 != null) _beBtn2.Content = FormatBuffer("BE", _beBuffer);
+            if (_beBtn2 != null)
+                _beBtn2.Content = FormatBuffer("BE", _beBuffer);
         }
 
         // B32 -- UpdateBeVisuals: 2-state only. Connected removed (DW-B32-04). CYC=2.
@@ -1382,15 +1570,16 @@ namespace PropTraderTools
         // leaving the amber BrushCaution background stuck on the button after disarm.
         private void UpdateBeVisuals(BeState state)
         {
-            if (_beBtn2 == null) return;
+            if (_beBtn2 == null)
+                return;
             switch (state)
             {
-                case BeState.Idle:                                                    // (1)
-                    _beBtn2.Content    = FormatBuffer("BE", _beBuffer);
-                    _beBtn2.Background = BrushInactive;                // FIX-A: clear amber
+                case BeState.Idle: // (1)
+                    _beBtn2.Content = FormatBuffer("BE", _beBuffer);
+                    _beBtn2.Background = BrushInactive; // FIX-A: clear amber
                     break;
-                case BeState.Armed:                                                   // (2)
-                    _beBtn2.Content    = "BE Armed";
+                case BeState.Armed: // (2)
+                    _beBtn2.Content = "BE Armed";
                     _beBtn2.Background = BrushCaution;
                     break;
             }
@@ -1403,8 +1592,9 @@ namespace PropTraderTools
         // CYC=2: account name guard(1), Dispatcher marshal(2).
         private void OnBeConnected(string instr, string accountName)
         {
-            if (_leaderAccount == null || _leaderAccount.Name != accountName) return;  // (1)
-            Dispatcher.InvokeAsync(() =>                                                // (2)
+            if (_leaderAccount == null || _leaderAccount.Name != accountName)
+                return; // (1)
+            Dispatcher.InvokeAsync(() => // (2)
             {
                 _beState = BeState.Idle;
                 UpdateBeVisuals(BeState.Idle);
@@ -1416,12 +1606,15 @@ namespace PropTraderTools
         // Replaces GetRefPrice() (which used md.Last.Price -- wrong anchor). CYC=4.
         private double GetAsk()
         {
-            if (_instrument == null) return 0.0;                   // (1) guard
+            if (_instrument == null)
+                return 0.0; // (1) guard
             var md = _instrument.MarketData;
-            if (md == null)   return 0.0;                          // (2) guard
+            if (md == null)
+                return 0.0; // (2) guard
             var ask = md.Ask;
-            if (ask == null)  return 0.0;                          // (3) guard
-            return ask.Price;                                      // (4) double
+            if (ask == null)
+                return 0.0; // (3) guard
+            return ask.Price; // (4) double
         }
 
         // B19 T1 -- GetBid: returns current bid price from _instrument.MarketData.Bid.Price.
@@ -1429,12 +1622,15 @@ namespace PropTraderTools
         // Mirrors GetAsk() null-guard chain exactly. CYC=4.
         private double GetBid()
         {
-            if (_instrument == null) return 0.0;                   // (1) guard
+            if (_instrument == null)
+                return 0.0; // (1) guard
             var md = _instrument.MarketData;
-            if (md == null)   return 0.0;                          // (2) guard
+            if (md == null)
+                return 0.0; // (2) guard
             var bid = md.Bid;
-            if (bid == null)  return 0.0;                          // (3) guard
-            return bid.Price;                                      // (4) double
+            if (bid == null)
+                return 0.0; // (3) guard
+            return bid.Price; // (4) double
         }
 
         // B54: engine owns the change -- SetEnabled fires CopyEnabledChanged -> ApplyCopyState.
@@ -1455,8 +1651,9 @@ namespace PropTraderTools
             _copyEnabled = enabled;
             Dispatcher.InvokeAsync(() =>
             {
-                if (_copyToggleBtn2 == null) return;
-                _copyToggleBtn2.Content    = enabled ? "\u25CF COPY ON" : "\u25CF COPY OFF";
+                if (_copyToggleBtn2 == null)
+                    return;
+                _copyToggleBtn2.Content = enabled ? "\u25CF COPY ON" : "\u25CF COPY OFF";
                 _copyToggleBtn2.Background = enabled ? BrushActive : BrushInactive;
             });
         }
@@ -1472,12 +1669,17 @@ namespace PropTraderTools
         // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnCancel2(object sender, RoutedEventArgs e)
         {
-            if (_instrument == null) return;                                               // (1)
-            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();                 // B30-B
+            if (_instrument == null)
+                return; // (1)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B30-B
             NinjaTrader.Code.Output.Process(
-                "[CANCEL] button: " + (_leaderAccount?.Name ?? "null") + " " + (_instrument?.FullName ?? "null"),
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
-            DispatchModule("CANCEL");                                                      // (2)
+                "[CANCEL] button: "
+                    + (_leaderAccount?.Name ?? "null")
+                    + " "
+                    + (_instrument?.FullName ?? "null"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            DispatchModule("CANCEL"); // (2)
         }
 
         // B12 T2 -- BuildCollapsibleHeader: builds collapse header row. CYC=1.
@@ -1486,7 +1688,7 @@ namespace PropTraderTools
             _collapseToggleBtn = new Button
             {
                 Content = "\u25BC Position Tools",
-                Margin  = new Thickness(0, 0, 0, 2)
+                Margin = new Thickness(0, 0, 0, 2),
             };
             _collapseToggleBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _collapseToggleBtn.Click += OnCollapseClick;
@@ -1496,11 +1698,13 @@ namespace PropTraderTools
         // B12 T2 -- OnCollapseClick: toggles _isCollapsed and sets _contentPanel.Visibility. CYC=2.
         private void OnCollapseClick(object sender, RoutedEventArgs e)
         {
-            _isCollapsed = !_isCollapsed;                                              // (1)
-            if (_contentPanel != null)                                                 // (2)
+            _isCollapsed = !_isCollapsed; // (1)
+            if (_contentPanel != null) // (2)
                 _contentPanel.Visibility = _isCollapsed ? Visibility.Collapsed : Visibility.Visible;
             if (_collapseToggleBtn != null)
-                _collapseToggleBtn.Content = _isCollapsed ? "\u25B2 Position Tools" : "\u25BC Position Tools";
+                _collapseToggleBtn.Content = _isCollapsed
+                    ? "\u25B2 Position Tools"
+                    : "\u25BC Position Tools";
         }
 
         // B10 T3 -- OnTightenStop: tighten stop button click handler.
@@ -1510,19 +1714,17 @@ namespace PropTraderTools
         // JS-021: no lock -- _engine.TightenStop iterates ConcurrentBag (lock-free).
         private void OnTightenStop(object sender, RoutedEventArgs e)
         {
-            if (_instrument == null)                               // (1)
+            if (_instrument == null) // (1)
                 return;
-            var leader = _leaderAccount ?? TryResolveLeaderAccount();  // B30-B: late resolve
-            int ticks = int.TryParse(_tightenTicksBox?.Text, out var t)  // (2)
-                ? Math.Max(1, Math.Min(500, t))   // clamp 1-500: no Math.Clamp (.NET 4.8 ban)
+            var leader = _leaderAccount ?? TryResolveLeaderAccount(); // B30-B: late resolve
+            int ticks = int.TryParse(_tightenTicksBox?.Text, out var t) // (2)
+                ? Math.Max(1, Math.Min(500, t)) // clamp 1-500: no Math.Clamp (.NET 4.8 ban)
                 : 5;
-            if (leader != null)                                    // (3)
-                _engine.TightenStop(leader, _instrument, ticks);   // B30-A leader overload (4)
+            if (leader != null) // (3)
+                _engine.TightenStop(leader, _instrument, ticks); // B30-A leader overload (4)
             else
-                _engine.TightenStop(_instrument, ticks);           // fallback: all accounts
+                _engine.TightenStop(_instrument, ticks); // fallback: all accounts
         }
-
-
 
         // B9 T3: Appends "Mode: [Signal] [Mirror]" radio button row to root StackPanel.
         // CYC=1 (straight-line widget construction, no branches).
@@ -1531,26 +1733,26 @@ namespace PropTraderTools
             var row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin      = new Thickness(0, 4, 0, 0)
+                Margin = new Thickness(0, 4, 0, 0),
             };
             var lbl = new Label
             {
-                Content           = "Mode:",
-                Width             = 42,
-                VerticalAlignment = VerticalAlignment.Center
+                Content = "Mode:",
+                Width = 42,
+                VerticalAlignment = VerticalAlignment.Center,
             };
             _signalModeBtn = new RadioButton
             {
-                Content           = "Signal",
-                IsChecked         = true,
-                Margin            = new Thickness(4, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center
+                Content = "Signal",
+                IsChecked = true,
+                Margin = new Thickness(4, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
             };
             _mirrorModeBtn = new RadioButton
             {
-                Content           = "Mirror",
-                Margin            = new Thickness(8, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center
+                Content = "Mirror",
+                Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
             };
             _signalModeBtn.Click += OnSignalModeClick;
             _mirrorModeBtn.Click += OnMirrorModeClick;
@@ -1558,11 +1760,11 @@ namespace PropTraderTools
             // B41: COPY ON/OFF ToggleButton relocated from BuildBufferedButtonsRow Row 3 to Mode row.
             _copyToggleBtn2 = new Button
             {
-                Content           = "\u25CF COPY OFF",
-                Margin            = new Thickness(8, 0, 0, 0),
-                BorderBrush       = BrushInactive,
-                BorderThickness   = new Thickness(2),
-                VerticalAlignment = VerticalAlignment.Center
+                Content = "\u25CF COPY OFF",
+                Margin = new Thickness(8, 0, 0, 0),
+                BorderBrush = BrushInactive,
+                BorderThickness = new Thickness(2),
+                VerticalAlignment = VerticalAlignment.Center,
             };
             _copyToggleBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _copyToggleBtn2.Click += OnCopyToggle;
@@ -1570,9 +1772,9 @@ namespace PropTraderTools
             // B50: Clone radio button
             _cloneModeBtn = new RadioButton
             {
-                Content           = "Clone",
-                Margin            = new Thickness(8, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center
+                Content = "Clone",
+                Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
             };
             _cloneModeBtn.Click += OnCloneModeClick;
 
@@ -1609,13 +1811,13 @@ namespace PropTraderTools
             CopyEngine.Instance.SetCopyMode(CopyMode.Clone);
             // Capture live AtmStrategy object from ChartTrader -- must be done on UI thread (we are).
             NinjaTrader.NinjaScript.AtmStrategy atmObj = null;
-            if (_currentChart != null)                                           // branch (1)
+            if (_currentChart != null) // branch (1)
             {
                 var ct = TradeCopierAddOn.FindVisualChild<ChartTrader>(_currentChart);
                 atmObj = ct?.AtmStrategy;
             }
             CopyEngine.Instance.SetCloneAtmObjectCache(atmObj);
-            string tpl = GetLeaderAtmTemplateName(_currentChart);                // string for display only
+            string tpl = GetLeaderAtmTemplateName(_currentChart); // string for display only
             CopyEngine.Instance.SetCloneAtmCache(tpl);
             UpdateAtmComboVisibility(Visibility.Collapsed);
         }
@@ -1626,12 +1828,12 @@ namespace PropTraderTools
         // JS-021: no lock. UI-thread-only -- called only from Click handlers (UI thread).
         private void UpdateAtmComboVisibility(Visibility v)
         {
-            for (int i = _atmComboRefs.Count - 1; i >= 0; i--)   // branch (1)
+            for (int i = _atmComboRefs.Count - 1; i >= 0; i--) // branch (1)
             {
-                if (_atmComboRefs[i].TryGetTarget(out var cb))    // branch (2)
+                if (_atmComboRefs[i].TryGetTarget(out var cb)) // branch (2)
                     cb.Visibility = v;
                 else
-                    _atmComboRefs.RemoveAt(i);                    // branch (3): prune dead ref
+                    _atmComboRefs.RemoveAt(i); // branch (3): prune dead ref
             }
         }
 
@@ -1639,13 +1841,20 @@ namespace PropTraderTools
         // JS-033: synchronous void event handler. JS-021: no lock.
         private void OnQuickClick(object sender, RoutedEventArgs e)
         {
-            if (_instrument == null) return;                                              // (1)
+            if (_instrument == null)
+                return; // (1)
             _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();
             NinjaTrader.Code.Output.Process(
-                "[PTT-QX] button: " + (_leaderAccount?.Name ?? "null") + " " + (_instrument?.FullName ?? "null") + " t1=" + _quickT1,
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                "[PTT-QX] button: "
+                    + (_leaderAccount?.Name ?? "null")
+                    + " "
+                    + (_instrument?.FullName ?? "null")
+                    + " t1="
+                    + _quickT1,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
             var qx = new PttQuickExit();
-            qx.Execute(_leaderAccount, _instrument, _quickT1, _quickT2);                // (2)
+            qx.Execute(_leaderAccount, _instrument, _quickT1, _quickT2); // (2)
         }
 
         // B41: OnQuickAllClick -- fires all-accounts Quick Exit bracket swap. CYC=1.
@@ -1662,7 +1871,7 @@ namespace PropTraderTools
             _quickT1 = Math.Max(1, Math.Min(_quickT1 + 1, 100));
             _quickT2 = _quickT1 * 2;
             if (_quickBtn != null)
-                _quickBtn.Content = FormatBuffer("Quick", _quickT1);                    // (2)
+                _quickBtn.Content = FormatBuffer("Quick", _quickT1); // (2)
         }
 
         // B41: OnQuickDown -- decrement T1 by 1t (minimum 1), T2 = T1 x 2. CYC=2.
@@ -1671,7 +1880,7 @@ namespace PropTraderTools
             _quickT1 = Math.Max(1, Math.Min(_quickT1 - 1, 100));
             _quickT2 = _quickT1 * 2;
             if (_quickBtn != null)
-                _quickBtn.Content = FormatBuffer("Quick", _quickT1);                    // (2)
+                _quickBtn.Content = FormatBuffer("Quick", _quickT1); // (2)
         }
 
         // B47 T5-B: OnQuickAllUp -- increment singleton; label refresh via broadcast. CYC=1.
@@ -1696,16 +1905,19 @@ namespace PropTraderTools
         private void RefreshQuickDisplay(Account acc, Instrument instr)
         {
             var t1Ord = FindWorkingOrder(acc, instr, "PTT-QX-T1");
-            if (t1Ord == null) return;                                                    // (1)
+            if (t1Ord == null)
+                return; // (1)
             var pos = CopyEngine.Instance?.FindPositionPublic(acc, instr);
-            if (pos == null || pos.Quantity == 0) return;                                 // (2)
+            if (pos == null || pos.Quantity == 0)
+                return; // (2)
             double tick = instr.MasterInstrument?.TickSize ?? 0.25;
             bool isLong = pos.MarketPosition == MarketPosition.Long;
             double rawDiff = isLong
                 ? t1Ord.LimitPrice - pos.AveragePrice
                 : pos.AveragePrice - t1Ord.LimitPrice;
             int liveT1 = (int)Math.Round(rawDiff / tick);
-            if (liveT1 < 1) liveT1 = 1;                                                  // (3)
+            if (liveT1 < 1)
+                liveT1 = 1; // (3)
             _quickT1 = liveT1;
             _quickT2 = liveT1 * 2;
             if (_quickBtn != null)
@@ -1717,7 +1929,7 @@ namespace PropTraderTools
         private void UpdateT3Visibility(Account acc, Instrument instr)
         {
             var targets = CopyEngine.Instance?.SnapshotTargetsPublic(acc, instr);
-            bool show = targets != null && targets.Count >= 3;                            // (1)(2)
+            bool show = targets != null && targets.Count >= 3; // (1)(2)
             if (_quickT3Row != null)
                 _quickT3Row.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -1726,12 +1938,16 @@ namespace PropTraderTools
         // JS-002: returns null if none (null is valid sentinel, used in RefreshQuickDisplay null guard).
         private static Order FindWorkingOrder(Account acc, Instrument instr, string orderName)
         {
-            if (acc == null || instr == null) return null;
-            foreach (var o in acc.Orders)                                                 // (1)
+            if (acc == null || instr == null)
+                return null;
+            foreach (var o in acc.Orders) // (1)
             {
-                if (o.Instrument != instr) continue;
-                if (o.Name != orderName) continue;
-                if (o.OrderState == OrderState.Working) return o;                         // (2)
+                if (o.Instrument != instr)
+                    continue;
+                if (o.Name != orderName)
+                    continue;
+                if (o.OrderState == OrderState.Working)
+                    return o; // (2)
             }
             return null;
         }
@@ -1740,10 +1956,13 @@ namespace PropTraderTools
         // CYC=3: null guard(1), name filter(2), state filter(3).
         private void OnLeaderOrderUpdate(object sender, OrderEventArgs e)
         {
-            if (e == null || e.Order == null) return;                                         // (1)
-            if (e.Order.Name != "PTT-QX-T1") return;                                         // (2)
-            if (e.Order.OrderState != OrderState.Working) return;                             // (3)
-            var acc   = e.Order.Account;
+            if (e == null || e.Order == null)
+                return; // (1)
+            if (e.Order.Name != "PTT-QX-T1")
+                return; // (2)
+            if (e.Order.OrderState != OrderState.Working)
+                return; // (3)
+            var acc = e.Order.Account;
             var instr = e.Order.Instrument;
             Dispatcher.InvokeAsync(() => RefreshQuickDisplay(acc, instr));
         }
@@ -1754,9 +1973,11 @@ namespace PropTraderTools
         // state is fully updated at this event (unlike order-fill time where HasOpenPosition lags).
         private void OnLeaderPositionUpdate(object sender, PositionEventArgs e)
         {
-            if (e == null || e.Position == null) return;                                      // (1)
-            if (e.Position.Instrument == null) return;                                        // (2)
-            var acc   = e.Position.Account;
+            if (e == null || e.Position == null)
+                return; // (1)
+            if (e.Position.Instrument == null)
+                return; // (2)
+            var acc = e.Position.Account;
             var instr = e.Position.Instrument;
             Dispatcher.InvokeAsync(() =>
             {
@@ -1767,11 +1988,15 @@ namespace PropTraderTools
             // NT8 delivers PositionUpdate(Remove) AFTER position state is fully updated
             // (unlike order Filled events where HasOpenPosition still reads the old qty).
             // This is the correct place to trigger UpdateButtonColors(false) for manual closes.
-            if (e.Operation != Operation.Remove) return;                          // (1)
-            if (e.Position?.Instrument?.FullName == null) return;                 // (2)
-            if (_instrument == null) return;                                      // (3)
-            if (e.Position.Instrument.FullName != _instrument.FullName) return;  // (4)
-            Dispatcher.InvokeAsync(() => UpdateButtonColors(false, false));       // (5)
+            if (e.Operation != Operation.Remove)
+                return; // (1)
+            if (e.Position?.Instrument?.FullName == null)
+                return; // (2)
+            if (_instrument == null)
+                return; // (3)
+            if (e.Position.Instrument.FullName != _instrument.FullName)
+                return; // (4)
+            Dispatcher.InvokeAsync(() => UpdateButtonColors(false, false)); // (5)
         }
 
         // B47 T1-B: LoadFollowers -- build inline follower rows into _followerScrollViewerPanel.
@@ -1781,11 +2006,12 @@ namespace PropTraderTools
         // NT8-019: no async void. NT8-003: no volatile.
         private void LoadFollowers()
         {
-            if (_followerScrollViewerPanel == null) return;    // guard [1]
+            if (_followerScrollViewerPanel == null)
+                return; // guard [1]
             _followerScrollViewerPanel.Children.Clear();
-            foreach (var item in _followerItems)               // loop [2]
+            foreach (var item in _followerItems) // loop [2]
                 BuildInlineFollowerRow(item);
-            SortFollowerRows();  // B47 T4-B: initial sort (checked first, alpha within group)
+            SortFollowerRows(); // B47 T4-B: initial sort (checked first, alpha within group)
         }
 
         // B47 T1-B: BuildInlineFollowerRow -- imperative row construction, no DataTemplate.
@@ -1798,18 +2024,14 @@ namespace PropTraderTools
             // name label stretches to fill all remaining space. Fixed Width=90 was clipping long
             // PA-APEX account names (e.g. "PA-APEX-422136-01U" = 20 chars at ~8px/char needs ~160px).
             // PnL and ATM combo are docked Right so they never compete with the name.
-            var row = new DockPanel
-            {
-                LastChildFill = true,
-                Margin        = new Thickness(0, 1, 0, 1)
-            };
+            var row = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 1, 0, 1) };
 
             // Col 0: CheckBox -- docked Left, tracks IsSelected
             var chk = new CheckBox
             {
-                IsChecked         = item.IsSelected,
+                IsChecked = item.IsSelected,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(0, 0, 4, 0)
+                Margin = new Thickness(0, 0, 4, 0),
             };
             DockPanel.SetDock(chk, Dock.Left);
 
@@ -1817,13 +2039,15 @@ namespace PropTraderTools
             // Docked before PnL so DockPanel processes right-most first.
             var atmCombo = new ComboBox
             {
-                Width             = 110,
-                IsEnabled         = item.IsSelected,
+                Width = 110,
+                IsEnabled = item.IsSelected,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(2, 0, 0, 0)
+                Margin = new Thickness(2, 0, 0, 0),
             };
-            atmCombo.AddHandler(FrameworkElement.LoadedEvent,
-                new RoutedEventHandler(OnFollowerAtmTemplateComboLoaded));
+            atmCombo.AddHandler(
+                FrameworkElement.LoadedEvent,
+                new RoutedEventHandler(OnFollowerAtmTemplateComboLoaded)
+            );
             atmCombo.SelectionChanged += OnFollowerAtmTemplateComboChanged;
             atmCombo.DataContext = item;
             DockPanel.SetDock(atmCombo, Dock.Right);
@@ -1833,12 +2057,12 @@ namespace PropTraderTools
             // item.DailyPnlColor: SolidColorBrush -- green/red/neutral (already Freeze()d by FollowerItem)
             var pnlLabel = new TextBlock
             {
-                Text              = item.DailyPnlText,
-                Width             = 60,
-                TextAlignment     = TextAlignment.Right,
+                Text = item.DailyPnlText,
+                Width = 60,
+                TextAlignment = TextAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(2, 0, 2, 0),
-                Foreground        = item.DailyPnlColor
+                Margin = new Thickness(2, 0, 2, 0),
+                Foreground = item.DailyPnlColor,
             };
             DockPanel.SetDock(pnlLabel, Dock.Right);
 
@@ -1846,29 +2070,29 @@ namespace PropTraderTools
             // TextTrimming=CharacterEllipsis ensures long names degrade gracefully if panel is very narrow.
             var nameLabel = new TextBlock
             {
-                Text              = item.ToString(),
+                Text = item.ToString(),
                 VerticalAlignment = VerticalAlignment.Center,
-                TextTrimming      = TextTrimming.CharacterEllipsis,
-                Margin            = new Thickness(0, 0, 4, 0)
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(0, 0, 4, 0),
             };
             nameLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
 
             // CheckBox event handlers: toggle IsSelected + ATM IsEnabled + sort + auto-apply
             chk.Checked += (s, e) =>
             {
-                item.IsSelected    = true;
+                item.IsSelected = true;
                 atmCombo.IsEnabled = true;
-                SortFollowerRows();   // B47 T4-B
+                SortFollowerRows(); // B47 T4-B
                 UpdateCopierHeader(); // B47 T3-B
-                TryAutoApply();       // B47 T2-B
+                TryAutoApply(); // B47 T2-B
             };
             chk.Unchecked += (s, e) =>
             {
-                item.IsSelected    = false;
+                item.IsSelected = false;
                 atmCombo.IsEnabled = false;
-                SortFollowerRows();   // B47 T4-B
+                SortFollowerRows(); // B47 T4-B
                 UpdateCopierHeader(); // B47 T3-B
-                TryAutoApply();       // B47 T2-B
+                TryAutoApply(); // B47 T2-B
             };
 
             // DockPanel child order: Left-docked first, Right-docked next (ATM then PnL),
@@ -1887,19 +2111,22 @@ namespace PropTraderTools
         // JS-021: no lock. UI-thread only (called from CheckBox event handlers and LoadFollowers).
         private void SortFollowerRows()
         {
-            if (_followerScrollViewerPanel == null) return;  // guard [1]
+            if (_followerScrollViewerPanel == null)
+                return; // guard [1]
 
-            _followerItems.Sort((a, b) =>                    // [2]
-            {
-                if (a.IsSelected != b.IsSelected)
-                    return a.IsSelected ? -1 : 1;  // checked first
-                string nameA = a.Account != null ? a.Account.Name : string.Empty;
-                string nameB = b.Account != null ? b.Account.Name : string.Empty;
-                return string.Compare(nameA, nameB, StringComparison.OrdinalIgnoreCase);
-            });
+            _followerItems.Sort(
+                (a, b) => // [2]
+                {
+                    if (a.IsSelected != b.IsSelected)
+                        return a.IsSelected ? -1 : 1; // checked first
+                    string nameA = a.Account != null ? a.Account.Name : string.Empty;
+                    string nameB = b.Account != null ? b.Account.Name : string.Empty;
+                    return string.Compare(nameA, nameB, StringComparison.OrdinalIgnoreCase);
+                }
+            );
 
             _followerScrollViewerPanel.Children.Clear();
-            foreach (var item in _followerItems)             // [3]
+            foreach (var item in _followerItems) // [3]
                 BuildInlineFollowerRow(item);
         }
 
@@ -1913,7 +2140,7 @@ namespace PropTraderTools
             {
                 Content = "\u25BC Copier",
                 HorizontalContentAlignment = HorizontalAlignment.Left,
-                Margin  = new Thickness(0, 4, 0, 1)
+                Margin = new Thickness(0, 4, 0, 1),
             };
             _copierCollapseBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _copierCollapseBtn.Click += OnCopierCollapseClick;
@@ -1923,7 +2150,7 @@ namespace PropTraderTools
             // and the follower scroll rows. Collapse click only hides _followerScrollViewer;
             // Mode row remains visible when Copier is collapsed (Director spec).
             BuildModeRow(root);
-            root.Children.Add(_followerScrollViewer);  // sole visual tree insertion point for _followerScrollViewer
+            root.Children.Add(_followerScrollViewer); // sole visual tree insertion point for _followerScrollViewer
         }
 
         // B47 T3-B: OnCopierCollapseClick -- toggles _followerScrollViewer Visibility.
@@ -1931,11 +2158,13 @@ namespace PropTraderTools
         // JS-021: no lock. NT8-019: no async void.
         private void OnCopierCollapseClick(object sender, RoutedEventArgs e)
         {
-            if (_followerScrollViewer == null) return;           // null guard [1]
+            if (_followerScrollViewer == null)
+                return; // null guard [1]
             _copierCollapsed = !_copierCollapsed;
-            _followerScrollViewer.Visibility =
-                _copierCollapsed ? Visibility.Collapsed : Visibility.Visible;
-            UpdateCopierHeader();                                // [2]
+            _followerScrollViewer.Visibility = _copierCollapsed
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+            UpdateCopierHeader(); // [2]
         }
 
         // B47 T3-B: UpdateCopierHeader -- updates collapse button text to reflect current state.
@@ -1944,8 +2173,9 @@ namespace PropTraderTools
         // CYC=2: null guard [1] + _copierCollapsed branch [2].
         private void UpdateCopierHeader()
         {
-            if (_copierCollapseBtn == null) return;              // guard [1]
-            if (_copierCollapsed)                                // [2]
+            if (_copierCollapseBtn == null)
+                return; // guard [1]
+            if (_copierCollapsed) // [2]
                 _copierCollapseBtn.Content = "\u25B6 Copier  (" + CountActiveFollowers() + " active)";
             else
                 _copierCollapseBtn.Content = "\u25BC Copier";
@@ -1957,7 +2187,8 @@ namespace PropTraderTools
         {
             int n = 0;
             foreach (var item in _followerItems)
-                if (item.IsSelected) n++;
+                if (item.IsSelected)
+                    n++;
             return n;
         }
 
@@ -1970,21 +2201,24 @@ namespace PropTraderTools
         private void TryAutoApply()
         {
             _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();
-            if (_leaderAccount == null) return;           // guard [1]
-            if (_instrument == null) return;              // guard [2]
+            if (_leaderAccount == null)
+                return; // guard [1]
+            if (_instrument == null)
+                return; // guard [2]
             var followers = GetSelectedFollowers();
-            if (followers.Length == 0)                    // guard [3]
+            if (followers.Length == 0) // guard [3]
             {
                 if (_statusText != null)
                     _statusText.Text = "No followers selected.";
                 return;
             }
-            var atmMap      = BuildAtmMap(followers);
+            var atmMap = BuildAtmMap(followers);
             var multipliers = BuildMultipliers(followers);
             _engine.AddRule(_instrument.FullName, _leaderAccount, followers, multipliers, atmMap);
             _engine.SaveRules();
             if (_statusText != null)
-                _statusText.Text = "Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name;
+                _statusText.Text =
+                    "Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name;
         }
 
         // B47 T2-B: BuildAtmMap -- build Dictionary<string, FollowerAtmMode> from selected followers.
@@ -1995,11 +2229,17 @@ namespace PropTraderTools
             var map = new Dictionary<string, FollowerAtmMode>();
             foreach (var item in _followerItems)
             {
-                if (item.Account == null) continue;
+                if (item.Account == null)
+                    continue;
                 bool inFollowers = false;
                 foreach (var f in followers)
-                    if (f == item.Account) { inFollowers = true; break; }
-                if (!inFollowers) continue;
+                    if (f == item.Account)
+                    {
+                        inFollowers = true;
+                        break;
+                    }
+                if (!inFollowers)
+                    continue;
                 map[item.Account.Name] = ParseAtmModeNameLocal(item.AtmModeName ?? "Inherit");
             }
             return map;
@@ -2015,7 +2255,8 @@ namespace PropTraderTools
             {
                 foreach (var item in _followerItems)
                 {
-                    if (item.Account != followers[i]) continue;
+                    if (item.Account != followers[i])
+                        continue;
                     multipliers[i] = item.Multiplier > 0 ? item.Multiplier : 1;
                     break;
                 }
@@ -2036,8 +2277,10 @@ namespace PropTraderTools
             var template = new DataTemplate(typeof(FollowerItem));
 
             var gridFactory = new FrameworkElementFactory(typeof(Grid));
-            gridFactory.AddHandler(FrameworkElement.LoadedEvent,
-                new RoutedEventHandler(OnRowGridLoaded));
+            gridFactory.AddHandler(
+                FrameworkElement.LoadedEvent,
+                new RoutedEventHandler(OnRowGridLoaded)
+            );
 
             // [1] Account name -- Col 0: star width, ellipsis trimming
             var nameFactory = new FrameworkElementFactory(typeof(TextBlock));
@@ -2049,7 +2292,7 @@ namespace PropTraderTools
             // [2] Daily P&L -- Col 1: 62px fixed, right-aligned, color-coded
             var pnlFactory = new FrameworkElementFactory(typeof(TextBlock));
             pnlFactory.SetValue(Grid.ColumnProperty, 1);
-            pnlFactory.SetBinding(TextBlock.TextProperty,       new Binding("DailyPnlText"));
+            pnlFactory.SetBinding(TextBlock.TextProperty, new Binding("DailyPnlText"));
             pnlFactory.SetBinding(TextBlock.ForegroundProperty, new Binding("DailyPnlColor"));
             pnlFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Right);
             pnlFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
@@ -2059,31 +2302,40 @@ namespace PropTraderTools
             var multFactory = new FrameworkElementFactory(typeof(TextBox));
             multFactory.SetValue(Grid.ColumnProperty, 2);
             multFactory.SetValue(TextBox.TextProperty, "1");
-            multFactory.SetValue(TextBox.VerticalContentAlignmentProperty, VerticalAlignment.Center);
-            multFactory.AddHandler(TextBox.TextChangedEvent,
-                new TextChangedEventHandler(OnFollowerMultiplierChanged));
+            multFactory.SetValue(
+                TextBox.VerticalContentAlignmentProperty,
+                VerticalAlignment.Center
+            );
+            multFactory.AddHandler(
+                TextBox.TextChangedEvent,
+                new TextChangedEventHandler(OnFollowerMultiplierChanged)
+            );
             multFactory.SetValue(FrameworkElement.VisibilityProperty, Visibility.Collapsed);
 
             // [4] B43 T1: ATM template ComboBox (replaces Inherit/Market/Named ComboBox + namedBox TextBox).
             // Col 3. Width=120 to accommodate template names. Wired via FEF LoadedEvent + SelectionChangedEvent.
             // NT8-012: FEF AddHandler pattern for Loaded event -- mandatory for NT8 DataTemplate wiring.
             var atmTemplateFactory = new FrameworkElementFactory(typeof(ComboBox));
-            atmTemplateFactory.SetValue(Grid.ColumnProperty,      3);
-            atmTemplateFactory.SetValue(ComboBox.WidthProperty,   120.0);
-            atmTemplateFactory.SetValue(ComboBox.MarginProperty,  new Thickness(2));
+            atmTemplateFactory.SetValue(Grid.ColumnProperty, 3);
+            atmTemplateFactory.SetValue(ComboBox.WidthProperty, 120.0);
+            atmTemplateFactory.SetValue(ComboBox.MarginProperty, new Thickness(2));
             atmTemplateFactory.SetValue(ComboBox.ToolTipProperty, "ATM template for this follower");
             atmTemplateFactory.AddHandler(
                 FrameworkElement.LoadedEvent,
-                new RoutedEventHandler(OnFollowerAtmTemplateComboLoaded));
+                new RoutedEventHandler(OnFollowerAtmTemplateComboLoaded)
+            );
             atmTemplateFactory.AddHandler(
                 Selector.SelectionChangedEvent,
-                new SelectionChangedEventHandler(OnFollowerAtmTemplateComboChanged));
+                new SelectionChangedEventHandler(OnFollowerAtmTemplateComboChanged)
+            );
 
             // [5] Checkmark -- Col 4: 20px fixed, centered (was col 5 -- namedBox col removed)
             var chkFactory = new FrameworkElementFactory(typeof(CheckBox));
             chkFactory.SetValue(Grid.ColumnProperty, 4);
-            chkFactory.SetBinding(CheckBox.IsCheckedProperty,
-                new Binding("IsSelected") { Mode = BindingMode.TwoWay });
+            chkFactory.SetBinding(
+                CheckBox.IsCheckedProperty,
+                new Binding("IsSelected") { Mode = BindingMode.TwoWay }
+            );
             chkFactory.AddHandler(CheckBox.ClickEvent, new RoutedEventHandler(OnFollowerChecked));
             chkFactory.SetValue(CheckBox.VerticalAlignmentProperty, VerticalAlignment.Center);
             chkFactory.SetValue(CheckBox.HorizontalAlignmentProperty, HorizontalAlignment.Center);
@@ -2108,12 +2360,15 @@ namespace PropTraderTools
         // Col 4: 20px fixed        -- checkbox
         private void OnRowGridLoaded(object sender, RoutedEventArgs e)
         {
-            if (sender is not Grid grid) return;               // branch 1: type + null guard
-            if (grid.Tag is bool) return;                      // branch 2: already-configured guard
+            if (sender is not Grid grid)
+                return; // branch 1: type + null guard
+            if (grid.Tag is bool)
+                return; // branch 2: already-configured guard
             grid.Tag = true;
 
-            grid.ColumnDefinitions.Add(new ColumnDefinition
-                { Width = new GridLength(1, GridUnitType.Star), MinWidth = 80 });
+            grid.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 80 }
+            );
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(62) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
@@ -2126,10 +2381,13 @@ namespace PropTraderTools
         private void OnFollowerMultiplierChanged(object sender, TextChangedEventArgs e)
         {
             var tb = sender as TextBox;
-            if (tb == null) return;
+            if (tb == null)
+                return;
             var item = tb.DataContext as FollowerItem;
-            if (item == null) return;
-            if (!int.TryParse(tb.Text, out int parsed)) return;
+            if (item == null)
+                return;
+            if (!int.TryParse(tb.Text, out int parsed))
+                return;
             item.Multiplier = parsed < 1 ? 1 : (parsed > 10 ? 10 : parsed);
         }
 
@@ -2143,11 +2401,17 @@ namespace PropTraderTools
         private void OnFollowerAtmTemplateComboLoaded(object sender, RoutedEventArgs e)
         {
             var cb = sender as ComboBox;
-            if (cb == null) return;                                // branch 1 -- null guard
-            if (cb.Items.Count > 0) return;                       // branch 2 -- idempotency guard
+            if (cb == null)
+                return; // branch 1 -- null guard
+            if (cb.Items.Count > 0)
+                return; // branch 2 -- idempotency guard
             bool alreadyTracked = false;
             foreach (var wr in _atmComboRefs)
-                if (wr.TryGetTarget(out var existing) && existing == cb) { alreadyTracked = true; break; }
+                if (wr.TryGetTarget(out var existing) && existing == cb)
+                {
+                    alreadyTracked = true;
+                    break;
+                }
             if (!alreadyTracked)
             {
                 _atmComboRefs.Add(new WeakReference<ComboBox>(cb)); // B52: WeakReference prevents detached accumulation
@@ -2173,7 +2437,10 @@ namespace PropTraderTools
                 // NT8-045: AtmStrategyTemplates not available in Linting DLL -- use filesystem path.
                 string atmDir = System.IO.Path.Combine(
                     System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments),
-                    "NinjaTrader 8", "templates", "AtmStrategy");
+                    "NinjaTrader 8",
+                    "templates",
+                    "AtmStrategy"
+                );
                 if (System.IO.Directory.Exists(atmDir))
                 {
                     foreach (var f in System.IO.Directory.GetFiles(atmDir, "*.xml"))
@@ -2204,8 +2471,9 @@ namespace PropTraderTools
                 var selName = cb.Items[defaultIdx] as string;
                 if (!string.IsNullOrEmpty(selName))
                 {
-                    var item = (cb.DataContext as FollowerItem)
-                               ?? FindAncestorDataContext<FollowerItem>(cb);
+                    var item =
+                        (cb.DataContext as FollowerItem)
+                        ?? FindAncestorDataContext<FollowerItem>(cb);
                     if (item != null)
                         item.AtmModeName = "Named:" + selName;
                 }
@@ -2220,14 +2488,17 @@ namespace PropTraderTools
         private void OnFollowerAtmTemplateComboChanged(object sender, SelectionChangedEventArgs e)
         {
             var cb = sender as ComboBox;
-            if (cb == null) return;                                          // branch 1 -- guard
-            var item = (cb.DataContext as FollowerItem)
-                       ?? FindAncestorDataContext<FollowerItem>(cb);
-            if (item == null) return;                                        // branch 2 -- guard
+            if (cb == null)
+                return; // branch 1 -- guard
+            var item =
+                (cb.DataContext as FollowerItem) ?? FindAncestorDataContext<FollowerItem>(cb);
+            if (item == null)
+                return; // branch 2 -- guard
             var sel = cb.SelectedItem as string ?? string.Empty;
-            item.AtmModeName = (sel == "(none)" || sel.Length == 0)         // branch 3
-                ? "Inherit"
-                : "Named:" + sel;
+            item.AtmModeName =
+                (sel == "(none)" || sel.Length == 0) // branch 3
+                    ? "Inherit"
+                    : "Named:" + sel;
             TryAutoApply();
         }
 
@@ -2248,32 +2519,40 @@ namespace PropTraderTools
         //        (6) AtmStrategySelector fallback, (7) catch. ComboBox leg is a sub-branch of (6).
         internal static string GetLeaderAtmTemplateName(Chart currentChart)
         {
-            if (currentChart == null) return string.Empty;                   // branch 1 -- null guard
+            if (currentChart == null)
+                return string.Empty; // branch 1 -- null guard
             try
             {
                 var ct = TradeCopierAddOn.FindVisualChild<ChartTrader>(currentChart);
-                if (ct == null) return string.Empty;                         // branch 2 -- null guard
+                if (ct == null)
+                    return string.Empty; // branch 2 -- null guard
                 // Primary: ChartTrader.AtmStrategy direct property (no child walk).
                 // null when user has "None" selected -- which is correct: return empty.
-                if (ct.AtmStrategy != null)                                  // branch 3 -- primary path
+                if (ct.AtmStrategy != null) // branch 3 -- primary path
                 {
                     var n = ct.AtmStrategy.Name ?? string.Empty;
                     // B76 HOTFIX-B76-ATM-TPL-CLASSNAME: "AtmStrategy" is the NT8 class name returned when
                     // no template is staged on ChartTrader -- not a user template name.
                     // Observed live 2026-08-18: [PTT-CLONE] SetCloneAtmCache: 'AtmStrategy' (empty=False).
                     // Fall through to AtmStrategySelector fallback to get the real template name.
-                    if (n.Length > 0 && n != "AtmStrategy")                 // branch 4 -- class-name guard
+                    if (n.Length > 0 && n != "AtmStrategy") // branch 4 -- class-name guard
                         return n;
                 }
                 // Fallback-1: AtmStrategySelector by type (covers non-standard ChartTrader builds).
-                var sel = TradeCopierAddOn.FindVisualChild<NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector>(ct);
-                if (sel != null)                                             // branch 6 -- fallback-1
+                var sel =
+                    TradeCopierAddOn.FindVisualChild<NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector>(
+                        ct
+                    );
+                if (sel != null) // branch 6 -- fallback-1
                     return sel.SelectedItem as string ?? string.Empty;
                 // Fallback-2: original index-2 ComboBox (pre-B66 legacy path).
                 var atmCb = TradeCopierAddOn.FindVisualChildByIndex<ComboBox>(ct, 2);
                 return atmCb?.SelectedItem as string ?? string.Empty;
             }
-            catch { return string.Empty; }                                   // branch 7 -- API exception
+            catch
+            {
+                return string.Empty;
+            } // branch 7 -- API exception
         }
 
         // B43 T1: Walks the visual tree UPWARD from child, returning the DataContext of the first
@@ -2282,14 +2561,17 @@ namespace PropTraderTools
         // CYC=3: (1) child null guard, (2) while loop, (3) DataContext cast match.
         // JS-021: no lock. JS-002: returns default(T) -- not return null.
         // VisualTreeHelper.GetParent: must be called on WPF UI thread. Called only from UI-thread handlers.
-        private static T FindAncestorDataContext<T>(DependencyObject child) where T : class
+        private static T FindAncestorDataContext<T>(DependencyObject child)
+            where T : class
         {
-            if (child == null) return default(T);                            // branch 1 -- null guard
+            if (child == null)
+                return default(T); // branch 1 -- null guard
             var parent = VisualTreeHelper.GetParent(child);
-            while (parent != null)                                           // branch 2 -- loop
+            while (parent != null) // branch 2 -- loop
             {
                 var fe = parent as FrameworkElement;
-                if (fe != null && fe.DataContext is T ctx) return ctx;       // branch 3 -- match found
+                if (fe != null && fe.DataContext is T ctx)
+                    return ctx; // branch 3 -- match found
                 parent = VisualTreeHelper.GetParent(parent);
             }
             return default(T);
@@ -2300,23 +2582,24 @@ namespace PropTraderTools
         // CYC=1 -- straight-line volatile write
         private void OnBuyToggleClick(object sender, RoutedEventArgs e)
         {
-            _clickBuy           = true;
+            _clickBuy = true;
             _sellToggle.IsChecked = false;
         }
 
         // CYC=1 -- straight-line volatile write
         private void OnSellToggleClick(object sender, RoutedEventArgs e)
         {
-            _clickBuy          = false;
+            _clickBuy = false;
             _buyToggle.IsChecked = false;
         }
 
         // CYC=2 -- null guard (1) + _clickArmed branch (2)
         private void OnArmClick(object sender, RoutedEventArgs e)
         {
-            if (_currentChart == null) return;          // guard (1)
-            _clickArmed = !_clickArmed;                 // volatile toggle
-            if (_clickArmed)                            // branch (2)
+            if (_currentChart == null)
+                return; // guard (1)
+            _clickArmed = !_clickArmed; // volatile toggle
+            if (_clickArmed) // branch (2)
                 TradeCopierAddOn.RegisterClickTrader(_currentChart, this);
             else
                 TradeCopierAddOn.UnregisterClickTrader(_currentChart);
@@ -2327,11 +2610,12 @@ namespace PropTraderTools
         // Called on UI thread from OnArmClick -- no Dispatcher needed.
         private void UpdateArmVisuals(bool armed)
         {
-            if (_armBtn == null) return;                // guard (1)
-            _armBtn.Content    = armed ? "Disarm" : "Arm";      // branch (2)
+            if (_armBtn == null)
+                return; // guard (1)
+            _armBtn.Content = armed ? "Disarm" : "Arm"; // branch (2)
             _armBtn.Background = armed
-                ? MakeBrush(34, 197, 94)    // green -- decimal RGB, no hex (JS-008)
-                : MakeBrush(28, 33, 51);    // dark surface color
+                ? MakeBrush(34, 197, 94) // green -- decimal RGB, no hex (JS-008)
+                : MakeBrush(28, 33, 51); // dark surface color
         }
 
         // CYC=6 -- five guards + ternary; try/catch does NOT add CYC.
@@ -2342,32 +2626,42 @@ namespace PropTraderTools
         // NT8 constraint: "PTT-Click" signal name starts with "PTT-".
         internal void OnChartMouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (!_clickArmed)           return;         // guard (1)
-            if (_leaderAccount == null) return;         // guard (2)
-            if (_instrument    == null) return;         // guard (3)
+            if (!_clickArmed)
+                return; // guard (1)
+            if (_leaderAccount == null)
+                return; // guard (2)
+            if (_instrument == null)
+                return; // guard (3)
             var chartControl = sender as ChartControl;
-            if (chartControl   == null) return;         // guard (4)
+            if (chartControl == null)
+                return; // guard (4)
 
-            Point  mousePos  = e.GetPosition(chartControl);
-            double rawPrice  = GetPriceAtY(chartControl, mousePos.Y, _instrument);
-            if (rawPrice <= 0.0) return;                                 // guard (5): no valid price
-            double tickSize  = _instrument.MasterInstrument.TickSize;
-            double price     = Math.Round(rawPrice / tickSize) * tickSize;
-            bool   isBuy     = _clickBuy;                  // volatile read
-            int    qty       = CopyEngine.Instance.GetSuggestedQty(_instrument);
-            var    action    = isBuy ? OrderAction.Buy : OrderAction.SellShort;
+            Point mousePos = e.GetPosition(chartControl);
+            double rawPrice = GetPriceAtY(chartControl, mousePos.Y, _instrument);
+            if (rawPrice <= 0.0)
+                return; // guard (5): no valid price
+            double tickSize = _instrument.MasterInstrument.TickSize;
+            double price = Math.Round(rawPrice / tickSize) * tickSize;
+            bool isBuy = _clickBuy; // volatile read
+            int qty = CopyEngine.Instance.GetSuggestedQty(_instrument);
+            var action = isBuy ? OrderAction.Buy : OrderAction.SellShort;
 
             try
             {
                 _leaderAccount.CreateOrder(
-                    _instrument, action,
+                    _instrument,
+                    action,
                     OrderType.Limit,
                     OrderEntry.Manual,
                     TimeInForce.Day,
-                    qty, price, 0, null,
+                    qty,
+                    price,
+                    0,
+                    null,
                     "PTT-Click",
                     DateTime.MaxValue,
-                    (NinjaTrader.Cbi.CustomOrder)null);
+                    (NinjaTrader.Cbi.CustomOrder)null
+                );
             }
             catch (Exception ex)
             {
@@ -2389,31 +2683,36 @@ namespace PropTraderTools
         {
             int count = 0;
             foreach (var item in _followerItems)
-                if (item.IsSelected) count++;
+                if (item.IsSelected)
+                    count++;
             if (_followersDropDown != null)
                 _followersDropDown.Text = count + " selected";
         }
 
         private void OnTrim(object sender, RoutedEventArgs e)
         {
-            if (_instrument != null) _engine.Trim(_leaderAccount, _instrument);
+            if (_instrument != null)
+                _engine.Trim(_leaderAccount, _instrument);
         }
 
         private void OnFlatten(object sender, RoutedEventArgs e)
         {
-            if (_instrument != null) _engine.Flatten(_leaderAccount, _instrument);
+            if (_instrument != null)
+                _engine.Flatten(_leaderAccount, _instrument);
         }
 
         private void OnCancel(object sender, RoutedEventArgs e)
         {
-            if (_instrument != null) _engine.CancelPendingEntries(_leaderAccount, _instrument);
+            if (_instrument != null)
+                _engine.CancelPendingEntries(_leaderAccount, _instrument);
         }
 
         private Account[] GetSelectedFollowers()
         {
             var list = new List<Account>();
             foreach (var item in _followerItems)
-                if (item.IsSelected && item.Account != null) list.Add(item.Account);
+                if (item.IsSelected && item.Account != null)
+                    list.Add(item.Account);
             return list.ToArray();
         }
 
@@ -2421,34 +2720,38 @@ namespace PropTraderTools
         // B45 T1: late-resolve added (same pattern as all other button handlers -- HOTFIX-B30-F1).
         private void OnApplyRule(object sender, RoutedEventArgs e)
         {
-            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();  // B45 T1: late-resolve (same as all other button handlers)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B45 T1: late-resolve (same as all other button handlers)
             if (_leaderAccount == null)
             {
-                if (_statusText != null) _statusText.Text = "No leader -- select account in ChartTrader.";
+                if (_statusText != null)
+                    _statusText.Text = "No leader -- select account in ChartTrader.";
                 return;
             }
             if (_instrument == null)
             {
-                if (_statusText != null) _statusText.Text = "No instrument -- open a chart first.";
+                if (_statusText != null)
+                    _statusText.Text = "No instrument -- open a chart first.";
                 return;
             }
             var followers = GetSelectedFollowers();
             if (followers.Length == 0)
             {
-                if (_statusText != null) _statusText.Text = "Select follower account(s).";
+                if (_statusText != null)
+                    _statusText.Text = "Select follower account(s).";
                 return;
             }
 
             // B8 T1+T2: collect per-follower multipliers and ATM mode names parallel to followers array
             var multipliers = new int[followers.Length];
-            var atmNames    = new string[followers.Length];
+            var atmNames = new string[followers.Length];
             for (int i = 0; i < followers.Length; i++)
             {
                 foreach (var item in _followerItems)
                 {
-                    if (item.Account != followers[i]) continue;
+                    if (item.Account != followers[i])
+                        continue;
                     multipliers[i] = item.Multiplier > 0 ? item.Multiplier : 1;
-                    atmNames[i]    = item.AtmModeName ?? "Inherit";
+                    atmNames[i] = item.AtmModeName ?? "Inherit";
                     break;
                 }
             }
@@ -2463,7 +2766,8 @@ namespace PropTraderTools
 
             _engine.AddRule(_instrument.FullName, _leaderAccount, followers, multipliers, atmMap);
             if (_statusText != null)
-                _statusText.Text = "Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name;
+                _statusText.Text =
+                    "Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name;
         }
 
         // B8 T2: ParseAtmModeNameLocal -- private static helper that mirrors CopyEngine.ParseAtmModeName.
@@ -2483,7 +2787,8 @@ namespace PropTraderTools
         {
             Dispatcher.InvokeAsync(() =>
             {
-                if (_statusText != null) _statusText.Text = line;
+                if (_statusText != null)
+                    _statusText.Text = line;
             });
         }
 
@@ -2493,7 +2798,8 @@ namespace PropTraderTools
         // CYC=1: null guard only.
         internal void SetStatusText(string text)
         {
-            if (_statusText == null) return;
+            if (_statusText == null)
+                return;
             _statusText.Text = text;
         }
 
@@ -2503,10 +2809,14 @@ namespace PropTraderTools
         // Jane Street: guard-early, zero branches in the hot dispatch path.
         internal void OnChartKeyDown(object sender, KeyEventArgs e)
         {
-            if (_instrument == null) return;                   // guard (1)
-            if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift))
-                != (ModifierKeys.Control | ModifierKeys.Shift)) return;  // guard (2)
-            DispatchShortcut(e.Key);                           // guard (3): delegate
+            if (_instrument == null)
+                return; // guard (1)
+            if (
+                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift))
+                != (ModifierKeys.Control | ModifierKeys.Shift)
+            )
+                return; // guard (2)
+            DispatchShortcut(e.Key); // guard (3): delegate
         }
 
         // B11 T1: Jane Street switch preferred over if/else chain.
@@ -2521,9 +2831,21 @@ namespace PropTraderTools
         {
             switch (key)
             {
-                case Key.T: _engine.Trim(_leaderAccount, _instrument, _trimBuffer, GetAsk(), GetBid());       break;
-                case Key.F: _engine.Flatten(_leaderAccount, _instrument, _flattenBuffer, GetAsk(), GetBid()); break;
-                case Key.C: _engine.CancelPendingEntries(_leaderAccount, _instrument);               break;
+                case Key.T:
+                    _engine.Trim(_leaderAccount, _instrument, _trimBuffer, GetAsk(), GetBid());
+                    break;
+                case Key.F:
+                    _engine.Flatten(
+                        _leaderAccount,
+                        _instrument,
+                        _flattenBuffer,
+                        GetAsk(),
+                        GetBid()
+                    );
+                    break;
+                case Key.C:
+                    _engine.CancelPendingEntries(_leaderAccount, _instrument);
+                    break;
                 case Key.B:
                     int buf = 2;
                     int.TryParse(_beBufferBox.Text, out buf);
@@ -2542,24 +2864,32 @@ namespace PropTraderTools
             var col0 = new StackPanel { Orientation = Orientation.Horizontal };
             var riskLabel = new TextBlock
             {
-                Text              = "Risk $",
+                Text = "Risk $",
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(0, 0, 4, 0)
+                Margin = new Thickness(0, 0, 4, 0),
             };
             riskLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
             _riskDollarsBox = new TextBox
             {
-                Text  = _maxRiskDollars.ToString("F0"),
+                Text = _maxRiskDollars.ToString("F0"),
                 Width = 55,
-                VerticalContentAlignment = VerticalAlignment.Center
+                VerticalContentAlignment = VerticalAlignment.Center,
             };
             _riskDollarsBox.SetResourceReference(Control.StyleProperty, "NTTextBoxStyle");
             _riskDollarsBox.LostFocus += OnRiskTextLostFocus;
             var riskArrows = new Grid();
             riskArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             riskArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var riskUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Height = 12 };
-            var riskDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Height = 12 };
+            var riskUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Height = 12,
+            };
+            var riskDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Height = 12,
+            };
             riskUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             riskDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             riskUp.Click += OnRiskUp;
@@ -2577,24 +2907,32 @@ namespace PropTraderTools
             var col1 = new StackPanel { Orientation = Orientation.Horizontal };
             var atrLabel = new TextBlock
             {
-                Text              = "ATR %",
+                Text = "ATR %",
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(0, 0, 4, 0)
+                Margin = new Thickness(0, 0, 4, 0),
             };
             atrLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
             _atrFractionBox = new TextBox
             {
-                Text  = _atrFraction.ToString("F2"),
+                Text = _atrFraction.ToString("F2"),
                 Width = 55,
-                VerticalContentAlignment = VerticalAlignment.Center
+                VerticalContentAlignment = VerticalAlignment.Center,
             };
             _atrFractionBox.SetResourceReference(Control.StyleProperty, "NTTextBoxStyle");
             _atrFractionBox.LostFocus += OnAtrFractionTextLostFocus;
             var atrArrows = new Grid();
             atrArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             atrArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var atrUp = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25B2", Height = 12 };
-            var atrDn = new System.Windows.Controls.Primitives.RepeatButton { Content = "\u25BC", Height = 12 };
+            var atrUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Height = 12,
+            };
+            var atrDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Height = 12,
+            };
             atrUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             atrDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             atrUp.Click += OnAtrFractionUp;
@@ -2613,9 +2951,9 @@ namespace PropTraderTools
             var atrRow = new Border
             {
                 BorderThickness = new Thickness(1),
-                CornerRadius    = new CornerRadius(2),
-                Padding         = new Thickness(4, 2, 4, 2),
-                Margin          = new Thickness(2)
+                CornerRadius = new CornerRadius(2),
+                Padding = new Thickness(4, 2, 4, 2),
+                Margin = new Thickness(2),
             };
             _atrDisplayLabel = new TextBlock { Text = "ATR=-.-- pts -> stopTicks=-- -> qty=--" };
             atrRow.Child = _atrDisplayLabel;
@@ -2627,23 +2965,26 @@ namespace PropTraderTools
         // JS-021: no lock. Caller (TradeCopierAddOn.UpdateAtrOverlay) dispatches to UI thread before calling.
         public void SetAtrText(string display)
         {
-            if (_atrDisplayLabel == null) return;
+            if (_atrDisplayLabel == null)
+                return;
             _atrDisplayLabel.Text = display;
         }
 
         // B12 T3 -- OnRiskUp: increment _maxRiskDollars, clamp, push. CYC=1.
         private void OnRiskUp(object sender, RoutedEventArgs e)
         {
-            _maxRiskDollars = Math.Max(Math.Min(_maxRiskDollars + 25.0, 1000.0), 10.0);  // no Math.Clamp (NT8 .NET 4.8)
-            if (_riskDollarsBox != null) _riskDollarsBox.Text = _maxRiskDollars.ToString("F0");
+            _maxRiskDollars = Math.Max(Math.Min(_maxRiskDollars + 25.0, 1000.0), 10.0); // no Math.Clamp (NT8 .NET 4.8)
+            if (_riskDollarsBox != null)
+                _riskDollarsBox.Text = _maxRiskDollars.ToString("F0");
             NotifyRiskChanged();
         }
 
         // B12 T3 -- OnRiskDown: decrement _maxRiskDollars, clamp, push. CYC=1.
         private void OnRiskDown(object sender, RoutedEventArgs e)
         {
-            _maxRiskDollars = Math.Max(Math.Min(_maxRiskDollars - 25.0, 1000.0), 10.0);  // no Math.Clamp
-            if (_riskDollarsBox != null) _riskDollarsBox.Text = _maxRiskDollars.ToString("F0");
+            _maxRiskDollars = Math.Max(Math.Min(_maxRiskDollars - 25.0, 1000.0), 10.0); // no Math.Clamp
+            if (_riskDollarsBox != null)
+                _riskDollarsBox.Text = _maxRiskDollars.ToString("F0");
             NotifyRiskChanged();
         }
 
@@ -2651,26 +2992,30 @@ namespace PropTraderTools
         private void OnRiskTextLostFocus(object sender, RoutedEventArgs e)
         {
             double v;
-            if (!double.TryParse(_riskDollarsBox?.Text, out v)) return;              // (1) parse guard
-            v = Math.Max(Math.Min(v, 1000.0), 10.0);                                 // (2) clamp
+            if (!double.TryParse(_riskDollarsBox?.Text, out v))
+                return; // (1) parse guard
+            v = Math.Max(Math.Min(v, 1000.0), 10.0); // (2) clamp
             _maxRiskDollars = v;
-            if (_riskDollarsBox != null) _riskDollarsBox.Text = v.ToString("F0");   // normalise display
-            NotifyRiskChanged();                                                      // (3) push
+            if (_riskDollarsBox != null)
+                _riskDollarsBox.Text = v.ToString("F0"); // normalise display
+            NotifyRiskChanged(); // (3) push
         }
 
         // B12 T3 -- OnAtrFractionUp: increment _atrFraction, clamp, push. CYC=1.
         private void OnAtrFractionUp(object sender, RoutedEventArgs e)
         {
-            _atrFraction = Math.Max(Math.Min(_atrFraction + 0.05, 3.00), 0.25);     // no Math.Clamp
-            if (_atrFractionBox != null) _atrFractionBox.Text = _atrFraction.ToString("F2");
+            _atrFraction = Math.Max(Math.Min(_atrFraction + 0.05, 3.00), 0.25); // no Math.Clamp
+            if (_atrFractionBox != null)
+                _atrFractionBox.Text = _atrFraction.ToString("F2");
             NotifyAtrFractionChanged();
         }
 
         // B12 T3 -- OnAtrFractionDown: decrement _atrFraction, clamp, push. CYC=1.
         private void OnAtrFractionDown(object sender, RoutedEventArgs e)
         {
-            _atrFraction = Math.Max(Math.Min(_atrFraction - 0.05, 3.00), 0.25);     // no Math.Clamp
-            if (_atrFractionBox != null) _atrFractionBox.Text = _atrFraction.ToString("F2");
+            _atrFraction = Math.Max(Math.Min(_atrFraction - 0.05, 3.00), 0.25); // no Math.Clamp
+            if (_atrFractionBox != null)
+                _atrFractionBox.Text = _atrFraction.ToString("F2");
             NotifyAtrFractionChanged();
         }
 
@@ -2678,25 +3023,29 @@ namespace PropTraderTools
         private void OnAtrFractionTextLostFocus(object sender, RoutedEventArgs e)
         {
             double v;
-            if (!double.TryParse(_atrFractionBox?.Text, out v)) return;             // (1) parse guard
-            v = Math.Max(Math.Min(v, 3.00), 0.25);                                  // (2) clamp
+            if (!double.TryParse(_atrFractionBox?.Text, out v))
+                return; // (1) parse guard
+            v = Math.Max(Math.Min(v, 3.00), 0.25); // (2) clamp
             _atrFraction = v;
-            if (_atrFractionBox != null) _atrFractionBox.Text = v.ToString("F2");  // normalise display
-            NotifyAtrFractionChanged();                                              // (3) push
+            if (_atrFractionBox != null)
+                _atrFractionBox.Text = v.ToString("F2"); // normalise display
+            NotifyAtrFractionChanged(); // (3) push
         }
 
         // B12 T3 -- NotifyRiskChanged: delegates to CopyEngine.UpdateMaxRisk. CYC=2.
         private void NotifyRiskChanged()
         {
-            if (_engine == null) return;             // (1)
-            _engine.UpdateMaxRisk(_maxRiskDollars);  // (2)
+            if (_engine == null)
+                return; // (1)
+            _engine.UpdateMaxRisk(_maxRiskDollars); // (2)
         }
 
         // B12 T3 -- NotifyAtrFractionChanged: delegates to CopyEngine.UpdateAtrFraction. CYC=2.
         private void NotifyAtrFractionChanged()
         {
-            if (_engine == null) return;              // (1)
-            _engine.UpdateAtrFraction(_atrFraction);  // (2)
+            if (_engine == null)
+                return; // (1)
+            _engine.UpdateAtrFraction(_atrFraction); // (2)
         }
     }
 }

@@ -57,14 +57,19 @@ namespace PropTraderTools
         // B34 additions — buffer props and live market quote.
         /// <summary>Break-even buffer in ticks. From TradeCopierPanel._beBuffer.</summary>
         int BeBuffer { get; }
+
         /// <summary>Trim buffer in ticks. From TradeCopierPanel._trimBuffer.</summary>
         int TrimBuffer { get; }
+
         /// <summary>Flatten buffer in ticks. From TradeCopierPanel._flattenBuffer.</summary>
         int FlatBuffer { get; }
+
         /// <summary>Current ask price from instrument market data. Returns 0.0 if no quote.</summary>
         double Ask { get; }
+
         /// <summary>Current bid price from instrument market data. Returns 0.0 if no quote.</summary>
         double Bid { get; }
+
         /// <summary>Display a warning in the panel status bar. Call from UI thread only.</summary>
         void WarnUser(string message);
     }
@@ -110,40 +115,45 @@ namespace PropTraderTools
     /// </summary>
     public static class PttBus
     {
-        public static event EventHandler<BeEventArgs>           BeFired;
-        public static event EventHandler<TrimEventArgs>         TrimFired;
-        public static event EventHandler<FlatEventArgs>         FlatFired;
-        public static event EventHandler<CancelEventArgs>       CancelFired;
-        internal static event EventHandler<QuickExitEventArgs>  QuickExitFired;
+        public static event EventHandler<BeEventArgs> BeFired;
+        public static event EventHandler<TrimEventArgs> TrimFired;
+        public static event EventHandler<FlatEventArgs> FlatFired;
+        public static event EventHandler<CancelEventArgs> CancelFired;
+        internal static event EventHandler<QuickExitEventArgs> QuickExitFired;
 
         internal static void RaiseBe(object sender, BeEventArgs e)
         {
             var h = BeFired;
-            if (h != null) h(sender, e);
+            if (h != null)
+                h(sender, e);
         }
 
         internal static void RaiseTrim(object sender, TrimEventArgs e)
         {
             var h = TrimFired;
-            if (h != null) h(sender, e);
+            if (h != null)
+                h(sender, e);
         }
 
         internal static void RaiseFlatted(object sender, FlatEventArgs e)
         {
             var h = FlatFired;
-            if (h != null) h(sender, e);
+            if (h != null)
+                h(sender, e);
         }
 
         internal static void RaiseCancel(object sender, CancelEventArgs e)
         {
             var h = CancelFired;
-            if (h != null) h(sender, e);
+            if (h != null)
+                h(sender, e);
         }
 
         internal static void RaiseQuickExit(object sender, QuickExitEventArgs e)
         {
             var h = QuickExitFired;
-            if (h != null) h(sender, e);
+            if (h != null)
+                h(sender, e);
         }
 
         // B42: Action<T> (not EventHandler<T>) because FillSignalEventArgs is a readonly struct,
@@ -155,7 +165,8 @@ namespace PropTraderTools
         public static void RaiseFillSignal(FillSignalEventArgs args)
         {
             var h = FillSignal;
-            if (h != null) h(args);
+            if (h != null)
+                h(args);
         }
     }
 
@@ -167,34 +178,39 @@ namespace PropTraderTools
 
     public class BeEventArgs : EventArgs
     {
-        public Instrument Instrument  { get; private set; }
-        public double     BePrice     { get; private set; }
-        public double     EntryPrice  { get; private set; }
-        public bool       IsLong      { get; private set; }
-        public string     OcoGroup    { get; private set; }
+        public Instrument Instrument { get; private set; }
+        public double BePrice { get; private set; }
+        public double EntryPrice { get; private set; }
+        public bool IsLong { get; private set; }
+        public string OcoGroup { get; private set; }
 
-        public BeEventArgs(Instrument instr, double bePrice, double entryPrice,
-                           bool isLong, string ocoGroup)
+        public BeEventArgs(
+            Instrument instr,
+            double bePrice,
+            double entryPrice,
+            bool isLong,
+            string ocoGroup
+        )
         {
-            Instrument  = instr;
-            BePrice     = bePrice;
-            EntryPrice  = entryPrice;
-            IsLong      = isLong;
-            OcoGroup    = ocoGroup ?? string.Empty;
+            Instrument = instr;
+            BePrice = bePrice;
+            EntryPrice = entryPrice;
+            IsLong = isLong;
+            OcoGroup = ocoGroup ?? string.Empty;
         }
     }
 
     public class TrimEventArgs : EventArgs
     {
-        public Instrument Instrument  { get; private set; }
-        public int        TrimPercent { get; private set; }
-        public int        ActualQty   { get; private set; }
+        public Instrument Instrument { get; private set; }
+        public int TrimPercent { get; private set; }
+        public int ActualQty { get; private set; }
 
         public TrimEventArgs(Instrument instr, int trimPercent, int actualQty)
         {
-            Instrument  = instr;
+            Instrument = instr;
             TrimPercent = trimPercent;
-            ActualQty   = actualQty;
+            ActualQty = actualQty;
         }
     }
 
@@ -222,13 +238,13 @@ namespace PropTraderTools
     // Card B: TickSize field enables TradeCopierWindow back-calc without polling.
     public sealed class QuickExitEventArgs : EventArgs
     {
-        public Instrument Instrument  { get; private set; }
-        public double     EntryPrice  { get; private set; }
-        public double     T1Price     { get; private set; }
-        public double     T2Price     { get; private set; }
-        public bool       IsLong      { get; private set; }
-        public string     OcoId       { get; private set; }
-        public double     TickSize    { get; private set; }
+        public Instrument Instrument { get; private set; }
+        public double EntryPrice { get; private set; }
+        public double T1Price { get; private set; }
+        public double T2Price { get; private set; }
+        public bool IsLong { get; private set; }
+        public string OcoId { get; private set; }
+        public double TickSize { get; private set; }
 
         public QuickExitEventArgs(
             Instrument instr,
@@ -237,15 +253,16 @@ namespace PropTraderTools
             double t2Price,
             bool isLong,
             string ocoId,
-            double tickSize)
+            double tickSize
+        )
         {
             Instrument = instr;
             EntryPrice = entryPrice;
-            T1Price    = t1Price;
-            T2Price    = t2Price;
-            IsLong     = isLong;
-            OcoId      = ocoId ?? string.Empty;
-            TickSize   = tickSize;
+            T1Price = t1Price;
+            T2Price = t2Price;
+            IsLong = isLong;
+            OcoId = ocoId ?? string.Empty;
+            TickSize = tickSize;
         }
     }
 
@@ -258,38 +275,46 @@ namespace PropTraderTools
     // NT8-002: struct (not record) -- NT8 compiler bans abstract/sealed records.
     public struct FillSignalEventArgs
     {
-        public Account     Account         { get; private set; }
-        public Instrument  Instrument      { get; private set; }
-        public string      AtmTemplateName { get; private set; }
-        public OrderAction OrderAction     { get; private set; }
-        public int         Quantity        { get; private set; }
-        public string      EntryOrderId    { get; private set; }
+        public Account Account { get; private set; }
+        public Instrument Instrument { get; private set; }
+        public string AtmTemplateName { get; private set; }
+        public OrderAction OrderAction { get; private set; }
+        public int Quantity { get; private set; }
+        public string EntryOrderId { get; private set; }
 
         private FillSignalEventArgs(
-            Account     account,
-            Instrument  instrument,
-            string      atmTemplateName,
+            Account account,
+            Instrument instrument,
+            string atmTemplateName,
             OrderAction orderAction,
-            int         quantity,
-            string      entryOrderId)
+            int quantity,
+            string entryOrderId
+        )
         {
-            Account         = account;
-            Instrument      = instrument;
+            Account = account;
+            Instrument = instrument;
             AtmTemplateName = atmTemplateName ?? string.Empty;
-            OrderAction     = orderAction;
-            Quantity        = quantity;
-            EntryOrderId    = entryOrderId ?? string.Empty;
+            OrderAction = orderAction;
+            Quantity = quantity;
+            EntryOrderId = entryOrderId ?? string.Empty;
         }
 
         // JS-010: smart constructor -- only valid construction path.
         public static FillSignalEventArgs Create(
-            Account     account,
-            Instrument  instrument,
-            string      atmTemplateName,
+            Account account,
+            Instrument instrument,
+            string atmTemplateName,
             OrderAction orderAction,
-            int         quantity,
-            string      entryOrderId)
-            => new FillSignalEventArgs(account, instrument,
-                   atmTemplateName, orderAction, quantity, entryOrderId);
+            int quantity,
+            string entryOrderId
+        ) =>
+            new FillSignalEventArgs(
+                account,
+                instrument,
+                atmTemplateName,
+                orderAction,
+                quantity,
+                entryOrderId
+            );
     }
 }

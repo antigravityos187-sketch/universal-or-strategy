@@ -38,11 +38,11 @@ namespace PropTraderTools
         {
             if (State == NinjaTrader.NinjaScript.State.SetDefaults)
             {
-                Name                         = "PTTFollowerStrategy";
-                Calculate                    = NinjaTrader.NinjaScript.Calculate.OnBarClose;
-                BarsRequiredToTrade          = 0;
+                Name = "PTTFollowerStrategy";
+                Calculate = NinjaTrader.NinjaScript.Calculate.OnBarClose;
+                BarsRequiredToTrade = 0;
                 IsExitOnSessionCloseStrategy = false;
-                StartBehavior                = NinjaTrader.NinjaScript.StartBehavior.ImmediatelySubmit;  // B45 T2: never pause on existing position
+                StartBehavior = NinjaTrader.NinjaScript.StartBehavior.ImmediatelySubmit; // B45 T2: never pause on existing position
             }
             else if (State == NinjaTrader.NinjaScript.State.Realtime)
             {
@@ -62,8 +62,10 @@ namespace PropTraderTools
         // JS-021: no lock. Fires on CopyEngine dispatch thread.
         private void OnFillSignal(FillSignalEventArgs args)
         {
-            if (GetSignalAccountName(args)    != GetStrategyAccountName())    return;
-            if (GetSignalInstrumentName(args) != GetStrategyInstrumentName()) return;
+            if (GetSignalAccountName(args) != GetStrategyAccountName())
+                return;
+            if (GetSignalInstrumentName(args) != GetStrategyInstrumentName())
+                return;
             CallAtmStrategyCreate(args);
         }
 
@@ -74,7 +76,7 @@ namespace PropTraderTools
         // JS-001: no throw. JS-002: no return null (void return). JS-021: no lock.
         protected virtual void CallAtmStrategyCreate(FillSignalEventArgs args)
         {
-            if (string.IsNullOrWhiteSpace(args.AtmTemplateName))   // branch (1): Inherit mode -- skip
+            if (string.IsNullOrWhiteSpace(args.AtmTemplateName)) // branch (1): Inherit mode -- skip
                 return;
             AtmStrategyCreate(
                 args.OrderAction,
@@ -89,7 +91,8 @@ namespace PropTraderTools
                 {
                     if (code != ErrorCode.NoError)
                         Print("B46 ATM error: " + msg);
-                });
+                }
+            );
         }
 
         // CYC=1: virtual test seam -- returns this strategy's bound account name.
@@ -105,12 +108,14 @@ namespace PropTraderTools
         // CYC=1: virtual test seam -- returns account name from the FillSignal args.
         // Production: args.Account?.Name (null-safe -- args.Account may be null in degenerate case).
         // Test subclass: returns injected string value so no real Account object is needed.
-        protected virtual string GetSignalAccountName(FillSignalEventArgs args) => args.Account != null ? args.Account.Name : null;
+        protected virtual string GetSignalAccountName(FillSignalEventArgs args) =>
+            args.Account != null ? args.Account.Name : null;
 
         // CYC=1: virtual test seam -- returns instrument full name from the FillSignal args.
         // Production: args.Instrument?.FullName (null-safe).
         // Test subclass: returns injected string value so no real Instrument object is needed.
-        protected virtual string GetSignalInstrumentName(FillSignalEventArgs args) => args.Instrument != null ? args.Instrument.FullName : null;
+        protected virtual string GetSignalInstrumentName(FillSignalEventArgs args) =>
+            args.Instrument != null ? args.Instrument.FullName : null;
     }
 }
 #endif // PTT_FOLLOWER_ACTIVE

@@ -24,7 +24,8 @@ namespace PropTraderTools
             // Arrange: reset _qxOcoSeq to known value for isolation
             var fi = typeof(CopyEngine).GetField(
                 "_qxOcoSeq",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(CopyEngine.Instance, 1000);
 
             // Act
@@ -45,7 +46,8 @@ namespace PropTraderTools
             // Arrange
             var fi = typeof(CopyEngine).GetField(
                 "_qxOcoSeq",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(CopyEngine.Instance, 2000);
 
             // Act
@@ -65,7 +67,8 @@ namespace PropTraderTools
             // Arrange: seed to a stable starting value well below 99999
             var fi = typeof(CopyEngine).GetField(
                 "_qxOcoSeq",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(CopyEngine.Instance, 3000);
 
             // Act
@@ -90,7 +93,8 @@ namespace PropTraderTools
             // Set OrderState: try property first, then backing field.
             var stateProp = typeof(Order).GetProperty(
                 "OrderState",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+            );
             if (stateProp != null && stateProp.CanWrite)
             {
                 stateProp.SetValue(order, state);
@@ -98,16 +102,26 @@ namespace PropTraderTools
             else
             {
                 var stateField =
-                    typeof(Order).GetField("orderState", BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? typeof(Order).GetField("_orderState", BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? typeof(Order).GetField("OrderState", BindingFlags.NonPublic | BindingFlags.Instance);
+                    typeof(Order).GetField(
+                        "orderState",
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    )
+                    ?? typeof(Order).GetField(
+                        "_orderState",
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    )
+                    ?? typeof(Order).GetField(
+                        "OrderState",
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    );
                 stateField?.SetValue(order, state);
             }
 
             // Set Name: try property first, then backing field.
             var nameProp = typeof(Order).GetProperty(
                 "Name",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+            );
             if (nameProp != null && nameProp.CanWrite)
             {
                 nameProp.SetValue(order, name);
@@ -116,8 +130,14 @@ namespace PropTraderTools
             {
                 var nameField =
                     typeof(Order).GetField("name", BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? typeof(Order).GetField("_name", BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? typeof(Order).GetField("Name", BindingFlags.NonPublic | BindingFlags.Instance);
+                    ?? typeof(Order).GetField(
+                        "_name",
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    )
+                    ?? typeof(Order).GetField(
+                        "Name",
+                        BindingFlags.NonPublic | BindingFlags.Instance
+                    );
                 nameField?.SetValue(order, name);
             }
 
@@ -136,7 +156,8 @@ namespace PropTraderTools
             // Act + Assert: new branch (5) must fire for the exact signal name
             Assert.True(
                 CopyEngine.IsQxCancelCandidate(order),
-                "IsQxCancelCandidate: 'PTT-Copy' must return true (PTT-Copy prefix branch (5))");
+                "IsQxCancelCandidate: 'PTT-Copy' must return true (PTT-Copy prefix branch (5))"
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -151,7 +172,8 @@ namespace PropTraderTools
             // Act + Assert: StartsWith("PTT-Copy") must match all variants
             Assert.True(
                 CopyEngine.IsQxCancelCandidate(order),
-                "IsQxCancelCandidate: 'PTT-Copy-Variant' must return true (StartsWith PTT-Copy)");
+                "IsQxCancelCandidate: 'PTT-Copy-Variant' must return true (StartsWith PTT-Copy)"
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -166,7 +188,8 @@ namespace PropTraderTools
             // Act + Assert: branch (3) must not be broken by the new branch (5)
             Assert.True(
                 CopyEngine.IsQxCancelCandidate(order),
-                "IsQxCancelCandidate: 'PTT-QX-Stop' must return true -- branch (3) regression guard");
+                "IsQxCancelCandidate: 'PTT-QX-Stop' must return true -- branch (3) regression guard"
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -181,7 +204,8 @@ namespace PropTraderTools
             // Act + Assert: branch (2) must not be broken by the new branch (5)
             Assert.True(
                 CopyEngine.IsQxCancelCandidate(order),
-                "IsQxCancelCandidate: 'Stop1' must return true -- branch (2) ATM regression guard");
+                "IsQxCancelCandidate: 'Stop1' must return true -- branch (2) ATM regression guard"
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -196,7 +220,8 @@ namespace PropTraderTools
             // Act + Assert: none of the 5 branches fires -- must return false
             Assert.False(
                 CopyEngine.IsQxCancelCandidate(order),
-                "IsQxCancelCandidate: 'Entry' must return false (not a bracket or PTT-prefixed order)");
+                "IsQxCancelCandidate: 'Entry' must return false (not a bracket or PTT-prefixed order)"
+            );
         }
     }
 }

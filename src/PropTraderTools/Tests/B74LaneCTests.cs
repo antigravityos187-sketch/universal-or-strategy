@@ -33,7 +33,8 @@ namespace PropTraderTools
             var gbe = new PttGlobalBreakEven();
             var fi = typeof(PttGlobalBreakEven).GetField(
                 "_globalBeBuffer",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(gbe, 1);
             Assert.Equal(1, gbe.GlobalBeBuffer);
             // INTEGRATION-ONLY: IncrementBuffer relay (RaiseBeBufferChanged call)
@@ -47,7 +48,8 @@ namespace PropTraderTools
             var gbe = new PttGlobalBreakEven();
             var fi = typeof(PttGlobalBreakEven).GetField(
                 "_globalBeBuffer",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(gbe, -1);
             Assert.Equal(-1, gbe.GlobalBeBuffer);
             // INTEGRATION-ONLY: DecrementBuffer relay requires Application.Current.Dispatcher
@@ -61,7 +63,8 @@ namespace PropTraderTools
             var gbe = new PttGlobalBreakEven();
             var fi = typeof(PttGlobalBreakEven).GetField(
                 "_globalBeBuffer",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(gbe, 10);
             Assert.Equal(10, gbe.GlobalBeBuffer);
             // INTEGRATION-ONLY: Guard logic confirmed from source lines 92, 98.
@@ -75,7 +78,8 @@ namespace PropTraderTools
             var gbe = new PttGlobalBreakEven();
             var fi = typeof(PttGlobalBreakEven).GetField(
                 "_globalBeBuffer",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(gbe, -10);
             Assert.Equal(-10, gbe.GlobalBeBuffer);
             // INTEGRATION-ONLY: Guard behavior confirmed via source code review.
@@ -93,7 +97,8 @@ namespace PropTraderTools
             var engine = CopyEngine.Instance;
             var fi = typeof(CopyEngine).GetField(
                 "_globalQuickAllT1",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(engine, 4);
             Assert.Equal(4, engine.GlobalQuickAllT1);
         }
@@ -116,7 +121,8 @@ namespace PropTraderTools
         public void Execute_TargetCount_FallbackToTwoProxy_WhenSnapshotEmpty()
         {
             var emptyTargets = new List<(double Price, int Qty)>();
-            int targetCount = (emptyTargets != null && emptyTargets.Count > 0) ? emptyTargets.Count : 2;
+            int targetCount =
+                (emptyTargets != null && emptyTargets.Count > 0) ? emptyTargets.Count : 2;
             Assert.Equal(2, targetCount);
         }
 
@@ -127,7 +133,8 @@ namespace PropTraderTools
             var engine = CopyEngine.Instance;
             var fi = typeof(CopyEngine).GetField(
                 "_globalQuickAllT1",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(engine, 99);
             engine.IncrementQuickAll();
             Assert.Equal(99, engine.GlobalQuickAllT1);
@@ -141,7 +148,8 @@ namespace PropTraderTools
             var engine = CopyEngine.Instance;
             var fi = typeof(CopyEngine).GetField(
                 "_globalQuickAllT1",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             fi.SetValue(engine, 1);
             engine.DecrementQuickAll();
             Assert.Equal(1, engine.GlobalQuickAllT1);
@@ -157,7 +165,12 @@ namespace PropTraderTools
         [Fact]
         public void Execute_TargetCount_FromSnapshotWhenThreeEntries()
         {
-            var targets3 = new List<(double Price, int Qty)> { (5001.0, 1), (5002.0, 1), (5003.0, 1) };
+            var targets3 = new List<(double Price, int Qty)>
+            {
+                (5001.0, 1),
+                (5002.0, 1),
+                (5003.0, 1),
+            };
             int targetCount = (targets3 != null && targets3.Count > 0) ? targets3.Count : 2;
             Assert.Equal(3, targetCount);
         }
@@ -237,12 +250,12 @@ namespace PropTraderTools
         [Fact]
         public void Execute_StopAndTargetNames_FollowPttQxConvention()
         {
-            Assert.Equal("PTT-QX-Stop",  0 == 0 ? "PTT-QX-Stop" : "PTT-QX-Stop" + (0 + 1));
+            Assert.Equal("PTT-QX-Stop", 0 == 0 ? "PTT-QX-Stop" : "PTT-QX-Stop" + (0 + 1));
             Assert.Equal("PTT-QX-Stop2", 1 == 0 ? "PTT-QX-Stop" : "PTT-QX-Stop" + (1 + 1));
             Assert.Equal("PTT-QX-Stop3", 2 == 0 ? "PTT-QX-Stop" : "PTT-QX-Stop" + (2 + 1));
-            Assert.Equal("PTT-QX-T1",    "PTT-QX-T" + (0 + 1));
-            Assert.Equal("PTT-QX-T2",    "PTT-QX-T" + (1 + 1));
-            Assert.Equal("PTT-QX-T3",    "PTT-QX-T" + (2 + 1));
+            Assert.Equal("PTT-QX-T1", "PTT-QX-T" + (0 + 1));
+            Assert.Equal("PTT-QX-T2", "PTT-QX-T" + (1 + 1));
+            Assert.Equal("PTT-QX-T3", "PTT-QX-T" + (2 + 1));
         }
 
         // T_QX_T3_08: compat overload -- verify exactly 2 Execute overloads on PttQuickExit
@@ -250,10 +263,12 @@ namespace PropTraderTools
         public void Execute_CompatOverload_DelegatesToPrimaryWithEmptyList()
         {
             var allMethods = typeof(PttQuickExit).GetMethods(
-                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance
+            );
             int executeCount = 0;
             foreach (var m in allMethods)
-                if (m.Name == "Execute") executeCount++;
+                if (m.Name == "Execute")
+                    executeCount++;
             Assert.Equal(2, executeCount);
         }
 
@@ -262,9 +277,18 @@ namespace PropTraderTools
         public void SnapshotTargetOrders_NameFilter_IncludesTargetPatterns()
         {
             static bool IsTargetName(string name) =>
-                !string.IsNullOrEmpty(name) && (
-                    (name.StartsWith("Target", StringComparison.Ordinal) && name.Length > 6 && char.IsDigit(name[6]))
-                    || (name.StartsWith("PTT-QX-T", StringComparison.Ordinal) && name.Length > 8 && char.IsDigit(name[8]))
+                !string.IsNullOrEmpty(name)
+                && (
+                    (
+                        name.StartsWith("Target", StringComparison.Ordinal)
+                        && name.Length > 6
+                        && char.IsDigit(name[6])
+                    )
+                    || (
+                        name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                        && name.Length > 8
+                        && char.IsDigit(name[8])
+                    )
                     || name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
                 );
 
@@ -297,8 +321,7 @@ namespace PropTraderTools
             string instrFullName = "MES 09-26";
             string orderInstrFullName = new string("MES 09-26".ToCharArray());
 
-            bool shouldSkip = (orderInstrFullName == null
-                || orderInstrFullName != instrFullName);
+            bool shouldSkip = (orderInstrFullName == null || orderInstrFullName != instrFullName);
             Assert.False(shouldSkip);
         }
 
@@ -308,7 +331,8 @@ namespace PropTraderTools
         {
             var mi = typeof(PttQuickExit).GetMethod(
                 "SnapshotStopPrice",
-                BindingFlags.NonPublic | BindingFlags.Static);
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
             Assert.NotNull(mi);
             Assert.Equal(2, mi.GetParameters().Length);
             Assert.Equal(typeof(double), mi.ReturnType);
@@ -321,8 +345,7 @@ namespace PropTraderTools
             string instrFullName = "MES 09-26";
             string orderInstrFullName = null;
 
-            bool shouldSkip = (orderInstrFullName == null
-                || orderInstrFullName != instrFullName);
+            bool shouldSkip = (orderInstrFullName == null || orderInstrFullName != instrFullName);
             Assert.True(shouldSkip);
         }
 
@@ -333,8 +356,7 @@ namespace PropTraderTools
             string instrFullName = "MES 09-26";
             string orderInstrFullName = "MGC 08-26";
 
-            bool shouldSkip = (orderInstrFullName == null
-                || orderInstrFullName != instrFullName);
+            bool shouldSkip = (orderInstrFullName == null || orderInstrFullName != instrFullName);
             Assert.True(shouldSkip);
         }
     }

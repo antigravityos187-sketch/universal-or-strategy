@@ -49,8 +49,8 @@ namespace PropTraderTools
         {
             Assert.Equal(2, (int)CopyMode.Clone);
             Assert.True(System.Enum.IsDefined(typeof(CopyMode), 2));
-            Assert.Equal(0, (int)CopyMode.Signal);   // no regression
-            Assert.Equal(1, (int)CopyMode.Mirror);   // no regression
+            Assert.Equal(0, (int)CopyMode.Signal); // no regression
+            Assert.Equal(1, (int)CopyMode.Mirror); // no regression
         }
     }
 }

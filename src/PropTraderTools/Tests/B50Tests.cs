@@ -16,8 +16,8 @@ namespace PropTraderTools
         public void T_B50_01_CopyMode_Clone_HasValue2()
         {
             Assert.Equal(2, (int)CopyMode.Clone);
-            Assert.Equal(0, (int)CopyMode.Signal);   // existing -- must not regress
-            Assert.Equal(1, (int)CopyMode.Mirror);   // existing -- must not regress
+            Assert.Equal(0, (int)CopyMode.Signal); // existing -- must not regress
+            Assert.Equal(1, (int)CopyMode.Mirror); // existing -- must not regress
         }
 
         // T_B50_02 -- SetCopyMode(Clone) roundtrip via GetCopyMode.
@@ -27,7 +27,7 @@ namespace PropTraderTools
         {
             CopyEngine.Instance.SetCopyMode(CopyMode.Clone);
             Assert.Equal(CopyMode.Clone, CopyEngine.Instance.GetCopyMode());
-            CopyEngine.Instance.SetCopyMode(CopyMode.Signal);   // cleanup
+            CopyEngine.Instance.SetCopyMode(CopyMode.Signal); // cleanup
         }
 
         // T_B50_03 -- GetCloneAtmMode returns Named when cache is non-empty.
@@ -41,7 +41,7 @@ namespace PropTraderTools
             Assert.IsType<FollowerAtmMode.Named>(mode);
             var named = (FollowerAtmMode.Named)mode;
             Assert.Equal("MES $200 SL5", named.TemplateName);
-            CopyEngine.Instance.SetCopyMode(CopyMode.Signal);   // cleanup
+            CopyEngine.Instance.SetCopyMode(CopyMode.Signal); // cleanup
         }
 
         // T_B50_04 -- Clone mode does not activate Mirror guard.
@@ -54,7 +54,7 @@ namespace PropTraderTools
             // Clone must not be confused with Mirror (which triggers MirrorOrderUpdate)
             Assert.NotEqual(CopyMode.Mirror, CopyEngine.Instance.GetCopyMode());
             Assert.Equal(CopyMode.Clone, CopyEngine.Instance.GetCopyMode());
-            CopyEngine.Instance.SetCopyMode(CopyMode.Signal);   // cleanup
+            CopyEngine.Instance.SetCopyMode(CopyMode.Signal); // cleanup
         }
 
         // T_B50_05 -- GetCloneAtmMode returns Inherit when cache is empty.
@@ -66,7 +66,7 @@ namespace PropTraderTools
             CopyEngine.Instance.SetCloneAtmCache(string.Empty);
             var mode = CopyEngine.Instance.GetCloneAtmMode();
             Assert.IsType<FollowerAtmMode.Inherit>(mode);
-            CopyEngine.Instance.SetCopyMode(CopyMode.Signal);   // cleanup
+            CopyEngine.Instance.SetCopyMode(CopyMode.Signal); // cleanup
         }
     }
 }

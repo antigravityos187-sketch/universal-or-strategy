@@ -31,7 +31,8 @@ namespace PropTraderTools
         {
             var mi = typeof(TradeCopierPanel).GetMethod(
                 "GetLeaderAtmTemplateName",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
+            );
 
             Assert.NotNull(mi);
 
@@ -43,7 +44,9 @@ namespace PropTraderTools
 
         // T_B77_TPL_02: currentChart != null but FindVisualChild<ChartTrader> returns null -- branch 2.
         // Skip: requires live WPF visual tree (NT8 host).
-        [Fact(Skip = "NT8-HOST-REQUIRED: FindVisualChild<ChartTrader>(currentChart) requires live WPF visual tree")]
+        [Fact(
+            Skip = "NT8-HOST-REQUIRED: FindVisualChild<ChartTrader>(currentChart) requires live WPF visual tree"
+        )]
         public void T_B77_TPL_02_ChartTraderNull_ReturnsStringEmpty()
         {
             // Arrange: real Chart with no ChartTrader child in visual tree.
@@ -54,7 +57,9 @@ namespace PropTraderTools
         // T_B77_TPL_03: ct.AtmStrategy.Name == "AtmStrategy" -- B76 guard fires; sel==null;
         //               ComboBox.SelectedItem==null -> returns string.Empty.
         // Skip: requires live ChartTrader with staged AtmStrategy and no AtmStrategySelector.
-        [Fact(Skip = "NT8-HOST-REQUIRED: requires live ChartTrader with AtmStrategy.Name==\"AtmStrategy\" and no AtmStrategySelector in visual tree")]
+        [Fact(
+            Skip = "NT8-HOST-REQUIRED: requires live ChartTrader with AtmStrategy.Name==\"AtmStrategy\" and no AtmStrategySelector in visual tree"
+        )]
         public void T_B77_TPL_03_AtmStrategyNameIsClassName_SelNull_FallsThrough_ReturnsEmpty()
         {
             // Arrange: real Chart; ct.AtmStrategy.Name == "AtmStrategy"; no AtmStrategySelector child;
@@ -71,14 +76,16 @@ namespace PropTraderTools
         {
             var mi = typeof(TradeCopierPanel).GetMethod(
                 "GetLeaderAtmTemplateName",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
+            );
 
             Assert.NotNull(mi);
 
             var selectorType = typeof(NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector);
             var selProp = selectorType.GetProperty(
                 "SelectedAtmStrategy",
-                BindingFlags.Public | BindingFlags.Instance);
+                BindingFlags.Public | BindingFlags.Instance
+            );
 
             Assert.NotNull(selProp);
 
@@ -92,7 +99,8 @@ namespace PropTraderTools
 
             Assert.False(
                 IlContainsCallvirt(il, getterToken),
-                "GetLeaderAtmTemplateName must NOT call get_SelectedAtmStrategy -- B77 repair uses SelectedItem (HOTFIX-B77-01)");
+                "GetLeaderAtmTemplateName must NOT call get_SelectedAtmStrategy -- B77 repair uses SelectedItem (HOTFIX-B77-01)"
+            );
         }
 
         // T_B77_TPL_05: null-invoke + IL scan for string.Empty literal.
@@ -104,7 +112,8 @@ namespace PropTraderTools
         {
             var mi = typeof(TradeCopierPanel).GetMethod(
                 "GetLeaderAtmTemplateName",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
+            );
 
             Assert.NotNull(mi);
 
@@ -126,7 +135,8 @@ namespace PropTraderTools
             {
                 if (il[i] == 0x72) // ldstr
                 {
-                    int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                    int token =
+                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     try
                     {
                         var s = module.ResolveString(token);
@@ -136,12 +146,16 @@ namespace PropTraderTools
                             break;
                         }
                     }
-                    catch { /* token not a valid string reference -- skip */ }
+                    catch
+                    { /* token not a valid string reference -- skip */
+                    }
                 }
             }
 
-            Assert.True(foundStringEmpty,
-                "GetLeaderAtmTemplateName must contain a string.Empty literal (null-safe ?? pattern -- HOTFIX-B77-01)");
+            Assert.True(
+                foundStringEmpty,
+                "GetLeaderAtmTemplateName must contain a string.Empty literal (null-safe ?? pattern -- HOTFIX-B77-01)"
+            );
         }
 
         // IL inspection helper: returns true if the byte array contains a callvirt instruction (0x6F)
@@ -154,7 +168,8 @@ namespace PropTraderTools
             {
                 if (il[i] == 0x6F) // callvirt
                 {
-                    int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                    int token =
+                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     if (token == targetToken)
                         return true;
                 }

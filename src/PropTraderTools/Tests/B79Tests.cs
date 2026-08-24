@@ -208,7 +208,8 @@ namespace PropTraderTools
             // Reflect CancelAllAccountOrders on CopyEngine via BindingFlags.NonPublic | Instance.
             var method = typeof(CopyEngine).GetMethod(
                 "CancelAllAccountOrders",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             Assert.NotNull(method);
 
             // Act: extract IL byte array from method body
@@ -223,38 +224,52 @@ namespace PropTraderTools
             Assert.NotNull(changeSubmittedField);
 
             bool foundChangeSubmitted = false;
-            bool foundWorking        = false;
-            bool foundAccepted       = false;
-            bool foundSubmitted      = false;
-            bool foundInitialized    = false;
+            bool foundWorking = false;
+            bool foundAccepted = false;
+            bool foundSubmitted = false;
+            bool foundInitialized = false;
 
             for (int i = 0; i < il.Length - 4; i++)
             {
                 // ldsfld opcode = 0x7E
-                if (il[i] != 0x7E) continue;
+                if (il[i] != 0x7E)
+                    continue;
                 int token = System.BitConverter.ToInt32(il, i + 1);
                 try
                 {
                     var fi = module.ResolveField(token) as System.Reflection.FieldInfo;
-                    if (fi == null || fi.DeclaringType != typeof(OrderState)) continue;
-                    if (fi.Name == "ChangeSubmitted") foundChangeSubmitted = true;
-                    if (fi.Name == "Working")         foundWorking         = true;
-                    if (fi.Name == "Accepted")        foundAccepted        = true;
-                    if (fi.Name == "Submitted")       foundSubmitted       = true;
-                    if (fi.Name == "Initialized")     foundInitialized     = true;
+                    if (fi == null || fi.DeclaringType != typeof(OrderState))
+                        continue;
+                    if (fi.Name == "ChangeSubmitted")
+                        foundChangeSubmitted = true;
+                    if (fi.Name == "Working")
+                        foundWorking = true;
+                    if (fi.Name == "Accepted")
+                        foundAccepted = true;
+                    if (fi.Name == "Submitted")
+                        foundSubmitted = true;
+                    if (fi.Name == "Initialized")
+                        foundInitialized = true;
                 }
-                catch { /* token resolution may fail for non-field tokens -- skip */ }
+                catch
+                { /* token resolution may fail for non-field tokens -- skip */
+                }
             }
 
             // Primary assert: ChangeSubmitted must NOT be loaded in this method (ticket requirement)
-            Assert.False(foundChangeSubmitted,
-                "OrderState.ChangeSubmitted must not appear in CancelAllAccountOrders IL after DW-B79-04");
+            Assert.False(
+                foundChangeSubmitted,
+                "OrderState.ChangeSubmitted must not appear in CancelAllAccountOrders IL after DW-B79-04"
+            );
 
             // Secondary regression guard: the 4 valid states must still be present
-            Assert.True(foundWorking,     "OrderState.Working must be present in stateOk filter");
-            Assert.True(foundAccepted,    "OrderState.Accepted must be present in stateOk filter");
-            Assert.True(foundSubmitted,   "OrderState.Submitted must be present in stateOk filter");
-            Assert.True(foundInitialized, "OrderState.Initialized must be present in stateOk filter");
+            Assert.True(foundWorking, "OrderState.Working must be present in stateOk filter");
+            Assert.True(foundAccepted, "OrderState.Accepted must be present in stateOk filter");
+            Assert.True(foundSubmitted, "OrderState.Submitted must be present in stateOk filter");
+            Assert.True(
+                foundInitialized,
+                "OrderState.Initialized must be present in stateOk filter"
+            );
         }
     }
 }

@@ -27,15 +27,19 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
 
             Assert.NotNull(mi);
             Assert.Equal(typeof(void), mi.ReturnType);
 
             var ps = mi.GetParameters();
             Assert.Equal(2, ps.Length);
-            Assert.Equal(typeof(NinjaTrader.Cbi.Account),                            ps[0].ParameterType);
-            Assert.Equal(typeof(NinjaTrader.NinjaScript.Instruments.Instrument),     ps[1].ParameterType);
+            Assert.Equal(typeof(NinjaTrader.Cbi.Account), ps[0].ParameterType);
+            Assert.Equal(
+                typeof(NinjaTrader.NinjaScript.Instruments.Instrument),
+                ps[1].ParameterType
+            );
         }
 
         // T_B76_02: FlattenOneAccount compiled body contains the string literal for the in-flight guard.
@@ -46,7 +50,8 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             var body = mi.GetMethodBody();
@@ -61,7 +66,8 @@ namespace PropTraderTools
             {
                 if (il[i] == 0x72) // ldstr
                 {
-                    int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                    int token =
+                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     try
                     {
                         var s = module.ResolveString(token);
@@ -71,11 +77,16 @@ namespace PropTraderTools
                             break;
                         }
                     }
-                    catch { /* token not a valid string reference -- skip */ }
+                    catch
+                    { /* token not a valid string reference -- skip */
+                    }
                 }
             }
 
-            Assert.True(found, "FlattenOneAccount must contain string literal 'flat-guard: in-flight skip' (HOTFIX-B76-FLATTEN-GUARD-01 v2)");
+            Assert.True(
+                found,
+                "FlattenOneAccount must contain string literal 'flat-guard: in-flight skip' (HOTFIX-B76-FLATTEN-GUARD-01 v2)"
+            );
         }
 
         // T_B76_03: FlattenOneAccount compiled body contains the string literal for the race skip.
@@ -85,7 +96,8 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             var body = mi.GetMethodBody();
@@ -99,7 +111,8 @@ namespace PropTraderTools
             {
                 if (il[i] == 0x72) // ldstr
                 {
-                    int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                    int token =
+                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     try
                     {
                         var s = module.ResolveString(token);
@@ -113,7 +126,10 @@ namespace PropTraderTools
                 }
             }
 
-            Assert.True(found, "FlattenOneAccount must contain string literal 'flat-race skip' (HOTFIX-B76-FLATTEN-RACE-01)");
+            Assert.True(
+                found,
+                "FlattenOneAccount must contain string literal 'flat-race skip' (HOTFIX-B76-FLATTEN-RACE-01)"
+            );
         }
 
         // T_B76_04: FlattenOneAccount IL contains at least 2 FindPosition call sites.
@@ -124,12 +140,14 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             var findPosMi = typeof(CopyEngine).GetMethod(
                 "FindPosition",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(findPosMi);
 
             int findPosToken = findPosMi.MetadataToken;
@@ -144,14 +162,17 @@ namespace PropTraderTools
             {
                 if (il[i] == 0x28 || il[i] == 0x6F) // call or callvirt
                 {
-                    int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                    int token =
+                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     if (token == findPosToken)
                         callCount++;
                 }
             }
 
-            Assert.True(callCount >= 2,
-                $"FlattenOneAccount must contain at least 2 FindPosition call sites (pre-cancel + post-cancel re-read). Found: {callCount}");
+            Assert.True(
+                callCount >= 2,
+                $"FlattenOneAccount must contain at least 2 FindPosition call sites (pre-cancel + post-cancel re-read). Found: {callCount}"
+            );
         }
 
         // T_B76_05: FlattenOneAccount IL: CancelAllAccountOrders call offset is BEFORE the second
@@ -161,21 +182,24 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             var findPosMi = typeof(CopyEngine).GetMethod(
                 "FindPosition",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(findPosMi);
 
             var cancelMi = typeof(CopyEngine).GetMethod(
                 "CancelAllAccountOrders",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(cancelMi);
 
             int findPosToken = findPosMi.MetadataToken;
-            int cancelToken  = cancelMi.MetadataToken;
+            int cancelToken = cancelMi.MetadataToken;
 
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
@@ -183,13 +207,14 @@ namespace PropTraderTools
             Assert.NotNull(il);
 
             var findPosOffsets = new System.Collections.Generic.List<int>();
-            int cancelOffset   = -1;
+            int cancelOffset = -1;
 
             for (int i = 0; i < il.Length - 4; i++)
             {
                 if (il[i] == 0x28 || il[i] == 0x6F)
                 {
-                    int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                    int token =
+                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     if (token == findPosToken)
                         findPosOffsets.Add(i);
                     else if (token == cancelToken && cancelOffset == -1)
@@ -197,14 +222,17 @@ namespace PropTraderTools
                 }
             }
 
-            Assert.True(findPosOffsets.Count >= 2,
-                "FlattenOneAccount must have at least 2 FindPosition call sites");
-            Assert.True(cancelOffset >= 0,
-                "FlattenOneAccount must call CancelAllAccountOrders");
+            Assert.True(
+                findPosOffsets.Count >= 2,
+                "FlattenOneAccount must have at least 2 FindPosition call sites"
+            );
+            Assert.True(cancelOffset >= 0, "FlattenOneAccount must call CancelAllAccountOrders");
 
             int secondFindPosOffset = findPosOffsets[1];
-            Assert.True(cancelOffset < secondFindPosOffset,
-                $"CancelAllAccountOrders offset ({cancelOffset}) must be before second FindPosition offset ({secondFindPosOffset})");
+            Assert.True(
+                cancelOffset < secondFindPosOffset,
+                $"CancelAllAccountOrders offset ({cancelOffset}) must be before second FindPosition offset ({secondFindPosOffset})"
+            );
         }
 
         // T_B76_06: FlattenOneAccount IL has at least 5 local variables.
@@ -215,15 +243,18 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
 
             int localCount = body.LocalVariables.Count;
-            Assert.True(localCount >= 5,
-                $"FlattenOneAccount must have at least 5 local variables (loop var, pos, posAfterCancel, action, order). Found: {localCount}");
+            Assert.True(
+                localCount >= 5,
+                $"FlattenOneAccount must have at least 5 local variables (loop var, pos, posAfterCancel, action, order). Found: {localCount}"
+            );
         }
 
         // ======================================================================
@@ -238,13 +269,14 @@ namespace PropTraderTools
         {
             var fi = typeof(CopyEngine).GetField(
                 "_lastHasPos",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
 
             Assert.NotNull(fi);
             Assert.Equal(typeof(ConcurrentDictionary<string, int[]>), fi.FieldType);
 
             var instance = CopyEngine.Instance;
-            var value    = fi.GetValue(instance);
+            var value = fi.GetValue(instance);
             Assert.NotNull(value);
             Assert.IsType<ConcurrentDictionary<string, int[]>>(value);
         }
@@ -256,12 +288,14 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "TryFirePositionState",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             var interlockedExchangeMi = typeof(System.Threading.Interlocked).GetMethod(
                 "Exchange",
-                new Type[] { typeof(int).MakeByRefType(), typeof(int) });
+                new Type[] { typeof(int).MakeByRefType(), typeof(int) }
+            );
             Assert.NotNull(interlockedExchangeMi);
 
             int exchangeToken = interlockedExchangeMi.MetadataToken;
@@ -277,7 +311,8 @@ namespace PropTraderTools
             {
                 if (il[i] == 0x28 || il[i] == 0x6F) // call or callvirt
                 {
-                    int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                    int token =
+                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     if (token == exchangeToken)
                     {
                         foundExchange = true;
@@ -286,8 +321,10 @@ namespace PropTraderTools
                 }
             }
 
-            Assert.True(foundExchange,
-                "TryFirePositionState must call Interlocked.Exchange(ref int, int) -- HOTFIX-B76-POSSTATE-DEDUP-01");
+            Assert.True(
+                foundExchange,
+                "TryFirePositionState must call Interlocked.Exchange(ref int, int) -- HOTFIX-B76-POSSTATE-DEDUP-01"
+            );
         }
 
         // T_B76_09: TryFirePositionState is a private instance method on CopyEngine.
@@ -297,16 +334,21 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "TryFirePositionState",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(mi);
 
             var publicMi = typeof(CopyEngine).GetMethod(
                 "TryFirePositionState",
-                BindingFlags.Public | BindingFlags.Instance);
+                BindingFlags.Public | BindingFlags.Instance
+            );
             Assert.Null(publicMi);
 
-            Assert.False(mi.IsStatic, "TryFirePositionState must be an instance method (not static)");
-            Assert.True(mi.IsPrivate,  "TryFirePositionState must be private");
+            Assert.False(
+                mi.IsStatic,
+                "TryFirePositionState must be an instance method (not static)"
+            );
+            Assert.True(mi.IsPrivate, "TryFirePositionState must be private");
         }
 
         // ======================================================================
@@ -321,7 +363,8 @@ namespace PropTraderTools
         {
             var mi = typeof(TradeCopierPanel).GetMethod(
                 "GetLeaderAtmTemplateName",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
+            );
             Assert.NotNull(mi);
 
             var result = mi.Invoke(null, new object[] { null });
@@ -337,7 +380,8 @@ namespace PropTraderTools
         {
             var mi = typeof(TradeCopierPanel).GetMethod(
                 "GetLeaderAtmTemplateName",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
+            );
             Assert.NotNull(mi);
 
             var body = mi.GetMethodBody();
@@ -352,7 +396,8 @@ namespace PropTraderTools
             {
                 if (il[i] == 0x72) // ldstr
                 {
-                    int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                    int token =
+                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     try
                     {
                         var s = module.ResolveString(token);
@@ -366,8 +411,10 @@ namespace PropTraderTools
                 }
             }
 
-            Assert.True(found,
-                "GetLeaderAtmTemplateName must contain string literal \"AtmStrategy\" (HOTFIX-B76-ATM-TPL-CLASSNAME class-name guard)");
+            Assert.True(
+                found,
+                "GetLeaderAtmTemplateName must contain string literal \"AtmStrategy\" (HOTFIX-B76-ATM-TPL-CLASSNAME class-name guard)"
+            );
         }
 
         // T_B76_12: GetLeaderAtmTemplateName is an internal static method on TradeCopierPanel.
@@ -378,12 +425,14 @@ namespace PropTraderTools
             // internal is visible as Assembly-scope; try NonPublic first, then Public (same assembly)
             var mi = typeof(TradeCopierPanel).GetMethod(
                 "GetLeaderAtmTemplateName",
-                BindingFlags.NonPublic | BindingFlags.Static);
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
             if (mi == null)
             {
                 mi = typeof(TradeCopierPanel).GetMethod(
                     "GetLeaderAtmTemplateName",
-                    BindingFlags.Public | BindingFlags.Static);
+                    BindingFlags.Public | BindingFlags.Static
+                );
             }
 
             Assert.NotNull(mi);

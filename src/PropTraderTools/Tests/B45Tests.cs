@@ -54,22 +54,20 @@ namespace PropTraderTools
 
         // Reflection accessor for _rules bag (same pattern as CopyEngineTests.cs:70).
         // CopyRule is a private nested struct so we use IEnumerable to iterate.
-        private static readonly FieldInfo _rulesField =
-            typeof(CopyEngine).GetField(
-                "_rules",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo _rulesField = typeof(CopyEngine).GetField(
+            "_rules",
+            BindingFlags.NonPublic | BindingFlags.Instance
+        );
 
         // FollowerAccounts field on CopyRule struct -- accessed via reflection since CopyRule is private.
-        private static readonly FieldInfo _followerAccountsField =
-            typeof(CopyEngine)
-                .GetNestedType("CopyRule", BindingFlags.NonPublic)
-                ?.GetField("FollowerAccounts", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo _followerAccountsField = typeof(CopyEngine)
+            .GetNestedType("CopyRule", BindingFlags.NonPublic)
+            ?.GetField("FollowerAccounts", BindingFlags.NonPublic | BindingFlags.Instance);
 
         // Instrument field on CopyRule struct
-        private static readonly FieldInfo _instrumentField =
-            typeof(CopyEngine)
-                .GetNestedType("CopyRule", BindingFlags.NonPublic)
-                ?.GetField("Instrument", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo _instrumentField = typeof(CopyEngine)
+            .GetNestedType("CopyRule", BindingFlags.NonPublic)
+            ?.GetField("Instrument", BindingFlags.NonPublic | BindingFlags.Instance);
 
         private int GetRuleCount()
         {
@@ -82,8 +80,13 @@ namespace PropTraderTools
         private bool HasRuleForInstrument(string instrument)
         {
             foreach (var r in (IEnumerable)_rulesField.GetValue(_engine))
-                if (string.Equals((string)_instrumentField.GetValue(r), instrument,
-                        StringComparison.Ordinal))
+                if (
+                    string.Equals(
+                        (string)_instrumentField.GetValue(r),
+                        instrument,
+                        StringComparison.Ordinal
+                    )
+                )
                     return true;
             return false;
         }
@@ -109,16 +112,19 @@ namespace PropTraderTools
             // Arrange: simulate the engine state after OnApplyRule succeeds with resolved leader.
             // Account objects are null stubs -- CopyEngine.AddRule accepts null leader/follower
             // at the engine level (same pattern as CopyEngineTests.cs SetRuleEnabled tests).
-            Account   leader     = null;
-            Account[] followers  = new Account[] { null };  // length 1 -- simulates one follower selected
-            var       atmMap     = new Dictionary<string, FollowerAtmMode>();
-            string    instrument = "MES SEP26 B45T01";
+            Account leader = null;
+            Account[] followers = new Account[] { null }; // length 1 -- simulates one follower selected
+            var atmMap = new Dictionary<string, FollowerAtmMode>();
+            string instrument = "MES SEP26 B45T01";
 
             // Act: call AddRule -- this is exactly the call that OnApplyRule makes after B45 T1 fix
             _engine.AddRule(instrument, leader, followers, new int[] { 1 }, atmMap);
 
             // Assert: rule was added
-            Assert.True(HasRuleForInstrument(instrument), "Rule for MES SEP26 B45T01 must exist after AddRule");
+            Assert.True(
+                HasRuleForInstrument(instrument),
+                "Rule for MES SEP26 B45T01 must exist after AddRule"
+            );
 
             // Assert: FollowerAccounts.Length > 0 via _rules bag reflection
             bool followerCheck = false;
@@ -133,7 +139,10 @@ namespace PropTraderTools
                 Assert.True(acc.Length > 0, "FollowerAccounts must have at least 1 entry");
                 followerCheck = true;
             }
-            Assert.True(followerCheck, "Rule for MES SEP26 B45T01 must exist and expose FollowerAccounts");
+            Assert.True(
+                followerCheck,
+                "Rule for MES SEP26 B45T01 must exist and expose FollowerAccounts"
+            );
         }
 
         /// <summary>
@@ -159,8 +168,10 @@ namespace PropTraderTools
             // Assert: rule count did NOT increase -- AddRule was never reached
             int countAfter = GetRuleCount();
             Assert.Equal(countBefore, countAfter);
-            Assert.False(HasRuleForInstrument(instrument),
-                "AddRule must NOT have been called when leader remains null");
+            Assert.False(
+                HasRuleForInstrument(instrument),
+                "AddRule must NOT have been called when leader remains null"
+            );
         }
     }
 
@@ -197,16 +208,16 @@ namespace PropTraderTools
             // The State property is set by the NT8 runtime normally; here we invoke OnStateChange
             // directly. Because SetDefaults branch is keyed off the State property value, we
             // must set State = SetDefaults via PropertyInfo before invoking.
-            var stateProperty = typeof(TestFollowerStrategy)
-                .GetProperty("State",
-                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+            var stateProperty = typeof(TestFollowerStrategy).GetProperty(
+                "State",
+                BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy
+            );
 
             // State property may have no public setter (NT8 controls it). Try setter first,
             // then fall back to locating a backing field.
             if (stateProperty != null && stateProperty.CanWrite)
             {
-                stateProperty.SetValue(strategy,
-                    NinjaTrader.NinjaScript.State.SetDefaults);
+                stateProperty.SetValue(strategy, NinjaTrader.NinjaScript.State.SetDefaults);
             }
             else
             {
@@ -215,30 +226,31 @@ namespace PropTraderTools
                 var backingField = FindFieldByType(
                     typeof(TestFollowerStrategy),
                     typeof(NinjaTrader.NinjaScript.State),
-                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy
+                );
                 if (backingField != null)
                     backingField.SetValue(strategy, NinjaTrader.NinjaScript.State.SetDefaults);
             }
 
             // Invoke OnStateChange (protected override on PttFollowerStrategy)
-            var onStateChange = typeof(PttFollowerStrategy)
-                .GetMethod("OnStateChange",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
+            var onStateChange = typeof(PttFollowerStrategy).GetMethod(
+                "OnStateChange",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(onStateChange); // must exist -- it is the NT8 lifecycle method
             onStateChange.Invoke(strategy, null);
 
             // Act: read back StartBehavior via PropertyInfo (declared on StrategyBase)
-            var startBehaviorProperty = typeof(TestFollowerStrategy)
-                .GetProperty("StartBehavior",
-                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+            var startBehaviorProperty = typeof(TestFollowerStrategy).GetProperty(
+                "StartBehavior",
+                BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy
+            );
             Assert.NotNull(startBehaviorProperty); // StrategyBase must expose StartBehavior
 
             var actual = startBehaviorProperty.GetValue(strategy);
 
             // Assert: StartBehavior == ImmediatelySubmit (B45 T2 fix)
-            Assert.Equal(
-                NinjaTrader.NinjaScript.StartBehavior.ImmediatelySubmit,
-                actual);
+            Assert.Equal(NinjaTrader.NinjaScript.StartBehavior.ImmediatelySubmit, actual);
         }
 
         /// <summary>

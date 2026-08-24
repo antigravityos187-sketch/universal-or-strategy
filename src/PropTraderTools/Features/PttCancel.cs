@@ -15,17 +15,20 @@ namespace PropTraderTools
     /// </summary>
     public class PttCancel : IPttModule
     {
-        public string ModuleId  { get; private set; }
-        public bool   IsEnabled { get; private set; }
+        public string ModuleId { get; private set; }
+        public bool IsEnabled { get; private set; }
 
         public PttCancel()
         {
-            ModuleId  = "CANCEL";
+            ModuleId = "CANCEL";
             IsEnabled = true;
         }
 
         /// <summary>Set enabled state (wired by TradeCopierPanel license bool). CYC=1.</summary>
-        public void SetEnabled(bool enabled) { IsEnabled = enabled; }
+        public void SetEnabled(bool enabled)
+        {
+            IsEnabled = enabled;
+        }
 
         /// <summary>No PttBus subscriptions. CYC=1.</summary>
         public void Initialize(IPttHostContext ctx) { }
@@ -40,12 +43,14 @@ namespace PropTraderTools
         /// </summary>
         public void Execute(IPttHostContext ctx)
         {
-            if (!IsEnabled) return;                                               // (1)
-            if (ctx.LeaderAccount == null || ctx.Instrument == null) return;      // (2)
+            if (!IsEnabled)
+                return; // (1)
+            if (ctx.LeaderAccount == null || ctx.Instrument == null)
+                return; // (2)
 
-            CancelWorkingEntriesLocal(ctx.LeaderAccount, ctx.Instrument);         // (3a)
+            CancelWorkingEntriesLocal(ctx.LeaderAccount, ctx.Instrument); // (3a)
 
-            PttBus.RaiseCancel(this, new CancelEventArgs(ctx.Instrument));        // (3b)
+            PttBus.RaiseCancel(this, new CancelEventArgs(ctx.Instrument)); // (3b)
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -59,28 +64,33 @@ namespace PropTraderTools
         /// </summary>
         private static void CancelWorkingEntriesLocal(Account acc, Instrument instr)
         {
-            if (acc == null || instr == null) return;                             // (1)
+            if (acc == null || instr == null)
+                return; // (1)
 
             var toCancel = new List<Order>();
-            foreach (Order o in acc.Orders)                                       // (2)
+            foreach (Order o in acc.Orders) // (2)
             {
-                if (o == null) continue;
-                bool stateOk = o.OrderState == OrderState.Working
-                            || o.OrderState == OrderState.Initialized;
-                bool instrOk = o.Instrument != null
-                            && o.Instrument.FullName == instr.FullName;
+                if (o == null)
+                    continue;
+                bool stateOk =
+                    o.OrderState == OrderState.Working || o.OrderState == OrderState.Initialized;
+                bool instrOk = o.Instrument != null && o.Instrument.FullName == instr.FullName;
                 if (stateOk && instrOk)
                     toCancel.Add(o);
             }
-            if (toCancel.Count == 0) return;                                      // (3)
+            if (toCancel.Count == 0)
+                return; // (3)
             try
             {
                 acc.Cancel(toCancel.ToArray());
                 NinjaTrader.Code.Output.Process(
                     "[CANCEL] CancelWorkingEntriesLocal: " + toCancel.Count + " orders cancelled",
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
             }
-            catch { /* cancel on already-filled orders is non-fatal */ }
+            catch
+            { /* cancel on already-filled orders is non-fatal */
+            }
         }
     }
 }

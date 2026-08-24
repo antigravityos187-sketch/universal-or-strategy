@@ -22,33 +22,36 @@ namespace PropTraderTools
         [Fact]
         public void T_BE_CANCEL_01_CancelStaleBracketsLocal_TriggerPending_InStateOk()
         {
-            bool tpOk = OrderState.TriggerPending == OrderState.Working
-                     || OrderState.TriggerPending == OrderState.Initialized
-                     || OrderState.TriggerPending == OrderState.Submitted
-                     || OrderState.TriggerPending == OrderState.Accepted
-                     || OrderState.TriggerPending == OrderState.TriggerPending;
+            bool tpOk =
+                OrderState.TriggerPending == OrderState.Working
+                || OrderState.TriggerPending == OrderState.Initialized
+                || OrderState.TriggerPending == OrderState.Submitted
+                || OrderState.TriggerPending == OrderState.Accepted
+                || OrderState.TriggerPending == OrderState.TriggerPending;
             Assert.True(tpOk);
         }
 
         [Fact]
         public void T_BE_CANCEL_02_CancelStaleBracketsLocal_Submitted_InStateOk()
         {
-            bool subOk = OrderState.Submitted == OrderState.Working
-                      || OrderState.Submitted == OrderState.Initialized
-                      || OrderState.Submitted == OrderState.Submitted
-                      || OrderState.Submitted == OrderState.Accepted
-                      || OrderState.Submitted == OrderState.TriggerPending;
+            bool subOk =
+                OrderState.Submitted == OrderState.Working
+                || OrderState.Submitted == OrderState.Initialized
+                || OrderState.Submitted == OrderState.Submitted
+                || OrderState.Submitted == OrderState.Accepted
+                || OrderState.Submitted == OrderState.TriggerPending;
             Assert.True(subOk);
         }
 
         [Fact]
         public void T_BE_CANCEL_03_CancelStaleBracketsLocal_Accepted_InStateOk()
         {
-            bool accOk = OrderState.Accepted == OrderState.Working
-                      || OrderState.Accepted == OrderState.Initialized
-                      || OrderState.Accepted == OrderState.Submitted
-                      || OrderState.Accepted == OrderState.Accepted
-                      || OrderState.Accepted == OrderState.TriggerPending;
+            bool accOk =
+                OrderState.Accepted == OrderState.Working
+                || OrderState.Accepted == OrderState.Initialized
+                || OrderState.Accepted == OrderState.Submitted
+                || OrderState.Accepted == OrderState.Accepted
+                || OrderState.Accepted == OrderState.TriggerPending;
             Assert.True(accOk);
         }
 
@@ -97,7 +100,8 @@ namespace PropTraderTools
         {
             var fi = typeof(PttBreakEven).GetField(
                 "_beOcoSeq",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static
+            );
             Assert.Null(fi);
         }
 
@@ -109,7 +113,8 @@ namespace PropTraderTools
                 BindingFlags.NonPublic | BindingFlags.Static,
                 null,
                 new[] { typeof(string), typeof(int), typeof(int) },
-                null);
+                null
+            );
             string result = (string)mi.Invoke(null, new object[] { "Sim101", 1, 0 });
             Assert.StartsWith("PTT-BE-Sim101-", result);
         }
@@ -122,7 +127,8 @@ namespace PropTraderTools
                 BindingFlags.NonPublic | BindingFlags.Static,
                 null,
                 new[] { typeof(string), typeof(int), typeof(int) },
-                null);
+                null
+            );
             string id1 = (string)mi.Invoke(null, new object[] { "Sim102", 1, 0 });
             string id2 = (string)mi.Invoke(null, new object[] { "Sim101", 1, 0 });
             Assert.NotEqual(id1, id2);
@@ -136,7 +142,8 @@ namespace PropTraderTools
                 BindingFlags.NonPublic | BindingFlags.Static,
                 null,
                 new[] { typeof(string), typeof(int), typeof(int) },
-                null);
+                null
+            );
             string result = (string)mi.Invoke(null, new object[] { "ShortAcc", 5, 0 });
             Assert.StartsWith("PTT-BE-ShortAcc-", result);
         }

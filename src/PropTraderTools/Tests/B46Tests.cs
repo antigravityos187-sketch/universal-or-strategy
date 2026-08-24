@@ -19,11 +19,13 @@ namespace PropTraderTools
         public void T_B46_01_EmptyAtmTemplateName_GuardFires()
         {
             var args = FillSignalEventArgs.Create(
-                null, null,
+                null,
+                null,
                 string.Empty,
                 NinjaTrader.Cbi.OrderAction.Buy,
                 8,
-                "ORD-B46-001");
+                "ORD-B46-001"
+            );
 
             // Guard predicate: string.IsNullOrWhiteSpace(args.AtmTemplateName)
             // This is exactly what production CallAtmStrategyCreate evaluates.
@@ -37,11 +39,13 @@ namespace PropTraderTools
         public void T_B46_02_NonEmptyAtmTemplateName_GuardDoesNotFire()
         {
             var args = FillSignalEventArgs.Create(
-                null, null,
+                null,
+                null,
                 "MES $200 SL5",
                 NinjaTrader.Cbi.OrderAction.Buy,
                 8,
-                "ORD-B46-002");
+                "ORD-B46-002"
+            );
 
             Assert.False(string.IsNullOrWhiteSpace(args.AtmTemplateName));
             Assert.Equal("MES $200 SL5", args.AtmTemplateName);

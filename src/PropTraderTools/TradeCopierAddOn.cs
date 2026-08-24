@@ -16,8 +16,8 @@
 //
 // Jane Street rules: JS-021 (no lock), JS-023 (volatile bool for menu guard)
 using System;
-using System.Linq;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -37,20 +37,20 @@ namespace PropTraderTools
         private static volatile bool _menuWired = false;
 
         // Track injected panels keyed by Chart window to detach on close
-        private static readonly ConcurrentDictionary<Chart, TradeCopierPanel> _panels
-            = new ConcurrentDictionary<Chart, TradeCopierPanel>();
+        private static readonly ConcurrentDictionary<Chart, TradeCopierPanel> _panels =
+            new ConcurrentDictionary<Chart, TradeCopierPanel>();
 
         // B9 T1 -- ATR engine instances keyed by Chart window
-        private static readonly ConcurrentDictionary<Chart, AtrSizingEngine> _atrEngines
-            = new ConcurrentDictionary<Chart, AtrSizingEngine>();
+        private static readonly ConcurrentDictionary<Chart, AtrSizingEngine> _atrEngines =
+            new ConcurrentDictionary<Chart, AtrSizingEngine>();
 
         // B9 T2 -- Click trader handler registry (ADV-001 CORRECTED: TryRemove-first)
-        private static readonly ConcurrentDictionary<Chart, TradeCopierPanel> _clickHandlers
-            = new ConcurrentDictionary<Chart, TradeCopierPanel>();
+        private static readonly ConcurrentDictionary<Chart, TradeCopierPanel> _clickHandlers =
+            new ConcurrentDictionary<Chart, TradeCopierPanel>();
 
         // B11 T1: keyboard handler registry -- mirrors _clickHandlers pattern
-        private static readonly ConcurrentDictionary<Chart, TradeCopierPanel> _keyHandlers
-            = new ConcurrentDictionary<Chart, TradeCopierPanel>();
+        private static readonly ConcurrentDictionary<Chart, TradeCopierPanel> _keyHandlers =
+            new ConcurrentDictionary<Chart, TradeCopierPanel>();
 
         // B11 T1 SIM101: logging-only diag handler stored as field so RemoveSim101() can unhook it.
         // Set in RunSim101(); nulled unconditionally by RemoveSim101().
@@ -66,7 +66,7 @@ namespace PropTraderTools
             if (State == State.SetDefaults)
             {
                 Description = "Prop Trader Tools -- Trade Copier";
-                Name        = "TradeCopierAddOn";
+                Name = "TradeCopierAddOn";
             }
             if (State == State.Terminated)
                 _menuWired = false;
@@ -88,16 +88,17 @@ namespace PropTraderTools
             // Surface 2: Chart window contains ChartTrader as a child control
             var chart = window as Chart;
             if (chart != null)
-                InjectIntoChart(chart);   // instance call: StartAtrEngine needs _atrOverlayLabel
+                InjectIntoChart(chart); // instance call: StartAtrEngine needs _atrOverlayLabel
         }
 
         protected override void OnWindowDestroyed(System.Windows.Window window)
         {
             var chart = window as Chart;
-            if (chart == null) return;
-            StopAtrEngine(chart);           // instance: unsubscribes AtrUpdated
-            UnregisterClickTrader(chart);   // B9 T2: clean up click handler
-            UnhookKeyShortcut(chart);       // B11 T1: leak guard
+            if (chart == null)
+                return;
+            StopAtrEngine(chart); // instance: unsubscribes AtrUpdated
+            UnregisterClickTrader(chart); // B9 T2: clean up click handler
+            UnhookKeyShortcut(chart); // B11 T1: leak guard
             TradeCopierPanel panel;
             if (_panels.TryRemove(chart, out panel))
                 panel.Detach();
@@ -110,12 +111,18 @@ namespace PropTraderTools
             NTMenuItem newMenu = null;
             foreach (var item in cc.MainMenu)
             {
-                var mi  = item as NTMenuItem;
-                if (mi == null) continue;
+                var mi = item as NTMenuItem;
+                if (mi == null)
+                    continue;
                 var hdr = mi.Header != null ? mi.Header.ToString() : string.Empty;
-                if (hdr.StartsWith("New")) { newMenu = mi; break; }
+                if (hdr.StartsWith("New"))
+                {
+                    newMenu = mi;
+                    break;
+                }
             }
-            if (newMenu == null) return;
+            if (newMenu == null)
+                return;
 
             // Remove ALL "Trade Copier" entries before adding a fresh one.
             // The survivor scan approach fails because cross-domain MenuItem casts are
@@ -124,8 +131,9 @@ namespace PropTraderTools
             // how many prior domain reloads accumulated stale entries.
             for (int i = newMenu.Items.Count - 1; i >= 0; i--)
             {
-                var mi  = newMenu.Items[i] as System.Windows.Controls.MenuItem;
-                if (mi == null) continue;
+                var mi = newMenu.Items[i] as System.Windows.Controls.MenuItem;
+                if (mi == null)
+                    continue;
                 if (mi.Header != null && mi.Header.ToString() == "Trade Copier")
                     newMenu.Items.RemoveAt(i);
             }
@@ -151,7 +159,8 @@ namespace PropTraderTools
             {
                 MessageBox.Show(
                     "Trade Copier failed to open:\n\n" + ex.Message + "\n\n" + ex.StackTrace,
-                    "PTT Error");
+                    "PTT Error"
+                );
             }
         }
 
@@ -177,7 +186,8 @@ namespace PropTraderTools
         private void OnChartLoaded(object sender, RoutedEventArgs e)
         {
             var chart = sender as Chart;
-            if (chart == null) return;
+            if (chart == null)
+                return;
             chart.Loaded -= OnChartLoaded;
             chart.Dispatcher.InvokeAsync(() => DoInject(chart));
         }
@@ -195,28 +205,35 @@ namespace PropTraderTools
         // CYC=3: chart null(1), instr null(2), attachment try(3)
         private void StartAtrEngine(Chart chart, NinjaTrader.Cbi.Instrument instr)
         {
-            if (chart == null) return;                        // guard (1)
-            if (instr  == null) return;                       // guard (2)
+            if (chart == null)
+                return; // guard (1)
+            if (instr == null)
+                return; // guard (2)
             var engine = new AtrSizingEngine();
             double pointValue = instr.MasterInstrument?.PointValue ?? 5.0;
             engine.SetParameters(200.0, pointValue);
-            engine.SetAtrFraction(0.75);             // DW-ATR-DEFAULTS-01: match field defaults
+            engine.SetAtrFraction(0.75); // DW-ATR-DEFAULTS-01: match field defaults
             _atrEngines[chart] = engine;
 
             // STEP 3 (event-based fallback -- compile-safe DispatcherTimer, 1s polling).
             // chart.NinjaScripts.Add / Indicators.Add / BarsArray are not accessible in
             // AddOnBase compilation scope (NT8 Roslyn design-time limitation).
             // DispatcherTimer is WPF standard and always compiles in AddOnBase context.
-            if (_atrPollTimer == null)                        // guard (3): create timer once
+            if (_atrPollTimer == null) // guard (3): create timer once
             {
                 _atrPollTimer = new DispatcherTimer(DispatcherPriority.Background)
                 {
-                    Interval = System.TimeSpan.FromSeconds(1)
+                    Interval = System.TimeSpan.FromSeconds(1),
                 };
                 _atrPollTimer.Tick += (s, e2) =>
                 {
-                    try { engine.ManualOnBarUpdate(); }
-                    catch (System.Exception) { /* NT8 context not ready; next tick will retry */ }
+                    try
+                    {
+                        engine.ManualOnBarUpdate();
+                    }
+                    catch (System.Exception)
+                    { /* NT8 context not ready; next tick will retry */
+                    }
                 };
                 _atrPollTimer.Start();
             }
@@ -231,10 +248,11 @@ namespace PropTraderTools
         private void StopAtrEngine(Chart chart)
         {
             AtrSizingEngine engine;
-            if (!_atrEngines.TryRemove(chart, out engine)) return; // guard (1)
+            if (!_atrEngines.TryRemove(chart, out engine))
+                return; // guard (1)
             if (engine != null)
-                engine.AtrUpdated -= OnAtrUpdated;                 // unsubscribe event
-            if (_atrPollTimer != null)                             // guard (2): stop poll timer
+                engine.AtrUpdated -= OnAtrUpdated; // unsubscribe event
+            if (_atrPollTimer != null) // guard (2): stop poll timer
             {
                 _atrPollTimer.Stop();
                 _atrPollTimer = null;
@@ -248,9 +266,11 @@ namespace PropTraderTools
         internal void UpdateAtrOverlay(string atrDisplay)
         {
             var panel = _panels.Values.FirstOrDefault();
-            if (panel == null) return;
-            System.Windows.Application.Current.Dispatcher.InvokeAsync(
-                () => panel.SetAtrText(atrDisplay));
+            if (panel == null)
+                return;
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                panel.SetAtrText(atrDisplay)
+            );
         }
 
         // B10 T4: AtrUpdated event handler -- subscribed in StartAtrEngine.
@@ -266,22 +286,26 @@ namespace PropTraderTools
         // NT8: Chart.ChartControl not accessible from AddOn -- find via visual tree.
         internal static void RegisterClickTrader(Chart chart, TradeCopierPanel panel)
         {
-            if (chart == null) return;                                         // guard (1)
+            if (chart == null)
+                return; // guard (1)
             var cc = FindVisualChild<ChartControl>(chart);
             TradeCopierPanel old;
-            if (_clickHandlers.TryRemove(chart, out old) && cc != null)        // guard (2): remove old first
+            if (_clickHandlers.TryRemove(chart, out old) && cc != null) // guard (2): remove old first
                 cc.PreviewMouseDown -= old.OnChartMouseDown;
-            _clickHandlers[chart] = panel;                                     // store new
-            if (cc != null) cc.PreviewMouseDown += panel.OnChartMouseDown;    // hook new
+            _clickHandlers[chart] = panel; // store new
+            if (cc != null)
+                cc.PreviewMouseDown += panel.OnChartMouseDown; // hook new
         }
 
         // B9 T2: CYC=2 -- TryRemove guard + null ChartControl guard
         internal static void UnregisterClickTrader(Chart chart)
         {
             TradeCopierPanel panel;
-            if (!_clickHandlers.TryRemove(chart, out panel)) return;           // guard (1)
+            if (!_clickHandlers.TryRemove(chart, out panel))
+                return; // guard (1)
             var cc = FindVisualChild<ChartControl>(chart);
-            if (cc == null) return;                                            // guard (2)
+            if (cc == null)
+                return; // guard (2)
             cc.PreviewMouseDown -= panel.OnChartMouseDown;
         }
 
@@ -294,7 +318,8 @@ namespace PropTraderTools
             System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 var chart = sender as Chart;
-                if (chart == null) return;
+                if (chart == null)
+                    return;
                 TradeCopierPanel p;
                 if (_panels.TryGetValue(chart, out p) && p != null)
                     p.SetStatusText(msg);
@@ -308,7 +333,8 @@ namespace PropTraderTools
         // CYC=2: null guard (1) + unhook + null assignment (2).
         private static void RemoveSim101(Chart chart)
         {
-            if (_sim101KeyDiag != null) chart.PreviewKeyDown -= _sim101KeyDiag;
+            if (_sim101KeyDiag != null)
+                chart.PreviewKeyDown -= _sim101KeyDiag;
             _sim101KeyDiag = null;
         }
 
@@ -318,9 +344,10 @@ namespace PropTraderTools
         // CYC=2: chart null guard (1) + TryRemove-first to prevent dup (2).
         private static void HookKeyShortcut(Chart chart, TradeCopierPanel panel)
         {
-            if (chart == null) return;                                         // guard (1)
+            if (chart == null)
+                return; // guard (1)
             TradeCopierPanel old;
-            if (_keyHandlers.TryRemove(chart, out old) && old != null)         // guard (2): remove old first
+            if (_keyHandlers.TryRemove(chart, out old) && old != null) // guard (2): remove old first
                 chart.PreviewKeyDown -= old.OnChartKeyDown;
             _keyHandlers[chart] = panel;
             chart.PreviewKeyDown += panel.OnChartKeyDown;
@@ -333,8 +360,10 @@ namespace PropTraderTools
         private static void UnhookKeyShortcut(Chart chart)
         {
             TradeCopierPanel panel;
-            if (!_keyHandlers.TryRemove(chart, out panel)) return;             // guard (1)
-            if (panel == null) return;                                         // guard (2)
+            if (!_keyHandlers.TryRemove(chart, out panel))
+                return; // guard (1)
+            if (panel == null)
+                return; // guard (2)
             chart.PreviewKeyDown -= panel.OnChartKeyDown;
         }
 
@@ -343,7 +372,8 @@ namespace PropTraderTools
         {
             // Atomic slot claim -- first caller wins, all subsequent calls return immediately.
             // Replaces the old ContainsKey guard which was blind to prior AddOn instances.
-            if (!_panels.TryAdd(chart, null)) return;
+            if (!_panels.TryAdd(chart, null))
+                return;
 
             try
             {
@@ -395,7 +425,8 @@ namespace PropTraderTools
                 try
                 {
                     instr = chartTrader.Instrument;
-                    if (instr != null) panel.SetInstrument(instr);
+                    if (instr != null)
+                        panel.SetInstrument(instr);
                 }
                 catch { }
 
@@ -422,23 +453,27 @@ namespace PropTraderTools
                     System.Windows.Controls.Grid.SetRow(panel, grid.RowDefinitions.Count - 1);
                     System.Windows.Controls.Grid.SetColumnSpan(
                         panel,
-                        grid.ColumnDefinitions.Count > 0 ? grid.ColumnDefinitions.Count : 1);
+                        grid.ColumnDefinitions.Count > 0 ? grid.ColumnDefinitions.Count : 1
+                    );
                     grid.Children.Add(panel);
                     _panels[chart] = panel;
                     return;
                 }
 
                 MessageBox.Show(
-                    "PTT: ChartTrader.Content is not a Grid.\n" +
-                    "Content type: " + (chartTrader.Content?.GetType().FullName ?? "null"),
-                    "PTT Info");
+                    "PTT: ChartTrader.Content is not a Grid.\n"
+                        + "Content type: "
+                        + (chartTrader.Content?.GetType().FullName ?? "null"),
+                    "PTT Info"
+                );
             }
             catch (System.Exception ex)
             {
                 _panels.TryRemove(chart, out _);
                 MessageBox.Show(
                     "PTT ChartTrader inject error:\n\n" + ex.Message + "\n\n" + ex.StackTrace,
-                    "PTT Error");
+                    "PTT Error"
+                );
             }
         }
 
@@ -458,15 +493,17 @@ namespace PropTraderTools
             if (accountCombo == null)
                 accountCombo = FindVisualChildByIndex<ComboBox>(chartTrader, 1);
 
-            if (accountCombo == null) return;
+            if (accountCombo == null)
+                return;
 
             // Set immediately from current selection
             var current = accountCombo.SelectedItem as NinjaTrader.Cbi.Account;
             if (current == null && accountCombo.Text != null)
-                current = Account.All.FirstOrDefault(
-                    a => string.Equals(a.Name, accountCombo.Text,
-                                       StringComparison.OrdinalIgnoreCase));
-            if (current != null) panel.SetLeaderAccount(current);
+                current = Account.All.FirstOrDefault(a =>
+                    string.Equals(a.Name, accountCombo.Text, StringComparison.OrdinalIgnoreCase)
+                );
+            if (current != null)
+                panel.SetLeaderAccount(current);
 
             // B30-B: Wire SelectionChanged via panel method so panel.Detach can unsubscribe.
             // Replaces anonymous lambda (was never unsubscribed -- memory leak DW-B30-03).
@@ -475,16 +512,20 @@ namespace PropTraderTools
 
         // --- Visual tree helpers (CYC=1 each) ---
 
-        internal static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        internal static T FindVisualChild<T>(DependencyObject parent)
+            where T : DependencyObject
         {
-            if (parent == null) return null;
+            if (parent == null)
+                return null;
             int count = VisualTreeHelper.GetChildrenCount(parent);
             for (int i = 0; i < count; i++)
             {
                 var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T match) return match;
+                if (child is T match)
+                    return match;
                 var result = FindVisualChild<T>(child);
-                if (result != null) return result;
+                if (result != null)
+                    return result;
             }
             return null;
         }
@@ -497,7 +538,8 @@ namespace PropTraderTools
         // B30-B: internal (was private) so TradeCopierPanel.TryResolveLeaderAccount can call it.
         internal static ComboBox FindAccountComboBox(DependencyObject parent)
         {
-            if (parent == null) return null;
+            if (parent == null)
+                return null;
             int count = VisualTreeHelper.GetChildrenCount(parent);
             for (int i = 0; i < count; i++)
             {
@@ -505,7 +547,8 @@ namespace PropTraderTools
                 if (child is ComboBox cb && cb.SelectedItem is NinjaTrader.Cbi.Account)
                     return cb;
                 var result = FindAccountComboBox(child);
-                if (result != null) return result;
+                if (result != null)
+                    return result;
             }
             return null;
         }
@@ -524,21 +567,28 @@ namespace PropTraderTools
         }
 
         // CYC=5: null guard(1) + count loop(2) + type match(3) + index check(4) + recursive call(5).
-        private static T FindVisualChildByIndexInternal<T>(DependencyObject parent, int targetIndex, ref int found)
+        private static T FindVisualChildByIndexInternal<T>(
+            DependencyObject parent,
+            int targetIndex,
+            ref int found
+        )
             where T : DependencyObject
         {
-            if (parent == null) return null;
+            if (parent == null)
+                return null;
             int count = VisualTreeHelper.GetChildrenCount(parent);
             for (int i = 0; i < count; i++)
             {
                 var child = VisualTreeHelper.GetChild(parent, i);
                 if (child is T match)
                 {
-                    if (found == targetIndex) return match;
+                    if (found == targetIndex)
+                        return match;
                     found++;
                 }
                 var result = FindVisualChildByIndexInternal<T>(child, targetIndex, ref found);
-                if (result != null) return result;
+                if (result != null)
+                    return result;
             }
             return null;
         }
@@ -546,14 +596,17 @@ namespace PropTraderTools
         private static T FindVisualChildByName<T>(DependencyObject parent, string name)
             where T : FrameworkElement
         {
-            if (parent == null) return null;
+            if (parent == null)
+                return null;
             int count = VisualTreeHelper.GetChildrenCount(parent);
             for (int i = 0; i < count; i++)
             {
                 var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T fe && fe.Name == name) return fe;
+                if (child is T fe && fe.Name == name)
+                    return fe;
                 var result = FindVisualChildByName<T>(child, name);
-                if (result != null) return result;
+                if (result != null)
+                    return result;
             }
             return null;
         }
