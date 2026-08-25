@@ -1503,9 +1503,10 @@ namespace PropTraderTools
             return null;
         }
 
-        // TryCancelFollowerEntries: CYC=4. Propagates leader cancel to all follower entry orders.
+        // TryCancelFollowerEntries: CYC=6. Propagates leader cancel to all follower entry orders.
         // Returns true if Cancelled state was handled (caller should return immediately).
         // HOTFIX-B63-COPY-CANCEL-01: ATM bracket cancels are skipped via IsAtmBracketName guard.
+        // DW-B103: PTT exit bracket OCO-cancels return false (do not wipe follower brackets).
         // JS-021: no lock. JS-001: no throw.
         private bool TryCancelFollowerEntries(Order order, CopyRule rule)
         {
@@ -1513,6 +1514,14 @@ namespace PropTraderTools
                 return false;
             if (IsAtmBracketName(order.Name))
                 return true; // HOTFIX-B63-COPY-CANCEL-01
+            if (
+                order.Name != null
+                && (
+                    order.Name.StartsWith("PTT-QX-", StringComparison.Ordinal)
+                    || order.Name.StartsWith("PTT-BE-", StringComparison.Ordinal)
+                )
+            )
+                return false; // DW-B103: OCO-cancel of PTT exit bracket must not wipe follower brackets
             foreach (var acc in rule.FollowerAccounts)
             {
                 if (acc == null)
@@ -3109,8 +3118,11 @@ namespace PropTraderTools
                 return;
 
             _dedupCache.TryRemove(orderId, out _);
-            // DW-B91-A-v2: eviction moved to TryEvictFollowerBeSlot (position-flat).
+            if (state == OrderState.Cancelled)
+                _entryDispatchedOrders.Clear(); // DW-B101: evict on Cancelled (Filled/Rejected handled by TryEvictFollowerBeSlot)
+            // DW-B91-A-v2: eviction moved to TryEvictFollowerBeSlot (position-flat) for Filled/Rejected.
             // Prevents partial-fill re-dispatch: Filled fires before Submitted re-submit on Rithmic.
+            // DW-B101: Cancelled eviction of _entryDispatchedOrders handled here (TryEvictFollowerBeSlot misses Cancelled).
         }
 
         private IEnumerable<Account> AllAccounts(Instrument instrument)
@@ -3862,14 +3874,10 @@ namespace PropTraderTools
             );
         }
 
-        // -- B6: Persistence field -------------------------------------------
-
-        private volatile bool _persistenceLoaded = false;
-
         // -- B6/B8: Serialization DTO classes -----------------------------------
 
         [Serializable]
-        private sealed class CopyRuleDto
+        internal sealed class CopyRuleDto
         {
             public string InstrumentName { get; set; } = string.Empty;
             public string MasterAccountName { get; set; } = string.Empty;
@@ -3890,7 +3898,7 @@ namespace PropTraderTools
         }
 
         [Serializable]
-        private sealed class CopyRulesContainer
+        internal sealed class CopyRulesContainer
         {
             public List<CopyRuleDto> Rules { get; set; } = new List<CopyRuleDto>();
 
@@ -4070,17 +4078,15 @@ namespace PropTraderTools
         }
 
         /// <summary>
-        /// Deserializes rules from an XML file and adds them to _rules via ConcurrentBag.Add().
-        /// Called from TradeCopierWindow.OnInitialize() on the NT main thread.
-        /// No-op if the file does not exist or has already been loaded.
-        /// No lock keyword -- called once at startup; _rules is ConcurrentBag (thread-safe Add).
-        /// CYC = 4 (loaded guard + File.Exists guard + try/catch + foreach)
+        /// Deserializes rules from an XML file into _rules. Idempotent: clears _rules and
+        /// re-reads from disk on every call. Safe to call from Panel.OnLoaded and Window.OnLoaded
+        /// independently -- each call produces the same _rules state from the same XML file.
+        /// No lock keyword -- UI-thread-only; _rules is ConcurrentBag (thread-safe Add).
+        /// CYC = 4 (File.Exists guard + try/catch + null-check + foreach)
         /// </summary>
         public void LoadRules(string overridePath = null)
         {
-            if (_persistenceLoaded)
-                return;
-            _persistenceLoaded = true;
+            _rules = new ConcurrentBag<CopyRule>(); // DW-B102: idempotent clear -- each caller gets a fresh read
 
             var path = GetPersistencePath(overridePath);
             if (!File.Exists(path))
