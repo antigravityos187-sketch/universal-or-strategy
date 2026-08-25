@@ -128,7 +128,7 @@ namespace PropTraderTools
                 int tNQty =
                     (targets != null && i < targets.Count)
                         ? targets[i].Qty
-                        : Math.Max(1, pos.Quantity / targetCount);
+                        : CalcTNQty(pos.Quantity, targetCount, i);
 
                 string ocoId_i =
                     CopyEngine.Instance?.NextQxOcoId()
@@ -256,6 +256,24 @@ namespace PropTraderTools
             System.Collections.Generic.List<(double Price, int Qty)> own,
             int leaderCount
         ) => own?.Count > 0 ? own.Count : (leaderCount > 0 ? leaderCount : 2);
+
+        /// <summary>
+        /// CalcTNQty: compute per-pair qty for fallback path (no ATM snapshot).
+        /// Last pair absorbs remainder so total bracketed qty equals pos.Quantity exactly.
+        /// Guard: only applies remainder logic when pos.Quantity > targetCount (avoids negative).
+        /// CYC = 3: (1) is-last-pair AND (2) qty-exceeds-count, (3) remainder vs floor.
+        /// JS-001: no throw. JS-002: returns int. ASCII-only.
+        /// DW-B104: fixes integer division gap where Math.Max(1, qty/n)*n < qty.
+        /// Verified: CalcTNQty(7,3,0)=2, (7,3,1)=2, (7,3,2)=3 -- total=7.
+        ///           CalcTNQty(6,3,2)=2 -- total=6. CalcTNQty(1,3,2)=1 -- pre-existing qty<n behavior unchanged.
+        /// </summary>
+        private static int CalcTNQty(int totalQty, int targetCount, int i)
+        {
+            int floorQty = Math.Max(1, totalQty / targetCount);
+            if (i == targetCount - 1 && totalQty > targetCount)
+                return Math.Max(1, totalQty - floorQty * (targetCount - 1)); // DW-B104: last pair absorbs remainder
+            return floorQty;
+        }
 
         /// <summary>
         /// SnapshotStopPrice: returns the stop price of any Working/Accepted stop order for this instrument.
