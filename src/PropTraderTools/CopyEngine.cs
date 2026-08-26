@@ -257,6 +257,12 @@ namespace PropTraderTools
         private readonly ConcurrentDictionary<string, int> _beReplaceAttempts =
             new ConcurrentDictionary<string, int>();
 
+        // DW-B105: QX-ALL intent guard. Set per follower account by PttGlobalQuickExit.ExecuteOne
+        // before CancelQxBrackets, cleared after. TryReplacePttBeBrackets returns early if set.
+        // ConcurrentDictionary: JS-021 lock-free. Key = acc.Name (string). Value = bool (unused).
+        internal readonly ConcurrentDictionary<string, bool> _qxCancelInProgress =
+            new ConcurrentDictionary<string, bool>();
+
         // HOTFIX-MSTBE-OCO-REUSE: monotonic counter for BE OCO IDs -- never reuse a cancelled OCO ID.
         // DW-B40-OCO-02 pattern from PttBreakEven._beOcoSeq. JS-023: volatile int allowed.
         // HOTFIX-BEALL-OCO-SEQ-SHARED-01: shared by BOTH MoveStopToBreakEven AND PttBreakEven.Execute
@@ -2282,6 +2288,10 @@ namespace PropTraderTools
                 return; // (2)
             if (IsFlat(FindPosition(cancelledStop.Account, cancelledStop.Instrument)))
                 return; // (3)
+            // (3b) DW-B105: QX-ALL intent-guard. If QX-ALL is actively cancelling BE brackets
+            // on this account, skip ATM-sweep recovery -- QX-ALL will submit PTT-QX-* brackets.
+            if (_qxCancelInProgress.ContainsKey(cancelledStop.Account.Name))
+                return;
             var acc = cancelledStop.Account;
             var instr = cancelledStop.Instrument;
             // (4) Attempt-count guard: max 3 slot registrations per trade per account.

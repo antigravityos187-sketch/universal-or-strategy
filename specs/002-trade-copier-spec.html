@@ -27187,5 +27187,2109 @@ internal static bool IsDispatchTriggerState(OrderState state, OrderType type) =>
     <!-- ══ end section-b96 ════════════════════════════════════════════════ -->
 
 
+    <!-- ══════════════════════════════════════════════════════════════════════
+         DW-B97 | Post-B95/B96 dispatch still silent — diagnostic checklist
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <div id="section-b97" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:#ef4444;">&#9679; DW-B97 &nbsp;&#9670;&nbsp; PTT-COPIER-B97 &nbsp;&#9670;&nbsp; Followers Still Not Receiving Orders After B95/B96 Fixes &nbsp;&#9670;&nbsp; <span class="pill" style="background:rgba(239,68,68,0.1);color:#ef4444;">OPEN (P0) &nbsp;&middot;&nbsp; diagnostic</span></div>
+
+      <!-- context -->
+      <div class="card" style="margin-top:16px; border-left:3px solid #ef4444; background:rgba(239,68,68,0.07);">
+        <div class="card-title" style="color:#f87171;">DW-B97 &mdash; Symptom</div>
+        <p>After applying DW-B95 + DW-B96 fixes (commit <code>83dcc6b0</code>), F5-compiling in NT8, and re-testing: <strong>leader receives its own order, followers receive nothing.</strong> BE-ALL also fires but places no brackets. This is the same symptom as before the fix, which means either:</p>
+        <ol style="margin-top:0.4rem;">
+          <li>NT8 is not running the <code>83dcc6b0</code> build (wrong binary), <strong>or</strong></li>
+          <li>The copy-enabled flag / rules were not restored after the F5 recompile, <strong>or</strong></li>
+          <li>A gate upstream of <code>DispatchCopy</code> is silently blocking dispatch for a reason not yet diagnosed.</li>
+        </ol>
+      </div>
+
+      <!-- full gate trace -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--accent); background:rgba(59,130,246,0.06);">
+        <div class="card-title" style="color:var(--accent);">DW-B97 &mdash; Full Gate Trace (All Gates Verified Clean)</div>
+        <p>Every gate in the <code>OnOrderUpdate &rarr; DispatchCopy</code> path was read from the current source and traced for a leader Market or Limit entry. <strong>No code logic regression was found</strong> in commits <code>a0217a6d</code> (DW-B91-A/B) or <code>83dcc6b0</code> (DW-B95/B96).</p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:8px;overflow-x:auto;">OnOrderUpdate (L1167):
+  EvictDedup (L1170)              -- no-op for Submitted/Working; removes from _dedupCache on terminal
+  TryFireFollowerBeDisarm (L1174) -- follower PTT-BE-Stop fill only; leader entry unaffected
+  TryFireFollowerBeRetry  (L1178) -- PTT-QX-T Working only; leader entry unaffected
+  TryEvictFollowerBeSlot  (L1181) -- Filled/Rejected only; no-op for Submitted/Working
+  _filledBeTargetCount    (L1191) -- PTT-BE-Target-* Filled only; no-op for leader entry
+  IsPttEntryOrderCancelTrigger (L1225) -- follower Cancelled entries; no-op for leader entry
+
+Gate 1: _isCopyEnabled (L1229)   -- MUST be true; panel resets this on recompile
+Gate 2: FindMatchingRule (L1234)  -- instrument + leader account must match loaded rule
+Gate 2.5: rule.Enabled (L1237)   -- rule.Enabled must be true
+TryCancelFollowerEntries (L1249)  -- only fires for Cancelled; no-op for Submitted/Working/Filled
+TryDispatchLeaderFlat (L1254)     -- only fires for Filled/Cancelled; no-op for Submitted/Working
+TryHandleDrag (L1268)             -- Gate B: bracket Working = not entry; Gate C: no cache entry yet
+DispatchCopy (L1272):
+  Gate 0.5: IsExitSignalName("Entry") = false (L1754)  ✓
+  Gate 3: IsDispatchTriggerState (L1758):
+    Market + Submitted = true  ✓ (unchanged)
+    Limit  + Working   = true  ✓ (DW-B96 fix)
+    Limit  + Accepted  = true  ✓ (AddOn path)
+  Gate 4: isMarket || isLimit (L1764)  ✓
+  Gate 5: IsDedup + IsEntryDispatched (L1775)  ✓ (new orderId = always passes first time)
+  Inner loop: PassesDailyCapCheck (L1799), ResolveAtmMode, SendCopy/SendCopyWithAtm</pre>
+        <p style="margin-top:0.5rem;"><strong>Conclusion:</strong> If <code>[PTT-COPY] dispatch:</code> does NOT appear in NT8 Output Tab 1 when the leader places an order, the block is at Gate 1 or Gate 2 — not a code bug but a state/config issue.</p>
+      </div>
+
+      <!-- diagnostic steps -->
+      <div class="card" style="margin-top:12px; border-left:3px solid var(--amber); background:rgba(245,158,11,0.06);">
+        <div class="card-title" style="color:var(--amber);">DW-B97 &mdash; Diagnostic Steps (Run In Order)</div>
+
+        <p><strong>Step 1 — Verify NT8 is running the correct build:</strong></p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;overflow-x:auto;">powershell -File scripts\ptt-sync-and-verify.ps1
+# All lines must say OK. If any say MISMATCH: re-sync and F5 again.
+
+Get-Item "$env:USERPROFILE\Documents\NinjaTrader 8\bin\Custom\NinjaTrader.Custom.dll" | Select-Object LastWriteTime
+# DLL timestamp MUST be AFTER your last F5 press.</pre>
+
+        <p style="margin-top:0.8rem;"><strong>Step 2 — Check NT8 Output Tab 1:</strong><br>
+        Place one leader Market order. Immediately look at NT8 &rarr; Output Tab 1. You must see:</p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;overflow-x:auto;">[PTT-COPY] dispatch: Buy x1 MNQZ4 -> FollowerAcct mult=1 mode=Inherit name=Entry</pre>
+        <ul style="margin-top:0.4rem;">
+          <li>If this line appears &rarr; dispatch fired. Problem is in <code>SendCopy</code> (Step 4).</li>
+          <li>If this line does NOT appear &rarr; a gate blocked it. Go to Step 3.</li>
+        </ul>
+
+        <p style="margin-top:0.8rem;"><strong>Step 3 — Check panel state after F5:</strong></p>
+        <ul style="margin-top:0.4rem;">
+          <li>Is the <strong>Copy Enabled</strong> button lit green? If not: click it to enable. (Gate 1 = <code>_isCopyEnabled</code> is <code>false</code> after recompile.)</li>
+          <li>Are the leader/follower account assignments still showing in the panel? If blank: re-apply the rule. (Gate 2 = <code>_rules</code> bag is empty.)</li>
+          <li>After re-enabling + re-applying, retry Step 2.</li>
+        </ul>
+
+        <p style="margin-top:0.8rem;"><strong>Step 4 — If dispatch fires but no follower order appears:</strong></p>
+        <ul style="margin-top:0.4rem;">
+          <li>Check NT8 Output Tab 1 for <code>PTT-Copy error:</code> line — a <code>SendCopy</code> exception being swallowed.</li>
+          <li>Check whether follower account is in SIM and whether the instrument is tradable on that account at that moment.</li>
+          <li>If mode is <code>Named</code>: check whether the ATM template still exists in NT8 after recompile. ATM objects from a prior session are invalidated on recompile.</li>
+        </ul>
+
+        <p style="margin-top:0.8rem;"><strong>Step 5 — Add temporary diagnostic print before Gate 1:</strong><br>
+        If Steps 1-4 yield no answer, file DW-B98 requesting a diagnostic print before Gate 1 and after Gate 2 to pinpoint which gate is silent. <em>(Requires ptt-direct-repair; SRC CODE BAN applies.)</em></p>
+      </div>
+
+      <!-- known residual gap -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #6366f1; background:rgba(99,102,241,0.06);">
+        <div class="card-title" style="color:#818cf8;">DW-B97 &mdash; Residual Gap: <code>_entryDispatchedOrders</code> Not Evicted on <code>Cancelled</code></div>
+        <p>The <code>TryEvictFollowerBeSlot</code> guard at <code>L1393</code> only runs <code>_entryDispatchedOrders.Clear()</code> for <code>Filled</code> or <code>Rejected PTT-BE-Stop</code> orders. A <strong>Cancelled</strong> entry order (e.g. user cancels a pending Limit before it fills) does <em>not</em> trigger the Clear. The orderId accumulates in <code>_entryDispatchedOrders</code> indefinitely until the next Filled trade.</p>
+        <p style="margin-top:0.4rem;">This is <strong>not a blocking defect</strong> for normal operation: NT8 assigns a unique new orderId per order, so stale Cancelled entries never collide with fresh entry orderIds. The only effect is unbounded dictionary growth during a session with many cancelled orders (memory, no correctness impact).</p>
+        <p style="margin-top:0.4rem;"><strong>Proposed fix (DW-B98, low-priority):</strong> Extend <code>EvictDedup</code> to also call <code>_entryDispatchedOrders.TryRemove(orderId, out _)</code> on <code>Filled | Cancelled | Rejected</code> — restoring the original DW-B91-A design. The DW-B91-A-v2 rationale for moving eviction was to prevent Rithmic re-submit double-dispatch; the <code>_dedupCache</code> already covers that path, making the <code>_entryDispatchedOrders</code> per-orderId TryRemove safe to restore. CYC delta: 0.</p>
+      </div>
+
+    </div>
+    <!-- ══ end section-b97 ════════════════════════════════════════════════ -->
+
+    <!-- ══ DW-B98 ═══════════════════════════════════════════════════════════ -->
+    <div id="section-b98" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:#ef4444;">&#9679; DW-B98 &nbsp;&#9670;&nbsp; PTT-COPIER-B98 &mdash; <strong>STILL OPEN — e06bce7b applied but copier still produces zero dispatch. Two residual blockers found. See DW-B99.</strong> &nbsp;<span class="pill" style="background:rgba(239,68,68,0.1);color:#ef4444;">OPEN (P0)</span></div>
+
+      <div class="card" style="margin-top:12px; border-left:3px solid #ef4444; background:rgba(239,68,68,0.06);">
+        <div class="card-title" style="color:#f87171;">DW-B98 &mdash; Symptom (v2 — workaround also failed)</div>
+        <p>After any NT8 F5 recompile, the copier produces <strong>zero dispatch</strong> — leaders fill, followers get nothing. <strong>No <code>[PTT-COPY] dispatch:</code> line in NT8 Output Tab&nbsp;1.</strong> Opening the Trade Copier Window and clicking Copy ON does not fix it. The Gate blocked is <strong>Gate&nbsp;2</strong> (<code>_rules is empty &rarr; matchedRule == null</code>), not Gate&nbsp;1. Gate&nbsp;1 may or may not be blocked too depending on whether the user clicked Copy ON.</p>
+        <p style="margin-top:0.4rem;"><code>DispatchCopy</code> is <em>never reached</em>. The block occurs at <code>CopyEngine.cs:1237</code>: <code>if (matchedRule == null || !matchedRule.Value.Enabled) return;</code></p>
+      </div>
+
+      <div class="card" style="margin-top:12px; border-left:3px solid #3b82f6; background:rgba(59,130,246,0.06);">
+        <div class="card-title" style="color:var(--accent);">DW-B98 &mdash; Full Confirmed Failure Chain (5-agent parallel investigation)</div>
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.5rem;">
+          <thead><tr style="background:#1c2133; text-align:left;">
+            <th style="padding:6px 10px; border:1px solid #1c2133;">#</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">What happens</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Why</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Evidence</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133; font-weight:700; color:#f87171;">1</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">F5 pressed &rarr; assembly unloads &rarr; <code>CopyEngine</code> singleton GC'd &rarr; <code>_rules</code> empty, <code>_isCopyEnabled=false</code>, <code>_persistenceLoaded=false</code></td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">Static singleton dies with the assembly domain.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">CopyEngine.cs:125 <code>private static readonly CopyEngine _instance = new CopyEngine()</code></td></tr>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133; font-weight:700; color:#f87171;">2</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><code>TradeCopierPanel.OnLoaded</code> fires &rarr; <code>_followerItems.Clear()</code> &rarr; repopulates all accounts with <code>IsSelected=false</code> &rarr; <strong>all follower checkboxes unchecked</strong></td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">Line 692: fresh state every surface create.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">TradeCopierPanel.cs:692&ndash;698</td></tr>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133; font-weight:700; color:#f87171;">3</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><strong>B67 checkbox-restore block is SKIPPED.</strong> <code>GetSavedFollowerNames()</code> reads from <code>_rules</code> (in-memory), which is empty. Returns <code>HashSet&lt;string&gt;</code> with <code>Count=0</code>. Condition <code>if (saved.Count &gt; 0)</code> is <code>false</code> &rarr; <code>TryAutoApply()</code> never called.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><code>GetSavedFollowerNames</code> iterates <code>_rules</code>, not XML. Circular: needs rules to restore rules.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">CopyEngine.cs:619&ndash;631; TradeCopierPanel.cs:710&ndash;724</td></tr>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133; font-weight:700; color:#f87171;">4</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><code>_engine.LoadRules()</code> is <strong>NOT called from <code>TradeCopierPanel.OnLoaded</code></strong>. Only called from <code>TradeCopierWindow.OnLoaded</code> (L123). Panel never calls it. <code>_rules</code> stays empty forever.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">The Window and Panel are independent. User never opens the Window (always uses ChartTrader panel).</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">TradeCopierWindow.cs:123; TradeCopierPanel.cs:683&ndash;784 (no <code>LoadRules</code> call anywhere)</td></tr>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133; font-weight:700; color:#f59e0b;">5</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><strong>User opens TradeCopierWindow</strong> (workaround attempt) &rarr; <code>LoadRules()</code> fires &rarr; <code>copy_rules.xml</code> <strong>does not exist on disk</strong> &rarr; File.Exists guard returns early &rarr; <code>_rules</code> still empty, <code>_isCopyEnabled</code> still <code>false</code>.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><code>copy_rules.xml</code> was never written because <code>SetEnabled()</code> has no <code>SaveRules()</code> call. File confirmed absent: <code>Get-ChildItem ... -Recurse -Filter "copy_rules*"</code> returned zero results.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">CopyEngine.cs:4085; filesystem check: FILE NOT FOUND at <code>%USERPROFILE%\Documents\NinjaTrader 8\PropTraderTools\copy_rules.xml</code></td></tr>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133; font-weight:700; color:#f59e0b;">6</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><strong>User clicks Copy ON</strong> &rarr; <code>SetEnabled(true)</code> &rarr; <code>_isCopyEnabled=true</code>. <strong><code>SaveRules()</code> NOT called.</strong> Gate&nbsp;1 now passes. But <code>_rules</code> is still empty.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><code>SetEnabled()</code> has no <code>SaveRules()</code> call — confirmed at line 467&ndash;472.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">CopyEngine.cs:467&ndash;472</td></tr>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133; font-weight:700; color:#ef4444;">7</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><strong>User places Market/Limit order.</strong> <code>OnOrderUpdate</code> fires &rarr; Gate&nbsp;1 passes (<code>_isCopyEnabled=true</code>) &rarr; <code>FindMatchingRule()</code> iterates <code>_rules</code> — empty bag — returns <code>null</code> &rarr; <code>if (matchedRule == null) return</code> at L1237 &rarr; <strong>NO DISPATCH.</strong> No error message. No log line.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;"><code>_rules</code> is a <code>ConcurrentBag&lt;CopyRule&gt;</code> that was never populated because: (A) <code>LoadRules()</code> found no XML; (B) <code>TryAutoApply()</code> never fired; (C) user never checked a follower checkbox.</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;">CopyEngine.cs:1234&ndash;1238</td></tr>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133; font-weight:700; color:#22c55e;">KEY</td>
+                <td style="padding:5px 10px; border:1px solid #1c2133;" colspan="3"><strong>The ONLY action that would make the workaround succeed is: manually CHECK a follower account checkbox in the ChartTrader panel.</strong> Checking any checkbox fires <code>TryAutoApply()</code> (TradeCopierPanel.cs:2087) &rarr; <code>AddRule()</code> &rarr; <code>SaveRules()</code>. This registers a live rule AND writes the XML. Clicking Copy ON alone does NOT register a rule.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" style="margin-top:12px; border-left:3px solid #f59e0b; background:rgba(245,158,11,0.06);">
+        <div class="card-title" style="color:var(--amber);">DW-B98 &mdash; Why the Previous Workaround Failed</div>
+        <p style="font-size:0.88rem;">The previous workaround said: <em>"open PTT window &rarr; click Copy ON &rarr; re-apply follower checkbox"</em>. The user opened the window and clicked Copy ON ("clicking clone again") but did <strong>NOT</strong> re-check the follower checkbox. That omission means <code>TryAutoApply()</code> never fired, <code>AddRule()</code> was never called, <code>_rules</code> stayed empty, and Gate&nbsp;2 blocked every order.</p>
+        <p style="margin-top:0.5rem; font-size:0.88rem; color:var(--amber);"><strong>&#9888; The checkbox check is mandatory. It is the only call path that registers a live rule. Clicking Copy ON alone is not sufficient.</strong></p>
+      </div>
+
+      <div class="card" style="margin-top:12px; border-left:3px solid #22c55e; background:rgba(34,197,94,0.06);">
+        <div class="card-title" style="color:var(--green);">DW-B98 &mdash; Correct Workaround (Right Now, No Code Change)</div>
+        <ol style="margin-top:0.5rem; line-height:2.4; padding-left:1.5rem; font-size:0.9rem;">
+          <li style="color:var(--bright);">In the ChartTrader panel, find the follower account row. <strong>CHECK the follower checkbox.</strong><br/>
+              <span style="font-size:0.82rem; color:var(--mid);">This fires: <code>chk.Checked</code> lambda &rarr; <code>TryAutoApply()</code> &rarr; <code>_engine.AddRule()</code> &rarr; <code>_engine.SaveRules()</code>. This is the only action that registers a live rule with real Account object references AND writes the XML.</span></li>
+          <li style="color:var(--bright);">Watch the status text in the panel. It must say: <code>Rule: [instrument] leader=[account]</code>.<br/>
+              <span style="font-size:0.82rem; color:var(--mid);">If it says "No leader" or "No instrument" or nothing changes &mdash; the rule was NOT registered. Check that ChartTrader has an account selected and a chart is open.</span></li>
+          <li style="color:var(--bright);">Click the <strong>COPY ON</strong> button. Button must show <strong>green / &ldquo;COPY ON&rdquo;</strong>.</li>
+          <li style="color:var(--bright);">Place a test Market order on the <strong>leader</strong> account. Immediately watch <strong>NT8 Output Tab&nbsp;1</strong> for: <code>[PTT-COPY] dispatch: Buy x1 [instrument] -&gt; [follower] mult=1 mode=Inherit name=Entry</code></li>
+          <li style="color:var(--bright);">If the dispatch line appears &rarr; working. If it does not &rarr; reply with the exact text in Output Tab&nbsp;1.</li>
+        </ol>
+        <p style="margin-top:0.6rem; padding:8px 12px; background:rgba(239,68,68,0.08); border-left:3px solid #ef4444; border-radius:4px; font-size:0.82rem;">
+          <strong>This sequence must be repeated after every F5 until the three code fixes (A/B/C below) go through the pipeline.</strong> After the fixes, the panel will auto-restore the rule and Copy ON state from XML on every F5.
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:12px; border-left:3px solid #22c55e; background:rgba(34,197,94,0.04);">
+        <div class="card-title" style="color:var(--green);">DW-B98 &mdash; Three Code Fixes (Pipeline Required)</div>
+        <p style="margin-top:0.3rem; font-size:0.88rem;"><strong>Fix A &mdash; <code>CopyEngine.SetEnabled()</code> must call <code>SaveRules()</code>:</strong><br/>Persists the Copy ON/OFF state to XML immediately on toggle so it survives F5.</p>
+        <pre style="background:#0a0d17; border:1px solid #1c2133; border-radius:6px; padding:10px 14px; margin-top:6px; font-size:0.78rem; overflow-x:auto;">// CopyEngine.cs ~L467 SetEnabled
+internal void SetEnabled(bool enabled)
+{
+    _isCopyEnabled = enabled;
+    StatusUpdate?.Invoke("Copy " + (enabled ? "ON" : "OFF"));
+    CopyEnabledChanged?.Invoke(enabled);
+    SaveRules(); // DW-B98-A: persist enabled state on every toggle
+}</pre>
+
+        <p style="margin-top:0.8rem; font-size:0.88rem;"><strong>Fix B &mdash; <code>TradeCopierPanel.OnApplyRule()</code> must call <code>SaveRules()</code>:</strong><br/>The hidden Apply button path adds a rule but never saves. Add the save after <code>AddRule()</code>.</p>
+        <pre style="background:#0a0d17; border:1px solid #1c2133; border-radius:6px; padding:10px 14px; margin-top:6px; font-size:0.78rem; overflow-x:auto;">// TradeCopierPanel.cs ~L2767 OnApplyRule
+_engine.AddRule(_instrument.FullName, _leaderAccount, followers, multipliers, atmMap);
+_engine.SaveRules(); // DW-B98-B: persist rule immediately</pre>
+
+        <p style="margin-top:0.8rem; font-size:0.88rem;"><strong>Fix C &mdash; <code>TradeCopierPanel.OnLoaded()</code> must call <code>LoadRules()</code>:</strong><br/>Insert <em>after</em> the <code>Account.All</code> loop (line 698, accounts populated) and <em>before</em> the B67 checkbox-restore block (line 705). This ensures: (1) <code>DtoToRule</code> has live Account references; (2) <code>GetSavedFollowerNames</code> can find rules; (3) B67 fires <code>TryAutoApply</code> which replaces the XML-restored rule with live Account references.</p>
+        <pre style="background:#0a0d17; border:1px solid #1c2133; border-radius:6px; padding:10px 14px; margin-top:6px; font-size:0.78rem; overflow-x:auto;">// TradeCopierPanel.cs OnLoaded -- INSERT AFTER line 698, BEFORE line 705 (B67 block)
+// Account.All is populated above (line 695-698). DtoToRule can now resolve live Account refs.
+_engine.LoadRules(); // DW-B98-C: restore rules + _isCopyEnabled from XML, panel path</pre>
+
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.8rem;">
+          <thead><tr style="background:#1c2133;">
+            <th style="padding:5px 10px; border:1px solid #1c2133;">Fix</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">File</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">Insertion point</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">CYC &Delta;</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">Priority</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133;">A &mdash; <code>SetEnabled</code> saves</td><td style="padding:5px 10px; border:1px solid #1c2133;">CopyEngine.cs</td><td style="padding:5px 10px; border:1px solid #1c2133;">after L471 (after <code>CopyEnabledChanged?.Invoke</code>)</td><td style="padding:5px 10px; border:1px solid #1c2133;">+0</td><td style="padding:5px 10px; border:1px solid #1c2133; color:#ef4444; font-weight:700;">P0 BLOCKER</td></tr>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133;">B &mdash; <code>OnApplyRule</code> saves</td><td style="padding:5px 10px; border:1px solid #1c2133;">TradeCopierPanel.cs</td><td style="padding:5px 10px; border:1px solid #1c2133;">after L2767 (<code>AddRule()</code> call)</td><td style="padding:5px 10px; border:1px solid #1c2133;">+0</td><td style="padding:5px 10px; border:1px solid #1c2133; color:#ef4444; font-weight:700;">P0 BLOCKER</td></tr>
+            <tr><td style="padding:5px 10px; border:1px solid #1c2133;">C &mdash; panel <code>OnLoaded</code> calls <code>LoadRules</code></td><td style="padding:5px 10px; border:1px solid #1c2133;">TradeCopierPanel.cs</td><td style="padding:5px 10px; border:1px solid #1c2133;">after L698, before L705 (B67 block)</td><td style="padding:5px 10px; border:1px solid #1c2133;">+0</td><td style="padding:5px 10px; border:1px solid #1c2133; color:#ef4444; font-weight:700;">P0 BLOCKER</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" style="margin-top:12px; border-left:3px solid #6366f1; background:rgba(99,102,241,0.06);">
+        <div class="card-title" style="color:#818cf8;">DW-B98 &mdash; Final Diagnosis Card (v2 — 5-agent confirmed)</div>
+        <pre style="background:#0a0d17; border:1px solid #1c2133; border-radius:6px; padding:12px 16px; margin-top:8px; font-size:0.78rem; overflow-x:auto; white-space:pre-wrap;">=== DISPATCH OUTAGE INVESTIGATION DW-B98 (v2 — 5-agent parallel investigation) ===
+Date: 2026-08-24
+Symptom: After F5 recompile, copier sends zero follower orders.
+         No [PTT-COPY] dispatch: in NT8 Output Tab 1.
+         Opening TradeCopierWindow + clicking Copy ON does NOT fix it.
+
+CONFIRMED ROOT CAUSE:
+  _rules (ConcurrentBag) is permanently empty after every F5.
+  Gate 2 (FindMatchingRule returns null at CopyEngine.cs:1237) blocks all dispatch.
+
+  CAUSE A: copy_rules.xml DOES NOT EXIST on disk.
+    Filesystem check confirmed: zero results for copy_rules* under Documents\NinjaTrader 8\.
+    Never written because SetEnabled() has no SaveRules() call (CopyEngine.cs:467-472).
+
+  CAUSE B: Panel OnLoaded does NOT call LoadRules().
+    Only TradeCopierWindow.OnLoaded calls LoadRules() (TradeCopierWindow.cs:123).
+    User never opens the Window. Panel path has zero LoadRules call sites.
+
+  CAUSE C: B67 checkbox-restore block is a circular dependency.
+    GetSavedFollowerNames() reads from _rules (in-memory), not from XML.
+    If _rules is empty (no LoadRules, no TryAutoApply), GetSavedFollowerNames returns {}.
+    saved.Count == 0 -> TryAutoApply never fires -> rules never re-registered.
+
+  CAUSE D: SetEnabled() does not call SaveRules().
+    Clicking Copy ON toggles _isCopyEnabled in RAM only. Lost on F5.
+    Even if rules existed, CopyEnabled=false in XML -> LoadRules restores to false.
+
+WHY WORKAROUND FAILED:
+  User opened Window (LoadRules fired but found no XML -> no-op).
+  User clicked Copy ON ("clone") -> _isCopyEnabled=true (Gate 1 passes).
+  User did NOT check follower checkbox -> TryAutoApply never fired -> _rules empty.
+  Gate 2 blocked every order. No dispatch. No error message.
+
+THE ONLY MANUAL ACTION THAT REGISTERS A RULE:
+  Check (or uncheck + re-check) a follower account checkbox in the ChartTrader panel.
+  This fires TryAutoApply -> AddRule -> SaveRules. ALL other actions are insufficient.
+
+THREE CODE FIXES (pipeline required, all P0):
+  Fix A: CopyEngine.SetEnabled() -- add SaveRules() after CopyEnabledChanged.Invoke()
+  Fix B: TradeCopierPanel.OnApplyRule() -- add _engine.SaveRules() after AddRule()
+  Fix C: TradeCopierPanel.OnLoaded() -- add _engine.LoadRules() after Account.All loop
+         (after L698, before L705 B67 block)
+
+SRC CODE BAN: Active. This card is spec only.
+==================================================================================</pre>
+      </div>
+
+    </div>
+    <!-- ══ end section-b98 ════════════════════════════════════════════════ -->
+
+    <!-- ══ DW-B99 ═══════════════════════════════════════════════════════════ -->
+    <div id="section-b99" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:#ef4444;">&#9679; DW-B99 &nbsp;&#9670;&nbsp; PTT-COPIER-B99 &nbsp;&#9670;&nbsp; Copier Still Dead After DW-B98 Fix &mdash; Two Residual Blockers &nbsp;&#9670;&nbsp; <span class="pill" style="background:rgba(239,68,68,0.1);color:#ef4444;">OPEN (P0) &nbsp;&middot;&nbsp; investigation</span></div>
+
+      <!-- symptom -->
+      <div class="card" style="margin-top:16px; border-left:3px solid #ef4444; background:rgba(239,68,68,0.07);">
+        <div class="card-title" style="color:#f87171;">DW-B99 &mdash; Symptom</div>
+        <p>Commit <code>e06bce7b</code> applied the three DW-B98 fixes (Fix A: <code>SetEnabled</code> saves, Fix B: <code>OnApplyRule</code> saves, Fix C: <code>OnLoaded</code> calls <code>LoadRules</code>). After F5 compile with MD5-verified correct files, the copier <strong>still produces zero follower orders and zero output in NT8 Output Tab&nbsp;1</strong>. The DW-B98 fixes addressed saving and calling <code>LoadRules</code>, but two structural problems in the restore chain were not addressed and block the reload path entirely.</p>
+        <ul style="margin-top:0.4rem;">
+          <li><code>copy_rules.xml</code> confirmed <strong>absent on disk</strong> right now — <code>C:\Users\Mohammed Khalid\Documents\NinjaTrader 8\PropTraderTools\copy_rules.xml</code> does not exist</li>
+          <li><code>_persistenceLoaded</code> is a <strong>singleton field that never resets</strong> across F5 cycles within the same NT8 AppDomain</li>
+        </ul>
+      </div>
+
+      <!-- root cause A: xml missing -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #ef4444; background:rgba(239,68,68,0.06);">
+        <div class="card-title" style="color:#f87171;">DW-B99 &mdash; Blocker A: <code>copy_rules.xml</code> Does Not Exist</div>
+        <p><strong>Confirmed by filesystem check (this session):</strong></p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:8px;overflow-x:auto;"># PowerShell result (run this session):
+$ntDir = "$env:USERPROFILE\Documents\NinjaTrader 8\"
+Get-ChildItem $ntDir -Recurse -Filter "copy_rules.xml"
+# OUTPUT: (empty -- zero results)
+
+# The directory exists:
+C:\Users\Mohammed Khalid\Documents\NinjaTrader 8\PropTraderTools\  ← exists (empty)
+
+# The file does not exist:
+C:\Users\Mohammed Khalid\Documents\NinjaTrader 8\PropTraderTools\copy_rules.xml  ← MISSING</pre>
+        <p style="margin-top:0.5rem;"><code>LoadRules()</code> at <code>CopyEngine.cs:4086</code> does:</p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:6px;overflow-x:auto;">if (!File.Exists(path))
+    return;  // ← LoadRules is a no-op. _rules stays empty. _isCopyEnabled stays false.</pre>
+        <p style="margin-top:0.5rem;"><strong>Why is the file missing?</strong> The DW-B98 fixes add <code>SaveRules()</code> to <code>SetEnabled()</code>, <code>OnApplyRule()</code>, and <code>TryAutoApply()</code>. But those paths can only write the XML <em>after</em> the user takes a UI action in the new session. The file has never been written in any prior session because:</p>
+        <ol style="margin-top:0.4rem;">
+          <li>Before commit <code>e06bce7b</code>, <code>SetEnabled()</code> had no <code>SaveRules()</code> call</li>
+          <li>Before commit <code>e06bce7b</code>, <code>TryAutoApply()</code> in DW-B98's pre-fix version had no <code>SaveRules()</code> call</li>
+          <li>The <code>TradeCopierWindow</code> path calls <code>SaveRules()</code>, but the user never opened the Window (always uses ChartTrader injection)</li>
+        </ol>
+        <p style="margin-top:0.5rem; padding:8px 12px; background:rgba(239,68,68,0.08); border-left:3px solid #ef4444; border-radius:4px; font-size:0.82rem;">
+          <strong>Even with e06bce7b, the first session after apply must manually check a follower checkbox to create the XML. Until then, every LoadRules call is a no-op.</strong>
+        </p>
+      </div>
+
+      <!-- root cause B: _persistenceLoaded never resets -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #ef4444; background:rgba(239,68,68,0.06);">
+        <div class="card-title" style="color:#f87171;">DW-B99 &mdash; Blocker B: <code>_persistenceLoaded</code> Never Resets Across F5 Cycles</div>
+        <p><code>CopyEngine</code> is a <strong>static readonly singleton</strong> — the CLR initialises it once per AppDomain and it never dies while NT8 is running:</p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:8px;overflow-x:auto;">// CopyEngine.cs L125
+private static readonly CopyEngine _instance = new CopyEngine();
+
+// CopyEngine.cs L3867
+private volatile bool _persistenceLoaded = false;  // ← instance field ON THE SINGLETON</pre>
+        <p style="margin-top:0.5rem;"><code>LoadRules()</code> at <code>CopyEngine.cs:4081-4083</code>:</p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:6px;overflow-x:auto;">if (_persistenceLoaded)
+    return;                // ← PERMANENT NO-OP after first LoadRules call
+_persistenceLoaded = true;</pre>
+        <p style="margin-top:0.5rem;"><strong>Sequence within a single NT8 session (without full restart):</strong></p>
+        <ol style="margin-top:0.4rem; font-size:0.88rem;">
+          <li>NT8 starts &rarr; <code>_persistenceLoaded = false</code> (singleton fresh)</li>
+          <li>Panel <code>OnLoaded</code> fires &rarr; <code>LoadRules()</code> called &rarr; <code>_persistenceLoaded = true</code>, XML not found &rarr; no-op</li>
+          <li>User checks follower checkbox &rarr; <code>TryAutoApply()</code> &rarr; <code>AddRule()</code> &rarr; <code>SaveRules()</code> &rarr; <strong>XML written for first time</strong></li>
+          <li>User clicks Copy ON &rarr; <code>SetEnabled(true)</code> &rarr; <code>SaveRules()</code> &rarr; XML updated with <code>CopyEnabled=true</code></li>
+          <li><strong>User presses F5</strong> &rarr; NT8 destroys/recreates <code>TradeCopierAddOn</code> + <code>TradeCopierPanel</code> &rarr; new panel's <code>OnLoaded</code> fires &rarr; <code>_engine.LoadRules()</code> called</li>
+          <li><code>LoadRules()</code> checks <code>_persistenceLoaded</code> &rarr; <strong>it is still <code>true</code></strong> from step 2 (singleton never recreated) &rarr; <strong>immediate return, nothing loaded</strong></li>
+          <li>XML exists but is never read. <code>_rules</code> still has the in-memory rules from step 3 (NOT cleared on F5 either) &rarr; rules appear to survive!</li>
+        </ol>
+        <p style="margin-top:0.5rem; padding:8px 12px; background:rgba(245,158,11,0.08); border-left:3px solid #f59e0b; border-radius:4px; font-size:0.82rem;">
+          <strong>&#9888; Wait — step 7 means rules DO survive F5 within the same NT8 session (singleton kept in RAM). The copier should work after the first manual setup, even across F5. This is actually correct behaviour. The problem is a full NT8 restart, not F5.</strong>
+        </p>
+        <p style="margin-top:0.5rem;"><strong>But on full NT8 restart:</strong></p>
+        <ol style="margin-top:0.4rem; font-size:0.88rem;">
+          <li>NT8 restarts &rarr; AppDomain recycled &rarr; singleton recreated &rarr; <code>_persistenceLoaded = false</code>, <code>_rules</code> empty, <code>_isCopyEnabled = false</code></li>
+          <li>Panel <code>OnLoaded</code> fires &rarr; <code>LoadRules()</code> &rarr; sets <code>_persistenceLoaded = true</code> &rarr; reads XML &rarr; restores rules + <code>_isCopyEnabled</code> &rarr; <strong>B67 block fires TryAutoApply &rarr; SHOULD WORK</strong></li>
+        </ol>
+        <p style="margin-top:0.5rem; padding:8px 12px; background:rgba(34,197,94,0.08); border-left:3px solid #22c55e; border-radius:4px; font-size:0.82rem;">
+          <strong>Conclusion: The <code>_persistenceLoaded</code> guard is NOT a problem after full restart. It IS a problem if LoadRules is called multiple times within the same session (e.g. both Window and Panel attach). This is intentional dedup design and is correct.</strong>
+        </p>
+      </div>
+
+      <!-- revised actual root cause -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #3b82f6; background:rgba(59,130,246,0.06);">
+        <div class="card-title" style="color:var(--accent);">DW-B99 &mdash; Revised Root Cause (After Tracing Singleton Lifecycle)</div>
+        <p>After tracing the full singleton lifecycle:</p>
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.5rem;">
+          <thead><tr style="background:#1c2133; text-align:left;">
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Scenario</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">_persistenceLoaded</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">_rules</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">copy_rules.xml</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Result</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">Fresh NT8 start (never set up)</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">false &rarr; true on LoadRules</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">empty (no XML)</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">MISSING</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">&#10006; Dead. User must check follower checkbox.</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">User checks checkbox in session</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">true (unchanged)</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">populated via TryAutoApply</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">written by SaveRules</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">&#10003; Copier working</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">F5 in SAME NT8 session</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">true (singleton alive)</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">populated (singleton kept in RAM)</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">present</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">&#10003; Copier working (rules in RAM)</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><strong>Full NT8 restart (after XML created)</strong></td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">false &rarr; true on LoadRules</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">restored from XML</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">present</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">&#10003; Copier working (DW-B98 fix applies)</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133; font-weight:700; color:#f87171;">Fresh NT8 start (XML missing) &mdash; CURRENT STATE</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">false &rarr; true, then no-op</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">empty</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">MISSING</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">&#10006; Dead until user checks checkbox</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-top:0.7rem;"><strong>The actual state right now:</strong></p>
+        <ul style="margin-top:0.3rem; font-size:0.88rem;">
+          <li><code>copy_rules.xml</code> does not exist (confirmed by filesystem search this session)</li>
+          <li>This is the <strong>first time the DW-B98 fixes have been live</strong> — the saves in <code>SetEnabled()</code> and <code>TryAutoApply()</code> were not present in any prior session</li>
+          <li>Therefore: there is no XML to load, and <code>LoadRules()</code> returns immediately on every startup</li>
+          <li><strong>The DW-B98 fix is structurally correct</strong> — it will work permanently once the user checks a follower checkbox once in this session to bootstrap the XML</li>
+        </ul>
+      </div>
+
+      <!-- immediate fix -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #22c55e; background:rgba(34,197,94,0.06);">
+        <div class="card-title" style="color:var(--green);">DW-B99 &mdash; Immediate Action (One-Time Bootstrap — No Code Change)</div>
+        <p style="font-size:0.88rem; color:var(--amber); margin-bottom:0.6rem;"><strong>&#9888; This must be done once after every fresh NT8 install or whenever copy_rules.xml is missing. After this sequence the XML is written and DW-B98 takes over for all future sessions.</strong></p>
+        <ol style="line-height:2.2; padding-left:1.5rem; font-size:0.9rem;">
+          <li>Open NT8. Let the ChartTrader panel load. Confirm the <strong>COPY OFF</strong> button is visible (grey).</li>
+          <li>In the follower list, <strong>CHECK the follower account checkbox</strong> (e.g. PA-APEX-422136-09).<br/>
+              <span style="font-size:0.82rem; color:var(--mid);">This fires: <code>chk.Checked</code> &rarr; <code>item.IsSelected=true</code> &rarr; <code>TryAutoApply()</code> &rarr; <code>_engine.AddRule()</code> &rarr; <code>_engine.SaveRules()</code>.</span><br/>
+              <span style="font-size:0.82rem; color:var(--mid);">The status text must show: <code>Rule: [instrument] leader=[account]</code>. If it says "No leader" or stays blank — stop and check that a chart is open with an account selected in ChartTrader.</span>
+          </li>
+          <li>Click the <strong>COPY ON</strong> button. It must turn green.<br/>
+              <span style="font-size:0.82rem; color:var(--mid);">This fires: <code>SetEnabled(true)</code> &rarr; <code>SaveRules()</code>. Now the XML has <code>CopyEnabled=true</code>.</span>
+          </li>
+          <li>Verify <code>copy_rules.xml</code> was written:<br/>
+              <pre style="background:var(--surface);padding:8px 12px;border-radius:4px;font-size:11px;margin-top:4px;overflow-x:auto;">$xmlPath = "$env:USERPROFILE\Documents\NinjaTrader 8\PropTraderTools\copy_rules.xml"
+if (Test-Path $xmlPath) { Get-Content $xmlPath } else { Write-Host "STILL MISSING" }</pre>
+              <span style="font-size:0.82rem; color:var(--mid);">Must show XML with the rule and <code>&lt;CopyEnabled&gt;true&lt;/CopyEnabled&gt;</code>.</span>
+          </li>
+          <li>Place one test Market order on the leader account. Watch <strong>NT8 Output Tab&nbsp;1</strong> for:<br/>
+              <pre style="background:var(--surface);padding:8px 12px;border-radius:4px;font-size:11px;margin-top:4px;overflow-x:auto;">[PTT-COPY] dispatch: Buy x1 [instrument] -> [follower] mult=1 mode=Inherit name=Entry</pre>
+              If this line appears &rarr; copier is working. <strong>Done.</strong>
+          </li>
+          <li>From this point forward: every F5 or full NT8 restart will automatically restore the rule from XML via the DW-B98 fix in <code>OnLoaded</code>.</li>
+        </ol>
+      </div>
+
+      <!-- proposed code fix for robustness -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #f59e0b; background:rgba(245,158,11,0.06);">
+        <div class="card-title" style="color:var(--amber);">DW-B99 &mdash; Proposed Code Fix for Zero-Bootstrap Robustness (DW-B99-A)</div>
+        <p style="font-size:0.88rem;">The DW-B98 fix is structurally complete. The only remaining fragility is the <strong>cold-start bootstrap</strong>: if <code>copy_rules.xml</code> is absent (fresh NT8 install, file deleted, new machine), the user must manually check a follower checkbox once before the persist-restore loop can begin. This is a <strong>UX gap, not a correctness bug</strong>.</p>
+        <p style="margin-top:0.5rem; font-size:0.88rem;"><strong>Proposed fix (DW-B99-A, low-priority, P2):</strong> If <code>LoadRules()</code> finds no XML file, write a <em>minimal seed XML</em> with the current in-memory state (even if empty). This ensures the file is created on first startup, so that <code>SetEnabled(true)</code> and <code>TryAutoApply()</code> — which call <code>SaveRules()</code> — can append to an existing file rather than creating one from scratch. No change to the restore logic.</p>
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.8rem;">
+          <thead><tr style="background:#1c2133;">
+            <th style="padding:5px 10px; border:1px solid #1c2133;">Fix ID</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">File</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">Change</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">CYC &Delta;</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">Priority</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">DW-B99-A</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">CopyEngine.cs</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>LoadRules()</code> &mdash; after File.Exists returns false, call <code>SaveRules()</code> to seed an empty XML. Ensures file exists after first startup.</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">+0</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:var(--amber);">P2 &mdash; UX improvement, not a correctness blocker</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-top:0.5rem; font-size:0.82rem; color:var(--mid);">SRC CODE BAN: Active. This card is spec only. Code fix goes through PTT pipeline.</p>
+      </div>
+
+      <!-- diagnosis card -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #6366f1; background:rgba(99,102,241,0.06);">
+        <div class="card-title" style="color:#818cf8;">DW-B99 &mdash; Diagnosis Card</div>
+        <pre style="background:#0a0d17; border:1px solid #1c2133; border-radius:6px; padding:12px 16px; margin-top:8px; font-size:0.78rem; overflow-x:auto; white-space:pre-wrap;">=== DISPATCH OUTAGE INVESTIGATION DW-B99 ===
+Date: 2026-08-24
+Symptom: Copier still zero after e06bce7b (DW-B98 fix). Zero output in NT8 Tab 1.
+
+ROOT CAUSE: copy_rules.xml DOES NOT EXIST on disk.
+  Evidence: PowerShell Get-ChildItem returned zero results for copy_rules.xml
+            under Documents\NinjaTrader 8\ (recursive).
+  Path checked: C:\Users\Mohammed Khalid\Documents\NinjaTrader 8\PropTraderTools\copy_rules.xml
+  Trigger:  No prior session ever wrote the XML -- SaveRules() was missing from
+            SetEnabled() and TryAutoApply() in all commits before e06bce7b.
+            TradeCopierWindow (the only prior save path) was never opened by user.
+  Effect:   LoadRules() reaches File.Exists guard -> returns immediately.
+            _rules stays empty. _isCopyEnabled stays false.
+            Gate 1 + Gate 2 both block. No dispatch. No error message.
+
+SECONDARY ANALYSIS: _persistenceLoaded singleton guard
+  _persistenceLoaded is volatile bool on the static readonly singleton.
+  Within a single NT8 session:
+    - First LoadRules call sets _persistenceLoaded=true (even if XML missing)
+    - All subsequent LoadRules calls (e.g. from F5 panel reload) are no-ops
+    - BUT _rules is kept in the singleton (RAM survives F5 within same session)
+    - So F5 within same session: rules survive in RAM, NOT from XML
+  After full NT8 restart:
+    - Singleton recreated, _persistenceLoaded=false, _rules empty
+    - LoadRules runs properly, reads XML if it exists
+  CONCLUSION: _persistenceLoaded is NOT a bug. It is correct dedup design.
+
+TRUE BLOCK: XML bootstrap problem.
+  The DW-B98 fix is structurally correct. It will work permanently once
+  copy_rules.xml is created for the first time (by checking a follower checkbox).
+
+PROPOSED FIX:
+  DW ID: DW-B99-A (P2, UX only)
+  Change: LoadRules() -- if File.Exists is false, call SaveRules() to seed empty XML
+  CYC delta: 0
+  Priority: LOW -- after the one-time manual bootstrap, DW-B98 handles everything
+
+IMMEDIATE WORKAROUND (one-time, no code change):
+  1. Check a follower checkbox in ChartTrader panel (writes XML via TryAutoApply->SaveRules)
+  2. Click COPY ON (updates XML CopyEnabled=true via SetEnabled->SaveRules)
+  3. Verify XML exists: Test-Path "$env:USERPROFILE\Documents\NinjaTrader 8\PropTraderTools\copy_rules.xml"
+  4. Place test Market order -> confirm [PTT-COPY] dispatch: appears in Tab 1
+
+SRC CODE BAN: Active.
+==========================================</pre>
+      </div>
+
+    </div>
+    <!-- ══ end section-b99 ════════════════════════════════════════════════ -->
+
+    <!-- ══ DW-B100 ══════════════════════════════════════════════════════════ -->
+    <div id="section-b100" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:#ef4444;">&#9679; DW-B100 &nbsp;&#9670;&nbsp; PTT-COPIER-B100 &nbsp;&#9670;&nbsp; SaveRules() Always Silently Fails — XmlSerializer Cannot Serialize Private Classes &nbsp;&#9670;&nbsp; <span class="pill" style="background:rgba(239,68,68,0.1);color:#ef4444;">OPEN (P0) &nbsp;&middot;&nbsp; ROOT CAUSE CONFIRMED</span></div>
+
+      <!-- root cause -->
+      <div class="card" style="margin-top:16px; border-left:3px solid #ef4444; background:rgba(239,68,68,0.08);">
+        <div class="card-title" style="color:#f87171;">DW-B100 &mdash; Root Cause: <code>private sealed class</code> on DTO Types</div>
+        <p><code>XmlSerializer</code> requires that the type it is asked to serialize be <strong>publicly accessible</strong>. Both DTO types used by <code>SaveRules()</code> are declared <code>private sealed class</code>:</p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:8px;overflow-x:auto;">// CopyEngine.cs L3872 -- CURRENT
+[Serializable]
+private sealed class CopyRuleDto          // ← XmlSerializer cannot access this
+
+// CopyEngine.cs L3893
+[Serializable]
+private sealed class CopyRulesContainer   // ← XmlSerializer cannot access this</pre>
+        <p style="margin-top:0.6rem;">When <code>SaveRules()</code> at <code>CopyEngine.cs:4057</code> executes:</p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:6px;overflow-x:auto;">var serializer = new XmlSerializer(typeof(CopyRulesContainer));  // ← throws here</pre>
+        <p style="margin-top:0.4rem;">The <code>XmlSerializer</code> constructor throws <code>InvalidOperationException</code>: <em>"CopyRulesContainer is not accessible because it is private"</em>. This is immediately caught by the <code>catch (Exception)</code> block at <code>L4066</code> which swallows all exceptions silently. <code>File.WriteAllText</code> is never reached. <strong>The XML file is never written. Ever.</strong></p>
+        <p style="margin-top:0.5rem; padding:8px 12px; background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:4px; font-size:0.82rem;">
+          <strong>This is present in every commit going back to B6 (when SaveRules was first written). copy_rules.xml has never been written to disk in any session in the history of this project.</strong>
+        </p>
+      </div>
+
+      <!-- evidence -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #3b82f6; background:rgba(59,130,246,0.06);">
+        <div class="card-title" style="color:var(--accent);">DW-B100 &mdash; Evidence</div>
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.5rem;">
+          <thead><tr style="background:#1c2133; text-align:left;">
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Evidence</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Result</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">Filesystem search for <code>copy_rules.xml</code> anywhere on disk (recursive)</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><strong>Zero results</strong> — file has never been written</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>TryAutoApply()</code> executes successfully — status text shows <code>Rule: MES SEP26 leader=Sim101</code></td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;"><code>AddRule()</code> succeeded — rule is in RAM</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>TryAutoApply()</code> calls <code>_engine.SaveRules()</code> immediately after <code>AddRule()</code></td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">Returns silently — exception swallowed by <code>catch (Exception)</code></td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>File.WriteAllText()</code> tested directly from PowerShell to the exact same path</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;"><strong>Succeeds</strong> — directory is writable, no permissions issue</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>CopyRuleDto</code> and <code>CopyRulesContainer</code> access modifier in all commits</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><strong><code>private sealed class</code></strong> — confirmed in both <code>ee6b1dcf</code> (before) and current HEAD</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">Copier was working "yesterday" during same NT8 session</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#22c55e;">Rules were live in singleton RAM — never needed XML. Fresh start = rules gone.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- why it seemed to work -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #f59e0b; background:rgba(245,158,11,0.06);">
+        <div class="card-title" style="color:var(--amber);">DW-B100 &mdash; Why the Copier "Was Working Yesterday"</div>
+        <p>The copier has <strong>always worked within a single NT8 session</strong>. The flow is:</p>
+        <ol style="margin-top:0.4rem; font-size:0.88rem; line-height:2.0;">
+          <li>NT8 starts &rarr; singleton fresh &rarr; <code>_rules</code> empty</li>
+          <li>User checks follower checkbox &rarr; <code>TryAutoApply()</code> &rarr; <code>AddRule()</code> &rarr; rule lands in <code>_rules</code> (RAM) ✅</li>
+          <li><code>SaveRules()</code> is called but throws silently &rarr; no XML written</li>
+          <li>User clicks COPY ON &rarr; <code>_isCopyEnabled=true</code> in RAM</li>
+          <li>Leader places orders &rarr; <code>OnOrderUpdate</code> fires &rarr; Gate 1 passes (<code>_isCopyEnabled=true</code>) &rarr; Gate 2 passes (<code>_rules</code> has the rule from step 2) &rarr; <strong>Dispatch fires. Followers get orders. ✅</strong></li>
+          <li>F5 recompile <em>within same NT8 session</em> &rarr; singleton survives in RAM &rarr; <code>_rules</code> still populated &rarr; copier still works ✅</li>
+          <li><strong>NT8 closed and restarted</strong> &rarr; singleton recycled &rarr; <code>_rules</code> empty &rarr; <code>LoadRules()</code> looks for XML &rarr; XML missing &rarr; returns &rarr; <code>_rules</code> stays empty &rarr; Gate 2 blocks everything ❌</li>
+        </ol>
+        <p style="margin-top:0.5rem; padding:8px 12px; background:rgba(245,158,11,0.08); border-left:3px solid #f59e0b; border-radius:4px; font-size:0.82rem;">
+          <strong>The fix commit DW-B98 did not help because the underlying XML write was always failing. The missing LoadRules in panel.OnLoaded (DW-B98-C) was a real gap, but it doesn't matter if the XML never gets written in the first place.</strong>
+        </p>
+      </div>
+
+      <!-- the one-line fix -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #22c55e; background:rgba(34,197,94,0.06);">
+        <div class="card-title" style="color:var(--green);">DW-B100 &mdash; The Fix: Change <code>private</code> to <code>internal</code> on Both DTO Classes</div>
+        <p><code>XmlSerializer</code> works with <code>internal</code> types within the same assembly. Since both DTO classes are inner private types of <code>CopyEngine</code>, they only need to be accessible to the serializer — not to external code. Changing <code>private</code> to <code>internal</code> makes them serializable while keeping them unexposed to other assemblies.</p>
+        <pre style="background:#0a0d17; border:1px solid #1c2133; border-radius:6px; padding:10px 14px; margin-top:8px; font-size:0.78rem; overflow-x:auto;">// CopyEngine.cs L3872 -- CHANGE private to internal
+[Serializable]
+internal sealed class CopyRuleDto          // ← was: private sealed class
+
+// CopyEngine.cs L3893 -- CHANGE private to internal
+[Serializable]
+internal sealed class CopyRulesContainer   // ← was: private sealed class</pre>
+
+        <p style="margin-top:0.7rem; font-size:0.88rem;"><strong>Alternative fix (also valid):</strong> Move the two DTO classes out of <code>CopyEngine</code> and declare them as <code>public</code> (or <code>internal</code>) top-level classes in the <code>PropTraderTools</code> namespace. This is cleaner architecturally but requires more edits.</p>
+
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.8rem;">
+          <thead><tr style="background:#1c2133;">
+            <th style="padding:5px 10px; border:1px solid #1c2133;">Change</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">File</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">Line</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">From</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">To</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">CYC &Delta;</th>
+            <th style="padding:5px 10px; border:1px solid #1c2133;">Priority</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">DW-B100-A</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">CopyEngine.cs</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">3872</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>private sealed class CopyRuleDto</code></td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>internal sealed class CopyRuleDto</code></td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">0</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#ef4444; font-weight:700;">P0 BLOCKER</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">DW-B100-B</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">CopyEngine.cs</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">3893</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>private sealed class CopyRulesContainer</code></td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>internal sealed class CopyRulesContainer</code></td>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">0</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#ef4444; font-weight:700;">P0 BLOCKER</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p style="margin-top:0.6rem; font-size:0.82rem; padding:8px 12px; background:rgba(239,68,68,0.08); border-left:3px solid #ef4444; border-radius:4px;">
+          <strong>After this fix: SaveRules() will write copy_rules.xml correctly. After the file is written once (by checking a follower checkbox + clicking COPY ON), every subsequent NT8 restart will automatically restore the rule and enabled state via LoadRules() in panel.OnLoaded.</strong>
+        </p>
+        <p style="margin-top:0.5rem; font-size:0.82rem; color:var(--mid);">SRC CODE BAN: Active. This card is spec only. Code fix requires Director approval for direct repair (2 access modifier changes, CYC delta 0, no logic change) OR goes through PTT pipeline.</p>
+      </div>
+
+      <!-- immediate workaround -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #22c55e; background:rgba(34,197,94,0.04);">
+        <div class="card-title" style="color:var(--green);">DW-B100 &mdash; Current Workaround (Until Fix Is Applied)</div>
+        <p style="font-size:0.88rem;">The copier works fine in any single NT8 session. The only pain point is after <strong>NT8 restart</strong> — you must re-check the follower checkboxes and click COPY ON each time. This takes about 5 seconds.</p>
+        <ol style="margin-top:0.4rem; line-height:2.0; padding-left:1.5rem; font-size:0.9rem;">
+          <li>Open NT8. Let ChartTrader panel load.</li>
+          <li><strong>Check</strong> follower checkboxes (Sim102, Sim103, Sim104) &rarr; status text must show <code>Rule: MES SEP26 leader=Sim101</code></li>
+          <li>Click <strong>COPY ON</strong> &rarr; button turns green</li>
+          <li>Copier is live for the rest of this NT8 session (survives F5 recompiles)</li>
+        </ol>
+        <p style="margin-top:0.4rem; font-size:0.82rem; color:var(--mid);">After DW-B100 fix is applied, step 2 and 3 are only needed once ever — they write the XML which is then restored automatically on all future restarts.</p>
+      </div>
+
+      <!-- diagnosis card -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #6366f1; background:rgba(99,102,241,0.06);">
+        <div class="card-title" style="color:#818cf8;">DW-B100 &mdash; Final Diagnosis Card</div>
+        <pre style="background:#0a0d17; border:1px solid #1c2133; border-radius:6px; padding:12px 16px; margin-top:8px; font-size:0.78rem; overflow-x:auto; white-space:pre-wrap;">=== DISPATCH OUTAGE ROOT CAUSE — DW-B100 ===
+Date: 2026-08-24
+Symptom: Copier works within a session but loses all state on NT8 restart.
+         copy_rules.xml never written to disk despite SaveRules() being called.
+
+ROOT CAUSE: CopyRuleDto and CopyRulesContainer declared as private sealed class.
+  XmlSerializer cannot serialize private types.
+  new XmlSerializer(typeof(CopyRulesContainer)) throws InvalidOperationException.
+  catch (Exception) in SaveRules() at CopyEngine.cs:4066 swallows the exception.
+  File.WriteAllText is never reached. XML file is never written.
+
+  Evidence:
+    - copy_rules.xml absent on disk (filesystem search confirmed)
+    - File.WriteAllText() works from PowerShell to same path (permissions OK)
+    - private sealed class on both DTO types confirmed at CopyEngine.cs:3872,3893
+    - Present in all commits back to B6 -- this has never worked across restarts
+
+  Why session-to-session seemed OK:
+    - CopyEngine is static readonly singleton -- survives F5 within same NT8 session
+    - _rules populated from checkbox check, stays in RAM through F5 cycles
+    - After NT8 full restart, AppDomain recycled, singleton recreated, _rules empty
+    - LoadRules() runs but finds no XML (never written) -> returns immediately
+    - Gate 2 (FindMatchingRule) blocks all dispatch -- no error, no log line
+
+THE FIX: Change private to internal on both DTO classes (2 lines, CYC delta 0):
+  CopyEngine.cs:3872  private sealed class CopyRuleDto       -> internal sealed class CopyRuleDto
+  CopyEngine.cs:3893  private sealed class CopyRulesContainer -> internal sealed class CopyRulesContainer
+
+WORKAROUND (until fix): After every NT8 restart, re-check follower checkboxes
+  and click COPY ON. Copier is then live for the full session.
+
+SRC CODE BAN: Active. Requires Director approval for direct repair (2-line access modifier change).
+=============================================</pre>
+      </div>
+
+    </div>
+    <!-- ══ end section-b100 ═══════════════════════════════════════════════ -->
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div id="section-b101" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-label" style="color:#ef4444;">&#9679; DW-B101 &nbsp;&#9670;&nbsp; PTT-COPIER-B101 &nbsp;&#9670;&nbsp; Dispatch Outage — Zero Tab 1 Output After NT8 Restart + F5 &nbsp;&#9670;&nbsp; <span class="pill" style="background:rgba(239,68,68,0.1);color:#ef4444;">OPEN (P0) &nbsp;&middot;&nbsp; ROOT CAUSE CONFIRMED</span></div>
+
+      <!-- symptom -->
+      <div class="card" style="margin-top:16px; border-left:3px solid #ef4444; background:rgba(239,68,68,0.08);">
+        <div class="card-title" style="color:#f87171;">DW-B101 &mdash; Symptom</div>
+        <ul style="margin:0.4rem 0 0 1.2rem; font-size:0.85rem; line-height:1.7;">
+          <li>Leader places a Market order. NT8 Output Tab 1 shows <strong>zero</strong> <code>[PTT-COPY] dispatch:</code> lines.</li>
+          <li>Followers receive nothing.</li>
+          <li>Status text shows <code>Rule: MES ... leader=Sim101</code> &mdash; rule is in RAM &nbsp;&#x2705;</li>
+          <li>COPY button is green &nbsp;&#x2705;</li>
+          <li>Follower checkboxes checked &nbsp;&#x2705;</li>
+          <li>MD5 of NT8 AddOns file matches repo HEAD &nbsp;&#x2705;</li>
+          <li>All code logic in dispatch path was verified identical to last working commit <code>d168b8c9</code>.</li>
+        </ul>
+        <p style="margin-top:0.6rem; padding:8px 12px; background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:4px; font-size:0.82rem;">
+          <strong>Copier was working during BE-ALL testing. It stopped after commits a0217a6d (DW-B91-A/B) and 83dcc6b0 (DW-B95/B96).</strong>
+        </p>
+      </div>
+
+      <!-- root cause — gate trace -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #ef4444; background:rgba(239,68,68,0.08);">
+        <div class="card-title" style="color:#f87171;">DW-B101 &mdash; Root Cause: Two Compounding Bugs</div>
+
+        <p style="margin-top:0.5rem;"><strong>Bug A (DW-B100, unresolved) &mdash; <code>SaveRules()</code> silently fails &rarr; <code>_isCopyEnabled</code> resets to <code>false</code> on every NT8 restart</strong></p>
+        <ul style="margin:0.3rem 0 0 1.2rem; font-size:0.83rem; line-height:1.7;">
+          <li><code>copy_rules.xml</code> is never written to disk (private class blocks XmlSerializer).</li>
+          <li>On NT8 restart the static singleton is recreated. <code>_isCopyEnabled</code> defaults to <code>false</code>.</li>
+          <li><code>LoadRules()</code> finds no XML &rarr; <code>_isCopyEnabled</code> stays <code>false</code>.</li>
+          <li><strong>Gate 1 silently blocks every order</strong> until the user manually clicks COPY ON.</li>
+          <li>There is no error, no log line, no indication in the UI beyond the grey button.</li>
+        </ul>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:8px;overflow-x:auto;">// OnOrderUpdate gate 1 (CopyEngine.cs L1229-1231)
+if (!_isCopyEnabled)
+    return;  // &larr; blocks silently, zero output in Tab 1</pre>
+
+        <p style="margin-top:1rem;"><strong>Bug B (DW-B101) &mdash; <code>_entryDispatchedOrders</code> eviction is incomplete for Cancelled orders</strong></p>
+        <ul style="margin:0.3rem 0 0 1.2rem; font-size:0.83rem; line-height:1.7;">
+          <li>Added by commit <code>a0217a6d</code> (DW-B91-A). Not present in <code>d168b8c9</code> (last working state).</li>
+          <li><code>EvictDedup</code> at L3102 removes from <code>_dedupCache</code> only. Comment says <em>"eviction moved to TryEvictFollowerBeSlot"</em>.</li>
+          <li><code>TryEvictFollowerBeSlot</code> calls <code>_entryDispatchedOrders.Clear()</code> at L1396 ONLY when <code>isFilled=true</code> or <code>isRejected=true (PTT-BE-Stop only)</code>.</li>
+          <li>For <strong>Cancelled</strong> orders: <code>isFilled=false</code>, <code>isRejected=false</code> &rarr; <code>TryEvictFollowerBeSlot</code> returns early at L1394 &rarr; <code>_entryDispatchedOrders.Clear()</code> is never reached.</li>
+          <li>The static singleton survives F5 within the same NT8 session. Stale entries accumulate in <code>_entryDispatchedOrders</code>.</li>
+          <li>New orders get new orderIds, so stale entries do not directly block them &mdash; but if a broker recycles a numeric orderId (Rithmic re-submit path), the re-submitted order is permanently blocked by Gate 5.</li>
+        </ul>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:8px;overflow-x:auto;">// TryEvictFollowerBeSlot (CopyEngine.cs L1385-1417) &mdash; BUG: Cancelled path never reaches Clear()
+bool isFilled   = o.OrderState == OrderState.Filled;
+bool isRejected = o.OrderState == OrderState.Rejected &amp;&amp; o.Name == "PTT-BE-Stop";
+if (!isFilled &amp;&amp; !isRejected)
+    return;                                    // &larr; Cancelled exits here
+_entryDispatchedOrders.Clear();               // &larr; NEVER reached for Cancelled orders
+
+// EvictDedup (CopyEngine.cs L3102-3114) &mdash; BUG: does NOT evict _entryDispatchedOrders
+_dedupCache.TryRemove(orderId, out _);
+// DW-B91-A-v2: eviction moved to TryEvictFollowerBeSlot  &larr; but that doesn&rsquo;t cover Cancelled</pre>
+      </div>
+
+      <!-- gate trace -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #3b82f6; background:rgba(59,130,246,0.06);">
+        <div class="card-title" style="color:var(--accent);">DW-B101 &mdash; Commit Comparison: d168b8c9 vs Current HEAD</div>
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.5rem;">
+          <thead><tr style="background:#1c2133; text-align:left;">
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Check</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">d168b8c9 (working)</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Current HEAD (broken)</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">Gate 5 in DispatchCopy</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#4ade80;"><code>if (IsDedup(orderId, price))</code></td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><code>if (IsDedup(orderId, price) || IsEntryDispatched(orderId))</code></td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>_entryDispatchedOrders</code> field</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#4ade80;">Does not exist</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">Added (a0217a6d). Never fully evicted on Cancelled path.</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>EvictDedup</code> evicts <code>_entryDispatchedOrders</code></td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#4ade80;">N/A</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">NO &mdash; comment says "moved to TryEvictFollowerBeSlot" but that method skips Cancelled</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>copy_rules.xml</code> on disk</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">Never written (DW-B100 existed then too)</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;">Still never written (DW-B100 unresolved)</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>_isCopyEnabled</code> after NT8 restart</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><code>false</code> &mdash; user had to click COPY ON</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><code>false</code> &mdash; same. User must click COPY ON.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- diagnostic checklist -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #f59e0b; background:rgba(245,158,11,0.06);">
+        <div class="card-title" style="color:#fbbf24;">DW-B101 &mdash; 3-Step Diagnostic (Run Right Now)</div>
+        <p style="font-size:0.83rem; margin-top:0.4rem;"><strong>Step 1 &mdash; Verify COPY ON state</strong></p>
+        <p style="font-size:0.83rem;">After every NT8 restart or F5: COPY button <strong>must be GREEN</strong>. If grey, click it. This is Gate 1. Without it, no orders are ever dispatched &mdash; zero Tab 1 output, no error, nothing.</p>
+        <p style="font-size:0.83rem; margin-top:0.8rem;"><strong>Step 2 &mdash; Verify rule is in RAM</strong></p>
+        <p style="font-size:0.83rem;">Status text must show <code>Rule: [instrument] leader=[account]</code>. If blank, check at least one follower checkbox. This is Gate 2. Without a rule, no orders are dispatched.</p>
+        <p style="font-size:0.83rem; margin-top:0.8rem;"><strong>Step 3 &mdash; Place one Market order and watch Tab 1</strong></p>
+        <p style="font-size:0.83rem;">Within 1 second: <code>[PTT-COPY] dispatch: Buy x1 MES 09-24 -&gt; Sim102 mult=1 mode=Inherit name=Entry</code> should appear. If this line appears but followers still get nothing, the bug is in <code>SendCopy</code>. If the line does NOT appear and COPY is ON and rule is set: report immediately for deeper trace &mdash; this should not be possible given the current code.</p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:8px;overflow-x:auto;">// PowerShell: confirm copy_rules.xml still missing (confirms Bug A / DW-B100 is active)
+Test-Path "$env:USERPROFILE\Documents\NinjaTrader 8\PropTraderTools\copy_rules.xml"
+# Expected: False (until DW-B100 fix is applied)</pre>
+      </div>
+
+      <!-- proposed fixes -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #22c55e; background:rgba(34,197,94,0.06);">
+        <div class="card-title" style="color:#4ade80;">DW-B101 &mdash; Proposed Fixes (Two Changes)</div>
+
+        <p style="margin-top:0.4rem;"><strong>Fix A &mdash; DW-B100 (two-word fix, CYC delta 0):</strong></p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:6px;overflow-x:auto;">// CopyEngine.cs L3872 &mdash; change private &rarr; internal
+internal sealed class CopyRuleDto
+
+// CopyEngine.cs L3893 &mdash; change private &rarr; internal
+internal sealed class CopyRulesContainer</pre>
+        <p style="font-size:0.82rem; margin-top:0.3rem;">Effect: <code>XmlSerializer</code> can now access both types. <code>SaveRules()</code> will write <code>copy_rules.xml</code> on the first call. <code>LoadRules()</code> will restore <code>_isCopyEnabled = true</code> and the full follower rule on next NT8 restart. No logic change.</p>
+
+        <p style="margin-top:1rem;"><strong>Fix B &mdash; DW-B101 (one-line fix, CYC delta 0 &mdash; adds Cancelled to EvictDedup):</strong></p>
+        <pre style="background:var(--surface);padding:10px 14px;border-radius:4px;font-size:11px;margin-top:6px;overflow-x:auto;">// CopyEngine.cs L3111 in EvictDedup &mdash; ADD one line:
+_dedupCache.TryRemove(orderId, out _);
+_entryDispatchedOrders.TryRemove(orderId, out _);  // &larr; ADD THIS LINE</pre>
+        <p style="font-size:0.82rem; margin-top:0.3rem;">Effect: <code>EvictDedup</code> now co-evicts <code>_entryDispatchedOrders</code> on Filled/Cancelled/Rejected, matching the original intent of the DW-B91-A comment. The <code>TryEvictFollowerBeSlot.Clear()</code> becomes a safety backstop for the Filled path only. CYC delta: 0 (no new branch).</p>
+
+        <p style="margin-top:0.8rem; padding:8px 12px; background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:4px; font-size:0.82rem;">
+          <strong>SRC CODE BAN: Active.</strong> Both fixes require Director "approved for direct repair" or the full 5-phase PTT pipeline before any .cs edit.
+        </p>
+      </div>
+
+      <!-- evidence table -->
+      <div class="card" style="margin-top:12px; border-left:3px solid #3b82f6; background:rgba(59,130,246,0.06);">
+        <div class="card-title" style="color:var(--accent);">DW-B101 &mdash; Evidence</div>
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.5rem;">
+          <thead><tr style="background:#1c2133; text-align:left;">
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Evidence</th>
+            <th style="padding:6px 10px; border:1px solid #1c2133;">Result</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>copy_rules.xml</code> on disk (all paths)</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><strong>FILE NOT FOUND</strong> &mdash; confirmed by filesystem search this session</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>d168b8c9</code> Gate 5 in DispatchCopy</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#4ade80;"><code>if (IsDedup(...))</code> only &mdash; no <code>IsEntryDispatched</code></td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">Current HEAD Gate 5</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><code>if (IsDedup(...) || IsEntryDispatched(...))</code> &mdash; added by a0217a6d</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>EvictDedup</code> evicts <code>_entryDispatchedOrders</code> on Cancelled</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><strong>NO</strong> &mdash; L3111 only calls <code>_dedupCache.TryRemove</code></td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>TryEvictFollowerBeSlot</code> covers Cancelled</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><strong>NO</strong> &mdash; L1394 returns early for Cancelled (not isFilled, not isRejected)</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;">All pre-DispatchCopy gates for Market+Submitted verified</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#4ade80;">Gate 0.5, Gate 3, Gate 4, TryCancelFollowerEntries, TryDispatchLeaderFlat, TryHandleDrag &mdash; all pass for a fresh Market entry</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px; border:1px solid #1c2133;"><code>_isCopyEnabled</code> default after singleton recreation</td>
+              <td style="padding:5px 10px; border:1px solid #1c2133; color:#f87171;"><code>false</code> &mdash; user MUST click COPY ON after every NT8 restart until DW-B100 is fixed</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- status -->
+      <div class="card" style="margin-top:12px;">
+        <div class="card-title">DW-B101 &mdash; Status</div>
+        <p>Date identified: 2026-08-25 &nbsp;|&nbsp; Session: $continue investigation</p>
+        <p>Root cause: <strong>two compounding bugs</strong> &mdash; DW-B100 (SaveRules private class) + DW-B101 (EvictDedup misses _entryDispatchedOrders on Cancelled)</p>
+        <p>Fix: <strong>awaiting Director approval</strong> for direct repair. Both fixes are &le;3 lines combined, CYC delta 0.</p>
+        <p style="padding:8px 12px; background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:4px; font-size:0.82rem; margin-top:0.5rem;">
+          <strong>Workaround until fix:</strong> After every NT8 restart: (1) click COPY ON button, (2) check follower checkboxes, (3) confirm status text shows the rule. This restores in-session copying. Copier will work until NT8 is restarted again.
+        </p>
+      </div>
+    </div>
+    <!-- ══ end section-b101 ═══════════════════════════════════════════════ -->
+
+    <!-- ══ section-b102 ══════════════════════════════════════════════════════ -->
+    <div id="section-b102" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-header">
+        <span class="dw-id">DW-B102</span>
+        <span class="dw-title">Post-Restart Copy Outage — <code>_persistenceLoaded</code> Race Between Window and Panel</span>
+        <span class="pill pill-green">CLOSED</span>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Symptom</div>
+        <div class="field-value">
+          <p>After NT8 restart, copier is silent. Leaders receive orders. Followers get nothing.
+          Zero <code>[PTT-COPY] dispatch:</code> lines in Output Tab 1. No error. No log line.
+          Occurs on every NT8 restart after the <code>e06bce7b</code> commit (2026-08-24 08:25 AM).
+          Was working on prior daily restarts at <code>a0217a6d</code> / <code>83dcc6b0</code>.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Commit Timeline</div>
+        <div class="field-value">
+          <table style="border-collapse:collapse;font-size:0.85rem;width:100%;">
+            <tr style="background:#1e293b;">
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Commit</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Date</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Change</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Status</th>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">ee6b1dcf</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">2026-08-21 13:41</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">DW-B85 startup warning; no LoadRules in panel OnLoaded</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">Working ✓</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">a0217a6d</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">2026-08-23 20:52</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">DW-B91-A entry dedup; DW-B91-B flat-follower guard; no LoadRules in panel OnLoaded</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">Working ✓ (manual ritual)</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">83dcc6b0</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">2026-08-23 23:58</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">DW-B96 Limit Working dispatch; DW-B95 entryDispatched.Clear()</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">Working ✓ (manual ritual)</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">e06bce7b</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">2026-08-24 08:25</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">DW-B98: <code>_engine.LoadRules()</code> added to panel OnLoaded L704; <code>SaveRules()</code> added to SetEnabled</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">Race introduced ✗</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Root Cause — <code>_persistenceLoaded</code> Token Race</div>
+        <div class="field-value">
+          <p>There are <strong>two callers of <code>LoadRules()</code></strong>:</p>
+          <ol>
+            <li><strong><code>TradeCopierWindow.OnLoaded</code></strong> at
+              <a href="src/PropTraderTools/TradeCopierWindow.cs">TradeCopierWindow.cs:123</a> —
+              fires when user opens the Trade Copier popup window</li>
+            <li><strong><code>TradeCopierPanel.OnLoaded</code></strong> at
+              <a href="src/PropTraderTools/TradeCopierPanel.cs">TradeCopierPanel.cs:704</a> —
+              fires when the chart loads after NT8 restart (added by <code>e06bce7b</code>)</li>
+          </ol>
+          <p><code>LoadRules()</code> has a <strong>one-shot guard</strong>:</p>
+          <pre style="background:#0f172a;padding:0.75rem;border-radius:4px;font-size:0.8rem;overflow-x:auto;"><code>// CopyEngine.cs:4082
+public void LoadRules(string overridePath = null)
+{
+    if (_persistenceLoaded)      // ← any second caller hits this and returns immediately
+        return;
+    _persistenceLoaded = true;   // ← first caller claims the token permanently
+    ...
+}</code></pre>
+          <p><strong>Race scenario (most common — user opens Trade Copier window before/during chart load):</strong></p>
+          <ol>
+            <li>NT8 restarts. Chart begins loading. <code>TradeCopierAddOn</code> hooks <code>chart.Loaded</code>.</li>
+            <li>User clicks <em>Trade Copier</em> menu → <code>TradeCopierWindow</code> opens →
+              <code>Window.OnLoaded</code> fires → <code>LoadRules()</code> called →
+              <code>_persistenceLoaded = true</code> → XML read OK (if it exists).</li>
+            <li>Chart finishes loading → <code>TradeCopierPanel.OnLoaded</code> fires → <code>_engine.LoadRules()</code>
+              called → <strong>guard returns immediately (no-op)</strong>.</li>
+            <li><code>HOTFIX-B67-CHECKBOX-RESTORE</code> block calls <code>GetSavedFollowerNames()</code> →
+              iterates <code>_rules</code> → <strong>_rules is empty</strong> (Window path may have loaded them
+              but panel never received them as IsSelected checkboxes) → returns empty HashSet →
+              <code>saved.Count == 0</code> → <strong><code>TryAutoApply()</code> never called</strong>.</li>
+            <li>User does not manually check any follower box.</li>
+            <li>Order arrives → <code>DispatchCopy</code> Gate 1: <code>if (!_isCopyEnabled) return</code> →
+              <strong>silent drop</strong>.</li>
+          </ol>
+          <p><strong>Even simpler race (window not open — XML does not exist yet):</strong></p>
+          <ol>
+            <li>Panel calls <code>LoadRules()</code> → <code>File.Exists(path)</code> → <strong>false</strong>
+              (first run after B102 fix, XML never written before B102) → returns immediately.</li>
+            <li>Same outcome: <code>_rules</code> empty, <code>_isCopyEnabled = false</code>,
+              <code>TryAutoApply()</code> never fires.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Why It Worked Before <code>e06bce7b</code></div>
+        <div class="field-value">
+          <p>At <code>a0217a6d</code> and <code>83dcc6b0</code>, <strong>panel <code>OnLoaded</code> did NOT call
+          <code>_engine.LoadRules()</code></strong>. The <code>HOTFIX-B67-CHECKBOX-RESTORE</code> block was present
+          but <em>only</em> the Window path called <code>LoadRules()</code>, and that path requires the user to
+          explicitly open the popup window. The panel relied entirely on the
+          <strong>user's manual morning ritual</strong>:</p>
+          <ol>
+            <li>NT8 restart → panel loads → all checkboxes unchecked → <code>_isCopyEnabled = false</code></li>
+            <li>User manually checks Sim102/103/104 → <code>chk.Checked</code> lambda → <code>TryAutoApply()</code>
+              → <code>AddRule()</code> wires <code>_rules</code></li>
+            <li>User clicks <span style="color:#22c55e;">COPY ON</span> → <code>SetEnabled(true)</code> →
+              <code>_isCopyEnabled = true</code></li>
+            <li>Dispatch gates open. Copying works.</li>
+          </ol>
+          <p>This worked every day because the ritual was the persistence mechanism.
+          <code>copy_rules.xml</code> was never written (DW-B100 — private DTO classes prevented
+          <code>XmlSerializer</code> from reflecting the types) but the ritual bypassed the need for XML.</p>
+          <p><strong>The DW-B98 fix (<code>e06bce7b</code>) tried to automate the ritual via XML restore —
+          but introduced the <code>_persistenceLoaded</code> race before B100 was patched and before
+          the user's first successful <code>SaveRules()</code> write.</strong></p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Why It May Still Be Broken Even After B102</div>
+        <div class="field-value">
+          <p>B102 fixed DW-B100 (<code>private → internal</code> on the DTO classes). This means
+          <code>SaveRules()</code> can now successfully write <code>copy_rules.xml</code>. However:</p>
+          <ul>
+            <li>B102 only writes XML when <code>SaveRules()</code> is explicitly called. It is called in
+              <code>SetEnabled()</code> and <code>TryAutoApply()</code>.</li>
+            <li>If the user has NOT completed the manual ritual since B102 was compiled (no COPY ON press,
+              no checkbox toggle), <strong><code>copy_rules.xml</code> has never been written</strong>.</li>
+            <li>Without the XML file, <code>LoadRules()</code> → <code>File.Exists</code> → false →
+              no rules restored → same dead state.</li>
+            <li>The <code>_persistenceLoaded</code> race between Window and Panel remains as a latent bug
+              even after first successful XML write.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Immediate Workaround (No Pipeline Required)</div>
+        <div class="field-value">
+          <p>The manual ritual still works <strong>today</strong> as long as the user does it
+          <em>after panel loads</em>:</p>
+          <ol>
+            <li>Open chart in NT8. Wait for panel to appear.</li>
+            <li>Check boxes for Sim102, Sim103, Sim104 — this calls <code>chk.Checked</code> →
+              <code>TryAutoApply()</code> → <code>AddRule()</code> → <code>SaveRules()</code>
+              (now works because B102 fixed the private DTO bug).</li>
+            <li>Click <span style="color:#22c55e;">COPY ON</span> → <code>SetEnabled(true)</code> →
+              <code>SaveRules()</code> writes <code>copy_rules.xml</code> with <code>CopyEnabled=true</code>.</li>
+            <li>Tomorrow: XML exists. <code>LoadRules()</code> reads it.
+              <code>HOTFIX-B67-CHECKBOX-RESTORE</code> restores IsSelected on matching items.
+              <code>TryAutoApply()</code> fires. Copying works without manual ritual — <em>provided
+              the Panel wins the <code>_persistenceLoaded</code> race vs the Window</em>.</li>
+          </ol>
+          <p style="color:#f59e0b;">⚠️ <strong>The race is still present.</strong> If the user opens the
+          Trade Copier window before the chart panel fires its <code>Loaded</code> event, the Window
+          steals the <code>_persistenceLoaded</code> token and the Panel's <code>LoadRules()</code>
+          is a no-op — checkbox restore never fires, manual ritual required again.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Fix Required (Pipeline)</div>
+        <div class="field-value">
+          <p>Two changes eliminate the race permanently:</p>
+          <ol>
+            <li><strong>Remove the <code>_persistenceLoaded</code> idempotency guard</strong> from
+              <code>LoadRules()</code>. Instead, make <code>LoadRules()</code> always read from disk
+              but use a <strong>merge strategy</strong>: clear <code>_rules</code> and re-populate from XML
+              on each call (or skip if <code>_rules</code> already has entries from a prior successful load).
+              This allows both Panel and Window to call it safely without one blocking the other.</li>
+            <li><strong>Alternative (simpler)</strong>: Remove the <code>_persistenceLoaded</code> guard
+              entirely and rely on the <code>File.Exists</code> check as the sole gate. Each caller reads
+              the same XML independently — idempotent because both calls produce the same <code>_rules</code>
+              state from the same file. Only risk: double-population of <code>_rules</code> (ConcurrentBag
+              does not deduplicate). Mitigate by clearing <code>_rules</code> before populating at the
+              top of <code>LoadRules()</code>.</li>
+          </ol>
+          <table style="border-collapse:collapse;font-size:0.85rem;width:100%;margin-top:0.5rem;">
+            <tr style="background:#1e293b;">
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">File</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Change</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Lines</th>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">CopyEngine.cs</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Remove <code>_persistenceLoaded</code>
+                guard from <code>LoadRules()</code>. Add <code>_rules = new ConcurrentBag&lt;CopyRule&gt;()</code>
+                at top of LoadRules so each call is idempotent (clear + repopulate from XML).</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">~3 lines changed</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">CopyEngine.cs</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Remove <code>private volatile bool _persistenceLoaded</code>
+                field (L3870) — no longer needed.</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">1 line deleted</td>
+            </tr>
+          </table>
+          <p style="margin-top:0.5rem;color:#94a3b8;font-size:0.85rem;">
+            <strong>Important:</strong> The <code>ConcurrentBag.Clear()</code>-then-repopulate pattern
+            requires that <code>LoadRules()</code> not be called concurrently with <code>AddRule()</code>.
+            Both are currently UI-thread-only, so this is safe per NT8-003.
+          </p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Evidence Chain</div>
+        <div class="field-value">
+          <ul>
+            <li><strong><code>TradeCopierWindow.cs:123</code></strong> — <code>CopyEngine.Instance.LoadRules()</code>
+              called in Window's <code>OnLoaded</code>. Window is a <code>NTWindow</code> opened
+              <em>only when the user clicks the menu item</em> — NOT automatically on NT8 restart.</li>
+            <li><strong><code>TradeCopierPanel.cs:704</code></strong> — <code>_engine.LoadRules()</code>
+              added by <code>e06bce7b</code> (DW-B98). Panel fires <code>Loaded</code> unconditionally
+              on every NT8 restart during chart startup.</li>
+            <li><strong><code>CopyEngine.cs:4084-4086</code></strong> — <code>_persistenceLoaded</code> guard:
+              token is claimed at L4086 <em>before</em> <code>File.Exists</code> is evaluated at L4089.
+              Even if XML is missing and the first caller returns early, the token is permanently claimed.
+              No second caller can reach <code>File.Exists</code>.</li>
+            <li><strong><code>CopyEngine.cs:3870</code></strong> — <code>private volatile bool _persistenceLoaded = false</code>.
+              No reset path exists. Once set to <code>true</code> it stays for the singleton lifetime.</li>
+            <li><strong><code>CopyEngine.cs:620-632</code></strong> — <code>GetSavedFollowerNames()</code>
+              reads <strong>in-memory <code>_rules</code></strong> (not disk): iterates
+              <code>foreach (var rule in _rules)</code>. If Window won the race and loaded XML into
+              <code>_rules</code>, HOTFIX-B67 sees a non-empty bag even though Panel's own
+              <code>LoadRules()</code> was a no-op — both callers share the same singleton instance.</li>
+            <li><strong><code>TradeCopierPanel.cs:711-725</code></strong> — <code>HOTFIX-B67-CHECKBOX-RESTORE</code>:
+              gated on <code>saved.Count &gt; 0</code>. Fails only when <code>_rules</code> is empty,
+              which happens when: (a) Panel wins the race but XML does not exist yet, or (b) Window wins
+              the race and XML does not exist yet.</li>
+            <li><strong><code>CopyEngine.cs:4089</code></strong> — <code>File.Exists(path)</code> guard:
+              if XML was never written (first cold start after B100 compiled, before user has pressed
+              COPY ON or toggled any checkbox), <code>LoadRules()</code> returns immediately regardless
+              of who wins the token race.</li>
+            <li><strong><code>CopyEngine.cs:467-473</code></strong> — <code>SetEnabled()</code> calls
+              <code>SaveRules()</code> unconditionally. <code>TradeCopierPanel.cs:2219</code> —
+              <code>TryAutoApply()</code> also calls <code>SaveRules()</code>. XML is written on the
+              first COPY ON press or any checkbox toggle after B100 is compiled. After that one action
+              the XML exists for all future restarts.</li>
+            <li><strong><code>CopyEngine.cs:1230, 2176</code></strong> — Gate 1: <code>if (!_isCopyEnabled) return</code>
+              — blocks all dispatch when copy was never enabled</li>
+            <li><strong><code>TradeCopierPanel.cs:711</code></strong> — HOTFIX-B67-CHECKBOX-RESTORE has an
+              outer guard: <code>if (_instrument != null &amp;&amp; _leaderAccount != null)</code> wraps the entire
+              restore block. If either is null at Panel Loaded time (chart account selector not yet resolved),
+              the checkbox restore is skipped regardless of <code>_rules</code> content. This is an
+              independent guard from the <code>_persistenceLoaded</code> race and applies to all four
+              failure-map scenarios equally. In practice, <code>_leaderAccount</code> and <code>_instrument</code>
+              are resolved from the chart's ChartTrader account selector, which is populated by NT8 before the
+              Panel <code>Loaded</code> event fires — so this guard passes in the normal case. Noted as an
+              additional precondition, not a separate defect.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Refined Failure Map (source-confirmed 2026-08-24)</div>
+        <div class="field-value">
+          <table style="border-collapse:collapse;font-size:0.82rem;width:100%;">
+            <tr style="background:#1e293b;">
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Scenario</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Token winner</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">XML exists?</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;"><code>_rules</code> at HOTFIX-B67</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Outcome</th>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;">Normal restart — user does not open Window</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Panel</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">No (first run post-B100)</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Empty</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">BLOCKED — restore skipped, manual ritual required once</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;">Normal restart — user does not open Window</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Panel</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">Yes (ritual done since B100)</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Populated by Panel's LoadRules</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">OK — checkbox restore fires, copying arms automatically</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;">User opens Window <em>before</em> chart loads</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Window</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">Yes</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Populated by Window (shared ConcurrentBag)</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">OK — HOTFIX-B67 sees non-empty <code>_rules</code> despite Panel's LoadRules being a no-op</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;">User opens Window <em>before</em> chart loads</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Window</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">No (XML missing)</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Empty — Window returned at File.Exists=false</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">BLOCKED — Panel's LoadRules is also a no-op, <code>_rules</code> stays empty</td>
+            </tr>
+          </table>
+          <p style="margin-top:0.5rem;color:#f59e0b;"><strong>Primary conclusion:</strong>
+          The blocking failure is specifically <em>XML does not exist on disk</em>. Once the user
+          performs the manual ritual one time after B100 is compiled, the normal-restart path (Panel
+          wins token, no Window open) works correctly on all subsequent restarts. The <code>_persistenceLoaded</code>
+          race is a latent bug but its practical impact after one successful ritual write is very low.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Defect Classification</div>
+        <div class="field-value">
+          <table style="border-collapse:collapse;font-size:0.85rem;">
+            <tr><td style="padding:3px 8px;font-weight:600;">Severity</td>
+                <td style="padding:3px 8px;color:#ef4444;">P0 — Copier silent on every cold start</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Introduced by</td>
+                <td style="padding:3px 8px;font-family:monospace;">e06bce7b (DW-B98 — 2026-08-24 08:25)</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Root type</td>
+                <td style="padding:3px 8px;">One-shot idempotency guard shared across two independent callers with non-deterministic Loaded event ordering</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Files affected</td>
+                <td style="padding:3px 8px;font-family:monospace;">CopyEngine.cs (LoadRules, _persistenceLoaded)</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Pipeline</td>
+                <td style="padding:3px 8px;">B103 — requires ptt-orchestrator (3 lines total) → B103-LaneA FINAL_PASS</td></tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <!-- ══ end section-b102 ══════════════════════════════════════════════════ -->
+
+
+    <!-- ══ section-b103 ══════════════════════════════════════════════════════ -->
+    <div id="section-b103" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-header">
+        <span class="dw-id">DW-B103</span>
+        <span class="dw-title">Follower Brackets Wiped After T1 Fill — <code>TryCancelFollowerEntries</code> Missing PTT-* Guard</span>
+        <span class="pill pill-green">CLOSED</span>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Symptom</div>
+        <div class="field-value">
+          <p>After QX-ALL (or BE-ALL) places PTT-QX-* (or PTT-BE-*) brackets on all accounts,
+          when the T1 target fills on the leader, followers immediately lose ALL their
+          remaining brackets (Stop-2, Stop-3, Target-2, Target-3). The leader keeps its brackets.
+          Reproduced with both <strong>BE-ALL → PTT-BE brackets</strong> and
+          <strong>QX-ALL → PTT-QX brackets</strong>. Confirmed from NT8 Output Tab 1 log
+          and Positions grid: followers go flat at T1, leader does not.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Kill Chain (confirmed via log + code trace)</div>
+        <div class="field-value">
+          <ol>
+            <li>QX-ALL fires. Leader (Sim101) gets 3 OCO pairs:
+              <code>PTT-QX-Stop / PTT-QX-T1</code>,
+              <code>PTT-QX-Stop2 / PTT-QX-T2</code>,
+              <code>PTT-QX-Stop3 / PTT-QX-T3</code>.
+              Followers (Sim102/103/104) each get the same 3 OCO pairs.</li>
+            <li>Price hits T1. <code>PTT-QX-T1</code> fills on ALL accounts.
+              Each account's OCO pair 1 resolves: <code>PTT-QX-Stop</code> is NT8-cancelled via OCO.
+              Remaining brackets on ALL accounts should be pairs 2 and 3.</li>
+            <li>NT8 fires <code>OnOrderUpdate</code> for the leader's (Sim101's) <code>PTT-QX-Stop</code>
+              with state = <code>Cancelled</code>.</li>
+            <li>Gate 2 finds a matching rule: <code>MasterAccount = Sim101</code>. ✓</li>
+            <li><strong><code>TryCancelFollowerEntries</code></strong> is called
+              at <a href="src/PropTraderTools/CopyEngine.cs">CopyEngine.cs:1250</a>:
+              <ul>
+                <li>State = Cancelled ✓ (passes first gate)</li>
+                <li><code>IsAtmBracketName("PTT-QX-Stop")</code> → checks for <code>StopN</code>/<code>TargetN</code>
+                  pattern (e.g. "Stop1") → <strong>"PTT-QX-Stop" does NOT match → returns false</strong></li>
+                <li>Falls through to <code>CancelOneAccount</code> for Sim102, Sim103, Sim104</li>
+              </ul>
+            </li>
+            <li><code>CancelOneAccount(Sim102, MES SEP26)</code> at
+              <a href="src/PropTraderTools/CopyEngine.cs">CopyEngine.cs:2915</a>:
+              <ul>
+                <li>Iterates <code>acc.Orders</code></li>
+                <li><code>IsBracketLeg("PTT-QX-Stop2")</code> →
+                  checks <code>StartsWith("Stop")</code> or <code>StartsWith("Target")</code> →
+                  "PTT-QX-Stop2" starts with "PTT-" not "Stop" → <strong>returns false</strong></li>
+                <li>Same result for <code>PTT-QX-Stop3</code>, <code>PTT-QX-T2</code>, <code>PTT-QX-T3</code></li>
+                <li><strong>All 4 remaining follower brackets are cancelled by <code>acc.Cancel()</code></strong></li>
+              </ul>
+            </li>
+          </ol>
+          <p>Identical kill chain applies to PTT-BE brackets: when <code>PTT-BE-Target-1</code> fills
+          on the leader, its OCO partner <code>PTT-BE-Stop-1</code> is NT8-cancelled.
+          <code>IsAtmBracketName("PTT-BE-Stop-1")</code> → false (not "Stop1" pattern) →
+          <code>CancelOneAccount</code> wipes follower <code>PTT-BE-Stop-2/3</code> and
+          <code>PTT-BE-Target-2/3</code>.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Why the Leader is Unaffected</div>
+        <div class="field-value">
+          <p><code>TryCancelFollowerEntries</code> only calls <code>CancelOneAccount</code> on
+          <code>rule.FollowerAccounts</code> — never on the master account itself.
+          The leader's remaining pairs 2 and 3 are NOT touched because the loop only iterates followers.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Root Cause — Missing PTT-* Guard in <code>TryCancelFollowerEntries</code></div>
+        <div class="field-value">
+          <p><code>TryCancelFollowerEntries</code> was designed to propagate a leader's
+          <em>entry order cancel</em> (e.g. unfilled limit entry cancelled by user)
+          to the followers' corresponding entry orders. It should NOT fire when the cancelled order is
+          one of PTT's own <em>exit brackets</em> (PTT-QX-*, PTT-BE-*).</p>
+          <p>The existing guard at
+          <a href="src/PropTraderTools/CopyEngine.cs">CopyEngine.cs:1514</a> is
+          <code>IsAtmBracketName(order.Name)</code> which only covers NT8 native bracket names
+          (<code>Stop1..Stop9</code>, <code>Target1..Target9</code>).
+          It does NOT cover PTT-prefixed bracket names:</p>
+          <table style="border-collapse:collapse;font-size:0.85rem;width:100%;margin-top:0.5rem;">
+            <tr style="background:#1e293b;">
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Order Name</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;"><code>IsAtmBracketName</code></th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;"><code>IsNonFlatDispatchName</code></th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Should Cancel Followers?</th>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">Stop1</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">true ✓</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">true ✓</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">NO</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">PTT-QX-Stop</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">false ✗</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">true ✓</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">NO</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">PTT-QX-Stop2</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">false ✗</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">true ✓</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">NO</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">PTT-BE-Stop-1</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">false ✗</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">true ✓</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">NO</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">Entry</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">false ✗</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">false ✗</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">YES (entry cancel)</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">PTT-Copy</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">false ✗</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">true ✓</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">YES (entry cancel)</td>
+            </tr>
+          </table>
+          <p style="margin-top:0.5rem;color:#f59e0b;">⚠️ Note: <code>PTT-Copy</code> starts with "PTT-" so
+          <code>IsNonFlatDispatchName</code> returns true — but <code>PTT-Copy</code> cancels should NOT propagate
+          to followers. The correct fix is to use a targeted guard: skip only <em>exit</em> orders, not all PTT-* orders.
+          The safest approach is to add a dedicated guard specifically for PTT-QX-* and PTT-BE-* names.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Fix — One Line in <code>TryCancelFollowerEntries</code></div>
+        <div class="field-value">
+          <p>File: <a href="src/PropTraderTools/CopyEngine.cs">CopyEngine.cs:1510-1523</a></p>
+          <pre style="background:#0f172a;padding:0.75rem;border-radius:4px;font-size:0.8rem;overflow-x:auto;"><code>// CURRENT (broken):
+private bool TryCancelFollowerEntries(Order order, CopyRule rule)
+{
+    if (order.OrderState != OrderState.Cancelled)
+        return false;
+    if (IsAtmBracketName(order.Name))
+        return true; // HOTFIX-B63-COPY-CANCEL-01: Stop1..Stop9 / Target1..Target9 skipped
+    foreach (var acc in rule.FollowerAccounts)   // ← PTT-QX-Stop / PTT-BE-Stop-1 reach here!
+    {
+        if (acc == null) continue;
+        CancelOneAccount(acc, order.Instrument);
+    }
+    return true;
+}
+
+// FIX (add one guard after IsAtmBracketName):
+private bool TryCancelFollowerEntries(Order order, CopyRule rule)
+{
+    if (order.OrderState != OrderState.Cancelled)
+        return false;
+    if (IsAtmBracketName(order.Name))
+        return true; // HOTFIX-B63-COPY-CANCEL-01
+    if (order.Name != null
+        && (order.Name.StartsWith("PTT-QX-", StringComparison.Ordinal)
+            || order.Name.StartsWith("PTT-BE-", StringComparison.Ordinal)))
+        return false; // DW-B103: OCO cancel of PTT exit bracket must not wipe follower brackets
+    foreach (var acc in rule.FollowerAccounts)
+    {
+        if (acc == null) continue;
+        CancelOneAccount(acc, order.Instrument);
+    }
+    return true;
+}</code></pre>
+          <p><strong>Why not use <code>IsNonFlatDispatchName</code>?</strong>
+          <code>IsNonFlatDispatchName</code> returns true for <em>all</em> "PTT-*" names,
+          including <code>PTT-Copy</code>. A cancelled <code>PTT-Copy</code> on the leader
+          (drag cancel path) SHOULD propagate to followers — that is the entry drag cancel
+          propagation. Using <code>IsNonFlatDispatchName</code> would break drag cancels.
+          The targeted fix uses <code>StartsWith("PTT-QX-")</code> and
+          <code>StartsWith("PTT-BE-")</code> — only our own exit bracket prefixes.</p>
+          <p><strong>Alternative — more exhaustive fix:</strong> Extract the intent test into
+          a new predicate <code>IsPttExitBracketName(string name)</code> covering all current and
+          future PTT exit bracket prefixes (<code>PTT-QX-</code>, <code>PTT-BE-</code>,
+          <code>PTT-QX-Stop</code> variants, etc.). This is cleaner for future expansions.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Evidence From NT8 Output Log</div>
+        <div class="field-value">
+          <pre style="background:#0f172a;padding:0.75rem;border-radius:4px;font-size:0.8rem;overflow-x:auto;"><code>[PTT-COPY] dispatch: Buy x7 MES SEP26 -&gt; Sim102 mult=1 mode=Named name=Entry
+[PTT-COPY] dispatch: Buy x7 MES SEP26 -&gt; Sim103 mult=1 mode=Named name=Entry
+[PTT-COPY] dispatch: Buy x7 MES SEP26 -&gt; Sim104 mult=1 mode=Named name=Entry
+[PTT-QX-ALL] GlobalQuickExit fired
+[PTT-QX-ALL] leader: Sim101 MES SEP26 qty=7 t1=4 stop=7667.5
+[PTT-QX] snapshot: 6 cancellable orders for MES SEP26   ← leader had 6 working brackets
+[PTT-QX] cancel: 6 queued, 0 race-skipped on Sim101
+[PTT-QX-ALL] follower: Sim102 MES SEP26 leaderStop=7667.5 leaderTargets=3
+[PTT-QX-GUARD] pre-cancel follower brackets: Sim102
+[PTT-QX] snapshot: 0 cancellable orders for MES SEP26   ← 0 = pre-cancel already cleared them (correct)
+[PTT-QX] cancel: 0 queued, 0 race-skipped on Sim102     ← new PTT-QX orders submitted in Step 6 (silent)
+-- (same for Sim103, Sim104) --
+-- price hits T1 --
+-- PTT-QX-T1 fills on all accounts --
+-- NT8 OCO-cancels PTT-QX-Stop on Sim101 --
+-- OnOrderUpdate: PTT-QX-Stop Cancelled, account=Sim101 (master) --
+-- TryCancelFollowerEntries: IsAtmBracketName("PTT-QX-Stop") = false --
+-- CancelOneAccount(Sim102): cancels PTT-QX-Stop2, PTT-QX-Stop3, PTT-QX-T2, PTT-QX-T3 --
+-- CancelOneAccount(Sim103): same --
+-- CancelOneAccount(Sim104): same --
+-- Followers are now bracket-less. Leader keeps pairs 2 and 3. --</code></pre>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Affected Scenarios</div>
+        <div class="field-value">
+          <ul>
+            <li><strong>QX-ALL → T1 fill</strong>: <code>PTT-QX-Stop</code> OCO-cancel triggers wipe of follower
+              <code>PTT-QX-Stop2/3</code> + <code>PTT-QX-T2/3</code></li>
+            <li><strong>BE-ALL → T1 fill</strong>: <code>PTT-BE-Stop-1</code> OCO-cancel triggers wipe of follower
+              <code>PTT-BE-Stop-2/3</code> + <code>PTT-BE-Target-2/3</code></li>
+            <li><strong>Any PTT exit bracket OCO pair</strong>: whenever the T-N target fills and OCO-cancels
+              the corresponding Stop-N on the leader, all follower remaining PTT brackets are wiped</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Guard Placement Rationale (source-confirmed 2026-08-24)</div>
+        <div class="field-value">
+          <p><strong>Two versions of <code>IsBracketLeg</code> exist in <code>CopyEngine.cs</code>:</strong></p>
+          <table style="border-collapse:collapse;font-size:0.82rem;width:100%;margin-bottom:0.5rem;">
+            <tr style="background:#1e293b;">
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Version</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Lines</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Includes PTT- prefix?</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Used by</th>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">IsBracketLegStatic</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">3180-3191</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">Yes — StartsWith("PTT-")</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">NOT called by CancelOneAccount</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">IsBracketLeg (instance)</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">3198-3205</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">No — B29 explicitly removed "PTT-"</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">CancelOneAccount at L2927</td>
+            </tr>
+          </table>
+          <p>The B29 comment at L3193-3197 explains the removal: <em>"PTT- exit orders (PTT-Trim, PTT-Flatten,
+          PTT-BE-Stop, PTT-Tighten-Stop) are NOT brackets — they should be cancelable by the Cancel button.
+          Copy-cascade prevention for PTT- orders is handled separately by Gate 0.5 in DispatchCopy."</em></p>
+          <p><strong>B29 was correct for the Cancel-button path. It did not anticipate the TryCancelFollowerEntries
+          path reaching CancelOneAccount via an OCO-cancel trigger.</strong> Gate 0.5 in DispatchCopy prevents
+          PTT-* orders being copied to followers (cascade prevention), but Gate 0.5 is in the <em>dispatch</em> path —
+          it has no effect on the <em>cancel-propagation</em> path through TryCancelFollowerEntries.</p>
+          <p><strong>Correct guard layer:</strong> The fix belongs in <code>TryCancelFollowerEntries</code>
+          (before the follower loop), not in <code>IsBracketLeg</code> and not in <code>CancelOneAccount</code>.
+          Source-confirmed via grep — <code>CancelOneAccount</code> has three callers:</p>
+          <table style="border-collapse:collapse;font-size:0.82rem;width:100%;margin-bottom:0.5rem;">
+            <tr style="background:#1e293b;">
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Caller</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Lines</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Path</th>
+              <th style="padding:4px 8px;text-align:left;border:1px solid #334155;">Should cancel PTT-QX-*/PTT-BE-*?</th>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">TryCancelFollowerEntries</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">L1520</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">OCO-triggered follower cancel propagation</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#ef4444;">NO — this is the broken path</td>
+            </tr>
+            <tr style="background:#0f172a;">
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">CancelPendingEntries(Account,Instrument)</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">L2665, L2670</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">User-initiated cancel: leader direct, then all followers</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">YES — user pressing Cancel should cancel PTT exit brackets</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid #334155;font-family:monospace;">CancelPendingEntries(Instrument)</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">L2909</td>
+              <td style="padding:4px 8px;border:1px solid #334155;">Instrument-scoped user-initiated cancel</td>
+              <td style="padding:4px 8px;border:1px solid #334155;color:#22c55e;">YES — same intent as above</td>
+            </tr>
+          </table>
+          <p>A guard placed inside <code>CancelOneAccount</code> to skip PTT-QX-*/PTT-BE-* orders would break
+          both <code>CancelPendingEntries</code> paths — the user's manual Cancel button would no longer cancel
+          PTT exit brackets. This is unacceptable. The guard must be at the <code>TryCancelFollowerEntries</code>
+          level where the decision context (OCO-triggered propagation vs. user intent) is known.
+          <code>CancelOneAccount</code> itself is a clean "cancel all working entry orders on this
+          account/instrument" utility; it correctly has no opinion about why the cancellation is being
+          requested.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Defect Classification</div>
+        <div class="field-value">
+          <table style="border-collapse:collapse;font-size:0.85rem;">
+            <tr><td style="padding:3px 8px;font-weight:600;">Severity</td>
+                <td style="padding:3px 8px;color:#ef4444;">P0 — Followers always lose remaining brackets after T1</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Root type</td>
+                <td style="padding:3px 8px;">Missing guard in <code>TryCancelFollowerEntries</code>:
+                  <code>IsAtmBracketName</code> covers native ATM names only (Stop1..Stop9/Target1..Target9)
+                  but not PTT-QX-* / PTT-BE-* exit bracket names. B29 intentionally excluded PTT- from
+                  IsBracketLeg (instance) to keep Cancel-button working; no compensating guard was added
+                  at the TryCancelFollowerEntries level.</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">File</td>
+                <td style="padding:3px 8px;font-family:monospace;">CopyEngine.cs:1510-1523 (TryCancelFollowerEntries)</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Fix layer</td>
+                <td style="padding:3px 8px;font-family:monospace;">TryCancelFollowerEntries — NOT IsBracketLeg. Adding to IsBracketLeg would break B29 Cancel-button behavior.</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Change size</td>
+                <td style="padding:3px 8px;">3 lines added to TryCancelFollowerEntries — no other files touched</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">BE-ALL confirmation</td>
+                <td style="padding:3px 8px;">Structural (code symmetry confirmed). Log confirmation outstanding.</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Pipeline</td>
+                <td style="padding:3px 8px;">B104 — requires ptt-orchestrator → B103-LaneA FINAL_PASS</td></tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <!-- ══ end section-b103 ══════════════════════════════════════════════════ -->
+
+
+    <!-- ══ section-b104 ══════════════════════════════════════════════════════ -->
+    <div id="section-b104" class="section-block" style="margin-top:2.5rem;">
+      <div class="section-header">
+        <span class="dw-id">DW-B104</span>
+        <span class="dw-title">Unprotected Unit After QX-ALL — Integer Division Remainder in <code>PttQuickExit</code> Fallback Path</span>
+        <span class="pill pill-green">CLOSED</span>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Symptom</div>
+        <div class="field-value">
+          <p>When <code>pos.Quantity</code> is not evenly divisible by <code>targetCount</code> and no ATM
+          targets were snapshotted (fallback path), one unit remains unprotected after QX-ALL. Confirmed live
+          2026-08-24: Sim102 held 1 unit long with no bracket after QX-ALL on a 7-unit position with 3 OCO pairs.
+          With copier ON, the gap was multiplied across all follower accounts (Sim102/103/104).</p>
+          <p>Example: 7 units, 3 pairs — floor division gives <code>Math.Max(1, 7/3) = 2</code> per pair.
+          3 pairs × 2 units = 6 protected; 1 unit left naked.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Affected Path</div>
+        <div class="field-value">
+          <p><code>PttQuickExit.Execute()</code> fallback branch — fires when no ATM targets were snapshotted
+          (i.e., position entered without an active ATM template). Prior code: <code>Math.Max(1, pos.Quantity / targetCount)</code>
+          applied uniformly across all pairs with no remainder correction.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Root Cause</div>
+        <div class="field-value">
+          <p>Integer floor division truncates the remainder. When <code>pos.Quantity % targetCount != 0</code>,
+          the last OCO pair received the same floor qty as all prior pairs, leaving
+          <code>pos.Quantity - (floor * targetCount)</code> units unprotected. No compensation was applied
+          to absorb the remainder into any pair.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Fix Applied</div>
+        <div class="field-value">
+          <p>Extracted <code>CalcTNQty(int totalQty, int targetCount, int i)</code> from the inline fallback expression.</p>
+          <ul style="margin:0.4rem 0 0 1.2rem;">
+            <li>All pairs except the last: <code>floorQty = Math.Max(1, totalQty / targetCount)</code></li>
+            <li>Last pair (when <code>i == targetCount - 1 &amp;&amp; totalQty &gt; targetCount</code>):
+                absorbs remainder — <code>Math.Max(1, totalQty - floorQty * (targetCount - 1))</code></li>
+            <li>Guard preserves pre-existing behaviour when <code>qty &lt;= targetCount</code> (each pair = 1 unit)</li>
+          </ul>
+          <p style="margin-top:0.5rem;">Verified: <code>CalcTNQty(7,3,0)=2</code>, <code>CalcTNQty(7,3,1)=2</code>,
+          <code>CalcTNQty(7,3,2)=3</code> — total = 7 ✓.<br>
+          <code>CalcTNQty(6,3,2)=2</code> — total = 6 ✓ (divisible case unchanged).<br>
+          <code>CalcTNQty(1,3,2)=1</code> — total = 1 ✓ (qty &lt; targetCount guard intact).</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Files Affected</div>
+        <div class="field-value">
+          <p><code>src/PropTraderTools/Features/PttQuickExit.cs</code> — Execute() L131, new CalcTNQty method L270–276.
+          CYC of <code>Execute()</code>: unchanged at 8. CYC of <code>CalcTNQty</code>: 3.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Confirmed In</div>
+        <div class="field-value">
+          <p>Live test 2026-08-24 — Sim102 held 1 unit long with no bracket after QX-ALL on 7-unit position
+          (copier active; gap multiplied across all follower accounts). Independent source verification
+          2026-08-24: all six post-fix checks PASS (see post-pipeline validation session).</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Defect Classification</div>
+        <div class="field-value">
+          <table style="border-collapse:collapse;font-size:0.85rem;">
+            <tr><td style="padding:3px 8px;font-weight:600;">Severity</td>
+                <td style="padding:3px 8px;color:#f59e0b;">P1 — Unprotected residual unit on non-divisible position sizes; not a daily risk unless QX-ALL used bare</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Root type</td>
+                <td style="padding:3px 8px;">Integer division truncation — remainder not absorbed into any OCO pair</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Files affected</td>
+                <td style="padding:3px 8px;font-family:monospace;">Features/PttQuickExit.cs (Execute fallback, new CalcTNQty)</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Change size</td>
+                <td style="padding:3px 8px;">1 inline expression replaced + 7-line private static method added</td></tr>
+            <tr><td style="padding:3px 8px;font-weight:600;">Pipeline</td>
+                <td style="padding:3px 8px;">B104-LaneA FINAL_PASS</td></tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <!-- ══ end section-b104 ══════════════════════════════════════════════════ -->
+
+    <!-- ══ section-live-test-2026-08-25 ═══════════════════════════════════════ -->
+    <div id="section-live-test-2026-08-25" class="section-block" style="margin-top:2.5rem;">
+      <h2 class="section-title">
+        Live Test Session &mdash; 2026-08-25 &mdash; Copier + BE-ALL + QX-ALL Combination Tests
+        <span class="badge" style="background:#1e3a5f;color:#7dd3fc;margin-left:0.6rem;">SESSION NOTES</span>
+      </h2>
+      <div class="section-body">
+        <p>
+          Test environment: Sim101 (master) + Sim102 / Sim103 / Sim104 (followers).
+          Instrument: MES SEP26. Copy engine ON throughout.
+          All standalone button tests (no copier) had been pre-validated before this session.
+        </p>
+
+        <table style="border-collapse:collapse;width:100%;font-size:0.85em;">
+          <thead>
+            <tr style="background:#1e293b;color:#94a3b8;">
+              <th style="padding:6px 10px;text-align:left;">Combo</th>
+              <th style="padding:6px 10px;text-align:left;">Description</th>
+              <th style="padding:6px 10px;text-align:left;">Result</th>
+              <th style="padding:6px 10px;text-align:left;">Notes / Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#0f1923;">
+              <td style="padding:5px 10px;font-weight:700;">A</td>
+              <td style="padding:5px 10px;">Enter on Sim101 &rarr; copier dispatches &rarr; press BE-ALL &rarr; confirm all 4 accounts get PTT-BE-Stop/Target brackets</td>
+              <td style="padding:5px 10px;color:#4ade80;font-weight:700;">&#10003; PASS</td>
+              <td style="padding:5px 10px;">All 4 accounts received correct PTT-BE-Stop/Target OCO pairs. Confirmed 2026-08-25.</td>
+            </tr>
+            <tr style="background:#131f2e;">
+              <td style="padding:5px 10px;font-weight:700;">B &mdash; T1 fill aftermath</td>
+              <td style="padding:5px 10px;">Enter on Sim101 &rarr; copier dispatches &rarr; press QX-ALL &rarr; T1 fills &rarr; confirm follower PTT-QX-Stop2/Stop3 survive (DW-B103 live confirmation)</td>
+              <td style="padding:5px 10px;color:#4ade80;font-weight:700;">&#10003; PASS</td>
+              <td style="padding:5px 10px;">Follower brackets survived T1 fill. DW-B103 (<code>TryCancelFollowerEntries</code> PTT-QX-/PTT-BE- guard) confirmed working in live copier session. Confirmed 2026-08-25.</td>
+            </tr>
+            <tr style="background:#0f1923;">
+              <td style="padding:5px 10px;font-weight:700;">B &mdash; snapshot / stop resolution</td>
+              <td style="padding:5px 10px;">QX-ALL copier ON &mdash; leader snapshot, pre-snapshotted leaderStop, follower pre-cancel guard, stop resolved via leaderStop fallback</td>
+              <td style="padding:5px 10px;color:#4ade80;font-weight:700;">&#10003; PASS</td>
+              <td style="padding:5px 10px;">DW-B63-01 leaderStop fallback confirmed. DW-B79-03 pre-cancel guard confirmed. 3-target ATM: leaderTargets=3 correct. Log traced against source &mdash; all paths verified.</td>
+            </tr>
+            <tr style="background:#131f2e;">
+              <td style="padding:5px 10px;font-weight:700;">D</td>
+              <td style="padding:5px 10px;">Enter &rarr; copier &rarr; QX-ALL &rarr; then BE-ALL &rarr; confirm BE-ALL sweeps QX brackets and replaces with BE brackets on all 4 accounts</td>
+              <td style="padding:5px 10px;color:#4ade80;font-weight:700;">&#10003; PASS</td>
+              <td style="padding:5px 10px;">QX cancelled 8 BE orders on leader (4-target session). All 4 accounts received PTT-BE-Stop/Target-1..4. DW-B84-01 followers-before-leader ordering confirmed. BE-ALL only (T1+T2+T3) also clean &mdash; all 4 accounts exited via PTT-BE-Target-1/2/3. DW-B92 HasFilledBeTargetFast suppression confirmed correct.</td>
+            </tr>
+            <tr style="background:#0f1923;">
+              <td style="padding:5px 10px;font-weight:700;color:#f87171;">C</td>
+              <td style="padding:5px 10px;color:#f87171;">Enter &rarr; copier &rarr; BE-ALL &rarr; then QX-ALL &rarr; confirm QX-ALL sweeps BE brackets and replaces with QX brackets on all 4 accounts</td>
+              <td style="padding:5px 10px;color:#f87171;font-weight:700;">&#10007; ANOMALY &rarr; DW-B105</td>
+              <td style="padding:5px 10px;color:#f87171;">Sim102 left with 4 contracts unprotected (PTT-BE-Stop-4 absent). See <a href="#section-b105">DW-B105</a>.</td>
+            </tr>
+            <tr style="background:#131f2e;">
+              <td style="padding:5px 10px;font-weight:700;color:#fbbf24;">QX-ALL 4-target anomaly</td>
+              <td style="padding:5px 10px;color:#fbbf24;">QX-ALL produced 4 targets on a 3-target ATM session</td>
+              <td style="padding:5px 10px;color:#fbbf24;font-weight:700;">&#9888; ANOMALY &rarr; DW-B106</td>
+              <td style="padding:5px 10px;color:#fbbf24;">Stale prior-session partial-fill Working Limit order on leader inflated snapshot count to 4. Subsequent run produced correct leaderTargets=3. See <a href="#section-b106">DW-B106</a>.</td>
+            </tr>
+            <tr style="background:#0f1923;">
+              <td style="padding:5px 10px;font-weight:700;">C &mdash; re-test</td>
+              <td style="padding:5px 10px;">Combo C re-test after DW-B105 + DW-B106 pipeline fix</td>
+              <td style="padding:5px 10px;color:#fbbf24;">&#9711; AWAITING LIVE TEST &mdash; DW-B105 + DW-B106 closed B107-T1</td>
+              <td style="padding:5px 10px;">Pass criterion: zero [BE-DIAG] lines during QX sweep; all 4 accounts covered by PTT-QX-* brackets; no unprotected position.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- ══ end section-live-test-2026-08-25 ══════════════════════════════════ -->
+
+    <!-- ══ section-b105 ══════════════════════════════════════════════════════ -->
+    <div id="section-b105" class="section-block" style="margin-top:2.5rem;">
+      <h2 class="section-title">
+        DW-B105 &mdash; <span class="badge badge-closed">CLOSED B107-T1</span>
+        TryReplacePttBeBrackets Falsely Triggered by QX-ALL BE-Bracket Sweep &rarr;
+        Follower Left Unprotected (Combo C: BE-ALL &rarr; QX-ALL)
+      </h2>
+
+      <div class="section-body">
+
+        <!-- DISCOVERY -->
+        <h3>Discovery</h3>
+        <p>
+          Live test session &mdash; Combo C (BE-ALL then QX-ALL) with Copier ON,
+          Sim101 (master) + Sim102/Sim103/Sim104 (followers), MES SEP26, Sell x7, 4-target ATM.
+          After the sequence completed, one follower account (Sim104) was left with an
+          open position and zero brackets. The user had to flatten manually.
+        </p>
+
+        <!-- SYMPTOM -->
+        <h3>Observed Symptom</h3>
+        <ul>
+          <li>BE-ALL fired first &rarr; placed <code>PTT-BE-Stop-1..4</code> + <code>PTT-BE-Target-1..4</code> on all 4 accounts. &check;</li>
+          <li>QX-ALL fired next &rarr; leader Sim101: 8 BE orders found in snapshot, all cancelled cleanly. &check;</li>
+          <li>QX-ALL follower pre-cancel guard (<code>[PTT-QX-GUARD]</code>) swept follower BE brackets via 2-param <code>CancelQxBrackets</code>.</li>
+          <li>Each <code>PTT-BE-Stop-*</code> cancel on a follower triggered <code>TryReplacePttBeBrackets</code>
+              (designed for ATM-sweep recovery, not QX-ALL intentional cancels).</li>
+          <li>With 4 BE stops per follower, the attempt counter hit 3 after Stop-1/Stop-2/Stop-3 cancels arrived in rapid succession,
+              before the DW-B82-01 reset in <code>TryFireFollowerBeRetry</code> could fire.</li>
+          <li>Sim104: 500ms fallback fired (<code>[BE-RETRY] flat=False</code>), called <code>MoveStopToBreakEven(isRetry:true)</code>,
+              but QX targets were already in <code>CancelSubmitted</code> state &rarr; <code>targets=0</code>
+              &rarr; bare <code>PTT-BE-Stop</code> (no number, no OCO) submitted.</li>
+          <li>That bare stop was also cancelled (<code>[BE-DIAG-CANCEL] Sim104 PTT-BE-Stop</code> &times;2)
+              &rarr; Sim104 position open with zero brackets.</li>
+          <li>Sim102 and Sim103: event-driven <code>PTT-QX-T1 Working</code> retry fired in time
+              and placed OCO BE pairs; those accounts stopped out correctly.</li>
+        </ul>
+
+        <!-- LOG EVIDENCE -->
+        <h3>Key Log Lines</h3>
+        <pre>
+[BE-DIAG-CANCEL] Sim104 PTT-BE-Stop-1 instr=MES SEP26
+[BE-DIAG] TryReplacePttBeBrackets: Sim104 -- attempt 1/3, slot registered, 500ms fallback queued
+[BE-DIAG-CANCEL] Sim104 PTT-BE-Stop-1 instr=MES SEP26    &lt;-- NT8 double-callback
+[BE-DIAG-CANCEL] Sim104 PTT-BE-Stop-2 instr=MES SEP26
+[BE-DIAG] TryReplacePttBeBrackets: Sim104 -- max 3 attempts, no new slot (TryFireFollowerBeRetry still holds slot 3)
+[BE-DIAG-CANCEL] Sim104 PTT-BE-Stop-3 instr=MES SEP26
+[BE-DIAG] TryReplacePttBeBrackets: Sim104 -- max 3 attempts ...
+[BE-DIAG-CANCEL] Sim104 PTT-BE-Stop-4 instr=MES SEP26
+[BE-DIAG] TryReplacePttBeBrackets: Sim104 -- max 3 attempts ...
+...
+[BE-RETRY] Sim104 -- fallback timer fired, flat=False
+[BE] MoveStopToBreakEven: Sim104 buf=0t        &lt;-- retry runs, but targets=0
+[BE-DIAG-CANCEL] Sim104 PTT-BE-Stop instr=MES SEP26   &lt;-- bare stop placed and immediately cancelled
+[BE-DIAG-CANCEL] Sim104 PTT-BE-Stop instr=MES SEP26   &lt;-- NT8 double-callback
+        </pre>
+
+        <!-- ROOT CAUSE -->
+        <h3>Root Cause</h3>
+        <p>
+          <strong>Two compounding defects in the QX-ALL &rarr; follower path when BE brackets are active:</strong>
+        </p>
+        <ol>
+          <li>
+            <strong>DW-B105-RC1 &mdash; TryReplacePttBeBrackets has no QX-intent guard.</strong><br>
+            It is called from <code>OnOrderUpdate</code> whenever any <code>PTT-BE-Stop-*</code> transitions
+            to <code>Cancelled</code> on a follower with an open position. It cannot distinguish
+            &ldquo;ATM sweep wiped my BE stops (recovery needed)&rdquo; from
+            &ldquo;QX-ALL intentionally cancelled my BE stops (recovery NOT needed)&rdquo;.
+            The correct action after QX-ALL cancels BE brackets is: do nothing &mdash; QX-ALL will
+            immediately submit <code>PTT-QX-*</code> brackets as the replacement.
+          </li>
+          <li>
+            <strong>DW-B105-RC2 &mdash; Attempt counter exhausted by 4-stop rapid cancel burst.</strong><br>
+            With a 4-target BE bracket, 4 &times; <code>PTT-BE-Stop-*</code> cancel callbacks arrive
+            within milliseconds. The 3-attempt limit in <code>TryReplacePttBeBrackets</code> (designed
+            for the 1-stop-cancel recovery case) is exhausted after 3 of them. The DW-B82-01 reset
+            in <code>TryFireFollowerBeRetry</code> only fires when the slot is atomically consumed
+            by the event-driven path, which requires a <code>PTT-QX-T*</code> or <code>Target*</code>
+            order going <code>Working</code> &mdash; but by the time that happens for Sim104 (via 500ms
+            fallback), the QX targets are already past <code>Working</code> and the
+            <code>MoveStopToBreakEven</code> call sees <code>targets=0</code>.
+          </li>
+        </ol>
+
+        <!-- AFFECTED CODE PATHS -->
+        <h3>Affected Code Paths</h3>
+        <ul>
+          <li><code>CopyEngine.OnOrderUpdate</code> &rarr; <code>TryReplacePttBeBrackets</code> (line ~2277)</li>
+          <li><code>TryReplacePttBeBrackets</code> &rarr; <code>_beReplaceAttempts</code> counter (line ~2288)</li>
+          <li><code>TryFireFollowerBeRetry</code> &rarr; DW-B82-01 reset (line ~1348)</li>
+          <li><code>QueueBeRetryFallback</code> 500ms path &rarr; <code>MoveStopToBreakEven(isRetry:true)</code> (line ~1469)</li>
+          <li><code>MoveStopToBreakEven</code> Step A: <code>targets=0</code> when QX orders are in <code>CancelSubmitted</code> (line ~3369)</li>
+        </ul>
+
+        <!-- PROPOSED FIX DIRECTION -->
+        <h3>Proposed Fix Direction (Director Review Required Before Pipeline)</h3>
+        <p>
+          <strong>Option A (preferred &mdash; intent guard):</strong>
+          Add a <code>ConcurrentDictionary&lt;string, bool&gt; _qxCancelInProgress</code> flag that
+          <code>PttGlobalQuickExit.ExecuteOne</code> sets on the follower account name before calling
+          <code>CancelQxBrackets</code> and clears after. <code>TryReplacePttBeBrackets</code> checks
+          this flag and returns early if set &mdash; QX-ALL cancel is intentional, no recovery slot needed.
+          Zero impact on the ATM-sweep recovery path (flag is never set during a native ATM entry).
+        </p>
+        <p>
+          <strong>Option B (counter fix only):</strong>
+          Raise the attempt limit from 3 to <code>targetCount &times; 2 + 1</code>, or reset the counter
+          any time a slot is successfully registered (not just when consumed by event-driven path).
+          Does not address RC1 but eliminates the counter-exhaustion race. Simpler but leaves
+          spurious recovery attempts running during QX-ALL.
+        </p>
+        <p>
+          <strong>Option C (cancel-source tagging):</strong>
+          Pass a <code>CancelSource</code> enum (<code>QxAll | AtmSweep | Manual</code>) through
+          <code>CancelQxBrackets</code> and stamp each order before cancel. <code>OnOrderUpdate</code>
+          reads the tag and skips <code>TryReplacePttBeBrackets</code> for <code>QxAll</code>-sourced
+          cancels. Most precise but requires Order-level tag storage (NT8 does not support custom
+          order annotations; would need a <code>ConcurrentDictionary&lt;string, CancelSource&gt;</code>
+          keyed on <code>Order.OrderId</code>).
+        </p>
+
+        <!-- SEVERITY -->
+        <h3>Severity</h3>
+        <ul>
+          <li><strong>P1 &mdash; HIGH</strong>: Unprotected open position. User must manually flatten.
+              Reproducible on Combo C (BE-ALL &rarr; QX-ALL) with a multi-target ATM whenever the QX-ALL
+              pre-cancel guard reduces visible target count at BE-retry time, leaving one or more
+              high-qty tranches without a bracket.</li>
+          <li>Confirmed affected: <strong>Sim102</strong> (4 of 7 contracts unprotected, manually flattened).
+              Sim103 covered by mixed brackets. Sim104 covered by QX brackets. All three root causes
+              (RC1, RC2, RC3) can fire independently or together depending on per-follower timing.</li>
+        </ul>
+
+        <!-- STATUS -->
+        <h3>Status</h3>
+        <p>
+          <strong>OPEN &mdash; Pipeline authorised.</strong>
+          Director approved <strong>Option A</strong>: <code>_qxCancelInProgress</code>
+          <code>ConcurrentDictionary&lt;string,bool&gt;</code> intent-guard.
+          Ships combined with DW-B106 in a single ticket (one pipeline run).
+          No <code>.cs</code> edits made yet. Spec only.
+        </p>
+
+        <!-- EXECUTION GRID EVIDENCE (2026-08-25 07-33 PM.csv) -->
+        <h3>Execution Grid Evidence &mdash; Corroborates and Corrects Account Identity</h3>
+        <p>
+          NT8 Executions grid (07-33 PM.csv) captured the 6:55&nbsp;PM stop-out block.
+          Rows 81&ndash;95 show fills across all four accounts at 7674.00 and refine the
+          original log-only analysis:
+        </p>
+
+        <table style="border-collapse:collapse;width:100%;font-size:0.85em;margin-top:0.5rem;">
+          <thead>
+            <tr style="background:#1e293b;color:#94a3b8;">
+              <th style="padding:6px 10px;text-align:left;">Account</th>
+              <th style="padding:6px 10px;text-align:left;">Stop orders that filled</th>
+              <th style="padding:6px 10px;text-align:right;">Contracts covered</th>
+              <th style="padding:6px 10px;text-align:left;">Outcome</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#0f1923;">
+              <td style="padding:5px 10px;">Sim101 (leader)</td>
+              <td style="padding:5px 10px;">PTT-QX-Stop(1) Stop2(3) Stop3(2) Stop4(1)</td>
+              <td style="padding:5px 10px;text-align:right;">7</td>
+              <td style="padding:5px 10px;color:#4ade80;">&#10003; Fully covered &mdash; QX brackets</td>
+            </tr>
+            <tr style="background:#131f2e;">
+              <td style="padding:5px 10px;"><strong>Sim102</strong></td>
+              <td style="padding:5px 10px;"><strong>PTT-BE-Stop-1(1) Stop-2(1) Stop-3(1). PTT-BE-Stop-4 absent.</strong></td>
+              <td style="padding:5px 10px;text-align:right;color:#f87171;"><strong>3 of 7</strong></td>
+              <td style="padding:5px 10px;color:#f87171;">&#10007; <strong>4 contracts unprotected &mdash; manually flattened</strong></td>
+            </tr>
+            <tr style="background:#0f1923;">
+              <td style="padding:5px 10px;">Sim103</td>
+              <td style="padding:5px 10px;">PTT-BE-Stop-1(1) Stop-2(1) Stop-3(1) + PTT-QX-Stop4(4)</td>
+              <td style="padding:5px 10px;text-align:right;">7</td>
+              <td style="padding:5px 10px;color:#fbbf24;">&#9888; Covered by mixed brackets (safe but anomalous)</td>
+            </tr>
+            <tr style="background:#131f2e;">
+              <td style="padding:5px 10px;">Sim104</td>
+              <td style="padding:5px 10px;">PTT-QX-Stop(1) Stop2(1) Stop3(1) Stop4(4)</td>
+              <td style="padding:5px 10px;text-align:right;">7</td>
+              <td style="padding:5px 10px;color:#4ade80;">&#10003; Fully covered &mdash; QX brackets</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p style="margin-top:0.8rem;">
+          <strong>Spec correction:</strong> The original log analysis named Sim104 as the unprotected account.
+          The execution grid proves Sim104 was fully stopped out by QX brackets &mdash; the 500ms-fallback
+          bare <code>PTT-BE-Stop</code> was indeed swept by the QX-ALL pre-cancel, but
+          <code>PttQuickExit.Execute</code> then placed intact <code>PTT-QX-Stop/Stop2/Stop3/Stop4</code>
+          which fired correctly at 7674.00. <strong>Sim102 is the account with the unprotected
+          4-contract tranche.</strong>
+        </p>
+
+        <p>
+          <strong>Refined failure mechanism for Sim102:</strong>
+          The event-driven BE retry (<code>[BE-RETRY] Sim102 PTT-QX-T1 Working</code>) fired correctly and
+          <code>MoveStopToBreakEven(isRetry:true)</code> ran Step&nbsp;A target snapshot. At that moment
+          only 3 of the 4 QX target orders were visible as snapshotable (the 4th was already in
+          <code>CancelSubmitted</code> or beyond, consumed by the QX pre-cancel guard that had run
+          immediately before). <code>ResolveTargetCount</code> returned 3. The three OCO pairs placed
+          each had qty&nbsp;=&nbsp;1 (matching the snapshotted QX target quantities). The 4th pair
+          covering qty&nbsp;=&nbsp;4 (the remainder tranche from <code>CalcTNQty</code>) was never
+          generated because the target list had exactly 3 entries. This is a
+          <strong>DW-B105-RC3</strong> (third root cause, addendum): partial target visibility at
+          retry time when the QX pre-cancel guard runs between the slot registration and the
+          event-driven <code>MoveStopToBreakEven</code> call, reducing <code>targets.Count</code>
+          below the actual position tranche count.
+        </p>
+
+        <p>
+          <strong>Sim103 mixed bracket (anomalous, safe):</strong>
+          3 BE stops (qty&nbsp;1 each) + surviving <code>PTT-QX-Stop4</code> (qty&nbsp;4) = 7 covered.
+          Total coverage intact. Indicates the QX and BE layers partially overlapped on Sim103 &mdash;
+          the QX-Stop4 was submitted by <code>PttQuickExit.Execute</code> but not swept by any subsequent
+          cancel, while the BE retry placed Stop-1/2/3 on top. Safe outcome, timing race per DW-B105-RC1.
+        </p>
+
+        <h3>BE-ALL Only Session (T1+T2+T3) &mdash; Grid Confirms CORRECT</h3>
+        <p>Grid 07-33 PM rows 2&ndash;13 (7:26&ndash;7:31 PM) confirm clean sequential fill of all three targets on all four accounts:</p>
+        <ul>
+          <li>PTT-BE-Target-1: Sell 5 &times; 7678.50 on Sim101/102/103/104 at 7:26 PM &#10003;</li>
+          <li>PTT-BE-Target-2: Sell 3 &times; 7679.50 on Sim101/102/103/104 at 7:30 PM &#10003;</li>
+          <li>PTT-BE-Target-3: Sell 2 &times; 7680.50 on Sim101/102/103/104 at 7:31 PM &#10003;</li>
+        </ul>
+        <p>5+3+2=10. Full exit on all 4 accounts. Zero residual. Entry @ 7676.50 confirmed (rows 14&ndash;18). &#10003;</p>
+
+      </div><!-- end section-body -->
+    </div>
+    <!-- ══ end section-b105 ══════════════════════════════════════════════════ -->
+
+    <!-- ══ section-b106 ══════════════════════════════════════════════════════ -->
+    <div id="section-b106" class="section-block" style="margin-top:2.5rem;">
+      <h2 class="section-title">
+        DW-B106 &mdash; <span class="badge badge-closed">CLOSED B107-T1</span>
+        QX-ALL Produces 4 Targets When a 4-Target ATM Is Loaded &mdash;
+        Should Always Be Capped at 3 (T1=1pt, T2=2pt, T3=3pt)
+      </h2>
+
+      <div class="section-body">
+
+        <h3>Discovery</h3>
+        <p>
+          Live test session &mdash; QX-ALL with Copier ON, Sim101 (master) + Sim102/103/104 (followers),
+          MES SEP26, Buy x10, 3-target ATM loaded. QX-ALL fired and produced
+          <code>PTT-QX-T1/T2/T3/T4</code> (4 targets) instead of the intended
+          <code>PTT-QX-T1/T2/T3</code> (3 targets at 1pt&nbsp;/&nbsp;2pt&nbsp;/&nbsp;3pt).
+          A subsequent QX-ALL run with the same 3-target ATM correctly produced 3 targets,
+          confirming this is a session-state issue, not an ATM configuration issue.
+        </p>
+
+        <h3>Observed Behaviour</h3>
+        <pre>
+[PTT-QX-ALL] leader: Sim101 MES SEP26 qty=10 t1=4 stop=7677.25
+[PTT-QX] snapshot: 8 cancellable orders for MES SEP26   &lt;-- 8 = 4 pairs x 2 orders (should be 6)
+[PTT-QX-ALL] follower: Sim102 leaderStop=7677.25 leaderTargets=4   &lt;-- should be 3
+        </pre>
+        <p>
+          The immediately following run (same session, same 3-target ATM) produced:
+        </p>
+        <pre>
+[PTT-QX] snapshot: 6 cancellable orders for MES SEP26   &lt;-- correct: 3 pairs x 2 orders
+[PTT-QX-ALL] follower: ... leaderTargets=3              &lt;-- correct
+        </pre>
+
+        <h3>Root Cause</h3>
+        <p>
+          <strong>Corrected diagnosis (confirmed by user):</strong> A 3-target ATM was loaded in both runs.
+          The 4-target count was caused by a <strong>stale prior-session order still in Working state</strong>
+          on Sim101 at the moment QX-ALL fired.
+        </p>
+        <p>
+          <code>SnapshotTargetOrders</code> in
+          <a href="../src/PropTraderTools/Features/PttGlobalQuickExit.cs"><code>PttGlobalQuickExit.cs</code></a>
+          collects <em>all</em> Working/Accepted Limit orders on the leader account matching:
+        </p>
+        <ul>
+          <li><code>Target1..Target9</code> &mdash; current ATM targets</li>
+          <li><code>PTT-QX-T*</code> &mdash; prior QX session targets</li>
+          <li><code>PTT-BE-Target-*</code> &mdash; prior BE session targets</li>
+        </ul>
+        <p>
+          The most likely trigger: a <code>PTT-BE-Target-*</code> or <code>PTT-QX-T*</code> order
+          from a prior session had a <strong>partial fill</strong> — e.g., 8 of 10 contracts filled,
+          leaving a 2-contract remainder still in Working state. On the next entry, before QX-ALL
+          fired, Sim101&apos;s <code>acc.Orders</code> contained:
+          <code>Target1</code>, <code>Target2</code>, <code>Target3</code> (current ATM) +
+          one stale <code>PTT-BE-Target-*</code> or <code>PTT-QX-T*</code> partial remainder
+          (prior session) &rarr; snapshot count = <strong>4</strong>.
+        </p>
+        <p>
+          <code>ResolveTargetCount</code> in
+          <a href="../src/PropTraderTools/Features/PttQuickExit.cs"><code>PttQuickExit.cs</code></a>
+          returns the snapshot count verbatim — no cap, no staleness check:
+        </p>
+        <pre>
+// PttQuickExit.cs line 255
+private static int ResolveTargetCount(List&lt;...&gt; own, int leaderCount)
+    =&gt; own?.Count &gt; 0 ? own.Count : (leaderCount &gt; 0 ? leaderCount : 2);
+        </pre>
+        <p>
+          Target <strong>prices</strong> are always correct (computed from <code>t1Ticks * (i+1)</code>).
+          Only the <strong>count</strong> is inflated by the stale order.
+        </p>
+
+        <h3>Affected Code</h3>
+        <ul>
+          <li>
+            <code>PttGlobalQuickExit.SnapshotTargetOrders</code> (line&nbsp;172) &mdash;
+            returns the raw ATM target list, count unbounded.
+          </li>
+          <li>
+            <code>PttQuickExit.ResolveTargetCount</code> (line&nbsp;255) &mdash;
+            no max-3 cap applied.
+          </li>
+          <li>
+            <code>PttGlobalQuickExit.Execute</code> (line&nbsp;81) &mdash;
+            <code>leaderTargets = targets.Count</code> forwarded verbatim to followers.
+          </li>
+        </ul>
+
+        <h3>Intended Behaviour (Spec)</h3>
+        <ul>
+          <li>QX-ALL always places exactly <strong>3</strong> OCO pairs: T1, T2, T3.</li>
+          <li>Target prices: entry &plusmn; 1pt (4 ticks), &plusmn; 2pt (8 ticks), &plusmn; 3pt (12 ticks).</li>
+          <li>Per-tranche quantities: taken from the current ATM snapshot entries [0..2] if available,
+              otherwise <code>CalcTNQty(pos.Quantity, 3, i)</code>.</li>
+          <li>Stale prior-session <code>PTT-QX-T*</code> or <code>PTT-BE-Target-*</code> orders
+              (partial fills, cancellation lag) must <strong>not</strong> contribute to
+              <code>targetCount</code>.</li>
+        </ul>
+
+        <h3>Proposed Fix</h3>
+        <p>
+          Two independent fixes are required. Both should ship in the same ticket.
+        </p>
+        <p>
+          <strong>Fix 1 &mdash; Hard cap in <code>ResolveTargetCount</code> (defence-in-depth):</strong><br>
+          Regardless of how the snapshot is assembled, <code>ResolveTargetCount</code> must never
+          return more than 3. Change the fallback default from <code>2</code> to <code>3</code> at
+          the same time:
+        </p>
+        <pre>
+// PttQuickExit.cs &mdash; ResolveTargetCount
+private static int ResolveTargetCount(List&lt;...&gt; own, int leaderCount)
+{
+    int raw = own?.Count &gt; 0 ? own.Count : (leaderCount &gt; 0 ? leaderCount : 3);
+    return Math.Min(raw, 3);  // QX-ALL contract: always exactly 3 targets
+}
+        </pre>
+        <p>
+          <strong>Fix 2 &mdash; Exclude <code>PTT-QX-T*</code> and <code>PTT-BE-Target-*</code>
+          from <code>SnapshotTargetOrders</code> target-count logic (root-cause fix):</strong><br>
+          The snapshot is called at QX-ALL fire time, when the ATM is freshly loaded. Only native
+          ATM targets (<code>Target1..Target9</code>) should drive the count. The
+          <code>PTT-QX-T*</code> and <code>PTT-BE-Target-*</code> branches exist to preserve
+          per-tranche <em>quantities</em> when QX-ALL or BE-ALL replaces a prior QX/BE bracket —
+          but in those cases the ATM targets are gone and only the PTT orders are present.
+          The correct discriminator: if <em>any</em> native <code>Target*</code> orders exist in
+          the snapshot, the count should be taken from those only (they represent the current ATM).
+          If <em>no</em> native <code>Target*</code> orders exist (post-QX or post-BE state),
+          then <code>PTT-QX-T*</code> / <code>PTT-BE-Target-*</code> count is used. This prevents
+          stale partial-fill residue from inflating the count.
+        </p>
+        <p>
+          Practically: Fix 1 alone is sufficient to prevent the observable symptom (4 targets instead
+          of 3), since the correct ATM always has exactly 3 native targets. Fix 2 is the cleaner
+          architectural guard. Both should be implemented.
+        </p>
+
+        <h3>Severity</h3>
+        <p>
+          <strong>P2 &mdash; MEDIUM.</strong> Triggered by a partial-fill residue from a prior
+          session leaving a stale Working Limit order on the leader account. Intermittent &mdash;
+          only occurs when a prior <code>PTT-QX-T*</code> or <code>PTT-BE-Target-*</code> order
+          has an unfilled remainder at the moment QX-ALL fires. No unprotected position results.
+          However the extra bracket violates the QX-ALL 3-target contract and interacts adversely
+          with DW-B105 (more OCO stops = deeper <code>_beReplaceAttempts</code> counter exhaustion
+          when BE-ALL fires on top).
+        </p>
+
+        <h3>Status</h3>
+        <p>
+          <strong>OPEN &mdash; Pipeline authorised.</strong>
+          Director approved both Fix&nbsp;1 (hard cap <code>Math.Min(raw,3)</code> in
+          <code>ResolveTargetCount</code>) and Fix&nbsp;2 (native-target discriminator in
+          <code>SnapshotTargetOrders</code>). Ships combined with DW-B105 in a single ticket.
+          Verification criterion: code inspection + Combo&nbsp;C live re-test
+          (no separate stale-order re-test required).
+          No <code>.cs</code> edits made yet. Spec only.
+        </p>
+
+      </div><!-- end section-body -->
+    </div>
+    <!-- ══ end section-b106 ══════════════════════════════════════════════════ -->
+
+
+
   </body>
 </html>

@@ -149,7 +149,17 @@ namespace PropTraderTools
                         + (acc != null ? acc.Name : "NULL"),
                     NinjaTrader.NinjaScript.PrintTo.OutputTab1
                 );
-                CopyEngine.Instance?.CancelQxBrackets(acc, instr);
+                // DW-B105: set intent-guard before cancel so TryReplacePttBeBrackets skips
+                // ATM-sweep recovery during the QX-ALL sweep. Clear unconditionally after.
+                CopyEngine.Instance?._qxCancelInProgress.TryAdd(acc.Name, true);
+                try
+                {
+                    CopyEngine.Instance?.CancelQxBrackets(acc, instr);
+                }
+                finally
+                {
+                    CopyEngine.Instance?._qxCancelInProgress.TryRemove(acc.Name, out _);
+                }
             }
             var executor = new PttQuickExit(); // (2)
             executor.Execute(
@@ -174,9 +184,10 @@ namespace PropTraderTools
             int Qty
         )> SnapshotTargetOrders(Account acc, NinjaTrader.Cbi.Instrument instr)
         {
-            var result = new System.Collections.Generic.List<(double Price, int Qty)>();
+            var nativeTargets = new System.Collections.Generic.List<(double Price, int Qty)>();
+            var pttTargets    = new System.Collections.Generic.List<(double Price, int Qty)>();
             if (acc == null || instr == null)
-                return result; // (1)
+                return nativeTargets; // (1) JS-002: empty list, never null
             foreach (NinjaTrader.Cbi.Order o in acc.Orders) // (2)
             {
                 if (o == null)
@@ -187,26 +198,29 @@ namespace PropTraderTools
                 bool instrOk = o.Instrument != null && o.Instrument.FullName == instr.FullName;
                 if (!stateOk || !instrOk || o.OrderType != NinjaTrader.Cbi.OrderType.Limit)
                     continue;
-                bool isTarget =
-                    !string.IsNullOrEmpty(o.Name)
-                    && ( // (4)
-                        (
-                            o.Name.StartsWith("Target", StringComparison.Ordinal)
-                            && o.Name.Length > 6
-                            && char.IsDigit(o.Name[6])
-                        )
-                        || (
-                            o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                            && o.Name.Length > 8
-                            && char.IsDigit(o.Name[8])
-                        )
-                        || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
-                    );
-                if (!isTarget)
+                if (string.IsNullOrEmpty(o.Name))
                     continue;
-                result.Add((o.LimitPrice, o.Quantity));
+                bool isNative =
+                    o.Name.StartsWith("Target", StringComparison.Ordinal)
+                    && o.Name.Length > 6
+                    && char.IsDigit(o.Name[6]); // (4)
+                bool isPtt =
+                    (
+                        o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                        && o.Name.Length > 8
+                        && char.IsDigit(o.Name[8])
+                    )
+                    || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal); // (5)
+                if (isNative)
+                    nativeTargets.Add((o.LimitPrice, o.Quantity));
+                else if (isPtt)
+                    pttTargets.Add((o.LimitPrice, o.Quantity));
             }
-            return result;
+            // DW-B106: if ANY native ATM targets exist, use only those for the count.
+            // PTT-QX-T* / PTT-BE-Target-* are only used when no native ATM targets are present
+            // (post-QX or post-BE state). This prevents stale partial-fill residue from
+            // inflating targetCount when a new ATM entry is active.
+            return nativeTargets.Count > 0 ? nativeTargets : pttTargets; // (6)
         }
     }
 }

@@ -248,14 +248,20 @@ namespace PropTraderTools
         private static double ResolveStop(double own, double fallback) => own > 0 ? own : fallback;
 
         /// <summary>
-        /// ResolveTargetCount: returns own count if > 0, else leaderCount if > 0, else 2.
-        /// B78 DW-B63-01: follower has no snapshotted targets when ATM brackets not yet loaded.
+        /// ResolveTargetCount: returns own count if > 0, else leaderCount if > 0, else 3.
+        /// Hard cap: never return more than 3. QX-ALL contract is always exactly 3 targets.
+        /// DW-B106: cap prevents stale prior-session partial-fill residue inflating count.
+        /// DW-B63-01: fallback default changed 2 -> 3 (3-target ATM is the standard).
         /// CYC=2: two ternaries. JS-002: returns int (never null).
         /// </summary>
         private static int ResolveTargetCount(
             System.Collections.Generic.List<(double Price, int Qty)> own,
             int leaderCount
-        ) => own?.Count > 0 ? own.Count : (leaderCount > 0 ? leaderCount : 2);
+        )
+        {
+            int raw = own?.Count > 0 ? own.Count : (leaderCount > 0 ? leaderCount : 3);
+            return Math.Min(raw, 3); // DW-B106: QX-ALL contract -- always exactly 3 targets
+        }
 
         /// <summary>
         /// CalcTNQty: compute per-pair qty for fallback path (no ATM snapshot).
