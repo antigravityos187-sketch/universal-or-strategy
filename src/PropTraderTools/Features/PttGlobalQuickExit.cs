@@ -158,6 +158,10 @@ namespace PropTraderTools
                 }
                 finally
                 {
+                    // DW-B112: TryRemove clears guard synchronously. NT8 OnOrderUpdate(Cancelled)
+                    // events for the swept orders arrive asynchronously AFTER this finally executes.
+                    // The structural PTT-QX presence check in TryReplacePttBeBrackets (DW-B112 Option 2)
+                    // compensates by checking acc.Orders for Working/Submitted PTT-QX-* orders.
                     CopyEngine.Instance?._qxCancelInProgress.TryRemove(acc.Name, out _);
                 }
             }

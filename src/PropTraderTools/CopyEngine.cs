@@ -313,8 +313,8 @@ namespace PropTraderTools
                 GlobalBeBufferChanged?.Invoke(newValue)
             ); // HOTFIX-DISPATCH-FIX-01: fire on app UI thread
 
-        // HOTFIX-QUICKALL-SINGLETON-01: Quick ALL tick buffer — singleton so all panels share the same value.
-        // JS-023: volatile int allowed. NT8-003: volatile double banned — not used here.
+        // HOTFIX-QUICKALL-SINGLETON-01: Quick ALL tick buffer -- singleton so all panels share the same value.
+        // JS-023: volatile int allowed. NT8-003: volatile double banned -- not used here.
         private volatile int _globalQuickAllT1 = 4; // default 4 ticks (same as per-panel default)
         internal int GlobalQuickAllT1 => _globalQuickAllT1;
 
@@ -1462,7 +1462,6 @@ namespace PropTraderTools
                     timer.Stop();
                     if (_pendingFollowerBeSlots.TryRemove(capturedAcc.Name, out var slot))
                     {
-                        _beReplaceAttempts.TryRemove(capturedAcc.Name, out _); // DW-B82-01: reset on slot consumption
                         bool flat = IsFlat(FindPosition(slot.Account, slot.Instrument));
                         NinjaTrader.Code.Output.Process(
                             "[BE-RETRY] "
@@ -2276,8 +2275,10 @@ namespace PropTraderTools
             return count > 0; // (2)
         }
 
-        // CYC=5: (1) null guard, (2) follower guard, (3) flat guard, (4) attempt guard, (5) slot+fallback.
-        // JS-021: ConcurrentDictionary ops are lock-free. JS-001: no throw. JS-002: void. ASCII-only.
+        // CYC=7: (1) null guard, (2) follower guard, (3) flat guard, (3b) qxCancelInProgress guard,
+        // (3c) PTT-QX presence check DW-B112, (4) attempt guard DW-B111 cap=5, (5) slot+fallback.
+        // JS-021: ConcurrentDictionary ops are lock-free. acc.Orders read is NT8-safe from OnOrderUpdate.
+        // JS-001: no throw. JS-002: void. ASCII-only. DW-B111: cap raised 3->5. DW-B112: Option 2.
         // DW-T4: structurally unreachable from follower path. Followers use acc.Change() (early
         // return at follower block end, L2791) and never hold PTT-BE-Stop-* orders. No guard needed.
         private void TryReplacePttBeBrackets(Order cancelledStop)
@@ -2294,14 +2295,41 @@ namespace PropTraderTools
                 return;
             var acc = cancelledStop.Account;
             var instr = cancelledStop.Instrument;
-            // (4) Attempt-count guard: max 3 slot registrations per trade per account.
-            _beReplaceAttempts.TryGetValue(acc.Name, out int prevAttempts);
-            if (prevAttempts >= 3) // (4)
+            // (3c) DW-B112: structural PTT-QX presence check. If any PTT-QX-* orders are Working
+            // or Submitted for this account+instrument, QX-ALL has already protected the position.
+            // Skip ATM-sweep recovery to prevent PTT-BE brackets firing on top of PTT-QX brackets.
+            // Timing-independent: does not rely on _qxCancelInProgress guard window.
+            // W1 resolved: .ToList() snapshot used for consistency with L2414 safety pattern.
+            if (
+                acc.Orders
+                    .ToList()
+                    .Any(
+                        o =>
+                            o.Name.StartsWith("PTT-QX-", StringComparison.Ordinal)
+                            && (
+                                o.OrderState == OrderState.Working
+                                || o.OrderState == OrderState.Submitted
+                            )
+                            && o.Instrument?.FullName == instr.FullName
+                    )
+            )
             {
                 NinjaTrader.Code.Output.Process(
                     "[BE-DIAG] TryReplacePttBeBrackets: "
                         + acc.Name
-                        + " -- max 3 attempts, no new slot (TryFireFollowerBeRetry still holds slot "
+                        + " -- PTT-QX orders Working/Submitted, skipping recovery (DW-B112)",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
+                return;
+            }
+            // (4) Attempt-count guard: max 5 slot registrations per trade per account.
+            _beReplaceAttempts.TryGetValue(acc.Name, out int prevAttempts);
+            if (prevAttempts >= 5) // (4) DW-B111: cap raised to 5 (3x500ms insufficient for partial-target retry)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "[BE-DIAG] TryReplacePttBeBrackets: "
+                        + acc.Name
+                        + " -- max 5 attempts, no new slot (TryFireFollowerBeRetry still holds slot "
                         + prevAttempts
                         + ")",
                     NinjaTrader.NinjaScript.PrintTo.OutputTab1
@@ -2321,7 +2349,7 @@ namespace PropTraderTools
                     + acc.Name
                     + " -- attempt "
                     + (prevAttempts + 1)
-                    + "/3, slot registered, 500ms fallback queued",
+                    + "/5, slot registered, 500ms fallback queued",
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1
             );
             QueueBeRetryFallback(acc, instr, 0, delayMs: 500);
@@ -2877,8 +2905,8 @@ namespace PropTraderTools
         }
 
         // B29 fix -- ComputeLimitPx: aggressive exit anchor.
-        // Long exits (Sell Limit) post at bid - buffer (at/below market → fills immediately).
-        // Short exits (BuyToCover) post at ask + buffer (at/above market → fills immediately).
+        // Long exits (Sell Limit) post at bid - buffer (at/below market -> fills immediately).
+        // Short exits (BuyToCover) post at ask + buffer (at/above market -> fills immediately).
         // DW-B29-01: original used ask+buffer for long, placing passive limit ABOVE market (never filled).
         // CYC=1: single ternary. No NT8 deps, no state, no nulls.
         // internal static -- CopyEngineTests.cs calls CopyEngine.ComputeLimitPx(...) directly.
