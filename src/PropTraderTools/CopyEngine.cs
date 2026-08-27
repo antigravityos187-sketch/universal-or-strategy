@@ -3268,8 +3268,9 @@ namespace PropTraderTools
         // context -- no exception, no effect. Confirmed: [MSTBE] Change() OK Stop1 logged while
         // stop remained at original price in Orders tab.
         // Pattern source: PttBreakEven.ExecuteOneAccount + CancelStaleBracketsLocal + SubmitBeTargetsLocal.
-        // CYC=8: IsFlat(1) + tickSize/pos guard(2) + snapshot-foreach(3) + stateOk(4) + instrOk(5)
-        //        + cancel-try(6) + 0-targets branch(7) + targets-for-loop(8).
+        // CYC=7: IsFlat(1) + tickSize/pos guard(2) + while-cap(3) + cancel-try(4)
+        //        + 0-targets branch(5) + targets-for-loop(6) + partial-retry branch(7).
+        // DW-B107: Step A extracted to SnapshotBeTargets; while cap reduces stale residue.
         // JS-021: no lock. JS-001: try/catch per order pair -- no throw in hot path.
         // NT8-049: StopMarket arg6=0, arg7=stopPrice; Limit arg6=limitPrice, arg7=0.
         // NT8-007: arg11=(NinjaTrader.Cbi.CustomOrder)null. NT8-013: DateTime.MaxValue.
@@ -3322,6 +3323,53 @@ namespace PropTraderTools
             return count;
         }
 
+        // CYC=7: null guard(1) + foreach(2) + o==null continue(3) + stateOk(4) + instrOk+type(5)
+        //        + if(isNative)(6) + else if(isPtt)(7). JS-002: returns List, never null.
+        // JS-021: no lock. JS-001: no throw. ASCII-only.
+        // DW-B107: two-pass native-first collect for MoveStopToBreakEven Step A.
+        // stateOk is wider than SnapshotTargetOrders (7 states vs 2) per DW-B79-01 + REPAIR-09 DW-B79-05.
+        private List<(double Price, int Qty, OrderAction Action)> SnapshotBeTargets(
+            Account acc, Instrument instrument)
+        {
+            var nativeTargets = new List<(double Price, int Qty, OrderAction Action)>();
+            var pttTargets    = new List<(double Price, int Qty, OrderAction Action)>();
+            if (acc == null || instrument == null)
+                return nativeTargets; // (1) JS-002: empty list, never null
+            foreach (Order o in acc.Orders) // (2)
+            {
+                if (o == null)
+                    continue; // (3)
+                bool stateOk =
+                    o.OrderState == OrderState.Working
+                    || o.OrderState == OrderState.Accepted
+                    || o.OrderState == OrderState.Submitted
+                    || o.OrderState == OrderState.Initialized
+                    || o.OrderState == OrderState.TriggerPending   // (4)
+                    || o.OrderState == OrderState.ChangeSubmitted
+                    || o.OrderState == OrderState.CancelSubmitted;
+                bool instrOk = o.Instrument != null && o.Instrument.FullName == instrument.FullName; // (5)
+                if (!stateOk || !instrOk || o.OrderType != OrderType.Limit)
+                    continue;
+                if (string.IsNullOrEmpty(o.Name))
+                    continue;
+                bool isNative =
+                    o.Name.Length >= 7
+                    && o.Name.StartsWith("Target", StringComparison.Ordinal)
+                    && char.IsDigit(o.Name[6])
+                    && o.Name[6] != '0';
+                bool isPtt =
+                    (o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                     && o.Name.Length > 8
+                     && char.IsDigit(o.Name[8]))
+                    || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal);
+                if (isNative)            // (6)
+                    nativeTargets.Add((o.LimitPrice, o.Quantity, o.OrderAction));
+                else if (isPtt)          // (7)
+                    pttTargets.Add((o.LimitPrice, o.Quantity, o.OrderAction));
+            }
+            return nativeTargets.Count > 0 ? nativeTargets : pttTargets;
+        }
+
         // First call: isRetry=false (default). On targets=0 OR partial targets, one retry queued.
         // Retry call: isRetry=true. No further retry regardless of result.
         // REPAIR-09 DW-B79-05: CancelSubmitted added to Step A stateOk.
@@ -3370,56 +3418,16 @@ namespace PropTraderTools
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1
             );
 
-            // -- Step A: snapshot ATM target orders BEFORE cancelling anything ----------
-            // Must read targets while they are still Working/Accepted/Submitted/Initialized.
-            // Mirrors PttBreakEven.SnapshotTargetsLocal.
-            // DW-B79-01: widened to match cancel sweep -- Initialized/Submitted/TriggerPending
-            // covers follower PTT-QX-T orders not yet acknowledged by NT8 on rapid QX->BE-ALL
-            // press. Consistent with cancel stateOk (Step B below). CYC unchanged.
-            var targets = new List<(double Price, int Qty, OrderAction Action)>(); // (3)
-            foreach (Order o in acc.Orders)
-            {
-                if (o == null)
-                    continue;
-                bool stateOk =
-                    o.OrderState == OrderState.Working
-                    || o.OrderState == OrderState.Accepted
-                    || o.OrderState == OrderState.Submitted
-                    || o.OrderState == OrderState.Initialized
-                    || o.OrderState == OrderState.TriggerPending // (4)
-                    || o.OrderState == OrderState.ChangeSubmitted // DW-B79-04: NT8 sim ATM target transient state on creation
-                    || o.OrderState == OrderState.CancelSubmitted; // REPAIR-09 DW-B79-05: PTT-QX-T orders in-flight cancel still readable
-                bool instrOk = o.Instrument != null && o.Instrument.FullName == instrument.FullName; // (5)
-                if (!stateOk || !instrOk)
-                    continue;
-                if (o.OrderType != OrderType.Limit)
-                    continue;
-                // HOTFIX-MSTBE-QX-TARGETS-01: also snapshot PTT-QX-T* and PTT-BE-Target-* limits.
-                // After QX, ATM targets are replaced by PTT-QX-T1/T2 (not "Target1/Target2").
-                // Without this, BE ALL after QX always takes the 0-targets bare-stop path.
-                bool isAtmTarget =
-                    !string.IsNullOrEmpty(o.Name)
-                    && (
-                        // ATM target names: Target1..Target9
-                        (
-                            o.Name.Length >= 7
-                            && o.Name.StartsWith("Target", StringComparison.Ordinal)
-                            && char.IsDigit(o.Name[6])
-                            && o.Name[6] != '0'
-                        )
-                        // QX target names: PTT-QX-T1, PTT-QX-T2, etc.
-                        || (
-                            o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                            && o.Name.Length > 8
-                            && char.IsDigit(o.Name[8])
-                        )
-                        // Prior PTT-BE target names (re-arming after a prior BE)
-                        || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
-                    );
-                if (!isAtmTarget)
-                    continue;
-                targets.Add((o.LimitPrice, o.Quantity, o.OrderAction));
-            }
+            // -- Step A: snapshot ATM target orders BEFORE cancelling anything ----
+            // DW-B107: extracted to SnapshotBeTargets to keep MoveStopToBreakEven CYC=7.
+            // Two-pass native-first collect: native Target1..9 take priority over
+            // stale PTT-QX-T*/PTT-BE-Target-* residues (same logic as DW-B106).
+            var targets = SnapshotBeTargets(acc, instrument); // (3)
+            // DW-B107: hard cap -- BE/QX contract is always exactly 3 targets max.
+            // Prevents stale partial-fill residue submitting extra OCO pairs.
+            // No LINQ -- while-loop trim per JS zero-alloc mandate.
+            while (targets.Count > 3)
+                targets.RemoveAt(targets.Count - 1);
 
             // DW-B88: unified cancel+resubmit -- replaces follower acc.Change() path and leader Step B/C.
             // Old follower block (L2742-2797) and leader Step B/C (L2800-2963) preserved below as
