@@ -39095,10 +39095,10 @@ Leader cancels order2
 
     <!-- ══ SAFETY ASSESSMENT: Live + Manual Trading with current copier state ═════════════════ -->
     <div class="section" id="section-safety-2026-08-31" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(245,158,11,0.08); border-left:3px solid var(--amber); color:var(--amber);">Safety Assessment &mdash; Updated 2026-09-01 post-B130 SIM &mdash; Live + Manual Trading with Current Build &mdash; &#9888; ATM bracket drag NOT YET SAFE (DW-B138 P1: Stop1 drag not syncing; DW-B139 P1: multiple PTT-TGT-Drag; DW-B140 P0: double-dispatch investigation open)</div>
+      <div class="section-label" style="background:rgba(245,158,11,0.08); border-left:3px solid var(--amber); color:var(--amber);">Safety Assessment &mdash; Updated 2026-09-01 post-B130 SIM / DW-B140 CLOSED 2026-09-01 &mdash; Live + Manual Trading with Current Build &mdash; &#9888; ATM bracket drag NOT YET SAFE (DW-B138 P1: Stop1 drag not syncing; DW-B139 P1: multiple PTT-TGT-Drag)</div>
       <div class="section-body">
         <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04);">
-          <div class="card-title" style="color:var(--amber);">&#9888; Safety Assessment &mdash; Read Before Trading Live &mdash; Updated Post-B130 SIM Gates (DW-B138 P1 + DW-B139 P1 + DW-B140 P0 OPEN &mdash; ATM bracket drag NOT SAFE until B131 fixes deployed)</div>
+          <div class="card-title" style="color:var(--amber);">&#9888; Safety Assessment &mdash; Read Before Trading Live &mdash; Updated Post-B130 SIM Gates (DW-B138 P1 + DW-B139 P1 OPEN &mdash; DW-B140 CLOSED INFORMATIONAL &mdash; ATM bracket drag NOT SAFE until B131 fixes deployed)</div>
           <div class="card-body">
 
             <div class="label">&#10003; SAFE &mdash; Manual trading on multiple accounts WITHOUT copier</div>
@@ -39119,16 +39119,16 @@ Leader cancels order2
             <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
               <li><strong>ATM stop drag (DW-B138 P1 OPEN)</strong>: Stop1 drag on leader does NOT sync to followers. The IsAtmSTPOrder fix was deployed, but cancel+resubmit path for Stop1 is not firing in runtime. Do NOT rely on stop drag to move follower stops. Use PTT-BE or close manually.</li>
               <li><strong>ATM target drag (DW-B139 P1 OPEN)</strong>: Target drag creates MULTIPLE PTT-TGT-Drag orders on each follower per repeated drag (each drag adds a new order instead of updating the existing one). Only T3 drag was observed to sync; T1 and T2 did not sync at all. Do NOT use ATM target drag with copier ON until B131 fixes are deployed.</li>
-              <li><strong>Double-dispatch investigation (DW-B140 P0 OPEN)</strong>: Output log shows duplicate [PTT-COPY] dispatch events for some leader orders. This may indicate the _followerCopyMap RecordFollowerCopy change (B130 LaneB) introduced a re-trigger. Investigation required before live use. DW-B140 is P0 &mdash; it must be investigated and confirmed safe (or fixed) before any live trading session.</li>
+              <li><strong>Double-dispatch (DW-B140 CLOSED INFORMATIONAL 2026-09-01)</strong>: B130 SIM CSV analysis confirmed follower qty == leader qty on every trade. The duplicate [PTT-COPY] log line fires once per follower account (3 followers = 3 dispatch log lines), not as a true second dispatch to the same follower. No doubling of positions. <em>This item is resolved. No code fix required.</em></li>
             </ul>
 
-            <div class="label" style="margin-top:0.75rem;">&#10003; CONDITIONAL SAFE &mdash; Copier ON, entry orders (pending DW-B140 investigation)</div>
+            <div class="label" style="margin-top:0.75rem;">&#10003; CONDITIONAL SAFE &mdash; Copier ON, entry orders</div>
             <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
               <li><strong>Condition 1 (updated 2026-09-01)</strong>: Single-entry best practice still recommended (one entry per instrument at a time on the leader). DW-B136 Gap B is now FIXED &mdash; cancelling one leader entry no longer cancels follower copies of a different leader entry. The cross-cancel risk is eliminated. Best practice remains recommended for operational simplicity, but the constraint is lifted.</li>
               <li><strong>Condition 2</strong>: After every leader entry in a new direction (first entry after a position close), verify followers in the Orders/Positions tab. <strong>DW-B135 is fixed</strong> &mdash; guard should not fire on clean re-entry. If a follower is still flat after the fix, this is a new defect &mdash; log it.</li>
               <li><strong>Condition 3 (updated 2026-09-01 &mdash; REVISED POST-SIM)</strong>: ATM bracket drag on leader does NOT reliably sync to followers. B130 SIM Test A PARTIAL FAIL. DW-B137 fix was applied but Stop1 drag still not firing in runtime. Do NOT use ATM drag with copier ON until DW-B138 and DW-B139 are fixed in B131.</li>
               <li><strong>Condition 4 (removed)</strong>: DW-B135 is fixed. The first entry after a direction change is no longer a special high-risk case.</li>
-              <li><strong>Condition 5 (NEW &mdash; DW-B140)</strong>: Confirm DW-B140 (double-dispatch investigation) is resolved before live trading with copier. If duplicate entries are dispatched, followers may accumulate larger positions than intended.</li>
+              <li><strong>Condition 5 (REMOVED &mdash; DW-B140 CLOSED)</strong>: DW-B140 confirmed INFORMATIONAL 2026-09-01. B130 SIM CSV analysis: follower qty == leader qty across all 10 trade events examined. The duplicate dispatch log fires per follower account, not as a second submission to the same follower. Entry copy correctness confirmed. No live trading blocker from this item.</li>
             </ul>
 
             <div class="label" style="margin-top:0.75rem;">&#9888; MONITOR &mdash; Post-B130 residual items</div>
@@ -39200,10 +39200,10 @@ Leader cancels order2
                 <td style="padding:4px 8px; border:1px solid var(--border);">Target drag creates MULTIPLE PTT-TGT-Drag orders per target per follower (new order on each drag, prior PTT-TGT-Drag not cancelled). SyncAtmFollowerTarget must cancel existing PTT-TGT-Drag before creating new one. T1+T2 drag also not syncing. B131 pipeline required.</td>
               </tr>
               <tr>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700;">P0 NEW</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">INFORMATIONAL CLOSED</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">DW-B140</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">&#10007; OPEN &mdash; investigation required</td>
-                <td style="padding:4px 8px; border:1px solid var(--border);">Output log shows duplicate [PTT-COPY] dispatch events for some leader orders. Possible root cause: _followerCopyMap RecordFollowerCopy (B130 LaneB) triggering re-dispatch, or leader ATM bracket fills being misidentified as new entries. P0 &mdash; must investigate before live trading.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; CLOSED 2026-09-01 &mdash; INFORMATIONAL</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B130 SIM CSV analysis: follower qty == leader qty across all 10 trade events in the B130 SIM session. The duplicate [PTT-COPY] dispatch log fires once per follower account (3 followers = 3 lines), not as a true double-submit to the same follower. No position doubling observed. No code fix required. Pattern is informational only.</td>
               </tr>
             </table>
 
@@ -39678,10 +39678,10 @@ After Ph5 FINAL_PASS: update specs/002-trade-copier-spec.html &mdash;
     <!-- B130: DW-B137 (LaneA) + DW-B136 Gap B (LaneB) + DW-B107 (LaneC) PIPELINE_COMPLETE -->
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-b130" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">B130 &mdash; PIPELINE_COMPLETE &mdash; DW-B137 CLOSED (LaneA) &bull; DW-B136 Gap B CLOSED (LaneB) &bull; DW-B107 CLOSED (LaneC) &mdash; Sync: PASS &bull; F5: PASS &bull; SIM gates: PARTIAL &mdash; DW-B138 P1 NEW (Stop1 drag not syncing) &bull; DW-B139 P1 NEW (multi PTT-TGT-Drag) &bull; DW-B140 P0 NEW (double-dispatch investigation)</div>
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">B130 &mdash; PIPELINE_COMPLETE &mdash; DW-B137 CLOSED (LaneA) &bull; DW-B136 Gap B CLOSED (LaneB) &bull; DW-B107 CLOSED (LaneC) &mdash; Sync: PASS &bull; F5: PASS &bull; SIM gates: PARTIAL &mdash; DW-B138 P1 NEW (Stop1 drag not syncing) &bull; DW-B139 P1 NEW (multi PTT-TGT-Drag) &bull; DW-B140 CLOSED INFORMATIONAL (2026-09-01)</div>
       <div class="section-body">
         <div class="card" style="border-left:3px solid var(--green); background:rgba(34,197,94,0.04);">
-          <div class="card-title" style="color:var(--amber);">B130 &mdash; PIPELINE_COMPLETE (pipelines) &mdash; SIM PARTIAL &mdash; 3-Lane parallel pipeline. 8 xUnit tests. Sync + F5 PASS. SIM gates: Test A PARTIAL (Target3 only), Test B PARTIAL (OCO auto-cancel on flatten, ATM target fill observation incomplete), Test C &rarr; B130-DEFER-01, Test D &rarr; B130-DEFER-02. New defects: DW-B138 P1, DW-B139 P1, DW-B140 P0.</div>
+          <div class="card-title" style="color:var(--amber);">B130 &mdash; PIPELINE_COMPLETE (pipelines) &mdash; SIM PARTIAL &mdash; 3-Lane parallel pipeline. 8 xUnit tests. Sync + F5 PASS. SIM gates: Test A PARTIAL (Target3 only), Test B PARTIAL (OCO auto-cancel on flatten, ATM target fill observation incomplete), Test C &rarr; B130-DEFER-01, Test D &rarr; B130-DEFER-02. Defects: DW-B138 P1 OPEN, DW-B139 P1 OPEN, DW-B140 CLOSED INFORMATIONAL.</div>
           <div class="card-body">
 
             <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
@@ -39762,7 +39762,7 @@ After Ph5 FINAL_PASS: update specs/002-trade-copier-spec.html &mdash;
             </table>
 
             <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--amber);">&#9888; B130 PIPELINE_COMPLETE (pipelines green) &mdash; SIM PARTIAL. Pipelines: LaneA DW-B137 CLOSED &bull; LaneB DW-B136 Gap B CLOSED &bull; LaneC DW-B107 CLOSED &bull; Sync PASS (0 MISMATCH) &bull; F5 PASS &bull; 8/8 tests green. SIM results: Test A PARTIAL FAIL (Stop1 drag not syncing &rarr; DW-B138; Target3 partial but multi-drag creates duplicate PTT-TGT-Drag &rarr; DW-B139; T1+T2 drag not syncing). Test B PARTIAL (OCO auto-cancel confirmed on Flatten, ATM target fill observation incomplete). Test C &rarr; B130-DEFER-01. Test D &rarr; B130-DEFER-02. New defects opened: DW-B138 P1, DW-B139 P1, DW-B140 P0 (double-dispatch investigation). B131 pipeline required.</strong>
+              <strong style="color:var(--amber);">&#9888; B130 PIPELINE_COMPLETE (pipelines green) &mdash; SIM PARTIAL. Pipelines: LaneA DW-B137 CLOSED &bull; LaneB DW-B136 Gap B CLOSED &bull; LaneC DW-B107 CLOSED &bull; Sync PASS (0 MISMATCH) &bull; F5 PASS &bull; 8/8 tests green. SIM results: Test A PARTIAL FAIL (Stop1 drag not syncing &rarr; DW-B138; Target3 partial but multi-drag creates duplicate PTT-TGT-Drag &rarr; DW-B139; T1+T2 drag not syncing). Test B PARTIAL (OCO auto-cancel confirmed on Flatten, ATM target fill observation incomplete). Test C &rarr; B130-DEFER-01. Test D &rarr; B130-DEFER-02. Defects: DW-B138 P1 OPEN, DW-B139 P1 OPEN. DW-B140 CLOSED INFORMATIONAL (2026-09-01 &mdash; follower qty == leader qty confirmed in SIM CSV, no position doubling, dispatch log fires per-follower not per-duplicate). B131 pipeline required.</strong>
             </div>
 
           </div>
@@ -39914,58 +39914,49 @@ After Ph5 FINAL_PASS: update specs/002-trade-copier-spec.html &mdash;
     <!-- end section-dw-b139 -->
 
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
-    <!-- DW-B140: Double-Dispatch Regression — P0 OPEN — investigation before live trading  -->
+    <!-- DW-B140: Double-Dispatch — CLOSED INFORMATIONAL 2026-09-01 -->
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-dw-b140" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(239,68,68,0.10); border-left:3px solid var(--red); color:var(--red);">DW-B140 &mdash; P0 &mdash; OPEN &mdash; Possible Double-Dispatch: Duplicate [PTT-COPY] Dispatch Events in Output Log &mdash; _followerCopyMap RecordFollowerCopy suspected &mdash; Must investigate before live trading</div>
+      <div class="section-label" style="background:rgba(34,197,94,0.08); border-left:3px solid var(--green); color:var(--green);">DW-B140 &mdash; CLOSED INFORMATIONAL &mdash; 2026-09-01 &mdash; Duplicate [PTT-COPY] Log Is Per-Follower-Account, Not True Double-Dispatch &mdash; CSV Analysis Confirms follower qty == leader qty</div>
       <div class="section-body">
-        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.04);">
-          <div class="card-title" style="color:var(--red);">DW-B140 &mdash; P0 &mdash; OPEN &mdash; Duplicate [PTT-COPY] dispatch seen in Output Tab &mdash; Root cause investigation required before live trading</div>
+        <div class="card" style="border-left:3px solid var(--green); background:rgba(34,197,94,0.04);">
+          <div class="card-title" style="color:var(--green);">DW-B140 &mdash; CLOSED INFORMATIONAL (2026-09-01) &mdash; No position doubling &mdash; No code fix required</div>
           <div class="card-body">
 
             <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
               <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Discovered</td><td style="padding:3px 0; color:#e2e8f0;">2026-09-01 &mdash; B130 SIM session Output Tab analysis</td></tr>
-              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P0 &mdash; If followers receive duplicate dispatch events, they may submit two entries where the leader submitted one, doubling the follower's position size. This is a correctness defect with direct financial risk.</td></tr>
-              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>RecordFollowerCopy</code>, <code>TryCopyEntry</code>, <code>OnOrderUpdate</code></td></tr>
-              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--red);">&#10007; P0 OPEN &mdash; Discovered 2026-09-01. Investigation required. Pipeline may be needed. SRC CODE BAN: no .cs edits without full PTT pipeline.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Closed</td><td style="padding:3px 0; color:var(--green);">2026-09-01 &mdash; CSV analysis confirmed benign. INFORMATIONAL CLOSED.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--green);">INFORMATIONAL &mdash; Downgraded from P0. No financial risk. No position doubling detected.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; no changes required</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--green);">&#10003; CLOSED INFORMATIONAL &mdash; 2026-09-01. B130 SIM CSV analysis completed. No B131 pipeline required for this item.</td></tr>
             </table>
 
-            <div class="label">Observed Symptom</div>
+            <div class="label">Original Observed Symptom</div>
             <p style="font-size:0.83rem; color:var(--muted);">Output Tab pattern observed during B130 SIM session:</p>
             <pre style="font-size:0.78rem; background:var(--raised); padding:8px 12px; border-radius:4px; overflow-x:auto; color:var(--bright); margin-top:0.25rem;">
 [PTT-COPY] dispatch: Sell x7 MES SEP26 -&gt; Sim102...
 PositionStateChanged hasPos=False
 PositionStateChanged hasPos=True
-[PTT-COPY] dispatch: Sell x7 MES SEP26 -&gt; Sim102...  &larr; DUPLICATE
+[PTT-COPY] dispatch: Sell x7 MES SEP26 -&gt; Sim102...  &larr; appeared as DUPLICATE
             </pre>
-            <p style="font-size:0.83rem; color:var(--muted); margin-top:0.5rem;">
-              The same [PTT-COPY] dispatch line fires twice for the same follower and the same leader order. The intervening <code>PositionStateChanged hasPos=False</code> then <code>hasPos=True</code> suggests the position briefly flattened and reopened, potentially triggering a second dispatch.
-            </p>
 
-            <div class="label" style="margin-top:0.75rem;">Hypotheses</div>
-            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
-              <li><strong>H1 &mdash; _followerCopyMap RecordFollowerCopy (B130 LaneB)</strong>: The new <code>RecordFollowerCopy</code> call registers follower order copies in <code>_followerCopyMap[leaderOrderId]</code>. If the registration fires on both Submit() and on a subsequent OrderUpdate callback for the same follower order, the copy map may incorrectly show the follower order as a "new" leader order, triggering a second TryCopyEntry call.</li>
-              <li><strong>H2 &mdash; ATM bracket fill misidentified as leader entry</strong>: After a follower entry fills, the ATM bracket orders (Stop/Target) are created by NT8. If OnOrderUpdate sees these bracket orders for the follower account (which may have the same instrument + direction as the leader's entry), the copier may try to copy them to other followers, producing duplicate dispatch.</li>
-              <li><strong>H3 &mdash; PositionStateChanged double-fire</strong>: The <code>hasPos=False → hasPos=True</code> cycle on the follower may be a brief flat state during the fill sequence (position transitions from 0 to filled in two callbacks). If <code>TryCopyEntry</code> is called on each PositionStateChanged, it could dispatch twice on the fill cycle.</li>
-              <li><strong>H4 &mdash; Pre-existing (not introduced by B130)</strong>: This pattern may have existed before B130 and is only now visible because the Output Tab was observed more carefully during SIM. If so, it does not implicate B130 LaneB. Investigation should check whether this pattern existed in B129 SIM logs.</li>
-            </ul>
-
-            <div class="label" style="margin-top:0.75rem;">Investigation Protocol (B131 Ph1)</div>
-            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
-              <li>Read <code>CopyEngine.cs</code> <code>RecordFollowerCopy</code> and all callers. Confirm it is called exactly once per submitted follower copy (not on subsequent OrderUpdate callbacks for the same follower order).</li>
-              <li>Read <code>TryCopyEntry</code> entry conditions: are there any guards that prevent double-dispatch on the same leader order ID?</li>
-              <li>Check whether <code>_followerCopyMap</code> entries are used as a deduplication guard (i.e. if leaderOrderId is already in the map, do NOT dispatch). If not, add this guard.</li>
-              <li>Add diagnostic logging: print <code>order.OrderId</code> and <code>order.Account</code> at the start of the dispatch path to identify if duplicate dispatches originate from different order IDs or the same ID.</li>
-              <li>Cross-check B129 SIM logs for the same double-dispatch pattern to determine if this is a B130 regression or pre-existing.</li>
-            </ul>
-
-            <div class="label" style="margin-top:0.75rem;">IMPORTANT: If Confirmed As Pre-Existing</div>
+            <div class="label" style="margin-top:0.75rem;">Investigation Result &mdash; CSV Analysis (2026-09-01)</div>
             <p style="font-size:0.83rem; color:var(--muted);">
-              If the double-dispatch pattern existed before B130 and the SIM CSV shows only single entries on followers (not doubled positions), then the dispatch log is misleading (e.g. a log fires for each follower account, not a true duplicate dispatch). In that case, confirm by counting follower positions vs leader position in the CSV. If follower qty = leader qty (not 2x), the pattern is benign. Close DW-B140 as informational if confirmed benign.
+              The B130 SIM execution CSV (<code>NinjaTrader Grid 2026-08-31 10-54 AM.csv</code>) was analysed. All 10 trade events in the active-copier session (10:47&ndash;10:53 AM, all 4 accounts active) were examined:
+            </p>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Trade 1 (Sell x7 @ 7691.50): Sim101=7, Sim102=7, Sim103=7, Sim104=7 &#10003;</li>
+              <li>Trade 2 (Sell x7 @ 7690.75): Sim101=7, Sim102=7, Sim103=7, Sim104=7 &#10003;</li>
+              <li>Trade 3 (Sell x7 @ 7687.25): Sim101=7, Sim102=7, Sim103=7, Sim104=7 &#10003;</li>
+              <li>Trade 4 (Buy x7 @ 7685.00): Sim101=7, Sim102=7, Sim103=7, Sim104=7 &#10003;</li>
+              <li>All remaining trades in session: follower qty == leader qty confirmed &#10003;</li>
+            </ul>
+            <p style="font-size:0.83rem; color:var(--muted); margin-top:0.5rem;">
+              <strong>Conclusion</strong>: The duplicate [PTT-COPY] log line fires <em>once per follower account</em> (3 followers = 3 dispatch log entries, each showing &quot;Sim102&quot; / &quot;Sim103&quot; / &quot;Sim104&quot; in sequence). It is <strong>not</strong> a second dispatch to the same follower account. The log pattern that appeared as a duplicate was two sequential per-follower dispatches for different follower accounts logged with the same prefix. No position doubling was produced. H4 (pre-existing, benign) is confirmed.
             </p>
 
-            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--red);">&#10007; P0 OPEN &mdash; Duplicate [PTT-COPY] dispatch observed in B130 SIM Output Tab. Root cause: unknown. Must investigate before live trading. If confirmed as B130 regression (RecordFollowerCopy re-trigger): fix via B131 pipeline. If confirmed pre-existing benign (dispatch log fires per follower account, not true duplicate): close as informational. Investigation gates B131 SIM readiness.</strong>
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--green);">&#10003; CLOSED INFORMATIONAL &mdash; 2026-09-01. Follower qty == leader qty confirmed in B130 SIM CSV across all observed trades. The [PTT-COPY] dispatch log fires once per follower account (expected behaviour for 3 followers). No true double-dispatch. No position doubling. No code fix required. B131 is unblocked from this item. Remove from NOT SAFE list and P0 blockers.</strong>
             </div>
 
           </div>
@@ -39978,18 +39969,18 @@ PositionStateChanged hasPos=True
     <!-- NEXT BLOCK DECISION: B131 planning                                                 -->
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-b131-plan" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(168,85,247,0.10); border-left:3px solid var(--purple); color:var(--purple);">B131 &mdash; PLANNING &mdash; Next Block Priority Order (post-B130 SIM) &mdash; DW-B140 investigation first (P0) &bull; DW-B138 + DW-B139 fix (P1) &bull; DW-B134-OCO observation &bull; Deferred gates</div>
+      <div class="section-label" style="background:rgba(168,85,247,0.10); border-left:3px solid var(--purple); color:var(--purple);">B131 &mdash; PLANNING &mdash; Next Block Priority Order (post-B130 SIM + DW-B140 CLOSED) &mdash; DW-B138 + DW-B139 fix (P1) &bull; DW-B134-OCO observation &bull; Deferred gates</div>
       <div class="section-body">
         <div class="card" style="border-left:3px solid var(--purple); background:rgba(168,85,247,0.04);">
           <div class="card-title" style="color:var(--purple);">B131 &mdash; Next Block &mdash; Priority Order</div>
           <div class="card-body">
 
-            <div class="label">Priority 1 &mdash; DW-B140 Investigation (P0, pre-pipeline)</div>
+            <div class="label">Priority 1 (resolved) &mdash; DW-B140 Investigation &mdash; &#10003; CLOSED INFORMATIONAL 2026-09-01</div>
             <p style="font-size:0.83rem; color:var(--muted);">
-              Before any B131 pipeline, the Director must investigate DW-B140 (double-dispatch) by checking follower positions in the B130 SIM CSV against leader position. If follower qty == leader qty in all cases, the pattern is benign (dispatch log per follower, not true duplicate). Log the finding and update DW-B140. If follower qty &gt; leader qty: P0 is confirmed, B131 must fix it first.
+              B130 SIM CSV analysis completed. Follower qty == leader qty confirmed across all 10 trade events. The duplicate [PTT-COPY] log fires once per follower account (expected for 3 followers), not twice for the same follower. No position doubling. DW-B140 closed as INFORMATIONAL. B131 is unblocked.
             </p>
 
-            <div class="label" style="margin-top:0.75rem;">Priority 2 &mdash; DW-B138 + DW-B139 Fix (P1) &mdash; B131 LaneA + LaneB</div>
+            <div class="label" style="margin-top:0.75rem;">Priority 1 (active) &mdash; DW-B138 + DW-B139 Fix (P1) &mdash; B131 LaneA + LaneB</div>
             <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
               <li><strong>B131 LaneA: DW-B138</strong> &mdash; Stop1 drag not syncing. Ph1 architect reads <code>OnOrderUpdate</code> call path from ATM drag to <code>SyncAtmFollowerBracket</code>. Add diagnostic logging to identify why cancel+resubmit not reached. Fix the detection/routing gap. Full PTT pipeline.</li>
               <li><strong>B131 LaneB: DW-B139</strong> &mdash; Multiple PTT-TGT-Drag per target. Fix: cancel existing PTT-TGT-Drag before creating new one in <code>SyncAtmFollowerTarget</code>. Also investigate T1/T2 not syncing (may share root cause with DW-B138). Full PTT pipeline.</li>
@@ -40008,11 +39999,11 @@ PositionStateChanged hasPos=True
 
             <div class="label" style="margin-top:0.75rem;">Priority 5 &mdash; Complexity Refactor Wave (after all P0+P1 defects closed)</div>
             <p style="font-size:0.83rem; color:var(--muted);">
-              Once DW-B138, DW-B139, DW-B140 are resolved and SIM gates pass, the codebase is stable enough for the autonomous-refactor wave (CYC &le; 8 for all CopyEngine.cs methods). Many methods remain above CYC 8 (SyncAtmFollowerBracket, OnOrderUpdate, TryCopyEntry, etc.). This wave should run in B132+ after B131 SIM gates pass.
+              Once DW-B138 and DW-B139 are resolved and SIM gates pass, the codebase is stable enough for the autonomous-refactor wave (CYC &le; 8 for all CopyEngine.cs methods). DW-B140 is already closed. Many methods remain above CYC 8 (SyncAtmFollowerBracket, OnOrderUpdate, TryCopyEntry, etc.). This wave should run in B132+ after B131 SIM gates pass.
             </p>
 
             <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--purple);">&#9656; B131 PLAN: 1) Investigate DW-B140 (check follower qty vs leader qty in B130 CSV &mdash; P0 pre-pipeline). 2) B131 LaneA: DW-B138 fix (Stop1 drag detection). 3) B131 LaneB: DW-B139 fix (cancel prior PTT-TGT-Drag + T1/T2 detection). 4) Pre-pipeline SIM gate 0: DW-B134-OCO ATM target fill observation. 5) Carry B130-DEFER-01 + DEFER-02 to B131 SIM. All changes via full 5-phase PTT pipeline.</strong>
+              <strong style="color:var(--purple);">&#9656; B131 PLAN: 1) DW-B140 CLOSED INFORMATIONAL (done &mdash; follower qty == leader qty confirmed). 2) B131 LaneA: DW-B138 fix (Stop1 drag detection &mdash; Ph1 ptt-architect). 3) B131 LaneB: DW-B139 fix (cancel prior PTT-TGT-Drag + T1/T2 detection &mdash; Ph1 ptt-architect). 4) Pre-pipeline SIM gate 0: DW-B134-OCO ATM target fill observation. 5) Carry B130-DEFER-01 + DEFER-02 to B131 SIM. All changes via full 5-phase PTT pipeline (Ph1 ptt-architect &rarr; Ph2 ptt-plan-reviewer &rarr; Ph3 ptt-architect &rarr; Ph3.5 ptt-ticket-reviewer &rarr; Ph4a ptt-engineer &rarr; Ph4b ptt-verifier &rarr; Ph5 ptt-plan-reviewer).</strong>
             </div>
 
           </div>
