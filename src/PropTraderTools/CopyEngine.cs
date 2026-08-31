@@ -2136,7 +2136,7 @@ namespace PropTraderTools
             double tickSize
         )
         {
-            var fo = FindFollowerBracketOrder(acc, leaderOrder.FromEntrySignal, isStop);
+            var fo = FindFollowerBracketOrder(acc, leaderOrder.FromEntrySignal, isStop, leaderOrder.Name);
             if (fo == null) // (1)
                 return;
 
@@ -2250,8 +2250,9 @@ namespace PropTraderTools
         // DW-B137: cancel+resubmit for ATM-owned target brackets (Limit type).
         // acc.Change() is a no-op on ATM-engine brackets (confirmed B129 SIM gate 2026-08-31).
         // Pattern mirrors SyncAtmFollowerBracket (DW-B134/B129 LaneB).
-        // CYC=4: (1) acc null, (2) fo null, (3) Block A -- exception handler 0 McCabe.
-        //        (4) newTarget null in Block B.
+        // DW-B139 fix: Block A-Prime pre-sweep cancels prior Working PTT-TGT-Drag before Block B.
+        // CYC=8: (1) acc null, (2) fo null, (3) foreach A-Prime, (4) OrderState==Working,
+        //        (5) Name=="PTT-TGT-Drag", (6) catch A-Prime, (7) Block A catch, (8) newTarget null.
         // Two independent try/catch blocks -- Block A isolates Cancel; Block B isolates CreateOrder+Submit.
         // JS-021: no lock. JS-001: two independent try/catch -- no throw in hot path.
         // NT8-049: Limit order arg5=limitPrice (newPrice), arg6=0 (stopPrice unused for Limit).
@@ -2265,6 +2266,26 @@ namespace PropTraderTools
                 return;
             if (fo == null) // (2)
                 return;
+
+            // Block A-Prime -- cancel any existing PTT-TGT-Drag for this instrument on the follower.
+            // Prevents accumulation of Working PTT-TGT-Drag orders on repeated drag events (DW-B139).
+            // JS-001: try/catch -- no throw in hot path. JS-021: no lock -- acc.Orders iteration safe.
+            foreach (var o in acc.Orders.ToList())
+            {
+                if (o.OrderState == OrderState.Working
+                    && o.Name == "PTT-TGT-Drag"
+                    && o.Instrument?.FullName == fo.Instrument?.FullName)
+                {
+                    try
+                    {
+                        acc.Cancel(new Order[] { o });
+                    }
+                    catch (Exception ex)
+                    {
+                        StatusUpdate?.Invoke(acc.Name + ": TGT pre-cancel error: " + ex.Message);
+                    }
+                }
+            }
 
             // Block A -- Cancel only. Independent: if Cancel throws, Block B still runs.
             try
@@ -2333,18 +2354,34 @@ namespace PropTraderTools
             }
         }
 
+        // B131 DW-B138: predicate encapsulating signal-first / name-fallback match logic.
+        // CYC=3: (1) signal equality check, (2) leaderName null guard, (3) name equality check.
+        // JS-021: no lock (static, no shared state). JS-001: no throw. JS-002: returns bool (no null).
+        // ASCII-only. DateTime.UtcNow not used (no time logic).
+        internal static bool SignalOrNameMatches(Order order, string? signalName, string? leaderName)
+        {
+            if (order.FromEntrySignal == signalName) // (1) primary: signal equality (covers null==null)
+                return true;
+            if (leaderName == null) // (2) no fallback available
+                return false;
+            return order.Name == leaderName; // (3) ATM Name-based fallback
+        }
+
         // CYC=4. Returns first matching working bracket order for the follower.
+        // V04 B131 DW-B138: leaderName param added -- ATM Name-based fallback when FromEntrySignal null/empty.
         // V03: return type is Order? (nullable) -- null contract explicit (JS-002 compliant).
         // V01: matching by FromEntrySignal name -- not leg-type scan.
+        // JS-021: no lock. JS-001: no throw. JS-002: Order? makes null contract explicit.
         private Order? FindFollowerBracketOrder(
             Account follower,
-            string fromEntrySignalName,
-            bool isStop
+            string? fromEntrySignalName,
+            bool isStop,
+            string? leaderName = null
         )
         {
             foreach (var order in follower.Orders.ToList()) // (1) branch
             {
-                if (order.FromEntrySignal != fromEntrySignalName) // (1) branch
+                if (!SignalOrNameMatches(order, fromEntrySignalName, leaderName)) // (1) branch
                     continue;
                 if (order.OrderState != OrderState.Working) // (1) branch
                     continue;
@@ -2364,6 +2401,18 @@ namespace PropTraderTools
             }
             return null;
         }
+
+        // B131 DW-B138: test seam -- delegates to internal methods for xUnit test access.
+        // InternalsVisibleTo("PropTraderTools.Tests") granted at top of file (L46).
+        internal static bool SignalOrNameMatchesTestable(Order order, string? signalName, string? leaderName)
+            => SignalOrNameMatches(order, signalName, leaderName);
+
+        internal Order? FindFollowerBracketOrderTestable(
+            Account follower,
+            string? fromEntrySignalName,
+            bool isStop,
+            string? leaderName = null
+        ) => FindFollowerBracketOrder(follower, fromEntrySignalName, isStop, leaderName);
 
         // CYC=2. Returns StopPrice for StopLimit orders, LimitPrice for all others.
         // NT8 fact: StopLimit.LimitPrice==0 always; drag price lives in StopPrice (Fact 1).
