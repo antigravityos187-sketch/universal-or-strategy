@@ -1973,12 +1973,33 @@ namespace PropTraderTools
             new PttQuickExit().Execute(_leaderAccount, _instrument, 4, targets);
         }
 
-        // B129: OnInstrQAll2tClick -- fires global Quick Exit on all accounts via PttGlobalQuickExit.
-        // Delegates entirely to Execute() which logs "[PTT-QX-ALL] GlobalQuickExit fired" internally.
-        // CYC=1. JS-021: no lock. JS-033: synchronous void event handler. ASCII-only.
+        // B123 DW-B133: updated to pass forced 2-target list instead of no-arg Execute().
+        // Build2TargetList(qty) splits position qty into exactly 2 tranches (T1 heavy, T2 residual).
+        // PttGlobalQuickExit.Execute(forcedTargets) skips SnapshotTargetOrders, fires exactly 2 brackets.
+        // CYC=3: instrument null(1), leader null(2), pos null-coalesce(3). JS-021: no lock. ASCII-only.
         private void OnInstrQAll2tClick(object sender, RoutedEventArgs e)
         {
-            new PttGlobalQuickExit().Execute();
+            if (_instrument == null)
+                return; // (1)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // (2)
+            if (_leaderAccount == null)
+                return;
+            var pos = _leaderAccount.Positions.FirstOrDefault(
+                p => p.Instrument?.FullName == _instrument.FullName
+            ); // (3)
+            int qty = pos?.Quantity ?? 1;
+            var targets = Build2TargetList(qty);
+            NinjaTrader.Code.Output.Process(
+                "[PTT-QX-2T-ALL] button: "
+                    + _leaderAccount.Name
+                    + " "
+                    + _instrument.FullName
+                    + " qty=" + qty
+                    + " T1=" + targets[0].Qty
+                    + " T2=" + targets[1].Qty,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            new PttGlobalQuickExit().Execute(targets);
         }
 
         // B47 T5-B: OnQuickAllUp -- increment singleton; label refresh via broadcast. CYC=1.
