@@ -40012,8 +40012,104 @@ PositionStateChanged hasPos=True
     </div>
     <!-- end section-b131-plan -->
 
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- PERPETUAL LOOP PROTOCOL: $continue session structure                               -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-continue-loop" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(99,102,241,0.10); border-left:3px solid #6366f1; color:#6366f1;">Perpetual Session Loop &mdash; $continue Protocol &mdash; Every Session: Validate &bull; SIM &bull; Spec Update &bull; Next Prompts &bull; Next $continue &mdash; Loop ends at STABLE</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid #6366f1; background:rgba(99,102,241,0.04);">
+          <div class="card-title" style="color:#6366f1;">$continue Loop &mdash; Perpetual Session Protocol (V1.0 &mdash; 2026-09-01)</div>
+          <div class="card-body">
 
+            <p style="font-size:0.83rem; color:var(--muted);">
+              Every copier-spec session begins with a <code>$continue</code> prompt and ends with the next <code>$continue</code> prompt already written.
+              The Director never has to ask for it. The loop runs until the codebase reaches STABLE.
+            </p>
 
+            <div class="label">Session Structure (every session, always in this order)</div>
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr style="background:rgba(99,102,241,0.06);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700; width:80px;">STEP 0</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#e2e8f0;">Rules Catalog Gate &mdash; read RULES_CATALOG.md lines 1-30, state GATE PASS or BLOCKED. Mandatory, never skippable.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 1</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Validate pipeline output &mdash; read verification docs + confirm source (CopyEngine.cs). Read architecture plan first to know which fix approach was taken. If ANY check fails: STOP, log new DW item, do not proceed.</td>
+              </tr>
+              <tr style="background:rgba(99,102,241,0.04);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 2</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Sync + F5 &mdash; <code>powershell -File scripts\ptt-sync-and-verify.ps1</code> (0 MISMATCH gate) then F5 in NT8 (green compile gate).</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 3</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Update spec &mdash; close DW items, add pipeline section, update safety assessment. Only after STEP 1 + STEP 2 both pass.</td>
+              </tr>
+              <tr style="background:rgba(99,102,241,0.04);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 4</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">SIM gates &mdash; Director runs tests in NinjaTrader 8 SIM. Reports PASS / FAIL / OBSERVATION / DEFER for each gate. Session waits for Director report before STEP 5.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 5</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Final spec updates &mdash; log SIM gate results, deferred cards, new DW items, OCO observation, safety section update.</td>
+              </tr>
+              <tr style="background:rgba(99,102,241,0.04);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 6</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Next pipeline prompts &mdash; provide ptt-orchestrator prompts for the next batch of fixes. State which run in parallel and which must be sequential. Include full 7-phase pipeline chain verbatim in every prompt.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700; background:rgba(99,102,241,0.10);">STEP 7</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#e2e8f0; background:rgba(99,102,241,0.08);"><strong>Next $continue prompt &mdash; ALWAYS provided, never skipped.</strong> Pre-filled with the block just validated, the lanes completed, the DW items fixed, current open items, and carry-forward deferred gates. Director pastes it into a new session when pipelines finish. Loop is self-perpetuating.</td>
+              </tr>
+            </table>
+
+            <div class="label" style="margin-top:0.75rem;">Loop Phase Map (as of 2026-09-01)</div>
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700; width:90px;">PHASE 1</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">Active defect fix (P1) &mdash; CURRENT</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">B131: DW-B138 (Stop1 drag) + DW-B139 (multi PTT-TGT-Drag). B131 SIM: drag fix + DW-B134-OCO observation.</td>
+              </tr>
+              <tr style="background:rgba(99,102,241,0.03);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PHASE 2</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">Residual fix (conditional)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">B132: DW-B134-OCO fix if orphan confirmed. Any new defects from B131 SIM.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PHASE 3</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">Backlog P1 items</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">DW-B115 (ATM qty mismatch), DW-B120 (partial ATM arm), DW-B126 (BE/QX race), DW-B127 (QX entry-transition race), DW-B131 (bracket-event storm P2).</td>
+              </tr>
+              <tr style="background:rgba(99,102,241,0.03);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">PHASE 4</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1;">Complexity refactor wave</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">autonomous-refactor: all CopyEngine.cs methods CYC &le; 8. B132+ after Phase 2 complete.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">PHASE 5</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">Stable validation &mdash; LOOP END</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">5 consecutive live sessions, COPY ON, zero defects. Spec marked STABLE. Loop archived.</td>
+              </tr>
+            </table>
+
+            <div class="label" style="margin-top:0.75rem;">Loop Termination Criteria (all 5 required)</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>Condition 1</strong>: Zero open P0 or P1 DW items in the spec.</li>
+              <li><strong>Condition 2</strong>: All deferred SIM gates resolved or explicitly archived with Director sign-off.</li>
+              <li><strong>Condition 3</strong>: Complexity refactor wave complete &mdash; all CopyEngine.cs methods CYC &le; 8.</li>
+              <li><strong>Condition 4</strong>: 5 consecutive live trading sessions with COPY ON and zero defects logged.</li>
+              <li><strong>Condition 5</strong>: Safety section updated to unconditionally SAFE. Spec version bumped to STABLE.</li>
+            </ul>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:#6366f1;">&#9656; LOOP PROTOCOL: Every session ends with STEP 7 &mdash; the next $continue prompt, pre-filled and ready to paste. The Director never has to ask. Loop reference: docs/brain/COPIER-SESSION-LOOP.md</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-continue-loop -->
 
   </body>
 </html>
