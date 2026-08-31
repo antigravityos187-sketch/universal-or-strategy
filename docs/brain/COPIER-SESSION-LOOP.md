@@ -1,7 +1,8 @@
 # PTT Copier Session Loop — Perpetual $continue Protocol
 
-**Version**: 1.0
+**Version**: 2.0
 **Created**: 2026-09-01
+**Updated**: 2026-09-04 (V2.0 — STEP 4 HARD WAIT gate, STEP 6/7 post-SIM only)
 **Purpose**: Every copier-spec session begins with a $continue prompt.
 Each session validates pipeline output, runs SIM gates, updates the spec,
 provides the next batch of ptt-orchestrator prompts, and ALWAYS ends by
@@ -17,12 +18,33 @@ SESSION START:   paste $continue prompt
   STEP 1:  Validate pipeline output from previous block (read source + verify docs)
   STEP 2:  Sync + F5 (ptt-sync-and-verify.ps1 + NinjaTrader recompile)
   STEP 3:  Update spec (close DW items, add pipeline section, update safety)
-  STEP 4:  SIM gates (Director runs in NT8, reports results back)
-  STEP 5:  Final spec updates (post-SIM gate results, deferred cards)
-  STEP 6:  Provide next pipeline prompts (ptt-orchestrator prompts, parallel or serial)
-  STEP 7:  Provide next $continue prompt  <-- always generated, never skipped
+  STEP 4:  Provide SIM gate instructions. THEN STOP AND WAIT.
+           !! SESSION PAUSES HERE — DO NOT PROCEED TO STEP 5 !!
+           Director runs tests in NT8 SIM and reports actual results
+           back in the same session chat.
+  ── Director reports SIM results ──────────────────────────────────────────
+  STEP 5:  Final spec updates — based on ACTUAL SIM results reported by Director.
+           Log gate results in spec, deferred cards, DW-B134-OCO obs, new DW items.
+  STEP 6:  Next pipeline prompts — generated FROM actual SIM results. Not before.
+           One prompt per confirmed defect / confirmed next action. No "scenarios".
+  STEP 7:  Next $continue prompt — generated FROM actual SIM results. Not before.
+           Pre-filled with actual outcomes, actual open items, actual deferred state.
 SESSION END:     Director has next $continue ready to paste when pipelines finish
 ```
+
+### Hard Rule: STEP 6 and STEP 7 Are Post-SIM Only
+
+STEP 6 and STEP 7 MUST NOT be generated before STEP 5 completes.
+STEP 5 MUST NOT run before the Director reports SIM results.
+Generating speculative "scenario A / scenario B" prompts before SIM results are
+known is PROHIBITED. It wastes Director time and forces them to pick a branch
+that may not match reality.
+
+The correct sequence is:
+  STEPS 0-3 run immediately (automated, no Director input needed).
+  STEP 4 outputs the SIM test instructions, then the session WAITS.
+  Director runs tests, returns to the chat, reports PASS/FAIL/OBS/DEFER per gate.
+  STEPS 5-7 run immediately after the Director's report, using real data.
 
 ---
 
@@ -45,16 +67,17 @@ is always provided at the end of every session.
 
 ---
 
-## Loop Phase Map (current as of 2026-09-01)
+## Loop Phase Map (updated 2026-09-04)
 
 ```
-PHASE 1 — Active defect fix (P1 items)         [CURRENT]
-  B131: DW-B138 (Stop1 drag) + DW-B139 (multi PTT-TGT-Drag)
-  B131 SIM: drag fix validation + DW-B134-OCO observation
+PHASE 1 — Active defect fix (P1 items)         [COMPLETE — B131]
+  B131: DW-B138 (LaneA CLOSED) + DW-B139 (LaneB CLOSED)
+  B131 SIM: PENDING (Tests A-E not yet run)
 
-PHASE 2 — Residual defect fix (conditional)    [NEXT]
+PHASE 2 — Residual defect fix (conditional)    [CURRENT]
   B132 LaneA: DW-B134-OCO fix (if orphan confirmed in B131 Test C)
-  B132 LaneB: any new defects discovered in B131 SIM
+  B132 LaneB: any new defects from B131 SIM Tests A-E
+  If no new defects: advance to Phase 3
 
 PHASE 3 — Backlog P1 items (when copier stable) [QUEUED]
   DW-B115: ATM target-qty distribution mismatch
@@ -75,18 +98,23 @@ PHASE 5 — Stable validation                    [FINAL]
 
 ---
 
-## $continue Prompt Template
+## $continue Prompt Rules (V2.0)
 
-The $continue prompt is parameterized. The session that provides it fills in:
-- {BLOCK_JUST_COMPLETED}: e.g. B131
-- {LANES_COMPLETED}: e.g. "LaneA: DW-B138, LaneB: DW-B139"
-- {DW_FIXED}: e.g. "DW-B138 P1, DW-B139 P1"
-- {DW_OPEN_P0P1}: current open P0/P1 items remaining after this block
-- {DEFERRED_CARRY}: deferred tests carrying forward
-- {PHASE}: current loop phase (1/2/3/4/5)
+The $continue prompt is generated at the END of the session, AFTER STEP 7.
+It is ALWAYS grounded in actual SIM results from the current session.
+It is NEVER generated speculatively before SIM results are known.
 
-See the bottom of every session output for the filled-in $continue prompt
-for the next session.
+Parameterized fields — filled in from actual session outcomes:
+- {BLOCK_JUST_VALIDATED}: block whose pipeline was verified this session
+- {LANES_COMPLETED}: lanes verified (pipeline audit, STEP 1)
+- {DW_FIXED}: DW items closed this session (pipeline close + SIM confirmation)
+- {SIM_RESULTS}: actual Test A/B/C/D/E outcomes from STEP 5
+- {DW_OPEN_P0P1}: remaining open P0/P1 items after STEP 5
+- {DEFERRED_CARRY}: gates that were DEFERed in STEP 5
+- {PHASE}: current loop phase number
+- {NEXT_PIPELINE}: the specific pipeline to run next (one, concrete, no "if/else")
+
+The prompt is generated once, at the end of STEP 7, after all SIM data is known.
 
 ---
 
