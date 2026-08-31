@@ -119,6 +119,9 @@ namespace PropTraderTools
                         ? targets[i].Qty
                         : CalcTNQty(pos.Quantity, targetCount, i);
 
+                if (tNQty <= 0)
+                    continue; // B129: skip T2 when pos.Quantity==1 and t2Qty==0
+
                 string ocoId_i =
                     CopyEngine.Instance?.NextQxOcoId()
                     ?? ("PTT-QX-" + Guid.NewGuid().ToString("N").Substring(0, 8));

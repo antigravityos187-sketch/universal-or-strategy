@@ -101,6 +101,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -265,6 +266,15 @@ namespace PropTraderTools
         // B47 T5-B: Root-level BE and Quick row panels (extracted from _contentPanel in T6-B)
         private UniformGrid _beRowPanel = null; // 2-col: BE cluster | BE ALL cluster
         private UniformGrid _quickRowPanel = null; // 2-col: Quick cluster | Quick ALL cluster
+
+        // B129: Instrument-scoped row panel and button refs (UI-thread-only; no volatile per NT8-003)
+        private Button _instr2tBtn = null;
+        private Button _instrQAll2tBtn = null;
+        private UniformGrid _instrRowPanel = null;
+
+        // BGTM-1: Feature-flag-gated row panels. Assigned in Build* methods; toggled in ApplyFeatureFlags.
+        private StackPanel _clickTraderRow = null;
+        private UniformGrid _atrRow = null;
 
         // HOTFIX-QUICKALL-SINGLETON-01: Quick ALL buffer is now a CopyEngine singleton.
         // _quickAllT1 per-panel field removed. Read CopyEngine.Instance.GlobalQuickAllT1 instead.
@@ -609,6 +619,9 @@ namespace PropTraderTools
                 m.Teardown();
             _modules.Clear();
             _allAccounts.Clear();
+
+            // BGTM-1: Unsubscribe feature-flag handler.
+            CopyEngine.Instance.FeatureFlagsChanged -= OnFeatureFlagsChanged;
         }
 
         // -- Layer 3 live state (V04) -- called on UI thread only -----------------
@@ -782,6 +795,10 @@ namespace PropTraderTools
                 _leaderAccount.PositionUpdate += OnLeaderPositionUpdate;
                 RefreshQuickDisplay(_leaderAccount, _instrument);
             }
+
+            // BGTM-1: Subscribe to feature-flag changes and apply current flags now.
+            CopyEngine.Instance.FeatureFlagsChanged += OnFeatureFlagsChanged;
+            ApplyFeatureFlags(CopyEngine.Instance.Flags);
         }
 
         // -- live P&L push from NT8 -----------------------------------------------
@@ -901,6 +918,8 @@ namespace PropTraderTools
 
             // B49: Buttons first (BE/Quick rows), then Copier, then Position Tools.
             root.Children.Add(_beRowPanel); // B49: moved from tail -- buttons first
+            BuildInstrRow(); // B128: build instrument row before adding to root
+            root.Children.Add(_instrRowPanel); // B128: instrument-scoped row above Quick row
             root.Children.Add(_quickRowPanel); // B49: moved from tail -- buttons first
             BuildCopierSection(root); // B49: Copier second (Mode row now inside)
             root.Children.Add(_statusText); // status below Copier
@@ -916,7 +935,7 @@ namespace PropTraderTools
         // CYC=1 (straight-line widget construction, no branches).
         private void BuildClickTraderRow(StackPanel root)
         {
-            var row = new StackPanel
+            _clickTraderRow = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Margin = new Thickness(0, 4, 0, 0),
@@ -966,12 +985,12 @@ namespace PropTraderTools
             _cancelBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
             _cancelBtn2.Click += OnCancel2;
 
-            row.Children.Add(_buyToggle);
-            row.Children.Add(_sellToggle);
-            row.Children.Add(_armBtn);
-            row.Children.Add(_cancelBtn2);
-            root.Children.Add(row);
-            row.Visibility = Visibility.Collapsed; // B47 T5-B: HIDE NOT DELETE (handlers preserved)
+            _clickTraderRow.Children.Add(_buyToggle);
+            _clickTraderRow.Children.Add(_sellToggle);
+            _clickTraderRow.Children.Add(_armBtn);
+            _clickTraderRow.Children.Add(_cancelBtn2);
+            root.Children.Add(_clickTraderRow);
+            _clickTraderRow.Visibility = Visibility.Collapsed; // B47 T5-B: HIDE NOT DELETE (handlers preserved)
         }
 
         // B12 T1 -- OnPendingBeFiredDispatch: marshals PendingBeFired from NT8 account bg thread to UI.
@@ -1047,7 +1066,7 @@ namespace PropTraderTools
             }
             else
             {
-                _globalBeBtn2.Background = BrushCaution;
+                _globalBeBtn2.Background = BrushActive;
             }
         }
 
@@ -1328,6 +1347,46 @@ namespace PropTraderTools
             root.Children.Add(_quickT3Row);
         }
 
+        // B129: BuildInstrRow -- 2-col UniformGrid: "Quick2t" (left) + "QAll2t" (right).
+        // No spinner. Fixed labels. CYC=1: sequential construction.
+        // JS-021: no lock. JS-033: no async. ASCII-only labels.
+        private void BuildInstrRow()
+        {
+            _instrRowPanel = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 2) };
+            _instr2tBtn = new Button
+            {
+                Content = "Quick2t",
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
+            };
+            _instr2tBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _instr2tBtn.Click += OnInstr2tClick;
+            _instrRowPanel.Children.Add(_instr2tBtn);
+
+            _instrQAll2tBtn = new Button
+            {
+                Content = "QAll2t",
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
+            };
+            _instrQAll2tBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _instrQAll2tBtn.Click += OnInstrQAll2tClick;
+            _instrRowPanel.Children.Add(_instrQAll2tBtn);
+        }
+
+        // B129: Build2TargetList -- returns pre-built 2-entry targets list for Quick2t.
+        // T1 gets ceiling qty (heavy side per Director spec). T2 gets floor qty.
+        // Prices not used by Execute -- only Qty is read. Pass 0.0 for Price.
+        // CYC=1. JS-002: never null. JS-021: no lock. internal static for xUnit direct test access.
+        internal static List<(double Price, int Qty)> Build2TargetList(int totalQty)
+        {
+            int t1Qty = (totalQty + 1) / 2;
+            int t2Qty = totalQty - t1Qty;
+            return new List<(double, int)> { (0.0, t1Qty), (0.0, t2Qty) };
+        }
+
         // B12 T1 -- FormatBuffer: formats buffer label for display on a button. CYC=1. Static, no state.
         // Example: FormatBuffer("Trim", 1) -> "Trim +1"
         private static string FormatBuffer(string name, int ticks)
@@ -1336,7 +1395,7 @@ namespace PropTraderTools
         }
 
         // HOTFIX-BUFLABEL-02 / QUICK-LABEL-UNIT-01: Quick ALL label appends "t" to make tick unit explicit.
-        // MES tick = $1.25, MGC tick = $0.10, MCL tick = $0.01 — storing raw ticks; unit must be visible.
+        // MES tick = $1.25, MGC tick = $0.10, MCL tick = $0.01 -- storing raw ticks; unit must be visible.
         // "Quick ALL +4t" not "Quick ALL +4".
         private static string FormatQuickAllBuffer(string name, int ticks)
         {
@@ -1377,15 +1436,12 @@ namespace PropTraderTools
             }
             else
             {
-                // Currently Armed -- disarm
+                // Already armed -- guard: log and return (no disarm, no re-arm)
                 NinjaTrader.Code.Output.Process(
-                    "[BE-ALL] button: disarm all",
+                    "[PTT-BE-ALL] already armed, ignoring double-press",
                     NinjaTrader.NinjaScript.PrintTo.OutputTab1
                 );
-                if (Account.All != null)
-                    foreach (var acc in Account.All)
-                        CopyEngine.Instance.DisarmPendingBe(acc);
-                UpdateBeAllVisuals(BeState.Idle);
+                return;
             }
         }
 
@@ -1882,6 +1938,47 @@ namespace PropTraderTools
             _quickT2 = _quickT1 * 2;
             if (_quickBtn != null)
                 _quickBtn.Content = FormatBuffer("Quick", _quickT1); // (2)
+        }
+
+        // B129: OnInstr2tClick -- fires 2-target bracket exit on _leaderAccount + _instrument only.
+        // Builds a 2-entry targets list (T1=ceiling, T2=floor). Calls PttQuickExit.Execute 7-arg
+        // with t1Ticks=4 (fixed) and the pre-built targets list (bypasses ResolveTargetCount).
+        // CYC=4: (1)_instrument null, (2)_leaderAccount null re-resolve, (3)null after resolve, (4)FirstOrDefault lambda.
+        // JS-021: no lock. JS-033: synchronous void event handler. ASCII-only labels.
+        private void OnInstr2tClick(object sender, RoutedEventArgs e)
+        {
+            if (_instrument == null)
+                return; // (1)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // (2)
+            if (_leaderAccount == null)
+                return; // (3)
+            var pos = _leaderAccount.Positions.FirstOrDefault(
+                p => p.Instrument?.FullName == _instrument.FullName
+            ); // (4)
+            int qty = pos?.Quantity ?? 1;
+            var targets = Build2TargetList(qty);
+            NinjaTrader.Code.Output.Process(
+                "[PTT-QX-2T] button: "
+                    + _leaderAccount.Name
+                    + " "
+                    + _instrument.FullName
+                    + " qty="
+                    + qty
+                    + " T1="
+                    + targets[0].Qty
+                    + " T2="
+                    + targets[1].Qty,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            new PttQuickExit().Execute(_leaderAccount, _instrument, 4, targets);
+        }
+
+        // B129: OnInstrQAll2tClick -- fires global Quick Exit on all accounts via PttGlobalQuickExit.
+        // Delegates entirely to Execute() which logs "[PTT-QX-ALL] GlobalQuickExit fired" internally.
+        // CYC=1. JS-021: no lock. JS-033: synchronous void event handler. ASCII-only.
+        private void OnInstrQAll2tClick(object sender, RoutedEventArgs e)
+        {
+            new PttGlobalQuickExit().Execute();
         }
 
         // B47 T5-B: OnQuickAllUp -- increment singleton; label refresh via broadcast. CYC=1.
@@ -2860,7 +2957,7 @@ namespace PropTraderTools
         // Called from BuildUI() at end of _contentPanel.
         private void BuildRiskAtrRow(StackPanel root)
         {
-            var grid = new UniformGrid { Columns = 2, Margin = new Thickness(0, 4, 0, 0) };
+            _atrRow = new UniformGrid { Columns = 2, Margin = new Thickness(0, 4, 0, 0) };
 
             // Col 0 -- Risk $ spinner
             var col0 = new StackPanel { Orientation = Orientation.Horizontal };
@@ -2903,7 +3000,7 @@ namespace PropTraderTools
             col0.Children.Add(riskLabel);
             col0.Children.Add(_riskDollarsBox);
             col0.Children.Add(riskArrows);
-            grid.Children.Add(col0);
+            _atrRow.Children.Add(col0);
 
             // Col 1 -- ATR % spinner
             var col1 = new StackPanel { Orientation = Orientation.Horizontal };
@@ -2946,9 +3043,9 @@ namespace PropTraderTools
             col1.Children.Add(atrLabel);
             col1.Children.Add(_atrFractionBox);
             col1.Children.Add(atrArrows);
-            grid.Children.Add(col1);
+            _atrRow.Children.Add(col1);
 
-            root.Children.Add(grid);
+            root.Children.Add(_atrRow);
 
             var atrRow = new Border
             {
@@ -3048,6 +3145,59 @@ namespace PropTraderTools
             if (_engine == null)
                 return; // (1)
             _engine.UpdateAtrFraction(_atrFraction); // (2)
+        }
+
+        // BGTM-1: Enable/disable and show/hide panel controls per feature flags. CYC=1.
+        // Called on UI thread only (OnLoaded, OnFeatureFlagsChanged). JS-021: no lock.
+        internal void ApplyFeatureFlags(FeatureFlags f)
+        {
+            // f.TrimFlatten gates
+            if (_trimBtn2 != null)
+                _trimBtn2.IsEnabled = f.TrimFlatten;
+            if (_flattenBtn2 != null)
+                _flattenBtn2.IsEnabled = f.TrimFlatten;
+            if (_cancelBtn2 != null)
+                _cancelBtn2.IsEnabled = f.TrimFlatten;
+            // f.BreakEven gate
+            if (_beBtn2 != null)
+                _beBtn2.IsEnabled = f.BreakEven;
+            // f.MirrorMode gate
+            if (_mirrorModeBtn != null)
+                _mirrorModeBtn.IsEnabled = f.MirrorMode;
+            // f.ClickTrader visibility
+            if (_clickTraderRow != null)
+                _clickTraderRow.Visibility = f.ClickTrader
+                    ? System.Windows.Visibility.Visible
+                    : System.Windows.Visibility.Collapsed;
+            // f.AtrSizing visibility
+            if (_atrRow != null)
+                _atrRow.Visibility = f.AtrSizing
+                    ? System.Windows.Visibility.Visible
+                    : System.Windows.Visibility.Collapsed;
+            ApplyFeatureFlagTooltips(f);
+        }
+
+        // BGTM-1: Set ToolTip on disabled buttons to upgrade guidance. CYC=1.
+        // Only called from ApplyFeatureFlags (UI thread). JS-021: no lock.
+        private void ApplyFeatureFlagTooltips(FeatureFlags f)
+        {
+            if (_trimBtn2 != null)
+                _trimBtn2.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
+            if (_flattenBtn2 != null)
+                _flattenBtn2.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
+            if (_cancelBtn2 != null)
+                _cancelBtn2.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
+            if (_beBtn2 != null)
+                _beBtn2.ToolTip = f.BreakEven ? null : "Break Even requires Pro tier";
+            if (_mirrorModeBtn != null)
+                _mirrorModeBtn.ToolTip = f.MirrorMode ? null : "Mirror mode requires Elite tier";
+        }
+
+        // BGTM-1: Handle CopyEngine.FeatureFlagsChanged event. Fires on UI thread. CYC=1.
+        // JS-021: no lock. Architecture plan Section 12: event fires on UI thread only.
+        private void OnFeatureFlagsChanged(FeatureFlags f)
+        {
+            ApplyFeatureFlags(f);
         }
     }
 }
