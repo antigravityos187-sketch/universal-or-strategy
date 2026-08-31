@@ -157,6 +157,7 @@
     <Compile Include="Tests\B129Tests.cs" />
     <Compile Include="Tests\B130Tests.cs" />
     <Compile Include="Tests\B131Tests.cs" />
+    <Compile Include="Tests\B132Tests.cs" />
     <Compile Include="Tests\BgtmTests.cs" />
     <Compile Include="TradeCopierPanelB75Tests.cs" />
     <Compile Include="B76Tests.cs" />

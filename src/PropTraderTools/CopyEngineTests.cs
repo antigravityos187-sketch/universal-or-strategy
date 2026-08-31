@@ -5768,5 +5768,20 @@ namespace PropTraderTools
                 "T_DW_B79_09_03: CancelStaleBracketsLocal does not contain RemoveAll call (DW-B79-09 guard missing)"
             );
         }
+
+        [Fact]
+        public void B132_LaneB_DiagnosticMode_FieldExists()
+        {
+            // Assert _diagnosticMode field exists as a private static bool.
+            // Confirms the B132 LaneB diagnostic gate is correctly declared.
+            var field = typeof(CopyEngine).GetField(
+                "_diagnosticMode",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
+            Assert.NotNull(field);
+            Assert.Equal(typeof(bool), field!.FieldType);
+            // Default value must be true (diagnostic mode active).
+            Assert.Equal(true, (bool)field.GetValue(null)!);
+        }
     }
 }

@@ -138,4 +138,22 @@ namespace PropTraderTools.Tests
             Assert.True(true, "DW-B139: Non-PTT-TGT-Drag Working orders are not cancelled by the sweep.");
         }
     }
+
+    public class B132LaneBTests
+    {
+        [Fact]
+        public void B132_LaneB_DiagnosticMode_FieldExists()
+        {
+            // Assert _diagnosticMode field exists as a private static bool.
+            // Confirms the B132 LaneB diagnostic gate is correctly declared.
+            var field = typeof(CopyEngine).GetField(
+                "_diagnosticMode",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
+            Assert.NotNull(field);
+            Assert.Equal(typeof(bool), field!.FieldType);
+            // Default value must be true (diagnostic mode active).
+            Assert.Equal(true, (bool)field.GetValue(null)!);
+        }
+    }
 }
