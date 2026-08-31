@@ -1,5 +1,5 @@
 // C:\WSGTA\universal-or-strategy\src\PropTraderTools\Features\PttFlatten.cs
-// B34 — PttFlatten module: full close on leader account.
+// B34 -- PttFlatten module: full close on leader account.
 // IPttModule implementation. ModuleId = "FLAT".
 // Dependencies: Core/PttContracts.cs + NinjaTrader.Cbi ONLY. NO CopyEngine import.
 // JS-021: no lock. JS-033: synchronous void. NT8-006: no LINQ.
@@ -70,7 +70,7 @@ namespace PropTraderTools
             PttBus.RaiseFlatted(this, new FlatEventArgs(ctx.Instrument)); // (3b)
         }
 
-        // ─────────────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------------
 
         /// <summary>
         /// Submit close order for full position on the given account.

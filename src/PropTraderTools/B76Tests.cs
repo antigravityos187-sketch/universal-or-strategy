@@ -37,7 +37,7 @@ namespace PropTraderTools
             Assert.Equal(2, ps.Length);
             Assert.Equal(typeof(NinjaTrader.Cbi.Account), ps[0].ParameterType);
             Assert.Equal(
-                typeof(NinjaTrader.NinjaScript.Instruments.Instrument),
+                typeof(NinjaTrader.Cbi.Instrument),
                 ps[1].ParameterType
             );
         }

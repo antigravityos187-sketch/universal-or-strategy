@@ -68,6 +68,11 @@ namespace PropTraderTools
                 Description = "Prop Trader Tools -- Trade Copier";
                 Name = "TradeCopierAddOn";
             }
+            if (State == State.Configure)
+            {
+                var flags = LoadAndValidateLicense();
+                CopyEngine.Instance.SetFlags(flags);
+            }
             if (State == State.Terminated)
                 _menuWired = false;
         }
@@ -286,6 +291,13 @@ namespace PropTraderTools
         // NT8: Chart.ChartControl not accessible from AddOn -- find via visual tree.
         internal static void RegisterClickTrader(Chart chart, TradeCopierPanel panel)
         {
+            if (!CopyEngine.Instance.Flags.ClickTrader)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "Click Trader requires Elite tier",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                return;
+            }
             if (chart == null)
                 return; // guard (1)
             var cc = FindVisualChild<ChartControl>(chart);
@@ -609,6 +621,31 @@ namespace PropTraderTools
                     return result;
             }
             return null;
+        }
+
+        // B121/DW-B130b: dev_mode.txt sentinel bypasses LicenseClient entirely.
+        // CYC=4: try-enter(1) + devMode.Exists(2) + licenseTxt.Exists(3) + catch(4).
+        // JS-001: no throw -- any I/O error returns Starter().
+        // NT8: File I/O is safe in State.Configure (not the hot path).
+        private static FeatureFlags LoadAndValidateLicense()
+        {
+            try
+            {
+                var pttDir = System.IO.Path.Combine(
+                    NinjaTrader.Core.Globals.UserDataDir, "PropTraderTools");
+                var devMode = System.IO.Path.Combine(pttDir, "dev_mode.txt");
+                if (System.IO.File.Exists(devMode))
+                    return FeatureFlags.Elite();
+                var licenseTxt = System.IO.Path.Combine(pttDir, "license.txt");
+                var key = System.IO.File.Exists(licenseTxt)
+                    ? System.IO.File.ReadAllText(licenseTxt).Trim()
+                    : string.Empty;
+                return LicenseClient.Validate(key);
+            }
+            catch (Exception)
+            {
+                return FeatureFlags.Starter();
+            }
         }
     }
 }

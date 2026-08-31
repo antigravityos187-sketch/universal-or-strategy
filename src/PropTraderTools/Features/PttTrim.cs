@@ -1,5 +1,5 @@
 // C:\WSGTA\universal-or-strategy\src\PropTraderTools\Features\PttTrim.cs
-// B34 — PttTrim module: partial close (50%) on leader account.
+// B34 -- PttTrim module: partial close (50%) on leader account.
 // IPttModule implementation. ModuleId = "TRIM".
 // Dependencies: Core/PttContracts.cs + NinjaTrader.Cbi ONLY. NO CopyEngine import.
 // JS-021: no lock. JS-033: synchronous void. NT8-006: no LINQ.
@@ -79,7 +79,7 @@ namespace PropTraderTools
             );
         }
 
-        // ─────────────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------------
 
         /// <summary>
         /// Submit close order for trimQty on the given account.

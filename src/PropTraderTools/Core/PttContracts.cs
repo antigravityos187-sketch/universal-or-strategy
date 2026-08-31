@@ -1,6 +1,6 @@
 // C:\WSGTA\universal-or-strategy\src\PropTraderTools\Core\PttContracts.cs
-// B33 — Modular Independence: shared contracts, event hub, event args
-// NT8-044: using System required — NT8 does not auto-inject System namespace
+// B33 -- Modular Independence: shared contracts, event hub, event args
+// NT8-044: using System required -- NT8 does not auto-inject System namespace
 
 using System;
 using System.Collections.Generic;
@@ -8,9 +8,9 @@ using NinjaTrader.Cbi;
 
 namespace PropTraderTools
 {
-    // ─────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
     // INTERFACES
-    // ─────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
 
     /// <summary>
     /// Contract for every PTT trading module.
@@ -54,7 +54,7 @@ namespace PropTraderTools
         /// <summary>Leader + all follower accounts. Built at panel init time.</summary>
         IReadOnlyList<Account> AllAccounts { get; }
 
-        // B34 additions — buffer props and live market quote.
+        // B34 additions -- buffer props and live market quote.
         /// <summary>Break-even buffer in ticks. From TradeCopierPanel._beBuffer.</summary>
         int BeBuffer { get; }
 
@@ -75,11 +75,11 @@ namespace PropTraderTools
     }
 
     /// <summary>
-    /// Relay contract for CopyEngine — the 4 public methods PttCopier calls.
+    /// Relay contract for CopyEngine -- the 4 public methods PttCopier calls.
     /// Implemented by CopyEngine (T8). Used as PttCopier constructor param so tests
     /// can inject MockCopyEngineRelay : ICopyEngine without subclassing CopyEngine.
     /// T6-TEST-01 fix: ICopyEngine enables testable constructor injection.
-    /// NT8: interface members are void — no LINQ, no async, no init accessors.
+    /// NT8: interface members are void -- no LINQ, no async, no init accessors.
     /// </summary>
     public interface ICopyEngine
     {
@@ -96,20 +96,20 @@ namespace PropTraderTools
         void RelayCancel(CancelEventArgs e);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
     // EVENT HUB
-    // ─────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
 
     /// <summary>
     /// Static CLR event hub for PTT module communication.
     ///
     /// THREADING CONTRACT:
-    ///   Subscribe (+= ) only from IPttModule.Initialize()  — UI thread
-    ///   Unsubscribe (-=) only from IPttModule.Teardown()   — UI thread
-    ///   Fire (?.Invoke) from module.Execute()              — UI thread
+    ///   Subscribe (+= ) only from IPttModule.Initialize()  -- UI thread
+    ///   Unsubscribe (-=) only from IPttModule.Teardown()   -- UI thread
+    ///   Fire (?.Invoke) from module.Execute()              -- UI thread
     ///
     /// JS-021: No lock needed. CLR += / -= are atomic (new delegate list).
-    ///         All sub/unsub on same UI thread — zero contention.
+    ///         All sub/unsub on same UI thread -- zero contention.
     /// NT8-043: local-copy-then-null-check pattern used in Raise* methods.
     ///          Avoids any null-conditional assignment edge cases on C# 7.3.
     /// </summary>
@@ -170,11 +170,11 @@ namespace PropTraderTools
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
     // EVENT ARGS
-    // NT8-001: use {get; private set;} + constructor — init accessor is BANNED in NT8
-    // NT8-002: class : EventArgs — NO records
-    // ─────────────────────────────────────────────────────────────────────────
+    // NT8-001: use {get; private set;} + constructor -- init accessor is BANNED in NT8
+    // NT8-002: class : EventArgs -- NO records
+    // -------------------------------------------------------------------------
 
     public class BeEventArgs : EventArgs
     {
@@ -316,5 +316,29 @@ namespace PropTraderTools
                 quantity,
                 entryOrderId
             );
+    }
+
+    // -------------------------------------------------------------------------
+    // ORDER NAME PREFIXES
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Compile-time constants for PTT order name prefixes.
+    /// Used by SnapshotTargetsPublic and related order-filtering methods.
+    /// ASCII-only. JS-066: no branching -- CYC impact = 0.
+    /// </summary>
+    internal static class PttOrderNames
+    {
+        /// <summary>Quick-exit target order name prefix. "PTT-QX-T"</summary>
+        internal const string PttQxTargetPrefix = "PTT-QX-T";
+
+        /// <summary>Target order name prefix. "PTT-TGT-"</summary>
+        internal const string PttTgtPrefix = "PTT-TGT-";
+
+        /// <summary>Break-even target order name prefix. "PTT-BE-Target-"
+        /// Defined for completeness -- used in PttBreakEven.cs and
+        /// PttGlobalQuickExit.cs (constantification of those callers is
+        /// deferred to a future block per B126 scope constraint).</summary>
+        internal const string PttBeTargetPrefix = "PTT-BE-Target-";
     }
 }

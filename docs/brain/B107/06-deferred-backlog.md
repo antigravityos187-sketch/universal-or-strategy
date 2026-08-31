@@ -16,6 +16,26 @@ Status: PIPELINE_COMPLETE (coding phases)
 
 ---
 
+## New Deferred Items — Added Post-Pipeline (2026-08-25 SIM test)
+
+### DW-B107 — MoveStopToBreakEven Step A snapshots stale PTT-BE-Target-* on followers
+
+**Priority**: P2 — correctness violation, functionally benign in observed test
+**Discovered**: 2026-08-25 live BE-ALL test (stopped out, Copier ON, 4 accounts)
+**Context**: Sim102/103/104 each submitted 4 OCO bracket pairs on a 3-target ATM. Sim101
+(leader) correct at 3. `MoveStopToBreakEven` Step A (`CopyEngine.cs` ~L3380) collects
+target orders into a single flat list with no native-vs-PTT discrimination and no count cap.
+A stale `PTT-BE-Target-4` from a prior session (still `Working` in `acc.Orders`) was
+included in the snapshot and an extra OCO pair submitted.
+**Same class as**: DW-B106 (which fixed the QX path in B107-T1 — BE path not in scope).
+**Deferred to**: B108 (next pipeline block after current testing batch).
+**Full brief**: `docs/brain/DW-B107/00-defect-brief.md`
+**Spec section**: `specs/002-trade-copier-spec.html#section-b107`
+**CYC note**: Fix requires extraction of the Step A loop into a new `SnapshotBeTargets`
+helper to keep `MoveStopToBreakEven` at CYC ≤ 8. Architect must plan extraction first.
+
+---
+
 ## New Deferred Items From This Block
 
 ### B107-DEFER-01 — F5 NinjaTrader 8 Compilation Gate
@@ -188,7 +208,8 @@ must be updated to CLOSED status after all DW-B89 SIM gate paths pass.
 | Category | Count | Items |
 |----------|-------|-------|
 | Closed this block | 3 | DW-B105, DW-B106, DW-B63-01 intent |
-| New deferred (B107) | 2 | B107-DEFER-01 (F5), B107-DEFER-02 (Combo C live test) |
+| New deferred (B107 pipeline) | 2 | B107-DEFER-01 (F5), B107-DEFER-02 (Combo C live test) |
+| New deferred (post-pipeline SIM test) | 1 | DW-B107 (MoveStopToBreakEven stale PTT-BE-Target-*) |
 | Carry-forward from DW-B89 (unchanged) | 11 | DW-B42-01/02/03, DW-PTT-BE-FIX-01/02/03, DW-B89-DEFERRED-01/02/03/04/05/06 |
 
-**Total open items**: 13 (2 new + 11 carry-forward)
+**Total open items**: 14 (3 new + 11 carry-forward)

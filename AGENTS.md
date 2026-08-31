@@ -152,8 +152,8 @@ receiving agent to infer it. Embed constraints verbatim -- never reference a doc
 - **Jane Street Alignment (V12.17)**: ALL agents (Bob, Codex, Qwen, Antigravity, Jules, Rovo Dev, Cursor, etc.) MUST load and apply the ingested Jane Street Intel from `docs/intel/jane-street/` for every architectural decision.
 - **Jane Street Rules Catalog (V12.39)**: The authoritative numbered rule set is `docs/standards/jane-street/RULES_CATALOG.md` (JS-001..JS-110, 100+ rules across Type Safety, Concurrency, Performance, Testing, Code Review, Serialization, Philosophy). ALL agents MUST treat this as the coding bible. The OKF wiki (`docs/intel/jane-street/`) is the distilled pattern guide; the Catalog is the enforceable rule list. The Sentinel enforcement agent (`docs/Jane Street Sentinel`) uses the Catalog directly. When in doubt: Catalog wins.
 - **Test Framework Mandate (V12.32)**: ALL agents MUST generate xUnit tests ONLY. NEVER use NUnit or MSTest. See `docs/protocol/TEST_FRAMEWORK_PROTOCOL.md` for complete requirements.
-- **Hard-Link Integrity**: Every `src/` modification MUST be followed by `powershell -File .\deploy-sync.ps1` to re-synchronize NinjaTrader hard links.
-- **NT8 API Reference (V12.B59)**: `docs/standards/NT8_FULL_REFERENCE.md` is the authoritative NT8 NinjaScript/AddOn API reference (26 pages, 57.8 KB, scraped 2026-08-10). ALL agents MUST grep this file before making any NT8 API claim, before creating any DW- item for NT8 uncertainty, and before any ptt-architect Ph1 read. Only create a DW- item if the docs are genuinely ambiguous AFTER reading NT8_FULL_REFERENCE.md. Key facts confirmed by this file: `CreateOrder()` requires explicit `Submit()`; `AtmStrategyCreate()` is `StrategyBase`-only (not available on `AddOnBase`); NT8 Close button produces `Order.Name = "Close"`.
+- **NT8 Sync Integrity (V12.B95)**: Every `src/PropTraderTools/` modification MUST be followed by `powershell -File scripts\ptt-sync-and-verify.ps1` to copy files to NT8 and MD5-verify every file. Then press **F5** in NinjaTrader 8 to recompile. File copy alone is not enough. (Note: `deploy-sync.ps1` is archived at `archive/v12-reference/scripts/` and no longer exists in the repo root — do not reference it.)
+- **NT8 API Reference (V12.B60)**: `docs/standards/NT8_FULL_REFERENCE.md` is the authoritative NT8 NinjaScript/AddOn API reference (102.7 KB, scraped 2026-08-20 — updated from original 57.8 KB 2026-08-10 version). THREE additional NT8 docs in `docs/standards/`: `NT8_ADDON_KNOWLEDGE.md` (37.3 KB, AddOn-specific constraints), `NT8_COMPILER_RULES.md` (33.7 KB), `NT8_API_SURFACE.md` (11.6 KB). ALL agents MUST grep `NT8_FULL_REFERENCE.md` before making any NT8 API claim, before creating any DW- item for NT8 uncertainty, and before any ptt-architect Ph1 read. Also read `NT8_ADDON_KNOWLEDGE.md` before any AddOn architecture decision. Only create a DW- item if the docs are genuinely ambiguous AFTER reading both files. Key facts confirmed by these docs: `CreateOrder()` requires explicit `Submit()`; `AtmStrategyCreate()` is `StrategyBase`-only (not `AddOnBase`); `AtmStrategyChangeStopTarget()` is `StrategyBase`-only (NOT `AddOnBase`) — orderName param examples are `"Stop1"`, `"Target2"` (canonical NT8 ATM naming confirmed); `Account.Change()` is `AddOnBase`-available but is a silent no-op on ATM-owned brackets (empirically confirmed B129 SIM gate); correct AddOn pattern for ATM bracket price changes = `Account.Cancel()` + `Account.CreateOrder()` + `Submit()` (cancel+resubmit); NT8 Close button produces `Order.Name = "Close"`.
 - **Branch Strategy Mandate (V12.24)**:
   * PRIMARY: GitButler virtual branches ONLY (`but branch new <name>`). All work on `gitbutler/workspace` physical branch.
   * ALTERNATIVE: Git worktrees for true isolation (`git worktree add`).
@@ -303,7 +303,7 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 - Do NOT "improve" adjacent code, comments, or formatting.
 - **WHITESPACE MUTATION BANNED**: Never mutate whitespace, line endings, or indentation across files. This creates bloated diffs that obscure logic and break CI limits.
 - **STRICT DIFF LIMIT**: Pull Request diffs MUST target less than 10,000 characters of source code changes (in `src/`). Split larger epics into smaller, focused PRs.
-- **DIFF PRE-CHECK**: Before pushing, run `powershell -File .\deploy-sync.ps1`. If the **DIFF GUARD** fails, you must isolate the logic changes and revert whitespace/artifact bloat.
+- **DIFF PRE-CHECK**: Before pushing, run `powershell -File scripts\ptt-sync-and-verify.ps1` (sync + MD5 verify). If files are mismatched, fix before pushing. Then press F5 in NT8 to recompile.
 - If unrelated dead code is noticed, REPORT it -- do not act on it.
 - Every changed line must trace directly to the Mission Brief.
 
@@ -619,7 +619,8 @@ epic-review-final EPIC-CCN-X
 - ✅ All phases status = `completed`
 - ✅ All tickets verified
 - ✅ Final review passed
-- ✅ `deploy-sync.ps1` executed successfully
+- ✅ `scripts\ptt-sync-and-verify.ps1` executed successfully (0 MISMATCH lines)
+- ✅ F5 pressed in NT8 after sync (compile step mandatory)
 - ✅ F5 in NinjaTrader successful (see F5 Gate below)
 
 ### F5 Compilation Gate (MANDATORY -- BLOCKING)

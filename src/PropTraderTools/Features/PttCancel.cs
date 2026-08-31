@@ -1,5 +1,5 @@
 // C:\WSGTA\universal-or-strategy\src\PropTraderTools\Features\PttCancel.cs
-// B33 — PttCancel module: cancel all working entry orders for leader + instrument.
+// B33 -- PttCancel module: cancel all working entry orders for leader + instrument.
 // IPttModule implementation. ModuleId = "CANCEL".
 // Dependencies: Core/PttContracts.cs + NinjaTrader.Cbi ONLY. NO CopyEngine import.
 // JS-021: no lock. JS-033: synchronous void. NT8-006: no LINQ -- explicit foreach.
@@ -53,7 +53,7 @@ namespace PropTraderTools
             PttBus.RaiseCancel(this, new CancelEventArgs(ctx.Instrument)); // (3b)
         }
 
-        // ─────────────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------------
 
         /// <summary>
         /// Cancel all Working/Initialized orders for given account + instrument.

@@ -1,5 +1,5 @@
 // C:\WSGTA\universal-or-strategy\src\PropTraderTools\Features\PttBreakEven.cs
-// B34 — PttBreakEven module: cancel stale brackets + submit BE stop for ALL accounts.
+// B34 -- PttBreakEven module: cancel stale brackets + submit BE stop for ALL accounts.
 // IPttModule implementation. ModuleId = "BE".
 // DW-B36-01 FIX: AllAccounts loop applies BE stop to leader AND all followers.
 // DW-B33-05/06/07 FIXED: per-account isLong, bePrice, CancelStaleBrackets.
@@ -197,9 +197,9 @@ namespace PropTraderTools
             );
         }
 
-        // ─────────────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------------
         // PRIVATE HELPERS
-        // ─────────────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------------
 
         /// <summary>
         /// Cancel stale Working/Initialized orders (excluding PTT-BE-* prefix) for given account.
@@ -337,9 +337,9 @@ namespace PropTraderTools
             return null;
         }
 
-        // ─────────────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------------
         // B36-LaneB DW-B35-TARGETS-01: New helpers
-        // ─────────────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------------
 
         /// <summary>
         /// Return true if name is an ATM Target order name (Target1..Target9, not Target0).

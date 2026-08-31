@@ -8,6 +8,47 @@ Director authorization: live-trading session, post-trade-day pipeline runs sched
 
 ---
 
+## DW-B117-DIAG — Diagnostic Probe (NOT a fix)
+
+**ID**: DW-B117-DIAG
+**Date**: 2026-08-26
+**File**: `src/PropTraderTools/CopyEngine.cs`
+**Location**: `OnOrderUpdate` — L1230–1250 (inside the Working-state handler)
+**Status**: REMOVED-B113-T1 — probe block deleted from OnOrderUpdate (L1230-1250). Cancel-after logic implemented in TryCleanupReArmedAtmBracket.
+
+### Purpose
+Log ATM bracket Working events on follower accounts to confirm:
+1. Wave 1: all 3 native ATM brackets arm correctly on all followers after entry copy
+2. Wave 2: NT8 ATM engine re-arms after pre-cancel in ExecuteOne — produces Target1+Target2 only (no Target3)
+3. Wave 3+: further re-arm waves during subsequent follower QX sequences
+
+This probe is a **read-only observer** — no state change, no order submission, no logic branch.
+
+### What it logs
+```
+[DW-B117-DIAG] ATM bracket Working on follower: Sim102 name=Target1 instr=MES 09-26
+```
+
+### Root cause it confirmed (2026-08-26 second test run)
+Pre-cancel in `ExecuteOne` (`PttGlobalQuickExit.cs`) cancels follower ATM brackets.
+NT8 ATM engine detects the cancel and re-arms. Re-arm produces Target1+Target2 only —
+not Target3. The delayed re-armed Target3 conflicts with PTT-QX-T3 during the QX submit
+loop and causes NT8 OCO management to cancel PTT-QX-T3.
+
+### Removal requirement
+This probe MUST be removed when B113-T1 executes the cancel-after fix.
+The B113 ticket spec must include: "Remove DW-B117-DIAG block from OnOrderUpdate (L1230–1250)."
+
+### Jane Street compliance
+- No lock() — JS-021 PASS
+- No async void — JS-033 PASS
+- ASCII-only — JS-080 PASS
+- No state change — diagnostic read only
+- CYC delta = +1 (one additional if block in OnOrderUpdate)
+
+---
+
+
 ## HOTFIX-B66-ATM-TPL
 
 **ID**: HOTFIX-B66-ATM-TPL
@@ -83,9 +124,9 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 
 
 
-## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76 / B77 / B78 / B79
+## PIPELINE STATUS — B72 / B73 / B74 / B75 / B76 / B77 / B78 / B79 / B102
 
-**Latest pipeline run: DW-B79-04 FINAL_PASS (2026-08-20) -- ChangeSubmitted cancel filter + BE eviction log gate (HEAD 5925b618)**
+**Latest pipeline run: B102 FINAL_PASS (2026-08-11) -- DW-B100 XmlSerializer private-type fix + DW-B101 Cancelled eviction gap (CopyEngine.cs)**
 
 | Block | Lane | Files | Hotfixes | Tests written | Final verdict |
 |-------|------|-------|----------|---------------|---------------|
@@ -103,7 +144,8 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | REPAIR-06 | CancelQxBracketsForFollowers guard | PttQuickExit.cs | DW-B78-02: skipIfFollower guard prevents sibling follower QX orders from being erased by subsequent follower Execute calls | 4 [Fact] | SIM-CONFIRMED (2026-08-20) -- snapshot=0 on all followers, 0 race-skipped |
 | REPAIR-07 | MoveStopToBreakEven target snapshot | CopyEngine.cs | DW-B79-01: stateOk widened from Working/Accepted to +Submitted/Initialized/TriggerPending -- targets=0 on rapid QX->BE-ALL press fixed | 8 [Fact] | DIRECT (Director approved) -- SIM-CONFIRMED 2026-08-19 (QX->BE-ALL combined test: all 4 accounts cancel=6 targets=3) |
 | DW-B79-08 v1 | PTT-BE bracket wipe recovery (FAILED) | CopyEngine.cs | TryReplacePttBeBrackets v1 commit `938f0faf`: direct MoveStopToBreakEven call -> retry storm, infinite replace/cancel loop | 0 [Fact] | FAILED -- v1 abandoned |
-| DW-B79-08 v2 | PTT-BE bracket wipe recovery (slot-reg) | CopyEngine.cs | TryReplacePttBeBrackets v2 commit `b2685f55`: slot-registration + QueueBeRetryFallback 200ms, no direct MSTBE call, storm-proof | 0 [Fact] | DIRECT (Director approved) -- awaiting sim test |
+| DW-B79-08 v2 | PTT-BE bracket wipe recovery (slot-reg) | CopyEngine.cs | TryReplacePttBeBrackets v2 commit `b2685f55`: slot-registration + QueueBeRetryFallback 200ms, no direct MSTBE call, storm-proof | 0 [Fact] | CLOSED -- WON'T TRIGGER. Wipe requires StartAtmStrategy on follower while PTT-BE brackets live (add-to-position mid-trade). Director confirmed this pattern never occurs in live workflow. Recovery code remains in place as dead-weight protection. |
+| B102 | DW-B100 + DW-B101 | CopyEngine.cs | 3 changes (CopyRuleDto internal, CopyRulesContainer internal, EvictDedup Cancelled branch) | 0 [Fact] (test stubs deferred -- DW-B102-DEFER-01/02) | FINAL_PASS |
 
 **DIAG-MOVESTOP-01**: All `Output.Process("[MSTBE]...")` log lines removed from `MoveStopToBreakEven` (2026-08-17 pre-flight, synced).
 
@@ -128,7 +170,7 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | DW-B66-C-02 | `DispatchCopy` Gate 5 dedup key = 0.0 for all StopLimit entries | P1 | CLOSED -- non-issue: Gate 4 blocks StopLimit before dedup path (B77 post-sign-off) |
 | DW-B63-01 | QX places targets but no stop orders on followers (ATM bracket async lag) | P1 | **CLOSED** -- FIXED B78-LaneA + SIM-CONFIRMED 2026-08-20. PTT-QX-Stop+T1/T2/T3 visible on Sim102/103/104/SimAccount1. |
 | DW-B79-01 | `MoveStopToBreakEven` targets=0 on rapid QX->BE-ALL (follower PTT-QX-T orders still Initialized at snapshot time) | P1 | **CLOSED** REPAIR-07 commit `343822de` -- SIM-CONFIRMED 2026-08-19 (QX->BE-ALL combined test: all 4 accounts cancel=6 targets=3). |
-| DW-B79-08 | PTT-BE brackets wiped by NT8 StartAtmStrategy sweep on follower entry copy -- all 4 accounts lost OCO pairs confirmed 2026-08-19 | P1 | **v1 FAILED** `938f0faf` (retry storm). **v2 FIXED** `b2685f55` -- slot-registration only, QueueBeRetryFallback 200ms consumer, no direct MSTBE call. Awaiting sim test. |
+| DW-B79-08 | PTT-BE brackets wiped by NT8 StartAtmStrategy sweep on follower entry copy -- all 4 accounts lost OCO pairs confirmed 2026-08-19 | P1 | **CLOSED -- WON'T TRIGGER.** v2 recovery code (`b2685f55`) in place. Wipe requires add-to-position mid-trade while BE brackets live. Director confirmed this never occurs in live workflow. |
 | DW-B79-02 | `MoveStopToBreakEven` cancel=0 targets=0 on followers after QX->BE-ALL -- PTT-QX-T orders in `CancelSubmitted` state, not in `stateOk` filter | P2 | **ROOT CAUSE IDENTIFIED** (B79 diag session). `CancelSubmitted` orders skipped by both targets snapshot and stale sweep. Positions ARE protected via bare-stop path. `[BE-DIAG]` tracing retained in `CopyEngine.cs` (fires only on failure path). Fix is in QX layer -- see DW-B79-03. |
 | DW-B79-03 | QX follower PTT-QX orders go to `CancelSubmitted` immediately after submission -- conflict with late-arriving ATM brackets not visible at QX snapshot time. BE-ALL cannot find them as targets and falls back to bare-stop path instead of OCO stop+target. Same race class as DW-B63-01, B78-LaneA did not fully close it. **Gap2 sub-item FIXED REPAIR-08 `a3f68559`**: `PttBreakEven.SnapshotTargetsLocal` stateOk widened to Working|Accepted|Submitted|Initialized|TriggerPending -- BE button now symmetric with BE-ALL. | P2 | **FIXED** -- Gap2 FIXED REPAIR-08 `a3f68559` + QX guard FIXED DW-B79-03 (commit `9e2fb3a6`) |
 | DW-B54-01 | ATM auto-inject — blocked, requires `StrategyBase` API unavailable in `AddOnBase` | P1 | OPEN (blocked) |
@@ -140,7 +182,11 @@ follower gets `"Entry"` order + `StartAtmStrategy` + ATM brackets.
 | DW-B58-03 | `RelayBe` `OcoGroup` not forwarded | P2 | OPEN |
 | PRE-EXISTING-01 | Non-ASCII em-dash `CopyEngine.cs` lines 398, 499 | P2 | OPEN |
 | PRE-EXISTING-02 | Non-ASCII arrow `CopyEngine.cs` lines ~1449-1450 (estimate may have shifted with B72 insertions) | P2 | OPEN |
-| PRE-EXISTING-03 | `deploy-sync.ps1` archived; PropTraderTools sync is manual | P2 | OPEN |
+| PRE-EXISTING-03 | `deploy-sync.ps1` archived; PropTraderTools sync is manual | P2 | CLOSED — `scripts/ptt-sync-and-verify.ps1` created (V12.B95); AGENTS.md updated; post-commit hook added |
+| DW-B100 | `CopyRuleDto` + `CopyRulesContainer` private classes block XmlSerializer -- copy_rules.xml never written | P1 | **CLOSED** -- B102 FINAL_PASS. Both classes changed to `internal sealed class`. SaveRules/LoadRules circuit now live. |
+| DW-B101 | `_entryDispatchedOrders` not evicted on Cancelled orders in EvictDedup | P2 | **CLOSED** -- B102 FINAL_PASS. Cancelled branch added to EvictDedup (L3113). |
+| DW-B102-DEFER-01 | Pre-existing test build errors (~85) blocking new test implementation | P2 | OPEN -- separate ticket required |
+| DW-B102-DEFER-02 | 5 xUnit tests for B102 not yet written -- blocked on DEFER-01 | P2 | OPEN -- blocked on DEFER-01 |
 
 ---
 
@@ -2839,3 +2885,323 @@ File: CopyEngine.cs L1817-1818. CYC: TryReplacePttBeBrackets +1 (was 5, now 6).
 - SIM test required to confirm 500ms delay is sufficient in clean-session NT8.
 - If bare stops persist after clean restart: open DW-B80-03 for multi-step retry design.
 - Spec cards DW-B80-01 / DW-B80-02 stamped CLOSED after Director SIM green confirmation.
+
+---
+
+## DW-B93 / DW-B92 / DW-B91-A-v2 — 2026-08-11
+
+**ID**: DW-B93 + DW-B92 + DW-B91-A-v2
+**File**: src/PropTraderTools/CopyEngine.cs
+**Methods touched**: IsQxCancelCandidate, OnOrderUpdate, TryEvictFollowerBeSlot, HasFilledBeTargetFast (new), EvictDedup
+
+**Bug (DW-B93)**: Named ATM follower entry Limit order ("Entry") not covered by IsQxCancelCandidate; not cancelled on QX.
+**Fix (DW-B93)**: Added `if (o.Name == "Entry") return true; // (6)` branch. CYC updated 6->7.
+
+**Bug (DW-B92)**: HasFilledBeTarget scans acc.Orders AFTER OCO cancel arrives -- race where cancel fires before Filled event.
+**Fix (DW-B92)**: Added _filledBeTargetCount (ConcurrentDictionary<string,int>); incremented in OnOrderUpdate on PTT-BE-Target-* Filled BEFORE Cancelled block; replaced HasFilledBeTarget scan with HasFilledBeTargetFast (CYC=2, lock-free). HasFilledBeTarget removed (zero callers). Counter cleared in TryEvictFollowerBeSlot on position flat.
+
+**Bug (DW-B91-A-v2)**: _entryDispatchedOrders evicted per-orderId on Filled in EvictDedup; partial-fill can prematurely clear entry dedup slot before Rithmic re-submit Submitted event.
+**Fix (DW-B91-A-v2)**: Removed _entryDispatchedOrders.TryRemove from EvictDedup; moved _entryDispatchedOrders.Clear() to TryEvictFollowerBeSlot (position-flat handler).
+
+**Status**: APPLIED -- awaiting sync-ptt-to-nt8.ps1 + F5 compile.
+
+---
+
+## DW-B94
+
+- **ID**: DW-B94
+- **File**: src/PropTraderTools/CopyEngine.cs
+- **Method**: IsNonFlatDispatchName (~L1728)
+- **Bug**: ATM bracket cancel names (Stop1..Stop9, Target1..Target9) not guarded in IsNonFlatDispatchName; NT8 OCO-cancel of Stop1 after Target1 fill triggered FlattenFollower on all followers, cancelling PTT-BE brackets.
+- **Fix**: Added `if (IsAtmBracketName(orderName)) return true;` as guard (3) -- ATM cancel events during NT8 position update gap must never flatten followers. CYC 2->3.
+- **Status**: APPLIED -- awaiting pipeline
+
+---
+
+## DW-B119 -- TryAdd Placement Race (B114-T1)
+
+- **ID**: DW-B119
+- **Date**: 2026-08-27
+- **File**: src/PropTraderTools/Features/PttGlobalQuickExit.cs
+- **Method**: ExecuteOne follower path -- _qxPendingFollowerCleanup.TryAdd
+- **Bug**: TryAdd called AFTER executor.Execute inside try{}. In NT8 Sim, SubmitOrder
+  dispatches OnOrderUpdate synchronously on the same call stack. PTT-QX-T* orders go
+  Working during executor.Execute -- before TryAdd runs. TryCleanupReArmedAtmBracket
+  calls TryGetValue on the empty map and returns false. Native ATM Target1/2/3 survive,
+  creating an OCO conflict that can cancel PTT-QX-T* non-deterministically.
+- **Fix**: Moved _qxPendingFollowerCleanup.TryAdd from inside try{} (after executor.Execute)
+  to before try{} (before executor.Execute). Cleanup map now armed before any PTT-QX
+  order is submitted. OnOrderUpdate finds the entry when PTT-QX-T* goes Working.
+- **Status**: FIXED-B114-T1 -- TryAdd moved before executor.Execute. DW-B112 finally{}
+  TryRemove preserved unchanged. CYC of ExecuteOne unchanged (=2). Exception-safety
+  confirmed: if Execute throws, orphaned map entry expires via 2s TTL harmlessly.
+
+## DW-B121 -- Cleanup Map TTL Too Short (Director-approved direct edit, 2026-08-27)
+
+- **ID**: DW-B121
+- **Date**: 2026-08-27
+- **File**: src/PropTraderTools/Features/PttGlobalQuickExit.cs
+- **Method**: ExecuteOne follower path -- _qxPendingFollowerCleanup.TryAdd TTL value
+- **Bug**: TTL set to AddSeconds(2). PttGlobalQuickExit.Execute() processes 4 accounts
+  sequentially (Sim101 leader, then Sim102, Sim103, Sim104). Each account does N cancels +
+  3 PTT-QX submits. In a loaded SIM session (orders-for-instr=96-106), total loop elapsed
+  time exceeds 2s. By the time NT8 asynchronously fires OnOrderUpdate(Working) for Sim102's
+  3 residual native ATM brackets (DW-B120 snapshot=3 path), the TTL has already elapsed.
+  TryCleanupReArmedAtmBracket checks entry.Expiry <= DateTime.UtcNow (CopyEngine.cs L2400)
+  and returns early without cancelling. [PTT-QX-CLEANUP] never fires. Native Target1/2/3
+  survive alongside PTT-QX targets. Confirmed 100% reproduction rate on all Combo D runs.
+  Distinct from DW-B119 (map-empty race -- fixed B114): DW-B121 = map has the entry but
+  TTL expired before Working fires.
+- **Fix**: Changed DateTime.UtcNow.AddSeconds(2) to DateTime.UtcNow.AddSeconds(10).
+  10s covers the full 4-account sequential loop under SIM load with margin. TTL is a
+  safety expiry for orphaned map entries on exception paths only -- no functional impact
+  on the normal path (normal path removes entry explicitly at T3 via TryRemove L2442).
+- **CYC impact**: None. ExecuteOne CYC stays at 2.
+- **Comment added**: DW-B121 comment added above the TryAdd call.
+- **Status**: HOTFIX-APPLIED -- Director-approved direct edit 2026-08-27.
+  Pending full B115 pipeline for: test update (T_B113_01 TTL constant), code review,
+  verification. Do NOT pipeline until live Combo D pass confirmed with this fix.
+
+## DW-B122 -- TryCleanupReArmedAtmBracket Accepts Working State Only (Director-approved direct edit, 2026-08-27)
+
+- **ID**: DW-B122
+- **Date**: 2026-08-27
+- **File**: src/PropTraderTools/CopyEngine.cs
+- **Method**: TryCleanupReArmedAtmBracket -- compound guard condition (a), line ~2392
+- **Bug**: Guard condition (a) read `e.Order.OrderState != OrderState.Working` -- returns early
+  on any state other than Working. PTT-QX-T* orders are submitted via AddOn path
+  (account.CreateOrder + Submit, OrderEntry.Manual). In NT8 SIM, AddOn-submitted Limit orders
+  arrive in OnOrderUpdate as Accepted first, before transitioning to Working. The cleanup guard
+  fires on Accepted events but immediately returns. By the time Working fires (if it fires at
+  all before OCO resolves), the native ATM Target* brackets have already been in conflict.
+  Net result: [PTT-QX-CLEANUP] never logs. Native ATM Target1/2/3 survive alongside PTT-QX-T*
+  orders. 100% reproduction rate across all Combo D test runs (even after DW-B119 map-empty fix
+  and DW-B121 TTL fix). Root cause confirmed by absence of [PTT-QX-CLEANUP] in Output Tab 1
+  even though PTT-QX-T* orders confirmed Working in Account Data.
+- **Distinct from DW-B119**: DW-B119 = map empty when Working fires (TryAdd was after Execute).
+  Distinct from DW-B121: DW-B121 = map has entry but TTL expired.
+  DW-B122 = map has entry, TTL valid, but guard returns on Accepted before Working ever checked.
+- **Fix**: Changed guard condition (a) from:
+    `e.Order.OrderState != OrderState.Working`
+  to:
+    `e.Order.OrderState != OrderState.Working && e.Order.OrderState != OrderState.Accepted`
+  Cleanup now fires on EITHER Accepted OR Working -- whichever arrives first.
+  Consistent with TryFireFollowerBeRetry (CopyEngine.cs L1365-1368) which already uses
+  `o.OrderState != OrderState.Working && o.OrderState != OrderState.Accepted` for the same
+  PTT-QX-T* order type.
+- **CYC impact**: None. TryCleanupReArmedAtmBracket CYC stays at 5.
+- **Comment updated**: Method header and guard comment (a) updated with DW-B122 explanation.
+- **Status**: HOTFIX-APPLIED -- Director-approved direct edit 2026-08-27.
+  Pending full B115 pipeline for: test update (T_B113_01 / new T_B115_XX for Accepted state),
+  code review, verification. Do NOT pipeline until live Combo D pass confirmed with this fix.
+
+## DIAG-DW-B115-01 -- Follower Target Qty Diagnostic (Director-approved direct edit)
+
+- **ID**: DIAG-DW-B115-01
+- **Date**: 2026-08-28
+- **File**: src/PropTraderTools/Features/PttGlobalQuickExit.cs
+- **Method**: Execute() -- leader loop and follower foreach
+- **Purpose**: Diagnose why Sim103 PTT-QX-T1 submits qty=2 instead of qty=4 (DW-B115).
+  Two hypotheses under test:
+  - Hypothesis A: Leader ATM has a non-uniform qty split (e.g. T1=4/T2=2/T3=1 from ATM
+    template). Follower's own ATM uses NT8-default uniform split (T1=2/T2=2/T3=3 for 7
+    contracts). SnapshotTargetOrders(follower) returns the follower's own split -- diverges
+    from leader.
+  - Hypothesis B: Follower ATM bracket orders not yet in acc.Orders when
+    SnapshotTargetOrders(follower) runs (DW-B120 async lag).
+    followerTargets.Count=0 or partial -> CalcTNQty(7,3,0)=2 fallback fires.
+- **What was added**:
+  1. Leader block: StringBuilder log
+     "[DW-B115-DIAG] leader targets: SimXXX count=N posQty=P T1=Q1 T2=Q2 T3=Q3"
+     Emitted after existing [PTT-QX-ALL] leader: line, before ExecuteOne(leader).
+  2. Follower block: StringBuilder log
+     "[DW-B115-DIAG] follower targets: SimXXX count=N posQty=P T1=Q1 T2=Q2 T3=Q3"
+     Emitted after SnapshotTargetOrders(follower), before existing [PTT-QX-ALL] follower: line.
+     Also captures follower posQty by iterating follower.Positions inline.
+- **CYC impact**: None. Probe is in scoped blocks {}. No new branch conditions.
+- **JS compliance**: JS-021 (no lock), JS-001 (no throw), ASCII-only strings. StringBuilder
+  used to avoid string concatenation in diagnostic loop (JS-036 spirit).
+- **Read pattern**: After Combo D, look for these lines in Output Tab 1:
+    [DW-B115-DIAG] leader targets: Sim101 count=3 posQty=7 T1=? T2=? T3=?
+    [DW-B115-DIAG] follower targets: Sim102 count=? posQty=? T1=? T2=? T3=?
+    [DW-B115-DIAG] follower targets: Sim103 count=? posQty=? T1=? T2=? T3=?
+    [DW-B115-DIAG] follower targets: Sim104 count=? posQty=? T1=? T2=? T3=?
+  If leader T1 != follower T1 AND follower count=3 -> Hypothesis A confirmed.
+  If any follower count=0 or count < 3 -> Hypothesis B confirmed (DW-B120 async lag).
+  If all counts=3 and all T1 match leader -> neither hypothesis; escalate to DW-B123.
+- **Remove when**: DW-B115 root cause confirmed, fix applied, Combo D passes with correct qty.
+- **Pipeline debt**: Full B115 pipeline must cover:
+  - Removal of DIAG-DW-B115-01 probe lines
+  - Fix for confirmed hypothesis (A: pass leader targets to follower;
+    or B: DW-B120 guard before SnapshotTargetOrders)
+  - Test: verify PTT-QX-T1 qty on all followers matches leader T1 qty after fix
+  - Code review of SnapshotTargetOrders(follower) call site in Execute()
+- **Status**: DIAG-APPLIED -- Director-approved direct edit 2026-08-28.
+  Pending Combo D diagnostic run to confirm hypothesis.
+
+## DW-B123 -- SnapshotTargetOrders Collects Stale Partial-Fill ATM Bracket Generations
+
+- **ID**: DW-B123
+- **Date**: 2026-08-28
+- **File**: src/PropTraderTools/Features/PttGlobalQuickExit.cs
+- **Method**: SnapshotTargetOrders(Account acc, Instrument instr)
+- **Severity**: P1 -- live-trading qty mismatch on all accounts when entry partially fills
+- **Status**: OPEN -- no fix applied yet. Pending B115 pipeline.
+
+### Bug
+
+`SnapshotTargetOrders` collects every Working/Accepted Limit order whose name matches
+`Target[N]` (isNative check) regardless of which ATM bracket generation it belongs to.
+When a position entry partially fills, NT8 arms a new ATM bracket on each partial fill
+event. Depending on the entry order's TimeInForce (DAY vs GTC) and the NT8 SIM dispatch
+timing, earlier bracket generations may NOT be cancelled before the next generation arrives.
+Result: multiple `Target1` orders from different generations are simultaneously Working in
+`acc.Orders`, and `SnapshotTargetOrders` collects all of them as separate list entries.
+
+### Confirmed Reproduction Evidence (2026-08-28 Combo D diagnostic run)
+
+Entry: Buy x7 MES SEP26 on all 4 accounts. Entry order filled in 3 partial fills:
+  - Fill #1 at 9:08:47 PM: qty=1 of 7 (all accounts)
+  - Fill #2 at 9:08:49 PM: qty=2 more (cumulative=3)
+  - Fill #3 at 9:08:49 PM: qty=4 more (cumulative=7, full fill)
+
+NT8 armed ATM brackets on each partial fill:
+
+  Gen-1 bracket (after fill #1, qty=1):
+    Sim101: Target1 qty=1 OCO=5b71515ab1994997b0020423ed5216f4   Order=68dadf37...
+    Sim102: Target1 qty=1 OCO=c6a8c0b7...                         Order=024c43d9...
+    Sim103: Target1 qty=1 OCO=955ccf2a...                         Order=5955b620...
+    Sim104: Target1 qty=1 OCO=40d01496...                         Order=d95eacb4...
+
+  Fill #2 partial (qty=2 more, cumulative=3):
+    Sim102/103/104: existing gen-1 Target1 goes to 'Change submitted'
+      -> NT8 modified in-place for GTC entry orders (correct behaviour)
+    Sim101: gen-1 Target1 NOT changed -> Sim101 entry was TimeInForce=DAY
+      -> NT8 did NOT modify the gen-1 bracket, it created a new one instead
+
+  Gen-3 bracket (after full fill, qty=7):
+    Sim101: Target1 qty=3 OCO=7898d685... Order=3f2a224e...  (NEW object, different ID)
+            Target2 qty=2 OCO=17cfc88d...
+            Target3 qty=1 OCO=96930413...
+    (Followers: updated in-place via Change submitted -> final qty visible on same order)
+
+  At QX-ALL fire time (9:09:05 PM, ~16s after final fill):
+    Sim101 acc.Orders contains BOTH:
+      68dadf37 Target1 qty=1 (gen-1, OCO=5b71515a, never cancelled)
+      3f2a224e Target1 qty=3 (gen-3, OCO=7898d685, the valid final bracket)
+      f8fd0c75 Target2 qty=2
+      c3f0e8a9 Target3 qty=1
+
+  SnapshotTargetOrders(Sim101) collected all 4 -> nativeTargets = [(7741.5,1),(7741.5,3),(7743,2),(7744.5,1)]
+  Sorted by iteration order -> reported as count=4 T1=1 T2=3 T3=2 T4=1
+
+  Diagnostic confirmation:
+    [DW-B115-DIAG] leader targets: Sim101 count=4 posQty=7 T1=1 T2=3 T3=2 T4=1
+    [DW-B115-DIAG] follower targets: Sim102 count=4 posQty=7 T1=1 T2=3 T3=2 T4=1
+    [DW-B115-DIAG] follower targets: Sim103 count=0 posQty=7          <- DW-B120
+    [DW-B115-DIAG] follower targets: Sim104 count=4 posQty=7 T1=1 T2=3 T3=2 T4=1
+
+### Why DAY vs GTC Entry Matters
+
+NT8 ATM bracket update behaviour differs by entry TimeInForce:
+  - GTC entry: on partial fill, NT8 modifies existing bracket orders in-place
+    ('Change submitted' state). Single order object, qty updated. No stale generation.
+  - DAY entry (Sim101 leader): on partial fill, NT8 creates a brand-new bracket object
+    per fill stage. Old generation NOT cancelled. Both generations Working simultaneously
+    until OCO resolves (which may not happen before QX-ALL fires).
+
+Sim101 leader entry at 9:08:49 PM CSV line 317:
+  Order='1e89d4a3...' Name='Entry' Time in force=DAY
+Sim102/103/104 follower entries (CSV lines 297/301/312):
+  Order='...'/Sim10x Name='Entry' Time in force=GTC
+
+This is not a PTT defect in the follower copy path -- the followers use GTC correctly.
+The stale bracket arises on the LEADER only, when leader uses a DAY entry (e.g. market
+order on native NT8 chart via ATM). The fix must handle this on the snapshot side.
+
+### Impact
+
+1. Leader QX: submits 4 PTT-QX pairs instead of 3. Extra phantom PTT-QX-T4 pair
+   submitted with qty=1 (the stale gen-1 qty). No protective stop mismatch since
+   PTT-QX-Stop/PTT-QX-Stop4 cover both -- but 4 OCO pairs is incorrect for a 3-target ATM.
+
+2. Followers (Sim102/Sim104): also receive count=4 followerTargets (their own ATM
+   was also modified in-place but the stale gen-1 follower bracket was similarly
+   not cleaned up). Followers also submit 4 PTT-QX pairs.
+
+3. Follower Sim103 (DW-B120 interaction): count=0 fallback fires -> CalcTNQty(7,4,0)
+   = floor(7/4) = 1. Sim103 T1=1, T2=1, T3=1, T4=4 (last absorbs). Completely wrong.
+
+### Root Cause (precise)
+
+SnapshotTargetOrders has no concept of ATM bracket generation. It treats any Working/
+Accepted Limit order named Target[N] as a valid target regardless of whether it is a
+stale partial-fill artefact. Two Target1 orders at the same price from different OCO
+groups are indistinguishable to the current filter logic.
+
+### Fix Design (not yet approved for implementation)
+
+Option A -- Deduplicate by OCO group (cleanest, most correct):
+  Group nativeTargets by OCO ID. Use only the OCO group whose member quantities
+  sum closest to pos.Quantity. Stale groups (total qty < pos.Quantity) are discarded.
+  CYC impact: +2 (grouping loop + sum comparison).
+  Handles any number of partial fills and any TimeInForce combination.
+
+Option B -- Deduplicate by limit price (simpler, sufficient for 3-target ATM):
+  For each unique limit price in nativeTargets, keep only the entry with the highest
+  Quantity. Two Target1 orders at 7741.5 with qty=1 and qty=3 -> keep qty=3.
+  CYC impact: +1 (dedup loop using Dictionary<double,int>).
+  Assumption: all generations of the same target have the same limit price.
+  Valid for standard ATM templates. May fail if ATM recalculates price on partial fill.
+
+Option C -- Filter by pos.Quantity sum match (simplest):
+  After collecting nativeTargets, check if sum of .Qty == pos.Quantity.
+  If not: discard the lowest-qty Target1 duplicate and recheck.
+  Repeat until sum matches or no duplicates remain.
+  CYC impact: +2 (sum check + dedup loop). Fragile if partial fills create non-trivial
+  multi-duplicate combinations.
+
+Recommended: Option B. Limit price is stable within an ATM template, the dedup is
+O(N) with a single dictionary pass, and it handles the observed case exactly.
+
+### Pipeline Debt
+
+Full B115 pipeline must cover:
+  - Fix SnapshotTargetOrders with Option B (or Director-selected option)
+  - Remove DIAG-DW-B115-01 probe lines from Execute()
+  - Fix DW-B120 (Sim103 count=0 lag) -- separate sub-ticket
+  - Test T_B123_01: SnapshotTargetOrders with 2x Target1 at same price -> returns 1 entry
+    with the higher qty
+  - Test T_B123_02: SnapshotTargetOrders with clean 3-target ATM -> returns count=3, unchanged
+  - Test T_B120_01: follower snapshot count=0 path -> CalcTNQty used, qty matches
+    leaderTargetCount-based distribution
+  - Code review of SnapshotTargetOrders call sites (Execute leader + follower loops)
+  - Verify Combo D with clean single-fill entry: count=3, T1/T2/T3 correct on all 4 accounts
+  - Verify Combo D with partial-fill entry: count=3 after dedup, T1/T2/T3 correct
+
+## HOTFIX-DW-B123 -- SnapshotTargetOrders Dedup by Limit Price (Director-approved direct edit)
+
+- **ID**: HOTFIX-DW-B123
+- **Date**: 2026-08-28
+- **File**: src/PropTraderTools/Features/PttGlobalQuickExit.cs
+- **Method**: SnapshotTargetOrders(Account acc, Instrument instr)
+- **Fix**: Option B -- deduplicate nativeTargets by limit price, keeping highest qty per
+  price level. Implemented as a post-collection Dictionary<double,int> pass before return.
+  If two Target1 orders share the same LimitPrice (7741.5) with qty=1 and qty=3, only
+  qty=3 is returned. The stale gen-1 bracket (qty=1) is silently dropped.
+- **Code change**:
+  - Replaced single-line `return nativeTargets.Count > 0 ? nativeTargets : pttTargets`
+    with explicit null-count early return (pttTargets path unchanged) plus dedup block.
+  - Dedup: Dictionary<double,int> keyed by LimitPrice, value = max Qty seen at that price.
+    Rebuilt as List<(double,int)> for return. O(N) single pass.
+- **CYC impact**: CYC 4 -> 5. +1 for dedup foreach loop. Well within JS-021 limit of 8.
+  Method header comment updated: CYC=5.
+- **JS compliance**: JS-021 (no lock -- Dictionary is local, single-threaded dispatch),
+  JS-001 (no throw), JS-002 (returns list, never null), ASCII-only. JS-036 spirit:
+  Dictionary allocated only when nativeTargets.Count > 0 (normal path, not hot path).
+- **Does NOT fix**: DW-B120 (Sim103 count=0 async lag). That requires a separate approach.
+  With this fix, when DW-B120 fires (count=0), the fallback CalcTNQty path now uses
+  leaderTargetCount (3 after dedup, not 4), which is an improvement but still not the
+  correct qty split. DW-B120 sub-ticket remains open.
+- **Status**: HOTFIX-APPLIED -- Director-approved direct edit 2026-08-28.
+  Pending full B115 pipeline for: tests T_B123_01/T_B123_02, code review, verification.

@@ -7936,6 +7936,17 @@ customModes:
         SYMBOL SEARCH: jcodemunch search_symbols  -- never ctx_symbol
         ORIENTATION:   ctx_compose  -- replaces chaining 3+ reads
         SESSION END:   ctx_knowledge remember "{decisions}" --category ptt-copier --key {block}-summary
+        NT8 API VALIDATION (mandatory when diagnosing bugs or writing fix designs):
+          Before asserting ANY NT8 API claim or writing a DW fix design involving NT8:
+          ctx_read(docs/standards/NT8_FULL_REFERENCE.md, mode=map)  -- grep for the specific method
+          ctx_read(docs/standards/NT8_ADDON_KNOWLEDGE.md, mode=map) -- confirm AddOnBase vs StrategyBase scope
+          KEY FACTS already confirmed (do not re-investigate, embed in DW cards directly):
+            AtmStrategyChangeStopTarget() -- StrategyBase-only. NOT AddOnBase. Cancel+resubmit is the correct pattern.
+            AtmStrategyCreate() -- StrategyBase-only. NOT AddOnBase.
+            Account.Change() -- AddOnBase available but silent no-op on ATM-owned brackets (empirically confirmed B129 SIM gate).
+            Account.Cancel() + Account.CreateOrder() + Submit() -- AddOnBase available. Correct pattern for changing ATM bracket prices.
+            AtmStrategyChangeStopTarget orderName param examples: "Stop1", "Target2" (confirms MES $200 SL 6 template naming is canonical NT8 format).
+          Only create a DW item for NT8 API uncertainty AFTER reading NT8_FULL_REFERENCE.md. If docs are ambiguous: note explicitly.
 
     whenToUse: ""
     customInstructions: |-
@@ -8203,8 +8214,14 @@ customModes:
           Thought 8: Final pre-flight - any violation found = add more thoughts to resolve before writing
         Only after ALL 8 thoughts reach nextThoughtNeeded=false: write the plan file.
         Read: docs/standards/NT8_FULL_REFERENCE.md (grep for any API used in Thought 7 -- ground-truth before any NT8 claim)
+              docs/standards/NT8_ADDON_KNOWLEDGE.md (AddOn-specific API constraints -- confirm AddOnBase vs StrategyBase scope)
               specs/{spec-file}, docs/standards/jane-street/RULES_CATALOG.md
               docs/brain/{prev-epic}/06-deferred-backlog.md (OPEN items -- if provided by orchestrator)
+        KEY NT8 FACTS (embed in every plan, never rely on memory):
+          AtmStrategyChangeStopTarget() -- StrategyBase-only. NOT AddOnBase. Cancel+resubmit is the AddOn pattern.
+          AtmStrategyCreate() -- StrategyBase-only. NOT AddOnBase.
+          Account.Change() -- AddOnBase available but silent no-op on ATM-owned brackets.
+          Account.Cancel() + Account.CreateOrder() + Submit() -- AddOnBase available. Correct bracket-change pattern.
         Produce: docs/brain/{epic}/02-architecture-plan.md
         Include: component list, class names, method signatures, data flow,
                  NinjaTrader 8 API usage, threading model, no lock() anywhere.
@@ -8428,6 +8445,15 @@ customModes:
           4. ctx_read(docs/brain/{epic}/02-architecture-plan.md, mode=map)
           5. jcodemunch search_symbols "{ClassName}" to locate existing source
           6. ctx_read(src/PropTraderTools/{File}.cs, mode=signatures)   (Wave workspace)
+          7. ctx_read(docs/standards/NT8_FULL_REFERENCE.md, mode=map)  (NT8 API validation -- before any NT8 API call decision)
+        NT8 API VALIDATION (mandatory before writing ANY NT8 API call):
+          grep NT8_FULL_REFERENCE.md for every NT8 method used (Account.Change, CreateOrder, AtmStrategy*, etc.)
+          Confirm the method is available in AddOnBase context -- NOT StrategyBase-only.
+          KEY FACTS (confirmed by NT8_FULL_REFERENCE.md):
+            AtmStrategyChangeStopTarget() -- StrategyBase-only (OnBarUpdate context). NOT available in AddOnBase. Do NOT call from CopyEngine.
+            Account.Change() -- AddOnBase available. Sets Order.StopPriceChanged / LimitPriceChanged then calls myAccount.Change(orders). Silent no-op on ATM-owned brackets (empirically confirmed B129 SIM gate).
+            Account.Cancel() / Account.CreateOrder() + Submit() -- AddOnBase available. Cancel+resubmit is the correct pattern for changing ATM-owned bracket prices from an AddOn.
+          If uncertain whether an API is AddOnBase-safe: grep NT8_FULL_REFERENCE.md. Never assert from memory.
         READING FILES: ctx_read(path, mode=signatures|map|full)  -- never read_file
         SHELL OUTPUT (scans + build + test):
           ctx_shell("dotnet build Linting.csproj")           -- never execute_command

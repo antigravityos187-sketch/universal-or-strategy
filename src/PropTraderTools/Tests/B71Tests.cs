@@ -141,7 +141,7 @@ namespace PropTraderTools
             // B71 Fix 1c: FindRule promoted private->internal so PttGlobalQuickExit can call it.
             // This test verifies FindRule is accessible as internal and handles null safely.
             _engine.SetEnabled(false);
-            CopyRule? result = _engine.FindRule(null);
+            CopyEngine.CopyRule? result = _engine.FindRule(null);
             Assert.Null(result);
         }
 

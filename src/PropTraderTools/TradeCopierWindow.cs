@@ -52,6 +52,22 @@ namespace PropTraderTools
         // B11 T2: Arm BE button tracking (DW-B10-03) -- accessed exclusively on UI thread (JS-021 compliant).
         private readonly List<Button> _armBeBtns = new List<Button>();
 
+        // BGTM-1: Add Rule button field (promoted from local so ApplyFeatureFlags can gate it)
+        private Button _addRuleBtn;
+
+        // BGTM-1: Copy mode ComboBox field (promoted from local so ApplyFeatureFlags can gate Mirror)
+        private ComboBox _modeCb;
+
+        // BGTM-1: License UI controls
+        private System.Windows.Controls.TextBox _licenseKeyBox;
+        private System.Windows.Controls.TextBlock _licenseStatusText;
+        private System.Windows.Controls.Button _activateBtn;
+
+        private static readonly string LicenseTxtPath = System.IO.Path.Combine(
+            NinjaTrader.Core.Globals.UserDataDir,
+            "PropTraderTools",
+            "license.txt");
+
         // -- frozen semantic brushes (JS-008: MakeWinBrush calls Freeze()) --------
         // "Win" prefix avoids collision with potential Window base-class members
         private static SolidColorBrush MakeWinBrush(byte r, byte g, byte b)
@@ -130,6 +146,11 @@ namespace PropTraderTools
                     "Trade Copier"
                 );
             }
+
+            // BGTM-1: subscribe to flag changes, apply current flags, populate key display
+            CopyEngine.Instance.FeatureFlagsChanged += OnFeatureFlagsChanged;
+            ApplyFeatureFlags(CopyEngine.Instance.Flags);
+            LoadLicenseKeyDisplay();
         }
 
         // B56-LaneB: CYC=3 -- rebuild rule rows from saved engine state after LoadRules.
@@ -156,6 +177,8 @@ namespace PropTraderTools
         {
             _engine.PositionStateChanged -= OnPositionStateChanged;
             _engine.CopyEnabledChanged -= OnCopyEnabledChanged;
+            // BGTM-1: unsubscribe feature flag listener
+            CopyEngine.Instance.FeatureFlagsChanged -= OnFeatureFlagsChanged;
         }
 
         protected override void OnClosed(EventArgs e)
@@ -237,14 +260,14 @@ namespace PropTraderTools
                 VerticalAlignment = VerticalAlignment.Center,
                 Padding = new Thickness(0, 0, 4, 0),
             };
-            var modeCb = new ComboBox { Width = 120, VerticalAlignment = VerticalAlignment.Center };
-            modeCb.Items.Add("Signal (default)");
-            modeCb.Items.Add("Mirror");
-            modeCb.Items.Add("Clone");
-            modeCb.SelectedIndex = 0;
-            modeCb.SelectionChanged += OnCopyModeComboChanged;
+            _modeCb = new ComboBox { Width = 120, VerticalAlignment = VerticalAlignment.Center };
+            _modeCb.Items.Add("Signal (default)");
+            _modeCb.Items.Add("Mirror");
+            _modeCb.Items.Add("Clone");
+            _modeCb.SelectedIndex = 0;
+            _modeCb.SelectionChanged += OnCopyModeComboChanged;
             modeRow.Children.Add(modeLabel);
-            modeRow.Children.Add(modeCb);
+            modeRow.Children.Add(_modeCb);
             DockPanel.SetDock(modeRow, Dock.Top);
             root.Children.Add(modeRow);
 
@@ -268,15 +291,15 @@ namespace PropTraderTools
             root.Children.Add(rulesScroll);
 
             // --- Add Rule button ---
-            var addRuleBtn = new Button
+            _addRuleBtn = new Button
             {
                 Content = "+ Add Rule",
                 Margin = new Thickness(6, 2, 6, 2),
                 Padding = new Thickness(8, 3, 8, 3),
             };
-            addRuleBtn.Click += OnAddRule;
-            DockPanel.SetDock(addRuleBtn, Dock.Top);
-            root.Children.Add(addRuleBtn);
+            _addRuleBtn.Click += OnAddRule;
+            DockPanel.SetDock(_addRuleBtn, Dock.Top);
+            root.Children.Add(_addRuleBtn);
 
             // --- Separator ---
             var sep2 = new Separator { Margin = new Thickness(0, 2, 0, 2) };
@@ -292,12 +315,148 @@ namespace PropTraderTools
                 Content = logPanel,
                 Margin = new Thickness(4),
             };
+            // BGTM-1: license key row docks to bottom before log fills remaining space
+            BuildLicenseRow(root);
+
             // LastChildFill = true on DockPanel means this gets all remaining space
             root.Children.Add(logScroll);
+
             Content = root;
 
             // V04: ensure consistent initial state (all action buttons start grey)
             UpdateButtonColors(false, false);
+        }
+
+        // BGTM-1: Builds the license key input row and appends to parent DockPanel. CYC=1.
+        // JS-001: no throw. JS-021: no lock. No hex colors (MakeWinBrush not needed -- plain controls).
+        // No FontFamily. ASCII-only strings.
+        private void BuildLicenseRow(System.Windows.Controls.Panel parent)
+        {
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(6, 4, 6, 4),
+            };
+
+            var label = new Label
+            {
+                Content = "LICENSE",
+                VerticalAlignment = VerticalAlignment.Center,
+                Width = 70,
+            };
+
+            _licenseKeyBox = new TextBox
+            {
+                Width = 200,
+                Margin = new Thickness(2, 0, 4, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+
+            _activateBtn = new Button
+            {
+                Content = "Activate",
+                Padding = new Thickness(8, 3, 8, 3),
+                Margin = new Thickness(0, 0, 6, 0),
+            };
+            _activateBtn.Click += OnActivateClick;
+
+            _licenseStatusText = new TextBlock
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(4, 0, 2, 0),
+            };
+
+            row.Children.Add(label);
+            row.Children.Add(_licenseKeyBox);
+            row.Children.Add(_activateBtn);
+            row.Children.Add(_licenseStatusText);
+
+            DockPanel.SetDock(row, Dock.Top);
+            parent.Children.Add(row);
+        }
+
+        // BGTM-1: Activate button click -- validate license and apply flags. CYC=1. JS-001: no throw.
+        private void OnActivateClick(object sender, RoutedEventArgs e)
+        {
+            string key = _licenseKeyBox?.Text?.Trim() ?? string.Empty;
+            try
+            {
+                System.IO.Directory.CreateDirectory(
+                    System.IO.Path.GetDirectoryName(LicenseTxtPath));
+                System.IO.File.WriteAllText(LicenseTxtPath, key);
+            }
+            catch (Exception) { }
+            var flags = LicenseClient.Validate(key);
+            CopyEngine.Instance.SetFlags(flags);
+            ApplyFeatureFlags(flags);
+            _licenseStatusText.Text = GetStatusText(flags);
+        }
+
+        // BGTM-1: Apply feature flags to all gated UI elements. CYC=1. Straight-line assignments.
+        // JS-021: no lock. Called on UI thread only (from OnLoaded, OnActivateClick, OnFeatureFlagsChanged).
+        private void ApplyFeatureFlags(FeatureFlags f)
+        {
+            foreach (var btn in _trimBtns)
+            {
+                btn.IsEnabled = f.TrimFlatten;
+                btn.ToolTip = f.TrimFlatten ? null : "Trim requires Pro tier";
+            }
+            foreach (var btn in _flattenBtns)
+            {
+                btn.IsEnabled = f.TrimFlatten;
+                btn.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
+            }
+            foreach (var btn in _cancelBtns)
+            {
+                btn.IsEnabled = f.TrimFlatten;
+                btn.ToolTip = f.TrimFlatten ? null : "Cancel requires Pro tier";
+            }
+            foreach (var btn in _beBtns)
+            {
+                btn.IsEnabled = f.BreakEven;
+                btn.ToolTip = f.BreakEven ? null : "Break Even requires Pro tier";
+            }
+            if (_modeCb != null)
+            {
+                _modeCb.IsEnabled = f.MirrorMode;
+                _modeCb.ToolTip = f.MirrorMode ? null : "Mirror mode requires Elite tier";
+            }
+            if (_addRuleBtn != null)
+            {
+                _addRuleBtn.IsEnabled = f.MultiRule;
+                _addRuleBtn.ToolTip = f.MultiRule ? null : "Multi-rule requires Pro tier";
+            }
+        }
+
+        // BGTM-1: Populate license key box from file on window load. CYC=2.
+        private void LoadLicenseKeyDisplay()
+        {
+            try
+            {
+                _licenseKeyBox.Text = System.IO.File.Exists(LicenseTxtPath)
+                    ? System.IO.File.ReadAllText(LicenseTxtPath).Trim()
+                    : string.Empty;
+            }
+            catch (Exception)
+            {
+                _licenseKeyBox.Text = string.Empty;
+            }
+            _licenseStatusText.Text = GetStatusText(CopyEngine.Instance.Flags);
+        }
+
+        // BGTM-1: Handle CopyEngine.FeatureFlagsChanged -- always on UI thread (per architecture plan). CYC=1.
+        private void OnFeatureFlagsChanged(FeatureFlags f)
+        {
+            ApplyFeatureFlags(f);
+            _licenseStatusText.Text = GetStatusText(f);
+        }
+
+        // BGTM-1: Return tier name string for license status display. CYC=3.
+        private static string GetStatusText(FeatureFlags f)
+        {
+            if (f.AtrSizing)  return "ELITE";
+            if (f.MultiRule)  return "PRO";
+            return "STARTER";
         }
 
         private Grid BuildRuleRow(string instrumentName)

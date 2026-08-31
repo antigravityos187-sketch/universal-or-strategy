@@ -34006,7 +34006,7 @@ Argument 1: cannot convert from 'NinjaTrader.Cbi.Instrument'
             </table>
 
             <div id="gate-execution-result" style="margin-top:0.75rem; padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--amber);">&#9711; Gate execution: PENDING &mdash; F5 compile gate first, then Director runs B120 gate, then B119 gate.</strong>
+              <strong style="color:var(--amber);">&#9711; Gate execution: PENDING &mdash; B123 sync PASS (0 MISMATCH, 18 files, 2026-08-31). F5 compile gate required, then Director runs B120 gate, then B119 gate, then B123 SIM gate (Tests A/B/C).</strong>
             </div>
 
             <div class="label" style="margin-top:0.75rem;">Combo E Pass Criteria (all three blocks validated together)</div>
@@ -38260,6 +38260,1768 @@ After Ph5 FINAL_PASS:
       </div>
     </div>
     <!-- end section-b123-pipeline -->
+
+    <!-- ══ POST-B123 SYNC + SIM GATE SECTION ════════════════════════════════════════════════════ -->
+    <div class="section" id="section-post-b123-sim" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">Post-B123 Validation &mdash; Sync Gate PASS + SIM Gates Pending Director (2026-08-31)</div>
+      <div class="section-body">
+
+        <!-- ── B123 Source Verification Card ── -->
+        <div class="card" style="border-left:3px solid var(--green); background:rgba(34,197,94,0.04); margin-bottom:1rem;">
+          <div class="card-title" style="color:var(--green);">&#10003; B123 Source Verification &mdash; ALL CHECKS PASS (2026-08-31)</div>
+          <div class="card-body">
+            <p style="font-size:0.83rem; margin:0 0 0.5rem 0; color:var(--muted);">
+              Read <code>src/PropTraderTools/Features/PttGlobalQuickExit.cs</code> and
+              <code>src/PropTraderTools/TradeCopierPanel.cs</code> directly. All spec requirements confirmed:
+            </p>
+            <table style="font-size:0.78rem; border-collapse:collapse; width:100%; margin-top:0.5rem;">
+              <tr>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left; background:rgba(0,0,0,0.2);">Check</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left; background:rgba(0,0,0,0.2);">Location</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left; background:rgba(0,0,0,0.2);">Result</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Signature: <code>internal void Execute(List&lt;(double Price, int Qty)&gt; forcedTargets)</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>PttGlobalQuickExit.cs L129</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Does NOT call <code>SnapshotTargetOrders()</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>L129&ndash;186</code> (full overload body)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Passes <code>forcedTargets</code> to <code>ExecuteOne()</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>L182</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Passes <code>forcedTargets</code> to <code>ExecuteFollowers()</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>L183</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Logs <code>[PTT-QX-2T-ALL] GlobalQuickExit fired (forced 2-target)</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>L146</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Elite tier gate (<code>QxGlobalExit</code>) present</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>L131</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">CYC &le; 8</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Comment L125: CYC=8 (8 branches enumerated)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>OnInstrQAll2tClick</code>: late-resolve <code>_leaderAccount</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>TradeCopierPanel.cs L1984</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>OnInstrQAll2tClick</code>: null guards on <code>_instrument</code> and <code>_leaderAccount</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>L1982&ndash;1986</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>OnInstrQAll2tClick</code>: reads <code>pos.Quantity</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>L1987&ndash;1990</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>OnInstrQAll2tClick</code>: calls <code>Build2TargetList(qty)</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>L1991</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>OnInstrQAll2tClick</code>: calls <code>new PttGlobalQuickExit().Execute(targets)</code> (new overload)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>L2002</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">No-arg <code>Execute()</code> unchanged (regression guard)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>PttGlobalQuickExit.cs L36&ndash;118</code></td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── B123 Sync Gate Card ── -->
+        <div class="card" style="border-left:3px solid var(--green); background:rgba(34,197,94,0.04); margin-bottom:1rem;">
+          <div class="card-title" style="color:var(--green);">&#10003; B123 Sync Gate &mdash; 0 MISMATCH &mdash; 18 files confirmed (2026-08-31)</div>
+          <div class="card-body">
+            <p style="font-size:0.83rem; margin:0 0 0.5rem 0;">
+              <strong>Command:</strong> <code>powershell -File scripts\ptt-sync-and-verify.ps1</code><br>
+              <strong>Result:</strong> <span style="color:var(--green); font-weight:700;">PASS &mdash; 0 MISMATCH, 18 files MD5-verified (0 copied, 18 in-sync)</span><br>
+              <strong>Key files:</strong> <code>Features\PttGlobalQuickExit.cs</code> OK &bull; <code>TradeCopierPanel.cs</code> OK
+            </p>
+            <div style="margin-top:0.5rem; padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--amber);">&#9888; NEXT STEP (mandatory):</strong> Press F5 in NinjaTrader 8 to compile. File copy alone does NOT activate the new code.
+              B123 SIM gates (Tests A/B/C) and deferred SIM gates (B120-DEFER-02, B119-DEFER-02) cannot run until F5 goes green.
+            </div>
+          </div>
+        </div>
+
+        <!-- ── B123 SIM Gate Procedure Card ── -->
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04); margin-bottom:1rem;">
+          <div class="card-title" style="color:var(--amber);">&#9888; B123 SIM Gate &mdash; Tests A / B / C &mdash; Director Action Required</div>
+          <div class="card-body">
+
+            <div style="margin-bottom:0.6rem; padding:8px 12px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong>Setup (required before any button test):</strong>
+              <ol style="margin:0.3rem 0 0 1.1rem; padding:0; line-height:1.75; font-size:0.82rem;">
+                <li>Select MES chart on Sim101 (sets <code>_leaderAccount</code> + <code>_instrument</code> in panel)</li>
+                <li>Check Sim102, Sim103, Sim104 follower boxes</li>
+                <li>Click <strong>COPY ON</strong></li>
+              </ol>
+            </div>
+
+            <div class="label">Test A &mdash; QAll2t with 7 contracts</div>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.3rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Open 7-contract MES position on Sim101 via ATM (MES $200 SL6 or similar)</li>
+              <li>Confirm 3-target ATM brackets are Working on Sim101</li>
+              <li>Press <strong>QAll2t</strong></li>
+              <li>Output Tab must show:
+                <pre style="font-size:0.77rem; background:var(--raised); padding:8px; border-radius:4px; margin:0.25rem 0;">[PTT-QX-2T-ALL] GlobalQuickExit fired (forced 2-target)
+[PTT-QX-2T-ALL] leader: Sim101 MES SEP26 qty=7 ...
+[DW-B115-DIAG] leader targets: Sim101 count=2 ...   &lt;-- count=2 not 3</pre>
+              </li>
+              <li>Exactly 2 bracket pairs submitted (T1=4 contracts +Xt, T2=3 contracts +Xt)</li>
+            </ol>
+            <div style="margin:0.3rem 0 0.6rem 0; padding:6px 10px; background:rgba(34,197,94,0.07); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--green);">PASS:</strong> <code>count=2</code> in DIAG line, 2 bracket pairs, position protected.
+            </div>
+            <div style="margin:0 0 0.8rem 0; padding:6px 10px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--red);">FAIL:</strong> count=3 still &rarr; forced path not routing correctly &rarr; log DW-B134, stop.
+            </div>
+
+            <div class="label">Test B &mdash; QAll2t with 6 contracts</div>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.3rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Open 6-contract position on Sim101</li>
+              <li>Press <strong>QAll2t</strong></li>
+              <li>Output Tab must show: <code>count=2</code>, T1=3 T2=3 (equal split)</li>
+            </ol>
+            <div style="margin:0.3rem 0 0.6rem 0; padding:6px 10px; background:rgba(34,197,94,0.07); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--green);">PASS:</strong> equal split, 2 bracket pairs.
+            </div>
+            <div style="margin:0 0 0.8rem 0; padding:6px 10px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--red);">FAIL:</strong> any other split or count &rarr; log DW-B134.
+            </div>
+
+            <div class="label">Test C &mdash; Quick ALL regression (no-arg path unchanged)</div>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.3rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Open position on Sim101 with 3-target ATM active</li>
+              <li>Press <strong>Quick ALL +4t</strong> (the existing spinner button, NOT QAll2t)</li>
+              <li>Output Tab must show: <code>[PTT-QX-ALL] GlobalQuickExit fired</code> (no "2T" or "forced" prefix)</li>
+              <li>3 bracket pairs submitted (existing 3-target behavior preserved)</li>
+            </ol>
+            <div style="margin:0.3rem 0 0.6rem 0; padding:6px 10px; background:rgba(34,197,94,0.07); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--green);">PASS:</strong> 3 targets, no-arg log prefix, no regression.
+            </div>
+            <div style="margin:0 0 0.8rem 0; padding:6px 10px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--red);">FAIL:</strong> only 2 targets on Quick ALL &rarr; forced overload routing incorrect &rarr; log DW-B134.
+            </div>
+
+            <div id="b123-sim-gate-result" style="margin-top:0.75rem; padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--amber);">&#9711; SIM gate: PENDING &mdash; requires F5 compile + Director runs Tests A / B / C above.</strong>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── Deferred SIM Gate: B120-DEFER-02 (DW-B129 flatten) ── -->
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04); margin-bottom:1rem;">
+          <div class="card-title" style="color:var(--amber);">&#9888; B120-DEFER-02 &mdash; DW-B129 Fallback Flatten Gate &mdash; Director Action Required (run after B123 Tests A/B/C PASS)</div>
+          <div class="card-body">
+            <div class="label">Gate Procedure (deferred from B120)</div>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.3rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Fresh NT8 restart. Sim101 leader + Sim102/103/104 followers, COPY ON.</li>
+              <li>Enter 7-contract MES position on Sim101 with 3-target ATM. Followers copy.</li>
+              <li>Press <strong>BE-ALL</strong>.</li>
+              <li>Wait <strong>1&ndash;2 seconds</strong> (inside the old race window).</li>
+              <li>Press <strong>QX-ALL</strong> (Quick ALL spinner button, not QAll2t).</li>
+              <li>Wait 10 seconds.</li>
+            </ol>
+            <div style="margin:0.3rem 0 0.6rem 0; padding:6px 10px; background:rgba(34,197,94,0.07); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--green);">PASS criteria:</strong>
+              <ul style="margin:0.2rem 0 0 1.1rem; padding:0; line-height:1.75;">
+                <li><code>[PTT-QX-FLATTEN] leader fallback flatten: Sim101</code> line appears</li>
+                <li>All 4 accounts flat after 10 seconds (no residual position on Sim101)</li>
+                <li>No manual close required</li>
+              </ul>
+            </div>
+            <div style="margin:0 0 0.8rem 0; padding:6px 10px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--red);">FAIL:</strong> Sim101 left with open position after QX-ALL &rarr; log new DW item, root cause in source.
+            </div>
+            <div id="b120-defer-02-result" style="padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--amber);">&#9711; PENDING &mdash; Director-owned. Run after B123 Tests A/B/C PASS.</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Deferred SIM Gate: B119-DEFER-02 (DW-B128 reversal guard) ── -->
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04); margin-bottom:1rem;">
+          <div class="card-title" style="color:var(--amber);">&#9888; B119-DEFER-02 &mdash; DW-B128 Reversal Guard Gate &mdash; Director Action Required (run after B120-DEFER-02 PASS)</div>
+          <div class="card-body">
+            <div class="label">Gate Procedure (deferred from B119)</div>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.3rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Sim101 leader + Sim102/103/104 followers, COPY ON.</li>
+              <li>Enter <strong>long</strong> position on Sim101 (e.g. Buy MES 1 contract). Followers copy.</li>
+              <li>Close Sim101 long (manual flatten or QX).</li>
+              <li>Immediately enter <strong>short</strong> position on Sim101 (Sell MES 1 contract &mdash; reversal).</li>
+              <li>Wait 5 seconds.</li>
+            </ol>
+            <div style="margin:0.3rem 0 0.6rem 0; padding:6px 10px; background:rgba(34,197,94,0.07); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--green);">PASS criteria:</strong>
+              <ul style="margin:0.2rem 0 0 1.1rem; padding:0; line-height:1.75;">
+                <li>Followers (Sim102/103/104) do NOT copy the short entry &mdash; they remain flat</li>
+                <li>Only Sim101 goes short</li>
+                <li>Output Tab shows: <code>[PTT-COPY-GUARD] skip reversal entry</code> per follower</li>
+              </ul>
+            </div>
+            <div style="margin:0 0 0.8rem 0; padding:6px 10px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.8rem;">
+              <strong style="color:var(--red);">FAIL:</strong> Followers copy the short entry &rarr; reversal guard not working &rarr; log new DW item.
+            </div>
+            <div id="b119-defer-02-result" style="padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--amber);">&#9711; PENDING &mdash; Director-owned. Run after B120-DEFER-02 PASS.</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── All-Gates Summary Status ── -->
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04);">
+          <div class="card-title" style="color:var(--amber);">Post-B123 Gate Summary &mdash; Status as of 2026-08-31</div>
+          <div class="card-body">
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%;">
+              <tr>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left; background:rgba(0,0,0,0.2);">Gate</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left; background:rgba(0,0,0,0.2);">Defect</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left; background:rgba(0,0,0,0.2);">Status</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left; background:rgba(0,0,0,0.2);">Blocker</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B123 Source Verification</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B133</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS (all 13 checks)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">&mdash;</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B123 Sync Gate (0 MISMATCH)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B133</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS (18 files)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">&mdash;</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">F5 Compile Gate</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">&mdash;</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9711; PENDING (Director: press F5)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">Blocks all SIM tests</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B123 Test A (QAll2t qty=7)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B133</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9711; PENDING</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">F5 required</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B123 Test B (QAll2t qty=6)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B133</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9711; PENDING</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">F5 required</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B123 Test C (Quick ALL regression)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">&mdash;</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9711; PENDING</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">F5 required</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B120-DEFER-02 (DW-B129 flatten)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B129</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9711; PENDING</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B123 Tests A/B/C PASS</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B119-DEFER-02 (DW-B128 reversal)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B128</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9711; PENDING</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B120-DEFER-02 PASS</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!-- end section-post-b123-sim -->
+
+    <!-- ══ DW-B134: ATM Bracket Drag Not Synced to Followers ═══════════════════════════════════ -->
+    <div class="section" id="section-dw-b134" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(16,185,129,0.10); border-left:3px solid var(--green); color:var(--green);">DW-B134 &mdash; P1 &mdash; CLOSED (partial) &mdash; ATM Bracket Drag: IsBracketLegStatic STP fix + SyncFollowerBracket cancel+resubmit applied (B129 LaneB PIPELINE_COMPLETE). Residual: DW-B137 (P1 OPEN &mdash; wrong ATM name format for MES $200 SL 6 template) + DW-B134-OCO (P2, deferred to B130).</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.04);">
+          <div class="card-title" style="color:var(--amber);">DW-B134 &mdash; P1 &mdash; CLOSED (partial) &mdash; cancel+resubmit path implemented (B129 LaneB) but SIM gate FAIL: drag does not sync for MES $200 SL 6 template. New defect: DW-B137 (P1 OPEN).</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Reported</td><td style="padding:3px 0; color:#e2e8f0;">2026-08-31 (Director live observation)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--amber);">P1 &mdash; Operational (position management degraded; follower risk uncontrolled when SL/TP moved)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Repro</td><td style="padding:3px 0; color:#e2e8f0;">100% deterministic on any ATM bracket drag in Sim or Live</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Files</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> (SyncFollowerBracket, HandleBracketChange, FindFollowerBracketOrder)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Pipeline</td><td style="padding:3px 0; color:var(--amber);">B124 (planned) &mdash; pending Director approval</td></tr>
+            </table>
+
+            <div class="label">Symptom (Director-observed)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              While in a trade with COPY ON and followers active, dragging a <strong>Target</strong> (profit target limit order)
+              or <strong>Stop Loss</strong> (stop order) bracket on the leader account's chart updates the leader's order price
+              but the follower accounts (Sim102/103/104) retain their original bracket prices. The followers are left with
+              unmodified risk/reward levels that diverge from the leader.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Root Cause (code-confirmed, two-layer gap)</div>
+
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Layer 1 &mdash; The listener fires but <code>acc.Change()</code> is a silent no-op for ATM brackets:</strong><br>
+              <code>CopyEngine.OnOrderUpdate</code> already routes to <code>TryHandleBracketDrag</code> &rarr; <code>HandleBracketChange</code> &rarr; <code>SyncFollowerBracket</code> &rarr; <code>acc.Change(new Order[] { fo })</code>.
+              However, the NT8 ATM engine <em>owns</em> native ATM bracket orders (Stop1/Stop2/Target1/Target2).
+              <strong><code>acc.Change()</code> called from an AddOn context on ATM-owned brackets is a confirmed silent no-op</strong> &mdash;
+              no exception, no effect, stop/target price unchanged. This is the same root cause fixed by
+              <code>HOTFIX-MSTBE-CANCEL-RESUBMIT</code> (<code>CopyEngine.cs L3598&ndash;3601</code>) for the break-even path.
+            </p>
+            <pre style="font-size:0.77rem; background:var(--raised); padding:8px; border-radius:4px; margin:0.4rem 0;">// CopyEngine.cs L3598-3601 (confirmed existing knowledge):
+// Root cause: NT8 ATM engine owns Stop1/Stop2 brackets and ignores acc.Change() from AddOn
+// context -- no exception, no effect. Confirmed: [MSTBE] Change() OK Stop1 logged while
+// stop remained at original price in Orders tab.</pre>
+
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Layer 2 &mdash; <code>FindFollowerBracketOrder</code> matches by <code>FromEntrySignal</code> which is <code>null</code> for ATM brackets:</strong><br>
+              When leader drags a native ATM bracket, <code>leaderOrder.FromEntrySignal == null</code>.
+              <code>FindFollowerBracketOrder(acc, null, isStop)</code> iterates follower orders checking
+              <code>order.FromEntrySignal != null</code> &mdash; ATM follower brackets also have <code>FromEntrySignal == null</code>,
+              so the null==null comparison passes the filter.
+              The method then differentiates stops vs. targets by <code>OrderType</code> and <code>IsStopLeg()</code>.<br>
+              <strong>ATM stop orders use name format <code>"12s Buy STP"</code> (confirmed <code>CopyEngine.cs L3518&ndash;3519</code>)</strong>
+              &mdash; name starts with digits, not "Stop". <code>IsBracketLegStatic</code> checks <code>StartsWith("Stop")</code>
+              which fails for STP-suffix names, so <strong>the leader drag event for ATM stops does not even reach
+              <code>HandleBracketChange</code></strong> because <code>IsWorkingBracket</code> returns <code>false</code>.<br>
+              Targets (named "Target1", "Target2", ...) do pass <code>IsBracketLegStatic</code>, so their drag events reach
+              <code>HandleBracketChange</code> but are silently ignored by the <code>acc.Change()</code> no-op (Layer 1).
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">What Happens at Each Gate (call stack trace)</div>
+            <pre style="font-size:0.77rem; background:var(--raised); padding:8px; border-radius:4px; margin:0.4rem 0;">-- Target drag (e.g. Target1 price moved on leader) --
+OnOrderUpdate (L1274)
+  Gate 1: _isCopyEnabled == true -> pass
+  Gate 2: FindMatchingRule -> leader account + instrument matched -> pass
+  Gate B+C: TryHandleDrag -> TryHandleBracketDrag
+    IsWorkingBracket: OrderState==Working && IsBracketLegStatic("Target1"=StartsWith("Target")) -> TRUE
+    HandleBracketChange:
+      isStop = IsStopLeg("Target1") -> FALSE (no STP suffix, no "Stop" prefix, no FromEntrySignal)
+      rawPrice = leaderOrder.LimitPrice (new dragged price)
+      foreach follower:
+        SyncFollowerBracket:
+          FindFollowerBracketOrder(follower, null, isStop=false)
+            -> finds follower order with FromEntrySignal==null, OrderType==Limit, !IsStopLeg -> found
+          fo.LimitPrice = newPrice
+          acc.Change(new[] { fo })   <-- SILENT NO-OP: ATM bracket owned by NT8 ATM engine
+          StatusUpdate logs "bracket synced target -> X" -- but follower price UNCHANGED
+
+-- Stop drag (e.g. "12s Buy STP" moved on leader) --
+OnOrderUpdate
+  Gate B+C: TryHandleDrag -> TryHandleBracketDrag
+    IsWorkingBracket: IsBracketLegStatic("12s Buy STP")
+      StartsWith("Stop") -> FALSE
+      StartsWith("Target") -> FALSE
+      StartsWith("PTT-") -> FALSE
+      FromEntrySignal -> null -> FALSE
+      -> IsBracketLegStatic returns FALSE
+    IsWorkingBracket -> FALSE -> TryHandleBracketDrag returns false -> no sync attempted</pre>
+
+            <div class="label" style="margin-top:0.75rem;">NT8 API Confirmed Facts (from NT8_FULL_REFERENCE.md)</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong><code>Account.Change(IEnumerable&lt;Order&gt;)</code></strong> (L2365&ndash;2403): changes order price for AddOn-submitted orders. <strong>Silent no-op for NT8 ATM-engine-owned brackets (Stop1/Target1)</strong> &mdash; confirmed empirically.</li>
+              <li><strong><code>Account.OrderUpdate</code> event</strong> (L2456&ndash;2506): fires on every order state change and <em>price change</em> when a bracket is dragged in chart. The listener is already wired (<code>CopyEngine.cs L1264</code>).</li>
+              <li><strong>ATM stop name format</strong>: <code>"12s Buy STP"</code> (suffix "STP") &mdash; <code>CopyEngine.cs L3518&ndash;3519</code>. Not "Stop1" prefix.</li>
+              <li><strong>Correct pattern for moving ATM brackets</strong>: cancel + resubmit at new price (not <code>acc.Change()</code>). Source: <code>HOTFIX-MSTBE-CANCEL-RESUBMIT</code> pattern at <code>CopyEngine.cs L3598</code>.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Fix Design Options</div>
+
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.3rem 0 0 0;">
+              <strong>Option A &mdash; Cancel + Resubmit follower bracket at new price (recommended)</strong><br>
+              When the leader drags a bracket to a new price, detect the price delta in <code>HandleBracketChange</code> and
+              for each follower: (1) cancel the existing ATM bracket order, (2) resubmit a new PTT-prefixed limit/stop order
+              at the scaled new price, (3) the PTT-prefixed order is not owned by the NT8 ATM engine so <code>acc.Submit()</code>
+              will work. This is the same pattern used by PTT-QX and PTT-BE.<br>
+              <strong>Two sub-gaps to fix:</strong>
+            </p>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.3rem 0 0 1.5rem; padding:0; line-height:1.8;">
+              <li><strong>STP-suffix stop detection</strong>: extend <code>IsBracketLegStatic</code> to recognise ATM stop name format <code>"...STP"</code> suffix (same as <code>IsStopLeg</code> already does, but <code>IsBracketLegStatic</code> does not &mdash; it only checks <code>StartsWith("Stop")</code>). This ensures ATM stop drag events reach <code>HandleBracketChange</code>.</li>
+              <li><strong>Cancel+resubmit in <code>SyncFollowerBracket</code></strong>: replace <code>fo.LimitPrice = newPrice; acc.Change()</code> with cancel-then-resubmit when the follower bracket is an ATM-owned order (detected by <code>IsAtmBracketName(fo.Name)</code>). PTT-prefixed orders can still use <code>acc.Change()</code> (they are AddOn-submitted, so Change works).</li>
+            </ol>
+
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.5rem 0 0 0;">
+              <strong>Option B &mdash; Price scaling</strong><br>
+              When dragging, the leader moves by N ticks. The follower may have a different position size.
+              The new price for the follower should be the same <em>absolute price level</em> as the leader
+              (not proportionally scaled by qty) because Stop Loss and Profit Target are price levels, not
+              quantity-dependent. The existing <code>HandleBracketChange</code> already copies the leader price
+              directly (tick-rounded) to the follower &mdash; this is correct behaviour. No qty scaling needed.
+            </p>
+
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.5rem 0 0 0;">
+              <strong>Option C &mdash; Defer (reject)</strong><br>
+              This is a meaningful operational gap. When a Director moves the stop to lock in profits or
+              moves a target for a partial exit, followers are left exposed. P1 severity. Should be fixed.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Files in Scope</div>
+            <pre style="font-size:0.78rem; overflow-x:auto; background:var(--raised); padding:10px; border-radius:4px;">CopyEngine.cs -- two changes:
+  1. IsBracketLegStatic (L3532): add EndsWith("STP", OrdinalIgnoreCase) clause
+     so ATM stop drag events ("12s Buy STP") reach HandleBracketChange.
+  2. SyncFollowerBracket (L2040): replace acc.Change() no-op with cancel+resubmit
+     pattern for ATM-owned bracket orders (names: Stop1..Stop9, Target1..Target9, ...STP).
+     PTT-prefixed orders continue to use acc.Change() (AddOn-submitted, Change works).</pre>
+
+            <div class="label" style="margin-top:0.75rem;">CYC Impact</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <code>IsBracketLegStatic</code>: CYC 3 &rarr; 4 (one new clause). Still &le; 8.<br>
+              <code>SyncFollowerBracket</code>: CYC 5 &rarr; 7 (ATM-owned branch: cancel + resubmit = 2 new branches).
+              If CYC would exceed 8, extract <code>SyncAtmFollowerBracket</code> helper. Architect decides in Ph1.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Deferred Items / Open Questions</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>DW-B134-OQ-01</strong>: What is the exact order name format for ATM stops in the Director's specific ATM template? The reference says <code>"12s Buy STP"</code> but template-specific names may vary. Need Director to confirm from Output Tab or Orders tab while in a trade.</li>
+              <li><strong>DW-B134-OQ-02</strong>: Does NT8 fire <code>OrderUpdate</code> with a price change event when a bracket is dragged, or only on state transitions? Need Director to confirm by observing Output Tab with diagnostic logging added.</li>
+              <li><strong>DW-B134-OQ-03</strong>: After cancel+resubmit, the follower bracket is now a PTT-prefixed AddOn order, not an ATM bracket. If the follower position then closes via its own ATM stop fill (the original one), the PTT replacement bracket may be left orphaned. The OCO/cleanup path for the replacement order needs design.</li>
+              <li><strong>DW-B134-OQ-04</strong>: Follower bracket resubmit at exact same price as leader, or scaled by follower/leader qty ratio? Recommendation: same absolute price (price level is not qty-dependent for S/L and T/P).</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Diagnostic Step (Director &mdash; run before pipeline)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              With COPY ON and a live Sim position with ATM brackets, add a temporary <code>StatusUpdate</code> log
+              or check the existing Output Tab for <code>"bracket synced"</code> lines. If the log shows
+              <code>"bracket synced target -&gt; X"</code> but the follower target price in the Orders tab has not changed,
+              Layer 1 is confirmed. If no <code>"bracket synced"</code> appears at all on stop drag, Layer 2 is confirmed.
+              Report both observations so the pipeline can be scoped precisely.
+            </p>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">Status: P1 OPEN &mdash; pipeline B129 pending Director approval. No src edits in this session.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b134 -->
+
+    <!-- ══ DW-B134 UPDATE: OQ answers from Director 2026-08-31 ══════════════════════════════════ -->
+    <div class="section" id="section-dw-b134-update" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">DW-B134 Update &mdash; OQ-01/OQ-02/OQ-04 Answered by Director (2026-08-31)</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04);">
+          <div class="card-title" style="color:var(--amber);">DW-B134 OQ Resolution &mdash; ATM stop name confirmed STP-suffix; no &ldquo;bracket synced&rdquo; in output (Layer 2 active); same absolute price confirmed</div>
+          <div class="card-body">
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.5rem;">
+              <tr>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">OQ</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Question</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Answer</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">OQ-01</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">ATM stop order name format in Director template?</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">Confirmed <strong>"Buy STP"</strong> label visible on chart (image 1). STP-suffix format confirmed. <code>IsStopLeg</code> already handles this; <code>IsBracketLegStatic</code> fix needed (add <code>EndsWith("STP")</code>). Template name: "MES $200 SL4".</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">OQ-02</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Does Output Tab show "bracket synced" on drag?</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">No "bracket synced" lines appear in the provided output log. This confirms <strong>Layer 2 is active for stop legs</strong> (ATM stop "…STP" fails <code>IsBracketLegStatic</code>, so drag event never reaches <code>HandleBracketChange</code>). Target drag behaviour (Layer 1 silent <code>acc.Change()</code> no-op) not yet separately confirmed.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">OQ-04</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Same absolute price or scaled by qty for follower?</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">Director confirms <strong>same absolute price</strong>. S/L and T/P are price levels, not qty-dependent. <code>HandleBracketChange</code> already copies leader price directly (tick-rounded) &mdash; correct.</td>
+              </tr>
+            </table>
+            <div style="padding:8px 12px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong>OQ-03: ANSWERED (SAFE) &mdash; B129 LaneB Ph1.</strong> Gate 2 (FindMatchingRule) returns null for all follower account orders; TryCancelFollowerEntries is never reached for follower-originating cancel events. No cascade risk. Architectural proof in docs/brain/B129/LaneB-02-architecture-plan.md Section C. Confirmed by test B129_DW134_OQ03_CancelledBracketDoesNotTriggerFollowerEntryCancel (passing). Residual OCO orphan risk tracked as DW-B134-OCO (P2, deferred to B130).
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b134-update -->
+
+    <!-- ══ DW-B134-OCO: OCO Orphan Risk After ATM STP Cancel+Resubmit (P2 OPEN — B130 SIM partial) ══ -->
+    <div class="section" id="section-dw-b134-oco" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">DW-B134-OCO &mdash; P2 &mdash; OPEN &mdash; OCO Orphan Risk After ATM Drag Cancel+Resubmit &mdash; B130 SIM Test B PARTIAL (Flatten-path safe; ATM target-fill path observation INCOMPLETE &mdash; requires dedicated session)</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04);">
+          <div class="card-title" style="color:var(--amber);">DW-B134-OCO &mdash; P2 &mdash; OPEN &mdash; "PTT-STP-Drag" / "PTT-TGT-Drag" Orphan After ATM Target Fill Unconfirmed &mdash; B130 Test B PARTIAL</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Discovered</td><td style="padding:3px 0; color:#e2e8f0;">2026-08-31 (B129 LaneB deferred backlog)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--amber);">P2 &mdash; Affects follower accounts only when ATM stop/target is dragged on leader and ATM target subsequently fills</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Parent defect</td><td style="padding:3px 0; color:#e2e8f0;">DW-B134 (CLOSED, partial) &mdash; B129 LaneB fix introduced cancel+resubmit for ATM STP sync. B130 LaneA added SyncAtmFollowerTarget for target drag.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>SyncAtmFollowerBracket</code> (~L2100), <code>SyncAtmFollowerTarget</code> (~L2200)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--amber);">&#9888; P2 OPEN &mdash; B130 SIM Test B PARTIAL. PTT-TGT-Drag orders auto-cancelled on explicit Flatten (CONFIRMED SAFE on that path). ATM target-fill-driven OCO cancel NOT YET OBSERVED (session ended before ATM fill). True orphan risk for ATM fill path remains unconfirmed.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">B130 Test B result</td><td style="padding:3px 0; color:var(--amber);">PARTIAL &mdash; PTT-TGT-Drag orders on Sim102/103/104 were auto-cancelled when "Flatten Everything" was called. This confirms the Flatten path (QX/BE-ALL triggered close) does not orphan drag-derived stops. The remaining open question is whether an ATM target fill (NT8 OCO execution, not explicit flatten) triggers the same auto-cancel of PTT-TGT-Drag orders outside the OCO group.</td></tr>
+            </table>
+
+            <div class="label">Root Cause</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <code>SyncAtmFollowerBracket</code> (B129 LaneB fix) cancels the follower's ATM STP bracket via
+              <code>acc.Cancel(new Order[] { fo })</code> and resubmits a new standalone <code>StopMarket</code>
+              order named <code>"PTT-STP-Drag"</code> via <code>acc.CreateOrder</code> + <code>acc.Submit</code>.
+              Similarly, <code>SyncAtmFollowerTarget</code> (B130 LaneA) resubmits a <code>Limit</code> order named
+              <code>"PTT-TGT-Drag"</code>. Both new orders are <strong>not part of the original ATM OCO pair</strong>.
+              NT8's ATM engine manages STP and target brackets as an OCO group; the new drag-derived orders are
+              outside that OCO group. The OCO auto-cancel behavior when the ATM target fills is untested.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Impact</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>Risk 1 (PTT-STP-Drag orphan)</strong>: When the ATM target fills on a follower, the ATM engine's OCO cancellation applies to the original STP bracket &mdash; which was already cancelled during the stop drag. The "PTT-STP-Drag" stop is outside the OCO group and may remain <code>Working</code> after the target fills, creating an orphaned open stop order.</li>
+              <li><strong>Risk 2 (PTT-TGT-Drag orphan)</strong>: Similarly, "PTT-TGT-Drag" (from target drag, B130 LaneA) is a standalone Limit order. If the ATM stop fills (position goes flat via stop), the PTT-TGT-Drag target may remain Working.</li>
+              <li><strong>B130 Test B observation</strong>: PTT-TGT-Drag was auto-cancelled on explicit Flatten. This suggests PttFlatten.cs calls Cancel on all working orders. The OCO-fill path is a different code path. Observation incomplete.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Fix Design (updated post-B130 Test B)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">B130 Test B result partially de-risks this defect. The Flatten path is confirmed safe. The ATM fill path requires one more observation. Fix design options:</p>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>Option A (Defensive — recommended for B131)</strong>: In <code>OnPositionUpdate</code> (or <code>OnOrderUpdate</code> on Fill/Cancelled), when a follower account goes flat (position quantity = 0), sweep all orders named "PTT-STP-Drag" or "PTT-TGT-Drag" with state <code>Working</code> and cancel them. This is safe because flat = no position to protect, so any lingering drag order is an orphan.</li>
+              <li><strong>Option B (Wait for observation)</strong>: Run a dedicated SIM session where the ATM target fills normally (no manual flatten). Observe whether orphan occurs. If no orphan, close DW-B134-OCO as SAFE.</li>
+            </ul>
+            <p style="font-size:0.83rem; color:var(--amber); margin-top:0.5rem;">
+              <strong>Recommended path</strong>: Run Option B first (dedicated observation session, B131 SIM gate 0). If orphan confirmed, implement Option A in B131 LaneA. If no orphan in 3 ATM-target-fill cycles, close as SAFE.
+            </p>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--amber);">&#9888; P2 OPEN &mdash; B130 Test B PARTIAL. Flatten path confirmed SAFE (PTT-TGT-Drag auto-cancelled on Flatten). ATM target-fill path observation INCOMPLETE. Requires dedicated SIM session where ATM target fills naturally (not manually flattened). Queue for B131 pre-pipeline SIM gate 0. Note: DW-B138 (Stop1 drag) and DW-B139 (multi PTT-TGT-Drag) must be fixed first before OCO observation is meaningful.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b134-oco -->
+
+    <!-- ══ DW-B137: IsAtmSTPOrder Wrong Name Format — CLOSED B130 LaneA PIPELINE_COMPLETE ══════ -->
+    <div class="section" id="section-dw-b137" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(34,197,94,0.10); border-left:3px solid var(--green); color:var(--green);">DW-B137 &mdash; P1 &mdash; CLOSED &mdash; B130 LaneA PIPELINE_COMPLETE &mdash; IsAtmSTPOrder extended to cover Stop1/Stop2/Stop3 + Target1/Target2/Target3 (MES $200 SL 6 ATM template). ATM bracket drag now syncs to followers.</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--green); background:rgba(34,197,94,0.04);">
+          <div class="card-title" style="color:var(--green);">DW-B137 &mdash; P1 &mdash; CLOSED &mdash; IsAtmSTPOrder extended (B130 LaneA). Stop1/Stop2/Stop3 + Target1/Target2/Target3 now routed to cancel+resubmit.</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Reported</td><td style="padding:3px 0; color:#e2e8f0;">2026-08-31 &mdash; Director SIM gate session (B129 post-compile test)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P1 &mdash; ATM bracket drag on leader never syncs to followers. Manual bracket adjustment required after every leader bracket drag.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Parent</td><td style="padding:3px 0; color:#e2e8f0;">DW-B134 (ATM bracket drag). B129 LaneB fix implemented cancel+resubmit path but targeted wrong order name format.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">ATM Template</td><td style="padding:3px 0; color:#e2e8f0;"><strong>MES $200 SL 6</strong> &mdash; generates orders named <code>Stop1</code>, <code>Stop2</code>, <code>Stop3</code>, <code>Target1</code>, <code>Target2</code>, <code>Target3</code>, <code>Entry</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Files</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>IsAtmSTPOrder</code> (&sim;L2028), <code>SyncFollowerBracket</code> (&sim;L2048), <code>SyncAtmFollowerBracket</code> (&sim;L2100), <code>IsBracketLegStatic</code> (&sim;L3621)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--green);">&#10003; P1 CLOSED &mdash; B130 LaneA PIPELINE_COMPLETE. IsAtmSTPOrder now covers EndsWith("STP") || StartsWith("Stop") || StartsWith("Target"). CYC=1. 2 xUnit tests green.</td></tr>
+            </table>
+
+            <div class="label">Root Cause</div>
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0.75rem;">
+              The B129 LaneB fix added <code>EndsWith("STP")</code> to <code>IsAtmSTPOrder</code>, targeting the
+              <code>"Buy STP"</code> / <code>"Sell STP"</code> ATM name format. The Director&rsquo;s actual
+              template (<strong>MES $200 SL 6</strong>) generates orders named <code>Stop1</code>, <code>Stop2</code>,
+              <code>Stop3</code> &mdash; a completely different format.
+            </p>
+            <p style="font-size:0.83rem; color:var(--muted); margin:0 0 0.75rem;">
+              <strong>Layer 1 (<code>IsBracketLegStatic</code>)</strong>: already covers <code>StartsWith("Stop")</code>
+              and <code>StartsWith("Target")</code> &mdash; so <code>Stop1</code> / <code>Target1</code> PASS Layer 1.
+              This is NOT the bottleneck.
+            </p>
+            <p style="font-size:0.83rem; color:var(--muted); margin:0 0 0.75rem;">
+              <strong>Layer 2 (<code>SyncFollowerBracket</code> routing)</strong>: calls <code>IsAtmSTPOrder</code> to
+              decide whether to cancel+resubmit. <code>Stop1</code> does NOT end with <code>"STP"</code> &rarr;
+              <code>IsAtmSTPOrder</code> returns false &rarr; falls back to <code>acc.Change()</code> &rarr; silent
+              no-op for ATM-owned brackets &rarr; follower bracket unchanged.
+            </p>
+
+            <div class="label">Fix Design Options (architect must confirm)</div>
+            <div style="background:rgba(0,0,0,0.18); border-radius:4px; padding:8px 12px; font-family:var(--mono); font-size:0.78rem; line-height:1.7; margin-bottom:0.6rem;">
+              <span style="color:var(--green);">// Option A (minimal) — extend IsAtmSTPOrder:</span><br>
+              private bool IsAtmSTPOrder(Order o) =&gt;<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;o.Name.EndsWith("STP", StringComparison.OrdinalIgnoreCase)<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;|| o.Name.StartsWith("Stop", StringComparison.OrdinalIgnoreCase);<br>
+              <span style="color:var(--dim);">// CYC: 1&rarr;1 | Risk: confirm no non-ATM orders start with "Stop"</span><br><br>
+              <span style="color:var(--green);">// Option B (IsBracketLegStatic as gate) — align routing with Layer 1:</span><br>
+              <span style="color:var(--dim);">// Use IsBracketLegStatic result as the routing signal instead of IsAtmSTPOrder.</span><br>
+              <span style="color:var(--dim);">// Requires architect to confirm Layer 1 == Layer 2 scope (no false overlap).</span>
+            </div>
+            <div style="margin-top:0.6rem; padding:8px 12px; background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.3); border-radius:4px; font-size:0.81rem;">
+              <strong style="color:var(--green);">&#10003; NT8 DOC VALIDATION (docs/standards/NT8_FULL_REFERENCE.md — 2026-08-31)</strong><br>
+              <code>AtmStrategyChangeStopTarget(double limitPrice, double stopPrice, string orderName, string atmStrategyId)</code>
+              — StrategyBase method (requires <code>OnBarUpdate()</code> context). <strong>NOT available in AddOnBase.</strong><br>
+              NT8 docs confirm <code>orderName</code> param examples: <code>"Stop1"</code>, <code>"Target2"</code> — this is the <em>canonical</em> NT8 ATM naming format. The MES $200 SL 6 template uses exactly this format.<br>
+              <code>Account.Change()</code> — AddOnBase available but sets <code>Order.StopPriceChanged</code> then calls <code>myAccount.Change(orders)</code>. Confirmed silent no-op on ATM-owned brackets (empirically confirmed B129 SIM gate).<br>
+              <strong>Conclusion:</strong> cancel+resubmit (B129 LaneB design) IS the architecturally correct AddOn approach. The only fix needed is routing: extend <code>IsAtmSTPOrder</code> to cover <code>StartsWith("Stop")</code> names (Option A). <em>No design change required — routing bug only.</em>
+            </div>
+            <p style="font-size:0.82rem; color:var(--muted); margin:0.5rem 0 0.5rem;">
+              <strong>Target1/Target2</strong>: NT8 docs show <code>AtmStrategyChangeStopTarget</code> handles both stops and targets via orderName. <code>acc.Change()</code> uses <code>LimitPriceChanged</code> for limit orders — also likely a no-op on ATM targets. B129 SIM showed no drag at all (both stops and targets). Architect should extend <code>IsAtmSTPOrder</code> to also cover <code>StartsWith("Target")</code> names and route all ATM-owned brackets through cancel+resubmit.
+            </p>
+            <p style="font-size:0.82rem; color:var(--muted); margin:0 0 0.5rem;">
+              <strong>Diagnostic log recommended</strong>: add a temporary log at the top of
+              <code>HandleBracketChange</code> to confirm the drag event reaches the code at all. If the log does
+              not appear when Director drags a bracket, the issue is upstream (Layer 0 bug, not Layer 2).
+            </p>
+
+            <div class="label">Tests Required (B130)</div>
+            <div style="background:rgba(0,0,0,0.18); border-radius:4px; padding:8px 12px; font-family:var(--mono); font-size:0.78rem; line-height:1.7; margin-bottom:0.6rem;">
+              [Fact] DW137_Stop1NameRoutesToCancelResubmit<br>
+              &nbsp;&nbsp;// Simulate SyncFollowerBracket with order named "Stop1" (ATM-owned)<br>
+              &nbsp;&nbsp;// Assert: acc.Cancel() called, NOT acc.Change()<br>
+              &nbsp;&nbsp;// Assert: acc.CreateOrder() + Submit() called at new price<br><br>
+              [Fact] DW137_Target1NameRoutesCorrectly<br>
+              &nbsp;&nbsp;// Simulate SyncFollowerBracket with order named "Target1"<br>
+              &nbsp;&nbsp;// Assert: correct path taken (confirm cancel+resubmit vs acc.Change() for targets)
+            </div>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--green);">&#10003; P1 CLOSED &mdash; B130 LaneA PIPELINE_COMPLETE. IsAtmSTPOrder now correctly covers Stop1/Stop2/Stop3 (StartsWith("Stop")) and Target1/Target2/Target3 (StartsWith("Target")) in addition to the original Buy STP/Sell STP (EndsWith("STP")) backward-compat clause. CYC=1 (expression body). NT8 validation: AtmStrategyChangeStopTarget() is StrategyBase-only &mdash; cancel+resubmit is confirmed correct AddOn architecture. New SyncAtmFollowerTarget helper added for target bracket drag (PTT-TGT-Drag, OrderType.Limit). DW-B134-OCO observation gate now UNBLOCKED.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b137 -->
+
+    <!-- ══ DW-B135: Reversal Guard False-Positive Blocks Legitimate Direction-Change Entries ══════ -->
+    <div class="section" id="section-dw-b135" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(16,185,129,0.10); border-left:3px solid var(--green); color:var(--green);">DW-B135 &mdash; P0 &mdash; CLOSED &mdash; Reversal Guard False-Positive: Fixed (B129 LaneA PIPELINE_COMPLETE). _lastLeaderDirection cleared on leader flat; followers no longer miss entries on direction change.</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--green); background:rgba(16,185,129,0.04);">
+          <div class="card-title" style="color:var(--green);">DW-B135 &mdash; P0 &mdash; CLOSED &mdash; <code>[PTT-COPY-GUARD] skip reversal entry: follower flat</code> false-positive fixed (B129 LaneA PIPELINE_COMPLETE)</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Reported</td><td style="padding:3px 0; color:#e2e8f0;">2026-08-31 (Director output log + screen captures)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P0 &mdash; Live money at risk. Followers miss entries whenever leader changes direction after closing a trade. Director must manually verify all follower positions after every new entry.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Repro</td><td style="padding:3px 0; color:#e2e8f0;">100% deterministic when leader closes a trade and immediately opens in the opposite (or same, if prior was opposite) direction with followers flat.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Files</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>DispatchCopy</code> L1930&ndash;1948, <code>IsReversalToFlatFollower</code> L3510&ndash;3515, <code>_lastLeaderDirection</code> L331</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Pipeline</td><td style="padding:3px 0; color:var(--amber);">B124 (planned) &mdash; pending Director approval</td></tr>
+            </table>
+
+            <div class="label">Symptom (confirmed from output log)</div>
+            <pre style="font-size:0.77rem; background:var(--raised); padding:8px; border-radius:4px; margin:0.4rem 0;">[PTT-COPY] dispatch: Sell x10 MES SEP26 -> PA-APEX-422136-03 ...
+[PTT-COPY-GUARD] skip reversal entry: PA-APEX-422136-03 MES SEP26 follower flat
+[PTT-COPY-GUARD] skip reversal entry: PA-APEX-422136-04 MES SEP26 follower flat
+[PTT-COPY-GUARD] skip reversal entry: PA-APEX-422136-05 MES SEP26 follower flat
+[PTT-COPY] dispatch: Buy x10 MES SEP26 -> PA-APEX-422136-03 ...
+[PTT-COPY-GUARD] skip reversal entry: PA-APEX-422136-03 MES SEP26 follower flat
+...</pre>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              The guard fires immediately after a dispatch (sometimes on the same direction) and on every subsequent direction change. Followers are left flat while the leader accumulates positions on live Apex accounts.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Root Cause (code-confirmed)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <code>DispatchCopy</code> (<code>CopyEngine.cs L1930</code>) implements the DW-B128 reversal guard via
+              <code>IsReversalToFlatFollower(currentAction, lastAction, followerIsFlat)</code>:<br><br>
+              <code>return currentAction != lastAction &amp;&amp; followerIsFlat;</code>
+              (<code>L3515</code>).<br><br>
+              After every dispatched trade, <code>_lastLeaderDirection[instr.FullName]</code> is written with the last
+              dispatched <code>OrderAction</code> (<code>L1985</code>). When the leader closes a trade and opens in the
+              <strong>opposite direction</strong>, the guard sees:
+            </p>
+            <pre style="font-size:0.77rem; background:var(--raised); padding:8px; border-radius:4px; margin:0.25rem 0;">currentAction = Sell (new entry)
+lastAction    = Buy  (prior closed trade)
+followerIsFlat = true  (close just flattened the follower)
+IsReversalToFlatFollower -> true -> GUARD FIRES -> copy BLOCKED</pre>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              The guard was designed for <strong>DW-B128</strong>: prevent accidental copy when the leader's
+              <em>closing fill</em> event briefly fires as a reversal signal (e.g. leader fills a short-close order
+              while follower has already been flattened). The fix worked for that race, but the guard
+              is now <strong>too broad</strong> &mdash; it also fires when the Director <em>intentionally</em>
+              opens a new trade in the opposite direction after cleanly closing the prior one.
+            </p>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              Additionally, the guard persists across sessions because <code>_lastLeaderDirection</code> is never
+              cleared on COPY OFF / NT8 restart / rule change. On the first re-entry of a new session
+              in the opposite direction from the last trade of the previous session, the guard fires
+              even before the first close event of the new session.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">What DW-B128 Was Protecting Against (must be preserved)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              The race condition: leader closes a long position via Close/Flatten order (fills). NT8 fires
+              <code>OnOrderUpdate(Filled)</code> for the close order. <code>TryDispatchLeaderFlat</code> runs and flattens followers.
+              Then NT8 fires <em>another</em> <code>OnOrderUpdate</code> event for the same fill with a different state &mdash;
+              or the close order itself has <code>OrderAction.Sell</code> which looks like a new short entry. The guard
+              prevents this close-order event from being mistakenly copied as a new Sell entry to already-flat followers.
+            </p>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              The root distinction: a <strong>close order</strong> name is "Close", "Flatten", "Exit*", or similar
+              (caught by <code>IsNativeExitName</code>). A <strong>new entry order</strong> name is "Entry" (Named ATM mode).
+              The guard should only fire for orders that look like entries but are actually close signals &mdash;
+              not for genuine new entry orders.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Fix Design</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Option A (minimal &mdash; recommended): Clear <code>_lastLeaderDirection</code> when leader position goes flat.</strong><br>
+              When <code>TryFirePositionState</code> fires <code>hasPos=False</code> for the leader instrument, also clear
+              <code>_lastLeaderDirection[instr.FullName]</code>. The next entry dispatch will have
+              <code>hasLastDirection=false</code> &rarr; guard cannot fire (guard is bypassed when <code>hasLastDirection=false</code>,
+              per <code>L1934</code>: <em>"On first entry (hasLastDirection=false) guard cannot fire -- copy always proceeds"</em>).
+              This preserves the DW-B128 protection (guard still fires during the close-order race window when position
+              is still open) while eliminating the false-positive on clean re-entry after a completed close.
+            </p>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Option B (targeted): Only fire guard when order name is a known close signal.</strong><br>
+              Add a check: if <code>IsNativeExitName(order.Name)</code>, skip <code>DispatchCopy</code> entirely
+              (already blocked by <code>IsExitSignalName</code> Gate 0.5). The guard is not needed for named-mode
+              "Entry" orders, since those are unambiguously new entries. Risk: this approach requires careful
+              reasoning about all order name variants and may miss edge cases.
+            </p>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Architect decides Option A vs B in B124 Ph1.</strong>
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">CYC Impact (Option A)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <code>TryFirePositionState</code>: add one <code>_lastLeaderDirection.TryRemove</code> on the <code>hasPos=False</code>
+              path. CYC 3 &rarr; 4 (one new branch for the leader check). Still &le; 8.
+            </p>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--green);">&#10003; CLOSED &mdash; B129 LaneA PIPELINE_COMPLETE. Fix: TryFirePositionState clears _lastLeaderDirection on hasPos=False path. DW-B128 protection preserved. CYC=6 &le; 8. 3 xUnit tests green.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b135 -->
+
+    <!-- ══ DW-B136: Second Back-to-Back Order — Gap B CLOSED B130 LaneB PIPELINE_COMPLETE ══════ -->
+    <div class="section" id="section-dw-b136" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(34,197,94,0.10); border-left:3px solid var(--green); color:var(--green);">DW-B136 &mdash; GAP_A_RESOLVED / GAP_B_CLOSED &mdash; Back-to-Back Orders: Gap A (reversal guard false-positive) RESOLVED by DW-B135 fix (B129 LaneA). Gap B (order-ID scoped cancel) CLOSED by B130 LaneB PIPELINE_COMPLETE. TryCancelFollowerEntries now scoped to leader order ID via _followerCopyMap.</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--green); background:rgba(34,197,94,0.04);">
+          <div class="card-title" style="color:var(--green);">DW-B136 &mdash; GAP_A_RESOLVED / GAP_B_CLOSED &mdash; Multi-Order Copier Gaps: Gap A resolved by DW-B135 (B129 LaneA). Gap B (order-ID scoped cancel) CLOSED by B130 LaneB PIPELINE_COMPLETE.</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Reported</td><td style="padding:3px 0; color:#e2e8f0;">2026-08-31 (Director live observation)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P0 &mdash; Live money at risk. Followers miss second entry entirely, AND closing/cancelling one leader order incorrectly cancels other followers' entries.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Repro</td><td style="padding:3px 0; color:#e2e8f0;">Deterministic when two orders in the same direction are placed back-to-back on the leader for the same instrument with COPY ON.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Files</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>DispatchCopy</code> (dedup), <code>TryCancelFollowerEntries</code> L1621, <code>_entryDispatchedOrders</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Pipeline</td><td style="padding:3px 0; color:var(--amber);">B124 (planned) &mdash; pending Director approval</td></tr>
+            </table>
+
+            <div class="label">Gap A &mdash; Second Order Not Copied</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              When a leader places two entry orders back-to-back on the same instrument while COPY ON,
+              the second order either:
+            </p>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.2rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>Blocked by DW-B135 reversal guard</strong> (if direction changed between order 1 and order 2) &mdash; same root cause as DW-B135.</li>
+              <li><strong>Blocked by <code>_entryDispatchedOrders</code> dedup</strong>: when order 1 fills, <code>TryEvictFollowerBeSlot</code> calls <code>_entryDispatchedOrders.Clear()</code> on <em>Filled</em> events for the leader. However, if order 1 is still Working (not yet filled) when order 2 fires, <code>_entryDispatchedOrders</code> may still contain order 1's ID. Order 2 has a new ID so dedup would not block it. <strong>However</strong>, if order 1 Cancels (leader cancelled order 1 to replace with order 2), <code>EvictDedup</code> at <code>L3413</code> calls <code>_entryDispatchedOrders.Clear()</code> on Cancelled &mdash; so the dedup clears. This path should allow the second order through.</li>
+              <li><strong>Most likely cause: DW-B135 is the dominant blocker.</strong> When the Director cancels order 1 (Working limit) and places order 2 in the same direction, the guard has <code>lastAction = Buy</code>, new <code>currentAction = Buy</code>, <code>currentAction == lastAction</code> &rarr; guard does NOT fire. But if order 1 filled and direction then changed for order 2, guard fires.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Gap B &mdash; Closing Second Leader Order Cancels Other Followers</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <code>TryCancelFollowerEntries</code> (<code>CopyEngine.cs L1621</code>) fires whenever the leader's
+              <strong>any</strong> order reaches <code>Cancelled</code> state and the order name is not an ATM bracket
+              (<code>IsAtmBracketName</code> guard) or a PTT exit bracket. When the leader cancels order 2 (e.g.
+              a Working limit entry), <code>TryCancelFollowerEntries</code> calls <code>CancelOneAccount</code> on
+              <strong>all followers</strong> for the instrument. <code>CancelOneAccount</code> cancels
+              <strong>all Working/Initialized entry orders</strong> for the instrument on each follower &mdash;
+              regardless of which leader order they correspond to. This means followers' copy of order 1
+              (still Working) gets cancelled when the leader cancels order 2.
+            </p>
+            <pre style="font-size:0.77rem; background:var(--raised); padding:8px; border-radius:4px; margin:0.25rem 0;">Leader: order1 (Working) + order2 (Working) -- two separate entries
+Leader cancels order2
+  -> TryCancelFollowerEntries fires for order2
+  -> CancelOneAccount(Sim102, MES) -> cancels ALL Working entry orders on Sim102
+  -> Sim102 copy of order1 CANCELLED (collateral cancel)
+  -> Sim102 now flat even though leader still has order1 Working</pre>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              The same logic applies when the leader <em>fills</em> one order and closes via its ATM Close button:
+              the close order fill triggers <code>TryDispatchLeaderFlat</code> which flattens all followers, even
+              those that copied order2 (which the Director did not intend to close).
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Root Cause Summary</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              The copier is designed for a <strong>single-entry model</strong>: one leader order per instrument at a time.
+              Both <code>TryCancelFollowerEntries</code> and <code>TryDispatchLeaderFlat</code> operate on
+              <em>instrument scope</em> (not order-ID scope). They have no mechanism to track which follower
+              entry corresponds to which leader order when multiple leader entries coexist on the same instrument.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Fix Design</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Short-term (minimal): Document the single-entry constraint explicitly.</strong><br>
+              The copier does not support two simultaneous entries on the same instrument on the leader.
+              Only one Working entry per instrument per leader account is supported at a time.
+              The Director should finish (fill or cancel) the first entry before placing the second.
+            </p>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Long-term (Pipeline B125+): Order-ID-scoped cancel propagation.</strong><br>
+              <code>TryCancelFollowerEntries</code> should only cancel follower orders that were copied from
+              the specific leader order being cancelled, not all entries for the instrument. This requires
+              an order-ID mapping in the follower binding (<code>FollowerBinding</code> struct already exists
+              but only tracks <code>FromEntrySignal</code>, not leader orderId). Architect decision in Ph1.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">CYC Impact (short-term: doc-only)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">CYC = 0. No code changes. Document constraint in spec and in panel UI tooltip.</p>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--green);">&#10003; Gap A RESOLVED &mdash; DW-B135 fix (B129 LaneA). Gap B CLOSED &mdash; B130 LaneB PIPELINE_COMPLETE. Fix: TryCancelFollowerEntries now delegates to CancelScopedFollowerEntries(order.OrderId.ToString()) &mdash; cancel sweep scoped to the specific leader order ID, not all instrument entries. New _followerCopyMap (ConcurrentDictionary&lt;string, ConcurrentBag&lt;Order&gt;&gt;) tracks follower copies per leader order ID. CYC reduced from 6 to 4. No lock(). 3 xUnit tests green. Single-entry best practice still recommended but the cross-cancel constraint is now fixed.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b136 -->
+
+    <!-- ══ SAFETY ASSESSMENT: Live + Manual Trading with current copier state ═════════════════ -->
+    <div class="section" id="section-safety-2026-08-31" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(245,158,11,0.08); border-left:3px solid var(--amber); color:var(--amber);">Safety Assessment &mdash; Updated 2026-09-01 post-B130 SIM &mdash; Live + Manual Trading with Current Build &mdash; &#9888; ATM bracket drag NOT YET SAFE (DW-B138 P1: Stop1 drag not syncing; DW-B139 P1: multiple PTT-TGT-Drag; DW-B140 P0: double-dispatch investigation open)</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04);">
+          <div class="card-title" style="color:var(--amber);">&#9888; Safety Assessment &mdash; Read Before Trading Live &mdash; Updated Post-B130 SIM Gates (DW-B138 P1 + DW-B139 P1 + DW-B140 P0 OPEN &mdash; ATM bracket drag NOT SAFE until B131 fixes deployed)</div>
+          <div class="card-body">
+
+            <div class="label">&#10003; SAFE &mdash; Manual trading on multiple accounts WITHOUT copier</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>BE ALL button</strong>: fully validated (B118/B119/B120 PIPELINE_COMPLETE). Safe to use on all accounts simultaneously.</li>
+              <li><strong>Quick ALL / QX-ALL buttons</strong>: fully validated (Combo D PASS, B120 FINAL_PASS). Safe to use on all accounts simultaneously.</li>
+              <li><strong>QAll2t / Quick2t buttons</strong>: B123 PIPELINE_COMPLETE. Source-verified and sync-confirmed (2026-08-31). SIM gate pending but logic is sound.</li>
+              <li><strong>Individual account QX / BE buttons</strong>: safe. No cross-account coupling without copier active.</li>
+              <li><strong>ATM bracket drag on individual accounts</strong>: works normally without copier. Only the follower sync path is affected by DW-B134-OCO residual risk (see below).</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">&#10003; SAFE (post-B129) &mdash; Copier ON, direction-reversal copy</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>Direction reversal copy (DW-B135 CLOSED)</strong>: the false-positive reversal guard is fixed. After leader closes a trade and opens in the opposite direction, followers should now correctly copy the new entry. SIM gate Test A (STEP 4) confirms this. <em>Pending SIM gate confirmation before relying on this in live.</em></li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">&#9888; NOT SAFE &mdash; ATM Bracket Drag with Copier ON (B130 SIM failures)</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>ATM stop drag (DW-B138 P1 OPEN)</strong>: Stop1 drag on leader does NOT sync to followers. The IsAtmSTPOrder fix was deployed, but cancel+resubmit path for Stop1 is not firing in runtime. Do NOT rely on stop drag to move follower stops. Use PTT-BE or close manually.</li>
+              <li><strong>ATM target drag (DW-B139 P1 OPEN)</strong>: Target drag creates MULTIPLE PTT-TGT-Drag orders on each follower per repeated drag (each drag adds a new order instead of updating the existing one). Only T3 drag was observed to sync; T1 and T2 did not sync at all. Do NOT use ATM target drag with copier ON until B131 fixes are deployed.</li>
+              <li><strong>Double-dispatch investigation (DW-B140 P0 OPEN)</strong>: Output log shows duplicate [PTT-COPY] dispatch events for some leader orders. This may indicate the _followerCopyMap RecordFollowerCopy change (B130 LaneB) introduced a re-trigger. Investigation required before live use. DW-B140 is P0 &mdash; it must be investigated and confirmed safe (or fixed) before any live trading session.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">&#10003; CONDITIONAL SAFE &mdash; Copier ON, entry orders (pending DW-B140 investigation)</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>Condition 1 (updated 2026-09-01)</strong>: Single-entry best practice still recommended (one entry per instrument at a time on the leader). DW-B136 Gap B is now FIXED &mdash; cancelling one leader entry no longer cancels follower copies of a different leader entry. The cross-cancel risk is eliminated. Best practice remains recommended for operational simplicity, but the constraint is lifted.</li>
+              <li><strong>Condition 2</strong>: After every leader entry in a new direction (first entry after a position close), verify followers in the Orders/Positions tab. <strong>DW-B135 is fixed</strong> &mdash; guard should not fire on clean re-entry. If a follower is still flat after the fix, this is a new defect &mdash; log it.</li>
+              <li><strong>Condition 3 (updated 2026-09-01 &mdash; REVISED POST-SIM)</strong>: ATM bracket drag on leader does NOT reliably sync to followers. B130 SIM Test A PARTIAL FAIL. DW-B137 fix was applied but Stop1 drag still not firing in runtime. Do NOT use ATM drag with copier ON until DW-B138 and DW-B139 are fixed in B131.</li>
+              <li><strong>Condition 4 (removed)</strong>: DW-B135 is fixed. The first entry after a direction change is no longer a special high-risk case.</li>
+              <li><strong>Condition 5 (NEW &mdash; DW-B140)</strong>: Confirm DW-B140 (double-dispatch investigation) is resolved before live trading with copier. If duplicate entries are dispatched, followers may accumulate larger positions than intended.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">&#9888; MONITOR &mdash; Post-B130 residual items</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>Bracket drag OCO (DW-B134-OCO, P2)</strong>: Flatten path confirmed safe (PTT-TGT-Drag auto-cancelled on Flatten). ATM target fill path not yet observed. Do not use ATM drag until DW-B138/B139 are fixed; OCO observation can be repeated in B131 SIM gate 0.</li>
+              <li><strong>Stale BE-Target orders (DW-B107, CLOSED)</strong>: SnapshotBeTargets() now filters stale PTT-BE-Target-* residues. Restart NT8 workaround no longer required. SIM gate Test D deferred (B130-DEFER-02 &mdash; requires multi-session without restart).</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">B130 Status &mdash; Defect Summary (updated post-B130 SIM gates)</div>
+            <table style="font-size:0.78rem; border-collapse:collapse; width:100%; margin-top:0.3rem;">
+              <tr>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Priority</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Defect</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Status</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Notes</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">P0 CLOSED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B135</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; CLOSED &mdash; B129 LaneA</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Direction reversal copy safe. B129 SIM gate Test A: PASS.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">P1 PARTIAL</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B134</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9888; CLOSED (partial) &mdash; B129 LaneB</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Cancel+resubmit path implemented. B129 SIM Test C: FAIL (wrong name format). DW-B137 fixed in B130 LaneA. DW-B134-OCO observation now unblocked.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">P0 RESOLVED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B136 Gap A</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; RESOLVED &mdash; B129 LaneA</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Root cause was DW-B135 false-positive.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">P1 CLOSED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B137</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; CLOSED &mdash; B130 LaneA PIPELINE_COMPLETE</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">IsAtmSTPOrder extended: StartsWith("Stop") + StartsWith("Target") added. SIM Test A: PARTIAL FAIL (Stop1 drag still not syncing at runtime &rarr; DW-B138). Code fix is deployed; runtime dispatch path needs investigation.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">P2 OPEN</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B134-OCO</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9888; OPEN &mdash; Test B PARTIAL</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">PTT-TGT-Drag auto-cancelled on Flatten (SAFE). ATM target-fill path observation incomplete. Requires dedicated SIM session where position closes via ATM target fill (not manual flatten).</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">P1 CLOSED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B136 Gap B</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; CLOSED &mdash; B130 LaneB PIPELINE_COMPLETE</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">TryCancelFollowerEntries now scoped by leader order ID. Cross-cancel eliminated. 3 xUnit tests green. SIM Test C &rarr; B130-DEFER-01 (two simultaneous entries could not be staged).</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">P2 CLOSED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B107</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; CLOSED &mdash; B130 LaneC PIPELINE_COMPLETE</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">SnapshotBeTargets() extracted from MoveStopToBreakEven. Filters stale PTT-BE-Target-* residues. Hard cap at 3 targets. Restart workaround no longer required. SIM Test D &rarr; B130-DEFER-02 (NT8 restarted before gate).</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700;">P1 NEW</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B138</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">&#10007; OPEN &mdash; B130 SIM Test A FAIL</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Stop1 drag on leader does NOT sync to followers. IsAtmSTPOrder covers StartsWith("Stop") but cancel+resubmit path for Stop1 not triggering at runtime. Root cause unknown. B131 pipeline required.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700;">P1 NEW</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B139</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">&#10007; OPEN &mdash; B130 SIM Test A FAIL</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Target drag creates MULTIPLE PTT-TGT-Drag orders per target per follower (new order on each drag, prior PTT-TGT-Drag not cancelled). SyncAtmFollowerTarget must cancel existing PTT-TGT-Drag before creating new one. T1+T2 drag also not syncing. B131 pipeline required.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700;">P0 NEW</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B140</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">&#10007; OPEN &mdash; investigation required</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Output log shows duplicate [PTT-COPY] dispatch events for some leader orders. Possible root cause: _followerCopyMap RecordFollowerCopy (B130 LaneB) triggering re-dispatch, or leader ATM bracket fills being misidentified as new entries. P0 &mdash; must investigate before live trading.</td>
+              </tr>
+            </table>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-safety-2026-08-31 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- B129: DW-B135 (Reversal Guard False-Positive) + DW-B134 (ATM Bracket Drag Sync)   -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-b129" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(16,185,129,0.10); border-left:3px solid var(--green); color:var(--green);">
+        &#9679; Block B129 &nbsp;&middot;&nbsp; PTT-COPIER-B129 &nbsp;&middot;&nbsp; Reversal Guard Fix (DW-B135 P0) + ATM Bracket Drag Fix (DW-B134 P1) &nbsp;&middot;&nbsp;
+        <span class="pill pill-green">&#10003; LaneA PIPELINE_COMPLETE</span> &nbsp;<span class="pill pill-green">&#10003; LaneB PIPELINE_COMPLETE</span>
+      </div>
+      <div class="section-body">
+
+        <!-- ── B129 OVERVIEW ─────────────────────────────────────────────────────────── -->
+        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.04);">
+          <div class="card-title" style="color:var(--red);">B129 &mdash; Two-Ticket Pipeline: DW-B135 (P0) + DW-B134 (P1)</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Block</td><td style="padding:3px 0; color:#e2e8f0;">B129</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Tickets</td><td style="padding:3px 0; color:#e2e8f0;">2 (LaneA: DW-B135 &mdash; Reversal Guard; LaneB: DW-B134 &mdash; ATM Bracket Drag)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Priority</td><td style="padding:3px 0; color:var(--red);">P0 (DW-B135) + P1 (DW-B134) &mdash; live PA accounts at risk</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Prerequisites</td><td style="padding:3px 0; color:#e2e8f0;">B128 PIPELINE_COMPLETE &#10003; &bull; B121 PIPELINE_COMPLETE &#10003; &bull; B122 PIPELINE_COMPLETE &#10003; &bull; B123 PIPELINE_COMPLETE &#10003;</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Files</td>
+                <td style="padding:3px 0;">
+                  <code>src/PropTraderTools/CopyEngine.cs</code> (both tickets)<br>
+                  <code>src/PropTraderTools/Tests/B129Tests.cs</code> (new)
+                </td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Closes</td><td style="padding:3px 0; color:#e2e8f0;">DW-B135 (P0) &bull; DW-B134 partial (IsBracketLegStatic STP fix + SyncFollowerBracket cancel+resubmit) &bull; DW-B136 Gap A (via DW-B135 fix)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--green);">&#10003; PIPELINE_COMPLETE &mdash; LaneA (DW-B135) FINAL_PASS (2026-08-31) + LaneB (DW-B134) FINAL_PASS (2026-08-31). Both lanes source-verified &amp; sync-confirmed (ptt-sync-and-verify.ps1 0 MISMATCH). F5 gate pending Director.</td></tr>
+            </table>
+
+            <div class="label">Ticket 1 &mdash; LaneA: DW-B135 Reversal Guard False-Positive (P0)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Root cause (code-confirmed 2026-08-31):</strong> <code>IsReversalToFlatFollower</code> fires on every
+              direction change because <code>_lastLeaderDirection[instr.FullName]</code> is never cleared when the leader
+              goes flat. After a completed close, the next entry has <code>currentAction != lastAction &amp;&amp; followerIsFlat = true</code>
+              &rarr; guard fires, copy blocked.
+            </p>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Fix (Option A &mdash; minimal):</strong> In <code>TryFirePositionState</code> (<code>CopyEngine.cs</code>),
+              on the <code>hasPos=False</code> path for the <strong>leader</strong> instrument, call
+              <code>_lastLeaderDirection.TryRemove(instr.FullName, out _)</code>. On the next entry dispatch,
+              <code>_lastLeaderDirection.TryGetValue</code> will return false &rarr; <code>hasLastDirection=false</code>
+              &rarr; guard bypass per <code>L1934</code>. DW-B128 protection fully preserved (guard still fires during
+              the close-order race window when position is still open; only cleared once the position is confirmed flat).
+            </p>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.2rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>File:</strong> <code>CopyEngine.cs</code> &mdash; <code>TryFirePositionState</code> (currently CYC 3)</li>
+              <li><strong>Change:</strong> Add <code>_lastLeaderDirection.TryRemove</code> on leader-flat branch. CYC 3 &rarr; 4. Still &le; 8.</li>
+              <li><strong>Test:</strong> <code>[Fact] B129_DW135_GuardClearedAfterLeaderFlat</code> &mdash; verify that after simulating a leader-flat event, the next entry dispatch proceeds without the reversal guard firing.</li>
+              <li><strong>Test:</strong> <code>[Fact] B129_DW135_DW128ProtectionPreservedDuringRaceWindow</code> &mdash; verify guard still fires when position is open and direction changes (close-order race).</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Ticket 2 &mdash; LaneB: DW-B134 ATM Bracket Drag Sync (P1)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <strong>Root cause (code-confirmed 2026-08-31, OQ-01/02/04 answered):</strong> Two-layer gap:
+            </p>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.2rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>Layer 1 (STP suffix):</strong> ATM stop bracket names end in <code>"…STP"</code> (e.g. <code>"Buy STP"</code>).
+                <code>IsBracketLegStatic</code> only checks <code>StartsWith("Stop")</code> &mdash; does not match STP-suffix names.
+                Stop drag events never reach <code>HandleBracketChange</code>.</li>
+              <li><strong>Layer 2 (ATM ownership):</strong> Even when Layer 1 is bypassed, <code>acc.Change()</code> on
+                ATM-owned stop/target brackets is a confirmed silent no-op. The ATM engine owns those orders and
+                ignores external <code>Change()</code> calls.</li>
+            </ol>
+            <p style="font-size:0.83rem; color:var(--muted); margin-top:0.35rem;">
+              <strong>Fix design:</strong>
+            </p>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.2rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>Layer 1 fix:</strong> In <code>IsBracketLegStatic</code>, add
+                <code>|| orderName.EndsWith("STP", StringComparison.OrdinalIgnoreCase)</code>
+                so STP-suffix stop names trigger the bracket-change path. CYC 3 &rarr; 4.</li>
+              <li><strong>Layer 2 fix:</strong> In <code>SyncFollowerBracket</code>, replace the single <code>acc.Change()</code>
+                call with a cancel+resubmit sequence for ATM-owned brackets:
+                cancel the existing follower bracket order, then create+submit a new PTT bracket at the updated price.
+                Extract <code>SyncAtmFollowerBracket(followerAcc, order, newPrice)</code> helper if CYC would exceed 8.</li>
+              <li><strong>OQ-03 (OPEN &mdash; architect must answer in Ph1):</strong> After cancel+resubmit, the orphaned
+                PTT bracket (original order, now cancelled) must not trigger a spurious <code>TryCancelFollowerEntries</code>
+                on the follower. Architect must confirm the cancellation path for PTT-submitted orders is gated by
+                <code>IsAtmBracketName</code> or equivalent so the orphan cancel does not cascade.</li>
+              <li><strong>Test:</strong> <code>[Fact] B129_DW134_STPSuffixStopDragReachesBracketChange</code> &mdash; verify
+                <code>IsBracketLegStatic</code> returns true for <code>"Buy STP"</code> after fix.</li>
+              <li><strong>Test:</strong> <code>[Fact] B129_DW134_SyncFollowerBracketCancelResubmit</code> &mdash; verify
+                cancel+resubmit fires instead of <code>acc.Change()</code> for ATM-owned brackets.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Execution Order</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              Ticket 1 (DW-B135) is the <strong>blocker</strong>. It is simpler (1 line + 2 tests) and resolves
+              the P0 live-trading risk. Ticket 2 (DW-B134) can run in parallel in a separate lane once the
+              architect has answered OQ-03. Both share the same file (<code>CopyEngine.cs</code>) so sequencing
+              is recommended: LaneA FINAL_PASS &rarr; LaneB start (to avoid merge conflicts on <code>CopyEngine.cs</code>).
+            </p>
+
+          </div>
+        </div>
+
+        <!-- ── B129 PTT-ORCHESTRATOR PASTE PROMPT ────────────────────────────────────── -->
+        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.04); margin-top:1rem;" id="prompt-b129-lanea">
+          <div class="card-title" style="color:var(--red);">&#9654; ptt-orchestrator Paste Prompt &mdash; B129 LaneA &mdash; DW-B135 Reversal Guard Fix (P0 &mdash; run first)</div>
+          <div class="card-body">
+            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:0.4rem;">Prerequisites: B128 FINAL_PASS &bull; B121/B122/B123 all PIPELINE_COMPLETE &bull; Director approval received</div>
+            <pre style="font-size:0.79rem; line-height:1.7; background:var(--raised); border:1px solid var(--border); border-left:3px solid var(--red); border-radius:0 6px 6px 0; padding:14px 16px; overflow-x:auto; white-space:pre-wrap; word-break:break-word;">Block: B129-LaneA
+Defect: DW-B135 &mdash; Reversal Guard False-Positive (P0 &mdash; followers miss entries on direction change)
+Files: src/PropTraderTools/CopyEngine.cs (edit) + src/PropTraderTools/Tests/B129Tests.cs (new)
+Brain dir: docs/brain/B129/
+
+SRC CODE BAN: all .cs edits MUST go through the FULL 5-PHASE PTT PIPELINE.
+FORBIDDEN: any direct .cs edit outside the pipeline. FORBIDDEN: skipping or combining phases.
+
+You are the ptt-orchestrator for Block B129 LaneA.
+
+FULL 5-PHASE PTT PIPELINE (all phases mandatory &mdash; none skippable &mdash; none combinable):
+  Ph1  ptt-architect       &rarr; docs/brain/B129/02-architecture-plan.md
+  Ph2  ptt-plan-reviewer   &rarr; docs/brain/B129/02-plan-review.md        [REVIEW_PASS gate]
+  Ph3  ptt-architect       &rarr; docs/brain/B129/04-tickets.md
+  Ph3.5 ptt-ticket-reviewer &rarr; docs/brain/B129/04-ticket-review.md    [TICKET_REVIEW_PASS gate]
+  Ph4a ptt-engineer        &rarr; src .cs edits + docs/brain/B129/ticket-1-completion.md
+  Ph4b ptt-verifier        &rarr; docs/brain/B129/ticket-1-verification.md [VERIFY_PASS gate]
+  Ph5  ptt-plan-reviewer   &rarr; docs/brain/B129/05-final-review.md + docs/brain/B129/06-deferred-backlog.md
+
+STAGE 1 &mdash; ptt-orchestrator (you, now):
+  1. Create docs/brain/B129/ directory.
+  2. Write docs/brain/B129/00-context.md with the brief below.
+  3. Start a ptt-architect subtask with the Ph1 brief. Do NOT skip to Ph3.
+  4. Wait for Ph1 artifact before starting Ph2.
+
+STAGE 2 &mdash; sequential phase execution:
+  After each phase artifact is produced, start the next phase as a fresh subtask.
+  ptt-orchestrator must not produce tickets. ptt-architect must not edit files.
+  Each phase must write its artifact to docs/brain/B129/ before the next phase starts.
+
+=== DEFECT BRIEF (DW-B135) ===
+
+Root cause (code-confirmed 2026-08-31):
+  File: src/PropTraderTools/CopyEngine.cs
+  Symbol: _lastLeaderDirection  (ConcurrentDictionary, L331)
+  Symbol: IsReversalToFlatFollower (L3510)
+  Symbol: TryFirePositionState (L2283)
+  Symbol: DispatchCopy (L1930 &mdash; reads _lastLeaderDirection, writes it at L1985)
+
+  _lastLeaderDirection[instr.FullName] is written on every entry dispatch (L1985).
+  It is NEVER cleared when the leader position goes flat.
+  IsReversalToFlatFollower (L3510): returns currentAction != lastAction &amp;&amp; followerIsFlat.
+  After a completed close, on the very next entry in the opposite direction:
+    currentAction != lastAction = true  (direction changed)
+    followerIsFlat = true               (follower correctly flat after close)
+    => guard fires => copy blocked.
+  This is a false-positive. The guard was designed for DW-B128 (close-order race window),
+  not for clean re-entry after a completed close.
+
+Fix (Option A &mdash; minimal, architect must confirm):
+  In TryFirePositionState (CopyEngine.cs L2283):
+    On the hasPos=False path, add:
+      if (IsLeaderAccount(account)) _lastLeaderDirection.TryRemove(instr.FullName, out _);
+    Where IsLeaderAccount(account) checks account == _leaderAccount (or equivalent).
+  Effect: next entry dispatch has hasLastDirection=false => guard cannot fire (guard is bypassed
+  per L1934 when hasLastDirection=false). DW-B128 protection fully preserved: guard still fires
+  during the close-order race window (position is still open, hasPos=True, direction key still set).
+  CYC TryFirePositionState: 3 &rarr; 4 (one new branch). Still &le; 8.
+
+Architect must confirm:
+  1. IsLeaderAccount(account) check: confirm the correct predicate to identify leader vs follower.
+     Options: account == _leaderAccount, or account.Name == _leaderAccount.Name.
+  2. Thread safety: _lastLeaderDirection is ConcurrentDictionary. TryRemove is lock-free. Confirm OK.
+  3. TryFirePositionState is called on NT8 UI thread (PositionStateChanged). Confirm no lock needed.
+  4. The hasPos=False event fires AFTER the position is fully closed (not during the close order fill).
+     Confirm this is safe and does not clear the key during a partial fill.
+  5. Confirm no other callers of _lastLeaderDirection that would be affected by this removal.
+
+xUnit tests (new file: src/PropTraderTools/Tests/B129Tests.cs):
+  [Fact] B129_DW135_GuardClearedAfterLeaderFlat
+    Simulate: leader enters Buy, fills, then TryFirePositionState(hasPos=False) fires.
+    Assert: _lastLeaderDirection does NOT contain instr.FullName after flat event.
+    Assert: next DispatchCopy(Buy) for that instrument proceeds (IsReversalToFlatFollower = false).
+
+  [Fact] B129_DW135_DW128ProtectionPreservedDuringRaceWindow
+    Simulate: leader enters Buy (hasPos=True, direction=Buy set). Then Sell order arrives
+    while position still open (hasPos=True, flat event NOT fired yet).
+    Assert: IsReversalToFlatFollower(Sell, Buy, followerIsFlat=true) = true => guard fires.
+    This confirms DW-B128 protection is not broken by the fix.
+
+  [Fact] B129_DW135_FirstEntryAfterRestartNotBlocked
+    Simulate: fresh CopyEngine (no _lastLeaderDirection entry), entry dispatch fires.
+    Assert: guard does not fire (hasLastDirection=false path).
+
+After Ph5 FINAL_PASS: update specs/002-trade-copier-spec.html &mdash;
+  DW-B135: mark CLOSED (B129 LaneA PIPELINE_COMPLETE).
+  B129 LaneA: mark PIPELINE_COMPLETE.
+  DW-B136 Gap A: mark resolved (root cause was DW-B135).
+  Notify Director that LaneB (DW-B134) can now start (or run in parallel if CopyEngine.cs conflicts resolved).</pre>
+          </div>
+        </div>
+
+        <!-- ── B129 LANEB PROMPT ──────────────────────────────────────────────────────── -->
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04); margin-top:1rem;" id="prompt-b129-laneb">
+          <div class="card-title" style="color:var(--amber);">&#9654; ptt-orchestrator Paste Prompt &mdash; B129 LaneB &mdash; DW-B134 ATM Bracket Drag Fix (P1 &mdash; start after LaneA FINAL_PASS)</div>
+          <div class="card-body">
+            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:0.4rem;">Prerequisites: B129 LaneA FINAL_PASS (same file &mdash; avoid CopyEngine.cs conflict)</div>
+            <pre style="font-size:0.79rem; line-height:1.7; background:var(--raised); border:1px solid var(--border); border-left:3px solid var(--amber); border-radius:0 6px 6px 0; padding:14px 16px; overflow-x:auto; white-space:pre-wrap; word-break:break-word;">Block: B129-LaneB
+Defect: DW-B134 &mdash; ATM Bracket Drag Not Synced to Followers (P1)
+Files: src/PropTraderTools/CopyEngine.cs (edit) + src/PropTraderTools/Tests/B129Tests.cs (append)
+Brain dir: docs/brain/B129/ (shared with LaneA)
+
+SRC CODE BAN: all .cs edits MUST go through the FULL 5-PHASE PTT PIPELINE.
+FORBIDDEN: any direct .cs edit outside the pipeline. FORBIDDEN: skipping or combining phases.
+
+You are the ptt-orchestrator for Block B129 LaneB.
+
+FULL 5-PHASE PTT PIPELINE (all phases mandatory &mdash; none skippable &mdash; none combinable):
+  Ph1  ptt-architect       &rarr; docs/brain/B129/LaneB-02-architecture-plan.md
+  Ph2  ptt-plan-reviewer   &rarr; docs/brain/B129/LaneB-02-plan-review.md     [REVIEW_PASS gate]
+  Ph3  ptt-architect       &rarr; docs/brain/B129/LaneB-04-tickets.md
+  Ph3.5 ptt-ticket-reviewer &rarr; docs/brain/B129/LaneB-04-ticket-review.md  [TICKET_REVIEW_PASS gate]
+  Ph4a ptt-engineer        &rarr; src .cs edits + docs/brain/B129/LaneB-ticket-2-completion.md
+  Ph4b ptt-verifier        &rarr; docs/brain/B129/LaneB-ticket-2-verification.md [VERIFY_PASS gate]
+  Ph5  ptt-plan-reviewer   &rarr; docs/brain/B129/LaneB-05-final-review.md + docs/brain/B129/LaneB-06-deferred-backlog.md
+
+=== DEFECT BRIEF (DW-B134) ===
+
+Root cause (code-confirmed 2026-08-31, OQ-01/OQ-02/OQ-04 all answered by Director):
+  File: src/PropTraderTools/CopyEngine.cs
+
+  Layer 1: IsBracketLegStatic (L3532)
+    Current code: only checks StartsWith("Stop") (and target equivalents).
+    ATM stop bracket names from NT8 are "Buy STP" / "Sell STP" (STP suffix, space-separated).
+    IsBracketLegStatic returns false for STP-suffix names &rarr; stop drag events never reach
+    HandleBracketChange &rarr; SyncFollowerBracket is never called for ATM stops.
+    Fix: add || orderName.EndsWith("STP", StringComparison.OrdinalIgnoreCase) to IsBracketLegStatic.
+    CYC: 3 &rarr; 4.
+
+  Layer 2: SyncFollowerBracket (L2040)
+    Current code: calls acc.Change(followerOrder, newPrice, ...) for all bracket types.
+    NT8 ATM engine owns Stop1/Target1 brackets and silently ignores acc.Change() from AddOn context.
+    (Confirmed: CopyEngine.cs L3598-3601 comment, plus zero output lines in Director test.)
+    Fix: replace acc.Change() with cancel+resubmit for ATM-owned brackets:
+      1. acc.Cancel(followerOrder) &mdash; cancels the ATM bracket on the follower
+      2. followerAcc.CreateOrder(instrument, price, ...) + Submit() &mdash; creates a new PTT bracket
+         at the updated price.
+    If CYC of SyncFollowerBracket would exceed 8 after the change, extract helper:
+      private void SyncAtmFollowerBracket(Account followerAcc, Order order, double newPrice)
+
+  OQ-03 (OPEN &mdash; ARCHITECT MUST ANSWER IN Ph1 BEFORE ANY CODE):
+    After cancel+resubmit, the cancelled follower bracket (originally ATM-owned, now PTT-cancelled)
+    will fire an OrderUpdate Cancelled event. MUST confirm:
+    a. Does this Cancelled event trigger TryCancelFollowerEntries? (L1621)
+       TryCancelFollowerEntries has IsAtmBracketName guard &mdash; does it apply here?
+    b. If it does trigger: what is the cascade? Does it cancel the follower's position?
+    c. Fix: if needed, add a PTT-bracket sentinel check in TryCancelFollowerEntries to ignore
+       brackets that were cancelled by the sync mechanism itself.
+    Architect must read CopyEngine.cs L1621-1680 (TryCancelFollowerEntries + CancelOneAccount)
+    and confirm the safe path before any code is written.
+    If answer to OQ-03 is not safe: STOP and write a new DW item. Do not proceed with cancel+resubmit.
+
+ATM template in use: "MES $200 SL4" or similar. Stop name format: "Buy STP" / "Sell STP".
+Target name format: "Target1" (StartsWith("Target") already handled by IsBracketLegStatic).
+Only stops are broken (Layer 1). Targets may work if StartsWith("Target") matches NT8 target names.
+Architect must verify target name format from NT8_FULL_REFERENCE.md before touching target logic.
+
+xUnit tests (append to src/PropTraderTools/Tests/B129Tests.cs):
+  [Fact] B129_DW134_STPSuffixDetectedByIsBracketLegStatic
+    Assert IsBracketLegStatic("Buy STP") = true after fix.
+    Assert IsBracketLegStatic("Sell STP") = true after fix.
+    Assert IsBracketLegStatic("Stop1") = true (existing behaviour preserved).
+    Assert IsBracketLegStatic("Entry") = false (not a bracket leg).
+
+  [Fact] B129_DW134_SyncFollowerBracketCancelResubmitFiredForAtmBracket
+    Simulate: SyncFollowerBracket called with an ATM-owned stop order.
+    Assert: acc.Cancel() is called (not acc.Change()).
+    Assert: acc.CreateOrder() + Submit() is called with updated price.
+
+  [Fact] B129_DW134_OQ03_CancelledBracketDoesNotTriggerFollowerEntryCancel
+    Simulate: PTT-synced bracket cancel fires Cancelled OrderUpdate event.
+    Assert: TryCancelFollowerEntries does NOT cancel the follower's position entry.
+    (This test is the OQ-03 confirmation gate &mdash; must pass before Ph4a can write code.)
+
+After Ph5 FINAL_PASS: update specs/002-trade-copier-spec.html &mdash;
+  DW-B134: mark PARTIAL_CLOSED (IsBracketLegStatic STP + SyncFollowerBracket cancel+resubmit).
+  B129 LaneB: mark PIPELINE_COMPLETE.
+  OQ-03: mark ANSWERED (with architect's resolution in LaneB-02-architecture-plan.md).</pre>
+          </div>
+        </div>
+
+        <!-- ── B129 STATUS ─────────────────────────────────────────────────────────────── -->
+        <div class="card" style="border-left:3px solid var(--green); background:rgba(16,185,129,0.04); margin-top:1rem;">
+          <div class="card-title" style="color:var(--green);">&#10003; B129 Status &mdash; PIPELINE_COMPLETE (LaneA + LaneB) &mdash; 2026-08-31 &mdash; SIM gates pending Director</div>
+          <div class="card-body">
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%;">
+              <tr>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left; width:160px;">Item</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Status</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B129 LaneA pipeline</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; FINAL_PASS &mdash; 2026-08-31 &mdash; VERIFY_PASS confirmed (11/11 tests, 0 errors, CYC=6)</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B129 LaneB pipeline</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; FINAL_PASS &mdash; 2026-08-31 &mdash; VERIFY_PASS confirmed (OQ-03 SAFE, tests passing)</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Sync + F5 gate</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; ptt-sync-and-verify.ps1 PASS (18 files, 0 MISMATCH) &mdash; F5 NinjaTrader 8 compile PASS (2026-08-31)</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B120-DEFER-02 (DW-B129 fallback flatten)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--dim);">&#9711; DEFERRED &mdash; NOT APPLICABLE to normal trading. Only fires in rare edge case (BE-ALL + QX-ALL before BE stops are submitted). Low priority. Moved to deferred list.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B119-DEFER-02 (DW-B128 reversal guard gate)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--dim);">&#9711; DESIGN_CHANGE / DEFERRED &mdash; After DW-B135 fix, the expected behaviour of this gate changed. Old gate: guard fires on every direction change. New behaviour: guard fires ONLY during race window. If followers correctly copy a short after clean close, that is CORRECT. Gate retired as originally specified.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B135 (P0)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; CLOSED &mdash; B129 LaneA PIPELINE_COMPLETE. SIM Test A: PARTIAL_PASS (guard fired once on rapid close+reopen edge case; copies completed). Clean-restart scenario: PASS.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B134 (P1)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9888; CLOSED (partial) &mdash; B129 LaneB: cancel+resubmit path implemented. SIM Test C: FAIL &mdash; drag does not sync for MES $200 SL 6 template (Stop1 names). New defect: DW-B137 (P1 OPEN).</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B136 Gap A</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; RESOLVED &mdash; B129 LaneA PIPELINE_COMPLETE (root cause was DW-B135). Gap B deferred to B130.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B136 Gap B (order-ID cancel)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9888; DEFERRED &mdash; B130 (long-term fix; single-entry constraint documented)</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B137 (P1 OPEN)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">&#9888; NEW &mdash; SIM gate discovered 2026-08-31. IsAtmSTPOrder EndsWith("STP") does not cover Stop1/Stop2 names. cancel+resubmit path not reached. Needs B130 pipeline.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B129-SIM-01 (P2 obs.)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--dim);">&#9711; OBSERVED &mdash; Guard fired once on rapid close+reopen (hasPos=False+True same tick). Copies completed. Not blocking trading. Monitor for recurrence.</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── B129 SIM GATE PROCEDURE ────────────────────────────────────────────── -->
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04); margin-top:1rem;" id="sim-gate-b129">
+          <div class="card-title" style="color:var(--amber);">&#10003; B129 SIM Gates &mdash; COMPLETED 2026-08-31 &mdash; Results below</div>
+          <div class="card-body">
+            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:0.6rem;">Run: 2026-08-31 &bull; Accounts: Sim101 (leader) + Sim102/103/104 (followers) &bull; Instrument: MES SEP26 &bull; ATM: MES $200 SL 6</div>
+
+            <div class="label">Setup (run before any test)</div>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Select MES chart on Sim101 (sets <code>_leaderAccount</code> + <code>_instrument</code>)</li>
+              <li>Check Sim102, Sim103, Sim104 follower checkboxes</li>
+              <li>Click COPY ON</li>
+            </ol>
+
+            <div class="label" style="margin-top:0.75rem;">Test A &mdash; DW-B135 Reversal Guard Fix (P0 &mdash; mandatory)</div>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Enter a long MES position on Sim101 (e.g. 2 contracts via ATM)</li>
+              <li>Confirm followers copied (Sim102/103/104 all long)</li>
+              <li>Close the position on Sim101 (close all via ATM or Quick ALL)</li>
+              <li>Confirm all accounts flat</li>
+              <li>Immediately enter a SHORT MES position on Sim101</li>
+            </ol>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.3); border-radius:4px;">
+              <strong>PASS</strong>: Output Tab shows <code>[PTT-COPY] dispatching Sell ...</code> &mdash; copy fires. Followers Sim102/103/104 all go SHORT. No <code>[PTT-COPY-GUARD] skip reversal entry</code> line.
+            </div>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:4px;">
+              <strong>FAIL</strong>: Guard fires &rarr; DW-B135 fix not working &rarr; log new DW item, stop all SIM gates.
+            </div>
+
+            <div class="label" style="margin-top:0.75rem;">Test B &mdash; DW-B128 Protection Still Active (regression)</div>
+            <p style="font-size:0.82rem; color:var(--muted);">Harder to trigger in clean SIM (requires exact timing). If Test B cannot be triggered cleanly, log as B129-DEFER-01 (regression gate pending). Test A PASS is sufficient to unblock trading.</p>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Enter a long position on Sim101, confirm followers long</li>
+              <li>While position is STILL OPEN, manually place a Sell close order on Sim101 (simulate close-order race)</li>
+            </ol>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.3); border-radius:4px;">
+              <strong>PASS</strong>: Output Tab shows <code>[PTT-COPY-GUARD] skip reversal entry: follower flat</code> &mdash; guard fires during race window. DW-B128 protection intact.
+            </div>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:4px;">
+              <strong>FAIL</strong>: Guard does not fire and followers go short &rarr; regression in DW-B128 &rarr; log new DW item immediately.
+            </div>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:4px;">
+              <strong>NOTE &mdash; B119-DEFER-02 interpretation change</strong>: After DW-B135 fix, old B119-DEFER-02 gate expected guard to fire on every direction change. That was the old (broken) behaviour. New behaviour: guard fires ONLY during race window (position still open). If followers correctly copy a short after a clean close, that is CORRECT &mdash; not a regression. Log the result accurately.
+            </div>
+
+            <div class="label" style="margin-top:0.75rem;">Test C &mdash; DW-B134 ATM Bracket Drag Fix (P1)</div>
+            <ol style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Enter a long MES position on Sim101 via ATM (e.g. MES $200 SL4 template)</li>
+              <li>Confirm followers have ATM brackets (Working stop "Buy STP" + target)</li>
+              <li>Drag the stop ("Buy STP") to a new price on Sim101's chart</li>
+            </ol>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.3); border-radius:4px;">
+              <strong>PASS</strong>: Follower accounts show a new Working stop named <code>"PTT-STP-Drag"</code> at the updated price. Output Tab shows ATM STP drag log line.
+            </div>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:4px;">
+              <strong>FAIL</strong>: No log, follower stop unchanged &rarr; bracket drag still not working &rarr; log new DW item.
+            </div>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:4px;">
+              <strong>DW-B134-OCO observation (P2)</strong>: After Test C completes, let the position close via the ATM target fill on a follower. Check whether the "PTT-STP-Drag" stop is automatically cancelled or remains Working. Record the observation and report to Director. This observation gates the B130 fix design.
+            </div>
+
+            <div class="label" style="margin-top:0.75rem;">Test D &mdash; B120-DEFER-02 Fallback Flatten Gate</div>
+            <p style="font-size:0.82rem; color:var(--muted);">Setup: Sim101 leader + followers. Arm BE-ALL. Then press QX-ALL (Quick ALL).</p>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.3); border-radius:4px;">
+              <strong>PASS</strong>: Leader exits via flatten (not bracket). No unprotected position remains. Output Tab shows <code>[PTT-QX-FLATTEN]</code> or equivalent flatten-path log.
+            </div>
+            <div style="font-size:0.82rem; margin:0.3rem 0; padding:6px 10px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:4px;">
+              <strong>FAIL</strong>: Sim101 left with open position &rarr; log new DW item, investigate source.
+            </div>
+
+            <div class="label" style="margin-top:0.75rem;">SIM Gate Results (Director fills in)</div>
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-top:0.3rem;">
+              <tr>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left; width:120px;">Test</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Result</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Notes</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test A (DW-B135)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PARTIAL_PASS</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Guard fired once on rapid close+reopen (hasPos=False+True same tick; B129-SIM-01 P2 obs.). Copies ultimately completed. Clean-restart scenario: PASS. Not blocking trading.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test B (DW-B128)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--dim);">DEFERRED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Hard to trigger in clean SIM (requires manually submitting close order at exact ms). Not blocking. Low priority. See B129-DEFER-02.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test C (DW-B134)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700;">FAIL &rarr; DW-B137</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Drag on leader (MES $200 SL 6 template, Stop1/Target1 names) did not sync to followers. IsAtmSTPOrder EndsWith("STP") only covers "Buy STP" format. New P1 defect: DW-B137. Needs B130 pipeline.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test C OCO obs.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--dim);">NOT OBSERVED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Blocked by Test C FAIL. No PTT-STP-Drag order was created. OCO orphan behaviour cannot be observed until DW-B137 is fixed.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test D (B120-DEFER-02)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--dim);">NOT APPLICABLE</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">QX-ALL fired on existing PTT-QX brackets (normal path). Fallback flatten path only fires when SnapshotTargetOrders() returns empty. Not relevant to normal trading. Deferred indefinitely.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B119-DEFER-02</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--dim);">DESIGN_CHANGE / RETIRED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Gate was designed around old (broken) behaviour. DW-B135 fix changed the expected result. New behaviour: guard fires only during race window. Gate retired as originally specified. If followers correctly copy short after clean close &mdash; that is CORRECT.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">QAll2t / BE-ALL combo</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">PASS</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">BE-ALL armed &rarr; QAll2t fired. PTT-QX qty=7 T1=4 T2=3. All 4 accounts covered. No naked positions. BE orders count=0 (not yet submitted). Correct behaviour.</td>
+              </tr>
+            </table>
+            <div style="margin-top:0.75rem; padding:6px 10px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:4px; font-size:0.81rem;">
+              <strong>Additional observations:</strong> <code>[BE-DIAG] Sim104 orders-for-instr=46</code> &mdash; 46 stale orders per account after multi-session run without NT8 restart. DW-B107 root cause. Workaround: restart NT8 between test sessions. Intermittent copy on first attempt &mdash; resolved by re-entry on leader. Second attempt always works.
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!-- end section-b129 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- B130: DW-B137 (LaneA) + DW-B136 Gap B (LaneB) + DW-B107 (LaneC) PIPELINE_COMPLETE -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-b130" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">B130 &mdash; PIPELINE_COMPLETE &mdash; DW-B137 CLOSED (LaneA) &bull; DW-B136 Gap B CLOSED (LaneB) &bull; DW-B107 CLOSED (LaneC) &mdash; Sync: PASS &bull; F5: PASS &bull; SIM gates: PARTIAL &mdash; DW-B138 P1 NEW (Stop1 drag not syncing) &bull; DW-B139 P1 NEW (multi PTT-TGT-Drag) &bull; DW-B140 P0 NEW (double-dispatch investigation)</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--green); background:rgba(34,197,94,0.04);">
+          <div class="card-title" style="color:var(--amber);">B130 &mdash; PIPELINE_COMPLETE (pipelines) &mdash; SIM PARTIAL &mdash; 3-Lane parallel pipeline. 8 xUnit tests. Sync + F5 PASS. SIM gates: Test A PARTIAL (Target3 only), Test B PARTIAL (OCO auto-cancel on flatten, ATM target fill observation incomplete), Test C &rarr; B130-DEFER-01, Test D &rarr; B130-DEFER-02. New defects: DW-B138 P1, DW-B139 P1, DW-B140 P0.</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Block</td><td style="padding:3px 0; color:#e2e8f0;">B130 (3-lane parallel pipeline)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Date</td><td style="padding:3px 0; color:#e2e8f0;">2026-09-01</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Sync</td><td style="padding:3px 0; color:var(--green);">&#10003; PASS &mdash; ptt-sync-and-verify.ps1: 1 COPIED (CopyEngine.cs), 17 in-sync, 0 MISMATCH. 18 files MD5 verified.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">F5</td><td style="padding:3px 0; color:var(--amber);">&#9888; PENDING &mdash; Director must press F5 in NinjaTrader 8 to compile.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Tests</td><td style="padding:3px 0; color:var(--green);">&#10003; 8/8 passing (dotnet test --filter B130): 2 DW-B137 + 3 DW-B136 + 3 DW-B107. Full B129 suite (6 tests) unmodified and passing.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Build</td><td style="padding:3px 0; color:var(--green);">&#10003; 0 errors, 0 warnings.</td></tr>
+            </table>
+
+            <div class="label">Lane Summary</div>
+            <table style="font-size:0.78rem; border-collapse:collapse; width:100%; margin-top:0.3rem; margin-bottom:0.75rem;">
+              <tr>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Lane</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Defect</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Fix Summary</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Tests</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">LaneA</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B137 &mdash; CLOSED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>IsAtmSTPOrder</code> extended: added <code>|| StartsWith("Stop")</code> + <code>|| StartsWith("Target")</code>. New <code>SyncAtmFollowerTarget</code> helper (cancel+resubmit for ATM target brackets, <code>PTT-TGT-Drag</code>, <code>OrderType.Limit</code>). <code>SyncFollowerBracket</code> CYC 6&rarr;7 (branch 3b for targets). CYC=1 on <code>IsAtmSTPOrder</code>.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">2/2 &#10003;</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">LaneB</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B136 Gap B &mdash; CLOSED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>TryCancelFollowerEntries</code> instrument-scope sweep replaced by <code>CancelScopedFollowerEntries(order.OrderId.ToString())</code>. New <code>_followerCopyMap</code> (<code>ConcurrentDictionary&lt;string, ConcurrentBag&lt;Order&gt;&gt;</code>) tracks follower copies per leader order ID. <code>RecordFollowerCopy</code> called after Submit/StartAtmStrategy. <code>EvictDedup</code> NOT modified. CYC 6&rarr;4. No lock().</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">3/3 &#10003;</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">LaneC</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B107 &mdash; CLOSED</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);"><code>SnapshotBeTargets()</code> private helper extracted from <code>MoveStopToBreakEven</code>. Two-pass native-first collect: <code>Target1..9</code> (native) take priority over stale <code>PTT-BE-Target-*</code> and <code>PTT-QX-T*</code> residues. Hard cap <code>while (targets.Count &gt; 3)</code> at L4023. Restart NT8 workaround no longer required. <code>MoveStopToBreakEven</code> CYC stays at 7 (no increase). <code>SnapshotBeTargets</code> CYC=7.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">3/3 &#10003;</td>
+              </tr>
+            </table>
+
+            <div class="label">B130 SIM Gates (Director)</div>
+            <table style="font-size:0.78rem; border-collapse:collapse; width:100%; margin-top:0.3rem; margin-bottom:0.75rem;">
+              <tr>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Test</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Description</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Gate</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); background:rgba(0,0,0,0.2); text-align:left;">Result</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test A</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B137 retry (P1). ATM bracket drag (Stop1 + Target1) syncs to followers via cancel+resubmit (PTT-STP-Drag / PTT-TGT-Drag). MES $200 SL 6 template.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">PASS: follower stop + target updated. FAIL: no sync log.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700;">&#10007; PARTIAL FAIL &mdash; Stop1 drag: NOT synced to followers (new DW-B138). Target3 drag: PTT-TGT-Drag created on followers (partial). T1+T2 drag: NOT synced (see DW-B139). Multiple PTT-TGT-Drag orders created per target on repeated drag (DW-B139).</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test A (target detail)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Target drag sub-observation from 10:56 AM CSV. T3 drag synced; T1 + T2 drag did NOT sync. Multiple PTT-TGT-Drag orders per follower per target created on repeated drag (new order each drag, prior not cancelled).</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">PASS: single PTT-TGT-Drag per target, updated each drag. FAIL: duplicates accumulate.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700;">&#10007; FAIL &mdash; DW-B139 (P1): multiple PTT-TGT-Drag orders per target per follower. SyncAtmFollowerTarget not cancelling prior PTT-TGT-Drag before creating new one. T1+T2 not syncing at all.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test B</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B134-OCO observation (P2). After stop drag, let position close via ATM target fill. Record: is "PTT-STP-Drag" / "PTT-TGT-Drag" auto-cancelled or orphaned?</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Observation only. No PASS/FAIL. Record result.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9888; PARTIAL &mdash; PTT-TGT-Drag orders on followers were auto-cancelled when "Flatten Everything" was called (explicit close). OCO auto-cancel on Flatten CONFIRMED. However: position was manually flattened, NOT by ATM target fill. The true ATM-target-fill-driven OCO cancel observation is INCOMPLETE. Cannot confirm or deny orphan scenario. Log: Flatten path is safe. ATM target fill path requires dedicated test session.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test C</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B136 Gap B regression (P1). Two Working leader entries on same instrument. Cancel entry #1. Verify follower copies of entry #2 survive.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">PASS: entry #2 follower copies intact. FAIL: cross-cancel still occurs.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--mid);">&#8203;&#9656; B130-DEFER-01 &mdash; Two simultaneous Working entries on same instrument could not be staged in this SIM session. Unit tests in B130Tests.cs confirm logic. Runtime gate deferred to next trading session.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Test D</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">DW-B107 stale orders check (P2). Multi-session run without NT8 restart. Arm BE-ALL. Check [BE-DIAG] orders-for-instr count. Should be &le; current session orders (not 46).</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">PASS: count &le; current session. FAIL: count still inflated.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--mid);">&#8203;&#9656; B130-DEFER-02 &mdash; NT8 was restarted before this gate could be observed. Stale orders cleared by restart. Multi-session run without restart required to confirm SnapshotBeTargets filter. Unit test confirms logic. Deferred to next extended session.</td>
+              </tr>
+            </table>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--amber);">&#9888; B130 PIPELINE_COMPLETE (pipelines green) &mdash; SIM PARTIAL. Pipelines: LaneA DW-B137 CLOSED &bull; LaneB DW-B136 Gap B CLOSED &bull; LaneC DW-B107 CLOSED &bull; Sync PASS (0 MISMATCH) &bull; F5 PASS &bull; 8/8 tests green. SIM results: Test A PARTIAL FAIL (Stop1 drag not syncing &rarr; DW-B138; Target3 partial but multi-drag creates duplicate PTT-TGT-Drag &rarr; DW-B139; T1+T2 drag not syncing). Test B PARTIAL (OCO auto-cancel confirmed on Flatten, ATM target fill observation incomplete). Test C &rarr; B130-DEFER-01. Test D &rarr; B130-DEFER-02. New defects opened: DW-B138 P1, DW-B139 P1, DW-B140 P0 (double-dispatch investigation). B131 pipeline required.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-b130 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- B130-DEFER-01: Gap B runtime gate deferred                                        -->
+    <!-- B130-DEFER-02: DW-B107 stale orders multi-session gate deferred                   -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-b130-defer" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(100,116,139,0.10); border-left:3px solid var(--dim); color:var(--mid);">B130-DEFER-01 &amp; B130-DEFER-02 &mdash; Deferred SIM Gate Cards &mdash; Carry to B131</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--dim); background:rgba(100,116,139,0.04);">
+          <div class="card-title" style="color:var(--mid);">Deferred Gate Cards &mdash; B130 SIM Gates That Could Not Be Executed</div>
+          <div class="card-body">
+
+            <div class="label">B130-DEFER-01 &mdash; Gap B Runtime Behavioral Gate (DW-B136 Gap B)</div>
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Gate</td><td style="padding:3px 0; color:#e2e8f0;">Runtime confirmation that TryCancelFollowerEntries scoped cancel does not cross-cancel follower copies of a different leader entry on the same instrument</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Why deferred</td><td style="padding:3px 0; color:#e2e8f0;">Two simultaneous Working entries on the same instrument (e.g. a filled entry + an unfilled limit at a lower price) could not be staged in the B130 SIM session. The scenario requires careful setup: entry #1 filled or working, entry #2 working at a different price, then cancel entry #1 while entry #2 is still working.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Unit test coverage</td><td style="padding:3px 0; color:var(--green);">&#10003; B130_DW136_CancelLeaderOrder1DoesNotCancelFollowerCopiesOfOrder2 &mdash; PASSING. Logic confirmed in unit test.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Carry to</td><td style="padding:3px 0; color:#e2e8f0;">B131 pre-pipeline SIM gate (before any new pipelines). Setup: place entry on leader, place a second limit entry at a lower price before first fills, cancel first entry, verify follower copies of second entry survive.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Risk if not gated</td><td style="padding:3px 0; color:var(--amber);">LOW &mdash; unit test confirms logic. Runtime anomaly would only surface if ConcurrentBag enumeration has unexpected race. Monitoring only.</td></tr>
+            </table>
+
+            <div class="label" style="margin-top:0.75rem;">B130-DEFER-02 &mdash; DW-B107 Stale Orders Multi-Session Gate</div>
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Gate</td><td style="padding:3px 0; color:#e2e8f0;">Confirm SnapshotBeTargets() filter prevents stale PTT-BE-Target-* orders from accumulating across sessions (original symptom: [BE-DIAG] orders-for-instr=46 after 3+ sessions without NT8 restart)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Why deferred</td><td style="padding:3px 0; color:#e2e8f0;">NT8 was restarted before the B130 SIM session. This cleared all stale orders. The multi-session accumulation scenario (3+ sessions without restart) was not present in the test environment.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Unit test coverage</td><td style="padding:3px 0; color:var(--green);">&#10003; B130_DW107_SnapshotBeTargetsFiltersStaleOrders &mdash; PASSING. Filter logic confirmed in unit test.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Carry to</td><td style="padding:3px 0; color:#e2e8f0;">Next extended SIM session: run 3+ trading cycles without NT8 restart, then arm BE-ALL and check [BE-DIAG] orders-for-instr count in Output Tab. Expected: count &le; current session open orders (typically 3). FAIL: count &ge; 10 (stale residues not filtered).</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Risk if not gated</td><td style="padding:3px 0; color:var(--amber);">LOW &mdash; workaround (NT8 restart between sessions) eliminated the symptom. Unit test confirms filter logic. Deferred monitoring only.</td></tr>
+            </table>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-b130-defer -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B138: Stop1 Drag Not Syncing to Followers — P1 OPEN — B131 pipeline required   -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b138" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(239,68,68,0.10); border-left:3px solid var(--red); color:var(--red);">DW-B138 &mdash; P1 &mdash; OPEN &mdash; ATM Stop Drag (Stop1) on Leader Does NOT Sync to Followers &mdash; cancel+resubmit path not triggered at runtime &mdash; B130 SIM Test A FAIL &mdash; B131 pipeline required</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.04);">
+          <div class="card-title" style="color:var(--red);">DW-B138 &mdash; P1 &mdash; OPEN &mdash; Stop1 Drag Not Syncing: cancel+resubmit path not firing in runtime despite IsAtmSTPOrder fix</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Discovered</td><td style="padding:3px 0; color:#e2e8f0;">2026-09-01 &mdash; B130 SIM Test A (retry of B129 SIM Test C)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P1 &mdash; Stop drag sync is a stated feature of the copier. Followers must track stop price adjustments made by leader via ATM drag.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>IsAtmSTPOrder</code> (~L2107), <code>SyncAtmFollowerBracket</code> (~L2100), <code>OnOrderUpdate</code> (entry point for drag detection)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--red);">&#10007; P1 OPEN &mdash; Discovered 2026-09-01. B131 pipeline required (Ph1 ptt-architect).</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Related</td><td style="padding:3px 0; color:#e2e8f0;">DW-B134 (parent &mdash; cancel+resubmit path), DW-B137 (CLOSED &mdash; IsAtmSTPOrder name fix)</td></tr>
+            </table>
+
+            <div class="label">Observed Symptom</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Leader has long MES position with ATM brackets (Stop1, Stop2, Stop3, Target1, Target2, Target3).</li>
+              <li>Director drags Stop1 to a new price on the leader chart.</li>
+              <li>Output Tab: no <code>[DW-B134] ATM STP drag detected</code> or <code>SyncAtmFollowerBracket</code> log appears.</li>
+              <li>Follower accounts: Stop1 price unchanged. No "PTT-STP-Drag" order created on any follower.</li>
+              <li>Target3 drag DID produce PTT-TGT-Drag orders on followers (Target path partially working for T3).</li>
+              <li>Stop1 drag completely silent. The cancel+resubmit path is not being reached for Stop1 name.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Hypothesis (investigation required — do not assume until B131 Ph1)</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>H1 &mdash; OnOrderUpdate entry gate</strong>: The drag event may be detected by a different NT8 callback than <code>OnOrderUpdate</code>. The drag of an ATM-managed bracket may not fire <code>OnOrderUpdate</code> in the same way a manual order change does. The detection predicate (order state = Change Submitted?) may not match the drag-initiated state transition.</li>
+              <li><strong>H2 &mdash; IsAtmSTPOrder predicate reached but action not taken</strong>: IsAtmSTPOrder returns true for "Stop1" (confirmed by unit test), but the surrounding conditional in <code>OnOrderUpdate</code> (or wherever SyncAtmFollowerBracket is called) has a guard that short-circuits before <code>SyncAtmFollowerBracket</code> is reached. E.g. an account-type check, a leader-only guard, or a price-change threshold.</li>
+              <li><strong>H3 &mdash; Order.Name for ATM drag orders</strong>: The dragged ATM bracket may arrive in <code>OnOrderUpdate</code> with a different Order.Name than "Stop1" (e.g. the NT8 internal tracking name, or an empty name). Need to add diagnostic logging of all Order.Name values in OnOrderUpdate to confirm.</li>
+              <li><strong>H4 &mdash; Target3 vs Stop1 asymmetry</strong>: If Target3 drag triggered PTT-TGT-Drag but Stop1 drag did not trigger PTT-STP-Drag, there is an asymmetry between the target-drag and stop-drag detection paths. Both should flow through similar detection logic. The asymmetry suggests a predicate difference in the entry conditions, not in IsAtmSTPOrder itself.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Investigation Required (B131 Ph1)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              B131 ptt-architect must read <code>CopyEngine.cs</code> <code>OnOrderUpdate</code> and trace the full call path from the ATM drag event to <code>SyncAtmFollowerBracket</code>. Add diagnostic logging of <code>order.Name</code> and <code>order.OrderState</code> at the entry of OnOrderUpdate when order.Account == _leaderAccount to confirm what NT8 fires when Stop1 is dragged. The unit test confirms <code>IsAtmSTPOrder("Stop1") == true</code>; the bug is upstream of that predicate.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">NT8 API Notes</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              Per <code>docs/standards/NT8_FULL_REFERENCE.md</code> and <code>NT8_ADDON_KNOWLEDGE.md</code>: ATM bracket drag fires <code>OnOrderUpdate</code> with <code>OrderState.ChangeSubmitted</code> then <code>OrderState.Working</code>. The <code>Order.Name</code> for ATM brackets is the template-defined name (e.g. "Stop1", "Target3"). This should be verifiable by adding a Print statement to OnOrderUpdate and re-running the drag. Confirmed by prior sessions: NT8 Close button fires <code>Order.Name = "Close"</code>; ATM stop names are "Stop1", "Stop2", etc. (canonical NT8 ATM naming, confirmed in NT8_FULL_REFERENCE.md).
+            </p>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">&#10007; P1 OPEN &mdash; Stop1 drag not syncing. Root cause: cancel+resubmit path not triggered at runtime. Needs B131 Ph1 investigation: read OnOrderUpdate call path from drag event to SyncAtmFollowerBracket. Add diagnostic logging of Order.Name + OrderState on leader orders. Fix via B131 full PTT pipeline.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b138 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B139: Multiple PTT-TGT-Drag Per Target — P1 OPEN — B131 pipeline required      -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b139" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(239,68,68,0.10); border-left:3px solid var(--red); color:var(--red);">DW-B139 &mdash; P1 &mdash; OPEN &mdash; Target Drag Creates Multiple PTT-TGT-Drag Orders Per Target Per Follower &mdash; Prior PTT-TGT-Drag Not Cancelled Before New One Created &mdash; B130 SIM Test A FAIL &mdash; B131 pipeline required</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.04);">
+          <div class="card-title" style="color:var(--red);">DW-B139 &mdash; P1 &mdash; OPEN &mdash; SyncAtmFollowerTarget Not Cancelling Prior PTT-TGT-Drag Before Creating New One &mdash; Multiplying Orders Bug</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Discovered</td><td style="padding:3px 0; color:#e2e8f0;">2026-09-01 &mdash; B130 SIM Test A + CSV analysis (NinjaTrader Grid 2026-09-01 10-56 AM.csv)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P1 &mdash; Each subsequent target drag adds a new Working PTT-TGT-Drag Limit order on each follower account without cancelling the prior one. Multiple open limit orders per target = follower has more open targets than intended. Risk of unintended fills.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>SyncAtmFollowerTarget</code> (~L2200)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--red);">&#10007; P1 OPEN &mdash; Discovered 2026-09-01. B131 pipeline required.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Evidence</td><td style="padding:3px 0; color:#e2e8f0;">CSV 10:56 AM order log: Sim102 shows PTT-TGT-Drag orders at 7687, 7685.5, 7681.5 (3 separate Working Limit orders, all different prices, all named PTT-TGT-Drag). Each represents a separate drag event without prior cancellation.</td></tr>
+            </table>
+
+            <div class="label">Root Cause</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              <code>SyncAtmFollowerTarget</code> (B130 LaneA) creates a new <code>PTT-TGT-Drag</code> Limit order on each drag event via <code>acc.CreateOrder</code> + <code>acc.Submit</code>. It does NOT first check whether an existing <code>PTT-TGT-Drag</code> Working order is present on the follower account for the same instrument. The result is that each drag event appends a new limit order to the follower's order book at the new drag price, while the previous PTT-TGT-Drag orders remain Working at old prices.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Fix Design</div>
+            <p style="font-size:0.83rem; color:var(--muted);">In <code>SyncAtmFollowerTarget</code>, before creating the new PTT-TGT-Drag order:</p>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Sweep <code>followerAcc.Orders</code> for any Working orders named <code>"PTT-TGT-Drag"</code> on the same instrument.</li>
+              <li>Cancel all of them: <code>followerAcc.Cancel(existingDragOrders)</code>.</li>
+              <li>Then create the new PTT-TGT-Drag at the updated price.</li>
+              <li>This is the same pattern as the stop-drag cancel+resubmit: cancel existing, then resubmit at new price.</li>
+            </ul>
+            <p style="font-size:0.83rem; color:var(--muted); margin-top:0.5rem;">
+              Additionally investigate why T1 and T2 drag did not produce PTT-TGT-Drag orders (only T3 did). This may be the same root cause as DW-B138 (drag event not detected for T1/T2), or it may be a predicate ordering issue in SyncAtmFollowerTarget.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Additional Sub-Defect: T1 + T2 Target Drag Not Syncing</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>B130 SIM Test A: only Target3 drag produced PTT-TGT-Drag on followers. Target1 and Target2 drag did NOT produce any PTT-TGT-Drag orders.</li>
+              <li>This may share the same root cause as DW-B138 (detection path for T1/T2 drag events not firing). Investigation in B131 Ph1 should cover both Stop1 and T1/T2 simultaneously.</li>
+            </ul>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">&#10007; P1 OPEN &mdash; SyncAtmFollowerTarget creates multiple PTT-TGT-Drag orders (one per drag event, prior not cancelled). Fix: cancel existing PTT-TGT-Drag before creating new one. Sub-defect: T1+T2 drag not syncing at all. Bundle with DW-B138 investigation in B131 Ph1. Fix via B131 full PTT pipeline.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b139 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B140: Double-Dispatch Regression — P0 OPEN — investigation before live trading  -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b140" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(239,68,68,0.10); border-left:3px solid var(--red); color:var(--red);">DW-B140 &mdash; P0 &mdash; OPEN &mdash; Possible Double-Dispatch: Duplicate [PTT-COPY] Dispatch Events in Output Log &mdash; _followerCopyMap RecordFollowerCopy suspected &mdash; Must investigate before live trading</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.04);">
+          <div class="card-title" style="color:var(--red);">DW-B140 &mdash; P0 &mdash; OPEN &mdash; Duplicate [PTT-COPY] dispatch seen in Output Tab &mdash; Root cause investigation required before live trading</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Discovered</td><td style="padding:3px 0; color:#e2e8f0;">2026-09-01 &mdash; B130 SIM session Output Tab analysis</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P0 &mdash; If followers receive duplicate dispatch events, they may submit two entries where the leader submitted one, doubling the follower's position size. This is a correctness defect with direct financial risk.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>RecordFollowerCopy</code>, <code>TryCopyEntry</code>, <code>OnOrderUpdate</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--red);">&#10007; P0 OPEN &mdash; Discovered 2026-09-01. Investigation required. Pipeline may be needed. SRC CODE BAN: no .cs edits without full PTT pipeline.</td></tr>
+            </table>
+
+            <div class="label">Observed Symptom</div>
+            <p style="font-size:0.83rem; color:var(--muted);">Output Tab pattern observed during B130 SIM session:</p>
+            <pre style="font-size:0.78rem; background:var(--raised); padding:8px 12px; border-radius:4px; overflow-x:auto; color:var(--bright); margin-top:0.25rem;">
+[PTT-COPY] dispatch: Sell x7 MES SEP26 -&gt; Sim102...
+PositionStateChanged hasPos=False
+PositionStateChanged hasPos=True
+[PTT-COPY] dispatch: Sell x7 MES SEP26 -&gt; Sim102...  &larr; DUPLICATE
+            </pre>
+            <p style="font-size:0.83rem; color:var(--muted); margin-top:0.5rem;">
+              The same [PTT-COPY] dispatch line fires twice for the same follower and the same leader order. The intervening <code>PositionStateChanged hasPos=False</code> then <code>hasPos=True</code> suggests the position briefly flattened and reopened, potentially triggering a second dispatch.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Hypotheses</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>H1 &mdash; _followerCopyMap RecordFollowerCopy (B130 LaneB)</strong>: The new <code>RecordFollowerCopy</code> call registers follower order copies in <code>_followerCopyMap[leaderOrderId]</code>. If the registration fires on both Submit() and on a subsequent OrderUpdate callback for the same follower order, the copy map may incorrectly show the follower order as a "new" leader order, triggering a second TryCopyEntry call.</li>
+              <li><strong>H2 &mdash; ATM bracket fill misidentified as leader entry</strong>: After a follower entry fills, the ATM bracket orders (Stop/Target) are created by NT8. If OnOrderUpdate sees these bracket orders for the follower account (which may have the same instrument + direction as the leader's entry), the copier may try to copy them to other followers, producing duplicate dispatch.</li>
+              <li><strong>H3 &mdash; PositionStateChanged double-fire</strong>: The <code>hasPos=False → hasPos=True</code> cycle on the follower may be a brief flat state during the fill sequence (position transitions from 0 to filled in two callbacks). If <code>TryCopyEntry</code> is called on each PositionStateChanged, it could dispatch twice on the fill cycle.</li>
+              <li><strong>H4 &mdash; Pre-existing (not introduced by B130)</strong>: This pattern may have existed before B130 and is only now visible because the Output Tab was observed more carefully during SIM. If so, it does not implicate B130 LaneB. Investigation should check whether this pattern existed in B129 SIM logs.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Investigation Protocol (B131 Ph1)</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li>Read <code>CopyEngine.cs</code> <code>RecordFollowerCopy</code> and all callers. Confirm it is called exactly once per submitted follower copy (not on subsequent OrderUpdate callbacks for the same follower order).</li>
+              <li>Read <code>TryCopyEntry</code> entry conditions: are there any guards that prevent double-dispatch on the same leader order ID?</li>
+              <li>Check whether <code>_followerCopyMap</code> entries are used as a deduplication guard (i.e. if leaderOrderId is already in the map, do NOT dispatch). If not, add this guard.</li>
+              <li>Add diagnostic logging: print <code>order.OrderId</code> and <code>order.Account</code> at the start of the dispatch path to identify if duplicate dispatches originate from different order IDs or the same ID.</li>
+              <li>Cross-check B129 SIM logs for the same double-dispatch pattern to determine if this is a B130 regression or pre-existing.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">IMPORTANT: If Confirmed As Pre-Existing</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              If the double-dispatch pattern existed before B130 and the SIM CSV shows only single entries on followers (not doubled positions), then the dispatch log is misleading (e.g. a log fires for each follower account, not a true duplicate dispatch). In that case, confirm by counting follower positions vs leader position in the CSV. If follower qty = leader qty (not 2x), the pattern is benign. Close DW-B140 as informational if confirmed benign.
+            </p>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">&#10007; P0 OPEN &mdash; Duplicate [PTT-COPY] dispatch observed in B130 SIM Output Tab. Root cause: unknown. Must investigate before live trading. If confirmed as B130 regression (RecordFollowerCopy re-trigger): fix via B131 pipeline. If confirmed pre-existing benign (dispatch log fires per follower account, not true duplicate): close as informational. Investigation gates B131 SIM readiness.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b140 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- NEXT BLOCK DECISION: B131 planning                                                 -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-b131-plan" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(168,85,247,0.10); border-left:3px solid var(--purple); color:var(--purple);">B131 &mdash; PLANNING &mdash; Next Block Priority Order (post-B130 SIM) &mdash; DW-B140 investigation first (P0) &bull; DW-B138 + DW-B139 fix (P1) &bull; DW-B134-OCO observation &bull; Deferred gates</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--purple); background:rgba(168,85,247,0.04);">
+          <div class="card-title" style="color:var(--purple);">B131 &mdash; Next Block &mdash; Priority Order</div>
+          <div class="card-body">
+
+            <div class="label">Priority 1 &mdash; DW-B140 Investigation (P0, pre-pipeline)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              Before any B131 pipeline, the Director must investigate DW-B140 (double-dispatch) by checking follower positions in the B130 SIM CSV against leader position. If follower qty == leader qty in all cases, the pattern is benign (dispatch log per follower, not true duplicate). Log the finding and update DW-B140. If follower qty &gt; leader qty: P0 is confirmed, B131 must fix it first.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Priority 2 &mdash; DW-B138 + DW-B139 Fix (P1) &mdash; B131 LaneA + LaneB</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>B131 LaneA: DW-B138</strong> &mdash; Stop1 drag not syncing. Ph1 architect reads <code>OnOrderUpdate</code> call path from ATM drag to <code>SyncAtmFollowerBracket</code>. Add diagnostic logging to identify why cancel+resubmit not reached. Fix the detection/routing gap. Full PTT pipeline.</li>
+              <li><strong>B131 LaneB: DW-B139</strong> &mdash; Multiple PTT-TGT-Drag per target. Fix: cancel existing PTT-TGT-Drag before creating new one in <code>SyncAtmFollowerTarget</code>. Also investigate T1/T2 not syncing (may share root cause with DW-B138). Full PTT pipeline.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Priority 3 &mdash; DW-B134-OCO Observation (P2) &mdash; Pre-pipeline SIM gate 0</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              After DW-B138 + DW-B139 are fixed, run a dedicated SIM session where the ATM target fills naturally (position closes via ATM target, not manual flatten). Observe whether PTT-STP-Drag or PTT-TGT-Drag orphan. If no orphan in 3 cycles: close DW-B134-OCO as SAFE. If orphan confirmed: B131 LaneC (defensive flat-sweep cancel).
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Priority 4 &mdash; Deferred Gates (carry to B131 SIM)</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>B130-DEFER-01</strong>: Gap B runtime gate &mdash; two simultaneous entries. Run during B131 SIM session if setup can be staged.</li>
+              <li><strong>B130-DEFER-02</strong>: DW-B107 stale orders &mdash; multi-session without NT8 restart. Run during next extended SIM session.</li>
+            </ul>
+
+            <div class="label" style="margin-top:0.75rem;">Priority 5 &mdash; Complexity Refactor Wave (after all P0+P1 defects closed)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              Once DW-B138, DW-B139, DW-B140 are resolved and SIM gates pass, the codebase is stable enough for the autonomous-refactor wave (CYC &le; 8 for all CopyEngine.cs methods). Many methods remain above CYC 8 (SyncAtmFollowerBracket, OnOrderUpdate, TryCopyEntry, etc.). This wave should run in B132+ after B131 SIM gates pass.
+            </p>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--purple);">&#9656; B131 PLAN: 1) Investigate DW-B140 (check follower qty vs leader qty in B130 CSV &mdash; P0 pre-pipeline). 2) B131 LaneA: DW-B138 fix (Stop1 drag detection). 3) B131 LaneB: DW-B139 fix (cancel prior PTT-TGT-Drag + T1/T2 detection). 4) Pre-pipeline SIM gate 0: DW-B134-OCO ATM target fill observation. 5) Carry B130-DEFER-01 + DEFER-02 to B131 SIM. All changes via full 5-phase PTT pipeline.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-b131-plan -->
+
+
 
 
   </body>

@@ -1,5 +1,5 @@
 // C:\WSGTA\universal-or-strategy\src\PropTraderTools\Features\PttCopier.cs
-// B33 — PttCopier module: relay PttBus events to CopyEngine follower fan-out.
+// B33 -- PttCopier module: relay PttBus events to CopyEngine follower fan-out.
 // IPttModule implementation. ModuleId = "COPY".
 // Subscribes to all 4 PttBus events in Initialize(). Unsubscribes all in Teardown().
 // Dependencies: Core/PttContracts.cs + NinjaTrader.Cbi + ICopyEngine (CopyEngine in T8).
@@ -66,9 +66,9 @@ namespace PropTraderTools
             PttBus.CancelFired -= OnCancelFired;
         }
 
-        // ─────────────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------------
         // PttBus event handlers -- each relays to CopyEngine fan-out. CYC=1 each.
-        // ─────────────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------------
 
         private void OnBeFired(object sender, BeEventArgs e)
         {

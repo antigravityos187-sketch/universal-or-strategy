@@ -2195,10 +2195,10 @@ namespace PropTraderTools
         // B19 T1: Gate 2 account name equality contract (DW-B19-COPIER-BUG-01)
         // =====================================================================
 
-        // T-B19-01: Gate 2 fix type-contract — CopyRule.MasterAccount is Account,
+        // T-B19-01: Gate 2 fix type-contract -- CopyRule.MasterAccount is Account,
         // and Account.Name is a public string property.
         // Verifies the structural pre-conditions for the .Name == ?.Name comparison.
-        // No NT8 runtime required — pure reflection/type-system test.
+        // No NT8 runtime required -- pure reflection/type-system test.
         [Fact]
         public void Gate2_UsesAccountName_SourceContractVerified()
         {
@@ -2233,7 +2233,7 @@ namespace PropTraderTools
             Assert.Equal(typeof(string), nameProp.PropertyType);
         }
 
-        // T-B19-02: Gate 2 null-safety guard — null MasterAccount evaluates to null name
+        // T-B19-02: Gate 2 null-safety guard -- null MasterAccount evaluates to null name
         // (not NullReferenceException). Guards against regression to non-null-conditional .Name.
         [Fact]
         public void Gate2_NullMasterAccount_NoCopyOrder()
@@ -2330,7 +2330,7 @@ namespace PropTraderTools
             Assert.NotNull(map);
             System.Collections.Concurrent.ConcurrentBag<FollowerBinding> bag;
             Assert.True(map.TryGetValue(signalName, out bag), "Signal key not found in _orderMap");
-            // With name equality, calling twice with same-name accounts → exactly 1 entry
+            // With name equality, calling twice with same-name accounts -> exactly 1 entry
             Assert.Equal(1, bag.Count);
         }
 
@@ -2572,7 +2572,7 @@ namespace PropTraderTools
         [Fact]
         public void BreakEven_AccountOverload_NullInstrument_NoException()
         {
-            // Arrange: use a non-null Account — Account.All[0] if available, else null path
+            // Arrange: use a non-null Account -- Account.All[0] if available, else null path
             // null leader case already covered above; this tests the non-null leader + null instrument path
             Account stub = Account.All.Count > 0 ? Account.All[0] : null;
             if (stub == null)
@@ -2584,7 +2584,7 @@ namespace PropTraderTools
                 Assert.Null(skipEx);
                 return;
             }
-            // Act: null instrument → AllAccounts(null) yields empty safely
+            // Act: null instrument -> AllAccounts(null) yields empty safely
             var ex = Record.Exception(() => _engine.BreakEven(stub, (Instrument)null, 2));
             // Assert: no exception
             Assert.Null(ex);
@@ -3156,7 +3156,7 @@ namespace PropTraderTools
             Assert.True(CopyEngine.IsExitSignalName("RevShort"));
         }
 
-        // ── B61 tests: TryDispatchLeaderFlat state guard + follower-only flatten ──
+        // -- B61 tests: TryDispatchLeaderFlat state guard + follower-only flatten --
         // CopyRule is a private struct inside CopyEngine -- tests must use _engine.AddRule()
         // to obtain a CopyRule value, then invoke TryDispatchLeaderFlat via reflection.
 
@@ -3355,7 +3355,7 @@ namespace PropTraderTools
             Assert.True(resultCancelled);
         }
 
-        // ── B65 tests: IsNativeExitName + TryDispatchLeaderFlat race bypass ──
+        // -- B65 tests: IsNativeExitName + TryDispatchLeaderFlat race bypass --
         // T_B65_01 through T_B65_07: direct IsNativeExitName unit tests.
         // T_B65_08: regression test for DW-B65-01 race bypass.
         // T_B65_09: regression guard -- non-native exit still respects position guard.
@@ -5304,7 +5304,7 @@ namespace PropTraderTools
         }
     }
 
-    // ── B79BeAllTargetSnapshotTests ───────────────────────────────────────────────
+    // -- B79BeAllTargetSnapshotTests -----------------------------------------------
     // DW-B79-01: MoveStopToBreakEven target snapshot stateOk was too narrow.
     // Widened to match cancel sweep: Working|Accepted|Submitted|Initialized|TriggerPending.
     // Rapid QX->BE-ALL press leaves follower PTT-QX-T orders in Initialized state;
