@@ -1,12 +1,13 @@
 # PTT Copier Session Loop — Perpetual $continue Protocol
 
-**Version**: 2.0
+**Version**: 2.1
 **Created**: 2026-09-01
-**Updated**: 2026-09-04 (V2.0 — STEP 4 HARD WAIT gate, STEP 6/7 post-SIM only)
+**Updated**: 2026-08-31 (V2.1 — STEP 6 + STEP 7 merged into single Director hand-off packet)
 **Purpose**: Every copier-spec session begins with a $continue prompt.
 Each session validates pipeline output, runs SIM gates, updates the spec,
-provides the next batch of ptt-orchestrator prompts, and ALWAYS ends by
-providing the next $continue prompt — so the Director never has to ask for it.
+and ALWAYS ends by delivering the pipeline prompts AND the next $continue prompt
+together as a single hand-off packet — so the Director has everything needed
+in one place when testing completes.
 
 ---
 
@@ -25,26 +26,38 @@ SESSION START:   paste $continue prompt
   ── Director reports SIM results ──────────────────────────────────────────
   STEP 5:  Final spec updates — based on ACTUAL SIM results reported by Director.
            Log gate results in spec, deferred cards, DW-B134-OCO obs, new DW items.
-  STEP 6:  Next pipeline prompts — generated FROM actual SIM results. Not before.
-           One prompt per confirmed defect / confirmed next action. No "scenarios".
-  STEP 7:  Next $continue prompt — generated FROM actual SIM results. Not before.
-           Pre-filled with actual outcomes, actual open items, actual deferred state.
-SESSION END:     Director has next $continue ready to paste when pipelines finish
+  STEP 6:  Commit spec updates.
+  STEP 7:  HAND-OFF PACKET (delivered together, never split):
+           Part A — ptt-orchestrator prompts for the CONFIRMED next pipeline(s).
+                    One prompt per confirmed action. No speculative branches.
+                    Full 7-phase chain verbatim in every prompt.
+           Part B — next $continue prompt, pre-filled from actual outcomes.
+                    Director pastes Part A prompts into pipeline sessions.
+                    Director pastes Part B into THIS session when pipelines complete.
+SESSION END:     Director has Part A (pipelines to run) + Part B ($continue) in hand.
 ```
 
-### Hard Rule: STEP 6 and STEP 7 Are Post-SIM Only
+### Hard Rule: STEP 7 Is Post-SIM Only
 
-STEP 6 and STEP 7 MUST NOT be generated before STEP 5 completes.
+The STEP 7 hand-off packet MUST NOT be generated before STEP 5 completes.
 STEP 5 MUST NOT run before the Director reports SIM results.
-Generating speculative "scenario A / scenario B" prompts before SIM results are
-known is PROHIBITED. It wastes Director time and forces them to pick a branch
-that may not match reality.
+Generating speculative prompts before real results are known is PROHIBITED.
 
 The correct sequence is:
   STEPS 0-3 run immediately (automated, no Director input needed).
   STEP 4 outputs the SIM test instructions, then the session WAITS.
   Director runs tests, returns to the chat, reports PASS/FAIL/OBS/DEFER per gate.
   STEPS 5-7 run immediately after the Director's report, using real data.
+
+### Why Pipeline Prompts and $continue Travel Together
+
+The $continue prompt references the outcome of the pipelines that are about to run.
+If the $continue is delivered before the pipelines, the Director holds a prompt that
+refers to work not yet done — it cannot be used yet and creates confusion about
+when to paste it. Delivering both together means:
+  - Director pastes pipeline prompts → pipelines run → $continue is already in hand → paste.
+  - No "where is my $continue?" between sessions.
+  - No risk of using a stale $continue from a prior session.
 
 ---
 
@@ -98,13 +111,24 @@ PHASE 5 — Stable validation                    [FINAL]
 
 ---
 
-## $continue Prompt Rules (V2.0)
+## Hand-Off Packet Rules (V2.1)
 
-The $continue prompt is generated at the END of the session, AFTER STEP 7.
+The STEP 7 hand-off packet is generated at the end of the session, after STEP 5+6.
 It is ALWAYS grounded in actual SIM results from the current session.
 It is NEVER generated speculatively before SIM results are known.
+It is ALWAYS delivered as one unit — Part A (pipeline prompts) + Part B ($continue).
 
-Parameterized fields — filled in from actual session outcomes:
+### Part A — ptt-orchestrator prompts
+One prompt per confirmed next action. No "if Test A passes do X, if fails do Y".
+Each prompt must include:
+  - Full 7-phase PTT pipeline chain verbatim
+  - SRC CODE BAN reminder
+  - Block number (B133, B134, etc.)
+  - DW item being fixed
+  - Key source locations for that fix
+
+### Part B — $continue prompt
+Parameterized fields filled in from actual session outcomes:
 - {BLOCK_JUST_VALIDATED}: block whose pipeline was verified this session
 - {LANES_COMPLETED}: lanes verified (pipeline audit, STEP 1)
 - {DW_FIXED}: DW items closed this session (pipeline close + SIM confirmation)
@@ -112,9 +136,10 @@ Parameterized fields — filled in from actual session outcomes:
 - {DW_OPEN_P0P1}: remaining open P0/P1 items after STEP 5
 - {DEFERRED_CARRY}: gates that were DEFERed in STEP 5
 - {PHASE}: current loop phase number
-- {NEXT_PIPELINE}: the specific pipeline to run next (one, concrete, no "if/else")
+- {NEXT_PIPELINE}: the specific pipeline that was just handed off in Part A
 
-The prompt is generated once, at the end of STEP 7, after all SIM data is known.
+The Director pastes Part A prompts into pipeline sessions.
+When all Part A pipelines finish, the Director pastes Part B into this session.
 
 ---
 

@@ -39095,10 +39095,10 @@ Leader cancels order2
 
     <!-- ══ SAFETY ASSESSMENT: Live + Manual Trading with current copier state ═════════════════ -->
     <div class="section" id="section-safety-2026-08-31" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">Safety Assessment &mdash; Updated B132 PIPELINE_COMPLETE &mdash; DW-B141 P0 CLOSED (pipeline, SIM PENDING) &bull; DW-B138 P1 diagnostic deployed (trace PENDING) &mdash; ATM target drag CONDITIONAL PENDING SIM &mdash; ATM stop drag diagnostic active</div>
+      <div class="section-label" style="background:rgba(239,68,68,0.12); border-left:3px solid var(--red); color:var(--red);">Safety Assessment &mdash; B132 SIM COMPLETE (2026-09-04) &mdash; DW-B142 P0 NEW (null==null wrong bracket match) &bull; DW-B141 P0 SIM INCONCLUSIVE (upstream DW-B142) &bull; DW-B138 trace collected (DW-B142+DW-B143 root causes) &mdash; ATM bracket drag NOT SAFE &mdash; B133 required</div>
       <div class="section-body">
         <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04);">
-          <div class="card-title" style="color:var(--amber);">&#9888; Safety Assessment &mdash; Read Before Trading Live &mdash; Updated B132 PIPELINE_COMPLETE &mdash; DW-B141 P0 CLOSED (SIM PENDING) &bull; DW-B138 P1 diagnostic deployed &mdash; ATM target drag CONDITIONAL PENDING SIM gate Test A</div>
+          <div class="card-title" style="color:var(--red);">&#10007; Safety Assessment &mdash; Read Before Trading Live &mdash; B132 SIM COMPLETE (2026-09-04) &mdash; DW-B142 P0 NEW: ATM bracket drag NOT SAFE (wrong bracket matched, OCO destroys all follower brackets) &mdash; ATM stop drag NOT SAFE (DW-B143) &mdash; B133 pipeline required before any drag use</div>
           <div class="card-body">
 
             <div class="label">&#10003; SAFE &mdash; Manual trading on multiple accounts WITHOUT copier</div>
@@ -39115,10 +39115,10 @@ Leader cancels order2
               <li><strong>Direction reversal copy (DW-B135 CLOSED)</strong>: the false-positive reversal guard is fixed. After leader closes a trade and opens in the opposite direction, followers should now correctly copy the new entry. SIM gate Test A (STEP 4) confirms this. <em>Pending SIM gate confirmation before relying on this in live.</em></li>
             </ul>
 
-            <div class="label" style="margin-top:0.75rem; color:var(--amber);">&#9650; CONDITIONAL PENDING SIM &mdash; ATM Bracket Drag (B132 pipelines complete, SIM gate required)</div>
+            <div class="label" style="margin-top:0.75rem; color:var(--red);">&#10007; NOT SAFE &mdash; ATM Bracket Drag (DW-B142 P0 OPEN + DW-B143 P1 OPEN &mdash; B133 required)</div>
             <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
-              <li><strong>ATM target drag &mdash; DW-B141 P0 CLOSED (pipeline)</strong>: B132 LaneA PIPELINE_COMPLETE (FINAL_PASS 2026-08-31). Phase C replacement stop (PTT-STP-Drag) deployed after every Block B target cancel+resubmit. <strong>SIM gate Test A PENDING &mdash; press F5 first (MANDATORY), then enter ATM position on Sim101, drag Target1/Target3, verify PTT-TGT-Drag + PTT-STP-Drag both Working on each follower at correct prices.</strong> If Test A passes: target drag back to CONDITIONAL SAFE (per below condition). If Test A fails: new DW item, do not use.</li>
-              <li><strong>ATM stop drag &mdash; DW-B138 P1 diagnostic deployed</strong>: B132 LaneB PIPELINE_COMPLETE (FINAL_PASS 2026-08-31). 4 trace points active (TP1&ndash;TP4, _diagnosticMode=true). <strong>Director: open ATM position, drag Stop1, paste Output Tab 1 in chat &mdash; trace identifies Sub-Phase 2 fix target.</strong> Stop drag remains NOT SAFE for live use until Sub-Phase 2 fix deployed and SIM-confirmed.</li>
+              <li><strong>ATM target drag &mdash; DW-B141 SIM INCONCLUSIVE / DW-B142 P0 OPEN</strong>: B132 SIM Test A confirmed DW-B142: <code>null == null</code> in <code>SignalOrNameMatches</code> causes wrong bracket (Target1) to match when leader drags Target3. <code>acc.Cancel(Target1)</code> OCO-cancels ALL follower brackets (Stop1&ndash;3, Target1&ndash;3). B133 LaneA fix must be deployed and SIM-confirmed. DW-B141 Phase C is in source but blocked by DW-B142. <strong>DO NOT use ATM target drag with Copier ON.</strong></li>
+              <li><strong>ATM stop drag &mdash; DW-B138 trace collected / DW-B143 P1 OPEN</strong>: B132 SIM Test B: all 4 TPs fired. TP4 fo=NULL with follower orders in Submitted/Accepted state. Root cause: <code>FindFollowerBracketOrder</code> Working-only filter. B133 LaneB fix must be deployed and SIM-confirmed. <strong>DO NOT use ATM stop drag with Copier ON until B133 LaneB deployed.</strong></li>
               <li><strong>Double-dispatch (DW-B140 CLOSED INFORMATIONAL 2026-09-01)</strong>: confirmed SAFE, no code fix required.</li>
             </ul>
 
@@ -39126,7 +39126,7 @@ Leader cancels order2
             <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
               <li><strong>Condition 1 (updated 2026-09-01)</strong>: Single-entry best practice still recommended (one entry per instrument at a time on the leader). DW-B136 Gap B is now FIXED &mdash; cancelling one leader entry no longer cancels follower copies of a different leader entry. The cross-cancel risk is eliminated. Best practice remains recommended for operational simplicity, but the constraint is lifted.</li>
               <li><strong>Condition 2</strong>: After every leader entry in a new direction (first entry after a position close), verify followers in the Orders/Positions tab. <strong>DW-B135 is fixed</strong> &mdash; guard should not fire on clean re-entry. If a follower is still flat after the fix, this is a new defect &mdash; log it.</li>
-              <li><strong>Condition 3 (updated B132 PIPELINE_COMPLETE)</strong>: ATM <em>target</em> drag is <strong>CONDITIONAL PENDING SIM Test A</strong> (DW-B141 P0 CLOSED pipeline, F5 + SIM required to confirm). ATM <em>stop</em> drag remains <strong>NOT SAFE</strong> (DW-B138 diagnostic deployed, Sub-Phase 2 fix pipeline pending trace result). <strong>Do NOT use ATM stop drag with Copier ON until DW-B138 Sub-Phase 2 fix SIM-confirmed.</strong></li>
+              <li><strong>Condition 3 (updated B132 SIM 2026-09-04)</strong>: ATM <em>target</em> drag is <strong>NOT SAFE</strong> (DW-B142 P0 OPEN &mdash; null==null false-positive destroys all follower brackets on every drag; DW-B141 SIM inconclusive). ATM <em>stop</em> drag is <strong>NOT SAFE</strong> (DW-B143 P1 OPEN &mdash; Working-only filter; DW-B138 trace collected, fix in B133 LaneB). <strong>Do NOT use any ATM bracket drag with Copier ON until B133 LaneA + LaneB deployed and SIM-confirmed.</strong></li>
               <li><strong>Condition 4 (removed)</strong>: DW-B135 is fixed. The first entry after a direction change is no longer a special high-risk case.</li>
               <li><strong>Condition 5 (REMOVED &mdash; DW-B140 CLOSED)</strong>: DW-B140 confirmed INFORMATIONAL 2026-09-01. B130 SIM CSV analysis: follower qty == leader qty across all 10 trade events examined. The duplicate dispatch log fires per follower account, not as a second submission to the same follower. Entry copy correctness confirmed. No live trading blocker from this item.</li>
             </ul>
@@ -39810,10 +39810,10 @@ After Ph5 FINAL_PASS: update specs/002-trade-copier-spec.html &mdash;
     <!-- DW-B138: P1 RUNTIME-FAIL — B131 SIM FAIL 2026-08-31 — H2 fix compiled, not firing -->
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-dw-b138" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">DW-B138 &mdash; P1 &mdash; DIAGNOSTIC DEPLOYED &mdash; B132 LaneB PIPELINE_COMPLETE &mdash; TP1/TP2/TP3/TP4 Print pass active &mdash; Trace PENDING Director SIM run &mdash; Sub-Phase 2 fix pipeline blocked on trace</div>
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">DW-B138 &mdash; P1 &mdash; TRACE COLLECTED (2026-09-04) &mdash; B132 LaneB PIPELINE_COMPLETE &mdash; TP1+TP2+TP3+TP4 all FIRED &mdash; Root causes confirmed: DW-B142 (null==null) + DW-B143 (Working-only filter) &mdash; B133 LaneA+LaneB fix pipeline ready</div>
       <div class="section-body">
         <div class="card" style="border-left:3px solid var(--green); background:rgba(34,197,94,0.04);">
-          <div class="card-title" style="color:var(--amber);">DW-B138 &mdash; P1 &mdash; DIAGNOSTIC DEPLOYED &mdash; B132 LaneB PIPELINE_COMPLETE &mdash; 4 trace points active (_diagnosticMode=true) &mdash; Director must SIM-drag Stop1 and paste Output Tab 1 trace to identify drop point &mdash; Sub-Phase 2 fix pipeline pending trace</div>
+          <div class="card-title" style="color:var(--amber);">DW-B138 &mdash; P1 &mdash; TRACE COLLECTED &mdash; B132 LaneB PIPELINE_COMPLETE &mdash; All 4 TPs fired &mdash; Root causes: DW-B142 (null==null false-positive in SignalOrNameMatches, L2510) + DW-B143 (Working-only filter misses Accepted state in FindFollowerBracketOrder, L2533) &mdash; Fix = B133 LaneA (DW-B142) + B133 LaneB (DW-B143)</div>
           <div class="card-body">
 
             <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
@@ -39838,7 +39838,7 @@ After Ph5 FINAL_PASS: update specs/002-trade-copier-spec.html &mdash;
             </ul>
 
             <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--amber);">&#9650; P1 DIAGNOSTIC DEPLOYED &mdash; B132 LaneB PIPELINE_COMPLETE (FINAL_PASS 2026-08-31). 4 trace points active in source: TP1 TryLogDragTrace (OnOrderUpdate L1305), TP2 inline TryHandleBracketDrag (L1728), TP3 inline HandleBracketChange (L2488), TP4 TryLogSFBTrace (SyncFollowerBracket L2188). All behind _diagnosticMode=true guard. Director: open Sim101, enter ATM position, drag Stop1 on leader, paste Output Tab 1 contents. TP1&rarr;TP4 trace identifies exact drop point. Sub-Phase 2 fix pipeline (ptt-architect Ph1) launches immediately after trace provided. Expected H1 root cause: FindFollowerBracketOrder L2386 Working-only filter drops follower orders in Accepted state &mdash; confirmed by TP4 showing fo=NULL with follower orders listed as Accepted. OUTPUT TAB TRACE RESULT: PENDING &mdash; Director run required.</strong>
+              <strong style="color:var(--amber);">&#9650; P1 TRACE COLLECTED (2026-09-04) &mdash; B132 LaneB PIPELINE_COMPLETE (FINAL_PASS 2026-08-31). OUTPUT TAB TRACE RESULT: ALL 4 TPs FIRED. TP1: FIRED (name=Stop1 state=Accepted acct=Sim101). TP2: FIRED (IsWorkingBracket=True name=Stop1 state=Accepted). TP3: FIRED (isStop=True leaderName=Stop1 rawPrice=7698.5 followerCount=3). TP4: FIRED (fo=NULL followerOrders=[...,Stop1:Submitted,Target1:Submitted,...]). Root causes confirmed: (1) DW-B142 P0 NEW: null==null false-positive in SignalOrNameMatches (L2510) &mdash; null FromEntrySignal matches any ATM order before leaderName fallback is reached, causing wrong bracket to be selected; (2) DW-B143 P1 CONFIRMED: Working-only filter in FindFollowerBracketOrder (~L2533) misses follower orders in Accepted or Submitted state. B131 LaneA fix (leaderName fallback) was never reached at runtime because DW-B142 null==null short-circuited on line 1. Fix: B133 LaneA (DW-B142: add signalName != null guard) + B133 LaneB (DW-B143: expand filter to Working || Accepted). Both are one-line fixes in CopyEngine.cs.</strong>
             </div>
 
           </div>
@@ -39946,17 +39946,17 @@ PositionStateChanged hasPos=True
     <!-- DW-B141: P0 NEW — B131 SIM FAIL — SyncAtmFollowerTarget OCO collateral cancel     -->
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-dw-b141" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(34,197,94,0.10); border-left:3px solid var(--green); color:var(--green);">DW-B141 &mdash; P0 &mdash; CLOSED &mdash; B132 LaneA PIPELINE_COMPLETE (FINAL_PASS 2026-08-31) &mdash; Phase C replacement stop (PTT-STP-Drag) deployed in SyncAtmFollowerTarget after every Block B target placement &mdash; SIM gate PENDING</div>
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">DW-B141 &mdash; P0 &mdash; PIPELINE COMPLETE (code) &mdash; SIM INCONCLUSIVE (2026-09-04) &mdash; Phase C PTT-STP-Drag deployed (B132 LaneA FINAL_PASS) &mdash; Test A evaluation blocked by upstream DW-B142 &mdash; Re-evaluate in B133 SIM after DW-B142 + DW-B143 fixed</div>
       <div class="section-body">
         <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.05);">
-          <div class="card-title" style="color:var(--green);">&#10003; DW-B141 &mdash; P0 &mdash; CLOSED (pipeline) &mdash; B132 LaneA PIPELINE_COMPLETE &mdash; SyncAtmFollowerTarget Phase C deploys PTT-STP-Drag replacement stop after every Block B target cancel+resubmit &mdash; SIM gate PENDING Director run</div>
+          <div class="card-title" style="color:var(--amber);">&#9888; DW-B141 &mdash; P0 &mdash; PIPELINE COMPLETE (code) &mdash; SIM INCONCLUSIVE &mdash; B132 LaneA FINAL_PASS 2026-08-31 &mdash; Phase C PTT-STP-Drag in source &mdash; B132 SIM Test A inconclusive (DW-B142 upstream corrupts path before Phase C exercises) &mdash; Re-evaluate in B133 SIM</div>
           <div class="card-body">
 
             <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
               <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Discovered</td><td style="padding:3px 0; color:#e2e8f0;">2026-08-31 &mdash; B131 SIM session 2 (~12:41 PM) &mdash; target drag on Sim101, T3 dragged to 7684</td></tr>
-              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--green);">P0 CLOSED (pipeline) &mdash; B132 LaneA FINAL_PASS 2026-08-31 &mdash; SIM gate PENDING</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--amber);">P0 PIPELINE_COMPLETE (code) &mdash; SIM INCONCLUSIVE &mdash; B132 LaneA FINAL_PASS 2026-08-31 &mdash; B132 SIM Test A blocked by DW-B142 upstream bug &mdash; Re-evaluate in B133 SIM after DW-B142+DW-B143 fixed</td></tr>
               <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>SyncAtmFollowerTarget</code> L2312 (Phase C L2379-2382), <code>DeriveLeaderBracketIndex</code> L2388, <code>FindLeaderStopPrice</code> L2409, <code>CreateFollowerReplacementStop</code> L2429</td></tr>
-              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--green);">&#10003; P0 CLOSED &mdash; B132 LaneA PIPELINE_COMPLETE. Phase C replacement stop deployed. 5 xUnit tests green. Build 0 errors. Sync PASS (18 files). F5 required then SIM gate Test A.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--amber);">&#9888; P0 PIPELINE_COMPLETE (code) &mdash; SIM INCONCLUSIVE. Phase C is in source (B132 LaneA FINAL_PASS). B132 SIM Test A: upstream DW-B142 (null==null false-positive) caused wrong bracket (Target1) to be found first. acc.Cancel(Target1) OCO-cancelled ALL follower brackets BEFORE Phase C could execute. DW-B141 Phase C fix cannot be verified in isolation until DW-B142 is resolved. Re-run B133 SIM Test A after B133 pipelines complete.</td></tr>
               <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Reported</td><td style="padding:3px 0; color:#e2e8f0;">2026-08-31 &mdash; B131 SIM session 2 &mdash; CSV log NinjaTrader Grid 2026-08-31 12-47 PM.csv</td></tr>
               <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Related</td><td style="padding:3px 0; color:#e2e8f0;">DW-B138 (P1 RUNTIME-FAIL, same SIM session), DW-B139 (CLOSED &mdash; LaneB &mdash; Block A-Prime pre-sweep correct), DW-B134-OCO (P2)</td></tr>
             </table>
@@ -40002,7 +40002,7 @@ PositionStateChanged hasPos=True
             </p>
 
             <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--green);">&#10003; P0 CLOSED (pipeline) &mdash; B132 LaneA PIPELINE_COMPLETE (FINAL_PASS 2026-08-31). Phase C deployed: DeriveLeaderBracketIndex (L2388) + FindLeaderStopPrice (L2409) + CreateFollowerReplacementStop (L2429) execute unconditionally after Block B. SyncAtmFollowerTarget CYC=8 unchanged. 5 xUnit tests green. SCAN-01..07 all zero. Build 0/0. Sync PASS (18 files MD5-verified). F5 REQUIRED before SIM gate. SIM gate Test A PENDING Director run: expect PTT-TGT-Drag + PTT-STP-Drag both Working on each follower at correct prices after target drag.</strong>
+              <strong style="color:var(--amber);">&#9888; P0 PIPELINE_COMPLETE (code) &mdash; SIM INCONCLUSIVE (2026-09-04). Phase C deployed: DeriveLeaderBracketIndex (L2388) + FindLeaderStopPrice (L2409) + CreateFollowerReplacementStop (L2429). SyncAtmFollowerTarget CYC=8 unchanged. 5 xUnit tests green. SCAN-01..07 all zero. Build 0/0. Sync PASS (18 files). B132 SIM Test A: DW-B142 upstream null==null false-positive caused wrong bracket match BEFORE Phase C could exercise. Phase C fix is in source and structurally correct; blocked by DW-B142. Re-evaluate in B133 SIM after DW-B142 + DW-B143 fixed. NEXT: B133 pipeline (DW-B142 + DW-B143) then B133 SIM Test A will cleanly test DW-B141 Phase C.</strong>
             </div>
 
           </div>
@@ -40074,40 +40074,40 @@ PositionStateChanged hasPos=True
                 <td style="padding:4px 8px; border:1px solid var(--border);">DW-B141 P0</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Enter ATM position Sim101; drag Target1 or Target3</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">PTT-TGT-Drag + PTT-STP-Drag both Working on each follower at correct prices. No stops orphaned.</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">PENDING</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">&#9888; SIM INCONCLUSIVE &mdash; upstream DW-B142 (null==null false-positive in SignalOrNameMatches) caused wrong follower bracket (Target1) to be matched when Target3 dragged. acc.Cancel(Target1) OCO-cancelled ALL ATM brackets. Phase C was deployed but path corrupted before Phase C could exercise. DW-B141 Phase C fix is in source; re-evaluation required after DW-B142 fixed in B133.</td>
               </tr>
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Test B</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">DW-B138 P1</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Continue from Test A; drag Stop1 on Sim101; paste Output Tab 1</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Record TP1/TP2/TP3/TP4 fired vs not-fired. Verbatim Output Tab trace.</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">PENDING &mdash; trace required</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">&#10003; FULL TRACE COLLECTED. TP1 FIRED (name=Stop1 state=Accepted acct=Sim101). TP2 FIRED (IsWorkingBracket=True name=Stop1 state=Accepted). TP3 FIRED (isStop=True leaderName=Stop1 rawPrice=7698.5 followerCount=3). TP4 FIRED (fo=NULL followerOrders=[...,Stop1:Submitted,Target1:Submitted,...]). Root causes confirmed: DW-B142 (null==null false-positive) + DW-B143 (Working-only filter misses Accepted/Submitted). B133 LaneA+LaneB fix pipeline ready.</td>
               </tr>
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Test C</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">DW-B134-OCO P2</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Continue from Test A; let ATM target fill naturally; observe OBS-A/B/C/D</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Observation only. PTT-STP-Drag / PTT-TGT-Drag orphaned or auto-cancelled?</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">PENDING</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">&#9888; PARTIAL OBSERVATION &mdash; OCO group-cancel behavior incidentally confirmed: acc.Cancel(Target1) OCO-cancelled ALL brackets (Stop1-3, Target1-3). PTT-TGT-Drag was subsequently placed (Block B). DW-B141 Phase C PTT-STP-Drag clean evaluation not possible (upstream DW-B142 corrupted test). Re-run Test C in B133 SIM after DW-B142 + DW-B143 fixed. &rarr; B133-DEFER-01 (OCO orphan clean observation).</td>
               </tr>
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Test D</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">B131-DEFER-01</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Stage 2 simultaneous entry orders; cancel first; verify second survives on followers</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Entry #2 follower copies survive. No cross-cancel regression.</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">PENDING / DEFER if cannot stage</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">DEFER &mdash; B133-DEFER-01. Could not stage. Carry to B133 SIM.</td>
               </tr>
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border);">Test E</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">B131-DEFER-02</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">3+ sessions without restart &mdash; stale orders check</td>
                 <td style="padding:4px 8px; border:1px solid var(--border);">No stale PTT orders from prior sessions appear.</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">DEFER</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">DEFER &mdash; B133-DEFER-02. Not applicable this session.</td>
               </tr>
             </table>
 
             <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--amber);">&#9650; B132 PIPELINE_COMPLETE. Both lanes FINAL_PASS 2026-08-31. Sync PASS (18 files, 0 MISMATCH). MANDATORY NEXT STEP: (1) Restart NT8 completely. (2) Press F5 to compile. (3) Run SIM gates Test A &rarr; Test B &rarr; Test C. (4) Paste Output Tab 1 (Test B trace) in next $continue session. B132 SIM results determine next pipeline (DW-B138 Sub-Phase 2 fix or Phase 3 backlog).</strong>
+              <strong style="color:var(--amber);">&#9650; B132 SIM RUN COMPLETE (2026-09-04). Test A: SIM INCONCLUSIVE (DW-B142 upstream bug; Phase C fix is in source but test path corrupted). Test B: FULL TRACE COLLECTED (TP1-TP4 all fired; H1+H5 confirmed as DW-B143 + DW-B142). Test C: PARTIAL (OCO group-cancel confirmed incidentally). Test D/E: DEFER &rarr; B133-DEFER-01/02. TWO NEW ROOT CAUSES CONFIRMED: DW-B142 P0 NEW (null==null false-positive in SignalOrNameMatches at L2510) + DW-B143 P1 (Working-only filter in FindFollowerBracketOrder at L2533). B133 two-lane pipeline required. Sync PASS (18 files). Build 0E/0W. F5: Director confirmed green.</strong>
             </div>
 
           </div>
@@ -40115,6 +40115,124 @@ PositionStateChanged hasPos=True
       </div>
     </div>
     <!-- end section-b132-pipeline -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B142: P0 NEW — B132 SIM — null==null false-positive in SignalOrNameMatches       -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b142" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(239,68,68,0.12); border-left:3px solid var(--red); color:var(--red);">DW-B142 &mdash; P0 &mdash; NEW (2026-09-04) &mdash; SignalOrNameMatches null==null false-positive &mdash; Wrong follower bracket matched on every ATM target drag &mdash; B133 LaneA pipeline required</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.05);">
+          <div class="card-title" style="color:var(--red);">&#10007; DW-B142 &mdash; P0 OPEN &mdash; SignalOrNameMatches L2510: null == null returns true for ALL ATM bracket orders &mdash; Wrong bracket found &rarr; acc.Cancel(wrong_fo) &rarr; OCO-cancels ALL follower stops+targets &mdash; B133 LaneA fix: add signalName != null guard</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Discovered</td><td style="padding:3px 0; color:#e2e8f0;">2026-09-04 &mdash; B132 SIM Test A &mdash; Target3 drag found Target1 as match; acc.Cancel(Target1) OCO-cancelled all ATM brackets on followers</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P0 CRITICAL &mdash; Actively destroys follower positions on every ATM target drag. Followers left with wrong or no bracket orders. Financial loss risk.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>SignalOrNameMatches</code> L2510&ndash;2517</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--red);">&#10007; P0 OPEN &mdash; B133 LaneA pipeline required</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Related</td><td style="padding:3px 0; color:#e2e8f0;">DW-B141 (P0 SIM INCONCLUSIVE &mdash; upstream corruption by DW-B142), DW-B143 (P1 OPEN &mdash; companion fix), DW-B138 (P1 trace confirmed root cause)</td></tr>
+            </table>
+
+            <div class="label">Root Cause</div>
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0.5rem;">
+              <code>SignalOrNameMatches</code> at L2510:
+            </p>
+            <pre style="font-size:0.79rem; background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:4px; border:1px solid var(--border); overflow-x:auto; color:#e2e8f0;">internal static bool SignalOrNameMatches(Order order, string? signalName, string? leaderName)
+{
+    if (order.FromEntrySignal == signalName) // ATM brackets: null == null = TRUE &rarr; WRONG
+        return true;
+    if (leaderName == null) return false;
+    return order.Name == leaderName;         // NAME CHECK NEVER REACHED for ATM orders
+}</pre>
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0.5rem;">
+              ATM brackets have <code>null</code> <code>FromEntrySignal</code>. C# reference equality: <code>null == null</code> = true.
+              <code>FindFollowerBracketOrder</code> iterates all follower orders and returns the <strong>first</strong> Working order where <code>SignalOrNameMatches</code> is true.
+              For ATM brackets this is always the first Working order in iteration order (typically Target1 or Stop1), regardless of which bracket the leader dragged (e.g. Target3).
+              This causes the wrong bracket to be cancelled via <code>acc.Cancel(fo)</code>, which NT8 OCO-group-cancels ALL brackets in the group (Stop1/Stop2/Stop3/Target1/Target2/Target3).
+              The B131 LaneA <code>leaderName</code> fallback (line 3) was designed correctly but is <strong>never reached at runtime</strong> because line 1 always short-circuits for ATM orders.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Fix (B133 LaneA &mdash; one-line change)</div>
+            <pre style="font-size:0.79rem; background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:4px; border:1px solid var(--border); overflow-x:auto; color:#e2e8f0;">// Before (L2510):
+if (order.FromEntrySignal == signalName)
+    return true;
+
+// After:
+if (signalName != null &amp;&amp; order.FromEntrySignal == signalName)
+    return true;</pre>
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0.5rem;">
+              This one-line guard prevents <code>null == null</code> from matching. With <code>signalName != null</code> guarded, ATM orders with null signals fall through to line 3 (<code>order.Name == leaderName</code>) which correctly matches by order name (e.g. "Target3" == "Target3"). The B131 LaneA name fallback now activates for ATM orders as originally intended.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Impact on Other Fixes</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><strong>DW-B141 Phase C</strong>: Cannot be cleanly SIM-verified until DW-B142 is fixed. After B133 LaneA, re-run B133 SIM Test A to confirm PTT-TGT-Drag + PTT-STP-Drag both placed correctly.</li>
+              <li><strong>DW-B143</strong>: Companion fix (FindFollowerBracketOrder state filter). Both DW-B142 and DW-B143 ship in B133.</li>
+              <li><strong>DW-B138 diagnostic</strong>: _diagnosticMode stays true through B133 SIM re-validation.</li>
+            </ul>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">&#10007; P0 OPEN &mdash; B133 LaneA pipeline. Fix: <code>SignalOrNameMatches</code> L2510 &mdash; add <code>signalName != null &amp;&amp;</code> guard on line 1. One-line change. No signature change. No CYC increase. Confirmed by B132 SIM Test A observation (Target1 matched instead of Target3 on first drag; OCO-cancel destroyed all follower brackets). ATM target drag must NOT be used with Copier ON until B133 LaneA deployed and SIM-confirmed.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b142 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B143: P1 CONFIRMED — B132 SIM — FindFollowerBracketOrder Working-only filter    -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b143" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(239,68,68,0.10); border-left:3px solid var(--red); color:var(--red);">DW-B143 &mdash; P1 &mdash; CONFIRMED (2026-09-04) &mdash; FindFollowerBracketOrder Working-only state filter misses Accepted/Submitted follower orders &mdash; fo=NULL &rarr; SyncFollowerBracket no-op &mdash; B133 LaneB pipeline required</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.05);">
+          <div class="card-title" style="color:var(--red);">&#10007; DW-B143 &mdash; P1 OPEN &mdash; FindFollowerBracketOrder ~L2533: OrderState.Working-only filter skips Accepted follower orders &mdash; fo=NULL &rarr; SyncFollowerBracket returns early &mdash; Stop drag silently dropped when follower orders not yet Working &mdash; B133 LaneB fix: expand to Working || Accepted</div>
+          <div class="card-body">
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Discovered</td><td style="padding:3px 0; color:#e2e8f0;">2026-09-04 &mdash; B132 SIM Test B &mdash; TP4 trace confirmed fo=NULL with follower orders in Submitted/Accepted state</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P1 &mdash; Stop drag silently no-ops when follower orders are in Accepted state (newly submitted orders before Working transition). Followers receive no stop sync.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0;"><code>CopyEngine.cs</code> &mdash; <code>FindFollowerBracketOrder</code> ~L2533 (state filter line)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--red);">&#10007; P1 OPEN &mdash; B133 LaneB pipeline required</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Hypothesis</td><td style="padding:3px 0; color:#e2e8f0;">Originally H1 in B132 LaneB plan. Confirmed by TP4 trace: fo=NULL while follower orders show Submitted/Accepted state.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Related</td><td style="padding:3px 0; color:#e2e8f0;">DW-B138 (parent &mdash; stop drag silent), DW-B142 (companion P0 &mdash; null==null; together these two fixes fully resolve DW-B138 at runtime)</td></tr>
+            </table>
+
+            <div class="label">Root Cause (confirmed by TP4 trace)</div>
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0.5rem;">
+              <code>FindFollowerBracketOrder</code> state filter at ~L2533:
+            </p>
+            <pre style="font-size:0.79rem; background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:4px; border:1px solid var(--border); overflow-x:auto; color:#e2e8f0;">// Before (~L2533):
+if (order.OrderState != OrderState.Working)
+    continue;   // Skips Accepted AND Submitted orders</pre>
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0.5rem;">
+              Leader bracket is accepted through <code>IsWorkingBracket</code> if <code>Working || Accepted</code>. But <code>FindFollowerBracketOrder</code> only passes <code>Working</code>. When a drag event fires while follower orders are in <code>Accepted</code> state (transition from newly submitted PTT-placed or ATM orders), follower lookup returns null &rarr; <code>SyncFollowerBracket</code> returns early &rarr; no PTT-STP-Drag dispatch. TP4 trace confirmed: <code>fo=NULL</code> with <code>followerOrders=[...,Stop1:Submitted,Target1:Submitted,...]</code>.
+            </p>
+            <p style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0.5rem;">
+              Note: <code>Submitted</code> state is NOT included in the fix. Cancelling a <code>Submitted</code> ATM bracket via <code>acc.Cancel()</code> may not be reliably supported. <code>Accepted</code> is safe (NT8 confirms broker acceptance; cancel operations succeed on Accepted orders). <code>IsWorkingBracket</code> already accepts <code>Working || Accepted</code> for leader-side gate &mdash; mirroring this on the follower side is the minimal safe fix.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Fix (B133 LaneB &mdash; one-line change)</div>
+            <pre style="font-size:0.79rem; background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:4px; border:1px solid var(--border); overflow-x:auto; color:#e2e8f0;">// Before (~L2533):
+if (order.OrderState != OrderState.Working)
+    continue;
+
+// After:
+if (order.OrderState != OrderState.Working &amp;&amp; order.OrderState != OrderState.Accepted)
+    continue;</pre>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">&#10007; P1 OPEN &mdash; B133 LaneB pipeline. Fix: <code>FindFollowerBracketOrder</code> ~L2533 &mdash; expand filter to <code>Working || Accepted</code>. One-line change. No signature change. +1 branch to <code>FindFollowerBracketOrder</code> (verify CYC stays &le; 8). TP4 trace confirms: fo=NULL when follower orders in Submitted/Accepted &mdash; this is the remaining reason stop drag produces no PTT-STP-Drag dispatch after DW-B142 is fixed. Both DW-B142 + DW-B143 must be deployed together in B133 for full DW-B138 resolution.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b143 -->
 
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <!-- B131: PIPELINE_COMPLETE section                                                    -->
@@ -40215,36 +40333,37 @@ PositionStateChanged hasPos=True
     <!-- NEXT BLOCK DECISION: B131/B132 planning                                           -->
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-b131-plan" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(34,197,94,0.10); border-left:3px solid var(--green); color:var(--green);">B132 PIPELINE_COMPLETE (both lanes) &mdash; LaneA: DW-B141 P0 CLOSED (Phase C FINAL_PASS) &bull; LaneB: DW-B138 diagnostic FINAL_PASS &mdash; SIM gates Test A/B/C PENDING Director run</div>
+      <div class="section-label" style="background:rgba(239,68,68,0.12); border-left:3px solid var(--red); color:var(--red);">B132 SIM COMPLETE (2026-09-04) &mdash; DW-B142 P0 NEW + DW-B143 P1 CONFIRMED &mdash; B133 Two-Lane Pipeline Required &mdash; LaneA: DW-B142 (SignalOrNameMatches null guard) &bull; LaneB: DW-B143 (FindFollowerBracketOrder Working||Accepted)</div>
       <div class="section-body">
-        <div class="card" style="border-left:3px solid #6366f1; background:rgba(99,102,241,0.04);">
-          <div class="card-title" style="color:var(--green);">&#10003; B132 PIPELINE_COMPLETE &mdash; Both lanes FINAL_PASS 2026-08-31 &mdash; Sync PASS (18 files) &mdash; SIM gates PENDING</div>
+        <div class="card" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.04);">
+          <div class="card-title" style="color:var(--red);">&#10007; B133 PIPELINE REQUIRED &mdash; DW-B142 P0 + DW-B143 P1 confirmed by B132 SIM (2026-09-04) &mdash; Two one-line fixes in CopyEngine.cs &mdash; Full 5-phase pipeline mandatory both lanes</div>
           <div class="card-body">
 
-            <div class="label" style="color:var(--red);">Priority 1 (ACTIVE P0) &mdash; DW-B141 &mdash; B132 LaneA: SyncAtmFollowerTarget OCO replacement fix</div>
+            <div class="label" style="color:var(--red);">Priority 1 (ACTIVE P0) &mdash; DW-B142 &mdash; B133 LaneA: SignalOrNameMatches null guard</div>
             <p style="font-size:0.83rem; color:var(--muted);">
-              <strong>Root cause:</strong> <code>SyncAtmFollowerTarget</code> calls <code>acc.Cancel(followerBracket)</code> on an OCO-linked bracket order. NT8 OCO-cancels the ENTIRE OCO group (stop + target pair). Follower stops are destroyed.<br>
-              <strong>Fix design:</strong> After the target-side cancel+resubmit (Block A/B), immediately also create a replacement stop order at the leader&rsquo;s current stop price for the same bracket group using <code>acc.CreateOrder()+Submit()</code>. The replacement stop must be named <code>PTT-STP-Drag</code> (consistent with <code>SyncAtmFollowerBracket</code> naming). ptt-architect reads <code>SyncAtmFollowerTarget</code> (~L2262), <code>SyncAtmFollowerBracket</code> (~L2202), and <code>HandleBracketChange</code> (~L2315) to determine how to retrieve the leader&rsquo;s current stop price for the same bracket index.<br>
-              <strong>Alternative design to evaluate:</strong> Instead of cancel+resubmit, check whether <code>Account.Change()</code> can price-adjust the target bracket without cancelling the OCO group. Known fact: <code>Account.Change()</code> is a silent no-op on ATM-owned brackets (B129 SIM confirmed). So cancel+resubmit + replacement stop is the only viable path.
-            </p>
-            <p style="font-size:0.82rem; color:var(--amber);">
-              <strong>RESTART NT8</strong> before B132 SIM gates to clear session-state contamination from B131 sessions (Sim104 stuck, potential stale flag state).
+              <strong>Root cause (confirmed B132 SIM Test A):</strong> <code>SignalOrNameMatches</code> L2510: <code>null == null</code> returns true for ALL ATM bracket orders. Wrong bracket matched &rarr; OCO-cancel destroys all follower brackets on every target drag.<br>
+              <strong>Fix:</strong> One-line guard: <code>if (signalName != null &amp;&amp; order.FromEntrySignal == signalName)</code>. No signature change. No CYC increase. Tests: (1) ATM null signal no longer matches; (2) strategy-signal-named orders still match; (3) name fallback now reaches ATM orders correctly; (4) regression on all B132/B131/B130/B129 tests.
             </p>
 
-            <div class="label" style="margin-top:0.75rem;">Priority 2 (ACTIVE P1) &mdash; DW-B138 &mdash; B132 LaneB: diagnostic Print pass</div>
+            <div class="label" style="margin-top:0.75rem;">Priority 2 (ACTIVE P1) &mdash; DW-B143 &mdash; B133 LaneB: FindFollowerBracketOrder Working||Accepted</div>
             <p style="font-size:0.83rem; color:var(--muted);">
-              <strong>Approach:</strong> ptt-architect adds diagnostic <code>Print</code> statements at: (1) top of <code>OnOrderUpdate</code> for all ChangeSubmitted/Working events; (2) entry of <code>TryHandleBracketDrag</code>; (3) entry of <code>HandleBracketChange</code>; (4) entry of <code>SyncFollowerBracket</code>. Director re-runs drag. Output Tab reveals exactly where stop drag events are dropped. ptt-architect then produces the actual fix design from the confirmed drop point. Both phases go through the full 7-phase PTT pipeline &mdash; the diagnostic is Phase 1 (ptt-architect plan + test), the fix is Phase 2 pipeline only if confirmed needed.<br>
-              <strong>Why the fix may be more than H2:</strong> H2 fix is logically correct (SignalOrNameMatches with name fallback). The fact that it compiled and tests pass but runtime is silent suggests the event is being dropped BEFORE it reaches <code>FindFollowerBracketOrder</code> &mdash; possibly at <code>IsWorkingBracket</code> (L2083) or <code>TryHandleBracketDrag</code>. The diagnostic will confirm.
+              <strong>Root cause (confirmed B132 SIM Test B TP4 trace):</strong> <code>FindFollowerBracketOrder</code> ~L2533: <code>Working</code>-only filter skips follower orders in <code>Accepted</code> state. fo=NULL &rarr; SyncFollowerBracket early return &rarr; zero PTT-STP-Drag dispatch.<br>
+              <strong>Fix:</strong> One-line guard expansion: <code>if (order.OrderState != OrderState.Working &amp;&amp; order.OrderState != OrderState.Accepted) continue;</code>. +1 branch (CYC verify &le; 8). Tests: (1) Accepted-state order is found; (2) Submitted/Filled still rejected; (3) regression on all B132/B131/B130/B129 tests.
             </p>
 
-            <div class="label" style="margin-top:0.75rem;">Priority 3 &mdash; Deferred Gates (carry from B131)</div>
+            <div class="label" style="margin-top:0.75rem;">Priority 3 &mdash; DW-B141 Phase C re-evaluation (in B133 SIM)</div>
+            <p style="font-size:0.83rem; color:var(--muted);">
+              After B133 LaneA (DW-B142) fixed, re-run B133 SIM Test A: drag leader Target3, verify PTT-TGT-Drag + PTT-STP-Drag both Working on correct follower at correct prices. This will cleanly exercise DW-B141 Phase C for the first time.
+            </p>
+
+            <div class="label" style="margin-top:0.75rem;">Priority 4 &mdash; Deferred Gates (carry from B132)</div>
             <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
-              <li><strong>B131-DEFER-01</strong> (was B130-DEFER-01): Gap B runtime gate &mdash; two simultaneous entries. Run in B132 SIM session with clean NT8 restart.</li>
-              <li><strong>B131-DEFER-02</strong> (was B130-DEFER-02): Stale orders &mdash; multi-session without NT8 restart. Run after B132 SIM gates pass.</li>
-              <li><strong>DW-B134-OCO</strong> (P2): ATM target-fill observation (Test C). Run in B132 SIM session after DW-B141 fix deployed &mdash; only meaningful once drag no longer destroys stops.</li>
+              <li><strong>B133-DEFER-01</strong> (was B131-DEFER-01): Gap B runtime gate &mdash; two simultaneous entries. Run in B133 SIM session.</li>
+              <li><strong>B133-DEFER-02</strong> (was B131-DEFER-02): Stale orders &mdash; multi-session without NT8 restart.</li>
+              <li><strong>DW-B134-OCO</strong> (P2): ATM target-fill observation (Test C). Re-run in B133 SIM after DW-B142 + DW-B143 fixed &mdash; only meaningful once drag no longer destroys stops.</li>
             </ul>
 
-            <div class="label" style="margin-top:0.75rem;">Priority 4 &mdash; Phase 3 Backlog P1 items (if B132 SIM gates pass)</div>
+            <div class="label" style="margin-top:0.75rem;">Priority 5 &mdash; Phase 3 Backlog P1 items (after B133 SIM passes)</div>
             <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
               <li><strong>DW-B115</strong> (P1): ATM qty mismatch for non-1:1 follower ratios.</li>
               <li><strong>DW-B120</strong> (P1): Follower partial fill handling.</li>
@@ -40252,13 +40371,13 @@ PositionStateChanged hasPos=True
               <li><strong>DW-B127</strong> (P1): QX fires on position entry transition.</li>
             </ul>
 
-            <div class="label" style="margin-top:0.75rem;">Priority 5 &mdash; Complexity Refactor Wave (after all P0+P1 defects closed)</div>
+            <div class="label" style="margin-top:0.75rem;">Priority 6 &mdash; Complexity Refactor Wave (after all P0+P1 defects closed)</div>
             <p style="font-size:0.83rem; color:var(--muted);">
-              Once all P1 defects are closed and SIM gates pass, launch the autonomous-refactor wave (CYC &le; 8 for all CopyEngine.cs methods). Many methods remain above CYC 8 (OnOrderUpdate, TryCopyEntry, etc.). This wave should run after B132 SIM gates pass.
+              Once all P1 defects are closed and SIM gates pass, launch the autonomous-refactor wave (CYC &le; 8 for all CopyEngine.cs methods). Many methods remain above CYC 8 (OnOrderUpdate, TryCopyEntry, etc.).
             </p>
 
-            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--green);">&#10003; B132 PIPELINE_COMPLETE. LaneA: DW-B141 P0 CLOSED &mdash; Phase C PTT-STP-Drag deployed (FINAL_PASS 2026-08-31). LaneB: DW-B138 diagnostic FINAL_PASS &mdash; TP1-TP4 active. Sync PASS (18 files, 0 MISMATCH). NEXT: (1) Restart NT8. (2) F5 compile. (3) Run SIM Test A (target drag), Test B (stop drag + paste Output Tab 1 trace), Test C (OCO orphan observation). Test B trace unblocks DW-B138 Sub-Phase 2 fix. If Test A PASS + Test B trace provided: next block is B132 LaneB Sub-Phase 2 fix pipeline OR Phase 3 backlog (DW-B115) depending on trace result.</strong>
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">&#10007; B132 SIM COMPLETE (2026-09-04). DW-B142 P0 NEW + DW-B143 P1 CONFIRMED. B133 two-lane pipeline required: LaneA (DW-B142: SignalOrNameMatches L2510, 1-line fix) + LaneB (DW-B143: FindFollowerBracketOrder ~L2533, 1-line fix). Full 5-phase PTT pipeline mandatory both lanes. Tests: B133Tests.cs (new file). After B133 pipelines complete: run B133 SIM Test A (target drag, now cleanly tests DW-B141 Phase C also), Test B (stop drag, now should produce PTT-STP-Drag dispatch), Test C (OCO orphan observation). ATM bracket drag NOT SAFE until B133 deployed and SIM-confirmed.</strong>
             </div>
 
           </div>
@@ -40271,10 +40390,10 @@ PositionStateChanged hasPos=True
     <!-- PERPETUAL LOOP PROTOCOL: $continue session structure                               -->
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-continue-loop" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(99,102,241,0.10); border-left:3px solid #6366f1; color:#6366f1;">Perpetual Session Loop &mdash; $continue Protocol V2.0 &mdash; STEP 4 is a hard WAIT gate &mdash; STEP 6 + STEP 7 run AFTER Director SIM report only</div>
+      <div class="section-label" style="background:rgba(99,102,241,0.10); border-left:3px solid #6366f1; color:#6366f1;">Perpetual Session Loop &mdash; $continue Protocol V2.1 &mdash; STEP 4 is a hard WAIT gate &mdash; STEP 7 delivers pipeline prompts + $continue together as one hand-off packet</div>
       <div class="section-body">
         <div class="card" style="border-left:3px solid #6366f1; background:rgba(99,102,241,0.04);">
-          <div class="card-title" style="color:#6366f1;">$continue Loop &mdash; Perpetual Session Protocol (V2.0 &mdash; 2026-09-04)</div>
+          <div class="card-title" style="color:#6366f1;">$continue Loop &mdash; Perpetual Session Protocol (V2.1 &mdash; 2026-08-31)</div>
           <div class="card-body">
 
             <p style="font-size:0.83rem; color:var(--muted);">
@@ -40283,11 +40402,18 @@ PositionStateChanged hasPos=True
             </p>
 
             <div style="margin:0.5rem 0 0.75rem; padding:8px 12px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.3); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--red);">HARD RULE &mdash; STEP 6 and STEP 7 are post-SIM only.</strong>
-              <span style="color:var(--muted);"> They MUST NOT be generated before the Director reports SIM results.
-              Generating speculative &ldquo;scenario A / scenario B&rdquo; prompts before real results are known is PROHIBITED.
+              <strong style="color:var(--red);">HARD RULE &mdash; STEP 7 is post-SIM only.</strong>
+              <span style="color:var(--muted);"> The STEP 7 hand-off packet MUST NOT be generated before the Director reports SIM results.
               STEP 4 outputs SIM instructions and then the session STOPS AND WAITS.
               STEPS 5&ndash;7 run after the Director&rsquo;s report, grounded in actual PASS/FAIL/DEFER/OBS data.</span>
+            </div>
+
+            <div style="margin:0.5rem 0 0.75rem; padding:8px 12px; background:rgba(99,102,241,0.07); border:1px solid rgba(99,102,241,0.3); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:#6366f1;">WHY THEY TRAVEL TOGETHER &mdash;</strong>
+              <span style="color:var(--muted);"> The $continue prompt references the outcome of the pipelines that are about to run.
+              Delivering it before the pipelines means the Director holds a prompt that refers to unfinished work.
+              Delivering both together: Director pastes pipeline prompts &rarr; pipelines run &rarr; $continue already in hand &rarr; paste.
+              No confusion about when to use it. No stale $continue from a prior session.</span>
             </div>
 
             <div class="label">Session Structure (every session, always in this order)</div>
@@ -40314,15 +40440,18 @@ PositionStateChanged hasPos=True
               </tr>
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 5</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);"><strong>After Director reports.</strong> Update spec with actual SIM results &mdash; fill gate result table, log deferred cards, new DW items if any, DW-B134-OCO observation. Commit.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);"><strong>After Director reports.</strong> Update spec with actual SIM results &mdash; fill gate result table, log deferred cards, new DW items if any, DW-B134-OCO observation.</td>
               </tr>
               <tr style="background:rgba(99,102,241,0.04);">
                 <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 6</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);"><strong>After STEP 5.</strong> Generate ptt-orchestrator prompts for the CONFIRMED next action only &mdash; one concrete pipeline grounded in actual results. No &ldquo;if A then X, if B then Y&rdquo; branches. Include full 7-phase pipeline chain verbatim in every prompt.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);"><strong>After STEP 5.</strong> Commit spec updates. <code>git add -f specs/ docs/brain/B{N}/; git commit -m "feat(ptt): B{N} SIM gates [summary]"</code></td>
               </tr>
               <tr>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700; background:rgba(99,102,241,0.10);">STEP 7</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:#e2e8f0; background:rgba(99,102,241,0.08);"><strong>After STEP 6.</strong> Next <code>$continue</code> prompt &mdash; ALWAYS provided, never skipped. Pre-filled from actual outcomes: block validated, DW items closed, real SIM results, real open items, real deferred state, concrete next pipeline. Director pastes it when that pipeline finishes.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700; background:rgba(99,102,241,0.15);">STEP 7</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#e2e8f0; background:rgba(99,102,241,0.10);"><strong>After STEP 6 &mdash; HAND-OFF PACKET (both parts together, never split):</strong><br>
+                  <strong style="color:#a5b4fc;">Part A</strong> &mdash; ptt-orchestrator prompt(s) for the confirmed next pipeline(s). One prompt per confirmed action. No speculative branches. Full 7-phase chain verbatim in every prompt.<br>
+                  <strong style="color:#a5b4fc;">Part B</strong> &mdash; next <code>$continue</code> prompt, pre-filled from actual outcomes. Director pastes Part A into pipeline sessions. Director pastes Part B into this session when those pipelines finish.
+                </td>
               </tr>
             </table>
 
@@ -40335,8 +40464,8 @@ PositionStateChanged hasPos=True
               </tr>
               <tr style="background:rgba(99,102,241,0.03);">
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700;">PHASE 2</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">Residual fix (active) &mdash; CURRENT</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">B132 LaneA: DW-B141 P0 (SyncAtmFollowerTarget OCO replacement stop). B132 LaneB: DW-B138 diagnostic Print pass + fix. Both via full PTT pipeline. SIM gates: Test A (stop drag), Test A-step-6 (target drag stop preservation), Test C (DW-B134-OCO), Test D+E (deferred).</td>
+                  <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">Residual fix (active) &mdash; CURRENT</td>
+                  <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">B133 LaneA: DW-B142 P0 (SignalOrNameMatches null==null guard, L2510). B133 LaneB: DW-B143 P1 (FindFollowerBracketOrder Working||Accepted filter, ~L2533). Both via full PTT pipeline. SIM gates: Test A (target drag + DW-B141 Phase C re-eval), Test B (stop drag should now produce PTT-STP-Drag), Test C (DW-B134-OCO), Test D+E (deferred B133-DEFER-01/02).</td>
               </tr>
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PHASE 3</td>
@@ -40365,7 +40494,7 @@ PositionStateChanged hasPos=True
             </ul>
 
             <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:#6366f1;">&#9656; LOOP PROTOCOL: Every session ends with STEP 7 &mdash; the next $continue prompt, pre-filled and ready to paste. The Director never has to ask. Loop reference: docs/brain/COPIER-SESSION-LOOP.md</strong>
+              <strong style="color:#6366f1;">&#9656; LOOP PROTOCOL V2.1: Every session ends with STEP 7 &mdash; a single hand-off packet containing the pipeline prompts (Part A) AND the next $continue (Part B). The Director pastes Part A to run pipelines, then pastes Part B when those pipelines finish. Both parts always travel together. Loop reference: docs/brain/COPIER-SESSION-LOOP.md</strong>
             </div>
 
           </div>
