@@ -2275,19 +2275,12 @@ namespace PropTraderTools
 
             // DW-B134: ATM STP path -- cancel+resubmit before IsTrailingStop guard.
             // DW-B137: ATM TGT path -- cancel+resubmit for target brackets (acc.Change() no-op).
+            // DW-B154: acc.Change() confirmed no-op on ATM Stop brackets from AddOnBase (B140 SIM Gate 1 FAIL).
             // IsTrailingStop fires on StopMarket orders; ATM STP brackets ARE StopMarket.
             // Without branch (3), IsTrailingStop would return early and skip stop sync.
             if (isStop && IsAtmSTPOrder(fo)) // (3) DW-B134 + DW-B137
             {
-                if (!string.IsNullOrEmpty(fo.Oco)) // (3a) B140: OCO-linked -- Change preserves OCO partner
-                {
-                    fo.StopPrice = newPrice;
-                    try { acc.Change(new Order[] { fo }); }
-                    catch (Exception ex)
-                    { StatusUpdate?.Invoke(acc.Name + ": ATM STP Change error: " + ex.Message); }
-                    return;
-                }
-                SyncAtmFollowerBracket(acc, fo, newPrice); // (3b) no OCO -- cancel+resubmit (existing path)
+                SyncAtmFollowerBracket(acc, fo, newPrice); // cancel+resubmit (acc.Change is no-op on ATM brackets)
                 return;
             }
             if (!isStop && IsAtmSTPOrder(fo)) // (3b) DW-B137: ATM target cancel+resubmit
