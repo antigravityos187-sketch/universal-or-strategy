@@ -35,8 +35,7 @@ namespace PropTraderTools.Tests
             OrderState testState = OrderState.Accepted;
 
             // Post-DW-B122: Accepted should NOT cause early return (guard evaluates false).
-            bool guardEarly =
-                testState != OrderState.Working && testState != OrderState.Accepted;
+            bool guardEarly = testState != OrderState.Working && testState != OrderState.Accepted;
 
             Assert.False(
                 guardEarly,
@@ -56,8 +55,7 @@ namespace PropTraderTools.Tests
         {
             OrderState testState = OrderState.Cancelled;
 
-            bool guardEarly =
-                testState != OrderState.Working && testState != OrderState.Accepted;
+            bool guardEarly = testState != OrderState.Working && testState != OrderState.Accepted;
 
             Assert.True(
                 guardEarly,

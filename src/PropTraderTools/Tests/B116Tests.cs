@@ -19,10 +19,7 @@ namespace PropTraderTools.Tests
         [Fact]
         public void ScaleLeaderTargets_EqualQty_IdenticalSplit()
         {
-            var leaderTargets = new List<(double Price, int Qty)>
-            {
-                (0.0, 4), (0.0, 2), (0.0, 1)
-            };
+            var leaderTargets = new List<(double Price, int Qty)> { (0.0, 4), (0.0, 2), (0.0, 1) };
 
             var result = PttGlobalQuickExit.ScaleLeaderTargets(leaderTargets, 7, 7);
 
@@ -30,7 +27,8 @@ namespace PropTraderTools.Tests
             Assert.Equal(2, result[1].Qty);
             Assert.Equal(1, result[2].Qty);
             int sum = 0;
-            foreach (var r in result) sum += r.Qty;
+            foreach (var r in result)
+                sum += r.Qty;
             Assert.Equal(7, sum);
         }
 
@@ -43,10 +41,7 @@ namespace PropTraderTools.Tests
         [Fact]
         public void ScaleLeaderTargets_HalfQty_SumEqualsFollowerQty()
         {
-            var leaderTargets = new List<(double Price, int Qty)>
-            {
-                (0.0, 4), (0.0, 2), (0.0, 1)
-            };
+            var leaderTargets = new List<(double Price, int Qty)> { (0.0, 4), (0.0, 2), (0.0, 1) };
 
             var result = PttGlobalQuickExit.ScaleLeaderTargets(leaderTargets, 4, 7);
 
@@ -69,10 +64,7 @@ namespace PropTraderTools.Tests
         [Fact]
         public void ScaleLeaderTargets_ZeroLeaderPosQty_ReturnsEmpty()
         {
-            var leaderTargets = new List<(double Price, int Qty)>
-            {
-                (0.0, 4), (0.0, 2), (0.0, 1)
-            };
+            var leaderTargets = new List<(double Price, int Qty)> { (0.0, 4), (0.0, 2), (0.0, 1) };
 
             var result = PttGlobalQuickExit.ScaleLeaderTargets(leaderTargets, 7, 0);
 
@@ -91,14 +83,18 @@ namespace PropTraderTools.Tests
         {
             var followerSnapshot = new List<(double Price, int Qty)>
             {
-                (0.0, 4), (0.0, 2), (0.0, 1)
+                (0.0, 4),
+                (0.0, 2),
+                (0.0, 1),
             };
-            var leaderTargets = new List<(double Price, int Qty)>
-            {
-                (0.0, 3), (0.0, 2), (0.0, 2)
-            };
+            var leaderTargets = new List<(double Price, int Qty)> { (0.0, 3), (0.0, 2), (0.0, 2) };
 
-            var result = PttGlobalQuickExit.ResolveFollowerTargets(followerSnapshot, leaderTargets, 7, 7);
+            var result = PttGlobalQuickExit.ResolveFollowerTargets(
+                followerSnapshot,
+                leaderTargets,
+                7,
+                7
+            );
 
             Assert.Equal(4, result[0].Qty);
         }
@@ -114,12 +110,14 @@ namespace PropTraderTools.Tests
         public void ResolveFollowerTargets_EmptySnapshotFullLeader_ReturnsScaled()
         {
             var followerSnapshot = new List<(double Price, int Qty)>();
-            var leaderTargets = new List<(double Price, int Qty)>
-            {
-                (0.0, 4), (0.0, 2), (0.0, 1)
-            };
+            var leaderTargets = new List<(double Price, int Qty)> { (0.0, 4), (0.0, 2), (0.0, 1) };
 
-            var result = PttGlobalQuickExit.ResolveFollowerTargets(followerSnapshot, leaderTargets, 7, 7);
+            var result = PttGlobalQuickExit.ResolveFollowerTargets(
+                followerSnapshot,
+                leaderTargets,
+                7,
+                7
+            );
 
             Assert.Equal(3, result.Count);
             Assert.Equal(4, result[0].Qty);
@@ -139,7 +137,12 @@ namespace PropTraderTools.Tests
             var followerSnapshot = new List<(double Price, int Qty)>();
             var leaderTargets = new List<(double Price, int Qty)>();
 
-            var result = PttGlobalQuickExit.ResolveFollowerTargets(followerSnapshot, leaderTargets, 7, 7);
+            var result = PttGlobalQuickExit.ResolveFollowerTargets(
+                followerSnapshot,
+                leaderTargets,
+                7,
+                7
+            );
 
             Assert.Equal(0, result.Count);
         }

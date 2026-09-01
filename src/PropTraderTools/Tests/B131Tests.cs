@@ -36,7 +36,7 @@ namespace PropTraderTools.Tests
             bool matched = CopyEngine.SignalOrNameMatchesTestable(
                 followerStop1,
                 signalName: "AtmEntrySignal", // leader signal (non-null, follower has null -> no signal match)
-                leaderName: "Stop1"           // Name-fallback fires here
+                leaderName: "Stop1" // Name-fallback fires here
             );
 
             // Assert
@@ -94,7 +94,7 @@ namespace PropTraderTools.Tests
             bool matched = CopyEngine.SignalOrNameMatchesTestable(
                 followerBuySTP,
                 signalName: "AtmEntrySignal", // matches on branch (1) -- signal equality wins
-                leaderName: "Stop1"           // names differ, but branch (1) already returned true
+                leaderName: "Stop1" // names differ, but branch (1) already returned true
             );
 
             // Assert: signal match wins (branch 1), true returned -- "Buy STP" is NOT excluded
@@ -115,7 +115,10 @@ namespace PropTraderTools.Tests
             // SyncAtmFollowerTarget cancels it (Block A-Prime) before calling CreateOrder (Block B).
             // This is the core DW-B139 fix verification.
             // Full test requires NT8 mock Account -- placeholder asserts the design contract.
-            Assert.True(true, "DW-B139: Block A-Prime sweep cancels prior Working PTT-TGT-Drag before Block B.");
+            Assert.True(
+                true,
+                "DW-B139: Block A-Prime sweep cancels prior Working PTT-TGT-Drag before Block B."
+            );
         }
 
         [Fact]
@@ -125,7 +128,10 @@ namespace PropTraderTools.Tests
             // Act: SyncAtmFollowerTarget called.
             // Assert: sweep finds nothing; exactly one CreateOrder + Submit called.
             // Full test requires NT8 mock Account -- placeholder asserts baseline design.
-            Assert.True(true, "DW-B139: First drag with no prior PTT-TGT-Drag creates exactly one order.");
+            Assert.True(
+                true,
+                "DW-B139: First drag with no prior PTT-TGT-Drag creates exactly one order."
+            );
         }
 
         [Fact]
@@ -135,7 +141,10 @@ namespace PropTraderTools.Tests
             // Act: SyncAtmFollowerTarget called.
             // Assert: Block A-Prime does NOT cancel non-PTT-TGT-Drag orders.
             // Full test requires NT8 mock Account -- placeholder asserts safety filter design.
-            Assert.True(true, "DW-B139: Non-PTT-TGT-Drag Working orders are not cancelled by the sweep.");
+            Assert.True(
+                true,
+                "DW-B139: Non-PTT-TGT-Drag Working orders are not cancelled by the sweep."
+            );
         }
     }
 

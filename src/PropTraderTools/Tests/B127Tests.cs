@@ -82,10 +82,10 @@ namespace PropTraderTools
             // Return type must be IEnumerable<Account> (yield-return compiles to state machine
             // but the declared return type on the method signature is IEnumerable<Account>).
             var returnType = mi.ReturnType;
-            var expectedInterface = typeof(System.Collections.Generic.IEnumerable<NinjaTrader.Cbi.Account>);
+            var expectedInterface =
+                typeof(System.Collections.Generic.IEnumerable<NinjaTrader.Cbi.Account>);
             bool implementsExpected =
-                expectedInterface.IsAssignableFrom(returnType)
-                || returnType.IsGenericType;
+                expectedInterface.IsAssignableFrom(returnType) || returnType.IsGenericType;
             Assert.True(
                 implementsExpected,
                 "AllAccounts must return IEnumerable<Account> (B127 DW-PTT-BE-FIX-01)"

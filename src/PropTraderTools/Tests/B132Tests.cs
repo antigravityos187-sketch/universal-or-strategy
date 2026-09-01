@@ -42,7 +42,10 @@ namespace PropTraderTools.Tests
 
             // With stopPrice=0.0, CreateFollowerReplacementStop guard prevents any PTT-STP-Drag.
             // Block B (PTT-TGT-Drag Limit order) is therefore the only CreateOrder call.
-            Assert.True(true, "DW-B141: leaderOrder=null -> Phase C skips -> Block B is the only CreateOrder.");
+            Assert.True(
+                true,
+                "DW-B141: leaderOrder=null -> Phase C skips -> Block B is the only CreateOrder."
+            );
         }
 
         // ----------------------------------------------------------------
@@ -66,7 +69,10 @@ namespace PropTraderTools.Tests
             Assert.Equal(0.0, stopPriceNullAcc);
 
             // Full test (real Account with Working "Stop3" at 4480.0) requires NT8 test harness.
-            Assert.True(true, "DW-B141: Target3 -> bracketIdx=3 -> FindLeaderStopPrice(leaderAcc,3) -> PTT-STP-Drag placed.");
+            Assert.True(
+                true,
+                "DW-B141: Target3 -> bracketIdx=3 -> FindLeaderStopPrice(leaderAcc,3) -> PTT-STP-Drag placed."
+            );
         }
 
         // ----------------------------------------------------------------
@@ -87,7 +93,10 @@ namespace PropTraderTools.Tests
             Assert.Equal(0.0, stp);
 
             // stopPrice=0.0 -> CreateFollowerReplacementStop guard (stopPrice <= 0) -> skip.
-            Assert.True(true, "DW-B141: No Working Stop3 -> FindLeaderStopPrice returns 0.0 -> Phase C skips.");
+            Assert.True(
+                true,
+                "DW-B141: No Working Stop3 -> FindLeaderStopPrice returns 0.0 -> Phase C skips."
+            );
         }
 
         // ----------------------------------------------------------------
@@ -98,17 +107,32 @@ namespace PropTraderTools.Tests
         public void SyncAtmFollowerTarget_DeriveLeaderBracketIndex_ParsesNameSuffix()
         {
             // Valid suffix cases
-            Assert.Equal(3, CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("Target3")));
-            Assert.Equal(1, CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("Target1")));
-            Assert.Equal(2, CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("Stop2")));
-            Assert.Equal(99, CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("Stop99")));
+            Assert.Equal(
+                3,
+                CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("Target3"))
+            );
+            Assert.Equal(
+                1,
+                CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("Target1"))
+            );
+            Assert.Equal(
+                2,
+                CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("Stop2"))
+            );
+            Assert.Equal(
+                99,
+                CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("Stop99"))
+            );
 
             // Null/empty failure paths -- return 0
             Assert.Equal(0, CopyEngine.DeriveLeaderBracketIndexTestable(null));
             Assert.Equal(0, CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("")));
 
             // Non-numeric suffix -- TryParse fails -- return 0
-            Assert.Equal(0, CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("TargetABC")));
+            Assert.Equal(
+                0,
+                CopyEngine.DeriveLeaderBracketIndexTestable(StubOrderWithName("TargetABC"))
+            );
         }
 
         // ----------------------------------------------------------------
@@ -128,7 +152,10 @@ namespace PropTraderTools.Tests
             Assert.Equal(0.0, CopyEngine.FindLeaderStopPriceTestable(null, -1));
 
             // Full test (real Account with Working "Stop3" -> 4480.0, etc.) requires NT8 test harness.
-            Assert.True(true, "DW-B141: FindLeaderStopPrice guard paths verified; Working Stop{N} path requires NT8 harness.");
+            Assert.True(
+                true,
+                "DW-B141: FindLeaderStopPrice guard paths verified; Working Stop{N} path requires NT8 harness."
+            );
         }
     }
 }

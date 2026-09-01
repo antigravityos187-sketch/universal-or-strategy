@@ -205,9 +205,7 @@ namespace PropTraderTools
             {
                 // BeEventArgs.Instrument = null -> AllAccounts(null) -> empty enumerable.
                 // Foreach body never entered; neither CancelQxBrackets nor SubmitBeStop is called.
-                engine.RelayBe(
-                    new BeEventArgs(null, 99.0, 0.0, true, null)
-                );
+                engine.RelayBe(new BeEventArgs(null, 99.0, 0.0, true, null));
             }
             catch
             {

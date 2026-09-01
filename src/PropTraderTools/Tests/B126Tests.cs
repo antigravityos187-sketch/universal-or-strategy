@@ -16,8 +16,8 @@ namespace PropTraderTools.Tests
         public void B126_T1_Constants_PttBeTargetPrefix_EqualsExpected()
         {
             Assert.Equal("PTT-BE-Target-", PttOrderNames.PttBeTargetPrefix);
-            Assert.Equal("PTT-QX-T",       PttOrderNames.PttQxTargetPrefix);
-            Assert.Equal("PTT-TGT-",       PttOrderNames.PttTgtPrefix);
+            Assert.Equal("PTT-QX-T", PttOrderNames.PttQxTargetPrefix);
+            Assert.Equal("PTT-TGT-", PttOrderNames.PttTgtPrefix);
         }
 
         // B126-T2: PttQxTargetPrefix correctly matches a QX target order name
@@ -28,10 +28,16 @@ namespace PropTraderTools.Tests
         public void B126_T2_PttQxTargetPrefix_MatchesPttQxOrder()
         {
             Assert.True(
-                "PTT-QX-T1".StartsWith(PttOrderNames.PttQxTargetPrefix, System.StringComparison.Ordinal)
+                "PTT-QX-T1".StartsWith(
+                    PttOrderNames.PttQxTargetPrefix,
+                    System.StringComparison.Ordinal
+                )
             );
             Assert.False(
-                "PTT-TGT-1".StartsWith(PttOrderNames.PttQxTargetPrefix, System.StringComparison.Ordinal)
+                "PTT-TGT-1".StartsWith(
+                    PttOrderNames.PttQxTargetPrefix,
+                    System.StringComparison.Ordinal
+                )
             );
         }
 

@@ -20,8 +20,12 @@ namespace PropTraderTools.Tests
         public void GuardReturnsWithoutRearmingWhenAlreadyArmed()
         {
             int callCount = 0;
-            Action<NinjaTrader.Cbi.Account, NinjaTrader.Cbi.Instrument, double, bool> countingDelegate =
-                (_, _, _, _) => callCount++;
+            Action<
+                NinjaTrader.Cbi.Account,
+                NinjaTrader.Cbi.Instrument,
+                double,
+                bool
+            > countingDelegate = (_, _, _, _) => callCount++;
 
             // Arrange: construct injection seam
             var be = new PttGlobalBreakEven(countingDelegate);
@@ -44,8 +48,12 @@ namespace PropTraderTools.Tests
         public void FirstPressArmsWhenNotYetArmed()
         {
             int callCount = 0;
-            Action<NinjaTrader.Cbi.Account, NinjaTrader.Cbi.Instrument, double, bool> countingDelegate =
-                (_, _, _, _) => callCount++;
+            Action<
+                NinjaTrader.Cbi.Account,
+                NinjaTrader.Cbi.Instrument,
+                double,
+                bool
+            > countingDelegate = (_, _, _, _) => callCount++;
 
             // Arrange: injection constructor seam
             var be = new PttGlobalBreakEven(countingDelegate);

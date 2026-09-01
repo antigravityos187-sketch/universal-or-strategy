@@ -3,8 +3,8 @@
 // Test-seam: IsAtmSTPOrder is internal static -- accessible via InternalsVisibleTo (CopyEngine.cs L46).
 // [assembly: InternalsVisibleTo("PropTraderTools.Tests")] at CopyEngine.cs L46 enables direct call.
 // Stub pattern: direct NinjaTrader.Cbi.Order instantiation (consistent with B129Tests.cs pattern).
-using NinjaTrader.Cbi;
 using System;
+using NinjaTrader.Cbi;
 using Xunit;
 
 namespace PropTraderTools.Tests
@@ -155,10 +155,11 @@ namespace PropTraderTools.Tests
             static bool IsPttTarget(string n) =>
                 n != null
                 && (
-                    (n.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                     && n.Length > 8
-                     && char.IsDigit(n[8]))
-                    || n.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
+                    (
+                        n.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                        && n.Length > 8
+                        && char.IsDigit(n[8])
+                    ) || n.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
                 );
 
             // Native ATM target orders: must classify as native, not PTT
@@ -189,11 +190,13 @@ namespace PropTraderTools.Tests
             var pttTargets = new System.Collections.Generic.List<string>();
             foreach (var name in new[] { "Target1", "Target2", "Target3", "PTT-BE-Target-4" })
             {
-                if (IsNativeTarget(name)) nativeTargets.Add(name);
-                else if (IsPttTarget(name)) pttTargets.Add(name);
+                if (IsNativeTarget(name))
+                    nativeTargets.Add(name);
+                else if (IsPttTarget(name))
+                    pttTargets.Add(name);
             }
             var result = nativeTargets.Count > 0 ? nativeTargets : pttTargets;
-            Assert.Equal(3, result.Count);                    // exactly 3 native targets returned
+            Assert.Equal(3, result.Count); // exactly 3 native targets returned
             Assert.DoesNotContain("PTT-BE-Target-4", result); // stale T4 excluded (DW-B107 fix)
         }
 
@@ -201,7 +204,11 @@ namespace PropTraderTools.Tests
         public void B130_DW107_HardCapTrimsSnapshotToThreeTargets()
         {
             // Case 1: 4-item list (root-cause scenario: stale T4 present)
-            var targets4 = new System.Collections.Generic.List<(double Price, int Qty, OrderAction Action)>
+            var targets4 = new System.Collections.Generic.List<(
+                double Price,
+                int Qty,
+                OrderAction Action
+            )>
             {
                 (4200.00, 1, OrderAction.Sell),
                 (4210.00, 1, OrderAction.Sell),
@@ -213,7 +220,11 @@ namespace PropTraderTools.Tests
             Assert.Equal(3, targets4.Count); // T4 trimmed -- DW-B107 fix verified
 
             // Case 2: 3-item list (nominal case: exactly 3 targets)
-            var targets3 = new System.Collections.Generic.List<(double Price, int Qty, OrderAction Action)>
+            var targets3 = new System.Collections.Generic.List<(
+                double Price,
+                int Qty,
+                OrderAction Action
+            )>
             {
                 (4200.00, 1, OrderAction.Sell),
                 (4210.00, 1, OrderAction.Sell),
@@ -224,7 +235,11 @@ namespace PropTraderTools.Tests
             Assert.Equal(3, targets3.Count); // unchanged -- no over-trim
 
             // Case 3: 0-item list (no targets -- retry path)
-            var targets0 = new System.Collections.Generic.List<(double Price, int Qty, OrderAction Action)>();
+            var targets0 = new System.Collections.Generic.List<(
+                double Price,
+                int Qty,
+                OrderAction Action
+            )>();
             while (targets0.Count > 3)
                 targets0.RemoveAt(targets0.Count - 1);
             Assert.Equal(0, targets0.Count); // empty -- no crash, no spurious trim
@@ -245,24 +260,35 @@ namespace PropTraderTools.Tests
             static bool IsPttTarget(string n) =>
                 n != null
                 && (
-                    (n.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-                     && n.Length > 8
-                     && char.IsDigit(n[8]))
-                    || n.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
+                    (
+                        n.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                        && n.Length > 8
+                        && char.IsDigit(n[8])
+                    ) || n.StartsWith("PTT-BE-Target-", StringComparison.Ordinal)
                 );
 
             // Non-target names that must NOT pollute the snapshot
             var nonTargetNames = new[]
             {
-                "Entry", "Close", "PTT-BE-Stop-1", "PTT-BE-Stop-2", "PTT-BE-Stop-3",
-                "PTT-Copy", "PTT-QX-Stop-1", "Stop1", "Stop2", "Stop3",
+                "Entry",
+                "Close",
+                "PTT-BE-Stop-1",
+                "PTT-BE-Stop-2",
+                "PTT-BE-Stop-3",
+                "PTT-Copy",
+                "PTT-QX-Stop-1",
+                "Stop1",
+                "Stop2",
+                "Stop3",
             };
             var nativeTargets = new System.Collections.Generic.List<string>();
             var pttTargets = new System.Collections.Generic.List<string>();
             foreach (var name in nonTargetNames)
             {
-                if (IsNativeTarget(name)) nativeTargets.Add(name);
-                else if (IsPttTarget(name)) pttTargets.Add(name);
+                if (IsNativeTarget(name))
+                    nativeTargets.Add(name);
+                else if (IsPttTarget(name))
+                    pttTargets.Add(name);
             }
             // Both lists must be empty -- no non-target name leaks into snapshot
             Assert.Empty(nativeTargets);
@@ -270,8 +296,8 @@ namespace PropTraderTools.Tests
 
             // Native-first return: empty pttTargets returned when both are empty
             var result = nativeTargets.Count > 0 ? nativeTargets : pttTargets;
-            Assert.Empty(result);     // empty list -- not null (JS-002 contract)
-            Assert.NotNull(result);   // T7 anchor: SnapshotBeTargets L3930/3964 returns List, never null
+            Assert.Empty(result); // empty list -- not null (JS-002 contract)
+            Assert.NotNull(result); // T7 anchor: SnapshotBeTargets L3930/3964 returns List, never null
         }
     }
 }

@@ -19,7 +19,8 @@ namespace PropTraderTools.Tests
                 string name,
                 string? fromEntrySignal,
                 OrderState state,
-                OrderType type)
+                OrderType type
+            )
             {
                 var o = new Order();
                 o.Name = name;
@@ -43,7 +44,12 @@ namespace PropTraderTools.Tests
                     state: OrderState.Working,
                     type: OrderType.Limit
                 );
-                bool result = CopyEngine.OrderPassesBracketGateTestable(order, "S1", "Target3", isStop: false);
+                bool result = CopyEngine.OrderPassesBracketGateTestable(
+                    order,
+                    "S1",
+                    "Target3",
+                    isStop: false
+                );
                 Assert.True(result);
             }
 
@@ -57,7 +63,12 @@ namespace PropTraderTools.Tests
                     state: OrderState.Working,
                     type: OrderType.Limit
                 );
-                bool result = CopyEngine.OrderPassesBracketGateTestable(order, "S1", "Target3", isStop: false);
+                bool result = CopyEngine.OrderPassesBracketGateTestable(
+                    order,
+                    "S1",
+                    "Target3",
+                    isStop: false
+                );
                 Assert.False(result);
             }
 
@@ -75,7 +86,12 @@ namespace PropTraderTools.Tests
                     state: OrderState.Working,
                     type: OrderType.Limit
                 );
-                bool result = CopyEngine.OrderPassesBracketGateTestable(order, null, "Target3", isStop: false);
+                bool result = CopyEngine.OrderPassesBracketGateTestable(
+                    order,
+                    null,
+                    "Target3",
+                    isStop: false
+                );
                 Assert.True(result);
             }
 
@@ -91,7 +107,12 @@ namespace PropTraderTools.Tests
                     state: OrderState.Working,
                     type: OrderType.Limit
                 );
-                bool result = CopyEngine.OrderPassesBracketGateTestable(order, null, "Target3", isStop: false);
+                bool result = CopyEngine.OrderPassesBracketGateTestable(
+                    order,
+                    null,
+                    "Target3",
+                    isStop: false
+                );
                 Assert.True(result);
             }
 
@@ -106,7 +127,12 @@ namespace PropTraderTools.Tests
                     state: OrderState.Working,
                     type: OrderType.StopMarket
                 );
-                bool result = CopyEngine.OrderPassesBracketGateTestable(order, null, "Stop1", isStop: true);
+                bool result = CopyEngine.OrderPassesBracketGateTestable(
+                    order,
+                    null,
+                    "Stop1",
+                    isStop: true
+                );
                 Assert.True(result);
             }
 
@@ -121,7 +147,12 @@ namespace PropTraderTools.Tests
                     state: OrderState.Working,
                     type: OrderType.Limit
                 );
-                bool result = CopyEngine.OrderPassesBracketGateTestable(order, null, "Stop1", isStop: true);
+                bool result = CopyEngine.OrderPassesBracketGateTestable(
+                    order,
+                    null,
+                    "Stop1",
+                    isStop: true
+                );
                 Assert.False(result);
             }
 
@@ -135,7 +166,12 @@ namespace PropTraderTools.Tests
                     state: OrderState.Working,
                     type: OrderType.Limit
                 );
-                bool result = CopyEngine.OrderPassesBracketGateTestable(order, null, null, isStop: false);
+                bool result = CopyEngine.OrderPassesBracketGateTestable(
+                    order,
+                    null,
+                    null,
+                    isStop: false
+                );
                 Assert.True(result);
             }
 
@@ -152,7 +188,7 @@ namespace PropTraderTools.Tests
                 var engine = CopyEngine.Instance;
                 var orders = new[]
                 {
-                    StubBracketOrder("PTT-TGT-Drag", null, OrderState.Working, OrderType.Limit)
+                    StubBracketOrder("PTT-TGT-Drag", null, OrderState.Working, OrderType.Limit),
                 };
                 var result = engine.FindFollowerBracketOrderTestable(
                     orders,
@@ -173,7 +209,12 @@ namespace PropTraderTools.Tests
                 var engine = CopyEngine.Instance;
                 var orders = new[]
                 {
-                    StubBracketOrder("PTT-STP-Drag", null, OrderState.Working, OrderType.StopMarket)
+                    StubBracketOrder(
+                        "PTT-STP-Drag",
+                        null,
+                        OrderState.Working,
+                        OrderType.StopMarket
+                    ),
                 };
                 var result = engine.FindFollowerBracketOrderTestable(
                     orders,

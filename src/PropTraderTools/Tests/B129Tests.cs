@@ -138,7 +138,9 @@ namespace PropTraderTools.Tests
                 CopyEngine.IsReversalToFlatFollower(
                     NinjaTrader.Cbi.OrderAction.Sell,
                     NinjaTrader.Cbi.OrderAction.Buy,
-                    followerIsFlat: true));
+                    followerIsFlat: true
+                )
+            );
         }
 
         // [Fact] B129_DW135_FirstEntryAfterRestartNotBlocked

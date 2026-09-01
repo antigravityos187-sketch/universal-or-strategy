@@ -295,7 +295,8 @@ namespace PropTraderTools
             {
                 NinjaTrader.Code.Output.Process(
                     "Click Trader requires Elite tier",
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 return;
             }
             if (chart == null)
@@ -632,7 +633,9 @@ namespace PropTraderTools
             try
             {
                 var pttDir = System.IO.Path.Combine(
-                    NinjaTrader.Core.Globals.UserDataDir, "PropTraderTools");
+                    NinjaTrader.Core.Globals.UserDataDir,
+                    "PropTraderTools"
+                );
                 var devMode = System.IO.Path.Combine(pttDir, "dev_mode.txt");
                 if (System.IO.File.Exists(devMode))
                     return FeatureFlags.Elite();

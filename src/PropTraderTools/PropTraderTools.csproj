@@ -25,7 +25,9 @@
     <!-- Allow LSP to open files even if NT8 DLLs are absent on a new machine -->
     <NoWarn>MSB3245;MSB3246;CS0012;CS8632;CS0234;CS0246;CS0436;CS0433;CS1718;CS0219;CS0649;xUnit1004;xUnit2013;xUnit2009;xUnit1031</NoWarn>
     <!-- Define SKGL_PRESENT only when the NT8 SKGL extension DLL exists on this machine -->
-    <DefineConstants Condition="Exists('$(USERPROFILE)\Documents\NinjaTrader 8\bin\Custom\SKGL.Extension.dll')">SKGL_PRESENT</DefineConstants>
+    <DefineConstants
+      Condition="Exists('$(USERPROFILE)\Documents\NinjaTrader 8\bin\Custom\SKGL.Extension.dll')"
+      >SKGL_PRESENT</DefineConstants>
     <AssemblyName>PropTraderTools</AssemblyName>
     <RootNamespace>PropTraderTools</RootNamespace>
     <!-- Prevent NETSDK1022 duplicate Compile items (explicit list below) -->
@@ -57,7 +59,10 @@
       <HintPath>$(USERPROFILE)\Documents\NinjaTrader 8\bin\Custom\NinjaTrader.Custom.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="SKGL.Extension" Condition="Exists('$(USERPROFILE)\Documents\NinjaTrader 8\bin\Custom\SKGL.Extension.dll')">
+    <Reference
+      Include="SKGL.Extension"
+      Condition="Exists('$(USERPROFILE)\Documents\NinjaTrader 8\bin\Custom\SKGL.Extension.dll')"
+    >
       <HintPath>$(USERPROFILE)\Documents\NinjaTrader 8\bin\Custom\SKGL.Extension.dll</HintPath>
       <Private>false</Private>
     </Reference>
@@ -162,6 +167,7 @@
     <Compile Include="Tests\B134Tests.cs" />
     <Compile Include="Tests\B135Tests.cs" />
     <Compile Include="Tests\B136Tests.cs" />
+    <Compile Include="Tests\B139Tests.cs" />
     <Compile Include="Tests\BgtmTests.cs" />
     <Compile Include="TradeCopierPanelB75Tests.cs" />
     <Compile Include="B76Tests.cs" />

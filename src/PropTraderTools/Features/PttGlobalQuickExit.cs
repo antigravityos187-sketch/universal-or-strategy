@@ -39,7 +39,8 @@ namespace PropTraderTools
             {
                 NinjaTrader.Code.Output.Process(
                     "[PTT-QX-ALL] Blocked: Global Quick Exit requires Elite tier",
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 return;
             }
             NinjaTrader.Code.Output.Process(
@@ -103,8 +104,11 @@ namespace PropTraderTools
                     {
                         NinjaTrader.Code.Output.Process(
                             "[PTT-QX-FLATTEN] leader fallback flatten: "
-                                + acc.Name + " " + pos.Instrument.FullName
-                                + " qty=" + pos.Quantity,
+                                + acc.Name
+                                + " "
+                                + pos.Instrument.FullName
+                                + " qty="
+                                + pos.Quantity,
                             NinjaTrader.NinjaScript.PrintTo.OutputTab1
                         );
                         acc.Flatten(new[] { pos.Instrument });
@@ -126,20 +130,24 @@ namespace PropTraderTools
         /// JS-021: no lock. JS-001: no throw. JS-002: early return not null.
         /// JS-033: synchronous void. ASCII-only.
         /// </summary>
-        internal void Execute(System.Collections.Generic.List<(double Price, int Qty)> forcedTargets)
+        internal void Execute(
+            System.Collections.Generic.List<(double Price, int Qty)> forcedTargets
+        )
         {
             if (!CopyEngine.Instance.Flags.QxGlobalExit)
             {
                 NinjaTrader.Code.Output.Process(
                     "[PTT-QX-2T-ALL] Blocked: Global Quick Exit requires Elite tier",
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 return;
             }
             if (forcedTargets == null || forcedTargets.Count < 2) // (2)
             {
                 NinjaTrader.Code.Output.Process(
                     "[PTT-QX-2T-ALL] forcedTargets null or empty -- aborting",
-                    NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 return;
             }
             NinjaTrader.Code.Output.Process(
@@ -164,16 +172,27 @@ namespace PropTraderTools
                             + acc.Name
                             + " "
                             + pos.Instrument.FullName
-                            + " qty=" + pos.Quantity
-                            + " forcedTargetCount=" + forcedTargets.Count,
+                            + " qty="
+                            + pos.Quantity
+                            + " forcedTargetCount="
+                            + forcedTargets.Count,
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1
                     );
-                    if (NeedsLeaderFallbackFlatten(_beCancelCount, forcedTargets.Count, pos.Quantity)) // (7)
+                    if (
+                        NeedsLeaderFallbackFlatten(
+                            _beCancelCount,
+                            forcedTargets.Count,
+                            pos.Quantity
+                        )
+                    ) // (7)
                     {
                         NinjaTrader.Code.Output.Process(
                             "[PTT-QX-2T-FLATTEN] leader fallback flatten: "
-                                + acc.Name + " " + pos.Instrument.FullName
-                                + " qty=" + pos.Quantity,
+                                + acc.Name
+                                + " "
+                                + pos.Instrument.FullName
+                                + " qty="
+                                + pos.Quantity,
                             NinjaTrader.NinjaScript.PrintTo.OutputTab1
                         );
                         acc.Flatten(new[] { pos.Instrument });
@@ -184,8 +203,6 @@ namespace PropTraderTools
                 }
             }
         }
-
-
 
         /// <summary>
         /// ExecuteFollowers: dispatch Quick Exit to all follower accounts for the given leader position.
@@ -200,7 +217,8 @@ namespace PropTraderTools
             Position pos,
             System.Collections.Generic.List<(double Price, int Qty)> targets,
             (int t1, int t2) ticks,
-            double leaderStop)
+            double leaderStop
+        )
         {
             var engine = CopyEngine.Instance;
             var rule = engine?.FindRule(pos.Instrument); // (1)
@@ -293,7 +311,8 @@ namespace PropTraderTools
         internal static bool NeedsLeaderFallbackFlatten(
             int beCancelCount,
             int snapshotCount,
-            int posQty)
+            int posQty
+        )
         {
             return beCancelCount > 0 && snapshotCount == 0 && posQty > 0;
         }

@@ -164,7 +164,7 @@ namespace PropTraderTools.Tests
                 var engine = CopyEngine.Instance;
                 var orders = new[]
                 {
-                    StubBracketOrder("PTT-TGT-Drag", OrderState.Working, OrderType.Limit)
+                    StubBracketOrder("PTT-TGT-Drag", OrderState.Working, OrderType.Limit),
                 };
                 // Act: fromEntrySignalName=null -> SignalOrNameMatches falls back to name check
                 var result = engine.FindFollowerBracketOrderTestable(
@@ -219,7 +219,8 @@ namespace PropTraderTools.Tests
 
                 Assert.True(
                     callvirtCount >= 6,
-                    "CancelPttDragOrphansForAccount must contain >= 6 callvirt calls (confirms acc.Cancel dispatch path). callvirtCount=" + callvirtCount
+                    "CancelPttDragOrphansForAccount must contain >= 6 callvirt calls (confirms acc.Cancel dispatch path). callvirtCount="
+                        + callvirtCount
                 );
             }
 
@@ -247,13 +248,21 @@ namespace PropTraderTools.Tests
                 for (int i = 0; i < il.Length; i++)
                 {
                     byte op = il[i];
-                    if (op == 0x2C || op == 0x2D || op == 0x39 || op == 0x3A || op == 0x33 || op == 0x40)
+                    if (
+                        op == 0x2C
+                        || op == 0x2D
+                        || op == 0x39
+                        || op == 0x3A
+                        || op == 0x33
+                        || op == 0x40
+                    )
                         branchCount++;
                 }
 
                 Assert.True(
                     branchCount >= 4,
-                    "CancelPttDragOrphansForAccount must have >= 4 conditional branches (CYC=5, PTT-STP-Drag guard required). branchCount=" + branchCount
+                    "CancelPttDragOrphansForAccount must have >= 4 conditional branches (CYC=5, PTT-STP-Drag guard required). branchCount="
+                        + branchCount
                 );
             }
 
@@ -303,13 +312,21 @@ namespace PropTraderTools.Tests
                 for (int i = 0; i < il.Length; i++)
                 {
                     byte op = il[i];
-                    if (op == 0x2C || op == 0x2D || op == 0x39 || op == 0x3A || op == 0x33 || op == 0x40)
+                    if (
+                        op == 0x2C
+                        || op == 0x2D
+                        || op == 0x39
+                        || op == 0x3A
+                        || op == 0x33
+                        || op == 0x40
+                    )
                         branchCount++;
                 }
 
                 Assert.True(
                     branchCount >= 4,
-                    "TrySweptPttDragOrphans must have >= 4 conditional branches (CYC=5, Filled guard required). branchCount=" + branchCount
+                    "TrySweptPttDragOrphans must have >= 4 conditional branches (CYC=5, Filled guard required). branchCount="
+                        + branchCount
                 );
             }
 
@@ -334,7 +351,8 @@ namespace PropTraderTools.Tests
                 int clauseCount = body.ExceptionHandlingClauses.Count;
                 Assert.True(
                     clauseCount >= 1,
-                    "CancelPttDragOrphansForAccount must have at least 1 exception handler (try/catch absorbs acc.Cancel failure). clauseCount=" + clauseCount
+                    "CancelPttDragOrphansForAccount must have at least 1 exception handler (try/catch absorbs acc.Cancel failure). clauseCount="
+                        + clauseCount
                 );
             }
         }

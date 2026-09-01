@@ -184,7 +184,7 @@ namespace PropTraderTools.Tests
 
             const int cap = 5;
             int prevAttempts = 4;
-            Assert.True(prevAttempts < cap);  // Part A: 5th attempt within cap
+            Assert.True(prevAttempts < cap); // Part A: 5th attempt within cap
             prevAttempts = 5;
             Assert.True(prevAttempts >= cap); // Part B: 6th attempt blocked
         }

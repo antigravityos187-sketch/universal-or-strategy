@@ -66,7 +66,8 @@ namespace PropTraderTools
         private static readonly string LicenseTxtPath = System.IO.Path.Combine(
             NinjaTrader.Core.Globals.UserDataDir,
             "PropTraderTools",
-            "license.txt");
+            "license.txt"
+        );
 
         // -- frozen semantic brushes (JS-008: MakeWinBrush calls Freeze()) --------
         // "Win" prefix avoids collision with potential Window base-class members
@@ -382,7 +383,8 @@ namespace PropTraderTools
             try
             {
                 System.IO.Directory.CreateDirectory(
-                    System.IO.Path.GetDirectoryName(LicenseTxtPath));
+                    System.IO.Path.GetDirectoryName(LicenseTxtPath)
+                );
                 System.IO.File.WriteAllText(LicenseTxtPath, key);
             }
             catch (Exception) { }
@@ -454,8 +456,10 @@ namespace PropTraderTools
         // BGTM-1: Return tier name string for license status display. CYC=3.
         private static string GetStatusText(FeatureFlags f)
         {
-            if (f.AtrSizing)  return "ELITE";
-            if (f.MultiRule)  return "PRO";
+            if (f.AtrSizing)
+                return "ELITE";
+            if (f.MultiRule)
+                return "PRO";
             return "STARTER";
         }
 

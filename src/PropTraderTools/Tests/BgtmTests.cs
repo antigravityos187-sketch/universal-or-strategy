@@ -12,7 +12,10 @@ namespace PropTraderTools.Tests
 
         public BgtmTests()
         {
-            _tempDir = Path.Combine(Path.GetTempPath(), "BgtmTests_" + Guid.NewGuid().ToString("N"));
+            _tempDir = Path.Combine(
+                Path.GetTempPath(),
+                "BgtmTests_" + Guid.NewGuid().ToString("N")
+            );
             Directory.CreateDirectory(_tempDir);
             // Redirect LicenseClient cache to temp dir so tests do not touch production paths
             LicenseClient._testCachePath = Path.Combine(_tempDir, "license_cache.json");
@@ -50,9 +53,11 @@ namespace PropTraderTools.Tests
         public void T_BGTM1_LicenseClient_OfflineCache_HitReturnsCachedFlags()
         {
             // Write a valid unexpired cache entry for key "TEST-PRO"
-            var cacheJson = BuildCacheJson("TEST-PRO",
+            var cacheJson = BuildCacheJson(
+                "TEST-PRO",
                 new[] { "multi_rule", "trim_flatten", "break_even" },
-                DateTime.UtcNow.AddDays(7));
+                DateTime.UtcNow.AddDays(7)
+            );
             File.WriteAllText(LicenseClient._testCachePath, cacheJson);
 
             var f = LicenseClient.Validate("TEST-PRO");
@@ -67,9 +72,11 @@ namespace PropTraderTools.Tests
         public void T_BGTM1_LicenseClient_OfflineCache_ExpiredReturnsStarter()
         {
             // Write an expired cache entry (ExpiresUtc in the past)
-            var cacheJson = BuildCacheJson("TEST-PRO",
+            var cacheJson = BuildCacheJson(
+                "TEST-PRO",
                 new[] { "multi_rule", "trim_flatten", "break_even" },
-                DateTime.UtcNow.AddDays(-1));
+                DateTime.UtcNow.AddDays(-1)
+            );
             File.WriteAllText(LicenseClient._testCachePath, cacheJson);
 
             // No network in test; TryRemoteValidate will fail => fallback to Starter
@@ -82,9 +89,11 @@ namespace PropTraderTools.Tests
         public void T_BGTM1_LicenseClient_WrongKeyCache_ReturnsStarter()
         {
             // Write a valid unexpired cache entry for key "KEY-A"
-            var cacheJson = BuildCacheJson("KEY-A",
+            var cacheJson = BuildCacheJson(
+                "KEY-A",
                 new[] { "multi_rule", "trim_flatten", "break_even" },
-                DateTime.UtcNow.AddDays(7));
+                DateTime.UtcNow.AddDays(7)
+            );
             File.WriteAllText(LicenseClient._testCachePath, cacheJson);
 
             // Validate with "KEY-B" -- cache is keyed to "KEY-A", so cache miss.
@@ -165,10 +174,18 @@ namespace PropTraderTools.Tests
         private static string BuildCacheJson(string key, string[] features, DateTime expiresUtc)
         {
             var featureItems = string.Join(",", Array.ConvertAll(features, f => "\"" + f + "\""));
-            return "{\"key\":\"" + key + "\","
-                 + "\"features\":[" + featureItems + "],"
-                 + "\"cached_utc\":\"" + DateTime.UtcNow.ToString("o") + "\","
-                 + "\"expires_utc\":\"" + expiresUtc.ToString("o") + "\"}";
+            return "{\"key\":\""
+                + key
+                + "\","
+                + "\"features\":["
+                + featureItems
+                + "],"
+                + "\"cached_utc\":\""
+                + DateTime.UtcNow.ToString("o")
+                + "\","
+                + "\"expires_utc\":\""
+                + expiresUtc.ToString("o")
+                + "\"}";
         }
     }
 }

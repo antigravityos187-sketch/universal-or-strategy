@@ -26,7 +26,8 @@ namespace PropTraderTools
             _engine.SetEnabled(false);
             var fi = typeof(CopyEngine).GetField(
                 "_rules",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             Assert.NotNull(fi);
             var bag = (ConcurrentBag<CopyEngine.CopyRule>)fi.GetValue(_engine);
             // CopyEngine.CopyRule.Create: followers[0] = null, followerAccountNames[0] = accountName.
@@ -35,7 +36,8 @@ namespace PropTraderTools
                 "NQ",
                 null,
                 new Account[] { null },
-                followerAccountNames: new[] { accountName });
+                followerAccountNames: new[] { accountName }
+            );
             bag.Add(rule);
         }
 
@@ -67,7 +69,8 @@ namespace PropTraderTools
         {
             var mi = typeof(CopyEngine).GetMethod(
                 "IsFollowerAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
+            );
             Assert.NotNull(mi);
             Assert.Equal(typeof(bool), mi.ReturnType);
             var ps = mi.GetParameters();

@@ -36,10 +36,7 @@ namespace PropTraderTools
             var ps = mi.GetParameters();
             Assert.Equal(2, ps.Length);
             Assert.Equal(typeof(NinjaTrader.Cbi.Account), ps[0].ParameterType);
-            Assert.Equal(
-                typeof(NinjaTrader.Cbi.Instrument),
-                ps[1].ParameterType
-            );
+            Assert.Equal(typeof(NinjaTrader.Cbi.Instrument), ps[1].ParameterType);
         }
 
         // T_B76_02: FlattenOneAccount compiled body contains the string literal for the in-flight guard.

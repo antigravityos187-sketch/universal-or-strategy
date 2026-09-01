@@ -1952,8 +1952,8 @@ namespace PropTraderTools
             _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // (2)
             if (_leaderAccount == null)
                 return; // (3)
-            var pos = _leaderAccount.Positions.FirstOrDefault(
-                p => p.Instrument?.FullName == _instrument.FullName
+            var pos = _leaderAccount.Positions.FirstOrDefault(p =>
+                p.Instrument?.FullName == _instrument.FullName
             ); // (4)
             int qty = pos?.Quantity ?? 1;
             var targets = Build2TargetList(qty);
@@ -1984,8 +1984,8 @@ namespace PropTraderTools
             _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // (2)
             if (_leaderAccount == null)
                 return;
-            var pos = _leaderAccount.Positions.FirstOrDefault(
-                p => p.Instrument?.FullName == _instrument.FullName
+            var pos = _leaderAccount.Positions.FirstOrDefault(p =>
+                p.Instrument?.FullName == _instrument.FullName
             ); // (3)
             int qty = pos?.Quantity ?? 1;
             var targets = Build2TargetList(qty);
@@ -1994,9 +1994,12 @@ namespace PropTraderTools
                     + _leaderAccount.Name
                     + " "
                     + _instrument.FullName
-                    + " qty=" + qty
-                    + " T1=" + targets[0].Qty
-                    + " T2=" + targets[1].Qty,
+                    + " qty="
+                    + qty
+                    + " T1="
+                    + targets[0].Qty
+                    + " T2="
+                    + targets[1].Qty,
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1
             );
             new PttGlobalQuickExit().Execute(targets);

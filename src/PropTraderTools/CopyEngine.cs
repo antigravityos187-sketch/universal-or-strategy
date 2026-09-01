@@ -2279,7 +2279,15 @@ namespace PropTraderTools
             // Without branch (3), IsTrailingStop would return early and skip stop sync.
             if (isStop && IsAtmSTPOrder(fo)) // (3) DW-B134 + DW-B137
             {
-                SyncAtmFollowerBracket(acc, fo, newPrice);
+                if (!string.IsNullOrEmpty(fo.Oco)) // (3a) B140: OCO-linked -- Change preserves OCO partner
+                {
+                    fo.StopPrice = newPrice;
+                    try { acc.Change(new Order[] { fo }); }
+                    catch (Exception ex)
+                    { StatusUpdate?.Invoke(acc.Name + ": ATM STP Change error: " + ex.Message); }
+                    return;
+                }
+                SyncAtmFollowerBracket(acc, fo, newPrice); // (3b) no OCO -- cancel+resubmit (existing path)
                 return;
             }
             if (!isStop && IsAtmSTPOrder(fo)) // (3b) DW-B137: ATM target cancel+resubmit

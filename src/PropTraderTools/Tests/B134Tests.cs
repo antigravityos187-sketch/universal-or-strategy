@@ -54,7 +54,10 @@ namespace PropTraderTools.Tests
             {
                 // Arrange
                 var engine = CopyEngine.Instance;
-                var orders = new[] { StubStopOrder(OrderState.Submitted, OrderType.StopMarket, "Stop1") };
+                var orders = new[]
+                {
+                    StubStopOrder(OrderState.Submitted, OrderType.StopMarket, "Stop1"),
+                };
                 // Act
                 var result = engine.FindFollowerBracketOrderTestable(
                     orders,
@@ -95,7 +98,10 @@ namespace PropTraderTools.Tests
             {
                 // Arrange
                 var engine = CopyEngine.Instance;
-                var orders = new[] { StubStopOrder(OrderState.Working, OrderType.StopMarket, "Stop1") };
+                var orders = new[]
+                {
+                    StubStopOrder(OrderState.Working, OrderType.StopMarket, "Stop1"),
+                };
                 // Act
                 var result = engine.FindFollowerBracketOrderTestable(
                     orders,
@@ -133,7 +139,10 @@ namespace PropTraderTools.Tests
             {
                 // Arrange: Initialized is not in {Working, Accepted, Submitted} -- must be rejected.
                 var engine = CopyEngine.Instance;
-                var orders = new[] { StubStopOrder(OrderState.Initialized, OrderType.StopMarket, "Stop1") };
+                var orders = new[]
+                {
+                    StubStopOrder(OrderState.Initialized, OrderType.StopMarket, "Stop1"),
+                };
                 // Act
                 var result = engine.FindFollowerBracketOrderTestable(
                     orders,
@@ -159,7 +168,10 @@ namespace PropTraderTools.Tests
             // Helper: Limit target order using name-fallback path (FromEntrySignal=null).
             // FromEntrySignal=null: IsStopLeg=false -> !IsStopLeg=true -> Limit target path returns order.
             // SignalOrNameMatches: signalName path skips (null!=signalName fails); name-fallback: order.Name==leaderName.
-            private static Order StubTargetOrder(string name, OrderState state = OrderState.Submitted)
+            private static Order StubTargetOrder(
+                string name,
+                OrderState state = OrderState.Submitted
+            )
             {
                 var o = new Order();
                 o.OrderState = state;
@@ -171,7 +183,10 @@ namespace PropTraderTools.Tests
 
             // Helper: stop order using signal path (FromEntrySignal="ATM1").
             // Used for T2.3 backward-compat test: leaderName=null, signal match returns stop order.
-            private static Order StubStopOrderSignal(string name, OrderState state = OrderState.Submitted)
+            private static Order StubStopOrderSignal(
+                string name,
+                OrderState state = OrderState.Submitted
+            )
             {
                 var o = new Order();
                 o.OrderState = state;

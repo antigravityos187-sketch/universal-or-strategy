@@ -30,13 +30,30 @@ namespace PropTraderTools.Tests
         // Local stub types mirroring the NT8 enums/shapes used by CountLeaderTargets.
         // -------------------------------------------------------------------------
 
-        private enum StubOrderState { Working, Accepted, Submitted, Cancelled, Filled }
-        private enum StubOrderType { Limit, StopMarket, Market }
+        private enum StubOrderState
+        {
+            Working,
+            Accepted,
+            Submitted,
+            Cancelled,
+            Filled,
+        }
+
+        private enum StubOrderType
+        {
+            Limit,
+            StopMarket,
+            Market,
+        }
 
         private sealed class StubInstrument
         {
             public string FullName { get; }
-            public StubInstrument(string fullName) { FullName = fullName; }
+
+            public StubInstrument(string fullName)
+            {
+                FullName = fullName;
+            }
         }
 
         private sealed class StubOrder
@@ -56,9 +73,7 @@ namespace PropTraderTools.Tests
         // CHANGE 3 (AFTER): return Math.Min(count, 3).
         // -------------------------------------------------------------------------
 
-        private static int CountLeaderTargetsStub(
-            List<StubOrder> orders,
-            StubInstrument instrument)
+        private static int CountLeaderTargetsStub(List<StubOrder> orders, StubInstrument instrument)
         {
             int count = 0;
             foreach (StubOrder o in orders)
@@ -69,9 +84,7 @@ namespace PropTraderTools.Tests
                 // CHANGE 2: Working-only (DW-B116: removed Accepted + Submitted).
                 bool stateOk = o.OrderState == StubOrderState.Working;
 
-                bool instrOk =
-                    o.Instrument != null
-                    && o.Instrument.FullName == instrument.FullName;
+                bool instrOk = o.Instrument != null && o.Instrument.FullName == instrument.FullName;
 
                 if (!stateOk || !instrOk || o.OrderType != StubOrderType.Limit)
                     continue;
@@ -106,9 +119,27 @@ namespace PropTraderTools.Tests
             var instrument = new StubInstrument("MES 09-26");
             var orders = new List<StubOrder>
             {
-                new StubOrder { Name = "Target1", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target2", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target3", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
+                new StubOrder
+                {
+                    Name = "Target1",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target2",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target3",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
             };
 
             // Act
@@ -134,12 +165,42 @@ namespace PropTraderTools.Tests
             var instrument = new StubInstrument("MES 09-26");
             var orders = new List<StubOrder>
             {
-                new StubOrder { Name = "Target1", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target2", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target3", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
+                new StubOrder
+                {
+                    Name = "Target1",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target2",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target3",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
                 // Stale PTT-BE residue orders -- must NOT be counted (CHANGE 1).
-                new StubOrder { Name = "PTT-BE-Target-4", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "PTT-BE-Target-5", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
+                new StubOrder
+                {
+                    Name = "PTT-BE-Target-4",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "PTT-BE-Target-5",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
             };
 
             // Act
@@ -165,12 +226,42 @@ namespace PropTraderTools.Tests
             var instrument = new StubInstrument("MES 09-26");
             var orders = new List<StubOrder>
             {
-                new StubOrder { Name = "Target1", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target2", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target3", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
+                new StubOrder
+                {
+                    Name = "Target1",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target2",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target3",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
                 // Stale Quick-Exit orders -- must NOT be counted (CHANGE 1).
-                new StubOrder { Name = "PTT-QX-T1", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "PTT-QX-T2", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
+                new StubOrder
+                {
+                    Name = "PTT-QX-T1",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "PTT-QX-T2",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
             };
 
             // Act
@@ -196,11 +287,41 @@ namespace PropTraderTools.Tests
             var instrument = new StubInstrument("MES 09-26");
             var orders = new List<StubOrder>
             {
-                new StubOrder { Name = "Target1", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target2", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target3", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target4", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target5", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
+                new StubOrder
+                {
+                    Name = "Target1",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target2",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target3",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target4",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target5",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
             };
 
             // Act
@@ -227,13 +348,43 @@ namespace PropTraderTools.Tests
             var orders = new List<StubOrder>
             {
                 // Working -- must be counted.
-                new StubOrder { Name = "Target1", OrderState = StubOrderState.Working, OrderType = StubOrderType.Limit, Instrument = instrument },
+                new StubOrder
+                {
+                    Name = "Target1",
+                    OrderState = StubOrderState.Working,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
                 // Accepted -- must NOT be counted (CHANGE 2).
-                new StubOrder { Name = "Target2", OrderState = StubOrderState.Accepted, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target3", OrderState = StubOrderState.Accepted, OrderType = StubOrderType.Limit, Instrument = instrument },
+                new StubOrder
+                {
+                    Name = "Target2",
+                    OrderState = StubOrderState.Accepted,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target3",
+                    OrderState = StubOrderState.Accepted,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
                 // Submitted -- must NOT be counted (CHANGE 2).
-                new StubOrder { Name = "Target4", OrderState = StubOrderState.Submitted, OrderType = StubOrderType.Limit, Instrument = instrument },
-                new StubOrder { Name = "Target5", OrderState = StubOrderState.Submitted, OrderType = StubOrderType.Limit, Instrument = instrument },
+                new StubOrder
+                {
+                    Name = "Target4",
+                    OrderState = StubOrderState.Submitted,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
+                new StubOrder
+                {
+                    Name = "Target5",
+                    OrderState = StubOrderState.Submitted,
+                    OrderType = StubOrderType.Limit,
+                    Instrument = instrument,
+                },
             };
 
             // Act

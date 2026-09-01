@@ -97,19 +97,37 @@ namespace PropTraderTools
             {
                 byte op = il[i];
                 if (
-                    op == 0x2B || op == 0x2C || op == 0x2D
+                    op == 0x2B
+                    || op == 0x2C
+                    || op == 0x2D
                     || // br.s, brfalse.s, brtrue.s
-                    op == 0x2E || op == 0x2F || op == 0x30 || op == 0x31 || op == 0x32
+                    op == 0x2E
+                    || op == 0x2F
+                    || op == 0x30
+                    || op == 0x31
+                    || op == 0x32
                     || op == 0x33
                     || // beq.s..bne.un.s
-                    op == 0x34 || op == 0x35 || op == 0x36 || op == 0x37
+                    op == 0x34
+                    || op == 0x35
+                    || op == 0x36
+                    || op == 0x37
                     || // bge.un.s..blt.un.s
-                    op == 0x38 || op == 0x39 || op == 0x3A
+                    op == 0x38
+                    || op == 0x39
+                    || op == 0x3A
                     || // br, brfalse, brtrue
-                    op == 0x3B || op == 0x3C || op == 0x3D || op == 0x3E || op == 0x3F
+                    op == 0x3B
+                    || op == 0x3C
+                    || op == 0x3D
+                    || op == 0x3E
+                    || op == 0x3F
                     || op == 0x40
                     || // beq..bne.un
-                    op == 0x41 || op == 0x42 || op == 0x43 || op == 0x44 // bge.un..blt.un
+                    op == 0x41
+                    || op == 0x42
+                    || op == 0x43
+                    || op == 0x44 // bge.un..blt.un
                 )
                 {
                     branchCount++;
@@ -117,10 +135,7 @@ namespace PropTraderTools
             }
 
             // Assert: CYC=7 means branchCount=6 (CYC = branch_count + 1)
-            Assert.Equal(
-                6,
-                branchCount
-            );
+            Assert.Equal(6, branchCount);
         }
     }
 }
