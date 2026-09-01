@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Changelog — PTT Trade Copier</title>
+  <meta name="description" content="PTT Trade Copier version history. 120+ tests passing across Apex, TopStep, and Rithmic. Built on the v12 engineering quality standard." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#05070d;--surface:#0b0e18;--raised:#111520;--border:#1c2133;--accent:#F15A29;--accent-lo:rgba(241,90,41,0.12);--green:#22c55e;--green-lo:rgba(34,197,94,0.08);--amber:#f59e0b;--purple:#a855f7;--dim:#4b5563;--mid:#9ca3af;--bright:#f1f5f9;--mono:"IBM Plex Mono",monospace;--sans:"IBM Plex Sans",system-ui,sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--bright);font-family:var(--sans);font-size:15px;line-height:1.65;}
+    nav{position:sticky;top:0;z-index:100;background:rgba(5,7,13,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:56px;}
+    .nav-brand{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--bright);text-decoration:none;}
+    .nav-brand span{color:var(--accent);}
+    .nav-links{display:flex;gap:28px;list-style:none;}
+    .nav-links a{color:var(--mid);text-decoration:none;font-size:14px;}
+    .nav-links a:hover{color:var(--bright);}
+    .nav-cta{background:var(--accent);color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:8px 18px;border-radius:5px;text-decoration:none;}
+
+    main{max-width:820px;margin:0 auto;padding:64px 24px 96px;}
+    .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--dim);margin-bottom:10px;}
+    h1{font-size:clamp(26px,4vw,40px);font-weight:700;letter-spacing:-1px;margin-bottom:14px;}
+    h1 span{color:var(--accent);}
+    .intro{color:var(--mid);font-size:16px;margin-bottom:48px;max-width:640px;}
+    code{font-family:var(--mono);font-size:12px;background:var(--raised);padding:2px 7px;border-radius:3px;color:var(--accent);}
+
+    /* release entry */
+    .release{margin-bottom:56px;}
+    .release-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border);}
+    .release-header.latest{border-bottom-color:var(--accent);}
+    .release-ver{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--bright);}
+    .release-date{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:4px;}
+    .badge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:4px;margin-left:auto;flex-shrink:0;align-self:flex-start;}
+    .badge-green{background:var(--green-lo);color:var(--green);border:1px solid rgba(34,197,94,0.3);}
+    .badge-accent{background:var(--accent-lo);color:var(--accent);border:1px solid rgba(37,99,235,0.3);}
+    .badge-amber{background:rgba(245,158,11,0.1);color:var(--amber);border:1px solid rgba(245,158,11,0.3);}
+    .badge-purple{background:rgba(168,85,247,0.1);color:var(--purple);border:1px solid rgba(168,85,247,0.3);}
+
+    .change-group{margin-bottom:18px;}
+    .change-group-label{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;}
+    .change-list{list-style:none;}
+    .change-list li{font-size:14px;color:var(--mid);padding:5px 0;display:flex;gap:10px;border-bottom:1px solid rgba(28,33,51,0.5);}
+    .change-list li:last-child{border-bottom:none;}
+    .change-list li::before{content:"→";color:var(--accent);flex-shrink:0;font-family:var(--mono);}
+    .change-list li.fix::before{color:var(--green);}
+    .change-list li.remove::before{content:"–";color:var(--dim);}
+
+    .block-note{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-size:13px;color:var(--dim);margin-top:16px;}
+    .block-note strong{color:var(--mid);}
+
+    footer{background:var(--surface);border-top:1px solid var(--border);padding:36px 32px;font-size:13px;color:var(--dim);}
+    .footer-inner{max-width:1080px;margin:0 auto;display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px;}
+    .footer-links{display:flex;gap:20px;flex-wrap:wrap;}
+    .footer-links a{color:var(--dim);text-decoration:none;}
+    .footer-links a:hover{color:var(--mid);}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-brand">PTT <span>Trade Copier</span></a>
+  <ul class="nav-links">
+    <li><a href="pricing.html">Pricing</a></li>
+    <li><a href="install.html">Install</a></li>
+    <li><a href="changelog.html" style="color:var(--bright);">Changelog</a></li>
+    <li><a href="support.html">Support</a></li>
+  </ul>
+  <a href="pricing.html" class="nav-cta">Get License</a>
+</nav>
+
+<main>
+  <div class="eyebrow">Release History</div>
+  <h1>Changelog — <span>PTT Trade Copier</span></h1>
+  <p class="intro">Every release is tested on live accounts across multiple prop firms before shipping. 120+ [Fact] tests passing. Version numbering: v1.0 → v1.1 → v1.2 → v2.0. No "beta" label ever.</p>
+
+  <!-- v1.0 -->
+  <div class="release">
+    <div class="release-header latest">
+      <div>
+        <div class="release-ver">v1.0.0</div>
+        <div class="release-date">2024 — Initial Release</div>
+      </div>
+      <div class="badge badge-green">Latest · Stable</div>
+    </div>
+
+    <div class="change-group">
+      <div class="change-group-label">Core Copy Engine</div>
+      <ul class="change-list">
+        <li>Event-driven order copy on submission — market and limit orders</li>
+        <li>Dedup guard with 10-second TTL prevents ghost copies on retransmit</li>
+        <li>Multi-rule engine — unlimited instruments and follower accounts</li>
+        <li>Per-rule enable/disable toggle persisted across restarts</li>
+        <li>Quantity multiplier per follower (e.g. 2x copies double size)</li>
+        <li>Daily P&amp;L cap gate per follower — silently skips capped accounts</li>
+        <li>Rule persistence via XML — loads on NT8 startup automatically</li>
+      </ul>
+    </div>
+
+    <div class="change-group">
+      <div class="change-group-label">Position Management</div>
+      <ul class="change-list">
+        <li>Shift+T — Trim ½ on master + all follower accounts simultaneously</li>
+        <li>Shift+F — Flatten all positions on master + all followers</li>
+        <li>Shift+C — Cancel all pending entry orders on master + all followers</li>
+        <li>Shift+B — Move stop to break-even (configurable inline buffer)</li>
+        <li>Auto-trail from break-even connected state</li>
+        <li>Global Quick Exit (QX-ALL) — emergency flatten across all rules and accounts</li>
+      </ul>
+    </div>
+
+    <div class="change-group">
+      <div class="change-group-label">Advanced Features</div>
+      <ul class="change-list">
+        <li>ATR dynamic position sizing engine — risk-scaled quantities per follower</li>
+        <li>Click Trader — chart click places limit order at exact price on all accounts</li>
+        <li>Mirror Mode (Mode 2) — bracket entry/stop/target mirroring</li>
+        <li>Mode 1 — market order copy with fill confirmation</li>
+      </ul>
+    </div>
+
+    <div class="change-group">
+      <div class="change-group-label">Infrastructure</div>
+      <ul class="change-list">
+        <li>Cryptolens license validation — remote verify on startup, 7-day offline cache</li>
+        <li>ConfuserEx obfuscation — symbol renaming, string encryption, anti-tamper</li>
+        <li>Standard NT8 zip import (Tools → Import NinjaScript Add-On)</li>
+        <li>Zero chart dependency — runs at Add-On level, not strategy level</li>
+        <li>Lock-free Actor/Enqueue architecture — zero blocking on NT8 UI thread</li>
+      </ul>
+    </div>
+
+    <div class="block-note">
+      <strong>Build quality:</strong> Built across 120+ engineering sessions (B1–B120). 120+ [Fact] unit tests passing. Validated on Apex Trader Funding, TopStep, and Rithmic/AMP connections. Cyclomatic complexity ≤ 8 on all hot-path methods (Jane Street engineering standard).
+    </div>
+  </div>
+
+  <!-- What's Next -->
+  <div class="release">
+    <div class="release-header">
+      <div>
+        <div class="release-ver">v1.1 — Roadmap</div>
+        <div class="release-date">ETA: Q1 2025</div>
+      </div>
+      <div class="badge badge-accent">Upcoming</div>
+    </div>
+
+    <div class="change-group">
+      <div class="change-group-label">Planned</div>
+      <ul class="change-list">
+        <li>Auto-updater notification row in Add-On window</li>
+        <li>Per-account daily P&amp;L display in rule table</li>
+        <li>Copy rule import/export for sharing configs between machines</li>
+        <li>NT Ecosystem listing — application submitted after v1.0 ships</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- v2.0 Roadmap -->
+  <div class="release">
+    <div class="release-header">
+      <div>
+        <div class="release-ver">v2.0 — Roadmap</div>
+        <div class="release-date">Funded from v1 revenue (~$500 threshold)</div>
+      </div>
+      <div class="badge badge-purple">Future</div>
+    </div>
+
+    <div class="change-group">
+      <div class="change-group-label">Planned Upgrades</div>
+      <ul class="change-list">
+        <li>.NET Reactor replaces ConfuserEx (stronger native code obfuscation)</li>
+        <li>Inno Setup installer with license key wizard</li>
+        <li>Priority support tier — direct email, 24-hour SLA</li>
+        <li>Remote API copy (cross-machine, cross-broker)</li>
+        <li>Mobile alerts integration</li>
+      </ul>
+    </div>
+
+    <div class="block-note">
+      <strong>Grandfathered:</strong> All v1 buyers (including WSGTA code buyers) receive all v1.x updates and keep every current feature permanently — regardless of what new tier structure ships in v2.
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div style="font-family:var(--mono);font-weight:700;font-size:14px;color:var(--bright);margin-bottom:6px;">PTT Trade Copier</div>
+      <div>support@proptradertools.com</div>
+    </div>
+    <div class="footer-links">
+      <a href="pricing.html">Pricing</a>
+      <a href="install.html">Install Guide</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="support.html">Support</a>
+      <a href="terms.html">Terms</a>
+      <a href="refunds.html">Refunds</a>
+    </div>
+  </div>
+  <div style="max-width:1080px;margin:20px auto 0;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--dim);">
+    Not affiliated with NinjaTrader LLC. &copy; 2024 Prop Trader Tools.
+  </div>
+</footer>
+
+</body>
+</html>

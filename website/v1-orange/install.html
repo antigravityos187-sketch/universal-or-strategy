@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Install Guide — PTT Trade Copier</title>
+  <meta name="description" content="Step-by-step guide to install PTT Trade Copier in NinjaTrader 8. Zip import, license key entry, copy rule setup." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#05070d;--surface:#0b0e18;--raised:#111520;--border:#1c2133;--accent:#F15A29;--accent-lo:rgba(241,90,41,0.12);--green:#22c55e;--green-lo:rgba(34,197,94,0.08);--amber:#f59e0b;--amber-lo:rgba(245,158,11,0.1);--red:#ef4444;--red-lo:rgba(239,68,68,0.1);--purple:#a855f7;--dim:#4b5563;--mid:#9ca3af;--bright:#f1f5f9;--mono:"IBM Plex Mono",monospace;--sans:"IBM Plex Sans",system-ui,sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--bright);font-family:var(--sans);font-size:15px;line-height:1.65;}
+    nav{position:sticky;top:0;z-index:100;background:rgba(5,7,13,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:56px;}
+    .nav-brand{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--bright);text-decoration:none;}
+    .nav-brand span{color:var(--accent);}
+    .nav-links{display:flex;gap:28px;list-style:none;}
+    .nav-links a{color:var(--mid);text-decoration:none;font-size:14px;}
+    .nav-links a:hover{color:var(--bright);}
+    .nav-cta{background:var(--accent);color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:8px 18px;border-radius:5px;text-decoration:none;}
+
+    main{max-width:800px;margin:0 auto;padding:64px 24px 96px;}
+    .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--dim);margin-bottom:10px;}
+    h1{font-size:clamp(26px,4vw,40px);font-weight:700;letter-spacing:-1px;margin-bottom:14px;}
+    h1 span{color:var(--accent);}
+    .intro{color:var(--mid);font-size:16px;margin-bottom:48px;max-width:640px;}
+    code{font-family:var(--mono);font-size:12px;background:var(--raised);padding:2px 7px;border-radius:3px;color:var(--accent);}
+
+    /* steps */
+    .phase{margin-bottom:64px;}
+    .phase-label{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+    .step-block{display:flex;gap:20px;margin-bottom:28px;}
+    .step-num-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+    .step-circle{width:38px;height:38px;border-radius:50%;background:var(--accent-lo);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);}
+    .step-line-v{width:2px;flex:1;background:var(--border);margin-top:6px;margin-bottom:-4px;}
+    .step-block:last-child .step-line-v{display:none;}
+    .step-content{padding-top:6px;}
+    .step-title{font-size:16px;font-weight:600;margin-bottom:6px;}
+    .step-desc{font-size:14px;color:var(--mid);line-height:1.7;}
+    .step-tip{margin-top:10px;padding:10px 14px;background:var(--accent-lo);border:1px solid rgba(37,99,235,0.25);border-radius:5px;font-size:13px;color:var(--mid);}
+    .step-tip strong{color:var(--accent);}
+    .step-warn{margin-top:10px;padding:10px 14px;background:var(--amber-lo);border:1px solid rgba(245,158,11,0.3);border-radius:5px;font-size:13px;color:var(--mid);}
+    .step-warn strong{color:var(--amber);}
+
+    /* requirements */
+    .req-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:48px;}
+    .req-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:16px 18px;}
+    .req-card h3{font-size:13px;font-weight:600;margin-bottom:6px;}
+    .req-card p{font-size:13px;color:var(--mid);}
+
+    /* command block */
+    pre.cmd{background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-family:var(--mono);font-size:13px;color:var(--mid);overflow-x:auto;margin-top:10px;}
+
+    /* update table */
+    table.changelog{width:100%;border-collapse:collapse;font-size:13px;margin-top:20px;}
+    table.changelog th,table.changelog td{padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;}
+    table.changelog th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);background:var(--raised);}
+
+    footer{background:var(--surface);border-top:1px solid var(--border);padding:36px 32px;font-size:13px;color:var(--dim);}
+    .footer-inner{max-width:1080px;margin:0 auto;display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px;}
+    .footer-links{display:flex;gap:20px;flex-wrap:wrap;}
+    .footer-links a{color:var(--dim);text-decoration:none;}
+    .footer-links a:hover{color:var(--mid);}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-brand">PTT <span>Trade Copier</span></a>
+  <ul class="nav-links">
+    <li><a href="pricing.html">Pricing</a></li>
+    <li><a href="install.html" style="color:var(--bright);">Install</a></li>
+    <li><a href="changelog.html">Changelog</a></li>
+    <li><a href="support.html">Support</a></li>
+  </ul>
+  <a href="pricing.html" class="nav-cta">Get License</a>
+</nav>
+
+<main>
+  <div class="eyebrow">Install Guide</div>
+  <h1>Get up and running in<br/><span>under 5 minutes</span></h1>
+  <p class="intro">PTT Trade Copier installs as a standard NinjaTrader 8 Add-On via the built-in zip import. No installer, no admin privileges, no chart open. Follow the steps below.</p>
+
+  <!-- REQUIREMENTS -->
+  <div class="eyebrow" style="margin-bottom:14px;">Requirements</div>
+  <div class="req-grid">
+    <div class="req-card">
+      <h3>NinjaTrader 8</h3>
+      <p>NT8 version 8.0.23 or later. Free platform — download from <strong>ninjatrader.com</strong>.</p>
+    </div>
+    <div class="req-card">
+      <h3>A license key</h3>
+      <p>Purchase from the <a href="pricing.html" style="color:var(--accent);">Pricing page</a>. Your key is emailed within 60 seconds of payment.</p>
+    </div>
+    <div class="req-card">
+      <h3>Windows 10 / 11</h3>
+      <p>NT8 is Windows-only. 64-bit required. .NET Framework 4.8 is bundled with NT8.</p>
+    </div>
+    <div class="req-card">
+      <h3>At least 2 connected accounts</h3>
+      <p>A master account and at least one follower — both connected in NT8 before you create a rule.</p>
+    </div>
+  </div>
+
+  <!-- PHASE 1 — IMPORT -->
+  <div class="phase">
+    <div class="phase-label">Phase 1 — Install the Add-On</div>
+
+    <div class="step-block">
+      <div class="step-num-wrap">
+        <div class="step-circle">1</div>
+        <div class="step-line-v"></div>
+      </div>
+      <div class="step-content">
+        <div class="step-title">Download the zip file</div>
+        <div class="step-desc">After payment, check your email for a message from LemonSqueezy / Prop Trader Tools. It will contain a download link for <code>PTT-TradeCopier-v1.0.zip</code>. Save the file anywhere — your Desktop is fine.</div>
+        <div class="step-tip"><strong>Tip:</strong> Do not unzip the file. NT8 reads the zip directly.</div>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num-wrap">
+        <div class="step-circle">2</div>
+        <div class="step-line-v"></div>
+      </div>
+      <div class="step-content">
+        <div class="step-title">Open the Import dialog in NT8</div>
+        <div class="step-desc">With NinjaTrader 8 open, click the top menu bar:<br/><br/>
+          <strong style="color:var(--bright);">Tools → Import NinjaScript Add-On…</strong><br/><br/>
+          A file picker will open.
+        </div>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num-wrap">
+        <div class="step-circle">3</div>
+        <div class="step-line-v"></div>
+      </div>
+      <div class="step-content">
+        <div class="step-title">Select the zip file</div>
+        <div class="step-desc">Navigate to where you saved <code>PTT-TradeCopier-v1.0.zip</code> and click Open. NinjaTrader will compile the Add-On automatically. You will see a confirmation dialog when it succeeds.</div>
+        <div class="step-warn"><strong>If compilation fails:</strong> Make sure you are on NT8 version 8.0.23 or later. Go to Help → Check for Updates. Then retry the import.</div>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num-wrap">
+        <div class="step-circle">4</div>
+        <div class="step-line-v"></div>
+      </div>
+      <div class="step-content">
+        <div class="step-title">Restart NinjaTrader (first install only)</div>
+        <div class="step-desc">NT8 requires a restart after a new Add-On import. Click OK on the confirmation and restart. You do not need to restart for future updates — only the first install.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 — LICENSE -->
+  <div class="phase">
+    <div class="phase-label">Phase 2 — Enter Your License Key</div>
+
+    <div class="step-block">
+      <div class="step-num-wrap">
+        <div class="step-circle">5</div>
+        <div class="step-line-v"></div>
+      </div>
+      <div class="step-content">
+        <div class="step-title">Open the PTT Trade Copier window</div>
+        <div class="step-desc">After restart, go to:<br/><br/>
+          <strong style="color:var(--bright);">Tools → Add-Ons → PTT Trade Copier</strong><br/><br/>
+          The Add-On window opens. You will see a License Key field at the top.
+        </div>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num-wrap">
+        <div class="step-circle">6</div>
+        <div class="step-line-v"></div>
+      </div>
+      <div class="step-content">
+        <div class="step-title">Paste your license key and activate</div>
+        <div class="step-desc">Copy the license key from the email you received. Paste it into the License Key field and click <strong>Activate</strong>. The Add-On contacts the Cryptolens server to verify your key. On success, the status bar turns green and shows your tier.</div>
+        <div class="step-tip"><strong>Offline:</strong> After first activation, the key is cached locally for 7 days. NT8 does not need internet access after the initial validation.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 — SETUP -->
+  <div class="phase">
+    <div class="phase-label">Phase 3 — Create Your First Copy Rule</div>
+
+    <div class="step-block">
+      <div class="step-num-wrap">
+        <div class="step-circle">7</div>
+        <div class="step-line-v"></div>
+      </div>
+      <div class="step-content">
+        <div class="step-title">Connect your accounts in NT8</div>
+        <div class="step-desc">Make sure both your master account and all follower accounts are connected. Go to Connections → Manage Connections to verify. PTT Trade Copier works with any account visible in NT8 — Apex, TopStep, Rithmic, any broker.</div>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num-wrap">
+        <div class="step-circle">8</div>
+        <div class="step-line-v"></div>
+      </div>
+      <div class="step-content">
+        <div class="step-title">Add a copy rule</div>
+        <div class="step-desc">In the PTT Trade Copier window, click <strong>Add Rule</strong>. Fill in:
+          <ul style="margin-top:10px;margin-left:20px;color:var(--mid);font-size:14px;line-height:2.0;">
+            <li><strong style="color:var(--bright);">Master Account</strong> — the account whose orders will be copied</li>
+            <li><strong style="color:var(--bright);">Follower Accounts</strong> — check each account to receive copies</li>
+            <li><strong style="color:var(--bright);">Instrument</strong> — e.g. <code>MES 09-25</code> or leave blank to copy all instruments</li>
+            <li><strong style="color:var(--bright);">Qty Multiplier</strong> — e.g. 1.0 copies 1:1; 2.0 doubles the quantity on followers</li>
+            <li><strong style="color:var(--bright);">Daily P&amp;L Cap</strong> — optional; enter a negative number (e.g. <code>-500</code>) to halt copying when that account hits the limit</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num-wrap">
+        <div class="step-circle">9</div>
+        <div class="step-line-v"></div>
+      </div>
+      <div class="step-content">
+        <div class="step-title">Enable the rule and trade</div>
+        <div class="step-desc">Toggle the rule to Enabled. The status indicator turns green. Place an order on your master account — you will see the same order appear on all follower accounts within milliseconds. Your rules persist across NT8 restarts automatically.</div>
+        <div class="step-tip"><strong>That's it.</strong> No chart needs to be open. PTT Trade Copier runs at the Add-On level — always active as long as NT8 is running.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOTKEYS REFERENCE -->
+  <div class="eyebrow" style="margin-bottom:14px;">Hotkey Reference</div>
+  <table class="changelog">
+    <thead>
+      <tr><th>Hotkey</th><th>Action</th><th>Affects</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Shift+T</code></td><td>Trim ½ position</td><td>Master + all active follower accounts</td></tr>
+      <tr><td><code>Shift+F</code></td><td>Flatten all positions</td><td>Master + all active follower accounts</td></tr>
+      <tr><td><code>Shift+C</code></td><td>Cancel all pending entries</td><td>Master + all active follower accounts</td></tr>
+      <tr><td><code>Shift+B</code></td><td>Move stop to break-even</td><td>Master + all active follower accounts</td></tr>
+      <tr><td>QX-ALL button</td><td>Global Quick Exit — flatten everything</td><td>All accounts, all rules simultaneously</td></tr>
+    </tbody>
+  </table>
+
+  <!-- TROUBLESHOOTING -->
+  <div style="margin-top:64px;">
+    <div class="eyebrow" style="margin-bottom:14px;">Troubleshooting</div>
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:20px;">
+        <div style="font-weight:600;margin-bottom:6px;">Orders are not copying</div>
+        <div style="font-size:14px;color:var(--mid);">Check that the rule is Enabled (green indicator). Verify both accounts are connected in NT8 — go to Connections → Manage Connections. If using a P&amp;L cap, verify the follower account has not hit its daily limit.</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:20px;">
+        <div style="font-weight:600;margin-bottom:6px;">License key shows invalid</div>
+        <div style="font-size:14px;color:var(--mid);">Ensure you are connected to the internet for first-time activation. Copy-paste the key exactly from your email — no extra spaces. If the problem persists, email support@proptradertools.com with your order number.</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:20px;">
+        <div style="font-weight:600;margin-bottom:6px;">Compilation error on import</div>
+        <div style="font-size:14px;color:var(--mid);">Update NT8 to the latest version (Help → Check for Updates). Then retry: Tools → Import NinjaScript Add-On. If the error persists, send the NT8 log from <code>Documents\NinjaTrader 8\log\</code> to support.</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:20px;">
+        <div style="font-weight:600;margin-bottom:6px;">Add-On window does not appear in Tools menu</div>
+        <div style="font-size:14px;color:var(--mid);">Restart NT8 after the import. Add-Ons require a full restart to appear in the Tools menu on first install. Check <strong>Tools → Add-Ons</strong> (not Tools → Import).</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:48px;text-align:center;">
+    <p style="color:var(--mid);font-size:14px;margin-bottom:18px;">Still stuck? We respond to every support request.</p>
+    <a href="support.html" style="background:var(--accent);color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:12px 24px;border-radius:5px;text-decoration:none;">Contact Support</a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div style="font-family:var(--mono);font-weight:700;font-size:14px;color:var(--bright);margin-bottom:6px;">PTT Trade Copier</div>
+      <div>support@proptradertools.com</div>
+    </div>
+    <div class="footer-links">
+      <a href="pricing.html">Pricing</a>
+      <a href="install.html">Install Guide</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="support.html">Support</a>
+      <a href="terms.html">Terms</a>
+      <a href="refunds.html">Refunds</a>
+    </div>
+  </div>
+  <div style="max-width:1080px;margin:20px auto 0;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--dim);">
+    Not affiliated with NinjaTrader LLC. &copy; 2024 Prop Trader Tools.
+  </div>
+</footer>
+
+</body>
+</html>
