@@ -1,139 +1,133 @@
-# Phase 5 Execution Protocol (V12.34)
+# PTT Phase 4a/4b Execution Protocol — One Agent Per Ticket
 
-**Version**: 1.0  
-**Effective**: 2026-06-16  
-**Status**: MANDATORY for all Phase 5 epic executions  
-**Supersedes**: Implicit Phase 5 execution guidelines
+**Version**: 1.0
+**Created**: 2026-09-07
+**Authority**: Director mandate — embedded in ptt-orchestrator roleDefinition
+**Scope**: All Ph4a (ptt-engineer) and Ph4b (ptt-verifier) ticket executions
 
-## Purpose
+---
 
-This protocol defines the **SURGICAL ONLY** mandate for Phase 5 (Ticket Execution) to prevent over-optimization and scope creep that caused Wave 4 failures.
+## The Rule (non-negotiable)
 
-## Core Principle: SURGICAL ONLY
+**ONE AGENT SESSION = ONE TICKET. Always. No exceptions.**
 
-**ONE TICKET = ONE METHOD = ONE CONCERN**
+Every Ph4a (engineer) ticket execution is a separate `start_subtask` call.
+Every Ph4b (verifier) ticket verification is a separate `start_subtask` call.
 
-Phase 5 execution MUST be surgical: touch ONLY the target method specified in the ticket, nothing else.
+A single ptt-engineer session MUST NOT implement more than one ticket.
+A single ptt-verifier session MUST NOT verify more than one ticket.
 
-## Mandatory Rules
+---
 
-### 1. Target Method Only
-- ✅ **ALLOWED**: Modify ONLY the target method specified in the ticket
-- ❌ **FORBIDDEN**: Touch any other method, even if it "needs fixing"
-- ❌ **FORBIDDEN**: Fix pre-existing compilation errors
-- ❌ **FORBIDDEN**: Add "while we're here" improvements
-- ❌ **FORBIDDEN**: Refactor adjacent code
+## Why This Rule Exists
 
-### 2. Pre-Existing Error Handling
-If compilation errors exist BEFORE starting the ticket:
-1. **STOP immediately**
-2. Report to Director: "Pre-existing compilation errors detected"
-3. **DO NOT** attempt to fix them
-4. **DO NOT** proceed with ticket execution
-5. Wait for Director approval to continue
+When one agent handles multiple tickets in sequence:
 
-### 3. Scope Verification
-Before making ANY changes:
-1. Read the ticket scope definition
-2. Identify the EXACT target method (name + file + line range)
-3. Verify no other methods are mentioned
-4. If scope is ambiguous, ask for clarification
+1. **Context cross-contamination**: The agent carries state from Ticket 1 into
+   Ticket 2. Scope decisions, CYC estimates, and naming conventions drift.
 
-### 4. Change Verification
-After making changes:
-1. Run `git diff` to verify ONLY target method was modified
-2. If other methods appear in diff, **REVERT immediately**
-3. Document the scope violation
-4. Re-execute with correct scope
+2. **Incomplete per-ticket scans**: The 7-scan checklist is per-ticket by design.
+   A combined session produces one scan over both tickets, masking violations in
+   whichever ticket received less attention.
 
-### 5. No Adjacent Improvements
-Common violations to AVOID:
-- ❌ Fixing nearby typos
-- ❌ Adding missing braces to other methods
-- ❌ Reformatting adjacent code
-- ❌ Extracting shared logic from other methods
-- ❌ Updating comments in other methods
-- ❌ Renaming variables in other methods
+3. **Verification gaps**: A ptt-verifier reading two completion files simultaneously
+   cannot reliably cross-reference each against its own ticket spec. Findings are
+   attributed to the wrong ticket or dropped entirely.
 
-## Execution Checklist
+4. **Irreversible compaction**: If the combined session hits the context limit mid-way
+   through Ticket 2, Ticket 1 state is lost and the session cannot be restored cleanly.
 
-### Pre-Execution
-- [ ] Read ticket scope definition
-- [ ] Identify target method (name, file, line range)
-- [ ] Verify codebase compiles cleanly
-- [ ] Confirm no pre-existing errors in target file
-- [ ] Review Jane Street KB for extraction patterns
+5. **Pipeline traceability breaks**: Each ticket has its own `ticket-N-completion.md`
+   and `ticket-N-verification.md`. These must each be written by a dedicated agent
+   with full attention on exactly that ticket. Mixed sessions produce mixed artifacts.
 
-### During Execution
-- [ ] Modify ONLY target method
-- [ ] Use building-blocks templates for extraction
-- [ ] Follow Jane Street patterns (CYC ≤8)
-- [ ] Generate xUnit tests (NEVER NUnit/MSTest)
-- [ ] Verify encoding (UTF-8 without BOM)
+---
 
-### Post-Execution
-- [ ] Run `git diff` - verify ONLY target method changed
-- [ ] Run `dotnet build` - verify compilation passes
-- [ ] Run `dotnet csharpier format src/` - verify formatting
-- [ ] Run `python scripts/complexity_audit.py` - verify CYC ≤8
-- [ ] Document completion in ticket file
+## Correct Execution Pattern
 
-## Violation Protocol
+For a pipeline with N tickets:
 
-If scope violation detected:
-1. **STOP immediately**
-2. Run `git checkout -- .` to revert all changes
-3. Document violation in `docs/brain/EPIC-X/scope-violation.md`
-4. Report to Director with root cause analysis
-5. Re-execute ticket with correct scope
+```
+Ticket 1:
+  start_subtask(mode="ptt-engineer",  message="TICKET 1 ONLY. Do NOT read ticket 2.")
+  -- returns BUILD_PASS --
+  start_subtask(mode="ptt-verifier",  message="VERIFY TICKET 1 ONLY.")
+  -- returns VERIFY_PASS --
 
-## Success Criteria
+Ticket 2:
+  start_subtask(mode="ptt-engineer",  message="TICKET 2 ONLY. Do NOT read ticket 1.")
+  -- returns BUILD_PASS --
+  start_subtask(mode="ptt-verifier",  message="VERIFY TICKET 2 ONLY.")
+  -- returns VERIFY_PASS --
 
-A Phase 5 execution is successful ONLY if:
-1. ✅ Target method complexity reduced to ≤8
-2. ✅ ONLY target method appears in `git diff`
-3. ✅ Build passes (`dotnet build`)
-4. ✅ xUnit tests generated and passing
-5. ✅ Encoding verified (UTF-8 without BOM)
+... (repeat for tickets 3..N)
 
-## Examples
+Phase 5:
+  start_subtask(mode="ptt-plan-reviewer") reads ALL completion + verification files.
+```
 
-### ✅ CORRECT: Surgical Extraction
-**Ticket**: Extract validation logic from `OnSubmitClick` (lines 250-275)
+**Ticket N is never started until Ticket N-1 reaches VERIFY_PASS.**
+(Tickets are sequential, not parallel — they share the same .cs file.)
 
-**Changes**:
-- Modified `OnSubmitClick` (lines 250-275) → reduced to orchestrator
-- Added `ValidateInputs` helper method
-- Added xUnit tests for `ValidateInputs`
+---
 
-**Git Diff**: Shows ONLY `OnSubmitClick` and new `ValidateInputs` method
+## Mandatory ptt-orchestrator Message Format
 
-### ❌ WRONG: Over-Optimization
-**Ticket**: Extract validation logic from `OnSubmitClick` (lines 250-275)
+Every `start_subtask` to `ptt-engineer` MUST include this header verbatim:
 
-**Changes**:
-- Modified `OnSubmitClick` (lines 250-275) → reduced to orchestrator
-- Added `ValidateInputs` helper method
-- **VIOLATION**: Fixed typo in `OnCancelClick` (line 300)
-- **VIOLATION**: Added missing braces to `OnResetClick` (line 350)
-- **VIOLATION**: Reformatted `BuildCommandString` (lines 400-450)
+```
+SCOPE LOCK — TICKET [N] ONLY.
+Do NOT read, reference, or implement any other ticket in this session.
+Files in scope: 04-tickets.md (ticket [N] section only), 04-ticket-review.md,
+  02-architecture-plan.md, RULES_CATALOG.md, [specific .cs file].
+Write: docs/brain/{epic}/ticket-[N]-completion.md
+Return: BUILD_PASS | BUILD_FAIL
+```
 
-**Git Diff**: Shows 4 methods changed (scope violation)
+Every `start_subtask` to `ptt-verifier` MUST include this header verbatim:
 
-## Integration with Other Protocols
+```
+SCOPE LOCK — VERIFY TICKET [N] ONLY.
+Do NOT read ticket-[N-1]-completion.md or ticket-[N+1] files in this session.
+Files in scope: ticket-[N]-completion.md, 04-tickets.md (ticket [N] only),
+  02-architecture-plan.md, RULES_CATALOG.md, spec (read-only).
+Write: docs/brain/{epic}/ticket-[N]-verification.md
+Return: VERIFY_PASS | VERIFY_FAIL
+```
 
-- **Phase 1.5 (Scope Boundary)**: Validates single-method scope BEFORE Phase 5
-- **Phase 5.V (Verification)**: Validates surgical execution AFTER Phase 5
-- **Recovery Loop Protocol**: Handles failed executions with scope violations
-- **Building-Blocks Method**: Provides templates for surgical extraction
+---
 
-## References
+## Retry Rules (unchanged from original protocol)
 
-- **Root Cause**: Wave 4 PR #10-16 failures (28 issues, 9 P0)
-- **Analysis**: `WAVE4_FULL_PR_AUDIT.md`
-- **Hardening Plan**: `WAVE4_PROTOCOL_HARDENING_PLAN.md`
-- **Jane Street KB**: `docs/intel/jane-street/RULES_CATALOG.md`
+- BUILD_FAIL: re-spawn ptt-engineer with error log. Max 2 retries.
+  After 2 retries: STOP. Escalate to Director.
 
-## Version History
+- VERIFY_FAIL: re-spawn ptt-engineer with verification report. Max 3 cycles.
+  After 3 VERIFY_FAIL: STOP. Escalate to Director.
 
-- **V1.0** (2026-06-16): Initial protocol based on Wave 4 root cause analysis
+Each retry is ALSO a fresh independent agent session (same scope lock applies).
+
+---
+
+## Gate: ptt-orchestrator Self-Check Before Ph5
+
+Before spawning Ph5 (ptt-plan-reviewer), the orchestrator MUST verify:
+
+```
+For each ticket N (1..total):
+  [ ] ticket-N-completion.md exists
+  [ ] ticket-N-verification.md exists and contains VERIFY_PASS
+  [ ] Each file was written by a dedicated single-ticket session
+      (check: completion.md references only ticket N scope)
+```
+
+If any ticket is missing its completion or verification artifact: STOP.
+Do not spawn Ph5. Re-run the missing Ph4a or Ph4b session.
+
+---
+
+## Reference
+
+- `docs/brain/COPIER-SESSION-LOOP.md` — Rule 1: One Agent Per Ticket
+- `docs/protocol/PTT_PIPELINE_LANE_SPLIT_PROTOCOL.md` — lane-split gate
+- `.bob/custom_modes.yaml` ptt-orchestrator — enforces this rule in Ph4 loop

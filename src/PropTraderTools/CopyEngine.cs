@@ -1315,6 +1315,9 @@ namespace PropTraderTools
             // DW-B79-06: evict stale BE retry slot when follower position closes via any path.
             TryEvictFollowerBeSlot(e);
 
+            // B135 DW-B134-OCO: sweep orphaned PTT-drag orders when follower position goes flat.
+            TrySweptPttDragOrphans(e);
+
             // DW-B79-08: PTT-BE bracket wipe recovery.
             // Root cause confirmed 2026-08-19: when leader re-enters after QX->BE-ALL, NT8's
             // StartAtmStrategy sweep cancels ALL follower working orders -- including PTT-BE-* brackets.
@@ -1554,6 +1557,63 @@ namespace PropTraderTools
                 );
             }
         }
+
+        // B135 DW-B134-OCO: sweep orphaned PTT-drag orders when follower position goes flat.
+        // PTT-TGT-Drag and PTT-STP-Drag are standalone (oco="") -- not in any NT8 ATM OCO group.
+        // When ATM fills naturally, NT8 only cancels OCO-linked (green) orders; PTT-drag orders survive.
+        // Fire on Filled + follower + flat -- same pattern as TryEvictFollowerBeSlot (L1538).
+        // CYC=5: base(1) + o null guard(1) + Filled guard(1) + follower guard(1) + flat guard(1) = 5.
+        // JS-021: no lock. JS-001: no throw. JS-002: void. ASCII-only.
+        private void TrySweptPttDragOrphans(OrderEventArgs e)
+        {
+            var o = e?.Order;
+            if (o == null)                                                    // (1)
+                return;
+            if (o.OrderState != OrderState.Filled)                           // (2)
+                return;
+            if (!IsFollowerAccount(o.Account))                               // (3)
+                return;
+            if (!IsFlat(FindPosition(o.Account, o.Instrument)))              // (4)
+                return;
+            CancelPttDragOrphansForAccount(o.Account, o.Instrument);
+        }
+
+        // B135 DW-B134-OCO: test seam -- delegates to TrySweptPttDragOrphans for xUnit test access.
+        internal void TrySweptPttDragOrphansTestable(OrderEventArgs e)
+            => TrySweptPttDragOrphans(e);
+
+        // B135 DW-B134-OCO: cancel all Working PTT-TGT-Drag and PTT-STP-Drag orders for this account+instrument.
+        // Called ONLY when position is confirmed flat (TrySweptPttDragOrphans gate).
+        // acc.Orders.ToList() is safe in OnOrderUpdate callback thread (existing pattern: L2322).
+        // try/catch: absorbs ErrorCode.UnableToCancelOrder (existing pattern: SyncAtmFollowerBracket L2259-2266).
+        // CYC=5: base(1) + foreach(1) + state guard(1) + instr guard(1) + name guard(1) = 5.
+        // JS-021: no lock. JS-001: try/catch -- no throw in hot path. JS-002: void. ASCII-only.
+        // NT8-014: "PTT-TGT-Drag" confirmed L2362, "PTT-STP-Drag" confirmed L2281. acc.Cancel confirmed AddOnBase.
+        private void CancelPttDragOrphansForAccount(Account acc, Instrument instr)
+        {
+            foreach (var o in acc.Orders.ToList())                           // (1)
+            {
+                if (o.OrderState != OrderState.Working)                      // (2)
+                    continue;
+                if (o.Instrument?.FullName != instr?.FullName)               // (3)
+                    continue;
+                if (o.Name != "PTT-TGT-Drag" && o.Name != "PTT-STP-Drag")  // (4)
+                    continue;
+                try
+                {
+                    acc.Cancel(new Order[] { o });
+                    StatusUpdate?.Invoke(acc.Name + ": PTT drag sweep: cancelled " + o.Name);
+                }
+                catch (Exception ex)
+                {
+                    StatusUpdate?.Invoke(acc.Name + ": PTT drag sweep cancel error: " + ex.Message);
+                }
+            }
+        }
+
+        // B135 DW-B134-OCO: test seam -- delegates to CancelPttDragOrphansForAccount for xUnit test access.
+        internal void CancelPttDragOrphansForAccountTestable(Account acc, Instrument instr)
+            => CancelPttDragOrphansForAccount(acc, instr);
 
         // QueueBeRetryFallback: CYC=1. Configurable-delay DispatcherTimer fallback for the event-driven BE retry.
         // DW-B79-06/07: fires MoveStopToBreakEven(isRetry:true) if TryFireFollowerBeRetry missed
@@ -2504,12 +2564,13 @@ namespace PropTraderTools
         }
 
         // B131 DW-B138: predicate encapsulating signal-first / name-fallback match logic.
+        // B133 DW-B142: null-guard added to branch (1) -- prevents null==null false-positive (ATM drag cancel-all bug).
         // CYC=3: (1) signal equality check, (2) leaderName null guard, (3) name equality check.
         // JS-021: no lock (static, no shared state). JS-001: no throw. JS-002: returns bool (no null).
         // ASCII-only. DateTime.UtcNow not used (no time logic).
         internal static bool SignalOrNameMatches(Order order, string? signalName, string? leaderName)
         {
-            if (order.FromEntrySignal == signalName) // (1) primary: signal equality (covers null==null)
+            if (signalName != null && order.FromEntrySignal == signalName) // (1) primary: signal equality (null-guarded)
                 return true;
             if (leaderName == null) // (2) no fallback available
                 return false;
@@ -2521,20 +2582,37 @@ namespace PropTraderTools
         // V03: return type is Order? (nullable) -- null contract explicit (JS-002 compliant).
         // V01: matching by FromEntrySignal name -- not leg-type scan.
         // JS-021: no lock. JS-001: no throw. JS-002: Order? makes null contract explicit.
+        // DW-B143: state filter extended to include OrderState.Accepted (was Working-only).
+        // DW-B144: state filter extended to include OrderState.Submitted (B134 fix).
+        // Accepted orders are broker-confirmed but not yet exchange-Working -- cancel is safe.
+        // Submitted orders are live (non-terminal) -- cancel absorbs ErrorCode.UnableToCancelOrder.
         private Order? FindFollowerBracketOrder(
             Account follower,
             string? fromEntrySignalName,
             bool isStop,
             string? leaderName = null
+        ) => FindFollowerBracketOrder(follower.Orders.ToList(), fromEntrySignalName, isStop, leaderName);
+
+        // CYC=7 (post-B136). AT LIMIT RESOLVED; headroom = 1.
+        // foreach(1) + OrderPassesBracketGate guard(1) + state filter(3) + isStop(1) + type match(1) = 7.
+        // DW-B143: Accepted added. DW-B144: Submitted added. DW-B145: leaderName exact guard. DW-B146: MatchesLeaderName helper. DW-B148: OrderPassesBracketGate fused guard (B136).
+        // JS-021: no lock. JS-001: no throw. JS-002: Order? null contract unchanged.
+        private Order? FindFollowerBracketOrder(
+            IEnumerable<Order> orders,
+            string? fromEntrySignalName,
+            bool isStop,
+            string? leaderName = null
         )
         {
-            foreach (var order in follower.Orders.ToList()) // (1) branch
+            foreach (var order in orders) // (1) branch
             {
-                if (!SignalOrNameMatches(order, fromEntrySignalName, leaderName)) // (1) branch
+                if (!OrderPassesBracketGate(order, fromEntrySignalName, leaderName, isStop)) // (1) branch -- B136 DW-B148: fused guard (ATM path routes to MatchesLeaderName)
                     continue;
-                if (order.OrderState != OrderState.Working) // (1) branch
+                if (order.OrderState != OrderState.Working // (3) branches -- B134 DW-B144: Submitted added
+                    && order.OrderState != OrderState.Accepted
+                    && order.OrderState != OrderState.Submitted)
                     continue;
-                if (isStop)
+                if (isStop) // (1) branch
                 {
                     if (
                         order.OrderType == OrderType.StopMarket
@@ -2556,12 +2634,76 @@ namespace PropTraderTools
         internal static bool SignalOrNameMatchesTestable(Order order, string? signalName, string? leaderName)
             => SignalOrNameMatches(order, signalName, leaderName);
 
+        // B135 DW-B146: PTT-prefix fallback -- after first drag, original ATM bracket is Cancelled;
+        // replacement is "PTT-TGT-Drag" (target) or "PTT-STP-Drag" (stop).
+        // FindFollowerBracketOrder must recognise these as the incumbent bracket on repeated drags.
+        // CYC=5: base(1) + leaderName null(1) + name==(1) + !isStop&&TGT(1) + isStop&&STP(1) = 5.
+        // JS-021: no lock (static, no shared state). JS-001: no throw. JS-002: returns bool.
+        // ASCII-only. "PTT-TGT-Drag" and "PTT-STP-Drag" are ASCII.
+        private static bool MatchesLeaderName(Order order, string? leaderName, bool isStop)
+        {
+            if (leaderName == null)                                           // (1) no constraint -- pass through
+                return true;
+            if (order.Name == leaderName)                                     // (2) exact ATM name match
+                return true;
+            if (!isStop && order.Name == "PTT-TGT-Drag")                     // (3) replacement target match
+                return true;
+            if (isStop && order.Name == "PTT-STP-Drag")                      // (4) replacement stop match
+                return true;
+            return false;
+        }
+
+        // B135 DW-B146: test seam -- delegates to MatchesLeaderName for xUnit test access.
+        // InternalsVisibleTo("PropTraderTools.Tests") granted at L46.
+        internal static bool MatchesLeaderNameTestable(Order order, string? leaderName, bool isStop)
+            => MatchesLeaderName(order, leaderName, isStop);
+
+        // B136 DW-B148: fused bracket-gate predicate -- replaces the sequential SignalOrNameMatches +
+        // MatchesLeaderName guard pair in FindFollowerBracketOrder.
+        // Signal path (signalName != null): exclusive signal-match only. Preserves original signal
+        //   exclusivity -- orders from a different entry signal are rejected even if name matches.
+        // ATM path (signalName == null): delegates to MatchesLeaderName, which passes exact ATM name
+        //   (e.g. "Target3") AND PTT-prefix replacements ("PTT-TGT-Drag", "PTT-STP-Drag").
+        //   This is the fix: PTT-TGT-Drag now reaches MatchesLeaderName and returns true.
+        // CYC=2: base(1) + if(signalName != null)(1) = 2. Well within <= 8.
+        // JS-021: no lock (static, no shared state). JS-001: no throw. JS-002: returns bool.
+        // ASCII-only. No DateTime. No FontFamily. No hex color literals.
+        private static bool OrderPassesBracketGate(
+            Order order,
+            string? signalName,
+            string? leaderName,
+            bool isStop)
+        {
+            if (signalName != null)                                    // (1) signal path: exact match only
+                return order.FromEntrySignal == signalName;
+            return MatchesLeaderName(order, leaderName, isStop);       // ATM path: exact name OR PTT-prefix
+        }
+
+        // B136 DW-B148: test seam -- delegates to OrderPassesBracketGate for xUnit test access.
+        // InternalsVisibleTo("PropTraderTools.Tests") granted at L46.
+        internal static bool OrderPassesBracketGateTestable(
+            Order order,
+            string? signalName,
+            string? leaderName,
+            bool isStop)
+            => OrderPassesBracketGate(order, signalName, leaderName, isStop);
+
         internal Order? FindFollowerBracketOrderTestable(
             Account follower,
             string? fromEntrySignalName,
             bool isStop,
             string? leaderName = null
         ) => FindFollowerBracketOrder(follower, fromEntrySignalName, isStop, leaderName);
+
+        // B133 LaneB DW-B143: list-injection test seam -- Account.Orders is sealed in NT8.
+        // Accepts IEnumerable<Order> directly so xUnit tests can inject stub order lists.
+        // InternalsVisibleTo("PropTraderTools.Tests") granted at top of file (L46).
+        internal Order? FindFollowerBracketOrderTestable(
+            IEnumerable<Order> orders,
+            string? fromEntrySignalName,
+            bool isStop,
+            string? leaderName = null
+        ) => FindFollowerBracketOrder(orders, fromEntrySignalName, isStop, leaderName);
 
         // B132 LaneA: test seams for DW-B141 helper methods.
         // InternalsVisibleTo("PropTraderTools.Tests") granted at L46.

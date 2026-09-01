@@ -1,8 +1,8 @@
 # PTT Copier Session Loop — Perpetual $continue Protocol
 
-**Version**: 2.1
+**Version**: 2.2
 **Created**: 2026-09-01
-**Updated**: 2026-08-31 (V2.1 — STEP 6 + STEP 7 merged into single Director hand-off packet)
+**Updated**: 2026-09-07 (V2.2 — PIPELINE EXECUTION RULES: 1-agent-per-ticket + lane-split gate)
 **Purpose**: Every copier-spec session begins with a $continue prompt.
 Each session validates pipeline output, runs SIM gates, updates the spec,
 and ALWAYS ends by delivering the pipeline prompts AND the next $continue prompt
@@ -156,6 +156,60 @@ All .cs changes go through the FULL 5-PHASE PTT PIPELINE:
   Ph5  ptt-plan-reviewer   -> 05-final-review.md + 06-deferred-backlog.md
 
 "add it" = add to spec HTML only. Never edit src code.
+
+---
+
+## PIPELINE EXECUTION RULES (V2.2 — MANDATORY)
+
+### Rule 1: One Agent Per Ticket (Ph4a + Ph4b) — NON-NEGOTIABLE
+
+Each Ph4a (engineer) ticket execution MUST be a separate independent agent session.
+Each Ph4b (verifier) ticket verification MUST be a separate independent agent session.
+
+BANNED: One ptt-engineer session reading ticket-1 AND ticket-2 and implementing both.
+BANNED: One ptt-verifier session verifying ticket-1 AND ticket-2 in sequence.
+
+CORRECT:
+  Ticket 1: start_subtask(ptt-engineer) [reads ONLY ticket 1] -> PASS
+            start_subtask(ptt-verifier) [verifies ONLY ticket 1] -> PASS
+  Ticket 2: start_subtask(ptt-engineer) [reads ONLY ticket 2] -> PASS
+            start_subtask(ptt-verifier) [verifies ONLY ticket 2] -> PASS
+
+Why: Mixed-ticket sessions share context, causing cross-contamination of scope,
+incomplete scans, and verification gaps that compound silently across blocks.
+Each agent must have a clean isolated context for exactly one ticket.
+
+Full protocol: docs/protocol/PHASE5_EXECUTION_PROTOCOL.md
+
+### Rule 2: Lane-Split Decision Gate — Answer ALL 4 before splitting
+
+Before deciding to split a fix into two pipeline lanes (LaneA + LaneB),
+answer ALL four questions. Lanes require Q3 AND Q4 to be YES. Any NO = single pipeline.
+
+  Q1. Do all fixes touch the same method OR within 50 lines of each other?
+      YES -> single pipeline. STOP. (co-located changes must be reviewed together)
+
+  Q2. Does the architect need to know Fix A's final design to correctly design Fix B?
+      YES -> single pipeline. STOP. (design dependency means sequential, not parallel)
+
+  Q3. If one fix is blocked at review, does the other still have standalone value?
+      NO  -> single pipeline. STOP. (neither fix delivers value alone)
+
+  Q4. Do all fixes need to be present together for the SIM gate to be meaningful?
+      YES -> single pipeline. STOP. (SIM requires both — run them together)
+
+  DEFAULT: single pipeline.
+  LANES: require affirmative answers on Q3 AND Q4 with NO to Q1 AND Q2.
+
+Retrospective calibration (empirical from B129-B133):
+  B129: Lanes CORRECT  — different methods, different call trees, independent SIM paths
+  B130: Lanes CORRECT  — LaneB was diagnostic only (zero .cs logic change)
+  B131: Should have been single pipeline — same method, neither fix useful alone
+  B132: Lanes CORRECT  — LaneB diagnostic/read-only, zero .cs change
+  B133: Should have been single pipeline — both edits in FindFollowerBracketOrder,
+        36 lines apart, CYC must be assessed together, both required before SIM
+
+Full protocol: docs/protocol/PTT_PIPELINE_LANE_SPLIT_PROTOCOL.md
 
 ---
 

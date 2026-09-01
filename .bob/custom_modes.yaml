@@ -8046,14 +8046,26 @@ customModes:
       PHASE 1 - ARCHITECT start_subtask(mode="ptt-architect")
         Read: spec file, RULES_CATALOG.md, prevBacklog (if exists -- READ ONLY)
         Write: docs/brain/{epic}/02-architecture-plan.md
+        MANDATORY: architect MUST run LANE-SPLIT GATE before structuring the plan.
+          Q1. Same method or within 50 lines? YES -> single pipeline. STOP.
+          Q2. Fix B design depends on Fix A final design? YES -> single pipeline. STOP.
+          Q3. Each fix has standalone value if the other is blocked? NO -> single pipeline. STOP.
+          Q4. Each fix has an independent SIM verification path? NO -> single pipeline. STOP.
+          Default: single pipeline. LANES require NO on Q1+Q2 AND YES on Q3+Q4.
+          Gate result MUST appear in plan: "LANE-SPLIT GATE RESULT: [SINGLE-PIPELINE|LANES-APPROVED]"
+        Full protocol: docs/protocol/PTT_PIPELINE_LANE_SPLIT_PROTOCOL.md
         Return: PLAN_COMPLETE | PLAN_FAILED
 
       PHASE 2 - PLAN REVIEWER start_subtask(mode="ptt-plan-reviewer")
         Read: 02-architecture-plan.md, spec, RULES_CATALOG.md
         Write: docs/brain/{epic}/02-plan-review.md
+        MANDATORY: reviewer MUST check LANE-SPLIT GATE compliance:
+          REVIEW_FAIL if plan uses lanes but LANE-SPLIT GATE RESULT is missing.
+          REVIEW_FAIL if plan uses lanes but Q1 or Q2 was YES (gate violation).
+          REVIEW_FAIL if plan uses lanes but Q3 or Q4 was NO (gate violation).
+          REVIEW_FAIL if plan is single-pipeline but no gate result is stated.
         Return: REVIEW_PASS | REVIEW_FAIL (exact rule citation per violation)
-      Gate: on REVIEW_FAIL re-spawn ptt-architect with violations (max 2
-      cycles).
+      Gate: on REVIEW_FAIL re-spawn ptt-architect with violations (max 2 cycles).
 
       PHASE 3 - TICKET GENERATION start_subtask(mode="ptt-architect")
         Read: 02-architecture-plan.md (REVIEW_PASS confirmed), spec, RULES_CATALOG.md
@@ -8072,23 +8084,51 @@ customModes:
       violations
             (max 2 cycles). After 2 failures: stop, escalate to Director.
 
-      PHASE 4 - ENGINEER + VERIFIER LOOP (per ticket) For each ticket:
+      PHASE 4 - ENGINEER + VERIFIER LOOP
+      ══════════════════════════════════════════════════════════════════
+      ONE AGENT PER TICKET — NON-NEGOTIABLE (V2.2 mandate)
+      Each ticket gets its own isolated start_subtask. NEVER combine tickets.
+      BANNED: one ptt-engineer session implementing ticket-1 AND ticket-2.
+      BANNED: one ptt-verifier session verifying ticket-1 AND ticket-2.
+      Full protocol: docs/protocol/PHASE5_EXECUTION_PROTOCOL.md
+      ══════════════════════════════════════════════════════════════════
+
+      Execution order: Ticket 1 fully complete (4a PASS + 4b PASS) before Ticket 2 starts.
+      Tickets are SEQUENTIAL (they share one .cs file — no parallel execution).
+
+      For each ticket N (1..total), in order:
+
         4a. start_subtask(mode="ptt-engineer")
-            Read: 04-tickets.md (ticket N), 04-ticket-review.md, 02-architecture-plan.md,
-                  RULES_CATALOG.md
+            Message MUST begin verbatim:
+              "SCOPE LOCK — TICKET [N] ONLY.
+               Do NOT read, reference, or implement any other ticket in this session."
+            Read: 04-tickets.md (ticket N section ONLY), 04-ticket-review.md,
+                  02-architecture-plan.md, RULES_CATALOG.md
             Write: src/PropTraderTools/[File].cs (Wave workspace)
                    docs/brain/{epic}/ticket-N-completion.md
             Return: BUILD_PASS | BUILD_FAIL
-        Gate: on BUILD_FAIL re-spawn engineer with error (max 2 retries).
+        Gate: on BUILD_FAIL re-spawn engineer for ticket N only (max 2 retries).
+              Each retry = fresh independent session with same scope lock.
+
         4b. start_subtask(mode="ptt-verifier")
+            Message MUST begin verbatim:
+              "SCOPE LOCK — VERIFY TICKET [N] ONLY.
+               Do NOT read completion files for any other ticket in this session."
             Read: src/PropTraderTools/[File].cs (Wave workspace - READ ONLY)
-                  02-architecture-plan.md, 04-tickets.md (ticket N only),
+                  02-architecture-plan.md, 04-tickets.md (ticket N ONLY),
                   ticket-N-completion.md, spec, RULES_CATALOG.md
             Write: docs/brain/{epic}/ticket-N-verification.md
             Check: implementation satisfies ticket AND plan AND spec requirement.
             Return: VERIFY_PASS | VERIFY_FAIL
         Gate: on VERIFY_FAIL re-spawn engineer with verification report (max 3 cycles).
-        After 3 VERIFY_FAIL: stop, escalate to Director.
+              Each retry = fresh independent session with same scope lock.
+        After 3 VERIFY_FAIL: STOP. Escalate to Director.
+
+      GATE before Ph5: orchestrator MUST confirm ALL of the following before spawning Ph5:
+        [ ] ticket-N-completion.md exists for every ticket N
+        [ ] ticket-N-verification.md exists and contains VERIFY_PASS for every ticket N
+        [ ] Each completion artifact references only its own ticket scope
+        If any missing: re-run the missing 4a or 4b session. Do NOT proceed to Ph5.
 
       PHASE 5 - FINAL REVIEW start_subtask(mode="ptt-plan-reviewer")
         Read: 02-architecture-plan.md, 04-ticket-review.md, all completions,
