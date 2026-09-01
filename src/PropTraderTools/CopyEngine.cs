@@ -2384,28 +2384,38 @@ namespace PropTraderTools
             }
         }
 
-        // CYC=6-7. Block A-Prime pre-sweep for SyncAtmFollowerBracket (T4 extraction -- B137 DW-B151).
-        // Cancels any Working or Accepted PTT-STP-Drag for the same instrument on the follower account.
-        // Prevents accumulation of Working PTT-STP-Drag orders on repeated stop drag events.
-        // Mirrors SyncAtmFollowerTarget A-Prime pattern (L2416-2435 post-B137); adds Accepted filter.
-        // OrderState filter: Submitted || Working || Accepted. DW-B152 (B138-direct): Submitted added because
-        // NT8 may not promote PTT-STP-Drag from Submitted->Accepted before the next stop-leg event fires,
-        // causing 2x PTT-STP-Drag accumulation. PTT-STP-Drag is an AddOn-created order (safe to cancel
-        // in Submitted state -- same as other AddOn cancel+resubmit patterns throughout this file).
-        // McCabe: base(1) + foreach(1) + if(1) + ||(1) + ||(1) + &&Name(1) + &&Instrument(1) + ?.(1) = CYC 7-8 (<= 8).
-        // JS-001: try/catch -- no rethrow. JS-021: no lock. JS-002: void return.
-        // acc.Orders.ToList(): thread-safe snapshot. acc.Cancel(new Order[] { o }): AddOnBase pattern.
-        // ASCII-only. No DateTime. No FontFamily.
+        // CYC=5: base(1) + ||(1) + ||(1) + ||(1) + ||(1) = 5.
+        // Pure state predicate -- no side effects. Static.
+        // Returns true for all non-terminal states where a PTT-STP-Drag may still be cancelled.
+        // Submitted: order en-route to broker. Working: live in exchange. Accepted: acked by broker.
+        // CancelPending: cancel dispatched by NT8, not yet acked by broker.
+        // CancelSubmitted: cancel acked by broker, not yet confirmed by exchange.
+        // B139: DW-B152-B fix -- closes cancel-in-flight race (CancelPending/CancelSubmitted gap).
+        // JS-002: bool return, no null. ASCII-only. No DateTime. No lock.
+        private static bool IsPttStpDragCancellable(Order o) =>
+            o.OrderState == OrderState.Submitted
+            || o.OrderState == OrderState.Working
+            || o.OrderState == OrderState.Accepted
+            || o.OrderState == OrderState.CancelPending
+            || o.OrderState == OrderState.CancelSubmitted;
+
+        // CYC=1: pure delegation to IsPttStpDragCancellable.
+        // Test seam for xUnit access. InternalsVisibleTo("PropTraderTools.Tests") granted at L46.
+        internal static bool IsPttStpDragCancellableTestable(Order o) =>
+            IsPttStpDragCancellable(o);
+
+        // CYC=6: base(1) + foreach(1) + if(1) + &&Name(1) + &&Instrument(1) + ?.(1) = 6.
+        // B139: DW-B152-B fix -- IsPttStpDragCancellable extracted to include CancelPending||CancelSubmitted.
+        // OrderState filter now covers: Submitted||Working||Accepted||CancelPending||CancelSubmitted.
+        // acc.Cancel() on CancelPending/CancelSubmitted is idempotent; rejection absorbed by try/catch.
+        // JS-021: no lock. JS-001: try/catch -- no rethrow. JS-002: void return.
+        // acc.Orders.ToList(): thread-safe snapshot. ASCII-only. No DateTime.
         private void CancelExistingPttStpDrag(Account acc, Order fo)
         {
             foreach (var o in acc.Orders.ToList())
             {
                 if (
-                    (
-                        o.OrderState == OrderState.Submitted
-                        || o.OrderState == OrderState.Working
-                        || o.OrderState == OrderState.Accepted
-                    )
+                    IsPttStpDragCancellable(o)
                     && o.Name == "PTT-STP-Drag"
                     && o.Instrument?.FullName == fo.Instrument?.FullName
                 )
