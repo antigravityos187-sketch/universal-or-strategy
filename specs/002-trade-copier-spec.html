@@ -39095,10 +39095,10 @@ Leader cancels order2
 
     <!-- ══ SAFETY ASSESSMENT: Live + Manual Trading with current copier state ═════════════════ -->
     <div class="section" id="section-safety-2026-08-31" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(34,197,94,0.10); border-left:3px solid var(--green); color:var(--green);">Safety Assessment &mdash; B136 PIPELINE_COMPLETE + SIM PASS (2026-09-07) &mdash; DW-B148/DW-B146 P1 PRODUCTION CONFIRMED &bull; DW-B141 Phase C CONFIRMED &bull; DW-B134-OCO T2 flatten path CONFIRMED &bull; ATM bracket drag: FULLY SAFE (multiple drags) &bull; Live trading: SAFE with or without copier</div>
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">Safety Assessment &mdash; B137 SIM PARTIAL (2026-09-08) &mdash; Target drag: FULLY SAFE (all multiple drags confirmed) &bull; Stop drag: CONDITIONAL &mdash; DW-B152 direct-repair deployed (B138 SIM gate pending) &bull; Live trading: SAFE without copier; CONDITIONAL with copier + stop drag</div>
       <div class="section-body">
         <div class="card" style="border-left:3px solid var(--green); background:rgba(34,197,94,0.04);">
-          <div class="card-title" style="color:var(--green);">&#10003; Safety Assessment &mdash; Read Before Trading Live &mdash; B136 SIM PASS (2026-09-07) &mdash; DW-B148/DW-B146 PRODUCTION CONFIRMED &mdash; ATM bracket drag: FULLY SAFE for multiple drags with Copier ON</div>
+          <div class="card-title" style="color:var(--amber);">&#9888; Safety Assessment &mdash; Read Before Trading Live &mdash; B137 SIM PARTIAL (2026-09-08) &mdash; Target drag: FULLY SAFE &bull; Stop drag: CONDITIONAL (DW-B152 fix deployed, B138 SIM pending) &bull; Use with copier ON: target drag safe, stop drag: avoid until B138 SIM PASS</div>
           <div class="card-body">
 
             <div class="label">&#10003; SAFE &mdash; Manual trading on multiple accounts WITHOUT copier</div>
@@ -40779,6 +40779,119 @@ if (order.OrderState != OrderState.Working &amp;&amp; order.OrderState != OrderS
 
 
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- B137: PIPELINE_COMPLETE — DW-B147/B149/B150/B151 CLOSED — SIM PARTIAL             -->
+    <!-- DW-B152 NEW: CancelExistingPttStpDrag Submitted-state gap (2× PTT-STP-Drag)       -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-b137" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">B137 &mdash; PIPELINE_COMPLETE + SIM PARTIAL (2026-09-08) &mdash; DW-B147/B149/B150/B151 CLOSED (pipeline) &mdash; Test A (T3 drags): PASS &bull; Test B (stop drag): PARTIAL &mdash; DW-B152 P1 NEW (2&times; PTT-STP-Drag: Submitted-state gap) &mdash; DW-B152 direct-repair applied (no pipeline)</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--amber); background:rgba(245,158,11,0.04);">
+          <div class="card-title" style="color:var(--amber);">&#9888; B137 PIPELINE_COMPLETE + SIM PARTIAL (2026-09-08) &mdash; 4-ticket pipeline green &mdash; Test A PASS (T3 all drags fo=PTT-TGT-Drag &#10003;) &mdash; Test B PARTIAL (2&times; PTT-STP-Drag per follower &mdash; DW-B152) &mdash; DW-B152 direct-repair deployed (B138 SIM gate required)</div>
+          <div class="card-body">
+
+            <div style="font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:700;letter-spacing:0.1em;margin-bottom:10px;">PIPELINE_COMPLETE + SIM PARTIAL: B137 &mdash; T1&ndash;T4 &mdash; 2026-09-08</div>
+
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Block</td><td style="padding:3px 0; color:#e2e8f0;">B137 &mdash; Four-Ticket Pipeline (LANES-APPROVED)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Ticket 1</td><td style="padding:3px 0; color:var(--green);">&#10003; ExecutePhaseCStopReplacement extracted from SyncAtmFollowerTarget (CYC headroom, zero behavior change) &mdash; VERIFY_PASS</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Ticket 2</td><td style="padding:3px 0; color:var(--green);">&#10003; DW-B147 + DW-B149: IsNoPriceChange guard in SyncAtmFollowerTarget (L2449) + SyncAtmFollowerBracket (L2341) &mdash; VERIFY_PASS</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Ticket 3</td><td style="padding:3px 0; color:var(--green);">&#10003; DW-B150: OrderPassesBracketGate condition changed null&rarr;IsNullOrEmpty (L2812) &mdash; fo&#x2260;NULL for Sim103/Sim104 first stop drag &mdash; VERIFY_PASS</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Ticket 4</td><td style="padding:3px 0; color:var(--green);">&#10003; DW-B151: CancelExistingPttStpDrag (L2396-2416, CYC=6-7) + call in SyncAtmFollowerBracket L2344 &mdash; VERIFY_PASS</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Tests (B137)</td><td style="padding:3px 0; color:var(--green);">16/16 PASS (3 skipped &mdash; NT8 runtime documented). tests/PropTraderTools.Tests/CopyEngineB137Tests.cs. 0 regressions vs prior B129&ndash;B136 suite.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Build</td><td style="padding:3px 0; color:var(--green);">0 errors, 0 warnings (ptt-plan-reviewer Final Review 2026-09-08)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Final Review</td><td style="padding:3px 0; color:var(--green);">FINAL_PASS (2026-09-08) &mdash; All A&ndash;G checks PASS &mdash; 7/7 scans clean</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Deferred carry</td><td style="padding:3px 0; color:#e2e8f0;">B135-DEFER-01 (Gap B runtime &mdash; P1), B135-DEFER-02 (stale orders &mdash; P2), DW-B134-OCO OBS-A/B/C/D (partial-fill races &mdash; P1)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">SIM gate</td><td style="padding:3px 0; color:var(--amber);">&#9888; PARTIAL (2026-09-08) &mdash; See SIM result table below. Test A PASS &#10003;. Test B PARTIAL (DW-B152 &mdash; 2&times; PTT-STP-Drag). Test C (followers stayed open after leader close &mdash; consequence of DW-B152). DW-B152 direct-repair deployed. B138 SIM required.</td></tr>
+            </table>
+
+            <div class="label">SIM Test Results (2026-09-08)</div>
+            <table style="font-size:0.78rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr style="background:rgba(0,0,0,0.2);">
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left;">Test</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left;">Action</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left;">fo=</th>
+                <th style="padding:4px 8px; border:1px solid var(--border); text-align:left;">Verdict</th>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">A-1</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">1st drag Target3 (7644.5&rarr;7646)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">Target3</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS &mdash; fo&#x2260;NULL all 3 followers (incl. Sim103/Sim104 DW-B150 confirmed). PTT-TGT-Drag placed &#10003;.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">A-2</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">2nd drag Target3 (7646&rarr;7647)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">PTT-TGT-Drag</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS &mdash; all 3 followers. Sync committed. fo=NULL on Working-transition noise (DW-B149 expected).</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">A-3</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">3rd drag Target3 (7647&rarr;7648.25)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">PTT-TGT-Drag</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; PASS &mdash; all 3 followers &#10003;.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">A-ARM</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">ARM events at entry fill (rawPrice=newPrice)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Stop1&ndash;3 / Target1&ndash;3</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; IsNoPriceChange guard exits early &mdash; no cancel+resubmit fired. DW-B147/B149 confirmed.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B-1<br>(stop drag 1)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">1st stop drag (7632.5&rarr;7634) &mdash; Stop1 event</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">Stop1</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; fo&#x2260;NULL all 3 followers (DW-B150 &#10003;). PTT-STP-Drag #1 placed. T1/T2 OCO-cancelled (Phase C &mdash; expected).</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B-1<br>(stop drag 1)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">1st stop drag &mdash; Stop2/Stop3 events fire before PTT-STP-Drag #1 reaches Accepted</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">PTT-STP-Drag&nbsp;(Submitted)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red);">&#10007; DW-B152 &mdash; CancelExistingPttStpDrag filter Working&#x7C;&#x7C;Accepted misses Submitted state. PTT-STP-Drag #2 placed. Result: 2&times; PTT-STP-Drag:Accepted per follower after stop drag.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">B-2<br>(stop drag 2)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">2nd stop drag (7634&rarr;7639)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">PTT-STP-Drag</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9888; fo=PTT-STP-Drag (first found). First order updated to 7639 &#10003;. Second PTT-STP-Drag (from DW-B152) remains at 7634 &mdash; stale. Followers have one correct stop + one stale stop.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">C</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Leader manually closed by Director. Followers stayed open.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">&mdash;</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">&#9888; Consequence of DW-B152. Followers had 2&times; PTT-STP-Drag; one filled (stop hit), one remained Working &mdash; follower position partially open. Director manually closed. DW-B152 fix expected to resolve. No independent defect identified.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border);">Phase C</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">T1/T2 disappear on stop drag (ATM OCO cascade)</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">&mdash;</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">&#10003; EXPECTED &mdash; Stop1 cancel fires NT8 OCO-cancel of T1/T2 (ATM bracket group). Confirmed B135/B136 SIM. Not a defect.</td>
+              </tr>
+            </table>
+
+            <div class="label" style="margin-top:0.5rem;">DW-B152 &mdash; P1 NEW &mdash; Direct Repair Deployed (B138 SIM gate)</div>
+            <p style="font-size:0.82rem; color:var(--muted); margin:0.25rem 0 0.5rem 0;"><strong>Root cause</strong>: When Stop1 fires and <code>CancelExistingPttStpDrag</code> places PTT-STP-Drag #1, NT8 promotes that order <code>Submitted&rarr;Accepted</code> asynchronously. Stop2 fires before this promotion completes. <code>CancelExistingPttStpDrag</code> filter was <code>Working&#x7C;&#x7C;Accepted</code> only &mdash; PTT-STP-Drag #1 in <code>Submitted</code> state is NOT cancelled. Stop2 places PTT-STP-Drag #2. Result: 2&times; PTT-STP-Drag per follower. <strong>Fix</strong>: Extend filter to <code>Submitted&#x7C;&#x7C;Working&#x7C;&#x7C;Accepted</code> at <code>CopyEngine.cs L2400</code>. PTT-STP-Drag is an AddOn-created order &mdash; safe to cancel in Submitted state (same pattern used throughout codebase). CYC: 6-7&rarr;7-8 (&le;8). Direct repair applied without pipeline (1-line change, build 0E/0W, B137 tests 16/16 PASS, sync 0 MISMATCH 2026-09-08).</p>
+
+            <div class="label">Source Locations</div>
+            <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0 1.2rem; padding:0; line-height:1.85;">
+              <li><code>CopyEngine.cs</code> &mdash; <strong>ExecutePhaseCStopReplacement</strong> NEW L2617-2622 (CYC=2) &mdash; extracted from SyncAtmFollowerTarget (T1)</li>
+              <li><code>CopyEngine.cs</code> &mdash; <strong>IsNoPriceChange</strong> NEW L2783-2784 (CYC=1) + guards at L2341 + L2449 (T2)</li>
+              <li><code>CopyEngine.cs</code> &mdash; <strong>OrderPassesBracketGate</strong> L2812: <code>!string.IsNullOrEmpty(signalName)</code> (T3)</li>
+              <li><code>CopyEngine.cs</code> &mdash; <strong>CancelExistingPttStpDrag</strong> L2396-2416 (T4) + call at L2344 &mdash; filter extended to Submitted&#x7C;&#x7C;Working&#x7C;&#x7C;Accepted (DW-B152 direct repair)</li>
+              <li><code>tests/PropTraderTools.Tests/CopyEngineB137Tests.cs</code> &mdash; 9 [Fact] (6 active, 3 skipped &mdash; NT8 runtime)</li>
+            </ul>
+
+            <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--amber);">&#9888; B137 PIPELINE_COMPLETE + SIM PARTIAL (2026-09-08). Pipeline: 4/4 tickets VERIFY_PASS &mdash; FINAL_PASS. SIM: Test A PASS (T3 drag1/2/3 fo=PTT-TGT-Drag &#10003; all 3 followers &bull; DW-B147/B149 ARM suppression confirmed &bull; DW-B150 Sim103/Sim104 fo&#x2260;NULL &#10003;). Test B PARTIAL (stop drag fo=Stop1 first event &#10003;; but Stop2/Stop3 events fire before PTT-STP-Drag promoted from Submitted&rarr;Accepted &rarr; 2&times; PTT-STP-Drag per follower &mdash; DW-B152 P1 NEW). Test C (followers stayed open &mdash; consequence of 2&times; PTT-STP-Drag &mdash; not independent defect). Phase C (T1/T2 OCO-cancel on stop drag) confirmed expected &#10003;. DW-B152 direct repair applied: CancelExistingPttStpDrag filter extended to Submitted&#x7C;&#x7C;Working&#x7C;&#x7C;Accepted (L2400, 1-line, 0E/0W, 16/16 B137 tests PASS, sync 0 MISMATCH). B138 SIM gate required to confirm DW-B152 fix.</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-b137 -->
+
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <!-- PERPETUAL LOOP PROTOCOL: $continue session structure                               -->
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-continue-loop" style="margin-top:40px;">
@@ -40855,9 +40968,9 @@ if (order.OrderState != OrderState.Working &amp;&amp; order.OrderState != OrderS
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">B131 code pipelines: DW-B138 CLOSED (code), DW-B139 CLOSED (code). B131 SIM 2026-08-31: FAIL. DW-B138 runtime-fail (stop drag silent). DW-B141 P0 NEW (target drag destroys stops). B132 required.</td>
               </tr>
               <tr style="background:rgba(99,102,241,0.03);">
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--red); font-weight:700;">PHASE 2</td>
-                  <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">Residual fix (active) &mdash; CURRENT &mdash; B134 SIM PARTIAL &mdash; B135 pipeline required</td>
-                  <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">B134 SIM PARTIAL (2026-09-07): Test A PARTIAL (fo=Target3 &#10003;, DW-B146 on 2nd drag), Test B PASS (DW-B138 CLOSED, DW-B144 SIM confirmed), Test C DEFERRED. New: DW-B146 P1 OPEN (2nd drag fo=NULL &mdash; B135 Ticket 1), DW-B147 P2 OPEN (ARM events), DW-B134-OCO ARCHITECTURALLY CONFIRMED (blue/green split &mdash; B135 cleanup handler ticket). DW-B141 Phase C INCONCLUSIVE &mdash; re-queue B135 SIM. ATM bracket drag: FIRST DRAG ONLY SAFE. B135 pipeline required.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PHASE 2</td>
+                  <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">Residual fix (active) &mdash; CURRENT &mdash; B137 SIM PARTIAL &mdash; DW-B152 direct-repair deployed &mdash; B138 SIM gate required</td>
+                  <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">B137 SIM PARTIAL (2026-09-08): Test A PASS (T3 drag1/2/3 &#10003; all followers). Test B PARTIAL: DW-B152 P1 NEW &mdash; 2&times; PTT-STP-Drag on stop drag (Submitted filter gap). DW-B152 direct-repair applied (no pipeline: 1-line filter extend, 0E/0W, 16/16 B137 tests PASS, sync 0 MISMATCH). B138 SIM gate: verify single PTT-STP-Drag per follower on stop drag + stop drag2 tracks correctly + followers close with leader.</td>
               </tr>
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PHASE 3</td>
