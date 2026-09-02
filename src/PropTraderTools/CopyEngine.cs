@@ -2219,7 +2219,11 @@ namespace PropTraderTools
         {
             // NT8: Order.TrailPrice does not exist. Trailing stops are StopMarket orders;
             // downstream logic (TightenStop cancel+replace path) handles trail correctly.
-            return order.OrderType == OrderType.StopMarket;
+            // B142-DIRECT: PTT-STP-Drag is an AddOn-created StopMarket order -- NOT a trailing stop.
+            // Without this exclusion, branch (4) in SyncFollowerBracket silently skips ALL
+            // second+ stop drags (after first cancel+resubmit replaces Stop1/2/3 with PTT-STP-Drag).
+            return order.OrderType == OrderType.StopMarket
+                && (order.Name == null || !order.Name.StartsWith("PTT-", StringComparison.Ordinal));
         }
 
         // DW-B134: true if order name has STP suffix (NT8 ATM bracket stops: "Buy STP", "Sell STP").
@@ -2278,9 +2282,12 @@ namespace PropTraderTools
             // DW-B154: acc.Change() confirmed no-op on ATM Stop brackets from AddOnBase (B140 SIM Gate 1 FAIL).
             // IsTrailingStop fires on StopMarket orders; ATM STP brackets ARE StopMarket.
             // Without branch (3), IsTrailingStop would return early and skip stop sync.
-            if (isStop && IsAtmSTPOrder(fo)) // (3) DW-B134 + DW-B137
+            if (isStop && IsAtmSTPOrder(fo)) // (3) DW-B134 + DW-B137 + DW-B153
             {
-                SyncAtmFollowerBracket(acc, fo, newPrice); // cancel+resubmit (acc.Change is no-op on ATM brackets)
+                double? capturedTargetPrice = CaptureLinkedTargetPrice(acc, fo.Name); // B141: capture before cascade
+                SyncAtmFollowerBracket(acc, fo, newPrice);   // cascade kills linked target (accepted, by design)
+                if (capturedTargetPrice.HasValue)            // B141: +1 branch -> CYC 8 (at limit -- no further branching may be added)
+                    ResubmitTargetAfterCascade(acc, fo, capturedTargetPrice.Value, leaderOrder);
                 return;
             }
             if (!isStop && IsAtmSTPOrder(fo)) // (3b) DW-B137: ATM target cancel+resubmit
@@ -2384,6 +2391,118 @@ namespace PropTraderTools
                 StatusUpdate?.Invoke(acc.Name + ": STP create error: " + ex.Message);
             }
         }
+
+        // CYC=4: base(1)+if(1)+foreach(1)+if(1). No lock. No async. ASCII-only.
+        // B141: captures LimitPrice of the linked NT8 ATM target before Stop cancel+resubmit triggers OCO cascade.
+        // "Stop1"->"Target1", "Stop2"->"Target2", "Stop3"->"Target3" (NT8 ATM naming, SIM log 2026-09-01).
+        // Returns null if target not found (already cascade-cancelled) or suffix not 1/2/3.
+        // JS-002 note: double? is a nullable VALUE type -- this is NOT a reference null return.
+        private double? CaptureLinkedTargetPrice(Account acc, string stopName)
+        {
+            if (!TryParseStopSuffix(stopName, out string suffix)) // (1) if -- && NOT counted
+                return null;
+            string targetName = "Target" + suffix;
+            foreach (var o in acc.Orders.ToList())                // (2) foreach
+            {
+                if (IsTargetOrderLive(o) && o.Name == targetName) // (3) if -- && NOT counted
+                    return o.LimitPrice;
+            }
+            return null;
+        }
+
+        // CYC=3: base(1)+if(1)+if(1). Static. Pure predicate. No lock. No async.
+        // B141: extracts suffix from NT8 ATM stop name ("Stop1"->"1", "Stop2"->"2", "Stop3"->"3").
+        // Rejects null, length < 5, or suffix not in {1, 2, 3}.
+        // Uses int.TryParse to accept only valid numeric suffixes 1-3.
+        private static bool TryParseStopSuffix(string stopName, out string suffix)
+        {
+            suffix = null;
+            if (stopName == null || stopName.Length < 5) // (1) if -- || NOT counted
+                return false;
+            string raw = stopName.Substring(4);
+            if (!int.TryParse(raw, out int n) || n < 1 || n > 3) // (2) if -- || NOT counted
+                return false;
+            suffix = raw;
+            return true;
+        }
+
+        // CYC=1: base(1). Static. Pure state predicate. No lock. No async.
+        // B141: returns true if order is Working or Accepted -- both are live states.
+        // JS-002: bool return -- never null. || NOT counted per project convention.
+        private static bool IsTargetOrderLive(Order o) =>
+            o != null && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted);
+
+        // CYC=4: base(1)+foreach(1)+if(1)+if(1). No lock. No async. ASCII-only.
+        // B141: after OCO cascade cancels linked ATM target, resubmits a standalone PTT-TGT-Drag
+        // limit order at the captured price. Mirrors SyncAtmFollowerTarget Block A-Prime + Block B.
+        // Block A-Prime: sweep stale PTT-TGT-Drag (prevents accumulation on consecutive drags -- DW-B139).
+        // Block B: CreateOrder + Submit. oco="": PTT-TGT-Drag is NOT part of any ATM OCO group.
+        // stpOrder.OrderAction: ATM brackets use matching exit action on both Stop and Target legs --
+        //   e.g. LONG position: Stop=Sell, Target=Sell (both exit long). Use stpOrder.OrderAction directly.
+        //   Confirmed by SyncAtmFollowerTarget Block B using fo.OrderAction where fo IS the target.
+        //   Both stop and target legs of an ATM bracket share the same OrderAction direction.
+        // JS-001: try/catch -- no throw in hot path. JS-021: no lock. NT8-007: arg12 cast guard.
+        private void ResubmitTargetAfterCascade(
+            Account acc,
+            Order stpOrder,
+            double targetPrice,
+            Order leaderOrder)
+        {
+            // Block A-Prime: cancel any stale PTT-TGT-Drag for this instrument.
+            // Mirrors SyncAtmFollowerTarget Block A-Prime (L2473-2490).
+            // JS-021: no lock -- acc.Orders iteration safe on NT8 dispatch thread.
+            foreach (var o in acc.Orders.ToList())                                      // (1) foreach
+            {
+                if (                                                                     // (2) if -- all && NOT counted
+                    o.OrderState == OrderState.Working
+                    && o.Name == "PTT-TGT-Drag"
+                    && o.Instrument?.FullName == stpOrder.Instrument?.FullName
+                )
+                {
+                    try
+                    {
+                        acc.Cancel(new Order[] { o });
+                    }
+                    catch (Exception ex)                                                 // catch = 0 (project convention)
+                    {
+                        StatusUpdate?.Invoke(acc.Name + ": TGT pre-cancel error (B141): " + ex.Message);
+                    }
+                }
+            }
+
+            // Block B: CreateOrder + Submit. Mirrors SyncAtmFollowerTarget Block B (L2502-2530).
+            // JS-001: no throw -- absorb via StatusUpdate. NT8-007: arg12 = (NinjaTrader.Cbi.CustomOrder)null.
+            try
+            {
+                var newTarget = acc.CreateOrder(
+                    stpOrder.Instrument,
+                    stpOrder.OrderAction,
+                    OrderType.Limit,
+                    OrderEntry.Automated,
+                    TimeInForce.Day,
+                    stpOrder.Quantity,
+                    targetPrice,
+                    0,
+                    "",
+                    "PTT-TGT-Drag",
+                    NinjaTrader.Core.Globals.MaxDate,
+                    (NinjaTrader.Cbi.CustomOrder)null
+                );
+                if (newTarget == null)                                                   // (3) if
+                {
+                    StatusUpdate?.Invoke(acc.Name + ": B141 TGT CreateOrder returned null");
+                    return;
+                }
+                acc.Submit(new[] { newTarget });
+                StatusUpdate?.Invoke(acc.Name + ": B141 TGT resubmit after cascade -> " + targetPrice);
+            }
+            catch (Exception ex)                                                         // catch = 0 (project convention)
+            {
+                StatusUpdate?.Invoke(acc.Name + ": B141 TGT create error: " + ex.Message);
+            }
+        }
+
+
 
         // CYC=5: base(1) + ||(1) + ||(1) + ||(1) + ||(1) = 5.
         // Pure state predicate -- no side effects. Static.
