@@ -2291,10 +2291,16 @@ namespace PropTraderTools
             {
                 if (fo.StopPrice < tickSize) // B142-DIRECT-2: skip when NT8 stop price not yet populated
                     return;
+                // B142: parse suffix ("1"/"2"/"3") from fo.Name ("Stop1"/"Stop2"/"Stop3").
+                // Passed to SyncAtmFollowerBracket and ResubmitTargetAfterCascade so each leg
+                // uses its own named order (PTT-STP-Drag-1/2/3, PTT-TGT-Drag-1/2/3).
+                // No new branch -- local variable + method call = 0 McCabe. CYC stays at 8.
+                TryParseStopSuffix(fo.Name, out string stopSuffix);
+                string legSuffix = stopSuffix ?? "";
                 double? capturedTargetPrice = CaptureLinkedTargetPrice(acc, fo.Name); // B141: capture before cascade
-                SyncAtmFollowerBracket(acc, fo, newPrice);   // cascade kills linked target (accepted, by design)
+                SyncAtmFollowerBracket(acc, fo, newPrice, legSuffix);   // cascade kills linked target (accepted, by design)
                 if (capturedTargetPrice.HasValue)            // B141: +1 branch -> CYC 8 (at limit -- no further branching may be added)
-                    ResubmitTargetAfterCascade(acc, fo, capturedTargetPrice.Value, leaderOrder);
+                    ResubmitTargetAfterCascade(acc, fo, capturedTargetPrice.Value, leaderOrder, legSuffix);
                 return;
             }
             if (!isStop && IsAtmSTPOrder(fo)) // (3b) DW-B137: ATM target cancel+resubmit
@@ -2347,7 +2353,9 @@ namespace PropTraderTools
         // NT8-014: order name starts with "PTT-".
         // OQ-03: cancel of follower ATM bracket is SAFE -- Gate 2 (FindMatchingRule L1609)
         //        returns null for follower account orders, blocking TryCancelFollowerEntries.
-        private void SyncAtmFollowerBracket(Account acc, Order fo, double newPrice)
+        // B142: suffix param added -- "1"/"2"/"3" for per-leg named orders.
+        // Empty string used as safe fallback (produces "PTT-STP-Drag-" which MatchesLeaderName won't match ATM names -- harmless).
+        private void SyncAtmFollowerBracket(Account acc, Order fo, double newPrice, string suffix)
         {
             if (acc == null) // (1)
                 return;
@@ -2356,7 +2364,7 @@ namespace PropTraderTools
             if (IsNoPriceChange(fo.StopPrice, newPrice)) // (3) T2 B137 DW-B147/DW-B149 guard
                 return;
 
-            CancelExistingPttStpDrag(acc, fo); // T4 B137 Block A-Prime pre-sweep (DW-B151)
+            CancelExistingPttStpDrag(acc, fo, suffix); // T4 B137 Block A-Prime pre-sweep (DW-B151)
 
             // Block A -- Cancel only. Independent: if Cancel throws, Block B still runs.
             try
@@ -2381,7 +2389,7 @@ namespace PropTraderTools
                     0,
                     newPrice,
                     "",
-                    "PTT-STP-Drag",
+                    "PTT-STP-Drag-" + suffix,
                     NinjaTrader.Core.Globals.MaxDate,
                     (NinjaTrader.Cbi.CustomOrder)null
                 );
@@ -2449,20 +2457,25 @@ namespace PropTraderTools
         //   Confirmed by SyncAtmFollowerTarget Block B using fo.OrderAction where fo IS the target.
         //   Both stop and target legs of an ATM bracket share the same OrderAction direction.
         // JS-001: try/catch -- no throw in hot path. JS-021: no lock. NT8-007: arg12 cast guard.
+        // B142: suffix param added -- sweep and create PTT-TGT-Drag-N (per-leg).
+        // Prevents Stop1/Stop2/Stop3 concurrent resubmits from sweeping each other's targets.
         private void ResubmitTargetAfterCascade(
             Account acc,
             Order stpOrder,
             double targetPrice,
-            Order leaderOrder)
+            Order leaderOrder,
+            string suffix)
         {
-            // Block A-Prime: cancel any stale PTT-TGT-Drag for this instrument.
+            // Block A-Prime: cancel any stale PTT-TGT-Drag-N for this instrument.
+            // B142: sweep only the matching leg suffix -- Stop1 does not cancel Stop2's target.
             // Mirrors SyncAtmFollowerTarget Block A-Prime (L2473-2490).
             // JS-021: no lock -- acc.Orders iteration safe on NT8 dispatch thread.
+            string tgtDragName = "PTT-TGT-Drag-" + suffix;
             foreach (var o in acc.Orders.ToList())                                      // (1) foreach
             {
                 if (                                                                     // (2) if -- all && NOT counted
                     o.OrderState == OrderState.Working
-                    && o.Name == "PTT-TGT-Drag"
+                    && o.Name == tgtDragName
                     && o.Instrument?.FullName == stpOrder.Instrument?.FullName
                 )
                 {
@@ -2491,7 +2504,7 @@ namespace PropTraderTools
                     targetPrice,
                     0,
                     "",
-                    "PTT-TGT-Drag",
+                    tgtDragName,
                     NinjaTrader.Core.Globals.MaxDate,
                     (NinjaTrader.Cbi.CustomOrder)null
                 );
@@ -2537,13 +2550,15 @@ namespace PropTraderTools
         // acc.Cancel() on CancelPending/CancelSubmitted is idempotent; rejection absorbed by try/catch.
         // JS-021: no lock. JS-001: try/catch -- no rethrow. JS-002: void return.
         // acc.Orders.ToList(): thread-safe snapshot. ASCII-only. No DateTime.
-        private void CancelExistingPttStpDrag(Account acc, Order fo)
+        // B142: suffix param added -- sweep only the matching leg's PTT-STP-Drag-N.
+        private void CancelExistingPttStpDrag(Account acc, Order fo, string suffix)
         {
+            string stpDragName = "PTT-STP-Drag-" + suffix;
             foreach (var o in acc.Orders.ToList())
             {
                 if (
                     IsPttStpDragCancellable(o)
-                    && o.Name == "PTT-STP-Drag"
+                    && o.Name == stpDragName
                     && o.Instrument?.FullName == fo.Instrument?.FullName
                 )
                 {
@@ -2561,8 +2576,9 @@ namespace PropTraderTools
 
         // Test seam for xUnit access. InternalsVisibleTo("PropTraderTools.Tests") granted at L46.
         // CYC=1: pure delegation to CancelExistingPttStpDrag.
-        internal void CancelExistingPttStpDragTestable(Account acc, Order fo) =>
-            CancelExistingPttStpDrag(acc, fo);
+        // B142: suffix param added to match production signature.
+        internal void CancelExistingPttStpDragTestable(Account acc, Order fo, string suffix) =>
+            CancelExistingPttStpDrag(acc, fo, suffix);
 
         // DW-B137: cancel+resubmit for ATM-owned target brackets (Limit type).
         // acc.Change() is a no-op on ATM-engine brackets (confirmed B129 SIM gate 2026-08-31).
@@ -2897,15 +2913,27 @@ namespace PropTraderTools
         // CYC=5: base(1) + leaderName null(1) + name==(1) + !isStop&&TGT(1) + isStop&&STP(1) = 5.
         // JS-021: no lock (static, no shared state). JS-001: no throw. JS-002: returns bool.
         // ASCII-only. "PTT-TGT-Drag" and "PTT-STP-Drag" are ASCII.
+        // B142: per-leg PTT name matching.
+        // After first stop drag, ATM "Stop1" is replaced by "PTT-STP-Drag-1" (not generic "PTT-STP-Drag").
+        // MatchesLeaderName extracts the trailing suffix char from leaderName (e.g. "Stop1" -> '1')
+        // and builds the expected per-leg PTT name. This allows FindFollowerBracketOrder to locate
+        // the correct per-leg order on concurrent second drags.
+        // CYC=5: base(1) + null(1) + exact(1) + !isStop&&TGT(1) + isStop&&STP(1) = 5. Unchanged.
         private static bool MatchesLeaderName(Order order, string? leaderName, bool isStop)
         {
             if (leaderName == null) // (1) no constraint -- pass through
                 return true;
             if (order.Name == leaderName) // (2) exact ATM name match
                 return true;
-            if (!isStop && order.Name == "PTT-TGT-Drag") // (3) replacement target match
+            // B142: extract trailing digit suffix from leaderName ("Stop1"->'1', "Target2"->'2', etc.)
+            // and match the per-leg PTT replacement order name.
+            string legSuffix =
+                leaderName.Length > 0 && char.IsDigit(leaderName[leaderName.Length - 1])
+                    ? leaderName[leaderName.Length - 1].ToString()
+                    : null;
+            if (!isStop && legSuffix != null && order.Name == "PTT-TGT-Drag-" + legSuffix) // (3) replacement target match
                 return true;
-            if (isStop && order.Name == "PTT-STP-Drag") // (4) replacement stop match
+            if (isStop && legSuffix != null && order.Name == "PTT-STP-Drag-" + legSuffix) // (4) replacement stop match
                 return true;
             return false;
         }

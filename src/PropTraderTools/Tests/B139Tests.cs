@@ -199,7 +199,7 @@ namespace PropTraderTools.Tests
             var fo = MakeFakeOrder(OrderState.Working, "PTT-STP-Drag", "NQ SEP26");
 
             // Act: no exception expected -- empty orders means no cancel dispatch.
-            var ex = Record.Exception(() => engine.CancelExistingPttStpDragTestable(acc, fo));
+            var ex = Record.Exception(() => engine.CancelExistingPttStpDragTestable(acc, fo, "1")); // B142: suffix added
 
             // Assert: no exception (zero matching orders; different instrument does not cancel).
             Assert.Null(ex);
