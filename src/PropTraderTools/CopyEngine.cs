@@ -2610,11 +2610,17 @@ namespace PropTraderTools
             }
         }
 
-        // CYC=3: base(1) + if(1) + if(1). No lock. No async. ASCII-only.
+        // CYC=7: base(1) + foreach(1) + if(1) + foreach(1) + if(1) + if(1) + if(1) = 7. No lock. No async. ASCII-only.
         // B142-DIRECT-6: creates PTT-STP-Drag-{suffix} at newPrice and PTT-TGT-Drag-{suffix} at targetPrice.
         // Both orders are standalone (oco=""): not in any ATM OCO group -- no cascade on cancel.
+        // B142-DIRECT-8: Block A-Prime-Stop + Block A-Prime-Target added.
+        //   Without pre-sweep, each stop drag calls ResubmitCollateralLegs for all non-dragged legs.
+        //   On drag N, the leg already has a PTT-STP-Drag-{suffix} + PTT-TGT-Drag-{suffix} from drag N-1.
+        //   Creating without cancelling accumulates N copies per leg after N stop drags (DW-B139 recurrence).
+        //   Fix: cancel any live PTT-STP-Drag-{suffix} and PTT-TGT-Drag-{suffix} before resubmitting.
+        //   Mirrors SyncAtmFollowerTarget Block A-Prime (L2791-2811) and ResubmitTargetAfterCascade Block A-Prime.
         // Mirrors SyncAtmFollowerBracket Block B (stop) + ResubmitTargetAfterCascade Block B (target).
-        // Two independent try/catch blocks -- 0 McCabe each (project convention L2356).
+        // try/catch blocks -- 0 McCabe each (project convention L2356).
         // NT8-049: StopMarket arg6=0 (limitPrice), arg7=newPrice (stopPrice).
         // NT8-049: Limit arg5=targetPrice (limitPrice), arg6=0 (stopPrice unused).
         // NT8-013: MaxDate for GTC. NT8-007: (CustomOrder)null. NT8-014: PTT- prefix.
@@ -2626,6 +2632,25 @@ namespace PropTraderTools
             double targetPrice,
             string suffix)
         {
+            // Block A-Prime-Stop: cancel any existing live PTT-STP-Drag-{suffix} before resubmitting.
+            // Prevents accumulation when repeated stop drags call ResubmitCollateralLegs for the same leg.
+            string stpDragName = "PTT-STP-Drag-" + suffix;
+            foreach (var o in acc.Orders.ToList())                              // (1) foreach
+            {
+                if (IsPttStpDragCancellable(o) && o.Name == stpDragName        // (2) if -- && NOT counted
+                    && o.Instrument?.FullName == fo.Instrument?.FullName)
+                    try { acc.Cancel(new Order[] { o }); } catch { }            // catch = 0 (project convention)
+            }
+
+            // Block A-Prime-Target: cancel any existing live PTT-TGT-Drag-{suffix} before resubmitting.
+            string tgtDragName = "PTT-TGT-Drag-" + suffix;
+            foreach (var o in acc.Orders.ToList())                              // (3) foreach
+            {
+                if (IsTargetOrderLive(o) && o.Name == tgtDragName              // (4) if -- && NOT counted
+                    && o.Instrument?.FullName == fo.Instrument?.FullName)
+                    try { acc.Cancel(new Order[] { o }); } catch { }            // catch = 0 (project convention)
+            }
+
             try
             {
                 var newStop = acc.CreateOrder(
