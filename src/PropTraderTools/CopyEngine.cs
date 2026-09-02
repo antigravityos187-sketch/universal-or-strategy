@@ -2426,7 +2426,7 @@ namespace PropTraderTools
             }
         }
 
-        // CYC=4: base(1)+if(1)+foreach(1)+if(1). No lock. No async. ASCII-only.
+        // CYC=5: base(1)+if(1)+foreach(1)+if(1)+if(1). No lock. No async. ASCII-only.
         // B141: captures LimitPrice of the linked NT8 ATM target before Stop cancel+resubmit triggers OCO cascade.
         // "Stop1"->"Target1", "Stop2"->"Target2", "Stop3"->"Target3" (NT8 ATM naming, SIM log 2026-09-01).
         // Returns null if target not found or suffix not 1/2/3.
@@ -2434,21 +2434,32 @@ namespace PropTraderTools
         // B142-DIRECT-4: stopName is always leaderOrder.Name ("Stop1/2/3").
         //   targetName is "Target1/2/3" (first drag) or "PTT-TGT-Drag-1/2/3" (second+ drag after cascade).
         //   The || in the IsTargetOrderLive if-condition adds 0 McCabe branches. CYC stays at 4.
+        // B142-DIRECT-9 BUG A: prefer PTT-TGT-Drag-N over ATM TargetN price.
+        //   When both coexist (target dragged but ATM cancel was a no-op), the stop cascade captured
+        //   ATM TargetN.LimitPrice (original price) and overwrote PTT-TGT-Drag-N (dragged price).
+        //   Fix: full scan; return PTT price if found, else ATM price. CYC 4->5 (+1 if).
+        //   && adds 0 McCabe per convention. Second if adds +1.
         private double? CaptureLinkedTargetPrice(Account acc, string stopName)
         {
             if (!TryParseStopSuffix(stopName, out string suffix)) // (1) if -- && NOT counted
                 return null;
             string targetName = "Target" + suffix;
             string pttTgtName = "PTT-TGT-Drag-" + suffix;
+            double? pttPrice = null;
+            double? atmPrice = null;
             foreach (var o in acc.Orders.ToList())                                     // (2) foreach
             {
-                if (IsTargetOrderLive(o) && (o.Name == targetName || o.Name == pttTgtName)) // (3) if -- && and || NOT counted
-                    return o.LimitPrice;
+                if (IsTargetOrderLive(o) && o.Name == pttTgtName)                     // (3) if -- PTT preferred
+                    pttPrice = o.LimitPrice;
+                else if (IsTargetOrderLive(o) && o.Name == targetName)                // (4) if -- ATM fallback
+                    atmPrice = o.LimitPrice;
             }
-            return null;
+            if (pttPrice.HasValue) // (5) if
+                return pttPrice.Value;
+            return atmPrice;
         }
 
-        // CYC=5: base(1)+if(1)+foreach(1)+for(1)+if(1). No lock. No async. ASCII-only.
+        // CYC=6: base(1)+if(1)+foreach(1)+for(1)+if(1)+if(1). No lock. No async. ASCII-only.
         // B142-DIRECT-6: captures LimitPrice of all ATM target orders for legs OTHER than excludeSuffix.
         // Called before acc.Cancel(Stop1_ATM) -- which cascade-cancels Stop2/Stop3/Target2/Target3.
         // Returns double[3] indexed by suffix-1: prices[0]=leg1, prices[1]=leg2, prices[2]=leg3.
@@ -2458,6 +2469,10 @@ namespace PropTraderTools
         //   Return all-zeros so ResubmitCollateralLegs no-ops. Guard adds +1 = still CYC=5.
         // JS-002: double[] is a value array, not a reference null return.
         // JS-021: no lock. NT8 Orders collection is thread-safe snapshot via ToList().
+        // B142-DIRECT-9 BUG A: prefer PTT-TGT-Drag-N price over ATM TargetN price.
+        //   When both coexist (target dragged but ATM cancel was a no-op), stop cascade used ATM price
+        //   and overwrote the dragged PTT-TGT-Drag price. Fix: PTT always overwrites; ATM only fills zeros.
+        //   Adds +1 McCabe (new else if). CYC 5->6.
         private double[] CaptureOtherLegTargetPrices(Account acc, Order fo, string excludeSuffix)
         {
             var prices = new double[3];
@@ -2470,8 +2485,10 @@ namespace PropTraderTools
                     string s = i.ToString();
                     if (s == excludeSuffix)                                    // (4) if
                         continue;
-                    if (IsTargetOrderLive(o)                                   // (5) if -- && and || NOT counted
-                        && (o.Name == "Target" + s || o.Name == "PTT-TGT-Drag-" + s))
+                    if (IsTargetOrderLive(o) && o.Name == "PTT-TGT-Drag-" + s)  // (5) if -- PTT preferred: always overwrites
+                        prices[i - 1] = o.LimitPrice;
+                    else if (IsTargetOrderLive(o) && o.Name == "Target" + s      // (6) if -- ATM fallback: only fills zero slots
+                             && prices[i - 1] == 0)
                         prices[i - 1] = o.LimitPrice;
                 }
             }
@@ -2500,6 +2517,11 @@ namespace PropTraderTools
         //   before Working. CaptureOtherLegTargetPrices called IsTargetOrderLive and missed Submitted targets,
         //   leaving prices[2]=0 -> ResubmitCollateralLegs skipped leg 3 -> PTT-STP-Drag-3 never created.
         //   || adds 0 McCabe branches (compound on existing expression body). CYC stays at 1.
+        // B142-DIRECT-9 BUG C: ChangeSubmitted/ChangePending added -- rapid drags leave PTT-TGT-Drag-N
+        //   in ChangeSubmitted state. CaptureLinkedTargetPrice/CaptureOtherLegTargetPrices missed the order,
+        //   falling back to ATM TargetN price (the ORIGINAL price) -- overwriting the dragged PTT price.
+        //   Adding these states ensures capture prefers PTT-TGT-Drag-N even mid-change.
+        //   || adds 0 McCabe branches. CYC stays at 1.
         // JS-002: bool return -- never null. || NOT counted per project convention.
         private static bool IsTargetOrderLive(Order o) =>
             o != null
@@ -2507,6 +2529,8 @@ namespace PropTraderTools
                 o.OrderState == OrderState.Working
                 || o.OrderState == OrderState.Accepted
                 || o.OrderState == OrderState.Submitted
+                || o.OrderState == OrderState.ChangeSubmitted
+                || o.OrderState == OrderState.ChangePending
             );
 
         // CYC=4: base(1)+foreach(1)+if(1)+if(1). No lock. No async. ASCII-only.
@@ -3065,9 +3089,14 @@ namespace PropTraderTools
                 leaderName
             );
 
-        // CYC=7 (post-B136). AT LIMIT RESOLVED; headroom = 1.
-        // foreach(1) + OrderPassesBracketGate guard(1) + state filter(3) + isStop(1) + type match(1) = 7.
+        // CYC=8 (post-B142-DIRECT-9). AT LIMIT.
+        // foreach(1) + OrderPassesBracketGate guard(1) + state filter(4) + isStop(1) + type match(1) = 8.
         // DW-B143: Accepted added. DW-B144: Submitted added. DW-B145: leaderName exact guard. DW-B146: MatchesLeaderName helper. DW-B148: OrderPassesBracketGate fused guard (B136).
+        // B142-DIRECT-9 BUG B: ChangeSubmitted added -- rapid back-to-back drags leave PTT-TGT-Drag-N in
+        //   ChangeSubmitted state when the next drag fires. Without this, fo=NULL -> drag missed entirely.
+        //   With ChangeSubmitted in filter, fo=PTT-TGT-Drag-N (ChangeSubmitted) -> acc.Change() issued.
+        //   NT8 queues or absorbs the overlapping change; follower price converges to leader price.
+        //   Adds +1 McCabe (state filter 3->4). CYC 7->8 (headroom exhausted).
         // JS-021: no lock. JS-001: no throw. JS-002: Order? null contract unchanged.
         private Order? FindFollowerBracketOrder(
             IEnumerable<Order> orders,
@@ -3081,9 +3110,10 @@ namespace PropTraderTools
                 if (!OrderPassesBracketGate(order, fromEntrySignalName, leaderName, isStop)) // (1) branch -- B136 DW-B148: fused guard (ATM path routes to MatchesLeaderName)
                     continue;
                 if (
-                    order.OrderState != OrderState.Working // (3) branches -- B134 DW-B144: Submitted added
+                    order.OrderState != OrderState.Working // (4) branches -- B142-DIRECT-9: ChangeSubmitted added
                     && order.OrderState != OrderState.Accepted
                     && order.OrderState != OrderState.Submitted
+                    && order.OrderState != OrderState.ChangeSubmitted
                 )
                     continue;
                 if (isStop) // (1) branch
