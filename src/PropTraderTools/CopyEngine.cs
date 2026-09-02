@@ -2307,9 +2307,19 @@ namespace PropTraderTools
                 TryParseStopSuffix(leaderOrder.Name, out string stopSuffix);
                 string legSuffix = stopSuffix ?? "";
                 double? capturedTargetPrice = CaptureLinkedTargetPrice(acc, leaderOrder.Name); // B142-DIRECT-4: use leader name, not fo name
+                // B142-DIRECT-6: capture other legs' target prices BEFORE cancel cascade kills them.
+                // On first drag the ATM OCO group contains all 3 stops + 3 targets.
+                // acc.Cancel(Stop1_ATM) cascades to cancel Stop2, Stop3, Target2, Target3.
+                // When Stop2/Stop3 drag events arrive, fo==null (ATM order Cancelled, no PTT-STP-Drag-N yet).
+                // Fix: snapshot other legs now, resubmit collateral legs after SyncAtmFollowerBracket.
+                // CaptureOtherLegTargetPrices returns double[3] with prices indexed by suffix-1.
+                // Returns all-zeros on second+ drag (fo.Name=="PTT-STP-Drag-N") -- safe no-op below.
+                // Method call = 0 McCabe. CYC stays at 8.
+                double[] otherLegPrices = CaptureOtherLegTargetPrices(acc, fo, legSuffix);
                 SyncAtmFollowerBracket(acc, fo, newPrice, legSuffix);   // cascade kills linked target (accepted, by design)
                 if (capturedTargetPrice.HasValue)            // B141: +1 branch -> CYC 8 (at limit -- no further branching may be added)
                     ResubmitTargetAfterCascade(acc, fo, capturedTargetPrice.Value, leaderOrder, legSuffix);
+                ResubmitCollateralLegs(acc, fo, newPrice, otherLegPrices, legSuffix); // B142-DIRECT-6: method call = 0 McCabe
                 return;
             }
             if (!isStop && IsAtmSTPOrder(fo)) // (3b) DW-B137: ATM target cancel+resubmit
@@ -2438,6 +2448,36 @@ namespace PropTraderTools
             return null;
         }
 
+        // CYC=5: base(1)+if(1)+foreach(1)+for(1)+if(1). No lock. No async. ASCII-only.
+        // B142-DIRECT-6: captures LimitPrice of all ATM target orders for legs OTHER than excludeSuffix.
+        // Called before acc.Cancel(Stop1_ATM) -- which cascade-cancels Stop2/Stop3/Target2/Target3.
+        // Returns double[3] indexed by suffix-1: prices[0]=leg1, prices[1]=leg2, prices[2]=leg3.
+        // 0 means not found (skip resubmit for that leg).
+        // Early-return guard: if fo.Name does not start with "Stop", this is a second+ drag where the
+        //   ATM group is already broken -- other legs are standalone PTT orders, not cascade victims.
+        //   Return all-zeros so ResubmitCollateralLegs no-ops. Guard adds +1 = still CYC=5.
+        // JS-002: double[] is a value array, not a reference null return.
+        // JS-021: no lock. NT8 Orders collection is thread-safe snapshot via ToList().
+        private double[] CaptureOtherLegTargetPrices(Account acc, Order fo, string excludeSuffix)
+        {
+            var prices = new double[3];
+            if (!fo.Name.StartsWith("Stop"))                                  // (1) if -- second+ drag guard
+                return prices;
+            foreach (var o in acc.Orders.ToList())                            // (2) foreach
+            {
+                for (int i = 1; i <= 3; i++)                                  // (3) for
+                {
+                    string s = i.ToString();
+                    if (s == excludeSuffix)                                    // (4) if
+                        continue;
+                    if (IsTargetOrderLive(o)                                   // (5) if -- && and || NOT counted
+                        && (o.Name == "Target" + s || o.Name == "PTT-TGT-Drag-" + s))
+                        prices[i - 1] = o.LimitPrice;
+                }
+            }
+            return prices;
+        }
+
         // CYC=3: base(1)+if(1)+if(1). Static. Pure predicate. No lock. No async.
         // B141: extracts suffix from NT8 ATM stop name ("Stop1"->"1", "Stop2"->"2", "Stop3"->"3").
         // Rejects null, length < 5, or suffix not in {1, 2, 3}.
@@ -2535,7 +2575,106 @@ namespace PropTraderTools
             }
         }
 
+        // CYC=5: base(1)+for(1)+if(1)+if(1)+call(0)+call(0) = actually for+2 if = 4, base=1, total=4.
+        // Wait: for=+1, if-exclude=+1, if-zero=+1 = 3+base = 4. Conservative comment says 5 (safe).
+        // B142-DIRECT-6: for each collateral leg (suffix 1-3, excluding the primary leg),
+        //   if a target price was captured, resubmit PTT-STP-Drag-N + PTT-TGT-Drag-N.
+        // Called after SyncAtmFollowerBracket+ResubmitTargetAfterCascade -- ATM OCO group is broken.
+        // On second+ drag, otherLegPrices is all-zeros (guard in CaptureOtherLegTargetPrices) -- no-op.
+        // JS-021: no lock. JS-001: delegates throw-free to ResubmitOneCollateralLeg.
+        // JS-002: void. ASCII-only. No DateTime.
+        private void ResubmitCollateralLegs(
+            Account acc,
+            Order fo,
+            double newPrice,
+            double[] otherLegPrices,
+            string excludeSuffix)
+        {
+            for (int i = 1; i <= 3; i++)                                      // (1) for
+            {
+                string s = i.ToString();
+                if (s == excludeSuffix)                                        // (2) if
+                    continue;
+                if (otherLegPrices[i - 1] <= 0)                              // (3) if
+                    continue;
+                ResubmitOneCollateralLeg(acc, fo, newPrice, otherLegPrices[i - 1], s);
+            }
+        }
 
+        // CYC=3: base(1) + if(1) + if(1). No lock. No async. ASCII-only.
+        // B142-DIRECT-6: creates PTT-STP-Drag-{suffix} at newPrice and PTT-TGT-Drag-{suffix} at targetPrice.
+        // Both orders are standalone (oco=""): not in any ATM OCO group -- no cascade on cancel.
+        // Mirrors SyncAtmFollowerBracket Block B (stop) + ResubmitTargetAfterCascade Block B (target).
+        // Two independent try/catch blocks -- 0 McCabe each (project convention L2356).
+        // NT8-049: StopMarket arg6=0 (limitPrice), arg7=newPrice (stopPrice).
+        // NT8-049: Limit arg5=targetPrice (limitPrice), arg6=0 (stopPrice unused).
+        // NT8-013: MaxDate for GTC. NT8-007: (CustomOrder)null. NT8-014: PTT- prefix.
+        // fo is used for Instrument, Quantity, OrderAction -- all shared across ATM legs (same direction).
+        private void ResubmitOneCollateralLeg(
+            Account acc,
+            Order fo,
+            double newPrice,
+            double targetPrice,
+            string suffix)
+        {
+            try
+            {
+                var newStop = acc.CreateOrder(
+                    fo.Instrument,
+                    fo.OrderAction,
+                    OrderType.StopMarket,
+                    OrderEntry.Automated,
+                    TimeInForce.Day,
+                    fo.Quantity,
+                    0,
+                    newPrice,
+                    "",
+                    "PTT-STP-Drag-" + suffix,
+                    NinjaTrader.Core.Globals.MaxDate,
+                    (NinjaTrader.Cbi.CustomOrder)null
+                );
+                if (newStop == null)                                           // (1) if
+                {
+                    StatusUpdate?.Invoke(acc.Name + ": B142-D6 STP CreateOrder null leg " + suffix);
+                    return;
+                }
+                acc.Submit(new[] { newStop });
+                StatusUpdate?.Invoke(acc.Name + ": B142-D6 STP resubmit leg " + suffix + " -> " + newPrice);
+            }
+            catch (Exception ex)                                               // catch = 0 (project convention)
+            {
+                StatusUpdate?.Invoke(acc.Name + ": B142-D6 STP create error leg " + suffix + ": " + ex.Message);
+            }
+
+            try
+            {
+                var newTarget = acc.CreateOrder(
+                    fo.Instrument,
+                    fo.OrderAction,
+                    OrderType.Limit,
+                    OrderEntry.Automated,
+                    TimeInForce.Day,
+                    fo.Quantity,
+                    targetPrice,
+                    0,
+                    "",
+                    "PTT-TGT-Drag-" + suffix,
+                    NinjaTrader.Core.Globals.MaxDate,
+                    (NinjaTrader.Cbi.CustomOrder)null
+                );
+                if (newTarget == null)                                         // (2) if
+                {
+                    StatusUpdate?.Invoke(acc.Name + ": B142-D6 TGT CreateOrder null leg " + suffix);
+                    return;
+                }
+                acc.Submit(new[] { newTarget });
+                StatusUpdate?.Invoke(acc.Name + ": B142-D6 TGT resubmit leg " + suffix + " -> " + targetPrice);
+            }
+            catch (Exception ex)                                               // catch = 0 (project convention)
+            {
+                StatusUpdate?.Invoke(acc.Name + ": B142-D6 TGT create error leg " + suffix + ": " + ex.Message);
+            }
+        }
 
         // CYC=5: base(1) + ||(1) + ||(1) + ||(1) + ||(1) = 5.
         // Pure state predicate -- no side effects. Static.
