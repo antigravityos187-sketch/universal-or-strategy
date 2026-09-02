@@ -2496,9 +2496,18 @@ namespace PropTraderTools
 
         // CYC=1: base(1). Static. Pure state predicate. No lock. No async.
         // B141: returns true if order is Working or Accepted -- both are live states.
+        // B142-DIRECT-7 BUG A: Submitted added -- ATM engine places Target3 in Submitted state briefly
+        //   before Working. CaptureOtherLegTargetPrices called IsTargetOrderLive and missed Submitted targets,
+        //   leaving prices[2]=0 -> ResubmitCollateralLegs skipped leg 3 -> PTT-STP-Drag-3 never created.
+        //   || adds 0 McCabe branches (compound on existing expression body). CYC stays at 1.
         // JS-002: bool return -- never null. || NOT counted per project convention.
         private static bool IsTargetOrderLive(Order o) =>
-            o != null && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted);
+            o != null
+            && (
+                o.OrderState == OrderState.Working
+                || o.OrderState == OrderState.Accepted
+                || o.OrderState == OrderState.Submitted
+            );
 
         // CYC=4: base(1)+foreach(1)+if(1)+if(1). No lock. No async. ASCII-only.
         // B141: after OCO cascade cancels linked ATM target, resubmits a standalone PTT-TGT-Drag
@@ -2735,16 +2744,16 @@ namespace PropTraderTools
         // DW-B137: cancel+resubmit for ATM-owned target brackets (Limit type).
         // acc.Change() is a no-op on ATM-engine brackets (confirmed B129 SIM gate 2026-08-31).
         // Pattern mirrors SyncAtmFollowerBracket (DW-B134/B129 LaneB).
-        // DW-B139 fix: Block A-Prime pre-sweep cancels prior Working PTT-TGT-Drag before Block B.
+        // DW-B139 fix: Block A-Prime pre-sweep cancels prior PTT-TGT-Drag-{N} before Block B.
         // CYC=8: (1) acc null, (2) fo null, (3) price guard [T2],
-        //        (4) foreach A-Prime, (5) OrderState==Working, (6) Name=="PTT-TGT-Drag",
+        //        (4) foreach A-Prime, (5) OrderState==Working, (6) Name==tgtDragName,
         //        (7) catch A-Prime, (8) Block A catch.
         // AT LIMIT. T2 B137: DW-B147/DW-B149 guard. T1 B137: Phase C -> ExecutePhaseCStopReplacement.
         // Two independent try/catch blocks -- Block A isolates Cancel; Block B isolates CreateOrder+Submit.
         // JS-021: no lock. JS-001: two independent try/catch -- no throw in hot path.
         // NT8-049: Limit order arg5=limitPrice (newPrice), arg6=0 (stopPrice unused for Limit).
         // NT8-013: Core.Globals.MaxDate for GTC. NT8-007: (CustomOrder)null.
-        // NT8-014: order name starts with "PTT-" ("PTT-TGT-Drag").
+        // NT8-014: order name starts with "PTT-" ("PTT-TGT-Drag-N").
         // OQ-03: cancel of follower ATM target bracket SAFE -- Gate 2 (FindMatchingRule L1609)
         //        returns null for follower account orders, blocking TryCancelFollowerEntries.
         // B142-DIRECT-5: fo.LimitPrice<=0 added to guard (3) -- same fix as B142-DIRECT-2 for stops.
@@ -2753,6 +2762,11 @@ namespace PropTraderTools
         //   acc.Cancel(Target3) OCO-cascade kills Stop3 on follower -- Stop3 is gone before first drag fires.
         //   When drag arrives, FindFollowerBracketOrder finds no Stop3 (Cancelled), fo=NULL, skipped.
         //   The || adds 0 McCabe branches (compound condition on existing branch (3)). CYC stays at 8.
+        // B142-DIRECT-7 BUG B: per-leg PTT-TGT-Drag-{N} name.
+        //   leaderOrder.Name is "Target1/2/3". DeriveLeaderBracketIndex extracts trailing digit.
+        //   tgtDragName = "PTT-TGT-Drag-1/2/3". local var + string concat = 0 McCabe. CYC stays at 8.
+        //   Block A-Prime sweeps "PTT-TGT-Drag-N" (was "PTT-TGT-Drag" -- unsuffixed, stale accumulation).
+        //   Block B creates "PTT-TGT-Drag-N" (was "PTT-TGT-Drag" -- wrong name on concurrent legs).
         private void SyncAtmFollowerTarget(
             Account acc,
             Order fo,
@@ -2767,14 +2781,21 @@ namespace PropTraderTools
             if (fo.LimitPrice <= 0 || IsNoPriceChange(fo.LimitPrice, newPrice)) // (3) B142-DIRECT-5: fo.LimitPrice<=0 guard -- same fix as B142-DIRECT-2 for stops.
                 return;
 
-            // Block A-Prime -- cancel any existing PTT-TGT-Drag for this instrument on the follower.
+            // B142-DIRECT-7 BUG B: derive per-leg target drag name from leaderOrder ("Target1/2/3").
+            // DeriveLeaderBracketIndex("Target1")->1, ("Target2")->2, ("Target3")->3.
+            // Returns 0 if leaderOrder is null or name has no trailing digit -- fallback to unsuffixed.
+            // Local var assignment = 0 McCabe. CYC stays at 8.
+            int tgtIdx = DeriveLeaderBracketIndex(leaderOrder);
+            string tgtDragName = tgtIdx > 0 ? "PTT-TGT-Drag-" + tgtIdx.ToString() : "PTT-TGT-Drag";
+
+            // Block A-Prime -- cancel any existing PTT-TGT-Drag-N for this instrument on the follower.
             // Prevents accumulation of Working PTT-TGT-Drag orders on repeated drag events (DW-B139).
             // JS-001: try/catch -- no throw in hot path. JS-021: no lock -- acc.Orders iteration safe.
             foreach (var o in acc.Orders.ToList())
             {
                 if (
                     o.OrderState == OrderState.Working
-                    && o.Name == "PTT-TGT-Drag"
+                    && o.Name == tgtDragName
                     && o.Instrument?.FullName == fo.Instrument?.FullName
                 )
                 {
@@ -2812,7 +2833,7 @@ namespace PropTraderTools
                     newPrice,
                     0,
                     "",
-                    "PTT-TGT-Drag",
+                    tgtDragName,
                     NinjaTrader.Core.Globals.MaxDate,
                     (NinjaTrader.Cbi.CustomOrder)null
                 );
