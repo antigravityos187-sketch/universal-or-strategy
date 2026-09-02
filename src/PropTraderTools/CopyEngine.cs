@@ -2320,10 +2320,10 @@ namespace PropTraderTools
                 // Returns all-zeros on second+ drag (fo.Name=="PTT-STP-Drag-N") -- safe no-op below.
                 // Method call = 0 McCabe. CYC stays at 8.
                 double[] otherLegPrices = CaptureOtherLegTargetPrices(acc, fo, legSuffix);
-                SyncAtmFollowerBracket(acc, fo, newPrice, legSuffix);   // cascade kills linked target (accepted, by design)
+                SyncAtmFollowerBracket(acc, fo, newPrice, legSuffix, leaderOrder);   // DW-B142-QTY-DESYNC-01: thread leaderOrder for qty
                 if (capturedTargetPrice.HasValue)            // B141: +1 branch -> CYC 8 (at limit -- no further branching may be added)
                     ResubmitTargetAfterCascade(acc, fo, capturedTargetPrice.Value, leaderOrder, legSuffix);
-                ResubmitCollateralLegs(acc, fo, newPrice, otherLegPrices, legSuffix); // B142-DIRECT-6: method call = 0 McCabe
+                ResubmitCollateralLegs(acc, fo, newPrice, otherLegPrices, legSuffix, leaderOrder); // DW-B142-QTY-DESYNC-01: thread leaderOrder for per-leg qty
                 return;
             }
             if (!isStop && IsAtmSTPOrder(fo)) // (3b) DW-B137: ATM target cancel+resubmit
@@ -2378,7 +2378,8 @@ namespace PropTraderTools
         //        returns null for follower account orders, blocking TryCancelFollowerEntries.
         // B142: suffix param added -- "1"/"2"/"3" for per-leg named orders.
         // Empty string used as safe fallback (produces "PTT-STP-Drag-" which MatchesLeaderName won't match ATM names -- harmless).
-        private void SyncAtmFollowerBracket(Account acc, Order fo, double newPrice, string suffix)
+        // DW-B142-QTY-DESYNC-01: leaderOrder param added to supply correct stop qty.
+        private void SyncAtmFollowerBracket(Account acc, Order fo, double newPrice, string suffix, Order leaderOrder = null)
         {
             if (acc == null) // (1)
                 return;
@@ -2408,7 +2409,7 @@ namespace PropTraderTools
                     OrderType.StopMarket,
                     OrderEntry.Automated,
                     TimeInForce.Day,
-                    fo.Quantity,
+                    leaderOrder.Quantity,   // DW-B142-QTY-DESYNC-01: use leader qty, not fo.Quantity
                     0,
                     newPrice,
                     "",
@@ -2515,6 +2516,28 @@ namespace PropTraderTools
             return true;
         }
 
+        // DW-B142-QTY-DESYNC-01: look up the leader's bracket order for collateral leg suffix s.
+        // leaderOrder.Name is e.g. "Stop2"; for collateral suffix "1" this returns "Stop1".
+        // Also tries "Target1" if "Stop1" is not found (covers target-leg lookup for same suffix).
+        // Returns null if not found -- callers fall back to fo.Quantity.
+        // CYC=3: base(1) + foreach(1) + if(1). JS-021: no lock. JS-001: no throw. JS-002: null is valid here.
+        // ASCII-only. Iterates leader account orders snapshot.
+        private static Order FindLeaderCollateralOrder(Order leaderOrder, string suffix)
+        {
+            if (leaderOrder?.Account?.Orders == null || string.IsNullOrEmpty(suffix)) // (1) if -- || NOT counted
+                return null;
+            string stopName = "Stop" + suffix;
+            string tgtName  = "Target" + suffix;
+            foreach (var o in leaderOrder.Account.Orders.ToList()) // (2) foreach
+            {
+                if (o != null && (o.Name == stopName || o.Name == tgtName)) // (3) if -- || NOT counted
+                    return o;
+            }
+            return null;
+        }
+
+
+
         // CYC=1: base(1). Static. Pure state predicate. No lock. No async.
         // B141: returns true if order is Working or Accepted -- both are live states.
         // B142-DIRECT-7 BUG A: Submitted added -- ATM engine places Target3 in Submitted state briefly
@@ -2590,7 +2613,7 @@ namespace PropTraderTools
                     OrderType.Limit,
                     OrderEntry.Automated,
                     TimeInForce.Day,
-                    stpOrder.Quantity,
+                    leaderOrder.Quantity,   // DW-B142-QTY-DESYNC-01: use leader qty, not stpOrder.Quantity
                     targetPrice,
                     0,
                     "",
@@ -2620,12 +2643,16 @@ namespace PropTraderTools
         // On second+ drag, otherLegPrices is all-zeros (guard in CaptureOtherLegTargetPrices) -- no-op.
         // JS-021: no lock. JS-001: delegates throw-free to ResubmitOneCollateralLeg.
         // JS-002: void. ASCII-only. No DateTime.
+        // DW-B142-QTY-DESYNC-01: leaderOrder param added to thread leader qty per collateral leg.
+        // Looks up StopN/TargetN from leaderOrder.Account.Orders by suffix to get per-leg leader qty.
+        // Falls back to fo.Quantity when leader leg not found (safe: preserves prior behaviour).
         private void ResubmitCollateralLegs(
             Account acc,
             Order fo,
             double newPrice,
             double[] otherLegPrices,
-            string excludeSuffix)
+            string excludeSuffix,
+            Order leaderOrder)
         {
             for (int i = 1; i <= 3; i++)                                      // (1) for
             {
@@ -2634,7 +2661,11 @@ namespace PropTraderTools
                     continue;
                 if (otherLegPrices[i - 1] <= 0)                              // (3) if
                     continue;
-                ResubmitOneCollateralLeg(acc, fo, newPrice, otherLegPrices[i - 1], s);
+                // DW-B142-QTY-DESYNC-01: look up the leader's per-leg bracket order for this suffix.
+                // leaderOrder.Name is e.g. "Stop2"; collateral leg s="1" or "3" -> look up "Stop1"/"Stop3".
+                // Also try "Target1"/"Target3" since CaptureOtherLegTargetPrices may have stored either.
+                Order leaderLeg = FindLeaderCollateralOrder(leaderOrder, s);
+                ResubmitOneCollateralLeg(acc, fo, newPrice, otherLegPrices[i - 1], s, leaderLeg);
             }
         }
 
@@ -2652,13 +2683,15 @@ namespace PropTraderTools
         // NT8-049: StopMarket arg6=0 (limitPrice), arg7=newPrice (stopPrice).
         // NT8-049: Limit arg5=targetPrice (limitPrice), arg6=0 (stopPrice unused).
         // NT8-013: MaxDate for GTC. NT8-007: (CustomOrder)null. NT8-014: PTT- prefix.
-        // fo is used for Instrument, Quantity, OrderAction -- all shared across ATM legs (same direction).
+        // fo is used for Instrument, OrderAction -- shared across ATM legs (same direction).
+        // DW-B142-QTY-DESYNC-01: leaderLeg param provides per-leg leader qty; null -> fo.Quantity fallback.
         private void ResubmitOneCollateralLeg(
             Account acc,
             Order fo,
             double newPrice,
             double targetPrice,
-            string suffix)
+            string suffix,
+            Order leaderLeg = null)
         {
             // Block A-Prime-Stop: cancel any existing live PTT-STP-Drag-{suffix} before resubmitting.
             // Prevents accumulation when repeated stop drags call ResubmitCollateralLegs for the same leg.
@@ -2687,7 +2720,7 @@ namespace PropTraderTools
                     OrderType.StopMarket,
                     OrderEntry.Automated,
                     TimeInForce.Day,
-                    fo.Quantity,
+                    leaderLeg != null ? leaderLeg.Quantity : fo.Quantity,   // DW-B142-QTY-DESYNC-01: per-leg leader qty
                     0,
                     newPrice,
                     "",
@@ -2716,7 +2749,7 @@ namespace PropTraderTools
                     OrderType.Limit,
                     OrderEntry.Automated,
                     TimeInForce.Day,
-                    fo.Quantity,
+                    leaderLeg != null ? leaderLeg.Quantity : fo.Quantity,   // DW-B142-QTY-DESYNC-01: per-leg leader qty
                     targetPrice,
                     0,
                     "",
@@ -2882,7 +2915,7 @@ namespace PropTraderTools
                     OrderType.Limit,
                     OrderEntry.Automated,
                     TimeInForce.Day,
-                    fo.Quantity,
+                    leaderOrder != null ? leaderOrder.Quantity : fo.Quantity,   // DW-B142-QTY-DESYNC-01: use leader qty when available
                     newPrice,
                     0,
                     "",
