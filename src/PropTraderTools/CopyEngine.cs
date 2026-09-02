@@ -2230,6 +2230,9 @@ namespace PropTraderTools
         // DW-B137: extended to cover Stop1/Stop2/Stop3 and Target1/Target2/Target3 (MES $200 SL 6 ATM).
         // Mirrors IsBracketLegStatic STP+Stop+Target clauses. Made internal static for test access.
         // Option A safety: grep confirms 0 CreateOrder calls use "Stop*"/"Target*" prefixed names.
+        // B142-DIRECT-4: also matches PTT-STP-Drag-N (AddOn-created stop replacement after first drag).
+        //   On second+ drags fo.Name is "PTT-STP-Drag-1/2/3" -- must take ATM cancel+resubmit path,
+        //   not generic acc.Change(), so that ResubmitTargetAfterCascade also runs.
         // CYC=1: expression body. JS-021: no lock. JS-001: no throw. ASCII-only.
         internal static bool IsAtmSTPOrder(Order order) =>
             order.Name != null
@@ -2237,6 +2240,7 @@ namespace PropTraderTools
                 order.Name.EndsWith("STP", StringComparison.OrdinalIgnoreCase)
                 || order.Name.StartsWith("Stop", StringComparison.OrdinalIgnoreCase)
                 || order.Name.StartsWith("Target", StringComparison.OrdinalIgnoreCase)
+                || order.Name.StartsWith("PTT-STP-Drag-", StringComparison.Ordinal)
             );
 
         // B10 T1 -- IsStopAlreadyAtBe: idempotency guard.
@@ -2291,13 +2295,18 @@ namespace PropTraderTools
             {
                 if (fo.StopPrice < tickSize) // B142-DIRECT-2: skip when NT8 stop price not yet populated
                     return;
-                // B142: parse suffix ("1"/"2"/"3") from fo.Name ("Stop1"/"Stop2"/"Stop3").
-                // Passed to SyncAtmFollowerBracket and ResubmitTargetAfterCascade so each leg
-                // uses its own named order (PTT-STP-Drag-1/2/3, PTT-TGT-Drag-1/2/3).
+                // B142-DIRECT-4: derive suffix from leaderOrder.Name ("Stop1/2/3"), NOT fo.Name.
+                // On first drag fo.Name=="Stop1" (ATM) -- both give same result.
+                // On second+ drag fo.Name=="PTT-STP-Drag-1" -- TryParseStopSuffix("PTT-STP-Drag-1")
+                //   would return false (Substring(4)="STP-Drag-1", not numeric), giving legSuffix="".
+                // leaderOrder.Name is always the original ATM name ("Stop1/2/3") -- always parseable.
+                // CaptureLinkedTargetPrice also uses leaderOrder.Name for same reason:
+                //   on second drag the live target is "PTT-TGT-Drag-1", so we search by suffix "1"
+                //   and the method also now searches "PTT-TGT-Drag-N" as fallback.
                 // No new branch -- local variable + method call = 0 McCabe. CYC stays at 8.
-                TryParseStopSuffix(fo.Name, out string stopSuffix);
+                TryParseStopSuffix(leaderOrder.Name, out string stopSuffix);
                 string legSuffix = stopSuffix ?? "";
-                double? capturedTargetPrice = CaptureLinkedTargetPrice(acc, fo.Name); // B141: capture before cascade
+                double? capturedTargetPrice = CaptureLinkedTargetPrice(acc, leaderOrder.Name); // B142-DIRECT-4: use leader name, not fo name
                 SyncAtmFollowerBracket(acc, fo, newPrice, legSuffix);   // cascade kills linked target (accepted, by design)
                 if (capturedTargetPrice.HasValue)            // B141: +1 branch -> CYC 8 (at limit -- no further branching may be added)
                     ResubmitTargetAfterCascade(acc, fo, capturedTargetPrice.Value, leaderOrder, legSuffix);
@@ -2410,16 +2419,20 @@ namespace PropTraderTools
         // CYC=4: base(1)+if(1)+foreach(1)+if(1). No lock. No async. ASCII-only.
         // B141: captures LimitPrice of the linked NT8 ATM target before Stop cancel+resubmit triggers OCO cascade.
         // "Stop1"->"Target1", "Stop2"->"Target2", "Stop3"->"Target3" (NT8 ATM naming, SIM log 2026-09-01).
-        // Returns null if target not found (already cascade-cancelled) or suffix not 1/2/3.
+        // Returns null if target not found or suffix not 1/2/3.
         // JS-002 note: double? is a nullable VALUE type -- this is NOT a reference null return.
+        // B142-DIRECT-4: stopName is always leaderOrder.Name ("Stop1/2/3").
+        //   targetName is "Target1/2/3" (first drag) or "PTT-TGT-Drag-1/2/3" (second+ drag after cascade).
+        //   The || in the IsTargetOrderLive if-condition adds 0 McCabe branches. CYC stays at 4.
         private double? CaptureLinkedTargetPrice(Account acc, string stopName)
         {
             if (!TryParseStopSuffix(stopName, out string suffix)) // (1) if -- && NOT counted
                 return null;
             string targetName = "Target" + suffix;
-            foreach (var o in acc.Orders.ToList())                // (2) foreach
+            string pttTgtName = "PTT-TGT-Drag-" + suffix;
+            foreach (var o in acc.Orders.ToList())                                     // (2) foreach
             {
-                if (IsTargetOrderLive(o) && o.Name == targetName) // (3) if -- && NOT counted
+                if (IsTargetOrderLive(o) && (o.Name == targetName || o.Name == pttTgtName)) // (3) if -- && and || NOT counted
                     return o.LimitPrice;
             }
             return null;
@@ -2584,7 +2597,7 @@ namespace PropTraderTools
         // acc.Change() is a no-op on ATM-engine brackets (confirmed B129 SIM gate 2026-08-31).
         // Pattern mirrors SyncAtmFollowerBracket (DW-B134/B129 LaneB).
         // DW-B139 fix: Block A-Prime pre-sweep cancels prior Working PTT-TGT-Drag before Block B.
-        // CYC=8: (1) acc null, (2) fo null, (3) IsNoPriceChange guard [T2],
+        // CYC=8: (1) acc null, (2) fo null, (3) price guard [T2],
         //        (4) foreach A-Prime, (5) OrderState==Working, (6) Name=="PTT-TGT-Drag",
         //        (7) catch A-Prime, (8) Block A catch.
         // AT LIMIT. T2 B137: DW-B147/DW-B149 guard. T1 B137: Phase C -> ExecutePhaseCStopReplacement.
@@ -2595,6 +2608,12 @@ namespace PropTraderTools
         // NT8-014: order name starts with "PTT-" ("PTT-TGT-Drag").
         // OQ-03: cancel of follower ATM target bracket SAFE -- Gate 2 (FindMatchingRule L1609)
         //        returns null for follower account orders, blocking TryCancelFollowerEntries.
+        // B142-DIRECT-5: fo.LimitPrice<=0 added to guard (3) -- same fix as B142-DIRECT-2 for stops.
+        //   When ATM target is in Submitted state its LimitPrice==0 and the leader target has a real price.
+        //   IsNoPriceChange(0, 7647.25) = false, so the old guard did NOT block the cancel.
+        //   acc.Cancel(Target3) OCO-cascade kills Stop3 on follower -- Stop3 is gone before first drag fires.
+        //   When drag arrives, FindFollowerBracketOrder finds no Stop3 (Cancelled), fo=NULL, skipped.
+        //   The || adds 0 McCabe branches (compound condition on existing branch (3)). CYC stays at 8.
         private void SyncAtmFollowerTarget(
             Account acc,
             Order fo,
@@ -2606,7 +2625,7 @@ namespace PropTraderTools
                 return;
             if (fo == null) // (2)
                 return;
-            if (IsNoPriceChange(fo.LimitPrice, newPrice)) // (3) T2 B137 DW-B147/DW-B149 guard
+            if (fo.LimitPrice <= 0 || IsNoPriceChange(fo.LimitPrice, newPrice)) // (3) B142-DIRECT-5: fo.LimitPrice<=0 guard -- same fix as B142-DIRECT-2 for stops.
                 return;
 
             // Block A-Prime -- cancel any existing PTT-TGT-Drag for this instrument on the follower.
