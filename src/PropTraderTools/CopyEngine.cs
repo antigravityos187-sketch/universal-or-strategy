@@ -189,6 +189,21 @@ namespace PropTraderTools
         private readonly ConcurrentDictionary<string, byte> _entryDispatchedOrders =
             new ConcurrentDictionary<string, byte>();
 
+        // DW-B142-MGC-02: instrument-level dispatch guard.
+        // Key = instrFullName + "|" + OrderAction (e.g. "MGC DEC26|Sell").
+        // Set on first Gate 5 pass. Cleared on Cancelled (no-fill cancel) via companion map,
+        // or on PositionStateChanged flat (safety net). NOT cleared on Filled -- trade is live.
+        // JS-025: ConcurrentDictionary is lock-free. JS-021: no lock.
+        private readonly ConcurrentDictionary<string, byte> _liveEntryInstruments =
+            new ConcurrentDictionary<string, byte>();
+
+        // DW-B142-MGC-02: maps dispatched orderId -> instrKey.
+        // Written in IsLiveEntryBlocked at Gate 5 pass time.
+        // Used by EvictDedup(Cancelled) to clean up _liveEntryInstruments on no-fill cancel.
+        // Key = orderId, Value = instrKey. JS-025: ConcurrentDictionary. JS-021: no lock.
+        private readonly ConcurrentDictionary<string, string> _entryInstrKeyByOrderId =
+            new ConcurrentDictionary<string, string>();
+
         // DW-B136 Gap B: leader order ID -> follower Order objects dispatched for that leader order.
         // Key = leader order.OrderId.ToString() (same format as _dedupCache and _entryDispatchedOrders).
         // Value = ConcurrentBag<Order> of follower Order objects submitted for this leader order.
@@ -2082,13 +2097,11 @@ namespace PropTraderTools
 
             // Gate 5: dedup -- reject duplicate event for same orderId (B62: price-keyed dedup).
             // DW-B91-A: IsEntryDispatched extends dedup across EvictDedup eviction boundary.
-            // Compound OR: single McCabe branch -- DispatchCopy CYC stays at 8.
-            // Short-circuit: IsEntryDispatched only called when IsDedup returns false (new event).
-            //   - IsDedup false + IsEntryDispatched false: first time -- TryAdd marks dispatched, proceed.
-            //   - IsDedup false + IsEntryDispatched true:  eviction-bypass attempt -- blocked.
-            //   - IsDedup true:  duplicate same-event -- blocked, IsEntryDispatched not called.
+            // DW-B142-MGC-02: IsLiveEntryBlocked adds instrument-level guard -- blocks cancel+resubmit dups.
+            // Single McCabe branch -- DispatchCopy CYC stays at 8.
             var orderId = order.OrderId.ToString();
-            if (IsDedup(orderId, order.LimitPrice) || IsEntryDispatched(orderId))
+            var instrKey = order.Instrument.FullName + "|" + order.OrderAction;
+            if (IsLiveEntryBlocked(instrKey, orderId, order.LimitPrice))   // DW-B142-MGC-02
                 return;
 
             // All gates passed -- build base signal
@@ -3475,7 +3488,10 @@ namespace PropTraderTools
                     }
                 }
                 if (isLeaderAcct)
+                {
                     _lastLeaderDirection.TryRemove(instr, out _);
+                    ClearLiveEntryForInstrument(instr); // DW-B142-MGC-02: safety-net cleanup on leader flat
+                }
             }
 
             bool hasEntries = HasWorkingEntries(e.Order.Account, e.Order.Instrument);
@@ -4585,10 +4601,44 @@ namespace PropTraderTools
             return false;
         }
 
+        // DW-B142-MGC-02: Gate 5 compound predicate for DispatchCopy.
+        // CYC=4: liveInstr guard(1) + IsDedup(2) + IsEntryDispatched(3).
+        // Returns true (block dispatch) on any of:
+        //   (a) instrument already has a live entry dispatched this slot -- blocks resubmit dup.
+        //   (b) same orderId seen before -- orderId-level dup guard.
+        //   (c) orderId was previously dispatched and survived EvictDedup -- eviction-bypass guard.
+        // On false (first real dispatch): records instrKey in _liveEntryInstruments
+        //   and orderId in _entryInstrKeyByOrderId.
+        // JS-021: no lock. JS-001: no throw. JS-002: returns bool. ASCII-only.
+        private bool IsLiveEntryBlocked(string instrKey, string orderId, double limitPrice)
+        {
+            if (_liveEntryInstruments.ContainsKey(instrKey))
+                return true;
+            if (IsDedup(orderId, limitPrice))
+                return true;
+            if (IsEntryDispatched(orderId))
+                return true;
+            _liveEntryInstruments.TryAdd(instrKey, 0);
+            _entryInstrKeyByOrderId.TryAdd(orderId, instrKey);
+            return false;
+        }
+
+        // DW-B142-MGC-02: on position flat, remove all live-entry keys for this instrument.
+        // CYC=2: foreach(1). ConcurrentDictionary enumeration is snapshot-safe.
+        // JS-021: no lock. JS-001: no throw. ASCII-only.
+        private void ClearLiveEntryForInstrument(string instrFullName)
+        {
+            foreach (var key in _liveEntryInstruments.Keys)
+            {
+                if (key.StartsWith(instrFullName + "|", StringComparison.Ordinal))
+                    _liveEntryInstruments.TryRemove(key, out _);
+            }
+        }
+
         // B62: evict dedup entry when order reaches terminal state (Filled/Cancelled/Rejected).
         // Called unconditionally from OnOrderUpdate pre-gate, after TryFirePositionState.
         // Ensures evicted orderId can be re-used for the next fresh order on the same instrument.
-        // CYC=2: terminal-state guard (1) + TryRemove (no branch).
+        // DW-B142-MGC-02: CYC=5: terminal-guard(1) + Cancelled(2) + instrKey-lookup(3) + Filled(4).
         // JS-025: ConcurrentDictionary.TryRemove is lock-free.
         internal void EvictDedup(string orderId, OrderState state)
         {
@@ -4600,11 +4650,26 @@ namespace PropTraderTools
                 return;
 
             _dedupCache.TryRemove(orderId, out _);
+
             if (state == OrderState.Cancelled)
-                _entryDispatchedOrders.Clear(); // DW-B101: evict on Cancelled (Filled/Rejected handled by TryEvictFollowerBeSlot)
-            // DW-B91-A-v2: eviction moved to TryEvictFollowerBeSlot (position-flat) for Filled/Rejected.
-            // Prevents partial-fill re-dispatch: Filled fires before Submitted re-submit on Rithmic.
-            // DW-B101: Cancelled eviction of _entryDispatchedOrders handled here (TryEvictFollowerBeSlot misses Cancelled).
+            {
+                // DW-B142-MGC-02: scoped removal -- do NOT Clear() the whole map.
+                // Bracket/drag/ATM cancels must not wipe the entry dispatch guard for other orderIds.
+                _entryDispatchedOrders.TryRemove(orderId, out _);
+                // If this orderId was a dispatched entry (no fill, just cancelled),
+                // remove the instrument-level live guard so future entries are not blocked.
+                if (_entryInstrKeyByOrderId.TryRemove(orderId, out var cancelledInstrKey))
+                    _liveEntryInstruments.TryRemove(cancelledInstrKey, out _);
+            }
+
+            if (state == OrderState.Filled)
+            {
+                // DW-B142-MGC-02: clean up companion map (lazy).
+                // Do NOT remove _liveEntryInstruments key -- trade is live.
+                // PositionStateChanged flat gate (ClearLiveEntryForInstrument) is the authoritative cleanup.
+                _entryInstrKeyByOrderId.TryRemove(orderId, out _);
+            }
+            // DW-B91-A-v2: Filled/Rejected _entryDispatchedOrders eviction handled in TryEvictFollowerBeSlot.
         }
 
         // B127: updated to implement Option A lazy re-resolve (DW-PTT-BE-FIX-01).
