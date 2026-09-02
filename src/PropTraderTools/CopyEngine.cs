@@ -2282,8 +2282,15 @@ namespace PropTraderTools
             // DW-B154: acc.Change() confirmed no-op on ATM Stop brackets from AddOnBase (B140 SIM Gate 1 FAIL).
             // IsTrailingStop fires on StopMarket orders; ATM STP brackets ARE StopMarket.
             // Without branch (3), IsTrailingStop would return early and skip stop sync.
+            // B142-DIRECT-2: fo.StopPrice==0 when NT8 ATM bracket is newly Accepted (price not yet
+            // populated). The outer tickSize guard at (2) passes because |newPrice-0|>>tickSize.
+            // CaptureLinkedTargetPrice must NOT run before we know the stop price is real -- doing so
+            // fires a spurious ResubmitTargetAfterCascade even though SyncAtmFollowerBracket returns
+            // early via IsNoPriceChange, cancelling the ATM bracket and Target3 on session start.
             if (isStop && IsAtmSTPOrder(fo)) // (3) DW-B134 + DW-B137 + DW-B153
             {
+                if (fo.StopPrice < tickSize) // B142-DIRECT-2: skip when NT8 stop price not yet populated
+                    return;
                 double? capturedTargetPrice = CaptureLinkedTargetPrice(acc, fo.Name); // B141: capture before cascade
                 SyncAtmFollowerBracket(acc, fo, newPrice);   // cascade kills linked target (accepted, by design)
                 if (capturedTargetPrice.HasValue)            // B141: +1 branch -> CYC 8 (at limit -- no further branching may be added)
