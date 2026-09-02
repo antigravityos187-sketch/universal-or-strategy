@@ -40953,38 +40953,265 @@ if (order.OrderState != OrderState.Working &amp;&amp; order.OrderState != OrderS
     </div>
     <!-- end section-b138 -->
 
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B142-DRAG: P1 NEW — B142 SIM — second target drag silent (IsAtmSTPOrder gap)   -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b142-drag" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(239,68,68,0.10); border-left:3px solid var(--red); color:var(--red);">DW-B142-DRAG &mdash; P1 &mdash; OPEN &mdash; ca8ad16 B142-DIRECT-9 SIM &mdash; Second target drag silent on followers &mdash; IsAtmSTPOrder missing PTT-TGT-Drag-N clause</div>
+      <div class="card" style="border-color:var(--red);">
+        <div class="card-header" style="background:rgba(239,68,68,0.07);">
+          <div class="card-title" style="color:var(--red);">&#10007; DW-B142-DRAG &mdash; P1 OPEN &mdash; ca8ad16 B142-DIRECT-9 SIM (2026-09-02): Second target drag does NOT sync followers &mdash; first drag PASS, second+ drag SILENT on all followers (Sim102/103/104)</div>
+          <div class="card-meta">Discovered: 2026-09-02 &mdash; B142-DIRECT-9 SIM output analysis &mdash; Director report: targets sync first move only</div>
+        </div>
+        <div class="card-body">
+          <table style="font-size:0.83rem; border-collapse:collapse; width:100%; margin-bottom:1rem;">
+            <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Defect ID</td><td style="padding:3px 0; color:#e2e8f0;">DW-B142-DRAG</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P1 &mdash; followers not synced on repeated target drags &mdash; first drag correct, second+ drag silent</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Commit</td><td style="padding:3px 0; font-family:var(--mono); color:#e2e8f0;">ca8ad16 (B142-DIRECT-9)</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--red);">&#10007; P1 OPEN &mdash; root cause confirmed by log trace analysis &mdash; fix designed (spec only) &mdash; pipeline required</td></tr>
+            <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Related</td><td style="padding:3px 0; color:#e2e8f0;">B142-DIRECT-4 (stop analogue &mdash; PTT-STP-Drag- clause added to IsAtmSTPOrder for stops) &mdash; DW-B141 (Phase C stop replacement) &mdash; DW-B146/DW-B148 (earlier second-drag fo=NULL fixes, now resolved)</td></tr>
+          </table>
+
+          <!-- SYMPTOM -->
+          <div class="label">Symptom</div>
+          <p style="font-size:0.83rem; color:var(--muted); margin-bottom:0.75rem;">
+            After the first target drag all three follower accounts (Sim102/Sim103/Sim104) correctly receive
+            <code>PTT-TGT-Drag-1/2/3</code> orders via <code>SyncAtmFollowerTarget</code>.
+            On every subsequent target drag, <strong>TP3-HBC fires</strong> (followerCount=3, newPrice updated),
+            <strong>TP4-SFB fires</strong> (fo=PTT-TGT-Drag-N, correct), but the follower orders are updated via
+            <code>acc.Change()</code> (no-op on AddOn-created limit orders) instead of the required
+            cancel+resubmit path.  The log confirms <code>PTT-TGT-Drag-N:ChangeSubmitted</code> transitions
+            on followers &mdash; meaning <code>acc.Change()</code> was called and acknowledged &mdash; but NT8
+            does not actually move the limit price.  No new <code>PTT-TGT-Drag-N</code> is created at the
+            new price.  Stops work correctly past the first drag because their analogue guard
+            (<code>StartsWith("PTT-STP-Drag-")</code>) was added in B142-DIRECT-4.
+          </p>
+
+          <!-- ROOT CAUSE -->
+          <div class="label">Root Cause (confirmed by log + code analysis)</div>
+          <div style="font-size:0.83rem; color:var(--muted); margin-bottom:0.75rem;">
+            <p style="margin-bottom:0.5rem;">
+              <strong>File:</strong> <code>src/PropTraderTools/CopyEngine.cs</code> &mdash;
+              <code>IsAtmSTPOrder</code> (line&nbsp;2237) and
+              <code>SyncFollowerBracket</code> branch&nbsp;(3b) (line&nbsp;2325).
+            </p>
+            <p style="margin-bottom:0.5rem;">
+              On a <strong>second target drag</strong>, <code>FindFollowerBracketOrder</code> correctly resolves
+              <code>fo = PTT-TGT-Drag-N</code> via <code>MatchesLeaderName</code> branch&nbsp;(3)
+              (<code>leaderName="TargetN"</code> &rarr; suffix extraction &rarr; <code>order.Name == "PTT-TGT-Drag-N"</code>).
+              The state filter now includes <code>ChangeSubmitted</code> (B142-DIRECT-9) so <code>fo</code> is
+              non-null even during rapid drags.  Control returns to <code>SyncFollowerBracket</code> with
+              <code>fo = PTT-TGT-Drag-N</code> and <code>isStop = false</code>.
+            </p>
+            <p style="margin-bottom:0.5rem;">
+              Branch&nbsp;(3b) tests <code>!isStop &amp;&amp; IsAtmSTPOrder(fo)</code>.
+              <code>IsAtmSTPOrder</code> checks four clauses:
+            </p>
+            <pre style="background:var(--raised); border:1px solid var(--border); border-radius:4px; padding:10px 14px; font-size:0.78rem; overflow-x:auto; margin-bottom:0.5rem;">internal static bool IsAtmSTPOrder(Order order) =&gt;
+    order.Name != null
+    &amp;&amp; (
+        order.Name.EndsWith("STP", StringComparison.OrdinalIgnoreCase)       // Buy STP / Sell STP
+        || order.Name.StartsWith("Stop", StringComparison.OrdinalIgnoreCase) // Stop1/2/3
+        || order.Name.StartsWith("Target", StringComparison.OrdinalIgnoreCase) // Target1/2/3
+        || order.Name.StartsWith("PTT-STP-Drag-", StringComparison.Ordinal)  // PTT stop replacement (B142-DIRECT-4)
+        // &#10007; MISSING: || order.Name.StartsWith("PTT-TGT-Drag-", StringComparison.Ordinal)
+    );</pre>
+            <p style="margin-bottom:0.5rem;">
+              <code>fo.Name = "PTT-TGT-Drag-3"</code>.  None of the four clauses match:
+              <code>EndsWith("STP")</code>&nbsp;&#10007;,
+              <code>StartsWith("Stop")</code>&nbsp;&#10007;,
+              <code>StartsWith("Target")</code>&nbsp;&#10007;,
+              <code>StartsWith("PTT-STP-Drag-")</code>&nbsp;&#10007;.
+              <strong><code>IsAtmSTPOrder</code> returns <code>false</code></strong>.
+              Branch&nbsp;(3b) is skipped. <code>SyncAtmFollowerTarget</code> (cancel+resubmit) is never called.
+            </p>
+            <p style="margin-bottom:0.5rem;">
+              Control falls through to the trailing-stop guard and then to the generic
+              <code>fo.LimitPrice = newPrice; acc.Change(new Order[] { fo });</code> path.
+              <code>acc.Change()</code> on an AddOn-created limit order is confirmed as a no-op by NT8
+              (empirically confirmed B129 SIM gate; also confirmed by B140 for ATM-owned brackets).
+              The follower order transitions through <code>ChangeSubmitted</code> back to <code>Working</code>
+              at the <strong>original price</strong>.  No price movement occurs.
+            </p>
+            <p>
+              Contrast with <strong>stops</strong>: <code>fo.Name = "PTT-STP-Drag-1"</code>.
+              <code>StartsWith("PTT-STP-Drag-")</code>&nbsp;&#10003; &rarr; <code>IsAtmSTPOrder = true</code>
+              &rarr; branch&nbsp;(3) taken &rarr; <code>SyncAtmFollowerBracket</code> (cancel+resubmit) called
+              &rarr; stops work correctly on second+ drag.
+              The <code>PTT-STP-Drag-</code> clause was added in <strong>B142-DIRECT-4</strong> but its target
+              analogue <code>PTT-TGT-Drag-</code> was never added.
+            </p>
+          </div>
+
+          <!-- FIX DESIGN -->
+          <div class="label">Fix Design (one-line, spec-level &mdash; pipeline required for src edit)</div>
+          <p style="font-size:0.83rem; color:var(--muted); margin-bottom:0.5rem;">
+            Add <code>PTT-TGT-Drag-</code> clause to <code>IsAtmSTPOrder</code>, mirroring the
+            B142-DIRECT-4 stop clause exactly.  This makes branch&nbsp;(3b) fire when
+            <code>fo = PTT-TGT-Drag-N</code>, routing to <code>SyncAtmFollowerTarget</code>
+            (cancel&nbsp;+&nbsp;resubmit) on every subsequent target drag.
+          </p>
+          <pre style="background:var(--raised); border:1px solid var(--border); border-radius:4px; padding:10px 14px; font-size:0.78rem; overflow-x:auto; margin-bottom:0.75rem;">// BEFORE (CopyEngine.cs ~L2237)
+internal static bool IsAtmSTPOrder(Order order) =&gt;
+    order.Name != null
+    &amp;&amp; (
+        order.Name.EndsWith("STP", StringComparison.OrdinalIgnoreCase)
+        || order.Name.StartsWith("Stop", StringComparison.OrdinalIgnoreCase)
+        || order.Name.StartsWith("Target", StringComparison.OrdinalIgnoreCase)
+        || order.Name.StartsWith("PTT-STP-Drag-", StringComparison.Ordinal)
+    );
+
+// AFTER (add one clause &mdash; symmetric with PTT-STP-Drag- added in B142-DIRECT-4)
+internal static bool IsAtmSTPOrder(Order order) =&gt;
+    order.Name != null
+    &amp;&amp; (
+        order.Name.EndsWith("STP", StringComparison.OrdinalIgnoreCase)
+        || order.Name.StartsWith("Stop", StringComparison.OrdinalIgnoreCase)
+        || order.Name.StartsWith("Target", StringComparison.OrdinalIgnoreCase)
+        || order.Name.StartsWith("PTT-STP-Drag-", StringComparison.Ordinal)
+        || order.Name.StartsWith("PTT-TGT-Drag-", StringComparison.Ordinal)  // &#10003; ADD: second+ target drag
+    );</pre>
+          <p style="font-size:0.83rem; color:var(--muted); margin-bottom:0.75rem;">
+            <strong>CYC impact:</strong> <code>IsAtmSTPOrder</code> is a CYC=1 expression body
+            (compound <code>||</code> expressions do not add McCabe branches per project convention).
+            Adding one <code>|| StartsWith()</code> clause leaves CYC=1.
+            <code>SyncFollowerBracket</code> CYC unchanged (no new branch added; existing branch&nbsp;(3b)
+            already covers this path).
+          </p>
+          <p style="font-size:0.83rem; color:var(--muted); margin-bottom:0.75rem;">
+            <strong>Downstream behaviour:</strong> When <code>fo = PTT-TGT-Drag-N</code> hits branch&nbsp;(3b),
+            <code>SyncAtmFollowerTarget(acc, fo, newPrice, leaderOrder)</code> is called.
+            Block&nbsp;A-Prime cancels any stale <code>PTT-TGT-Drag-N</code> (the old one at the prior price).
+            Block&nbsp;A cancels <code>fo</code> directly.
+            Block&nbsp;B creates a new <code>PTT-TGT-Drag-N</code> at <code>newPrice</code>.
+            Phase&nbsp;C (<code>ExecutePhaseCStopReplacement</code>) runs; it looks for the leader's
+            <code>Stop{N}</code> &mdash; on a second drag that ATM stop is already <code>PTT-STP-Drag-N</code>
+            and <code>FindLeaderStopPrice</code> will return 0.0 (searches for "Stop1" by name, which is Cancelled).
+            Phase&nbsp;C produces no additional stop (correct &mdash; the stop is already placed and Working as
+            <code>PTT-STP-Drag-N</code>).  Net result: follower target moves to new price.  No regressions.
+          </p>
+
+          <!-- STOP PATH ANALOGY -->
+          <div class="label">Why Stops Work (analogy confirming the fix direction)</div>
+          <table style="font-size:0.82rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+            <tr style="background:rgba(99,102,241,0.06);">
+              <th style="padding:5px 10px; border:1px solid var(--border); text-align:left; color:#a5b4fc;">Leg type</th>
+              <th style="padding:5px 10px; border:1px solid var(--border); text-align:left; color:#a5b4fc;">fo.Name (2nd drag)</th>
+              <th style="padding:5px 10px; border:1px solid var(--border); text-align:left; color:#a5b4fc;">IsAtmSTPOrder (before fix)</th>
+              <th style="padding:5px 10px; border:1px solid var(--border); text-align:left; color:#a5b4fc;">IsAtmSTPOrder (after fix)</th>
+              <th style="padding:5px 10px; border:1px solid var(--border); text-align:left; color:#a5b4fc;">Result</th>
+            </tr>
+            <tr>
+              <td style="padding:4px 10px; border:1px solid var(--border);">Stop leg</td>
+              <td style="padding:4px 10px; border:1px solid var(--border); font-family:var(--mono);">PTT-STP-Drag-1</td>
+              <td style="padding:4px 10px; border:1px solid var(--border); color:var(--green);">&#10003; true (StartsWith PTT-STP-Drag-)</td>
+              <td style="padding:4px 10px; border:1px solid var(--border); color:var(--green);">&#10003; true (unchanged)</td>
+              <td style="padding:4px 10px; border:1px solid var(--border); color:var(--green);">cancel+resubmit &#10003;</td>
+            </tr>
+            <tr style="background:rgba(239,68,68,0.04);">
+              <td style="padding:4px 10px; border:1px solid var(--border);">Target leg</td>
+              <td style="padding:4px 10px; border:1px solid var(--border); font-family:var(--mono);">PTT-TGT-Drag-3</td>
+              <td style="padding:4px 10px; border:1px solid var(--border); color:var(--red);">&#10007; false (no matching clause)</td>
+              <td style="padding:4px 10px; border:1px solid var(--border); color:var(--green);">&#10003; true (StartsWith PTT-TGT-Drag-)</td>
+              <td style="padding:4px 10px; border:1px solid var(--border); color:var(--amber);">acc.Change (no-op) &rarr; AFTER FIX: cancel+resubmit &#10003;</td>
+            </tr>
+          </table>
+
+          <!-- TEST REQUIREMENTS -->
+          <div class="label">Test Requirements (pipeline xUnit)</div>
+          <ul style="font-size:0.83rem; color:var(--muted); margin:0.25rem 0 0.75rem 1.2rem; padding:0; line-height:1.85;">
+            <li><strong>T1</strong>: <code>IsAtmSTPOrder</code> with <code>order.Name="PTT-TGT-Drag-3"</code> &rarr; returns <code>true</code>.</li>
+            <li><strong>T2</strong>: <code>IsAtmSTPOrder</code> with <code>order.Name="PTT-TGT-Drag-1"</code> &rarr; returns <code>true</code>.</li>
+            <li><strong>T3</strong>: <code>IsAtmSTPOrder</code> with <code>order.Name="PTT-STP-Drag-2"</code> still returns <code>true</code> (no regression).</li>
+            <li><strong>T4</strong>: <code>IsAtmSTPOrder</code> with <code>order.Name="Target1"</code> still returns <code>true</code> (no regression).</li>
+            <li><strong>T5</strong>: <code>IsAtmSTPOrder</code> with <code>order.Name="PTT-Flatten"</code> returns <code>false</code> (PTT non-drag orders excluded).</li>
+            <li><strong>T6 (integration)</strong>: <code>SyncFollowerBracket</code> with <code>fo.Name="PTT-TGT-Drag-3"</code>, <code>isStop=false</code> &rarr; branch (3b) taken &rarr; <code>SyncAtmFollowerTarget</code> called (mock verify).</li>
+          </ul>
+
+          <!-- SIM GATE -->
+          <div class="label">SIM Gate (post-fix verification)</div>
+          <table style="font-size:0.82rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+            <tr style="background:rgba(99,102,241,0.06);">
+              <th style="padding:5px 8px; border:1px solid var(--border); color:#a5b4fc;">Test</th>
+              <th style="padding:5px 8px; border:1px solid var(--border); color:#a5b4fc;">Action</th>
+              <th style="padding:5px 8px; border:1px solid var(--border); color:#a5b4fc;">Expected</th>
+              <th style="padding:5px 8px; border:1px solid var(--border); color:#a5b4fc;">Result</th>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px; border:1px solid var(--border);">Test A &mdash; first drag</td>
+              <td style="padding:4px 8px; border:1px solid var(--border);">Drag Target3 on Sim101 to new price</td>
+              <td style="padding:4px 8px; border:1px solid var(--border);">PTT-TGT-Drag-3 placed on Sim102/103/104 at new price. No regression.</td>
+              <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">PENDING</td>
+            </tr>
+            <tr style="background:rgba(239,68,68,0.04);">
+              <td style="padding:4px 8px; border:1px solid var(--border);">Test B &mdash; second drag (primary)</td>
+              <td style="padding:4px 8px; border:1px solid var(--border);">Drag same Target3 a second time to a different price</td>
+              <td style="padding:4px 8px; border:1px solid var(--border);">TP4-SFB: fo=PTT-TGT-Drag-3 (not NULL). SyncAtmFollowerTarget called. Prior PTT-TGT-Drag-3 cancelled. New PTT-TGT-Drag-3 at second price on all followers. Followers: old price Cancelled, new price Working.</td>
+              <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">PENDING</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px; border:1px solid var(--border);">Test C &mdash; third drag</td>
+              <td style="padding:4px 8px; border:1px solid var(--border);">Drag same Target3 a third time</td>
+              <td style="padding:4px 8px; border:1px solid var(--border);">Same pattern as Test B: prior PTT-TGT-Drag-3 cancelled, new one created at third price.</td>
+              <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">PENDING</td>
+            </tr>
+            <tr style="background:rgba(239,68,68,0.04);">
+              <td style="padding:4px 8px; border:1px solid var(--border);">Test D &mdash; stop drag regression</td>
+              <td style="padding:4px 8px; border:1px solid var(--border);">Drag Stop1 on Sim101</td>
+              <td style="padding:4px 8px; border:1px solid var(--border);">Stop drag still working: PTT-STP-Drag-1 on followers. No regression from IsAtmSTPOrder change.</td>
+              <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">PENDING</td>
+            </tr>
+          </table>
+
+          <strong style="color:var(--red);">&#10007; DW-B142-DRAG P1 OPEN &mdash; 2026-09-02. Root cause confirmed: <code>IsAtmSTPOrder</code> missing <code>|| order.Name.StartsWith("PTT-TGT-Drag-", StringComparison.Ordinal)</code> clause. On second+ target drag, <code>fo = PTT-TGT-Drag-N</code> found correctly (MatchesLeaderName &#10003;) but <code>IsAtmSTPOrder(fo)</code> returns false &rarr; branch (3b) skipped &rarr; acc.Change() called &rarr; no-op &rarr; follower price not updated. Fix: add PTT-TGT-Drag- clause symmetric to PTT-STP-Drag- (B142-DIRECT-4). CYC=1 unchanged. 6 xUnit tests required. Pipeline: ptt-orchestrator full 5-phase PTT pipeline.</strong>
+
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b142-drag -->
+
+
+
 
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <!-- PERPETUAL LOOP PROTOCOL: $continue session structure                               -->
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
     <div class="section" id="section-continue-loop" style="margin-top:40px;">
-      <div class="section-label" style="background:rgba(99,102,241,0.10); border-left:3px solid #6366f1; color:#6366f1;">Perpetual Session Loop &mdash; $continue Protocol V2.2 &mdash; STEP 4 is a hard WAIT gate &mdash; STEP 7 delivers pipeline prompts + $continue together as one hand-off packet &mdash; V2.2: 1-agent-per-ticket + lane-split gate (2026-09-07)</div>
+      <div class="section-label" style="background:rgba(99,102,241,0.10); border-left:3px solid #6366f1; color:#6366f1;">Perpetual Session Loop &mdash; $continue Protocol V3.0 &mdash; Direct-Repair Loop &mdash; diagnose &rarr; repair &rarr; SIM verify &rarr; pipeline only on SIM PASS &mdash; no pause, no wait gates &mdash; updated 2026-09-02</div>
       <div class="section-body">
         <div class="card" style="border-left:3px solid #6366f1; background:rgba(99,102,241,0.04);">
-          <div class="card-title" style="color:#6366f1;">$continue Loop &mdash; Perpetual Session Protocol (V2.2 &mdash; 2026-09-07 &mdash; PIPELINE EXECUTION RULES: 1-agent-per-ticket + lane-split gate)</div>
+          <div class="card-title" style="color:#6366f1;">$continue Loop &mdash; Perpetual Session Protocol (V3.0 &mdash; 2026-09-02 &mdash; Direct-Repair Loop: no wait gates, $continue travels with every test request)</div>
           <div class="card-body">
 
             <p style="font-size:0.83rem; color:var(--muted);">
-              Every copier-spec session begins with a <code>$continue</code> prompt and ends with the next <code>$continue</code> prompt already written.
-              The Director never has to ask for it. The loop runs until the codebase reaches STABLE.
+              Every copier-spec session begins with a <code>$continue</code> prompt (which includes the test results from the prior session).
+              The session diagnoses, applies a direct repair, syncs+F5, then outputs a <strong>test request + next <code>$continue</code> prompt together</strong>.
+              The Director tests in NT8 SIM, then pastes the pre-written <code>$continue</code> into a <strong>new session</strong> with the results appended.
+              The full PTT pipeline (5 phases) runs only after a defect&rsquo;s SIM test passes.
+              The loop runs until the codebase reaches STABLE.
             </p>
 
-            <div style="margin:0.5rem 0 0.75rem; padding:8px 12px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.3); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:var(--red);">HARD RULE &mdash; STEP 7 is post-SIM only.</strong>
-              <span style="color:var(--muted);"> The STEP 7 hand-off packet MUST NOT be generated before the Director reports SIM results.
-              STEP 4 outputs SIM instructions and then the session STOPS AND WAITS.
-              STEPS 5&ndash;7 run after the Director&rsquo;s report, grounded in actual PASS/FAIL/DEFER/OBS data.</span>
+            <!-- V3.0 CORE RULE BOX -->
+            <div style="margin:0.5rem 0 0.75rem; padding:10px 14px; background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:#a5b4fc;">V3.0 CORE RULE &mdash; NO PAUSE, NO WAIT GATES.</strong>
+              <span style="color:var(--muted);"> The session never stops and waits for Director input mid-session.
+              Every session ends in one shot: diagnose &rarr; repair &rarr; sync+F5 gate &rarr; output test request + pre-written $continue prompt.
+              The Director tests, then pastes $continue + results into a NEW session.
+              Pipeline runs only after SIM PASS is confirmed in the $continue prompt.</span>
             </div>
 
-            <div style="margin:0.5rem 0 0.75rem; padding:8px 12px; background:rgba(99,102,241,0.07); border:1px solid rgba(99,102,241,0.3); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:#6366f1;">WHY THEY TRAVEL TOGETHER &mdash;</strong>
-              <span style="color:var(--muted);"> The $continue prompt references the outcome of the pipelines that are about to run.
-              Delivering it before the pipelines means the Director holds a prompt that refers to unfinished work.
-              Delivering both together: Director pastes pipeline prompts &rarr; pipelines run &rarr; $continue already in hand &rarr; paste.
-              No confusion about when to use it. No stale $continue from a prior session.</span>
+            <!-- DECISION TREE -->
+            <div style="margin:0.5rem 0 0.75rem; padding:10px 14px; background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.3); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--amber);">PIPELINE GATE &mdash; WHEN TO RUN FULL 5-PHASE PTT PIPELINE:</strong>
+              <ul style="color:var(--muted); margin:0.4rem 0 0 1.2rem; padding:0; line-height:1.75;">
+                <li><strong>Direct repair loop (default):</strong> diagnose &rarr; direct src edit &rarr; sync+F5 &rarr; SIM test &rarr; iterate until SIM PASS.</li>
+                <li><strong>Full pipeline trigger:</strong> only when a defect&rsquo;s SIM test returns PASS. No pipeline before SIM PASS. Ever.</li>
+                <li><strong>Architectural change:</strong> if a fix requires a new method, type, or cross-file refactor &rarr; full pipeline regardless of SIM state.</li>
+                <li><strong>Single-clause or single-line fix:</strong> direct repair always. No pipeline needed unless SIM also passes.</li>
+              </ul>
             </div>
 
-            <div class="label">Session Structure (every session, always in this order)</div>
+            <div class="label">Session Structure &mdash; V3.0 (every session, always in this order)</div>
             <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
               <tr style="background:rgba(99,102,241,0.06);">
                 <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700; width:80px;">STEP 0</td>
@@ -40992,61 +41219,59 @@ if (order.OrderState != OrderState.Working &amp;&amp; order.OrderState != OrderS
               </tr>
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 1</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Validate pipeline output &mdash; read verification docs + confirm source (CopyEngine.cs). Read architecture plan first to know which fix approach was taken. If ANY check fails: STOP, log new DW item, do not proceed.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Read $continue prompt. Parse: active task ID, last commit, test results (PASS / FAIL / OBS). If results are PASS &rarr; go to STEP 5 (close + pipeline). If results are FAIL/OBS/none &rarr; go to STEP 2.</td>
               </tr>
               <tr style="background:rgba(99,102,241,0.04);">
                 <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 2</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Sync + F5 &mdash; <code>powershell -File scripts\ptt-sync-and-verify.ps1</code> (0 MISMATCH gate) then F5 in NT8 (green compile gate).</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Diagnose. Read the relevant source files and log output. Confirm root cause before touching any code. State the root cause explicitly.</td>
               </tr>
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 3</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Update spec &mdash; close DW items, add pipeline section, update safety assessment. Only after STEP 1 + STEP 2 both pass.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Direct repair. Apply the minimal src edit. Update the DW card in the spec (add fix design). Run <code>powershell -File scripts\ptt-sync-and-verify.ps1</code> &mdash; must be 0 MISMATCH. Instruct Director to press F5 in NT8.</td>
               </tr>
-              <tr style="background:rgba(239,68,68,0.06);">
-                <td style="padding:4px 8px; border:1px solid rgba(239,68,68,0.4); color:var(--red); font-weight:700;">STEP 4</td>
-                <td style="padding:4px 8px; border:1px solid rgba(239,68,68,0.4); color:#e2e8f0;"><strong>Output SIM gate instructions. Then STOP AND WAIT.</strong> Session pauses here. Director runs tests in NinjaTrader 8 SIM and reports PASS / FAIL / OBS / DEFER back in the same chat. Do NOT proceed to STEP 5 until Director reports results.</td>
+              <tr style="background:rgba(99,102,241,0.06);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 4</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#e2e8f0;"><strong>Output test request + $continue prompt together. End session.</strong> The test request states exactly what to test and what to look for in the NT8 output. The pre-written $continue prompt includes task ID, commit, and a placeholder for results. Director pastes both into their workflow &mdash; tests, then pastes $continue + results into a new session.</td>
               </tr>
               <tr>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 5</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);"><strong>After Director reports.</strong> Update spec with actual SIM results &mdash; fill gate result table, log deferred cards, new DW items if any, DW-B134-OCO observation.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">STEP 5</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);"><strong>(SIM PASS path only)</strong> Update spec: close DW item, update status to CONFIRMED FIXED. Commit: <code>git add -f specs/ src/PropTraderTools/CopyEngine.cs; git commit -m "fix(ptt): DW-{ID} {summary}"</code></td>
               </tr>
               <tr style="background:rgba(99,102,241,0.04);">
-                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">STEP 6</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);"><strong>After STEP 5.</strong> Commit spec updates. <code>git add -f specs/ docs/brain/B{N}/; git commit -m "feat(ptt): B{N} SIM gates [summary]"</code></td>
-              </tr>
-              <tr>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700; background:rgba(99,102,241,0.15);">STEP 7</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:#e2e8f0; background:rgba(99,102,241,0.10);"><strong>After STEP 6 &mdash; HAND-OFF PACKET (both parts together, never split):</strong><br>
-                  <strong style="color:#a5b4fc;">Part A</strong> &mdash; ptt-orchestrator prompt(s) for the confirmed next pipeline(s). One prompt per confirmed action. No speculative branches. Full 7-phase chain verbatim in every prompt.<br>
-                  <strong style="color:#a5b4fc;">Part B</strong> &mdash; next <code>$continue</code> prompt, pre-filled from actual outcomes. Director pastes Part A into pipeline sessions. Director pastes Part B into this session when those pipelines finish.
-                </td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">STEP 6</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);"><strong>(SIM PASS path only)</strong> Launch full PTT pipeline via ptt-orchestrator. Output the ptt-orchestrator prompt (all 5 phases verbatim). Output next $continue prompt referencing the pipeline output.</td>
               </tr>
             </table>
 
-            <div class="label" style="margin-top:0.75rem;">Loop Phase Map (updated 2026-09-04)</div>
+            <div class="label" style="margin-top:0.75rem;">$continue Prompt Format (canonical)</div>
+            <pre style="background:var(--raised); border:1px solid var(--border); border-radius:4px; padding:10px 14px; font-size:0.78rem; overflow-x:auto; margin-bottom:0.75rem;">$continue — PTT Copier Defect Loop (4-Task Sequential)
+
+CURRENT TASK: [{N}] {DW-ID}
+LAST COMMIT:  {sha}  {commit-label}
+STATUS:       {one-line summary of what was fixed and what to test}
+
+TEST RESULTS: {PASS | FAIL | OBS | PENDING}
+{paste NT8 log output here if FAIL or OBS}</pre>
+
+            <div class="label" style="margin-top:0.75rem;">Loop Phase Map (updated 2026-09-02)</div>
             <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
               <tr>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700; width:90px;">PHASE 1</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">Active defect fix (P1) &mdash; B131 PIPELINE_COMPLETE (code) &mdash; SIM FAIL</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">B131 code pipelines: DW-B138 CLOSED (code), DW-B139 CLOSED (code). B131 SIM 2026-08-31: FAIL. DW-B138 runtime-fail (stop drag silent). DW-B141 P0 NEW (target drag destroys stops). B132 required.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700; width:90px;">PHASE 1</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">Active defect &mdash; direct repair loop</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">DW-B142-DRAG OPEN: second target drag silent. Direct repair applied (IsAtmSTPOrder + PTT-TGT-Drag- clause). SIM PENDING.</td>
               </tr>
               <tr style="background:rgba(99,102,241,0.03);">
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PHASE 2</td>
-                  <td style="padding:4px 8px; border:1px solid var(--amber);">Residual fix (active) &mdash; CURRENT &mdash; B138 SIM PARTIAL &mdash; DW-B152 partial confirmed, DW-B152-B P1 OPEN &mdash; B139 pipeline required</td>
-                  <td style="padding:4px 8px; border:1px solid var(--amber);">B138 SIM PARTIAL (2026-09-08): T3 target drags PASS (no regression &#10003;). Stop drag: DW-B152 Submitted filter partial effect (qty=4 cancelled &#10003;, qty=2 survives &rarr; 2&times; PTT-STP-Drag). DW-B152-B P1 NEW &mdash; cancel-in-flight race in Block B. DW-B152 commit retained (valid partial improvement). B139 pipeline required: architectural fix (skip Block B if cancel in-flight, or modify-in-place pattern).</td>
-              </tr>
-              <tr>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PHASE 3</td>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">Backlog P1 items</td>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">DW-B115 (ATM qty mismatch), DW-B120 (partial ATM arm), DW-B126 (BE/QX race), DW-B127 (QX entry-transition race), DW-B131 (bracket-event storm P2).</td>
               </tr>
-              <tr style="background:rgba(99,102,241,0.03);">
-                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">PHASE 4</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1;">Complexity refactor wave</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">autonomous-refactor: all CopyEngine.cs methods CYC &le; 8. B132+ after Phase 2 complete.</td>
-              </tr>
               <tr>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">PHASE 5</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1; font-weight:700;">PHASE 3</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:#6366f1;">Complexity refactor wave</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">autonomous-refactor: all CopyEngine.cs methods CYC &le; 8. After Phase 1 defects closed.</td>
+              </tr>
+              <tr style="background:rgba(99,102,241,0.03);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green); font-weight:700;">PHASE 4</td>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--green);">Stable validation &mdash; LOOP END</td>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">5 consecutive live sessions, COPY ON, zero defects. Spec marked STABLE. Loop archived.</td>
               </tr>
@@ -41062,7 +41287,7 @@ if (order.OrderState != OrderState.Working &amp;&amp; order.OrderState != OrderS
             </ul>
 
             <div style="margin-top:0.75rem; padding:8px 12px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.4); border-radius:4px; font-size:0.82rem;">
-              <strong style="color:#6366f1;">&#9656; LOOP PROTOCOL V2.2 (2026-09-07): Every session ends with STEP 7 &mdash; a single hand-off packet containing the pipeline prompts (Part A) AND the next $continue (Part B). The Director pastes Part A to run pipelines, then pastes Part B when those pipelines finish. Both parts always travel together. PIPELINE EXECUTION RULES: (1) ONE AGENT PER TICKET &mdash; each Ph4a and Ph4b MUST be a separate independent agent session. (2) LANE-SPLIT GATE &mdash; Q1-Q4 all must be answered before splitting lanes. See docs/protocol/PHASE5_EXECUTION_PROTOCOL.md + docs/protocol/PTT_PIPELINE_LANE_SPLIT_PROTOCOL.md. Loop reference: docs/brain/COPIER-SESSION-LOOP.md</strong>
+              <strong style="color:#6366f1;">&#9656; LOOP PROTOCOL V3.0 (2026-09-02): Direct-repair loop. No pause gates. diagnose &rarr; repair &rarr; sync+F5 &rarr; output test request + $continue prompt &rarr; Director tests &rarr; paste $continue + results into new session. Full PTT pipeline runs only on SIM PASS. Loop reference: docs/brain/COPIER-SESSION-LOOP.md</strong>
             </div>
 
           </div>

@@ -2233,6 +2233,9 @@ namespace PropTraderTools
         // B142-DIRECT-4: also matches PTT-STP-Drag-N (AddOn-created stop replacement after first drag).
         //   On second+ drags fo.Name is "PTT-STP-Drag-1/2/3" -- must take ATM cancel+resubmit path,
         //   not generic acc.Change(), so that ResubmitTargetAfterCascade also runs.
+        // DW-B142-DRAG: also matches PTT-TGT-Drag-N (AddOn-created target replacement after first drag).
+        //   On second+ drags fo.Name is "PTT-TGT-Drag-1/2/3" -- IsAtmSTPOrder was returning false,
+        //   causing branch (3b) to be skipped and acc.Change() called (no-op). Symmetric fix to B142-DIRECT-4.
         // CYC=1: expression body. JS-021: no lock. JS-001: no throw. ASCII-only.
         internal static bool IsAtmSTPOrder(Order order) =>
             order.Name != null
@@ -2241,6 +2244,7 @@ namespace PropTraderTools
                 || order.Name.StartsWith("Stop", StringComparison.OrdinalIgnoreCase)
                 || order.Name.StartsWith("Target", StringComparison.OrdinalIgnoreCase)
                 || order.Name.StartsWith("PTT-STP-Drag-", StringComparison.Ordinal)
+                || order.Name.StartsWith("PTT-TGT-Drag-", StringComparison.Ordinal)
             );
 
         // B10 T1 -- IsStopAlreadyAtBe: idempotency guard.
