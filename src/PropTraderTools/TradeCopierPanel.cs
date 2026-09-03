@@ -275,6 +275,7 @@ namespace PropTraderTools
         // BGTM-1: Feature-flag-gated row panels. Assigned in Build* methods; toggled in ApplyFeatureFlags.
         private StackPanel _clickTraderRow = null;
         private UniformGrid _atrRow = null;
+        private FrameworkElement _atrSizingRow2 = null;
 
         // HOTFIX-QUICKALL-SINGLETON-01: Quick ALL buffer is now a CopyEngine singleton.
         // _quickAllT1 per-panel field removed. Read CopyEngine.Instance.GlobalQuickAllT1 instead.
@@ -942,7 +943,11 @@ namespace PropTraderTools
             root.Children.Add(_contentPanel); // B49: contentPanel follows its header
             Content = root;
 
-            UpdateButtonColors(false, false); // V04: ensure consistent initial state
+            // Direct initialization -- replaces UpdateButtonColors(false,false).
+            // UpdateButtonColors requires _leaderAccount and _pendingBeSlots to be initialized;
+            // those are not available at construction time. OnLoaded/GlobalBeAllDisarmed governs.
+            _beBtn2.Background = BrushInactive;
+            _globalBeBtn2.Background = BrushInactive;
         }
 
         // R3 helper: constructs _followersDropDown, _followerScrollViewerPanel, _followerScrollViewer.
@@ -2992,6 +2997,7 @@ namespace PropTraderTools
         private void BuildRiskAtrRow(StackPanel root)
         {
             _atrRow = new UniformGrid { Columns = 2, Margin = new Thickness(0, 4, 0, 0) };
+            _atrSizingRow2 = _atrRow; // C-5: store for visibility gating in ApplyRowVisibilityFlags
             _riskDollarsBox = new TextBox
             {
                 Text = _maxRiskDollars.ToString("F0"),
@@ -3196,7 +3202,7 @@ namespace PropTraderTools
                 _mirrorModeBtn.IsEnabled = f.MirrorMode;
         }
 
-        // Sets Visibility on ClickTrader and ATR rows. CYC=4. JS-021: no lock.
+        // Sets Visibility on ClickTrader and ATR rows. CYC=5. JS-021: no lock.
         private void ApplyRowVisibilityFlags(FeatureFlags f)
         {
             if (_clickTraderRow != null)
@@ -3205,6 +3211,10 @@ namespace PropTraderTools
                     : System.Windows.Visibility.Collapsed;
             if (_atrRow != null)
                 _atrRow.Visibility = f.AtrSizing
+                    ? System.Windows.Visibility.Visible
+                    : System.Windows.Visibility.Collapsed;
+            if (_atrSizingRow2 != null)
+                _atrSizingRow2.Visibility = f.AtrSizing
                     ? System.Windows.Visibility.Visible
                     : System.Windows.Visibility.Collapsed;
         }
