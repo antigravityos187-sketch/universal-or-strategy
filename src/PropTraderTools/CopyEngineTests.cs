@@ -5784,7 +5784,7 @@ namespace PropTraderTools
             Assert.Equal(true, (bool)field.GetValue(null)!);
         }
 
-        // ── T1: TryFireImmediateBeIfAlreadyAtLevel ──────────────────────────────
+        // ---- T1: TryFireImmediateBeIfAlreadyAtLevel
 
         [Fact]
         public void TryFireImmediateBeIfAlreadyAtLevel_ShouldReturnFalse_WhenTickSizeIsZero()
@@ -5818,7 +5818,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T1: IsPendingBeTriggerMet ───────────────────────────────────────────
+        // ---- T1: IsPendingBeTriggerMet
 
         [Fact]
         public void IsPendingBeTriggerMet_ShouldReturnFalse_WhenRefPriceIsZero()
@@ -5852,7 +5852,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T2: IsEligibleBeTargetOrder ─────────────────────────────────────────
+        // ---- T2: IsEligibleBeTargetOrder
 
         [Fact]
         public void IsEligibleBeTargetOrder_ShouldReturnFalse_WhenOrderStateIsNotInSnapshot()
@@ -5875,7 +5875,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T2: IsNativeAtmTargetOrder ──────────────────────────────────────────
+        // ---- T2: IsNativeAtmTargetOrder
 
         [Fact]
         public void IsNativeAtmTargetOrder_ShouldReturnTrue_WhenNameIsTarget1()
@@ -5891,7 +5891,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T2: IsPttBeOrQxTargetOrder ──────────────────────────────────────────
+        // ---- T2: IsPttBeOrQxTargetOrder
 
         [Fact]
         public void IsPttBeOrQxTargetOrder_ShouldReturnTrue_WhenNameStartsWithPttQxT1()
@@ -5907,7 +5907,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T2: LogDiagOrderCount ───────────────────────────────────────────────
+        // ---- T2: LogDiagOrderCount
 
         [Fact]
         public void LogDiagOrderCount_ShouldLogCorrectCount_WhenOrdersExistForInstrument()
@@ -5916,7 +5916,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T2: RegisterBeRetryIfNoTargets ──────────────────────────────────────
+        // ---- T2: RegisterBeRetryIfNoTargets
 
         [Fact]
         public void RegisterBeRetryIfNoTargets_ShouldNotRegister_WhenIsRetryIsTrue()
@@ -5939,7 +5939,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T2: RegisterPartialTargetBeRetry ────────────────────────────────────
+        // ---- T2: RegisterPartialTargetBeRetry
 
         [Fact]
         public void RegisterPartialTargetBeRetry_ShouldNotRegister_WhenTargetCountEqualsLeaderCount()
@@ -5955,7 +5955,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T3: CancelExistingStpDragOrders ─────────────────────────────────────
+        // ---- T3: CancelExistingStpDragOrders
 
         [Fact]
         public void CancelExistingStpDragOrders_ShouldCancelMatchingLiveStpDragOrder()
@@ -5964,7 +5964,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T3: CancelExistingTgtDragOrders ─────────────────────────────────────
+        // ---- T3: CancelExistingTgtDragOrders
 
         [Fact]
         public void CancelExistingTgtDragOrders_ShouldCancelMatchingLiveTgtDragOrder()
@@ -5973,7 +5973,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T3: SubmitReplacementStopLeg ────────────────────────────────────────
+        // ---- T3: SubmitReplacementStopLeg
 
         [Fact]
         public void SubmitReplacementStopLeg_ShouldReturnEarly_WhenCreateOrderReturnsNull()
@@ -5989,7 +5989,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T3: SubmitReplacementTargetLeg ──────────────────────────────────────
+        // ---- T3: SubmitReplacementTargetLeg
 
         [Fact]
         public void SubmitReplacementTargetLeg_ShouldReturnEarly_WhenCreateOrderReturnsNull()
@@ -6005,7 +6005,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T4: IsReArmedAtmBracketCleanupRequired ──────────────────────────────
+        // ---- T4: IsReArmedAtmBracketCleanupRequired
 
         [Fact]
         public void IsReArmedAtmBracketCleanupRequired_ShouldReturnFalse_WhenOrderStateIsNotWorkingOrAccepted()
@@ -6047,7 +6047,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T4: FindMatchingNativeAtmBracket ────────────────────────────────────
+        // ---- T4: FindMatchingNativeAtmBracket
 
         [Fact]
         public void FindMatchingNativeAtmBracket_ShouldReturnNull_WhenNoMatchingOrderExists()
@@ -6063,7 +6063,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T4: TryFindRuleAndFollowerIndex ─────────────────────────────────────
+        // ---- T4: TryFindRuleAndFollowerIndex
 
         [Fact]
         public void TryFindRuleAndFollowerIndex_ShouldReturnFalse_WhenInstrumentDoesNotMatch()
@@ -6086,7 +6086,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T4: HasActiveQxOrdersForInstrument ──────────────────────────────────
+        // ---- T4: HasActiveQxOrdersForInstrument
 
         [Fact]
         public void HasActiveQxOrdersForInstrument_ShouldReturnTrue_WhenPttQxOrderIsWorking()
@@ -6109,7 +6109,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T5: SyncAtmFollowerStopBracket ──────────────────────────────────────
+        // ---- T5: SyncAtmFollowerStopBracket
 
         [Fact]
         public void SyncAtmFollowerStopBracket_ShouldReturn_WhenStopPriceIsZero()
@@ -6125,7 +6125,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T5: CancelStaleTgtDragOrders ────────────────────────────────────────
+        // ---- T5: CancelStaleTgtDragOrders
 
         [Fact]
         public void CancelStaleTgtDragOrders_ShouldCancelMatchingWorkingOrder()
@@ -6141,7 +6141,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T5: CreateAndSubmitReplacementTarget ────────────────────────────────
+        // ---- T5: CreateAndSubmitReplacementTarget
 
         [Fact]
         public void CreateAndSubmitReplacementTarget_ShouldReturnNull_WhenCreateOrderFails()
@@ -6157,7 +6157,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T6: HasInFlightFlattenOrder ─────────────────────────────────────────
+        // ---- T6: HasInFlightFlattenOrder
 
         [Fact]
         public void HasInFlightFlattenOrder_ShouldReturnTrue_WhenPttFlattenOrderIsWorking()
@@ -6173,7 +6173,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T6: IsPositionFlatOrMissing ─────────────────────────────────────────
+        // ---- T6: IsPositionFlatOrMissing
 
         [Fact]
         public void IsPositionFlatOrMissing_ShouldReturnTrue_WhenPositionIsNull()
@@ -6195,7 +6195,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T6: IsLeaderTargetOrder ─────────────────────────────────────────────
+        // ---- T6: IsLeaderTargetOrder
 
         [Fact]
         public void IsLeaderTargetOrder_ShouldReturnTrue_WhenOrderIsWorkingLimitWithValidTargetName()
@@ -6225,7 +6225,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T7: ResubmitFollowerEntry ───────────────────────────────────────────
+        // ---- T7: ResubmitFollowerEntry
 
         [Fact]
         public void ResubmitFollowerEntry_ShouldSkip_WhenPriceChangeIsWithinTickSize()
@@ -6248,7 +6248,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T7: IsLeaderAccountForInstrument ────────────────────────────────────
+        // ---- T7: IsLeaderAccountForInstrument
 
         [Fact]
         public void IsLeaderAccountForInstrument_ShouldReturnTrue_WhenAccountMatchesMasterAccount()
@@ -6264,7 +6264,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
-        // ── T7: CancelStaleCascadeTgtDrag ───────────────────────────────────────
+        // ---- T7: CancelStaleCascadeTgtDrag
 
         [Fact]
         public void CancelStaleCascadeTgtDrag_ShouldCancelMatchingWorkingOrder()
