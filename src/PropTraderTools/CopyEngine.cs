@@ -852,7 +852,7 @@ namespace PropTraderTools
         {
             if (!IsPttEntryOrderCancelTrigger(order))
                 return; // (1)
-            ReplaceFollowerCopyOnAtmCancel(order); // (2 — no branch)
+            ReplaceFollowerCopyOnAtmCancel(order); // (2 - no branch)
         }
 
         // IsQxCancelCandidate: returns true if order should be cancelled by CancelQxBrackets.

@@ -1211,13 +1211,13 @@ namespace PropTraderTools
             arrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             var up = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25B2",
+                Content = "^",
                 Width = 18,
                 Height = 12,
             };
             var dn = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25BC",
+                Content = "v",
                 Width = 18,
                 Height = 12,
             };
