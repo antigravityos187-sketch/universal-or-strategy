@@ -146,32 +146,33 @@ namespace PropTraderTools
             Assert.NotNull(mi);
             var stale = new List<Order>();
             var ex = Record.Exception(() =>
-            {
-                try { mi.Invoke(null, new object[] { (Account)null, stale }); }
-                catch (TargetInvocationException) { }
-            });
+                mi.Invoke(null, new object[] { (Account)null, stale })
+            );
             Assert.Null(ex);
         }
 
         // FindPositionForInstrument: position lookup by FullName.
 
         [Fact]
-        public void T_R9_10_FindPositionForInstrument_MethodExists_PrivateStatic()
+        public void T_R9_10_TryFindPositionForInstrument_MethodExists_PrivateStatic()
         {
-            var mi = GetStaticMethod("FindPositionForInstrument");
+            var mi = GetStaticMethod("TryFindPositionForInstrument");
             Assert.NotNull(mi);
             Assert.True(mi.IsStatic);
-            Assert.Equal(2, mi.GetParameters().Length);
+            Assert.Equal(typeof(bool), mi.ReturnType);
+            Assert.Equal(3, mi.GetParameters().Length);
         }
 
         [Fact]
-        public void T_R9_11_FindPositionForInstrument_ParameterNames()
+        public void T_R9_11_TryFindPositionForInstrument_ParameterNames()
         {
-            var mi = GetStaticMethod("FindPositionForInstrument");
+            var mi = GetStaticMethod("TryFindPositionForInstrument");
             Assert.NotNull(mi);
             var parms = mi.GetParameters();
             Assert.Equal("acc", parms[0].Name);
             Assert.Equal("instr", parms[1].Name);
+            Assert.Equal("pos", parms[2].Name);
+            Assert.True(parms[2].IsOut, "Third parameter must be out Position");
         }
     }
 }

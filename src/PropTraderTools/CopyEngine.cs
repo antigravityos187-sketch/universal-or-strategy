@@ -1126,8 +1126,7 @@ namespace PropTraderTools
         {
             if (acc == null || instr == null)
                 return;
-            var pos = FindPositionForInstrument(acc, instr);
-            if (pos == null || pos.Quantity == 0)
+            if (!TryFindPositionForInstrument(acc, instr, out var pos) || pos.Quantity == 0)
                 return;
             OrderAction dir = isLong ? OrderAction.Sell : OrderAction.BuyToCover;
             try
@@ -1165,21 +1164,27 @@ namespace PropTraderTools
             catch { }
         }
 
-        // FindPositionForInstrument: finds the first matching position on acc for instr by FullName.
-        // Extracted from SubmitBeStop (R9). Returns null when no matching position exists.
-        // B69 DW-B69-02: FullName comparison is required -- NT8 contract objects may differ by reference
-        // while representing the same instrument across account contexts.
-        // Returning null = absence signal (not a JS-002 violation -- caller guards pos==null).
-        // CYC=3: if(1) + &&(1) + base(1) = CCN 3. JS-021: pure static, no lock.
-        private static NinjaTrader.Cbi.Position FindPositionForInstrument(
+        // BWAVE-CYC TA-R9 (restored): TryFindPositionForInstrument -- locate open position for acc+instr.
+        // JS-002: bool + out parameter replaces null return (original FindPositionForInstrument pattern).
+        // JS-021: acc.Positions is NT8 read-only collection -- no lock needed.
+        // JS-001: no throw. JS-033: synchronous. ASCII-only.
+        // CYC=3: base(1) + foreach(1) + inner null-guard(1).
+        private static bool TryFindPositionForInstrument(
             Account acc,
-            NinjaTrader.Cbi.Instrument instr
+            NinjaTrader.Cbi.Instrument instr,
+            out NinjaTrader.Cbi.Position pos
         )
         {
-            foreach (NinjaTrader.Cbi.Position p in acc.Positions)
-                if (p.Instrument != null && p.Instrument.FullName == instr.FullName)
-                    return p;
-            return null;
+            pos = null;
+            if (acc == null || instr == null) // (1)
+                return false;
+            foreach (NinjaTrader.Cbi.Position p in acc.Positions) // (2)
+                if (p.Instrument != null && p.Instrument.FullName == instr.FullName) // (3)
+                {
+                    pos = p;
+                    return true;
+                }
+            return false;
         }
 
         // ArmAllPendingBe: arm pending break-even watcher for all non-follower accounts.
