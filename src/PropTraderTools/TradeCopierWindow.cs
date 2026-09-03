@@ -402,6 +402,8 @@ namespace PropTraderTools
             ApplyButtonGroupFlag(_flattenBtns, f.TrimFlatten, "Trim/Flatten requires Pro tier");
             ApplyButtonGroupFlag(_cancelBtns, f.TrimFlatten, "Cancel requires Pro tier");
             ApplyButtonGroupFlag(_beBtns, f.BreakEven, "Break Even requires Pro tier");
+            ApplyButtonGroupFlag(_armBeBtns, f.BreakEven, "Arm Break-Even not available on this plan");
+            ApplyButtonGroupFlag(_tightenBtns, f.BreakEven, "Tighten Stop not available on this plan");
             if (_modeCb != null) // +1
             {
                 _modeCb.IsEnabled = f.MirrorMode;
@@ -1225,13 +1227,14 @@ namespace PropTraderTools
         }
 
         // BWAVE-CYC T6: TryParseArmBeBuffer -- parses buffer ticks from tag[2] TextBox.
-        // Default = 2. JS-002: returns int (never null). CCN=2.
+        // Default = 2. JS-002: returns int (never null). CCN=3.
         private static int TryParseArmBeBuffer(object[] tag)
         {
             int buf = 2;
             var bufBox = tag.Length > 2 ? tag[2] as TextBox : null;
             if (bufBox != null)
-                int.TryParse(bufBox.Text, out buf);
+                if (int.TryParse(bufBox.Text?.Trim(), out int parsed) && parsed >= 0)
+                    buf = parsed;
             return buf;
         }
 
