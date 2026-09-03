@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ConfuserEx project file for PropTraderTools release obfuscation -->
+<ConfuserProject outputDir="release" baseDir="src\PropTraderTools\bin\Release">
+  <Packer id="compressor" />
+  <Module path="PropTraderTools.dll">
+    <Rule pattern="true" preset="normal" inherit="false">
+      <Protection id="rename" />
+      <Protection id="constants" />
+    </Rule>
+  </Module>
+</ConfuserProject>

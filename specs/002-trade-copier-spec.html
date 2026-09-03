@@ -41171,6 +41171,244 @@ internal static bool IsAtmSTPOrder(Order order) =&gt;
     <!-- end section-dw-b142-drag -->
 
 
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B142-QTY-DESYNC-01: P1 CONFIRMED FIXED — 2026-09-02 commit b30345c5             -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b142-qty-desync-01" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(34,197,94,0.08); border-left:3px solid var(--green); color:var(--green);">DW-B142-QTY-DESYNC-01 &mdash; P1 &mdash; CONFIRMED FIXED &mdash; commit b30345c5 &mdash; SIM 2026-09-02</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--green);">
+          <div class="card-title" style="color:var(--green);">&#10003; DW-B142-QTY-DESYNC-01 &mdash; P1 CONFIRMED FIXED &mdash; commit b30345c5 &mdash; SIM 2026-09-02 &mdash; Follower qty desync on multi-contract Clone entry</div>
+          <div class="card-body">
+            <table style="font-size:0.82rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Defect ID</td><td style="padding:3px 0; color:#e2e8f0;">DW-B142-QTY-DESYNC-01</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--amber);">P1</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--green);">&#10003; CONFIRMED FIXED &mdash; commit b30345c5 &mdash; SIM 2026-09-02 PASS</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0; color:#e2e8f0;"><code>src/PropTraderTools/CopyEngine.cs</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Symptom</td><td style="padding:3px 0; color:#e2e8f0;">On Clone mode entry with qty &gt; 1 leader contract, follower accounts received wrong quantity &mdash; qty not propagated from the Clone ATM template to the follower entry order.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Root cause</td><td style="padding:3px 0; color:#e2e8f0;">Quantity read from the leader order directly rather than from the resolved Clone ATM template quantity. Template qty override path was bypassed.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Fix commit</td><td style="padding:3px 0; color:#e2e8f0;"><code>b30345c5</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">SIM gate</td><td style="padding:3px 0; color:var(--green);">&#10003; B142 SIM 2026-09-02 PASS &mdash; multi-contract Clone entry qty matched expected ATM template value on all follower accounts.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Pipeline</td><td style="padding:3px 0; color:var(--amber);">B143 retroactive pipeline required (covers commit b30345c5). NOT YET TRIGGERED. See B143 block below.</td></tr>
+            </table>
+            <strong style="color:var(--green);">&#10003; DW-B142-QTY-DESYNC-01 CONFIRMED FIXED &mdash; SIM 2026-09-02 PASS &mdash; commit b30345c5. Qty desync on Clone multi-contract entry resolved. Follower qty now matches Clone ATM template qty on dispatch. B143 retroactive pipeline required before block is fully closed.</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b142-qty-desync-01 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B142-MGC-02: P0 CONFIRMED FIXED — 2026-09-02 commit 3f709a91                    -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b142-mgc-02" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(34,197,94,0.08); border-left:3px solid var(--green); color:var(--green);">DW-B142-MGC-02 &mdash; P0 &mdash; CONFIRMED FIXED &mdash; commit 3f709a91 &mdash; SIM 2026-09-02</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--green);">
+          <div class="card-title" style="color:var(--green);">&#10003; DW-B142-MGC-02 &mdash; P0 CONFIRMED FIXED &mdash; commit 3f709a91 &mdash; SIM 2026-09-02 &mdash; Magic Candle gate 2 fix</div>
+          <div class="card-body">
+            <table style="font-size:0.82rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Defect ID</td><td style="padding:3px 0; color:#e2e8f0;">DW-B142-MGC-02</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P0</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--green);">&#10003; CONFIRMED FIXED &mdash; commit 3f709a91 &mdash; SIM 2026-09-02 PASS (same session as MGC-01)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0; color:#e2e8f0;"><code>src/PropTraderTools/CopyEngine.cs</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Symptom</td><td style="padding:3px 0; color:#e2e8f0;">Magic Candle gate 2 incorrectly blocked valid copy dispatch. Follower entries suppressed when leader had an active MGC condition that should have been cleared or not applied at dispatch time.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Root cause</td><td style="padding:3px 0; color:#e2e8f0;">Gate 2 MGC state evaluation applied stale or incorrect per-account MGC flag, causing false suppression. State not cleared after MGC condition resolved.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Fix commit</td><td style="padding:3px 0; color:#e2e8f0;"><code>3f709a91</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">SIM gate</td><td style="padding:3px 0; color:var(--green);">&#10003; B142 SIM 2026-09-02 PASS &mdash; MGC gate 2 no longer suppresses follower dispatch after leader MGC resolves. Confirmed in same session as MGC-01.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Pipeline</td><td style="padding:3px 0; color:var(--amber);">B143 retroactive pipeline required (covers commit 3f709a91). NOT YET TRIGGERED. See B143 block below.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Related</td><td style="padding:3px 0; color:#e2e8f0;">DW-B142-MGC-01 (companion P0, same commit, same SIM session)</td></tr>
+            </table>
+            <strong style="color:var(--green);">&#10003; DW-B142-MGC-02 CONFIRMED FIXED &mdash; SIM 2026-09-02 PASS &mdash; commit 3f709a91. MGC gate 2 stale-state false suppression resolved. B143 retroactive pipeline required.</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b142-mgc-02 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B142-MGC-01: P0 CONFIRMED FIXED — via MGC-02 same commit 3f709a91 SIM 2026-09-02 -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b142-mgc-01" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(34,197,94,0.08); border-left:3px solid var(--green); color:var(--green);">DW-B142-MGC-01 &mdash; P0 &mdash; CONFIRMED FIXED &mdash; via MGC-02 commit 3f709a91 &mdash; SIM 2026-09-02</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--green);">
+          <div class="card-title" style="color:var(--green);">&#10003; DW-B142-MGC-01 &mdash; P0 CONFIRMED FIXED &mdash; via MGC-02 same commit 3f709a91 &mdash; SIM 2026-09-02 &mdash; Magic Candle gate 1 fix</div>
+          <div class="card-body">
+            <table style="font-size:0.82rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Defect ID</td><td style="padding:3px 0; color:#e2e8f0;">DW-B142-MGC-01</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--red);">P0</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--green);">&#10003; CONFIRMED FIXED &mdash; via MGC-02 same commit 3f709a91 &mdash; SIM 2026-09-02 PASS</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0; color:#e2e8f0;"><code>src/PropTraderTools/CopyEngine.cs</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Symptom</td><td style="padding:3px 0; color:#e2e8f0;">Magic Candle gate 1 condition evaluation produced incorrect result. Follower dispatch suppressed or incorrectly triggered due to MGC-01 path error companion to MGC-02.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Root cause</td><td style="padding:3px 0; color:#e2e8f0;">Same root as MGC-02 &mdash; MGC state management applied across both gate 1 and gate 2 paths. Both defects resolved by the single commit 3f709a91.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Fix commit</td><td style="padding:3px 0; color:#e2e8f0;"><code>3f709a91</code> (same as MGC-02)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">SIM gate</td><td style="padding:3px 0; color:var(--green);">&#10003; B142 SIM 2026-09-02 PASS &mdash; Confirmed in same session as MGC-02. Both MGC gates verified resolved.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Pipeline</td><td style="padding:3px 0; color:var(--amber);">B143 retroactive pipeline required (covers commit 3f709a91). NOT YET TRIGGERED. See B143 block below.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Related</td><td style="padding:3px 0; color:#e2e8f0;">DW-B142-MGC-02 (companion P0, same fix, same SIM session)</td></tr>
+            </table>
+            <strong style="color:var(--green);">&#10003; DW-B142-MGC-01 CONFIRMED FIXED &mdash; via MGC-02 same commit 3f709a91 &mdash; SIM 2026-09-02 PASS. B143 retroactive pipeline required.</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b142-mgc-01 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- DW-B142-CLONE-01: P1 OPEN — diagnosis in progress — log capture required           -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dw-b142-clone-01" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">DW-B142-CLONE-01 &mdash; P1 &mdash; OPEN &mdash; Diagnosis partial &mdash; three candidate root causes &mdash; log capture required before fix</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--amber);">
+          <div class="card-title" style="color:var(--amber);">&#9888; DW-B142-CLONE-01 &mdash; P1 OPEN &mdash; After first Clone trade closes, second entry blocked on all followers &mdash; re-clicking Clone re-arms correctly &mdash; root cause has 3 candidate paths (A/B/C) &mdash; log required</div>
+          <div class="card-body">
+            <table style="font-size:0.82rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Defect ID</td><td style="padding:3px 0; color:#e2e8f0;">DW-B142-CLONE-01</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Severity</td><td style="padding:3px 0; color:var(--amber);">P1</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Status</td><td style="padding:3px 0; color:var(--amber);">OPEN &mdash; diagnosis partial &mdash; log capture required to distinguish Path A / B / C</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">File</td><td style="padding:3px 0; color:#e2e8f0;"><code>src/PropTraderTools/CopyEngine.cs</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Symptom</td><td style="padding:3px 0; color:#e2e8f0;">After the first leader fill+close cycle with Clone mode active, the second order dispatches to leader only &mdash; all followers blocked. Re-clicking the Clone button re-arms correctly and the next order dispatches. Log shows repeated <code>[PTT-COPY-GUARD] skip reversal entry: follower flat</code> for every follower on every subsequent entry attempt after the first trade closes.</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Discovered</td><td style="padding:3px 0; color:#e2e8f0;">2026-09-02 &mdash; B142 SIM session</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Architecture</td><td style="padding:3px 0; color:#e2e8f0;">Guard in <code>DispatchCopy</code> (CopyEngine.cs ~L2146&ndash;2149 + L4768&ndash;4775): <code>hasLastDirection &amp;&amp; IsReversalToFlatFollower(currentAction, lastAction, flat)</code>. <code>IsReversalToFlatFollower</code> = <code>currentAction != lastAction &amp;&amp; followerIsFlat</code>. Direction key written at L2198: <code>_lastLeaderDirection[instr.FullName] = currentAction</code>. Key cleared in <code>TryFirePositionState</code> via <code>TryRemove(_lastLeaderDirection)</code> on leader flat event.</td></tr>
+            </table>
+
+            <div class="label" style="margin-top:0.75rem; color:var(--amber);">&#9650; Three Candidate Root Causes</div>
+
+            <div style="margin:0.5rem 0; padding:10px 14px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.3); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">PATH A &mdash; Spurious Sell write (direction key corruption)</strong>
+              <p style="color:var(--muted); margin:0.4rem 0 0 0;">Between trade-1 close and trade-2 entry, some order passes all 5 gates in <code>DispatchCopy</code> and writes <code>direction = Sell</code> to <code>_lastLeaderDirection</code> (L2198). On the next Buy entry: <code>lastAction=Sell</code>, <code>currentAction=Buy</code>, <code>currentAction != lastAction</code> is true, <code>followerIsFlat</code> is true &rarr; <code>IsReversalToFlatFollower</code> = true &rarr; guard fires &rarr; follower blocked. Gate 0.5 should block PTT-* prefixed, Close, Exit*, Target*, Rev* &mdash; but an unanticipated order name may slip through. Confirmed only by log showing a <code>[PTT-COPY] dispatch: Sell...</code> line between trade-1 close and trade-2 entry attempt.</p>
+            </div>
+
+            <div style="margin:0.5rem 0; padding:10px 14px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.3); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">PATH B &mdash; _lastHasPos CAS race (leader TryRemove suppressed)</strong>
+              <p style="color:var(--muted); margin:0.4rem 0 0 0;"><code>_lastHasPos</code> dedup box is keyed by <code>instr.FullName</code> only (L3470) &mdash; shared across ALL accounts for the same instrument. Race: if a FOLLOWER fill event fires <code>TryFirePositionState</code> first for the same instrument (<code>hasPos=false</code>, <code>OrderState.Filled</code>), the CAS wins on the follower (prior=2 sentinel &rarr; new=0), <code>isLeaderAcct=false</code> &rarr; <code>TryRemove</code> is skipped. Dedup box now holds 0. When leader fires next: <code>prior=0, new=0</code> &rarr; CAS returns early at L3472 &rarr; <code>TryRemove(_lastLeaderDirection)</code> NEVER runs &rarr; <code>_lastLeaderDirection["MES"] = Buy</code> survives into the next cycle. HOWEVER: for the guard to fire on a same-direction second Buy trade, <code>lastAction</code> must be Sell (not Buy) &mdash; so Path B alone cannot explain the symptom unless combined with a separate Sell write. Path B suppresses the TryRemove cleanup but does not by itself insert a Sell direction. Path B is a contributing condition, not the sole root cause.</p>
+            </div>
+
+            <div style="margin:0.5rem 0; padding:10px 14px; background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.3); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--red);">PATH C &mdash; Stale ATM object cache (dispatch path switches to Inherit)</strong>
+              <p style="color:var(--muted); margin:0.4rem 0 0 0;">Clone button click captures <code>_cloneAtmObject</code> &mdash; the live <code>AtmStrategy</code> object at click time. After trade closes, NT8 may invalidate or dispose the <code>AtmStrategy</code> object. On the next order: <code>GetCloneAtmMode()</code> checks <code>_cloneAtmObject</code> &mdash; if disposed/null-equivalent, returns <code>Inherit</code>. With Inherit mode, <code>ResolveAtmMode</code> returns Inherit &rarr; <code>SendCopy</code> is called instead of <code>SendCopyWithAtm</code>. However: the symptom is &ldquo;dispatched to leader only&rdquo; (followers don&rsquo;t even get the entry), not &ldquo;dispatched without ATM&rdquo;. This rules out Path C as the primary cause unless <code>SendCopy</code> on the Inherit path has a separate conditional that skips follower dispatch. Requires code trace to confirm.</p>
+            </div>
+
+            <div class="label" style="margin-top:0.75rem; color:var(--amber);">&#9650; DIAGNOSTIC STATUS &mdash; Log capture required</div>
+            <div style="margin:0.5rem 0; padding:10px 14px; background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.3); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:var(--amber);">KEY LOG LINES TO IDENTIFY:</strong>
+              <ul style="color:var(--muted); margin:0.4rem 0 0 1.2rem; padding:0; line-height:1.85;">
+                <li><code>[PTT-COPY] dispatch: Buy ... -&gt; Sim10X</code> &mdash; first trade dispatch (confirms first trade OK)</li>
+                <li><code>[PTT-COPY] dispatch: Sell ... -&gt; Sim10X</code> &mdash; <strong>if present</strong>: confirms spurious Sell write &rarr; PATH A active</li>
+                <li><code>[PTT-COPY-GUARD] skip reversal entry: ...</code> &mdash; the blocking line on second entry attempt</li>
+                <li><code>PositionStateChanged instr=... hasPos=False</code> &mdash; <strong>if present</strong>: confirms flat event fired &rarr; PATH B candidate</li>
+                <li>Any <code>dispatch:</code> line between trade-1 close and trade-2 attempt that contains a direction other than the entry direction</li>
+              </ul>
+              <p style="color:var(--muted); margin:0.5rem 0 0 0;"><strong>Decision logic:</strong> If a <code>dispatch: Sell</code> line exists between close and second-entry attempt &rarr; PATH A. If no such line &rarr; PATH B (TryRemove suppressed + separately-sourced Sell write). If followers receive the entry but no ATM brackets &rarr; PATH C contribution.</p>
+            </div>
+
+            <div class="label" style="margin-top:0.75rem; color:var(--amber);">&#9650; Fix Design (post-log, per path)</div>
+            <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr style="background:rgba(245,158,11,0.05);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700; width:80px;">PATH A FIX</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Audit what order name is writing <code>direction=Sell</code> at L2198 between trade-1 close and trade-2 attempt. Add that order name to <code>IsExitSignalName</code> (Gate 0.5) OR ensure <code>DispatchCopy</code> returns before L2198 for that order. CYC impact: +0 (one new StartsWith or Contains check in existing chain). JS-021 compliant.</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PATH B FIX</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Key <code>_lastHasPos</code> per <strong>account + instrument</strong> (not just instrument). Change: <code>_lastHasPos</code> key = <code>e.Order.Account.Name + "|" + instr</code> (L3461/3470). Follower CAS wins no longer suppress leader <code>TryRemove</code>. CYC impact: +0 (same branch count, key string only). Uses <code>ConcurrentDictionary</code> &mdash; JS-021 compliant.</td>
+              </tr>
+              <tr style="background:rgba(245,158,11,0.05);">
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PATH C FIX</td>
+                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">Add null/disposed check in <code>GetCloneAtmMode</code> and refresh <code>_cloneAtmObject</code> from live ChartTrader state on each <code>DispatchCopy</code> call if the stored reference is no longer valid. Also verify <code>SendCopy</code> (Inherit path) does not have a conditional that skips follower dispatch &mdash; if it does, that branch must be removed or the Inherit-path follower dispatch restored.</td>
+              </tr>
+            </table>
+
+            <div style="margin:0.5rem 0; padding:10px 14px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.4); border-radius:4px; font-size:0.82rem;">
+              <strong style="color:#a5b4fc;">LOOP RULE:</strong>
+              <span style="color:var(--muted);"> Do NOT start any fix until the log confirms which path is active. After log confirms &rarr; write fix design into spec HTML &rarr; direct repair (fast path) &rarr; sync + F5 + SIM.</span>
+            </div>
+
+            <strong style="color:var(--amber);">&#9888; DW-B142-CLONE-01 P1 OPEN &mdash; 2026-09-02. Symptom: second Clone entry after first trade closes dispatches to leader only; followers blocked by IsReversalToFlatFollower guard. Three candidate paths (A: spurious Sell write, B: _lastHasPos CAS race suppressing TryRemove, C: stale ATM object switching dispatch to Inherit mode). Log capture required to distinguish. No fix until path confirmed.</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-dw-b142-clone-01 -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <!-- B143 PIPELINE BLOCK — retroactive PTT pipeline for commit 3f709a91 (MGC-01+MGC-02) -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-b143-pipeline" style="margin-top:40px;">
+      <div class="section-label" style="background:rgba(245,158,11,0.10); border-left:3px solid var(--amber); color:var(--amber);">B143 &mdash; PIPELINE REQUIRED &mdash; Retroactive PTT pipeline for commit 3f709a91 (DW-B142-MGC-02 + DW-B142-MGC-01) &mdash; NOT YET TRIGGERED</div>
+      <div class="section-body">
+        <div class="card" style="border-left:3px solid var(--amber);">
+          <div class="card-title" style="color:var(--amber);">&#9888; B143 &mdash; Retroactive pipeline &mdash; commit 3f709a91 (DW-B142-MGC-02 P0 + DW-B142-MGC-01 P0) &mdash; Director must paste ptt-orchestrator prompt below into ptt-orchestrator session</div>
+          <div class="card-body">
+            <table style="font-size:0.82rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted); white-space:nowrap; width:130px;">Block</td><td style="padding:3px 0; color:#e2e8f0;">B143</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Trigger commit</td><td style="padding:3px 0; color:#e2e8f0;"><code>3f709a91</code></td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Covers</td><td style="padding:3px 0; color:#e2e8f0;">DW-B142-MGC-02 (P0 CONFIRMED) + DW-B142-MGC-01 (P0 CONFIRMED via same commit)</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Files changed</td><td style="padding:3px 0; color:#e2e8f0;"><code>src/PropTraderTools/CopyEngine.cs</code> &mdash; MGC gate 1 + gate 2 state management fix</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Pipeline status</td><td style="padding:3px 0; color:var(--amber);">NOT YET TRIGGERED &mdash; SIM confirmed 2026-09-02, pipeline must run before any B144 block starts</td></tr>
+              <tr><td style="padding:3px 10px 3px 0; color:var(--muted);">Prerequisite</td><td style="padding:3px 0; color:#e2e8f0;">B142 pipeline is COMPLETE (both DRAG + QTY-DESYNC-01 lanes). B143 must complete before B144 block begins.</td></tr>
+            </table>
+
+            <div class="label" style="margin-top:0.75rem; color:var(--amber);">&#9650; B143 ptt-orchestrator Prompt (Director pastes this into ptt-orchestrator session)</div>
+            <pre style="background:var(--raised); border:1px solid var(--border); border-radius:4px; padding:14px 16px; font-size:0.78rem; overflow-x:auto; margin-bottom:0.75rem; white-space:pre-wrap; line-height:1.7;">$ptt-orchestrator — B143 Retroactive Pipeline
+
+BLOCK: B143
+TRIGGER COMMIT: 3f709a91
+DEFECTS COVERED:
+  - DW-B142-MGC-02 (P0 CONFIRMED FIXED — commit 3f709a91 — SIM 2026-09-02)
+  - DW-B142-MGC-01 (P0 CONFIRMED FIXED — via same commit — SIM 2026-09-02)
+FILES CHANGED:
+  - src/PropTraderTools/CopyEngine.cs  (MGC gate 1 + gate 2 state management fix)
+PIPELINE TYPE: Retroactive (SIM already confirmed; pipeline closes the block formally)
+
+YOU MUST RUN THE FULL 7-STEP PIPELINE CHAIN — ALL PHASES MANDATORY — NONE SKIPPABLE — NONE COMBINABLE:
+
+  Ph1  ptt-architect       -> docs/brain/B143/02-architecture-plan.md
+  Ph2  ptt-plan-reviewer   -> docs/brain/B143/02-plan-review.md         (REVIEW_PASS gate required)
+  Ph3  ptt-architect       -> docs/brain/B143/04-tickets.md
+  Ph3.5 ptt-ticket-reviewer -> docs/brain/B143/04-ticket-review.md      (TICKET_REVIEW_PASS gate required)
+  Ph4a ptt-engineer        -> src/PropTraderTools/CopyEngine.cs edits + docs/brain/B143/ticket-N-completion.md
+  Ph4b ptt-verifier        -> docs/brain/B143/ticket-N-verification.md  (VERIFY_PASS gate required)
+  Ph5  ptt-plan-reviewer   -> docs/brain/B143/05-final-review.md + docs/brain/B143/06-deferred-backlog.md
+
+GATE CHAIN: REVIEW_PASS -&gt; TICKET_REVIEW_PASS -&gt; VERIFY_PASS -&gt; FINAL_PASS
+No phase may start unless the prior phase gate is PASS.
+No phase may be combined with another phase.
+No shortcut path. No direct src edits outside Ph4a.
+
+CONTEXT FOR Ph1 ptt-architect:
+  The commit 3f709a91 fixes two companion P0 defects (MGC-01 + MGC-02) in CopyEngine.cs.
+  Both defects involve Magic Candle gate state management: stale per-account MGC flags
+  caused false suppression of follower dispatch (gate 2) and incorrect MGC trigger
+  evaluation (gate 1). Both were confirmed resolved in B142 SIM session 2026-09-02.
+  The pipeline must:
+    1. Document the exact code changes in commit 3f709a91 (architecture plan).
+    2. Verify the changes comply with JS-021 (no lock()), CYC &lt;= 8, ASCII-only.
+    3. Write and verify xUnit tests for both MGC gate paths.
+    4. Run SCAN-01..07 (P0 scans) on CopyEngine.cs — must all return zero.
+    5. Produce FINAL_PASS artifact confirming B143 is fully closed.
+
+OUTPUT REQUIRED:
+  docs/brain/B143/ directory with all pipeline artifacts (02..06).
+  Spec HTML updated: B143 block section-b143-pipeline status changed to PIPELINE_COMPLETE.
+  DW-B142-MGC-02 and DW-B142-MGC-01 sections updated to reflect PIPELINE_COMPLETE.
+
+IMPORTANT: This is a retroactive pipeline — the code is already merged and SIM-confirmed.
+Ph4a ptt-engineer must NOT change the logic of the MGC fix (already correct).
+Ph4a may ONLY add xUnit tests and fix any compliance violations found in Ph3 audit.
+If Ph3 audit finds a compliance violation in the existing code, stop and report to Director
+before Ph4a proceeds.</pre>
+
+            <strong style="color:var(--amber);">&#9888; B143 PIPELINE NOT YET TRIGGERED (2026-09-02). Director: paste the ptt-orchestrator prompt above into a ptt-orchestrator session to initiate. B143 pipeline MUST complete before any B144 block begins. Block B143 covers commits: 3f709a91 (MGC-02 + MGC-01).</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end section-b143-pipeline -->
+
+
+
+
 
 
     <!-- ═══════════════════════════════════════════════════════════════════════════════════ -->
@@ -41253,12 +41491,20 @@ STATUS:       {one-line summary of what was fixed and what to test}
 TEST RESULTS: {PASS | FAIL | OBS | PENDING}
 {paste NT8 log output here if FAIL or OBS}</pre>
 
-            <div class="label" style="margin-top:0.75rem;">Loop Phase Map (updated 2026-09-02)</div>
+            <div class="label" style="margin-top:0.75rem;">Loop Phase Map (updated 2026-09-02 &rarr; 2026-09-02-session2)</div>
             <table style="font-size:0.79rem; border-collapse:collapse; width:100%; margin-bottom:0.75rem;">
               <tr>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700; width:90px;">PHASE 1</td>
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber);">Active defect &mdash; direct repair loop</td>
-                <td style="padding:4px 8px; border:1px solid var(--border); color:var(--muted);">DW-B142-DRAG OPEN: second target drag silent. Direct repair applied (IsAtmSTPOrder + PTT-TGT-Drag- clause). SIM PENDING.</td>
+                <td style="padding:4px 8px; border:1px solid var(--border);">
+                  <span style="color:var(--green);">&#10003; DW-B142-DRAG CONFIRMED (commit a702ccbd, SIM 2026-09-02)</span><br>
+                  <span style="color:var(--green);">&#10003; DW-B142-QTY-DESYNC-01 CONFIRMED (commit b30345c5, SIM 2026-09-02)</span><br>
+                  <span style="color:var(--green);">&#10003; DW-B142-MGC-02 CONFIRMED (commit 3f709a91, SIM 2026-09-02)</span><br>
+                  <span style="color:var(--green);">&#10003; DW-B142-MGC-01 CONFIRMED (via MGC-02 same commit, SIM 2026-09-02)</span><br>
+                  <span style="color:var(--green);">&#10003; B142 pipeline: COMPLETE</span><br>
+                  <span style="color:var(--red); font-weight:700;">&#9888; B143 pipeline: NOT YET TRIGGERED (commit 3f709a91 &mdash; MGC-01 + MGC-02)</span><br>
+                  <span style="color:var(--amber); font-weight:700;">ACTIVE: DW-B142-CLONE-01 P1 OPEN &mdash; log capture required (Path A / B / C diagnosis pending)</span>
+                </td>
               </tr>
               <tr style="background:rgba(99,102,241,0.03);">
                 <td style="padding:4px 8px; border:1px solid var(--border); color:var(--amber); font-weight:700;">PHASE 2</td>

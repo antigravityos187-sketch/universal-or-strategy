@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NinjaTrader Trade Copier — NinjaTrader 8 Add-On</title>
+<meta name="description" content="Mirror leader fills across unlimited follower accounts in real time. Trim, Break-Even, and Quick Exit included. Works with Apex, TopStep, Rithmic — any NT8 broker.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Source+Sans+3:wght@400&family=IBM+Plex+Sans:wght@500;600&display=swap');
+
+:root {
+  --bg:              #000000;
+  --surface:         #121212;
+  --surface-low:     #1a1c1c;
+  --surface-high:    #282a2b;
+  --border:          #222222;
+  --border-strong:   #5d4038;
+  --accent:          #FF4200;
+  --accent-dim:      rgba(255,66,0,0.12);
+  --accent-hover:    #DC3900;
+  --accent-glow:     #ffb5a1;
+  --secondary:       #2992ff;
+  --text-primary:    #e2e2e2;
+  --text-secondary:  #8E8E93;
+  --text-on-accent:  #000000;
+  --green:           #00C805;
+  --red:             #FF3B30;
+  --purple:          #a855f7;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--secondary);
+  text-decoration: none;
+}
+
+img { display: block; max-width: 100%; }
+
+/* ── LAYOUT ── */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 64px;
+}
+
+section {
+  padding: 80px 0;
+}
+
+/* ── NAV ── */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+.nav__logo {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.nav__logo-NINJATRADER {
+  color: var(--text-primary);
+}
+
+.nav__logo-product {
+  color: var(--accent);
+}
+
+.nav__links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav__links a {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.nav__links a:hover {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 2px;
+}
+
+.nav__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 20px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav__cta:hover {
+  background: var(--accent-hover);
+  color: #ffffff;
+}
+
+/* ── EYEBROW ── */
+.eyebrow {
+  display: block;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+/* ── HERO ── */
+.hero {
+  padding: 100px 0 80px;
+  background: var(--bg);
+}
+
+.hero__inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+.hero__h1 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+}
+
+.hero__h1 span {
+  color: var(--accent);
+}
+
+.hero__sub {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 28px;
+  color: var(--text-secondary);
+  margin-bottom: 40px;
+  max-width: 480px;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 32px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-primary:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 32px;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid #444;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.btn-secondary:hover {
+  border-color: #666;
+}
+
+/* hero visual panel */
+.hero__panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 32px;
+}
+
+.hero__panel-label {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 24px;
+}
+
+.hero__log {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.log-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-low);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 16px;
+}
+
+.log-entry__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.log-entry__dot--green { background: var(--green); }
+.log-entry__dot--accent { background: var(--accent); }
+.log-entry__dot--blue { background: var(--secondary); }
+
+.log-entry__latency {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green);
+}
+
+/* ── PROOF STRIP ── */
+.proof {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 40px 0;
+}
+
+.proof__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.proof__stat {
+  text-align: center;
+  padding: 0 16px;
+}
+
+.proof__stat + .proof__stat {
+  border-left: 1px solid var(--border);
+}
+
+.proof__number {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--accent);
+  display: block;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.proof__desc {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* ── FEATURES ── */
+.features {
+  background: var(--bg);
+}
+
+.section-heading {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+.section-heading h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+.section-heading p {
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.features__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 32px;
+  transition: border-color 0.2s;
+}
+
+.feature-card:hover {
+  border-color: var(--secondary);
+}
+
+.feature-card__icon {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 20px;
+}
+
+.feature-card__title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.feature-card__desc {
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text-secondary);
+}
+
+/* ── HOW IT WORKS ── */
+.how {
+  background: var(--surface-low);
+}
+
+.how__steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  counter-reset: steps;
+}
+
+.step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 32px;
+  counter-increment: steps;
+  position: relative;
+}
+
+.step__number {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+  display: block;
+}
+
+.step__title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.step__desc {
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--text-secondary);
+}
+
+/* ── COMPATIBILITY ── */
+.compat {
+  background: var(--bg);
+}
+
+.compat__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.compat__chip {
+  background: var(--surface-low);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.compat__chip:hover {
+  border-color: var(--secondary);
+  color: var(--text-primary);
+}
+
+/* ── PRICING ── */
+.pricing {
+  background: var(--surface-low);
+}
+
+.pricing__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.price-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 32px;
+  position: relative;
+}
+
+.price-card--featured {
+  border-color: var(--accent);
+}
+
+.price-card--community {
+  border-color: var(--purple);
+}
+
+.price-card__tag {
+  position: absolute;
+  top: -13px;
+  left: 24px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 4px;
+}
+
+.price-card__tag--community {
+  background: var(--purple);
+}
+
+.price-card__name {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.price-card__amount {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.price-card__amount span {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.price-card__period {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.price-card__desc {
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+}
+
+.price-card__code {
+  background: var(--accent-dim);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-glow);
+  margin-bottom: 24px;
+  display: inline-block;
+}
+
+.price-card__code--community {
+  background: rgba(168,85,247,0.1);
+  border-color: var(--purple);
+  color: var(--purple);
+}
+
+.price-card__btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 14px 24px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.price-card__btn:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+.price-card__btn--outline {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid #444;
+  transition: border-color 0.15s;
+}
+
+.price-card__btn--outline:hover {
+  border-color: #666;
+}
+
+.price-card__btn--purple {
+  background: var(--purple);
+  transition: background 0.15s, color 0.15s;
+}
+
+.price-card__btn--purple:hover {
+  background: #ffffff;
+  color: var(--purple);
+}
+
+/* ── FOOTER ── */
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 48px 0;
+}
+
+.footer__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: center;
+  text-align: center;
+}
+
+.footer__logo {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.footer__logo span {
+  color: var(--accent);
+}
+
+.footer__links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+
+.footer__links a {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footer__links a:hover {
+  color: var(--text-primary);
+}
+
+.footer__disclaimer {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
+  max-width: 600px;
+}
+
+.footer__copy {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 20px;
+  }
+
+  section {
+    padding: 64px 0;
+  }
+
+  .hero {
+    padding: 64px 0;
+  }
+
+  .hero__inner {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .hero__panel {
+    padding: 20px;
+  }
+
+  .proof__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+  }
+
+  .proof__stat + .proof__stat {
+    border-left: none;
+  }
+
+  .proof__stat:nth-child(odd) {
+    border-right: 1px solid var(--border);
+  }
+
+  .proof__stat:nth-child(1),
+  .proof__stat:nth-child(2) {
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .features__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card {
+    padding: 20px;
+  }
+
+  .how__steps {
+    grid-template-columns: 1fr;
+  }
+
+  .step {
+    padding: 20px;
+  }
+
+  .pricing__grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .price-card {
+    padding: 20px;
+  }
+
+  .nav__links {
+    display: none;
+  }
+
+  .footer__links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="container">
+    <div class="nav__inner">
+      <a href="/" class="nav__logo">
+        <span class="nav__logo-NINJATRADER">NINJATRADER</span>
+        <span class="nav__logo-product">Trade Copier</span>
+      </a>
+      <ul class="nav__links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#compatibility">Compatibility</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="install.html">Install Guide</a></li>
+      </ul>
+      <a href="pricing.html" class="nav__cta">Buy Now — $200</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero__inner">
+      <div class="hero__content">
+        <span class="eyebrow">For NinjaTrader 8</span>
+        <h1 class="hero__h1">Copy Any Trade.<br><span>Any Account.</span></h1>
+        <p class="hero__sub">Mirror leader fills across unlimited follower accounts in real time. Trim, Break-Even, and Quick Exit included. Works with Apex, TopStep, Rithmic — any NT8 broker.</p>
+        <div class="hero__actions">
+          <a href="pricing.html" class="btn-primary">Buy Now — $200</a>
+          <a href="install.html" class="btn-secondary">View Install Guide</a>
+        </div>
+      </div>
+      <div class="hero__panel">
+        <p class="hero__panel-label">Live Order Activity</p>
+        <div class="hero__log">
+          <div class="log-entry">
+            <span class="log-entry__dot log-entry__dot--green"></span>
+            <span>LEADER &rarr; BUY 2 MES @ 5412.50</span>
+            <span class="log-entry__latency">12ms</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-entry__dot log-entry__dot--accent"></span>
+            <span>APEX-1 &rarr; BUY 2 MES @ 5412.50</span>
+            <span class="log-entry__latency">18ms</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-entry__dot log-entry__dot--accent"></span>
+            <span>APEX-2 &rarr; BUY 1 MES @ 5412.50</span>
+            <span class="log-entry__latency">21ms</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-entry__dot log-entry__dot--blue"></span>
+            <span>TOPSTEP-1 &rarr; BUY 2 ES @ 5412.50</span>
+            <span class="log-entry__latency">34ms</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-entry__dot log-entry__dot--blue"></span>
+            <span>RITHMIC-1 &rarr; BUY 1 MES @ 5412.50</span>
+            <span class="log-entry__latency">47ms</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF STRIP -->
+<div class="proof">
+  <div class="container">
+    <div class="proof__grid">
+      <div class="proof__stat">
+        <span class="proof__number">120+</span>
+        <span class="proof__desc">Tests Run</span>
+      </div>
+      <div class="proof__stat">
+        <span class="proof__number">&lt;50ms</span>
+        <span class="proof__desc">Fill Latency</span>
+      </div>
+      <div class="proof__stat">
+        <span class="proof__number">3+</span>
+        <span class="proof__desc">Prop Firms</span>
+      </div>
+      <div class="proof__stat">
+        <span class="proof__number">$0</span>
+        <span class="proof__desc">Infra Required</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-heading">
+      <span class="eyebrow">Core Capabilities</span>
+      <h2>Everything You Need to Scale</h2>
+      <p>Built for prop traders running multiple funded accounts. Every feature designed to survive live market conditions.</p>
+    </div>
+    <div class="features__grid">
+
+      <!-- 1 Instant Order Copy -->
+      <div class="feature-card">
+        <svg class="feature-card__icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        <h3 class="feature-card__title">Instant Order Copy</h3>
+        <p class="feature-card__desc">Event-driven, no polling — fires on fill. Orders reach all follower accounts within milliseconds of the leader fill event.</p>
+      </div>
+
+      <!-- 2 Multi-Rule Engine -->
+      <div class="feature-card">
+        <svg class="feature-card__icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+        </svg>
+        <h3 class="feature-card__title">Multi-Rule Engine</h3>
+        <p class="feature-card__desc">Route different instruments to different accounts simultaneously. One leader can drive unlimited rules with independent instrument and multiplier settings.</p>
+      </div>
+
+      <!-- 3 Daily P&L Cap Gate -->
+      <div class="feature-card">
+        <svg class="feature-card__icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <h3 class="feature-card__title">Daily P&amp;L Cap Gate</h3>
+        <p class="feature-card__desc">Silent skip when a follower hits its daily loss cap. Other accounts keep running uninterrupted — no global halt, no manual intervention required.</p>
+      </div>
+
+      <!-- 4 Trim + Flatten Hotkeys -->
+      <div class="feature-card">
+        <svg class="feature-card__icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
+        </svg>
+        <h3 class="feature-card__title">Trim + Flatten Hotkeys</h3>
+        <p class="feature-card__desc">Shift+T trims half, Shift+F flattens all, Shift+B moves stop to break-even. Single keystrokes execute across every active follower account instantly.</p>
+      </div>
+
+      <!-- 5 ATR Dynamic Sizing -->
+      <div class="feature-card">
+        <svg class="feature-card__icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        <h3 class="feature-card__title">ATR Dynamic Sizing</h3>
+        <p class="feature-card__desc">Quantity scaled per follower by ATR-derived risk. Each account sizes positions according to current volatility, not a fixed multiplier.</p>
+      </div>
+
+      <!-- 6 Click Trader -->
+      <div class="feature-card">
+        <svg class="feature-card__icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 9 L9 3 L21 3 L21 15 L15 15"/><rect x="3" y="9" width="12" height="12" rx="1"/>
+        </svg>
+        <h3 class="feature-card__title">Click Trader</h3>
+        <p class="feature-card__desc">Click any price on the chart and a limit order is placed at that exact level on all follower accounts simultaneously. Point-and-click execution.</p>
+      </div>
+
+      <!-- 7 Mirror Mode -->
+      <div class="feature-card">
+        <svg class="feature-card__icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3 L12 21"/><path d="M3 7 L12 3 L21 7"/><path d="M3 17 L12 21 L21 17"/>
+        </svg>
+        <h3 class="feature-card__title">Mirror Mode</h3>
+        <p class="feature-card__desc">Entry, stop, and target replicate in both Mode 1 and Mode 2. Full bracket structure copied to every follower with no manual setup.</p>
+      </div>
+
+      <!-- 8 Global Quick Exit -->
+      <div class="feature-card">
+        <svg class="feature-card__icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        <h3 class="feature-card__title">Global Quick Exit</h3>
+        <p class="feature-card__desc">Flattens all accounts across all rules simultaneously with a single action. One button to close every open position on every follower account.</p>
+      </div>
+
+      <!-- 9 Rule Persistence -->
+      <div class="feature-card">
+        <svg class="feature-card__icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+        </svg>
+        <h3 class="feature-card__title">Rule Persistence</h3>
+        <p class="feature-card__desc">Copy rules saved to XML and reload automatically on NT8 restart. Your configuration survives platform restarts with zero manual re-entry.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how-it-works">
+  <div class="container">
+    <div class="section-heading">
+      <span class="eyebrow">Setup Process</span>
+      <h2>Up and Running in Minutes</h2>
+      <p>No separate server, no cloud subscription, no broker API keys. Everything runs inside NinjaTrader.</p>
+    </div>
+    <div class="how__steps">
+      <div class="step">
+        <span class="step__number">Step 01</span>
+        <h3 class="step__title">Import the Zip</h3>
+        <p class="step__desc">Tools &rarr; Import NinjaScript &rarr; NinjaTrader-TradeCopier-v1.0.zip. The add-on installs directly into your NinjaTrader environment.</p>
+      </div>
+      <div class="step">
+        <span class="step__number">Step 02</span>
+        <h3 class="step__title">Open the Add-On Window</h3>
+        <p class="step__desc">Tools &rarr; Add-Ons &rarr; NinjaTrader Trade Copier. Enter your license key to activate. The panel opens immediately.</p>
+      </div>
+      <div class="step">
+        <span class="step__number">Step 03</span>
+        <h3 class="step__title">Add a Copy Rule</h3>
+        <p class="step__desc">Select master account &rarr; followers &rarr; instrument &rarr; multiplier &rarr; enable. Each rule is independent and configurable.</p>
+      </div>
+      <div class="step">
+        <span class="step__number">Step 04</span>
+        <h3 class="step__title">Trade Normally</h3>
+        <p class="step__desc">Followers receive every order in milliseconds. No change to your trading workflow required. Just trade your leader account as usual.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPATIBILITY -->
+<section class="compat" id="compatibility">
+  <div class="container">
+    <div class="section-heading">
+      <span class="eyebrow">Supported Brokers &amp; Platforms</span>
+      <h2>Works With Every NT8 Broker</h2>
+      <p>If NinjaTrader 8 supports the connection, NinjaTrader Trade Copier works with it.</p>
+    </div>
+    <div class="compat__grid">
+      <span class="compat__chip">Apex Trader Funding</span>
+      <span class="compat__chip">TopStep</span>
+      <span class="compat__chip">Topstep X</span>
+      <span class="compat__chip">Take Profit Trader</span>
+      <span class="compat__chip">Rithmic</span>
+      <span class="compat__chip">AMP / CQG</span>
+      <span class="compat__chip">Interactive Brokers</span>
+      <span class="compat__chip">TD Ameritrade / Schwab</span>
+      <span class="compat__chip">Tradovate</span>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="section-heading">
+      <span class="eyebrow">Licensing</span>
+      <h2>Simple, Transparent Pricing</h2>
+      <p>One payment. All features. No recurring fees on the lifetime plan.</p>
+    </div>
+    <div class="pricing__grid">
+
+      <!-- Lifetime -->
+      <div class="price-card price-card--featured">
+        <span class="price-card__tag">Best Value</span>
+        <p class="price-card__name">Lifetime License</p>
+        <div class="price-card__amount">$200</div>
+        <p class="price-card__period">One-time payment</p>
+        <p class="price-card__desc">All features, all v1.x updates, grandfathered for life. Pay once and own it forever — no subscription, no renewal.</p>
+        <a href="pricing.html" class="price-card__btn">Buy Now</a>
+      </div>
+
+      <!-- Monthly -->
+      <div class="price-card">
+        <p class="price-card__name">Monthly License</p>
+        <div class="price-card__amount">$30<span>/mo</span></div>
+        <p class="price-card__period">Billed monthly</p>
+        <p class="price-card__desc">Full access to all features. Cancel anytime with no penalty. Ideal for traders who want to try before committing.</p>
+        <a href="pricing.html" class="price-card__btn price-card__btn--outline">Get Started</a>
+      </div>
+
+      <!-- WSGTA Community -->
+      <div class="price-card price-card--community">
+        <span class="price-card__tag price-card__tag--community">WSGTA Community</span>
+        <p class="price-card__name">Community License</p>
+        <div class="price-card__amount">$100</div>
+        <p class="price-card__period">One-time payment — 50% off</p>
+        <p class="price-card__desc">Exclusive discount for the WSGTA community. All lifetime features included at half price.</p>
+        <div class="price-card__code price-card__code--community">Code: wsgta</div>
+        <a href="pricing.html" class="price-card__btn price-card__btn--purple">Claim Discount</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer__inner">
+      <div class="footer__logo">NINJATRADER <span>Trade Copier</span></div>
+      <ul class="footer__links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="install.html">Install Guide</a></li>
+        <li><a href="pricing.html">Buy Now</a></li>
+      </ul>
+      <p class="footer__disclaimer">Trade Copier for NinjaTrader 8 is an independent third-party add-on. Not affiliated with or endorsed by NinjaTrader LLC or Payward Inc.</p>
+      <p class="footer__copy">&copy; 2026 NinjaTrader Trade Copier. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

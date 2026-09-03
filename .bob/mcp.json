@@ -29,7 +29,8 @@
         "register_edit",
         "announce_model",
         "list_repos",
-        "get_symbol_complexity"
+        "get_symbol_complexity",
+        "get_dead_code_v2"
       ]
     },
     "greptile": {
