@@ -394,30 +394,30 @@ namespace PropTraderTools
             _licenseStatusText.Text = GetStatusText(flags);
         }
 
-        // BGTM-1: Apply feature flags to all gated UI elements. CYC=1. Straight-line assignments.
-        // JS-021: no lock. Called on UI thread only (from OnLoaded, OnActivateClick, OnFeatureFlagsChanged).
+        // BWAVE-CYC T7: extracted helper for TradeCopierWindow::ApplyFeatureFlags.
+
+        // ApplyButtonGroupFlag: sets IsEnabled and ToolTip on a collection of buttons. CCN=2.
+        private static void ApplyButtonGroupFlag(
+            System.Collections.Generic.IEnumerable<System.Windows.Controls.Button> btns,
+            bool enabled,
+            string disabledMessage
+        )
+        {
+            foreach (var btn in btns)
+            {
+                btn.IsEnabled = enabled;
+                btn.ToolTip = enabled ? null : disabledMessage;
+            }
+        }
+
+        // BGTM-1: Apply feature flags to all gated UI elements.
+        // TradeCopierWindow::ApplyFeatureFlags after extraction. CCN=5.
         private void ApplyFeatureFlags(FeatureFlags f)
         {
-            foreach (var btn in _trimBtns)
-            {
-                btn.IsEnabled = f.TrimFlatten;
-                btn.ToolTip = f.TrimFlatten ? null : "Trim requires Pro tier";
-            }
-            foreach (var btn in _flattenBtns)
-            {
-                btn.IsEnabled = f.TrimFlatten;
-                btn.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
-            }
-            foreach (var btn in _cancelBtns)
-            {
-                btn.IsEnabled = f.TrimFlatten;
-                btn.ToolTip = f.TrimFlatten ? null : "Cancel requires Pro tier";
-            }
-            foreach (var btn in _beBtns)
-            {
-                btn.IsEnabled = f.BreakEven;
-                btn.ToolTip = f.BreakEven ? null : "Break Even requires Pro tier";
-            }
+            ApplyButtonGroupFlag(_trimBtns, f.TrimFlatten, "Trim requires Pro tier");
+            ApplyButtonGroupFlag(_flattenBtns, f.TrimFlatten, "Trim/Flatten requires Pro tier");
+            ApplyButtonGroupFlag(_cancelBtns, f.TrimFlatten, "Cancel requires Pro tier");
+            ApplyButtonGroupFlag(_beBtns, f.BreakEven, "Break Even requires Pro tier");
             if (_modeCb != null)
             {
                 _modeCb.IsEnabled = f.MirrorMode;
@@ -1079,6 +1079,19 @@ namespace PropTraderTools
             _engine.SetRuleEnabled(name, newState);
         }
 
+        // BWAVE-CYC T6: extracted helpers for OnRuleBreakEven, OnRuleArmBe, OnRuleTightenStop.
+
+        // TryParseBeTicksFromTag: parses BE ticks from tag[1] TextBox. Default=2. CCN=4.
+        private static int TryParseBeTicksFromTag(object[] tag)
+        {
+            int ticks = 2;
+            if (tag.Length > 1 && tag[1] is TextBox beBox)
+                if (int.TryParse(beBox.Text?.Trim(), out int parsed) && parsed >= 0)
+                    ticks = parsed;
+            return ticks;
+        }
+
+        // OnRuleBreakEven after extraction. CCN=5.
         private void OnRuleBreakEven(object sender, RoutedEventArgs e)
         {
             var tag = (sender as Button)?.Tag as object[];
@@ -1087,114 +1100,147 @@ namespace PropTraderTools
             string name = tag[0] is TextBox tb ? tb.Text : tag[0] as string;
             if (string.IsNullOrEmpty(name))
                 return;
-            int ticks = 2;
-            if (tag.Length > 1 && tag[1] is TextBox beBox)
-                if (int.TryParse(beBox.Text?.Trim(), out int parsed) && parsed >= 0)
-                    ticks = parsed;
+            int ticks = TryParseBeTicksFromTag(tag);
             var instr = FindInstrument(name);
             if (instr != null)
                 _engine.BreakEven(instr, ticks);
         }
 
-        // B11 T2 -- OnRuleArmBe: Arm BE click handler for rule rows in TradeCopierWindow.
-        // Tag layout: object[] { instrumentNameOrTextBox, leaderComboBox, bufferTextBox }
-        // Calls engine.ArmPendingBe(instr, leaderAcc, bufferTicks).
-        // CYC=4: tag null(1), name empty(2), instr null(3), leader null(4).
-        // JS-021: no lock. JS-002: no return null (uses guard-return pattern).
+        // TryParseArmBeBuffer: parses buffer ticks from tag[2] TextBox. Default=2. CCN=2.
+        private static int TryParseArmBeBuffer(object[] tag)
+        {
+            int buf = 2;
+            var bufBox = tag.Length > 2 ? tag[2] as TextBox : null;
+            if (bufBox != null)
+                int.TryParse(bufBox.Text, out buf);
+            return buf;
+        }
+
+        // OnRuleArmBe after extraction. CCN=5.
+        // TryGetLeaderFromTag: extracts leader Account from tag[1] ComboBox. CCN=2.
+        private static Account TryGetLeaderFromTag(object[] tag)
+        {
+            var leaderCb = tag.Length > 1 ? tag[1] as ComboBox : null;
+            return leaderCb?.SelectedItem as Account;
+        }
+
+        // OnRuleArmBe after extraction. CCN=7.
         private void OnRuleArmBe(object sender, RoutedEventArgs e)
         {
             var tag = (sender as Button)?.Tag as object[];
             if (tag == null)
-                return; // guard (1): tag null
-
-            string name = tag[0] is TextBox tb ? tb.Text : tag[0] as string ?? string.Empty;
+                return;
+            string name = ExtractNameFromTag(tag);
             if (string.IsNullOrEmpty(name))
-                return; // guard (2): name empty
-
+                return;
             var instr = FindInstrument(name);
             if (instr == null)
-                return; // guard (3): instr null
-
-            var leaderCb = tag[1] as ComboBox;
-            var leaderAcc = leaderCb?.SelectedItem as Account;
+                return;
+            var leaderAcc = TryGetLeaderFromTag(tag);
             if (leaderAcc == null)
-                return; // guard (4): leader null
-
-            int buf = 2;
-            var bufBox = tag[2] as TextBox;
-            if (bufBox != null)
-                int.TryParse(bufBox.Text, out buf);
-
+                return;
+            int buf = TryParseArmBeBuffer(tag);
             _engine.ArmPendingBe(instr, leaderAcc, buf);
         }
 
-        // B10 T3 -- OnRuleTightenStop: tighten stop click handler for rule rows.
-        // CYC=4: tag null(1), name empty(2), instr null(3), engine call(4).
-        // Reads rule name from tag[0] (string or TextBox), ticks from tag[1] (TextBox).
-        // NT8-003: no Math.Clamp. Math.Max/Min clamp 1-500. JS-021: no lock.
-        private void OnRuleTightenStop(object sender, RoutedEventArgs e)
+        // TryParseTightenTicksFromTag: parses ticks from tag[1] TextBox. Default=5, clamped 1-500. CCN=3.
+        private static int TryParseTightenTicksFromTag(object[] tag)
         {
-            var tag = (sender as Button)?.Tag as object[];
-            if (tag == null) // (1)
-                return;
-            string name = tag[0] is TextBox tb0 ? tb0.Text : tag[0] as string;
-            if (string.IsNullOrEmpty(name)) // (2)
-                return;
-            var instr = FindInstrument(name);
-            if (instr == null) // (3)
-                return;
             int ticks = 5;
             if (tag.Length > 1 && tag[1] is TextBox ticksBox)
                 if (int.TryParse(ticksBox.Text?.Trim(), out int parsed))
-                    ticks = Math.Max(1, Math.Min(500, parsed)); // clamp: no Math.Clamp (.NET 4.8 ban)
-            _engine.TightenStop(instr, ticks); // (4)
+                    ticks = Math.Max(1, Math.Min(500, parsed));
+            return ticks;
         }
 
-        // B8 T2: OnRowApply -- reads ATM ComboBox selection (tag[3]) and builds ATM map.
-        // signalName for CreateOrder is always "PTT-Copy" -- ATM mode is applied by engine.
-        // CYC=5 (tag null + name empty + leader null + followers empty + atm foreach).
-        private void OnRowApply(object sender, RoutedEventArgs e)
+        // OnRuleTightenStop after extraction. CCN=5.
+        private void OnRuleTightenStop(object sender, RoutedEventArgs e)
         {
             var tag = (sender as Button)?.Tag as object[];
             if (tag == null)
                 return;
-            string name = tag[0] is TextBox tb ? tb.Text : tag[0] as string;
+            string name = tag[0] is TextBox tb0 ? tb0.Text : tag[0] as string;
             if (string.IsNullOrEmpty(name))
                 return;
-            var leaderCb = tag[1] as ComboBox;
-            var leader = leaderCb?.SelectedItem as Account;
-            var followerLb = tag[2] as ListBox;
-            var followers = new List<Account>();
-            if (followerLb != null)
-                foreach (var item in followerLb.SelectedItems)
-                    if (item is Account acc)
-                        followers.Add(acc);
-            if (leader == null || followers.Count == 0)
+            var instr = FindInstrument(name);
+            if (instr == null)
                 return;
+            int ticks = TryParseTightenTicksFromTag(tag);
+            _engine.TightenStop(instr, ticks);
+        }
 
-            // B8 T2 + B9 T3: read ATM mode from tag[3]; if "Named", append tag[4] namedBox text
+        // BWAVE-CYC T5: extracted helpers for OnRowApply.
+
+        // ExtractNameFromTag: gets rule name from tag[0] (TextBox or string). CCN=2.
+        private static string ExtractNameFromTag(object[] tag)
+        {
+            return tag[0] is TextBox tb ? tb.Text : tag[0] as string ?? string.Empty;
+        }
+
+        // CollectFollowersFromTag: collects selected Account items from tag[2] ListBox. CCN=3.
+        // Returns empty list (never null) when ListBox is null or has no Account items.
+        private static List<Account> CollectFollowersFromTag(object[] tag)
+        {
+            var followers = new List<Account>();
+            var followerLb = tag[2] as ListBox;
+            if (followerLb == null)
+                return followers;
+            foreach (var item in followerLb.SelectedItems)
+                if (item is Account acc)
+                    followers.Add(acc);
+            return followers;
+        }
+
+        // BuildAtmMapFromTag: reads ATM mode from tag[3] ComboBox and builds per-follower map. CCN=4.
+        // Returns empty dictionary when tag is too short or ATM selection is absent.
+        private static Dictionary<string, FollowerAtmMode> BuildAtmMapFromTag(
+            object[] tag,
+            List<Account> followers
+        )
+        {
             var atmMap = new Dictionary<string, FollowerAtmMode>();
             if (tag.Length > 3 && tag[3] is ComboBox atmCb && atmCb.SelectedItem is string atmSel)
             {
                 string atmMode = atmSel;
-                // B9 T3: when Named, append the textbox value as "Named:templateName"
                 if (
                     atmMode == "Named"
                     && tag.Length > 4
                     && tag[4] is TextBox namedBox
                     && namedBox.Text.Length > 0
-                ) // branch +1
+                )
                     atmMode = "Named:" + namedBox.Text;
                 var mode = CopyEngine.ParseAtmModeName(atmMode);
                 foreach (var acc in followers)
                     atmMap[acc.Name] = mode;
             }
+            return atmMap;
+        }
 
-            // Multipliers default to all-1s for Window surface (Panel handles per-follower multipliers)
-            var multipliers = new int[followers.Count];
-            for (int i = 0; i < multipliers.Length; i++)
-                multipliers[i] = 1;
+        // BuildDefaultMultipliers: returns int array of all-1s. CCN=1.
+        private static int[] BuildDefaultMultipliers(int count)
+        {
+            var m = new int[count];
+            for (int i = 0; i < count; i++)
+                m[i] = 1;
+            return m;
+        }
 
+        // OnRowApply after extraction. CCN=7. _engine.AddRule MUST stay here.
+        private void OnRowApply(object sender, RoutedEventArgs e)
+        {
+            var tag = (sender as Button)?.Tag as object[];
+            if (tag == null)
+                return;
+            string name = ExtractNameFromTag(tag);
+            if (string.IsNullOrEmpty(name))
+                return;
+            var leaderCb = tag[1] as ComboBox;
+            var leader = leaderCb?.SelectedItem as Account;
+            var followers = CollectFollowersFromTag(tag);
+            if (leader == null || followers.Count == 0)
+                return;
+            var atmMap = BuildAtmMapFromTag(tag, followers);
+            var multipliers = BuildDefaultMultipliers(followers.Count);
             _engine.AddRule(name, leader, followers.ToArray(), multipliers, atmMap);
         }
 

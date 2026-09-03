@@ -630,44 +630,71 @@ namespace PropTraderTools
         // HOTFIX-F3: when position goes flat, force BE FSM back to Idle regardless of prior state.
         // Previously Armed/Connected states were never cleared by PositionStateChanged -- button
         // stayed amber/blue after ATM or native Close flattened the position.
-        private void UpdateButtonColors(bool hasPosition, bool hasEntries)
+        // BWAVE-CYC T1: extracted helpers for UpdateButtonColors.
+        // ApplyCopyToggleBackground: sets copy toggle button background. CCN=2.
+        private void ApplyCopyToggleBackground()
         {
             if (_copyToggleBtn2 != null)
                 _copyToggleBtn2.Background = _copyEnabled ? BrushActive : BrushInactive;
+        }
+
+        // ApplyPositionButtons: sets flatten/cancel/trim backgrounds based on position/entries. CCN=5.
+        private void ApplyPositionButtons(bool hasPosition, bool hasEntries)
+        {
             if (_flattenBtn2 != null)
                 _flattenBtn2.Background = hasPosition ? BrushDanger : BrushInactive;
             if (_cancelBtn2 != null)
                 _cancelBtn2.Background = hasEntries ? BrushDanger : BrushInactive;
             if (_trimBtn2 != null)
                 _trimBtn2.Background = hasPosition ? BrushCaution : BrushInactive;
-            if (!hasPosition && _beState != BeState.Idle) // HOTFIX-F3: reset per-chart BE on flat
+        }
+
+        // ApplyButtonBackgrounds: sets Background on the 4 control buttons. CCN=3.
+        private void ApplyButtonBackgrounds(bool hasPosition, bool hasEntries)
+        {
+            ApplyCopyToggleBackground();
+            ApplyPositionButtons(hasPosition, hasEntries);
+        }
+
+        // HOTFIX-F3: reset per-chart BE state when position goes flat. CCN=3.
+        private void ResetBeStateOnFlat(bool hasPosition)
+        {
+            if (!hasPosition && _beState != BeState.Idle)
             {
                 _beState = BeState.Idle;
                 UpdateBeVisuals(BeState.Idle);
-                // HOTFIX-FLAT-DISARM: disarm pending BE slot when position closes while armed.
                 if (_leaderAccount != null)
                     CopyEngine.Instance.DisarmPendingBe(_leaderAccount);
             }
-            // HOTFIX-BEALL-FLAT-RESET: BE ALL visual reset is INDEPENDENT of _beState.
-            // _beState tracks the per-chart BE button only. When user armed BE ALL but NOT the
-            // per-chart BE button, _beState == Idle -> HOTFIX-F3 gate is false -> BE ALL stays
-            // amber after flat. Fix: check IsPendingSlotsEmpty independently on every flat event.
-            // Safe because UpdateButtonColors(hasPos=false) only fires via TryFirePositionState
-            // (Filled/PartFilled only, post-Gate-2.5) -- NOT on ATM bracket cancel noise.
+        }
+
+        // HOTFIX-BEALL-FLAT-RESET: disarm BE ALL when position goes flat. CCN=3.
+        private void DisarmBeAllOnFlat(bool hasPosition)
+        {
             if (!hasPosition && !CopyEngine.Instance.IsPendingSlotsEmpty())
             {
                 if (_leaderAccount != null)
                     CopyEngine.Instance.DisarmPendingBe(_leaderAccount);
-                CopyEngine.Instance.RaiseBeAllDisarmed(); // notify all panels unconditionally
+                CopyEngine.Instance.RaiseBeAllDisarmed();
             }
-            // HOTFIX-ORPHAN-STOP-CLEANUP: cancel any PTT-BE-*/PTT-QX-* orders that survived
-            // a manual position close. NT8 does NOT auto-cancel AddOn orders when user clicks
-            // Chart Trader X or issues a Close order -- orphaned PTT-BE-Stop-N orders remain
-            // Working and can fill on the next trade. CancelQxBrackets covers PTT-BE-* and
-            // PTT-QX-* prefixes via IsQxCancelCandidate. Safe: CancelQxBrackets is a no-op
-            // when no such orders exist (stale.Count==0 early return in CopyEngine.cs line 517).
+        }
+
+        // HOTFIX-ORPHAN-STOP-CLEANUP: cancel orphan QX brackets when position goes flat. CCN=2.
+        private void CancelOrphanBracketsOnFlat(bool hasPosition)
+        {
             if (!hasPosition && _leaderAccount != null && _instrument != null)
                 CopyEngine.Instance.CancelQxBrackets(_leaderAccount, _instrument);
+        }
+
+        // UpdateButtonColors after extraction. CCN=5: base(1) + 4 unconditional calls = 1; the
+        // original ApplyButtonBackgrounds has 4 null-guard branches counted here as callee.
+        // Actual parent CYC = 1 (all calls unconditional). Conservative target = 5.
+        private void UpdateButtonColors(bool hasPosition, bool hasEntries)
+        {
+            ApplyButtonBackgrounds(hasPosition, hasEntries);
+            ResetBeStateOnFlat(hasPosition);
+            DisarmBeAllOnFlat(hasPosition);
+            CancelOrphanBracketsOnFlat(hasPosition);
         }
 
         // CYC=1: single null+instrument filter guard.
@@ -692,16 +719,12 @@ namespace PropTraderTools
             );
         }
 
-        // -- private: deferred account population ---------------------------------
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        // BWAVE-CYC T1: extracted helpers for OnLoaded. CCN of each <= 7.
+
+        // PopulateFollowerItems: clears and repopulates _followerItems from Account.All. CCN=4.
+        // SAFE: called on UI thread from OnLoaded (Account.All available in Loaded handlers per NT8-021).
+        private void PopulateFollowerItems()
         {
-            Loaded -= OnLoaded;
-            _engine.PositionStateChanged += OnPositionStateChanged;
-            _engine.PendingBeFired += OnPendingBeFiredDispatch;
-            _engine.PendingBeArmed += OnPendingBeArmedDispatch; // HOTFIX-BEALL-SYNC-01
-            _engine.GlobalBeBufferChanged += OnGlobalBeBufferChanged; // HOTFIX-BEALL-BUFFER-SYNC-01
-            _engine.GlobalQuickAllBufferChanged += OnQuickAllBufferChanged; // HOTFIX-QUICKALL-SINGLETON-01
-            _engine.GlobalBeAllDisarmed += OnGlobalBeAllDisarmed; // HOTFIX-BEALL-DISARM-SYNC-01
             _followerItems.Clear();
             if (Account.All == null)
                 return;
@@ -711,42 +734,75 @@ namespace PropTraderTools
                 acc.AccountItemUpdate += OnAccountItemUpdate;
             }
             if (_followersDropDown != null)
-                _followersDropDown.ItemsSource = _followerItems; // kept; harmless on non-visual ComboBox
+                _followersDropDown.ItemsSource = _followerItems;
             UpdateDropDownHeader();
-            LoadFollowers(); // B47 T1-B: populate inline ScrollViewer rows
-            _engine.LoadRules(); // DW-B98-C: restore rules + _isCopyEnabled from XML on panel path (Account.All populated above)
+            LoadFollowers();
+            _engine.LoadRules();
+        }
 
-            // HOTFIX-B67-CHECKBOX-RESTORE: after LoadRules, engine _rules already contain the
-            // persisted follower list. Restore IsSelected on matching _followerItems so that
-            // the first TryAutoApply (checkbox toggle) does not wipe a valid restored rule.
-            // CYC cost: +0 (straight-line, no branch beyond the foreach).
-            // Must run AFTER LoadFollowers() (rows exist) and BEFORE TryAutoApply is triggered.
-            if (_instrument != null && _leaderAccount != null)
+        // RestoreSavedFollowers: restores IsSelected state from persisted follower names. CCN=5.
+        private void RestoreSavedFollowers()
+        {
+            if (_instrument == null || _leaderAccount == null)
+                return;
+            var saved = _engine.GetSavedFollowerNames(_instrument.FullName, _leaderAccount.Name);
+            if (saved.Count > 0)
             {
-                var saved = _engine.GetSavedFollowerNames(
-                    _instrument.FullName,
-                    _leaderAccount.Name
-                );
-                if (saved.Count > 0)
-                {
-                    foreach (var item in _followerItems)
-                        if (item.Account != null && saved.Contains(item.Account.Name))
-                            item.IsSelected = true;
-                    SortFollowerRows(); // re-sort so checked rows float to top
-                    TryAutoApply(); // re-register live rule with restored followers
-                }
+                foreach (var item in _followerItems)
+                    if (item.Account != null && saved.Contains(item.Account.Name))
+                        item.IsSelected = true;
+                SortFollowerRows();
+                TryAutoApply();
             }
+        }
 
-            // B13 T2: push initial panel values to AtrSizingEngine at startup.
-            // CopyEngine.UpdateAtrFraction / UpdateMaxRisk are null-guarded;
-            // if _atrEngine is null (not yet attached) they are silent no-ops.
+        // ApplyModuleLicenses: sets enabled state on each module from license bools. CCN=3.
+        // BWAVE-CYC T1: dictionary approach replaces switch-over-5-cases (was CCN=7, now CCN=3).
+        // Func<TradeCopierPanel, bool> reads license bool from the panel instance. Safe on UI thread.
+        private static bool GetIsBeLicensed(TradeCopierPanel p) => p.IsBeLicensed;
+        private static bool GetIsTrimLicensed(TradeCopierPanel p) => p.IsTrimLicensed;
+        private static bool GetIsFlattenLicensed(TradeCopierPanel p) => p.IsFlattenLicensed;
+        private static bool GetIsCancelLicensed(TradeCopierPanel p) => p.IsCancelLicensed;
+        private static bool GetIsCopierLicensed(TradeCopierPanel p) => p.IsCopierLicensed;
+
+        private static readonly System.Collections.Generic.Dictionary<string, Func<TradeCopierPanel, bool>> _licenseMap =
+            new System.Collections.Generic.Dictionary<string, Func<TradeCopierPanel, bool>>
+            {
+                { "BE",     GetIsBeLicensed },
+                { "TRIM",   GetIsTrimLicensed },
+                { "FLAT",   GetIsFlattenLicensed },
+                { "CANCEL", GetIsCancelLicensed },
+                { "COPY",   GetIsCopierLicensed },
+            };
+
+        private void ApplyModuleLicenses()
+        {
+            foreach (IPttModule m in _modules)
+            {
+                if (_licenseMap.TryGetValue(m.ModuleId, out var fn))
+                    m.SetEnabled(fn(this));
+            }
+        }
+
+        // -- private: deferred account population ---------------------------------
+        // OnLoaded after extraction. CCN=7.
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= OnLoaded;
+            _engine.PositionStateChanged += OnPositionStateChanged;
+            _engine.PendingBeFired += OnPendingBeFiredDispatch;
+            _engine.PendingBeArmed += OnPendingBeArmedDispatch;
+            _engine.GlobalBeBufferChanged += OnGlobalBeBufferChanged;
+            _engine.GlobalQuickAllBufferChanged += OnQuickAllBufferChanged;
+            _engine.GlobalBeAllDisarmed += OnGlobalBeAllDisarmed;
+            PopulateFollowerItems();
+            RestoreSavedFollowers();
             NotifyRiskChanged();
             NotifyAtrFractionChanged();
             _engine.CopyEnabledChanged += OnCopyEnabledChanged;
-            ApplyCopyState(_engine.IsEnabled); // B54: snap to current engine truth on surface create/F5
+            ApplyCopyState(_engine.IsEnabled);
 
             // B33 T7 -- Build AllAccounts (leader + followers) for IPttHostContext.
-            // Must be done here (UI thread, after Account.All is available) per NT8-021.
             _allAccounts.Clear();
             if (_leaderAccount != null)
                 _allAccounts.Add(_leaderAccount);
@@ -764,29 +820,8 @@ namespace PropTraderTools
             foreach (IPttModule m in _modules)
                 m.Initialize(this);
 
-            // B33 T7 -- Wire license bools to module enabled state via IPttModule.SetEnabled().
-            foreach (IPttModule m in _modules)
-            {
-                switch (m.ModuleId)
-                {
-                    case "BE":
-                        m.SetEnabled(IsBeLicensed);
-                        break;
-                    case "TRIM":
-                        m.SetEnabled(IsTrimLicensed);
-                        break;
-                    case "FLAT":
-                        m.SetEnabled(IsFlattenLicensed);
-                        break;
-                    case "CANCEL":
-                        m.SetEnabled(IsCancelLicensed);
-                        break;
-                    case "COPY":
-                        m.SetEnabled(IsCopierLicensed);
-                        break;
-                }
-            }
-            _engine.Subscribe(); // B44: wire order stream to CopyEngine (panel path)
+            ApplyModuleLicenses();
+            _engine.Subscribe();
 
             // B41: Site 3 -- initial display sync after panel wires up.
             if (_leaderAccount != null)
@@ -1594,25 +1629,40 @@ namespace PropTraderTools
             }
         }
 
-        // B32 -- IsPriceAlreadyAtBe: true if current market price has already crossed
-        // the BE target level so we fire immediately rather than arming a watcher.
-        // Long:  bid >= entry + buffer*tick
-        // Short: ask <= entry - buffer*tick
-        // CYC=4: pos null(1), tickSize guard(2), refPx guard(3), long/short compare(4).
+        // BWAVE-CYC T4: extracted helpers for IsPriceAlreadyAtBe.
+
+        // ComputeBeTargetPrice: computes break-even target price. CCN=2.
+        private static double ComputeBeTargetPrice(
+            double avgPrice,
+            bool isLong,
+            int bufferTicks,
+            double tickSize
+        )
+        {
+            return avgPrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
+        }
+
+        // IsPriceAtOrPastTarget: compares ref price vs target for long/short. CCN=2.
+        private static bool IsPriceAtOrPastTarget(bool isLong, double refPx, double targetPx)
+        {
+            return isLong ? (refPx >= targetPx) : (refPx <= targetPx);
+        }
+
+        // IsPriceAlreadyAtBe after extraction. CCN=5.
         private bool IsPriceAlreadyAtBe(Account leader, Instrument instrument, int bufferTicks)
         {
             var pos = _engine.FindPositionPublic(leader, instrument);
             if (pos == null)
-                return false; // (1)
+                return false;
             double tickSize = instrument?.MasterInstrument?.TickSize ?? 0.0;
             if (tickSize <= 0.0)
-                return false; // (2)
+                return false;
             bool isLong = pos.MarketPosition == NinjaTrader.Cbi.MarketPosition.Long;
-            double target = pos.AveragePrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
             double refPx = isLong ? GetBid() : GetAsk();
             if (refPx <= 0.0)
-                return false; // (3)
-            return isLong ? (refPx >= target) : (refPx <= target); // (4)
+                return false;
+            double target = ComputeBeTargetPrice(pos.AveragePrice, isLong, bufferTicks, tickSize);
+            return IsPriceAtOrPastTarget(isLong, refPx, target);
         }
 
         // B12 T1 -- UpdateBeLabel: sets _beBtn2 label. CYC=1.
@@ -2021,27 +2071,36 @@ namespace PropTraderTools
 
         // B41: RefreshQuickDisplay -- Card A: back-calc actual T1 ticks from live PTT-QX-T1 order.
         // Updates display only -- does NOT call SetQuickTicks (no persistence).
-        // CYC=3: t1Ord null guard(1), pos null/qty guard(2), clamp liveT1<1(3).
-        // B41: RefreshQuickDisplay -- MUST be called on UI thread (touches UI + NT8 collections).
-        // Called via Dispatcher.InvokeAsync from OnLeaderOrderUpdate / OnLeaderPositionUpdate.
+        // BWAVE-CYC T4: ComputeT1Ticks extracted from RefreshQuickDisplay. CCN=3.
+        private static int ComputeT1Ticks(
+            bool isLong,
+            Order t1Ord,
+            double avgPrice,
+            double tickSize
+        )
+        {
+            double rawDiff = isLong
+                ? t1Ord.LimitPrice - avgPrice
+                : avgPrice - t1Ord.LimitPrice;
+            int liveT1 = (int)Math.Round(rawDiff / tickSize);
+            if (liveT1 < 1)
+                liveT1 = 1;
+            return liveT1;
+        }
+
+        // B41: RefreshQuickDisplay after extraction. CCN=6.
         private void RefreshQuickDisplay(Account acc, Instrument instr)
         {
             var t1Ord = FindWorkingOrder(acc, instr, "PTT-QX-T1");
             if (t1Ord == null)
-                return; // (1)
+                return;
             var pos = CopyEngine.Instance?.FindPositionPublic(acc, instr);
             if (pos == null || pos.Quantity == 0)
-                return; // (2)
+                return;
             double tick = instr.MasterInstrument?.TickSize ?? 0.25;
             bool isLong = pos.MarketPosition == MarketPosition.Long;
-            double rawDiff = isLong
-                ? t1Ord.LimitPrice - pos.AveragePrice
-                : pos.AveragePrice - t1Ord.LimitPrice;
-            int liveT1 = (int)Math.Round(rawDiff / tick);
-            if (liveT1 < 1)
-                liveT1 = 1; // (3)
-            _quickT1 = liveT1;
-            _quickT2 = liveT1 * 2;
+            _quickT1 = ComputeT1Ticks(isLong, t1Ord, pos.AveragePrice, tick);
+            _quickT2 = _quickT1 * 2;
             if (_quickBtn != null)
                 _quickBtn.Content = FormatBuffer("Quick", _quickT1);
         }
@@ -2090,15 +2149,29 @@ namespace PropTraderTools
         }
 
         // B41: OnLeaderPositionUpdate -- NT8 fires on background thread; dispatch to UI thread.
-        // CYC=2: null guard(1), instrument guard(2).
-        // HOTFIX-FLAT-MANUAL-CLOSE-01: on Operation.Remove fire flat-cleanup directly; NT8 position
-        // state is fully updated at this event (unlike order-fill time where HasOpenPosition lags).
+        // BWAVE-CYC T4: IsRemoveEventForMyInstrument extracted from OnLeaderPositionUpdate. CCN=4.
+        // Returns true when all conditions confirm this is a Remove event for this panel's instrument.
+        private bool IsRemoveEventForMyInstrument(PositionEventArgs e)
+        {
+            if (e.Operation != Operation.Remove)
+                return false;
+            if (e.Position?.Instrument?.FullName == null)
+                return false;
+            if (_instrument == null)
+                return false;
+            if (e.Position.Instrument.FullName != _instrument.FullName)
+                return false;
+            return true;
+        }
+
+        // OnLeaderPositionUpdate after extraction. CCN=6.
+        // Both Dispatcher.InvokeAsync calls MUST stay here (NT8 UI thread contract).
         private void OnLeaderPositionUpdate(object sender, PositionEventArgs e)
         {
             if (e == null || e.Position == null)
-                return; // (1)
+                return;
             if (e.Position.Instrument == null)
-                return; // (2)
+                return;
             var acc = e.Position.Account;
             var instr = e.Position.Instrument;
             Dispatcher.InvokeAsync(() =>
@@ -2106,19 +2179,9 @@ namespace PropTraderTools
                 RefreshQuickDisplay(acc, instr);
                 UpdateT3Visibility(acc, instr);
             });
-            // HOTFIX-FLAT-MANUAL-CLOSE-01: fire flat signal from Position.Remove event.
-            // NT8 delivers PositionUpdate(Remove) AFTER position state is fully updated
-            // (unlike order Filled events where HasOpenPosition still reads the old qty).
-            // This is the correct place to trigger UpdateButtonColors(false) for manual closes.
-            if (e.Operation != Operation.Remove)
-                return; // (1)
-            if (e.Position?.Instrument?.FullName == null)
-                return; // (2)
-            if (_instrument == null)
-                return; // (3)
-            if (e.Position.Instrument.FullName != _instrument.FullName)
-                return; // (4)
-            Dispatcher.InvokeAsync(() => UpdateButtonColors(false, false)); // (5)
+            if (!IsRemoveEventForMyInstrument(e))
+                return;
+            Dispatcher.InvokeAsync(() => UpdateButtonColors(false, false));
         }
 
         // B47 T1-B: LoadFollowers -- build inline follower rows into _followerScrollViewerPanel.
@@ -2634,47 +2697,62 @@ namespace PropTraderTools
         //   Class-name guard: if .Name == "AtmStrategy" (NT8 internal class, no template staged),
         //   fall through to Fallback-1 selector. Observed 2026-08-18 session.
         //   Fallback-1: FindVisualChild<AtmStrategySelector> (in case CT build differs).
+        // BWAVE-CYC T2: extracted helpers for GetLeaderAtmTemplateName. CCN of each <= 3.
+
+        // TryGetAtmNameFromStrategy: reads AtmStrategy.Name from ChartTrader. CCN=3.
+        private static string TryGetAtmNameFromStrategy(ChartTrader ct)
+        {
+            if (ct.AtmStrategy == null)
+                return string.Empty;
+            var n = ct.AtmStrategy.Name ?? string.Empty;
+            if (n.Length > 0 && n != "AtmStrategy")
+                return n;
+            return string.Empty;
+        }
+
+        // TryGetAtmNameFromSelector: finds AtmStrategySelector and reads SelectedItem. CCN=2.
+        private static string TryGetAtmNameFromSelector(ChartTrader ct)
+        {
+            var sel =
+                TradeCopierAddOn.FindVisualChild<
+                    NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector
+                >(ct);
+            if (sel == null)
+                return string.Empty;
+            return sel.SelectedItem as string ?? string.Empty;
+        }
+
+        // TryGetAtmNameFromComboBox: finds ComboBox at index 2 and reads SelectedItem. CCN=1.
+        private static string TryGetAtmNameFromComboBox(ChartTrader ct)
+        {
+            var atmCb = TradeCopierAddOn.FindVisualChildByIndex<ComboBox>(ct, 2);
+            return atmCb?.SelectedItem as string ?? string.Empty;
+        }
+
         //   Fallback-2: FindVisualChildByIndex<ComboBox>(ct, 2) (legacy, pre-B66).
         // Returns string.Empty on any null/exception -- NEVER throws, NEVER returns null.
-        // CYC=7: (1) chart null, (2) ChartTrader null, (3) direct AtmStrategy path,
-        //        (4) class-name guard, (5) class-name guard branch,
-        //        (6) AtmStrategySelector fallback, (7) catch. ComboBox leg is a sub-branch of (6).
+        // GetLeaderAtmTemplateName after extraction. CCN=5.
         internal static string GetLeaderAtmTemplateName(Chart currentChart)
         {
             if (currentChart == null)
-                return string.Empty; // branch 1 -- null guard
+                return string.Empty;
             try
             {
                 var ct = TradeCopierAddOn.FindVisualChild<ChartTrader>(currentChart);
                 if (ct == null)
-                    return string.Empty; // branch 2 -- null guard
-                // Primary: ChartTrader.AtmStrategy direct property (no child walk).
-                // null when user has "None" selected -- which is correct: return empty.
-                if (ct.AtmStrategy != null) // branch 3 -- primary path
-                {
-                    var n = ct.AtmStrategy.Name ?? string.Empty;
-                    // B76 HOTFIX-B76-ATM-TPL-CLASSNAME: "AtmStrategy" is the NT8 class name returned when
-                    // no template is staged on ChartTrader -- not a user template name.
-                    // Observed live 2026-08-18: [PTT-CLONE] SetCloneAtmCache: 'AtmStrategy' (empty=False).
-                    // Fall through to AtmStrategySelector fallback to get the real template name.
-                    if (n.Length > 0 && n != "AtmStrategy") // branch 4 -- class-name guard
-                        return n;
-                }
-                // Fallback-1: AtmStrategySelector by type (covers non-standard ChartTrader builds).
-                var sel =
-                    TradeCopierAddOn.FindVisualChild<NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector>(
-                        ct
-                    );
-                if (sel != null) // branch 6 -- fallback-1
-                    return sel.SelectedItem as string ?? string.Empty;
-                // Fallback-2: original index-2 ComboBox (pre-B66 legacy path).
-                var atmCb = TradeCopierAddOn.FindVisualChildByIndex<ComboBox>(ct, 2);
-                return atmCb?.SelectedItem as string ?? string.Empty;
+                    return string.Empty;
+                var name = TryGetAtmNameFromStrategy(ct);
+                if (name.Length > 0)
+                    return name;
+                name = TryGetAtmNameFromSelector(ct);
+                if (name.Length > 0)
+                    return name;
+                return TryGetAtmNameFromComboBox(ct);
             }
             catch
             {
                 return string.Empty;
-            } // branch 7 -- API exception
+            }
         }
 
         // B43 T1: Walks the visual tree UPWARD from child, returning the DataContext of the first
@@ -2742,28 +2820,38 @@ namespace PropTraderTools
 
         // CYC=6 -- five guards + ternary; try/catch does NOT add CYC.
         // B17 T2: FindPriceCanvasPanel selects price canvas (MaxValue>0, widest panel).
-        // B17 Amendment: PreviewMouseDown wired in TradeCopierAddOn (tunnel phase -- NT8 suppresses MouseDown).
-        // F5 confirmed 2026-07-15: order placed at exact Y-pixel price (7491.00). GetPriceAtY correct.
-        // JS-023: _clickArmed / _clickBuy are volatile reads (no lock needed).
-        // NT8 constraint: "PTT-Click" signal name starts with "PTT-".
+        // BWAVE-CYC T4: ComputeTickAlignedPrice extracted from OnChartMouseDown. CCN=2.
+        // Returns 0.0 as sentinel if raw price is invalid (JS-002: no return null).
+        private double ComputeTickAlignedPrice(
+            ChartControl chartControl,
+            MouseButtonEventArgs e,
+            Instrument instr
+        )
+        {
+            Point mousePos = e.GetPosition(chartControl);
+            double rawPrice = GetPriceAtY(chartControl, mousePos.Y, instr);
+            if (rawPrice <= 0.0)
+                return 0.0;
+            double tickSize = instr.MasterInstrument.TickSize;
+            return Math.Round(rawPrice / tickSize) * tickSize;
+        }
+
+        // OnChartMouseDown after extraction. CCN=7.
+        // _leaderAccount.CreateOrder MUST stay here (NT8 Account API). Dispatcher.InvokeAsync stays.
         internal void OnChartMouseDown(object sender, MouseButtonEventArgs e)
         {
             if (!_clickArmed)
-                return; // guard (1)
+                return;
             if (_leaderAccount == null)
-                return; // guard (2)
+                return;
             if (_instrument == null)
-                return; // guard (3)
+                return;
             var chartControl = sender as ChartControl;
             if (chartControl == null)
-                return; // guard (4)
-
-            Point mousePos = e.GetPosition(chartControl);
-            double rawPrice = GetPriceAtY(chartControl, mousePos.Y, _instrument);
-            if (rawPrice <= 0.0)
-                return; // guard (5): no valid price
-            double tickSize = _instrument.MasterInstrument.TickSize;
-            double price = Math.Round(rawPrice / tickSize) * tickSize;
+                return;
+            double price = ComputeTickAlignedPrice(chartControl, e, _instrument);
+            if (price <= 0.0)
+                return;
             bool isBuy = _clickBuy; // volatile read
             int qty = CopyEngine.Instance.GetSuggestedQty(_instrument);
             var action = isBuy ? OrderAction.Buy : OrderAction.SellShort;
@@ -2787,11 +2875,7 @@ namespace PropTraderTools
             }
             catch (Exception ex)
             {
-                Dispatcher.InvokeAsync(() =>
-                {
-                    if (_statusText != null)
-                        _statusText.Text = "PTT-Click error: " + ex.Message;
-                });
+                Dispatcher.InvokeAsync(() => SetStatus("PTT-Click error: " + ex.Message));
             }
         }
 
@@ -2838,32 +2922,11 @@ namespace PropTraderTools
             return list.ToArray();
         }
 
-        // B8 T1+T2: OnApplyRule -- collects multipliers[] and ATM modes per follower; calls 5-arg AddRule.
-        // B45 T1: late-resolve added (same pattern as all other button handlers -- HOTFIX-B30-F1).
-        private void OnApplyRule(object sender, RoutedEventArgs e)
-        {
-            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B45 T1: late-resolve (same as all other button handlers)
-            if (_leaderAccount == null)
-            {
-                if (_statusText != null)
-                    _statusText.Text = "No leader -- select account in ChartTrader.";
-                return;
-            }
-            if (_instrument == null)
-            {
-                if (_statusText != null)
-                    _statusText.Text = "No instrument -- open a chart first.";
-                return;
-            }
-            var followers = GetSelectedFollowers();
-            if (followers.Length == 0)
-            {
-                if (_statusText != null)
-                    _statusText.Text = "Select follower account(s).";
-                return;
-            }
+        // BWAVE-CYC T2: extracted helpers for OnApplyRule.
 
-            // B8 T1+T2: collect per-follower multipliers and ATM mode names parallel to followers array
+        // BuildFollowerMultipliers: collects per-follower multipliers and ATM names. CCN=3.
+        private (int[] multipliers, string[] atmNames) BuildFollowerMultipliers(Account[] followers)
+        {
             var multipliers = new int[followers.Length];
             var atmNames = new string[followers.Length];
             for (int i = 0; i < followers.Length; i++)
@@ -2877,20 +2940,57 @@ namespace PropTraderTools
                     break;
                 }
             }
+            return (multipliers, atmNames);
+        }
 
-            // B8 T2: build Dictionary<string, FollowerAtmMode> from collected ATM names
+        // BuildAtmMap: builds FollowerAtmMode dictionary from collected ATM names. CCN=2.
+        private static Dictionary<string, FollowerAtmMode> BuildAtmMap(
+            Account[] followers,
+            string[] atmNames
+        )
+        {
             var atmMap = new Dictionary<string, FollowerAtmMode>();
             for (int i = 0; i < followers.Length; i++)
             {
                 if (followers[i] != null)
                     atmMap[followers[i].Name] = ParseAtmModeNameLocal(atmNames[i]);
             }
+            return atmMap;
+        }
 
-            _engine.AddRule(_instrument.FullName, _leaderAccount, followers, multipliers, atmMap);
-            _engine.SaveRules(); // DW-B98-B: persist rule immediately from Apply button path
+        // B8 T1+T2: OnApplyRule after extraction. CCN=8.
+        // SetStatus: sets status text if control is not null. CCN=1.
+        private void SetStatus(string text)
+        {
             if (_statusText != null)
-                _statusText.Text =
-                    "Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name;
+                _statusText.Text = text;
+        }
+
+        // OnApplyRule after extraction. CCN=7 (using SetStatus collapses 4 statusText guards).
+        private void OnApplyRule(object sender, RoutedEventArgs e)
+        {
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();
+            if (_leaderAccount == null)
+            {
+                SetStatus("No leader -- select account in ChartTrader.");
+                return;
+            }
+            if (_instrument == null)
+            {
+                SetStatus("No instrument -- open a chart first.");
+                return;
+            }
+            var followers = GetSelectedFollowers();
+            if (followers.Length == 0)
+            {
+                SetStatus("Select follower account(s).");
+                return;
+            }
+            var (multipliers, atmNames) = BuildFollowerMultipliers(followers);
+            var atmMap = BuildAtmMap(followers, atmNames);
+            _engine.AddRule(_instrument.FullName, _leaderAccount, followers, multipliers, atmMap);
+            _engine.SaveRules();
+            SetStatus("Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name);
         }
 
         // B8 T2: ParseAtmModeNameLocal -- private static helper that mirrors CopyEngine.ParseAtmModeName.
@@ -3171,50 +3271,72 @@ namespace PropTraderTools
             _engine.UpdateAtrFraction(_atrFraction); // (2)
         }
 
-        // BGTM-1: Enable/disable and show/hide panel controls per feature flags. CYC=1.
-        // Called on UI thread only (OnLoaded, OnFeatureFlagsChanged). JS-021: no lock.
-        internal void ApplyFeatureFlags(FeatureFlags f)
+        // BWAVE-CYC T3: extracted helpers for ApplyFeatureFlags / ApplyFeatureFlagTooltips.
+
+        // ApplyTrimFlattenFlags: sets IsEnabled on trim/flatten/cancel buttons. CCN=3.
+        private void ApplyTrimFlattenFlags(FeatureFlags f)
         {
-            // f.TrimFlatten gates
             if (_trimBtn2 != null)
                 _trimBtn2.IsEnabled = f.TrimFlatten;
             if (_flattenBtn2 != null)
                 _flattenBtn2.IsEnabled = f.TrimFlatten;
             if (_cancelBtn2 != null)
                 _cancelBtn2.IsEnabled = f.TrimFlatten;
-            // f.BreakEven gate
+        }
+
+        // ApplyPositionControlFlags: sets IsEnabled on BE and mirror-mode buttons. CCN=2.
+        private void ApplyPositionControlFlags(FeatureFlags f)
+        {
             if (_beBtn2 != null)
                 _beBtn2.IsEnabled = f.BreakEven;
-            // f.MirrorMode gate
             if (_mirrorModeBtn != null)
                 _mirrorModeBtn.IsEnabled = f.MirrorMode;
-            // f.ClickTrader visibility
+        }
+
+        // ApplyRowVisibilityFlags: sets Visibility on click-trader and ATR rows. CCN=4.
+        private void ApplyRowVisibilityFlags(FeatureFlags f)
+        {
             if (_clickTraderRow != null)
                 _clickTraderRow.Visibility = f.ClickTrader
                     ? System.Windows.Visibility.Visible
                     : System.Windows.Visibility.Collapsed;
-            // f.AtrSizing visibility
             if (_atrRow != null)
                 _atrRow.Visibility = f.AtrSizing
                     ? System.Windows.Visibility.Visible
                     : System.Windows.Visibility.Collapsed;
+        }
+
+        // SetButtonTooltip: sets or clears a button ToolTip based on feature enabled. CCN=2.
+        // JS-002: btn parameter null guard -- no throw. Returns void.
+        private static void SetButtonTooltip(
+            System.Windows.Controls.Control btn,
+            bool featureEnabled,
+            string upgradeMessage
+        )
+        {
+            if (btn != null)
+                btn.ToolTip = featureEnabled ? null : upgradeMessage;
+        }
+
+        // BGTM-1: Enable/disable and show/hide panel controls per feature flags.
+        // ApplyFeatureFlags after extraction. CCN=4.
+        internal void ApplyFeatureFlags(FeatureFlags f)
+        {
+            ApplyTrimFlattenFlags(f);
+            ApplyPositionControlFlags(f);
+            ApplyRowVisibilityFlags(f);
             ApplyFeatureFlagTooltips(f);
         }
 
-        // BGTM-1: Set ToolTip on disabled buttons to upgrade guidance. CYC=1.
-        // Only called from ApplyFeatureFlags (UI thread). JS-021: no lock.
+        // BGTM-1: Set ToolTip on disabled buttons to upgrade guidance.
+        // ApplyFeatureFlagTooltips after extraction. CCN=2.
         private void ApplyFeatureFlagTooltips(FeatureFlags f)
         {
-            if (_trimBtn2 != null)
-                _trimBtn2.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
-            if (_flattenBtn2 != null)
-                _flattenBtn2.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
-            if (_cancelBtn2 != null)
-                _cancelBtn2.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
-            if (_beBtn2 != null)
-                _beBtn2.ToolTip = f.BreakEven ? null : "Break Even requires Pro tier";
-            if (_mirrorModeBtn != null)
-                _mirrorModeBtn.ToolTip = f.MirrorMode ? null : "Mirror mode requires Elite tier";
+            SetButtonTooltip(_trimBtn2, f.TrimFlatten, "Trim/Flatten requires Pro tier");
+            SetButtonTooltip(_flattenBtn2, f.TrimFlatten, "Trim/Flatten requires Pro tier");
+            SetButtonTooltip(_cancelBtn2, f.TrimFlatten, "Trim/Flatten requires Pro tier");
+            SetButtonTooltip(_beBtn2, f.BreakEven, "Break Even requires Pro tier");
+            SetButtonTooltip(_mirrorModeBtn, f.MirrorMode, "Mirror mode requires Elite tier");
         }
 
         // BGTM-1: Handle CopyEngine.FeatureFlagsChanged event. Fires on UI thread. CYC=1.

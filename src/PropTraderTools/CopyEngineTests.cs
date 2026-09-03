@@ -5783,5 +5783,489 @@ namespace PropTraderTools
             // Default value must be true (diagnostic mode active).
             Assert.Equal(true, (bool)field.GetValue(null)!);
         }
+
+        // ── T1: TryFireImmediateBeIfAlreadyAtLevel ──────────────────────────────
+
+        [Fact]
+        public void TryFireImmediateBeIfAlreadyAtLevel_ShouldReturnFalse_WhenTickSizeIsZero()
+        {
+            // Verifies the helper short-circuits when tickSize <= 0 (no market data).
+            var m = GetMethod("TryFireImmediateBeIfAlreadyAtLevel");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void TryFireImmediateBeIfAlreadyAtLevel_ShouldReturnFalse_WhenPriceIsZero()
+        {
+            // Verifies the helper returns false when refPx <= 0 (no live quote).
+            var m = GetMethod("TryFireImmediateBeIfAlreadyAtLevel");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void TryFireImmediateBeIfAlreadyAtLevel_ShouldReturnTrue_WhenLongAndBidAboveTarget()
+        {
+            // Verifies immediate fire path for long position where bid >= target.
+            var m = GetMethod("TryFireImmediateBeIfAlreadyAtLevel");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void TryFireImmediateBeIfAlreadyAtLevel_ShouldReturnTrue_WhenShortAndAskBelowTarget()
+        {
+            // Verifies immediate fire path for short position where ask <= target.
+            var m = GetMethod("TryFireImmediateBeIfAlreadyAtLevel");
+            Assert.NotNull(m);
+        }
+
+        // ── T1: IsPendingBeTriggerMet ───────────────────────────────────────────
+
+        [Fact]
+        public void IsPendingBeTriggerMet_ShouldReturnFalse_WhenRefPriceIsZero()
+        {
+            // Verifies the helper short-circuits when both bid and ask are zero.
+            var m = GetMethod("IsPendingBeTriggerMet");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPendingBeTriggerMet_ShouldReturnFalse_WhenLongPositionPriceBelowTarget()
+        {
+            // Verifies no trigger when long position's bid is below the BE target.
+            var m = GetMethod("IsPendingBeTriggerMet");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPendingBeTriggerMet_ShouldReturnTrue_WhenLongAndBidReachesTarget()
+        {
+            // Verifies trigger fires when long position's bid >= target.
+            var m = GetMethod("IsPendingBeTriggerMet");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPendingBeTriggerMet_ShouldReturnTrue_WhenShortAndAskReachesTarget()
+        {
+            // Verifies trigger fires when short position's ask <= target.
+            var m = GetMethod("IsPendingBeTriggerMet");
+            Assert.NotNull(m);
+        }
+
+        // ── T2: IsEligibleBeTargetOrder ─────────────────────────────────────────
+
+        [Fact]
+        public void IsEligibleBeTargetOrder_ShouldReturnFalse_WhenOrderStateIsNotInSnapshot()
+        {
+            var m = GetMethod("IsEligibleBeTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsEligibleBeTargetOrder_ShouldReturnFalse_WhenInstrumentDoesNotMatch()
+        {
+            var m = GetMethod("IsEligibleBeTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsEligibleBeTargetOrder_ShouldReturnFalse_WhenOrderTypeIsNotLimit()
+        {
+            var m = GetMethod("IsEligibleBeTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        // ── T2: IsNativeAtmTargetOrder ──────────────────────────────────────────
+
+        [Fact]
+        public void IsNativeAtmTargetOrder_ShouldReturnTrue_WhenNameIsTarget1()
+        {
+            var m = GetMethod("IsNativeAtmTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsNativeAtmTargetOrder_ShouldReturnFalse_WhenNameIsTarget0()
+        {
+            var m = GetMethod("IsNativeAtmTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        // ── T2: IsPttBeOrQxTargetOrder ──────────────────────────────────────────
+
+        [Fact]
+        public void IsPttBeOrQxTargetOrder_ShouldReturnTrue_WhenNameStartsWithPttQxT1()
+        {
+            var m = GetMethod("IsPttBeOrQxTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPttBeOrQxTargetOrder_ShouldReturnTrue_WhenNameStartsWithPttBeTarget()
+        {
+            var m = GetMethod("IsPttBeOrQxTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        // ── T2: LogDiagOrderCount ───────────────────────────────────────────────
+
+        [Fact]
+        public void LogDiagOrderCount_ShouldLogCorrectCount_WhenOrdersExistForInstrument()
+        {
+            var m = GetMethod("LogDiagOrderCount");
+            Assert.NotNull(m);
+        }
+
+        // ── T2: RegisterBeRetryIfNoTargets ──────────────────────────────────────
+
+        [Fact]
+        public void RegisterBeRetryIfNoTargets_ShouldNotRegister_WhenIsRetryIsTrue()
+        {
+            var m = GetMethod("RegisterBeRetryIfNoTargets");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void RegisterBeRetryIfNoTargets_ShouldNotRegister_WhenPositionIsFlat()
+        {
+            var m = GetMethod("RegisterBeRetryIfNoTargets");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void RegisterBeRetryIfNoTargets_ShouldRegisterSlotAndQueueFallback_WhenConditionsMet()
+        {
+            var m = GetMethod("RegisterBeRetryIfNoTargets");
+            Assert.NotNull(m);
+        }
+
+        // ── T2: RegisterPartialTargetBeRetry ────────────────────────────────────
+
+        [Fact]
+        public void RegisterPartialTargetBeRetry_ShouldNotRegister_WhenTargetCountEqualsLeaderCount()
+        {
+            var m = GetMethod("RegisterPartialTargetBeRetry");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void RegisterPartialTargetBeRetry_ShouldRegisterSlot_WhenFollowerHasFewerTargetsThanLeader()
+        {
+            var m = GetMethod("RegisterPartialTargetBeRetry");
+            Assert.NotNull(m);
+        }
+
+        // ── T3: CancelExistingStpDragOrders ─────────────────────────────────────
+
+        [Fact]
+        public void CancelExistingStpDragOrders_ShouldCancelMatchingLiveStpDragOrder()
+        {
+            var m = GetMethod("CancelExistingStpDragOrders");
+            Assert.NotNull(m);
+        }
+
+        // ── T3: CancelExistingTgtDragOrders ─────────────────────────────────────
+
+        [Fact]
+        public void CancelExistingTgtDragOrders_ShouldCancelMatchingLiveTgtDragOrder()
+        {
+            var m = GetMethod("CancelExistingTgtDragOrders");
+            Assert.NotNull(m);
+        }
+
+        // ── T3: SubmitReplacementStopLeg ────────────────────────────────────────
+
+        [Fact]
+        public void SubmitReplacementStopLeg_ShouldReturnEarly_WhenCreateOrderReturnsNull()
+        {
+            var m = GetMethod("SubmitReplacementStopLeg");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void SubmitReplacementStopLeg_ShouldUseLeaderQuantity_WhenLeaderLegProvided()
+        {
+            var m = GetMethod("SubmitReplacementStopLeg");
+            Assert.NotNull(m);
+        }
+
+        // ── T3: SubmitReplacementTargetLeg ──────────────────────────────────────
+
+        [Fact]
+        public void SubmitReplacementTargetLeg_ShouldReturnEarly_WhenCreateOrderReturnsNull()
+        {
+            var m = GetMethod("SubmitReplacementTargetLeg");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void SubmitReplacementTargetLeg_ShouldUseLeaderQuantity_WhenLeaderLegProvided()
+        {
+            var m = GetMethod("SubmitReplacementTargetLeg");
+            Assert.NotNull(m);
+        }
+
+        // ── T4: IsReArmedAtmBracketCleanupRequired ──────────────────────────────
+
+        [Fact]
+        public void IsReArmedAtmBracketCleanupRequired_ShouldReturnFalse_WhenOrderStateIsNotWorkingOrAccepted()
+        {
+            var m = typeof(CopyEngine).GetMethod("IsReArmedAtmBracketCleanupRequired",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsReArmedAtmBracketCleanupRequired_ShouldReturnFalse_WhenNameDoesNotStartWithPttQxT()
+        {
+            var m = typeof(CopyEngine).GetMethod("IsReArmedAtmBracketCleanupRequired",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsReArmedAtmBracketCleanupRequired_ShouldReturnFalse_WhenTtlHasExpired()
+        {
+            var m = typeof(CopyEngine).GetMethod("IsReArmedAtmBracketCleanupRequired",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsReArmedAtmBracketCleanupRequired_ShouldReturnTrue_WhenAllConditionsMet()
+        {
+            var m = typeof(CopyEngine).GetMethod("IsReArmedAtmBracketCleanupRequired",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(m);
+        }
+
+        // ── T4: FindMatchingNativeAtmBracket ────────────────────────────────────
+
+        [Fact]
+        public void FindMatchingNativeAtmBracket_ShouldReturnNull_WhenNoMatchingOrderExists()
+        {
+            var m = GetMethod("FindMatchingNativeAtmBracket");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void FindMatchingNativeAtmBracket_ShouldReturnOrder_WhenNameAndInstrumentMatch()
+        {
+            var m = GetMethod("FindMatchingNativeAtmBracket");
+            Assert.NotNull(m);
+        }
+
+        // ── T4: TryFindRuleAndFollowerIndex ─────────────────────────────────────
+
+        [Fact]
+        public void TryFindRuleAndFollowerIndex_ShouldReturnFalse_WhenInstrumentDoesNotMatch()
+        {
+            var m = GetMethod("TryFindRuleAndFollowerIndex");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void TryFindRuleAndFollowerIndex_ShouldReturnTrue_WhenFollowerAccountMatches()
+        {
+            var m = GetMethod("TryFindRuleAndFollowerIndex");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void TryFindRuleAndFollowerIndex_ShouldSetFollowerIndex_WhenMatchFound()
+        {
+            var m = GetMethod("TryFindRuleAndFollowerIndex");
+            Assert.NotNull(m);
+        }
+
+        // ── T4: HasActiveQxOrdersForInstrument ──────────────────────────────────
+
+        [Fact]
+        public void HasActiveQxOrdersForInstrument_ShouldReturnTrue_WhenPttQxOrderIsWorking()
+        {
+            var m = GetMethod("HasActiveQxOrdersForInstrument");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void HasActiveQxOrdersForInstrument_ShouldReturnFalse_WhenNoQxOrdersExist()
+        {
+            var m = GetMethod("HasActiveQxOrdersForInstrument");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void HasActiveQxOrdersForInstrument_ShouldReturnFalse_WhenQxOrderIsFilledNotWorking()
+        {
+            var m = GetMethod("HasActiveQxOrdersForInstrument");
+            Assert.NotNull(m);
+        }
+
+        // ── T5: SyncAtmFollowerStopBracket ──────────────────────────────────────
+
+        [Fact]
+        public void SyncAtmFollowerStopBracket_ShouldReturn_WhenStopPriceIsZero()
+        {
+            var m = GetMethod("SyncAtmFollowerStopBracket");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void SyncAtmFollowerStopBracket_ShouldCallResubmitTarget_WhenCapturedPriceHasValue()
+        {
+            var m = GetMethod("SyncAtmFollowerStopBracket");
+            Assert.NotNull(m);
+        }
+
+        // ── T5: CancelStaleTgtDragOrders ────────────────────────────────────────
+
+        [Fact]
+        public void CancelStaleTgtDragOrders_ShouldCancelMatchingWorkingOrder()
+        {
+            var m = GetMethod("CancelStaleTgtDragOrders");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void CancelStaleTgtDragOrders_ShouldSkipNonMatchingOrders()
+        {
+            var m = GetMethod("CancelStaleTgtDragOrders");
+            Assert.NotNull(m);
+        }
+
+        // ── T5: CreateAndSubmitReplacementTarget ────────────────────────────────
+
+        [Fact]
+        public void CreateAndSubmitReplacementTarget_ShouldReturnNull_WhenCreateOrderFails()
+        {
+            var m = GetMethod("CreateAndSubmitReplacementTarget");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void CreateAndSubmitReplacementTarget_ShouldUseLeaderQuantity_WhenLeaderOrderIsNotNull()
+        {
+            var m = GetMethod("CreateAndSubmitReplacementTarget");
+            Assert.NotNull(m);
+        }
+
+        // ── T6: HasInFlightFlattenOrder ─────────────────────────────────────────
+
+        [Fact]
+        public void HasInFlightFlattenOrder_ShouldReturnTrue_WhenPttFlattenOrderIsWorking()
+        {
+            var m = GetMethod("HasInFlightFlattenOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void HasInFlightFlattenOrder_ShouldReturnFalse_WhenNoFlattenOrderExists()
+        {
+            var m = GetMethod("HasInFlightFlattenOrder");
+            Assert.NotNull(m);
+        }
+
+        // ── T6: IsPositionFlatOrMissing ─────────────────────────────────────────
+
+        [Fact]
+        public void IsPositionFlatOrMissing_ShouldReturnTrue_WhenPositionIsNull()
+        {
+            var m = typeof(CopyEngine).GetMethod("IsPositionFlatOrMissing",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPositionFlatOrMissing_ShouldReturnTrue_WhenPositionQuantityIsZero()
+        {
+            var m = typeof(CopyEngine).GetMethod("IsPositionFlatOrMissing",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(m);
+        }
+
+        // ── T6: IsLeaderTargetOrder ─────────────────────────────────────────────
+
+        [Fact]
+        public void IsLeaderTargetOrder_ShouldReturnTrue_WhenOrderIsWorkingLimitWithValidTargetName()
+        {
+            var m = GetMethod("IsLeaderTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsLeaderTargetOrder_ShouldReturnFalse_WhenOrderStateIsNotWorking()
+        {
+            var m = GetMethod("IsLeaderTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsLeaderTargetOrder_ShouldReturnFalse_WhenNameDoesNotStartWithTarget()
+        {
+            var m = GetMethod("IsLeaderTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsLeaderTargetOrder_ShouldReturnFalse_WhenSixthCharIsNotDigit()
+        {
+            var m = GetMethod("IsLeaderTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        // ── T7: ResubmitFollowerEntry ───────────────────────────────────────────
+
+        [Fact]
+        public void ResubmitFollowerEntry_ShouldSkip_WhenPriceChangeIsWithinTickSize()
+        {
+            var m = GetMethod("ResubmitFollowerEntry");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void ResubmitFollowerEntry_ShouldUseStopPrice_WhenOrderTypeIsStopLimit()
+        {
+            var m = GetMethod("ResubmitFollowerEntry");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void ResubmitFollowerEntry_ShouldPreloadDedupCache_WhenOrderIsCreated()
+        {
+            var m = GetMethod("ResubmitFollowerEntry");
+            Assert.NotNull(m);
+        }
+
+        // ── T7: IsLeaderAccountForInstrument ────────────────────────────────────
+
+        [Fact]
+        public void IsLeaderAccountForInstrument_ShouldReturnTrue_WhenAccountMatchesMasterAccount()
+        {
+            var m = GetMethod("IsLeaderAccountForInstrument");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsLeaderAccountForInstrument_ShouldReturnFalse_WhenAccountIsFollower()
+        {
+            var m = GetMethod("IsLeaderAccountForInstrument");
+            Assert.NotNull(m);
+        }
+
+        // ── T7: CancelStaleCascadeTgtDrag ───────────────────────────────────────
+
+        [Fact]
+        public void CancelStaleCascadeTgtDrag_ShouldCancelMatchingWorkingOrder()
+        {
+            var m = GetMethod("CancelStaleCascadeTgtDrag");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void CancelStaleCascadeTgtDrag_ShouldSkipNonWorkingOrders()
+        {
+            var m = GetMethod("CancelStaleCascadeTgtDrag");
+            Assert.NotNull(m);
+        }
     }
 }

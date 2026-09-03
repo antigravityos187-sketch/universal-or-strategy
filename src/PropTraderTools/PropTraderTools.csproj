@@ -173,5 +173,6 @@
     <Compile Include="TradeCopierPanelB75Tests.cs" />
     <Compile Include="B76Tests.cs" />
     <Compile Include="TradeCopierPanelB77Tests.cs" />
+    <Compile Include="Tests\BwaveCycLaneCTests.cs" />
   </ItemGroup>
 </Project>

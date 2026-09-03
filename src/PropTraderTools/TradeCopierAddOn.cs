@@ -109,8 +109,25 @@ namespace PropTraderTools
                 panel.Detach();
         }
 
+        // BWAVE-CYC T8: extracted helper for WireControlCenterMenu.
+
+        // RemoveExistingTradeCopierEntries: removes all "Trade Copier" menu items. CCN=4.
+        // Uses mi.Header.ToString() per NT8_ADDON_KNOWLEDGE.md NT8 NTMenuItem pattern.
+        private static void RemoveExistingTradeCopierEntries(NTMenuItem newMenu)
+        {
+            for (int i = newMenu.Items.Count - 1; i >= 0; i--)
+            {
+                var mi = newMenu.Items[i] as System.Windows.Controls.MenuItem;
+                if (mi == null)
+                    continue;
+                if (mi.Header != null && mi.Header.ToString() == "Trade Copier")
+                    newMenu.Items.RemoveAt(i);
+            }
+        }
+
         // --- Menu wiring ---
 
+        // WireControlCenterMenu after extraction. CCN=5.
         private static void WireControlCenterMenu(ControlCenter cc)
         {
             NTMenuItem newMenu = null;
@@ -128,21 +145,7 @@ namespace PropTraderTools
             }
             if (newMenu == null)
                 return;
-
-            // Remove ALL "Trade Copier" entries before adding a fresh one.
-            // The survivor scan approach fails because cross-domain MenuItem casts are
-            // unreliable (NTMenuItem vs MenuItem vs other WPF types in Items collection).
-            // Remove-then-add is simpler and guarantees exactly one entry regardless of
-            // how many prior domain reloads accumulated stale entries.
-            for (int i = newMenu.Items.Count - 1; i >= 0; i--)
-            {
-                var mi = newMenu.Items[i] as System.Windows.Controls.MenuItem;
-                if (mi == null)
-                    continue;
-                if (mi.Header != null && mi.Header.ToString() == "Trade Copier")
-                    newMenu.Items.RemoveAt(i);
-            }
-
+            RemoveExistingTradeCopierEntries(newMenu);
             var entry = new NTMenuItem { Header = "Trade Copier" };
             entry.Click += OnMenuItemClick;
             newMenu.Items.Add(entry);
@@ -380,11 +383,89 @@ namespace PropTraderTools
             chart.PreviewKeyDown -= panel.OnChartKeyDown;
         }
 
-        // Instance method: calls StartAtrEngine (instance) for B10 T4 overlay support.
+        // BWAVE-CYC T8: extracted helpers for DoInject.
+
+        // CollectStalePanelChildren: finds TradeCopierPanel children in grid. CCN=2.
+        // Returns empty list (never null) when no stale children found.
+        private static System.Collections.Generic.List<UIElement> CollectStalePanelChildren(
+            System.Windows.Controls.Grid grid
+        )
+        {
+            var stale = new System.Collections.Generic.List<UIElement>();
+            foreach (UIElement child in grid.Children)
+            {
+                if (child.GetType().Name == "TradeCopierPanel")
+                    stale.Add(child);
+            }
+            return stale;
+        }
+
+        // RemoveStalePanelChild: detaches and removes one stale panel + its RowDefinition. CCN=3.
+        private static void RemoveStalePanelChild(
+            System.Windows.Controls.Grid grid,
+            UIElement old
+        )
+        {
+            var stalePanel = old as TradeCopierPanel;
+            if (stalePanel != null)
+                stalePanel.Detach();
+            int staleRow = System.Windows.Controls.Grid.GetRow(old);
+            grid.Children.Remove(old);
+            if (staleRow > 0 && staleRow < grid.RowDefinitions.Count)
+                grid.RowDefinitions.RemoveAt(staleRow);
+        }
+
+        // TryDetachAndRemoveStalePanels: purges all stale TradeCopierPanel rows. CCN=2.
+        private static void TryDetachAndRemoveStalePanels(System.Windows.Controls.Grid grid)
+        {
+            if (grid == null)
+                return;
+            var stale = CollectStalePanelChildren(grid);
+            foreach (var old in stale)
+                RemoveStalePanelChild(grid, old);
+        }
+
+        // InjectPanelIntoGrid: adds a new panel row to the ChartTrader grid. CCN=2.
+        // Returns false (never null) when grid is null -- JS-002 compliant.
+        private static bool InjectPanelIntoGrid(
+            System.Windows.Controls.Grid grid,
+            TradeCopierPanel panel
+        )
+        {
+            if (grid == null)
+                return false;
+            var row = new RowDefinition { Height = System.Windows.GridLength.Auto };
+            grid.RowDefinitions.Add(row);
+            System.Windows.Controls.Grid.SetRow(panel, grid.RowDefinitions.Count - 1);
+            System.Windows.Controls.Grid.SetColumnSpan(
+                panel,
+                grid.ColumnDefinitions.Count > 0 ? grid.ColumnDefinitions.Count : 1
+            );
+            grid.Children.Add(panel);
+            return true;
+        }
+
+        // DoInject after extraction. CCN=7.
+        // TrySetPanelInstrument: safely sets instrument on panel, swallowing NT8 API exceptions. CCN=2.
+        private static NinjaTrader.Cbi.Instrument TrySetPanelInstrument(
+            ChartTrader chartTrader,
+            TradeCopierPanel panel
+        )
+        {
+            NinjaTrader.Cbi.Instrument instr = null;
+            try
+            {
+                instr = chartTrader.Instrument;
+                if (instr != null)
+                    panel.SetInstrument(instr);
+            }
+            catch { }
+            return instr;
+        }
+
+        // DoInject after extraction. CCN=7.
         private void DoInject(Chart chart)
         {
-            // Atomic slot claim -- first caller wins, all subsequent calls return immediately.
-            // Replaces the old ContainsKey guard which was blind to prior AddOn instances.
             if (!_panels.TryAdd(chart, null))
                 return;
 
@@ -397,85 +478,27 @@ namespace PropTraderTools
                     return;
                 }
 
-                // Purge ALL stale TradeCopierPanel rows from prior domain reloads.
-                // NT8 reuses the ChartTrader Grid across F5 recompiles.
-                // Each reload: _panels resets to empty, TryAdd succeeds, DoInject runs,
-                // appends another row. After N reloads there are N panel rows + N extra
-                // RowDefinitions. Fix: remove every panel-named child AND its RowDefinition
-                // before adding a fresh one. GetType().Name survives domain reload (string).
                 var grid = chartTrader.Content as System.Windows.Controls.Grid;
-                if (grid != null)
-                {
-                    // Collect stale children first -- cannot remove during enumeration.
-                    var stale = new System.Collections.Generic.List<UIElement>();
-                    foreach (UIElement child in grid.Children)
-                    {
-                        if (child.GetType().Name == "TradeCopierPanel")
-                            stale.Add(child);
-                    }
-                    foreach (var old in stale)
-                    {
-                        // B76 HOTFIX-B76-POSSTATE-LEAK-01: call Detach() on each stale panel
-                        // before grid removal. Without this, the stale panel retains its
-                        // PositionStateChanged subscription, accumulating N subscriptions after
-                        // N F5 reloads and firing the handler N times per position event.
-                        var stalePanel = old as TradeCopierPanel;
-                        if (stalePanel != null)
-                            stalePanel.Detach();
-                        int staleRow = System.Windows.Controls.Grid.GetRow(old);
-                        grid.Children.Remove(old);
-                        // Remove the RowDefinition that was added for this panel row.
-                        // Guard: only remove rows beyond the original NT8 rows (index > 0).
-                        if (staleRow > 0 && staleRow < grid.RowDefinitions.Count)
-                            grid.RowDefinitions.RemoveAt(staleRow);
-                    }
-                }
+                TryDetachAndRemoveStalePanels(grid);
 
-                // No survivor -- fresh inject.
                 var panel = new TradeCopierPanel();
-
-                NinjaTrader.Cbi.Instrument instr = null;
-                try
-                {
-                    instr = chartTrader.Instrument;
-                    if (instr != null)
-                        panel.SetInstrument(instr);
-                }
-                catch { }
-
+                var instr = TrySetPanelInstrument(chartTrader, panel);
                 StartAtrEngine(chart, instr);
                 panel.SetChart(chart);
-
-                // Wire leader account from ChartTrader account ComboBox.
                 WireLeaderAccount(chartTrader, panel);
-
-                // B11 T1 SIM101 Phase A: wire logging-only handler BEFORE production layer.
                 _sim101KeyDiag = new KeyEventHandler(OnChartKeyDiag);
                 chart.PreviewKeyDown += _sim101KeyDiag;
-
-                // B11 T1 Phase B: production keyboard shortcut layer.
-                // RemoveSim101 FIRST (SIM101 must be removed before HookKeyShortcut).
-                // We assume SIM101 PASS per the BUILD-TIME contract in the ticket preamble.
                 RemoveSim101(chart);
                 HookKeyShortcut(chart, panel);
 
-                if (grid != null)
+                if (InjectPanelIntoGrid(grid, panel))
                 {
-                    var row = new RowDefinition { Height = System.Windows.GridLength.Auto };
-                    grid.RowDefinitions.Add(row);
-                    System.Windows.Controls.Grid.SetRow(panel, grid.RowDefinitions.Count - 1);
-                    System.Windows.Controls.Grid.SetColumnSpan(
-                        panel,
-                        grid.ColumnDefinitions.Count > 0 ? grid.ColumnDefinitions.Count : 1
-                    );
-                    grid.Children.Add(panel);
                     _panels[chart] = panel;
                     return;
                 }
 
                 MessageBox.Show(
-                    "PTT: ChartTrader.Content is not a Grid.\n"
-                        + "Content type: "
+                    "PTT: ChartTrader.Content is not a Grid.\nContent type: "
                         + (chartTrader.Content?.GetType().FullName ?? "null"),
                     "PTT Info"
                 );
