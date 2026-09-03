@@ -275,7 +275,6 @@ namespace PropTraderTools
         // BGTM-1: Feature-flag-gated row panels. Assigned in Build* methods; toggled in ApplyFeatureFlags.
         private StackPanel _clickTraderRow = null;
         private UniformGrid _atrRow = null;
-        private FrameworkElement _atrSizingRow2 = null;
 
         // HOTFIX-QUICKALL-SINGLETON-01: Quick ALL buffer is now a CopyEngine singleton.
         // _quickAllT1 per-panel field removed. Read CopyEngine.Instance.GlobalQuickAllT1 instead.
@@ -2997,7 +2996,6 @@ namespace PropTraderTools
         private void BuildRiskAtrRow(StackPanel root)
         {
             _atrRow = new UniformGrid { Columns = 2, Margin = new Thickness(0, 4, 0, 0) };
-            _atrSizingRow2 = _atrRow; // C-5: store for visibility gating in ApplyRowVisibilityFlags
             _riskDollarsBox = new TextBox
             {
                 Text = _maxRiskDollars.ToString("F0"),
@@ -3211,10 +3209,6 @@ namespace PropTraderTools
                     : System.Windows.Visibility.Collapsed;
             if (_atrRow != null)
                 _atrRow.Visibility = f.AtrSizing
-                    ? System.Windows.Visibility.Visible
-                    : System.Windows.Visibility.Collapsed;
-            if (_atrSizingRow2 != null)
-                _atrSizingRow2.Visibility = f.AtrSizing
                     ? System.Windows.Visibility.Visible
                     : System.Windows.Visibility.Collapsed;
         }
