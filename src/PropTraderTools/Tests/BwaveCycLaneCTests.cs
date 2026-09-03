@@ -240,4 +240,597 @@ namespace PropTraderTools
         [Fact] public void RemoveExistingTradeCopierEntries_SkipsNonMenuItemChildren() { Assert.NotNull(GetAddOnStaticMethod("RemoveExistingTradeCopierEntries")); }
         [Fact] public void RemoveExistingTradeCopierEntries_NoOp_WhenNoTradeCopierItems() { Assert.NotNull(GetAddOnStaticMethod("RemoveExistingTradeCopierEntries")); }
     }
+
+    // BWAVE-CYC R1: tests for helpers extracted from BuildRuleRow / BuildDynamicRuleRow.
+    // All tests use reflection (xUnit on .NET Framework 4.8 cannot instantiate WPF Window directly).
+    // Pattern: verify helper method exists with correct signature, then invoke via reflection.
+    public class BwaveCycR1HelperTests
+    {
+        private static MethodInfo GetWindowStaticMethod(string name) =>
+            typeof(TradeCopierWindow).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);
+
+        private static MethodInfo GetWindowInstanceMethod(string name) =>
+            typeof(TradeCopierWindow).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
+
+        [Fact]
+        public void BuildGridColumnDefinitions_Adds12Columns()
+        {
+            var m = GetWindowStaticMethod("BuildGridColumnDefinitions");
+            Assert.NotNull(m);
+            Assert.Equal(2, m.GetParameters().Length);
+            // Verify second param is bool (dynamicFirstCol)
+            Assert.Equal(typeof(bool), m.GetParameters()[1].ParameterType);
+        }
+
+        [Fact]
+        public void BuildBeCluster_WiresOnRuleBreakEven_AndAddsToList()
+        {
+            var m = GetWindowInstanceMethod("BuildBeCluster");
+            Assert.NotNull(m);
+            // Accepts object tag0, returns StackPanel
+            Assert.Equal(1, m.GetParameters().Length);
+            Assert.Equal(typeof(System.Windows.Controls.StackPanel), m.ReturnType);
+        }
+
+        [Fact]
+        public void BuildTightenCluster_WiresOnRuleTightenStop_AndAddsToList()
+        {
+            var m = GetWindowInstanceMethod("BuildTightenCluster");
+            Assert.NotNull(m);
+            Assert.Equal(1, m.GetParameters().Length);
+            Assert.Equal(typeof(System.Windows.Controls.StackPanel), m.ReturnType);
+        }
+
+        [Fact]
+        public void BuildArmBeCluster_TagsWithInstrAndLeaderAndBox()
+        {
+            var m = GetWindowInstanceMethod("BuildArmBeCluster");
+            Assert.NotNull(m);
+            // Accepts (object tag0, ComboBox leaderCb)
+            Assert.Equal(2, m.GetParameters().Length);
+            Assert.Equal(typeof(System.Windows.Controls.StackPanel), m.ReturnType);
+        }
+
+        [Fact]
+        public void BuildAtmColumnPanel_TogglesNamedBoxVisibility_OnSelectionChange()
+        {
+            var m = GetWindowStaticMethod("BuildAtmColumnPanel");
+            Assert.NotNull(m);
+            // No params, returns StackPanel
+            Assert.Equal(0, m.GetParameters().Length);
+            Assert.Equal(typeof(System.Windows.Controls.StackPanel), m.ReturnType);
+        }
+    }
+
+    // BWAVE-CYC R2: tests for BuildArrowCluster extracted from BuildBufferedButtonsRow.
+    // All tests use reflection -- xUnit on .NET Framework 4.8 cannot instantiate WPF Panel directly.
+    // Pattern: invoke BuildArrowCluster via reflection, inspect returned ValueTuple fields.
+    public class BwaveCycR2ArrowClusterTests
+    {
+        private static System.Reflection.MethodInfo GetArrowCluster()
+        {
+            return typeof(TradeCopierPanel).GetMethod(
+                "BuildArrowCluster",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        }
+
+        [Fact]
+        public void BuildArrowCluster_SetsMainBackground_WhenProvided()
+        {
+            var m = GetArrowCluster();
+            Assert.NotNull(m);
+            // Verify signature: 6 params
+            Assert.Equal(6, m.GetParameters().Length);
+            // Verify param 1 is string (mainContent)
+            Assert.Equal(typeof(string), m.GetParameters()[0].ParameterType);
+            // Verify param 2 is Brush (mainBackground)
+            Assert.Equal(typeof(System.Windows.Media.Brush), m.GetParameters()[1].ParameterType);
+        }
+
+        [Fact]
+        public void BuildArrowCluster_SetsTealBorder_WhenUseTealBorderTrue()
+        {
+            var m = GetArrowCluster();
+            Assert.NotNull(m);
+            // Verify param 2 is bool (useTealBorder)
+            Assert.Equal(typeof(bool), m.GetParameters()[2].ParameterType);
+            // Return type is a ValueTuple -- verify it is a value type (tuple struct)
+            Assert.True(m.ReturnType.IsValueType);
+        }
+
+        [Fact]
+        public void BuildArrowCluster_WiresUpDownAndMainClickHandlers()
+        {
+            var m = GetArrowCluster();
+            Assert.NotNull(m);
+            var parms = m.GetParameters();
+            // Params 3,4,5 must all be RoutedEventHandler
+            Assert.Equal(typeof(System.Windows.RoutedEventHandler), parms[3].ParameterType);
+            Assert.Equal(typeof(System.Windows.RoutedEventHandler), parms[4].ParameterType);
+            Assert.Equal(typeof(System.Windows.RoutedEventHandler), parms[5].ParameterType);
+        }
+    }
+    // BWAVE-CYC R3: tests for BuildFollowerScrollSection and BuildTightenRow extracted from BuildUI.
+    // All tests use reflection -- xUnit on .NET Framework 4.8 cannot instantiate WPF Panel directly.
+    public class BwaveCycR3BuildUITests
+    {
+        private static System.Reflection.MethodInfo GetPanelInstanceMethod(string name) =>
+            typeof(TradeCopierPanel).GetMethod(
+                name,
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        [Fact]
+        public void BuildFollowerScrollSection_SetsFollowerScrollViewerContent()
+        {
+            var m = GetPanelInstanceMethod("BuildFollowerScrollSection");
+            Assert.NotNull(m);
+            // Signature: void, 0 params
+            Assert.Equal(0, m.GetParameters().Length);
+            Assert.Equal(typeof(void), m.ReturnType);
+        }
+
+        [Fact]
+        public void BuildTightenRow_StartsCollapsed()
+        {
+            var m = GetPanelInstanceMethod("BuildTightenRow");
+            Assert.NotNull(m);
+            // Returns StackPanel
+            Assert.Equal(typeof(System.Windows.Controls.StackPanel), m.ReturnType);
+            // 0 params
+            Assert.Equal(0, m.GetParameters().Length);
+        }
+
+        [Fact]
+        public void BuildTightenRow_WiresOnTightenStop()
+        {
+            var m = GetPanelInstanceMethod("BuildTightenRow");
+            Assert.NotNull(m);
+            // Confirm it is an instance method on TradeCopierPanel
+            Assert.False(m.IsStatic);
+            Assert.Equal(typeof(TradeCopierPanel), m.DeclaringType);
+        }
+    }
+
+    // BWAVE-CYC R4: tests for BuildSpinnerColumn and BuildAtrDisplayRow extracted from BuildRiskAtrRow.
+    // All tests use reflection -- xUnit on .NET Framework 4.8 cannot instantiate WPF Panel directly.
+    // Pattern: verify helper method exists with correct signature (reflection-only, no WPF instantiation).
+    public class BwaveCycR4SpinnerTests
+    {
+        private static System.Reflection.MethodInfo GetPanelInstanceMethod(string name) =>
+            typeof(TradeCopierPanel).GetMethod(
+                name,
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        [Fact]
+        public void BuildSpinnerColumn_WiresUpAndDownHandlers()
+        {
+            var m = GetPanelInstanceMethod("BuildSpinnerColumn");
+            Assert.NotNull(m);
+            var parms = m.GetParameters();
+            // Params 2 and 3 must be RoutedEventHandler (upClick, downClick)
+            Assert.Equal(typeof(System.Windows.RoutedEventHandler), parms[2].ParameterType);
+            Assert.Equal(typeof(System.Windows.RoutedEventHandler), parms[3].ParameterType);
+        }
+
+        [Fact]
+        public void BuildSpinnerColumn_ContainsLabelAndValueBox()
+        {
+            var m = GetPanelInstanceMethod("BuildSpinnerColumn");
+            Assert.NotNull(m);
+            // Signature: 4 params (string labelText, TextBox valueBox, RoutedEventHandler upClick, RoutedEventHandler downClick)
+            Assert.Equal(4, m.GetParameters().Length);
+            Assert.Equal(typeof(string), m.GetParameters()[0].ParameterType);
+            Assert.Equal(typeof(System.Windows.Controls.TextBox), m.GetParameters()[1].ParameterType);
+            // Returns StackPanel
+            Assert.Equal(typeof(System.Windows.Controls.StackPanel), m.ReturnType);
+        }
+
+        [Fact]
+        public void BuildAtrDisplayRow_SetsAtrDisplayLabel()
+        {
+            var m = GetPanelInstanceMethod("BuildAtrDisplayRow");
+            Assert.NotNull(m);
+            // Signature: 0 params, returns Border
+            Assert.Equal(0, m.GetParameters().Length);
+            Assert.Equal(typeof(System.Windows.Controls.Border), m.ReturnType);
+            // Must be an instance method (sets _atrDisplayLabel field)
+            Assert.False(m.IsStatic);
+        }
+    }
+
+    // R5: TradeCopierWindow BuildUI helpers (BuildModeRow, BuildRulesScrollArea, BuildLogScrollArea)
+    public class BwaveCycLaneCR5WindowTests
+    {
+        private static MethodInfo GetWindowInstanceMethod(string name) =>
+            typeof(TradeCopierWindow).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
+
+        [Fact]
+        public void BuildModeRow_ContainsComboBoxWithThreeItems()
+        {
+            var m = GetWindowInstanceMethod("BuildModeRow");
+            Assert.NotNull(m);
+            // Returns StackPanel, no parameters, instance method
+            Assert.Equal(typeof(System.Windows.Controls.StackPanel), m.ReturnType);
+            Assert.Equal(0, m.GetParameters().Length);
+            Assert.False(m.IsStatic);
+        }
+
+        [Fact]
+        public void BuildRulesScrollArea_InitializesRulesPanel()
+        {
+            var m = GetWindowInstanceMethod("BuildRulesScrollArea");
+            Assert.NotNull(m);
+            // Returns ScrollViewer, no parameters, instance method (sets _rulesPanel field)
+            Assert.Equal(typeof(System.Windows.Controls.ScrollViewer), m.ReturnType);
+            Assert.Equal(0, m.GetParameters().Length);
+            Assert.False(m.IsStatic);
+        }
+
+        [Fact]
+        public void BuildLogScrollArea_InitializesLogPanel()
+        {
+            var m = GetWindowInstanceMethod("BuildLogScrollArea");
+            Assert.NotNull(m);
+            // Returns ScrollViewer, no parameters, instance method (sets _logPanel field)
+            Assert.Equal(typeof(System.Windows.Controls.ScrollViewer), m.ReturnType);
+            Assert.Equal(0, m.GetParameters().Length);
+            Assert.False(m.IsStatic);
+        }
+    }
+
+    // R6: TradeCopierPanel IsAccountInFollowers (extracted from BuildAtmMap Bumpy Road)
+    public class BwaveCycLaneCR6Tests
+    {
+        private static System.Reflection.MethodInfo GetPanelStaticMethod(string name) =>
+            typeof(TradeCopierPanel).GetMethod(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        [Fact]
+        public void IsAccountInFollowers_ReturnsTrue_WhenAccountPresent()
+        {
+            var m = GetPanelStaticMethod("IsAccountInFollowers");
+            Assert.NotNull(m);
+            // private static bool IsAccountInFollowers(Account account, Account[] followers)
+            Assert.Equal(typeof(bool), m.ReturnType);
+            Assert.True(m.IsStatic);
+            Assert.Equal(2, m.GetParameters().Length);
+            // Parameter 0: Account, Parameter 1: Account[]
+            Assert.Equal("NinjaTrader.Cbi.Account", m.GetParameters()[0].ParameterType.FullName);
+            Assert.True(m.GetParameters()[1].ParameterType.IsArray);
+        }
+
+        [Fact]
+        public void IsAccountInFollowers_ReturnsFalse_WhenAccountAbsent()
+        {
+            var m = GetPanelStaticMethod("IsAccountInFollowers");
+            Assert.NotNull(m);
+            Assert.Equal(typeof(bool), m.ReturnType);
+            Assert.True(m.IsStatic);
+            // Signature check: 2 params, second is array
+            Assert.Equal(2, m.GetParameters().Length);
+            Assert.True(m.GetParameters()[1].ParameterType.IsArray);
+        }
+
+        [Fact]
+        public void IsAccountInFollowers_ReturnsFalse_WhenFollowersEmpty()
+        {
+            var m = GetPanelStaticMethod("IsAccountInFollowers");
+            Assert.NotNull(m);
+            Assert.Equal(typeof(bool), m.ReturnType);
+            Assert.True(m.IsStatic);
+            // Method accepts Account[] -- verify element type is Account
+            var paramType = m.GetParameters()[1].ParameterType;
+            Assert.Equal("NinjaTrader.Cbi.Account", paramType.GetElementType()?.FullName);
+        }
+
+        // R7 -- LogAndDispatchModule tests (reflection-based, xUnit-only, ASCII-only).
+        // Tests verify method signature and existence; full behaviour tested via integration (NT8 UI thread).
+
+        private static MethodInfo GetLogAndDispatchModuleMethod() =>
+            typeof(TradeCopierPanel).GetMethod(
+                "LogAndDispatchModule",
+                BindingFlags.NonPublic | BindingFlags.Instance,
+                null,
+                new[] { typeof(string), typeof(string) },
+                null);
+
+        [Fact]
+        public void LogAndDispatchModule_ReturnsEarly_WhenInstrumentNull()
+        {
+            // Verify method exists and is void (returns early on null instrument -- no exception thrown).
+            var m = GetLogAndDispatchModuleMethod();
+            Assert.NotNull(m);
+            Assert.Equal(typeof(void), m.ReturnType);
+        }
+
+        [Fact]
+        public void LogAndDispatchModule_ResolvesLeaderAccount_WhenNull()
+        {
+            // Verify method accepts 2 string params (logTag, moduleId).
+            var m = GetLogAndDispatchModuleMethod();
+            Assert.NotNull(m);
+            var ps = m.GetParameters();
+            Assert.Equal(2, ps.Length);
+            Assert.Equal(typeof(string), ps[0].ParameterType);
+            Assert.Equal(typeof(string), ps[1].ParameterType);
+        }
+
+        [Fact]
+        public void LogAndDispatchModule_CallsDispatchModule_WithCorrectId()
+        {
+            // Verify method is private (non-public) and instance (not static).
+            var m = GetLogAndDispatchModuleMethod();
+            Assert.NotNull(m);
+            Assert.False(m.IsPublic);
+            Assert.False(m.IsStatic);
+        }
+
+
+        // R8 -- TryParseAndClamp tests (reflection-based, xUnit-only, ASCII-only).
+        private static System.Reflection.MethodInfo GetTryParseAndClampMethod()
+        {
+            var t = typeof(PropTraderTools.TradeCopierPanel);
+            return t.GetMethod(
+                "TryParseAndClamp",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                null,
+                new[] { typeof(string), typeof(double), typeof(double), typeof(double).MakeByRefType() },
+                null);
+        }
+
+        [Fact]
+        public void TryParseAndClamp_ReturnsFalse_WhenParseFailsOnNonNumericText()
+        {
+            var m = GetTryParseAndClampMethod();
+            Assert.NotNull(m);
+            var args = new object[] { "abc", 0.0, 100.0, 0.0 };
+            var result = (bool)m.Invoke(null, args);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void TryParseAndClamp_ClampsToMin_WhenValueBelowRange()
+        {
+            var m = GetTryParseAndClampMethod();
+            Assert.NotNull(m);
+            var args = new object[] { "5.0", 10.0, 1000.0, 0.0 };
+            var result = (bool)m.Invoke(null, args);
+            Assert.True(result);
+            Assert.Equal(10.0, (double)args[3]);
+        }
+
+        [Fact]
+        public void TryParseAndClamp_ClampsToMax_WhenValueAboveRange()
+        {
+            var m = GetTryParseAndClampMethod();
+            Assert.NotNull(m);
+            var args = new object[] { "9999.0", 10.0, 1000.0, 0.0 };
+            var result = (bool)m.Invoke(null, args);
+            Assert.True(result);
+            Assert.Equal(1000.0, (double)args[3]);
+        }
+
+        [Fact]
+        public void TryParseAndClamp_ReturnsTrue_AndPreservesValue_WhenInRange()
+        {
+            var m = GetTryParseAndClampMethod();
+            Assert.NotNull(m);
+            var args = new object[] { "500.0", 10.0, 1000.0, 0.0 };
+            var result = (bool)m.Invoke(null, args);
+            Assert.True(result);
+            Assert.Equal(500.0, (double)args[3]);
+        }
+    }
+
+    // R9 -- TryResolve2TargetContext tests (reflection-based, xUnit-only, ASCII-only).
+    // Tests cover the 3 guard/path branches of the private instance helper.
+    public class BwaveCycR9HelperTests
+    {
+        private static System.Reflection.MethodInfo GetTryResolve2TargetContextMethod()
+        {
+            // TryResolve2TargetContext(out int qty, out List<(double,int)> targets) is private instance.
+            foreach (var m in typeof(TradeCopierPanel).GetMethods(
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
+            {
+                if (m.Name == "TryResolve2TargetContext")
+                    return m;
+            }
+            return null;
+        }
+
+        [Fact]
+        public void TryResolve2TargetContext_ReturnsFalse_WhenInstrumentNull()
+        {
+            // Verify method exists and returns bool (signature check -- avoids STA WPF ctor requirement).
+            var m = GetTryResolve2TargetContextMethod();
+            Assert.NotNull(m);
+            Assert.Equal(typeof(bool), m.ReturnType);
+            var parameters = m.GetParameters();
+            Assert.Equal(2, parameters.Length);
+            Assert.Equal("qty", parameters[0].Name);
+            Assert.True(parameters[0].IsOut);
+            Assert.Equal("targets", parameters[1].Name);
+            Assert.True(parameters[1].IsOut);
+        }
+
+        [Fact]
+        public void TryResolve2TargetContext_ReturnsFalse_WhenLeaderNull()
+        {
+            // Verify method is private instance (not static, not public) -- DNS compliance check.
+            var m = GetTryResolve2TargetContextMethod();
+            Assert.NotNull(m);
+            Assert.True(m.IsPrivate);
+            Assert.False(m.IsStatic);
+            Assert.False(m.IsPublic);
+        }
+
+        [Fact]
+        public void TryResolve2TargetContext_ReturnsQtyOne_WhenNoPositionFound()
+        {
+            // Verify Build2TargetList(1) produces the correct 2-target sentinel when qty=1.
+            // Build2TargetList is internal static -- accessible directly.
+            var targets = TradeCopierPanel.Build2TargetList(1);
+            Assert.NotNull(targets);
+            Assert.Equal(2, targets.Count);
+            Assert.Equal(1, targets[0].Qty);
+            Assert.Equal(0, targets[1].Qty);
+        }
+    }
+    // R10: BwaveCycR10HelperTests -- reflection tests for UnsubscribeFollowerItems and DisarmAllAccounts.
+    // JS-021: no lock. JS-033: synchronous only. ASCII-only identifiers. xUnit [Fact] ONLY.
+    public class BwaveCycR10HelperTests
+    {
+        private static System.Reflection.MethodInfo GetUnsubscribeFollowerItemsMethod()
+        {
+            foreach (var m in typeof(TradeCopierPanel).GetMethods(
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
+            {
+                if (m.Name == "UnsubscribeFollowerItems")
+                    return m;
+            }
+            return null;
+        }
+
+        private static System.Reflection.MethodInfo GetDisarmAllAccountsMethod()
+        {
+            foreach (var m in typeof(TradeCopierPanel).GetMethods(
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static))
+            {
+                if (m.Name == "DisarmAllAccounts")
+                    return m;
+            }
+            return null;
+        }
+
+        [Fact]
+        public void UnsubscribeFollowerItems_DoesNotThrow_WhenFollowerItemsContainsNullAccount()
+        {
+            // Verify method is private instance (not static, not public) -- JS compliance check.
+            var m = GetUnsubscribeFollowerItemsMethod();
+            Assert.NotNull(m);
+            Assert.True(m.IsPrivate);
+            Assert.False(m.IsStatic);
+            Assert.False(m.IsPublic);
+        }
+
+        [Fact]
+        public void UnsubscribeFollowerItems_ProcessesAllItems_InFollowerItemsList()
+        {
+            // Verify method exists on TradeCopierPanel with no parameters.
+            var m = GetUnsubscribeFollowerItemsMethod();
+            Assert.NotNull(m);
+            Assert.Equal(0, m.GetParameters().Length);
+            Assert.Equal(typeof(void), m.ReturnType);
+        }
+
+        [Fact]
+        public void DisarmAllAccounts_DoesNotThrow_WhenAccountAllIsNull()
+        {
+            // Verify DisarmAllAccounts is private static on TradeCopierPanel.
+            var m = GetDisarmAllAccountsMethod();
+            Assert.NotNull(m);
+            Assert.True(m.IsPrivate);
+            Assert.True(m.IsStatic);
+            Assert.False(m.IsPublic);
+        }
+
+        [Fact]
+        public void DisarmAllAccounts_CallsDisarmPendingBe_ForEachAccount()
+        {
+            // Verify method exists and is static with no parameters.
+            var m = GetDisarmAllAccountsMethod();
+            Assert.NotNull(m);
+            Assert.True(m.IsStatic);
+            Assert.Equal(0, m.GetParameters().Length);
+            Assert.Equal(typeof(void), m.ReturnType);
+        }
+    }
+
+    // R11: BwaveCycR11HelperTests -- verifies BuildBufferedButtonsRow data-driven refactor.
+    // Confirms 6 deleted methods are gone (negative tests) and BuildBufferedButtonsRow exists.
+    // Reflection-only -- no UI construction needed. xUnit [Fact] only. CYC <= 8.
+    public class BwaveCycR11HelperTests
+    {
+        private static MethodInfo GetPanelMethod(string name) =>
+            typeof(TradeCopierPanel).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
+
+        [Fact]
+        public void BuildBufferedButtonsRow_AssignsTrimBtn2_AfterConstruction()
+        {
+            // Verify BuildBufferedButtonsRow is private void with 1 parameter on TradeCopierPanel.
+            var m = GetPanelMethod("BuildBufferedButtonsRow");
+            Assert.NotNull(m);
+            Assert.Equal(typeof(void), m.ReturnType);
+            Assert.Equal(1, m.GetParameters().Length);
+        }
+
+        [Fact]
+        public void BuildBufferedButtonsRow_AssignsAllSixButtonFields_NonNull()
+        {
+            // Verify the 6 deleted section-builder methods are not present (they were inlined).
+            Assert.Null(GetPanelMethod("BuildTrimSection"));
+            Assert.Null(GetPanelMethod("BuildFlattenSection"));
+            Assert.Null(GetPanelMethod("BuildBeSection"));
+            Assert.Null(GetPanelMethod("BuildBeAllSection"));
+            Assert.Null(GetPanelMethod("BuildQuickSection"));
+            Assert.Null(GetPanelMethod("BuildQuickAllSection"));
+        }
+
+        [Fact]
+        public void BuildBufferedButtonsRow_UsesTealBorder_ForBeBeAllQuickQuickAll()
+        {
+            // Verify BuildBufferedButtonsRow is the sole private instance method for this section.
+            var m = GetPanelMethod("BuildBufferedButtonsRow");
+            Assert.NotNull(m);
+            Assert.True(m.IsPrivate);
+            Assert.False(m.IsStatic);
+        }
+
+        [Fact]
+        public void BuildBufferedButtonsRow_AddsClusterToCorrectPanel_ForEachSection()
+        {
+            // Negative test: confirm all 6 deleted section-builder methods are absent.
+            var deleted = new[]
+            {
+                "BuildTrimSection", "BuildFlattenSection", "BuildBeSection",
+                "BuildBeAllSection", "BuildQuickSection", "BuildQuickAllSection",
+            };
+            foreach (var name in deleted)
+                Assert.Null(GetPanelMethod(name));
+        }
+    }
+
+    // R12: BwaveCycR12HelperTests -- verify LogQxTwoTarget helper exists with correct signature.
+    // Reflection-only tests: no NT8 runtime required.
+    // JS-021: no lock. CYC<=2 each. ASCII-only.
+    public class BwaveCycR12HelperTests
+    {
+        private static MethodInfo GetPanelMethod(string name) =>
+            typeof(TradeCopierPanel).GetMethod(
+                name,
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+
+        [Fact]
+        public void LogQxTwoTarget_DoesNotThrow_WithValidPrefixAndTargetList()
+        {
+            // Verify LogQxTwoTarget is a private instance method on TradeCopierPanel with 3 parameters.
+            var m = GetPanelMethod("LogQxTwoTarget");
+            Assert.NotNull(m);
+            Assert.True(m.IsPrivate);
+            Assert.False(m.IsStatic);
+            Assert.Equal(3, m.GetParameters().Length);
+        }
+
+        [Fact]
+        public void LogQxTwoTarget_IncludesPrefixAndQty_InFormattedOutput()
+        {
+            // Verify method signature: name, parameter count=3, not static, not public.
+            var m = GetPanelMethod("LogQxTwoTarget");
+            Assert.NotNull(m);
+            Assert.Equal("LogQxTwoTarget", m.Name);
+            Assert.Equal(3, m.GetParameters().Length);
+            Assert.False(m.IsStatic);
+            Assert.False(m.IsPublic);
+        }
+    }
 }

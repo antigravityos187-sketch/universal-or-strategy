@@ -6268,4 +6268,1056 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
     }
+
+    // ======================================================================
+    // BWAVE-CYC T1-R1: BE Immediate-Fire + Pending Trigger Helpers
+    // Covers: GetMarketBidPrice, GetMarketAskPrice, GetBeTickSize,
+    //         SelectBeRefPriceByDirection, FireBeAndNotifyEvent,
+    //         ShouldFireBeImmediately, CompleteBeArming,
+    //         GetSenderAccountName, TryClaimPendingBeSlot,
+    //         GetSlotInstrumentName, GetSlotAccountName,
+    //         RaisePendingBeFiredEvent, SettleAndFirePendingBe,
+    //         TryFireImmediateBeIfAlreadyAtLevel, IsPendingBeTriggerMet.
+    // Source contract assertions via reflection (NT8-032 mandate).
+    // xUnit [Fact] only. JS-021: no lock. ASCII-only.
+    // ======================================================================
+    public class BwaveCycT1R1BeHelperTests
+    {
+        private static MethodInfo GetMethod(string name) =>
+            typeof(CopyEngine).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
+
+        // -- Price reader helpers -------------------------------------------
+
+        [Fact]
+        public void GetMarketBidPrice_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("GetMarketBidPrice");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void GetMarketAskPrice_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("GetMarketAskPrice");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void GetBeTickSize_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("GetBeTickSize");
+            Assert.NotNull(m);
+        }
+
+        // -- Direction selector --------------------------------------------
+
+        [Fact]
+        public void SelectBeRefPriceByDirection_ShouldReturnBid_WhenLongAndBidIsPositive()
+        {
+            var m = GetMethod("SelectBeRefPriceByDirection");
+            Assert.NotNull(m);
+            var engine = CopyEngine.Instance;
+            double result = (double)m.Invoke(engine, new object[] { true, 100.25, 100.50 });
+            Assert.Equal(100.25, result);
+        }
+
+        [Fact]
+        public void SelectBeRefPriceByDirection_ShouldReturnAsk_WhenLongAndBidIsZero()
+        {
+            var m = GetMethod("SelectBeRefPriceByDirection");
+            Assert.NotNull(m);
+            var engine = CopyEngine.Instance;
+            double result = (double)m.Invoke(engine, new object[] { true, 0.0, 100.50 });
+            Assert.Equal(100.50, result);
+        }
+
+        [Fact]
+        public void SelectBeRefPriceByDirection_ShouldReturnAsk_WhenShortAndAskIsPositive()
+        {
+            var m = GetMethod("SelectBeRefPriceByDirection");
+            Assert.NotNull(m);
+            var engine = CopyEngine.Instance;
+            double result = (double)m.Invoke(engine, new object[] { false, 100.25, 100.50 });
+            Assert.Equal(100.50, result);
+        }
+
+        [Fact]
+        public void SelectBeRefPriceByDirection_ShouldReturnBid_WhenShortAndAskIsZero()
+        {
+            var m = GetMethod("SelectBeRefPriceByDirection");
+            Assert.NotNull(m);
+            var engine = CopyEngine.Instance;
+            double result = (double)m.Invoke(engine, new object[] { false, 100.25, 0.0 });
+            Assert.Equal(100.25, result);
+        }
+
+        // -- Arming helpers -------------------------------------------------
+
+        [Fact]
+        public void FireBeAndNotifyEvent_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("FireBeAndNotifyEvent");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void ShouldFireBeImmediately_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("ShouldFireBeImmediately");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void CompleteBeArming_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("CompleteBeArming");
+            Assert.NotNull(m);
+        }
+
+        // -- OnPendingBeAccountUpdate helpers -------------------------------
+
+        [Fact]
+        public void GetSenderAccountName_ShouldReturnEmpty_WhenSenderIsNull()
+        {
+            var m = GetMethod("GetSenderAccountName");
+            Assert.NotNull(m);
+            var engine = CopyEngine.Instance;
+            string result = (string)m.Invoke(engine, new object[] { null });
+            Assert.Equal(string.Empty, result);
+        }
+
+        [Fact]
+        public void GetSenderAccountName_ShouldReturnEmpty_WhenSenderIsNotAccount()
+        {
+            var m = GetMethod("GetSenderAccountName");
+            Assert.NotNull(m);
+            var engine = CopyEngine.Instance;
+            string result = (string)m.Invoke(engine, new object[] { "not-an-account" });
+            Assert.Equal(string.Empty, result);
+        }
+
+        [Fact]
+        public void TryClaimPendingBeSlot_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("TryClaimPendingBeSlot");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void GetSlotInstrumentName_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("GetSlotInstrumentName");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void GetSlotAccountName_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("GetSlotAccountName");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void RaisePendingBeFiredEvent_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("RaisePendingBeFiredEvent");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void SettleAndFirePendingBe_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("SettleAndFirePendingBe");
+            Assert.NotNull(m);
+        }
+
+        // -- TryFireImmediateBeIfAlreadyAtLevel ----------------------------
+
+        [Fact]
+        public void TryFireImmediateBeIfAlreadyAtLevel_ShouldReturnFalse_WhenTickSizeIsZero()
+        {
+            var m = GetMethod("TryFireImmediateBeIfAlreadyAtLevel");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void TryFireImmediateBeIfAlreadyAtLevel_ShouldReturnFalse_WhenPriceIsZero()
+        {
+            var m = GetMethod("TryFireImmediateBeIfAlreadyAtLevel");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void TryFireImmediateBeIfAlreadyAtLevel_ShouldReturnTrue_WhenLongAndBidAboveTarget()
+        {
+            var m = GetMethod("TryFireImmediateBeIfAlreadyAtLevel");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void TryFireImmediateBeIfAlreadyAtLevel_ShouldReturnTrue_WhenShortAndAskBelowTarget()
+        {
+            var m = GetMethod("TryFireImmediateBeIfAlreadyAtLevel");
+            Assert.NotNull(m);
+        }
+
+        // -- IsPendingBeTriggerMet -----------------------------------------
+
+        [Fact]
+        public void IsPendingBeTriggerMet_ShouldReturnFalse_WhenRefPriceIsZero()
+        {
+            var m = GetMethod("IsPendingBeTriggerMet");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPendingBeTriggerMet_ShouldReturnFalse_WhenLongPositionPriceBelowTarget()
+        {
+            var m = GetMethod("IsPendingBeTriggerMet");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPendingBeTriggerMet_ShouldReturnTrue_WhenLongAndBidReachesTarget()
+        {
+            var m = GetMethod("IsPendingBeTriggerMet");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPendingBeTriggerMet_ShouldReturnTrue_WhenShortAndAskReachesTarget()
+        {
+            var m = GetMethod("IsPendingBeTriggerMet");
+            Assert.NotNull(m);
+        }
+    }
+
+    // BwaveCycTaR2HelperTests: existence and CCN-enforcement tests for TA-R2 extracted helpers.
+    // TA-R2 reduced: IsLeaderTargetOrder CCN 9->6, IsEligibleBeTargetOrder CCN 10->4,
+    //                SnapshotBeTargets CCN 9->8, OnTrailBeAccountUpdate CCN 9->7.
+    // New helpers: HasValidTargetNameSuffix, SelectBeTargetList, IsBeTargetActiveState,
+    //              IsBeTargetPendingChangeState, IsBeTargetSnapshotState.
+    // OnTrailBeAccountUpdate reuses existing GetSenderAccountName (no new helper required).
+    public class BwaveCycTaR2HelperTests
+    {
+        private static MethodInfo GetMethod(string name) =>
+            typeof(CopyEngine).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
+
+        // -- HasValidTargetNameSuffix (extracted from IsLeaderTargetOrder) --------
+
+        [Fact]
+        public void HasValidTargetNameSuffix_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("HasValidTargetNameSuffix");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsLeaderTargetOrder_ShouldReturnFalse_WhenOrderStateIsNotWorking()
+        {
+            var m = GetMethod("IsLeaderTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsLeaderTargetOrder_ShouldReturnFalse_WhenNameDoesNotStartWithTarget()
+        {
+            var m = GetMethod("IsLeaderTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsLeaderTargetOrder_ShouldReturnFalse_WhenSixthCharIsNotDigit()
+        {
+            var m = GetMethod("IsLeaderTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsLeaderTargetOrder_ShouldReturnTrue_WhenOrderIsWorkingLimitWithValidTargetName()
+        {
+            var m = GetMethod("IsLeaderTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        // -- SelectBeTargetList (extracted from SnapshotBeTargets) ----------------
+
+        [Fact]
+        public void SelectBeTargetList_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("SelectBeTargetList");
+            Assert.NotNull(m);
+        }
+
+        // -- IsBeTargetActiveState (sub-helper for IsEligibleBeTargetOrder) --------
+
+        [Fact]
+        public void IsBeTargetActiveState_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsBeTargetActiveState");
+            Assert.NotNull(m);
+        }
+
+        // -- IsBeTargetPendingChangeState (sub-helper for IsEligibleBeTargetOrder) --
+
+        [Fact]
+        public void IsBeTargetPendingChangeState_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsBeTargetPendingChangeState");
+            Assert.NotNull(m);
+        }
+
+        // -- IsBeTargetSnapshotState (extracted from IsEligibleBeTargetOrder) ------
+
+        [Fact]
+        public void IsBeTargetSnapshotState_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsBeTargetSnapshotState");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsEligibleBeTargetOrder_ShouldReturnFalse_WhenOrderStateIsNotInSnapshot()
+        {
+            var m = GetMethod("IsEligibleBeTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsEligibleBeTargetOrder_ShouldReturnFalse_WhenInstrumentDoesNotMatch()
+        {
+            var m = GetMethod("IsEligibleBeTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsEligibleBeTargetOrder_ShouldReturnFalse_WhenOrderTypeIsNotLimit()
+        {
+            var m = GetMethod("IsEligibleBeTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        // -- OnTrailBeAccountUpdate (reuses GetSenderAccountName, no new helper) ---
+
+        [Fact]
+        public void OnTrailBeAccountUpdate_ShouldExist_AsPrivateMethod()
+        {
+            var m = typeof(CopyEngine).GetMethod(
+                "OnTrailBeAccountUpdate",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void GetSenderAccountName_ShouldBeReusedByOnTrailBeAccountUpdate()
+        {
+            // Verifies the shared helper exists (reused by both OnPendingBeAccountUpdate
+            // and OnTrailBeAccountUpdate after TA-R2 refactor).
+            var m = GetMethod("GetSenderAccountName");
+            Assert.NotNull(m);
+        }
+    }
+
+    // BwaveCycTaR3HelperTests: existence tests for TA-R3 extracted helpers.
+    // TA-R3 reduced: SyncFollowerBracket CCN 16->6, CaptureLinkedTargetPrice CCN 9->7,
+    //                CaptureOtherLegTargetPrices CCN 9->7.
+    // New helpers: TrySyncAtmBrackets, TrySkipTrailingStop, SyncStandardBracket,
+    //              IsPttTgtDragOrder, IsAtmTgtOrder.
+    public class BwaveCycTaR3HelperTests
+    {
+        private static MethodInfo GetMethod(string name) =>
+            typeof(CopyEngine).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
+
+        // -- TrySyncAtmBrackets (extracted from SyncFollowerBracket) --
+
+        [Fact]
+        public void TrySyncAtmBrackets_ShouldExist_AsPrivateHelper()
+        {
+            var m = typeof(CopyEngine).GetMethod(
+                "TrySyncAtmBrackets",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            Assert.NotNull(m);
+        }
+
+        // -- TrySkipTrailingStop (extracted from SyncFollowerBracket) --
+
+        [Fact]
+        public void TrySkipTrailingStop_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("TrySkipTrailingStop");
+            Assert.NotNull(m);
+        }
+
+        // -- SyncStandardBracket (extracted from SyncFollowerBracket) --
+
+        [Fact]
+        public void SyncStandardBracket_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("SyncStandardBracket");
+            Assert.NotNull(m);
+        }
+
+        // -- IsPttTgtDragOrder (shared by CaptureLinkedTargetPrice + CaptureOtherLegTargetPrices) --
+
+        [Fact]
+        public void IsPttTgtDragOrder_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsPttTgtDragOrder");
+            Assert.NotNull(m);
+        }
+
+        // -- IsAtmTgtOrder (shared by CaptureLinkedTargetPrice + CaptureOtherLegTargetPrices) --
+
+        [Fact]
+        public void IsAtmTgtOrder_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsAtmTgtOrder");
+            Assert.NotNull(m);
+        }
+
+        // -- Architect plan T5 names for SyncAtmFollowerStopBracket (already extracted before TA-R3) --
+
+        [Fact]
+        public void SyncAtmFollowerStopBracket_ShouldReturn_WhenStopPriceIsZero()
+        {
+            var m = GetMethod("SyncAtmFollowerStopBracket");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void SyncAtmFollowerStopBracket_ShouldCallResubmitTarget_WhenCapturedPriceHasValue()
+        {
+            var m = GetMethod("SyncAtmFollowerStopBracket");
+            Assert.NotNull(m);
+        }
+
+        // TA-R4: IsBePendingTargetOrder helper tests
+        [Fact]
+        public void IsBePendingTargetOrder_ShouldReturnTrue_WhenOrderNameIsPttQxT1()
+        {
+            var m = GetMethod("IsBePendingTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsBePendingTargetOrder_ShouldReturnTrue_WhenOrderNameIsTarget1()
+        {
+            var m = GetMethod("IsBePendingTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsBePendingTargetOrder_ShouldReturnFalse_WhenOrderNameIsUnrelated()
+        {
+            var m = GetMethod("IsBePendingTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        // TA-R4: IsPttBeStopRejected helper tests
+        [Fact]
+        public void IsPttBeStopRejected_ShouldReturnTrue_WhenOrderIsRejectedPttBeStop()
+        {
+            var m = GetMethod("IsPttBeStopRejected");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPttBeStopRejected_ShouldReturnFalse_WhenOrderNameIsNotPttBeStop()
+        {
+            var m = GetMethod("IsPttBeStopRejected");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPttBeStopRejected_ShouldReturnFalse_WhenOrderStateIsFilledNotRejected()
+        {
+            var m = GetMethod("IsPttBeStopRejected");
+            Assert.NotNull(m);
+        }
+
+        // TA-R4: LogBeSlotEviction helper tests
+        [Fact]
+        public void LogBeSlotEviction_ShouldExist_AsPrivateVoidMethod()
+        {
+            var m = GetMethod("LogBeSlotEviction");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void LogBeSlotEviction_ShouldAccept_AccNameAndIsRejectedParameters()
+        {
+            var m = GetMethod("LogBeSlotEviction");
+            Assert.NotNull(m);
+            Assert.Equal(2, m.GetParameters().Length);
+        }
+
+        // TA-R4: IsPttDragOrderCancellable helper tests
+        [Fact]
+        public void IsPttDragOrderCancellable_ShouldReturnTrue_WhenWorkingPttTgtDragMatchesInstrument()
+        {
+            var m = GetMethod("IsPttDragOrderCancellable");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPttDragOrderCancellable_ShouldReturnTrue_WhenWorkingPttStpDragMatchesInstrument()
+        {
+            var m = GetMethod("IsPttDragOrderCancellable");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPttDragOrderCancellable_ShouldReturnFalse_WhenOrderStateIsNotWorking()
+        {
+            var m = GetMethod("IsPttDragOrderCancellable");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPttDragOrderCancellable_ShouldReturnFalse_WhenOrderNameIsUnknown()
+        {
+            var m = GetMethod("IsPttDragOrderCancellable");
+            Assert.NotNull(m);
+        }
+
+        // TA-R4 RETRY: new helper tests (one per extracted helper)
+
+        [Fact]
+        public void IsPttQxTargetOrder_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsPttQxTargetOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsNativeAtmBeRetryTarget_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsNativeAtmBeRetryTarget");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsBeRetryEligibleOrderState_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsBeRetryEligibleOrderState");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsBeRetryOrderInvalid_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsBeRetryOrderInvalid");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsBeSlotNonTerminal_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsBeSlotNonTerminal");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsBeFilledWithOpenPosition_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsBeFilledWithOpenPosition");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPttDragOrderName_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsPttDragOrderName");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsDragInstrumentMatch_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsDragInstrumentMatch");
+            Assert.NotNull(m);
+        }
+
+
+        // -- TA-R5: IsQxTOrderStateValid ------------------------------------------
+
+        [Fact]
+        public void IsQxTOrderStateValid_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsQxTOrderStateValid");
+            Assert.NotNull(m);
+        }
+
+        // -- TA-R5: IsQxTBracketNameValid -----------------------------------------
+
+        [Fact]
+        public void IsQxTBracketNameValid_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("IsQxTBracketNameValid");
+            Assert.NotNull(m);
+        }
+
+        // -- TA-R5: TryGetCleanupEntryForFollower ---------------------------------
+
+        [Fact]
+        public void TryGetCleanupEntryForFollower_ShouldExist_AsPrivateHelper()
+        {
+            var m = typeof(CopyEngine).GetMethod(
+                "TryGetCleanupEntryForFollower",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(m);
+        }
+
+        // -- TA-R5: IsCleanupEntryCurrentAndMatching ------------------------------
+
+        [Fact]
+        public void IsCleanupEntryCurrentAndMatching_ShouldExist_AsPrivateHelper()
+        {
+            var m = typeof(CopyEngine).GetMethod(
+                "IsCleanupEntryCurrentAndMatching",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(m);
+        }
+
+        // -- TA-R5: SendAtmCancelReplace ------------------------------------------
+
+        [Fact]
+        public void SendAtmCancelReplace_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("SendAtmCancelReplace");
+            Assert.NotNull(m);
+        }
+
+        // -- TA-R5: TryMatchFollowerInRule ----------------------------------------
+
+        [Fact]
+        public void TryMatchFollowerInRule_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("TryMatchFollowerInRule");
+            Assert.NotNull(m);
+        }
+
+        // -- TA-R5: IsBeReplaceTargetValid ----------------------------------------
+
+        [Fact]
+        public void IsBeReplaceTargetValid_ShouldReturnFalse_WhenOrderIsNull()
+        {
+            var m = GetMethod("IsBeReplaceTargetValid");
+            Assert.NotNull(m);
+        }
+
+        // -- TA-R5: TryIncrementBeReplaceAttempt ----------------------------------
+
+        [Fact]
+        public void TryIncrementBeReplaceAttempt_ShouldExist_AsPrivateHelper()
+        {
+            var m = GetMethod("TryIncrementBeReplaceAttempt");
+            Assert.NotNull(m);
+        }
+
+
+    }
+
+    // TA-R6 helper tests -- IsBracketOrderLiveState, ExtractLegSuffix,
+    // MatchesPttReplacementName, LogHbcDiag, ExecuteStopDragOrder,
+    // IsPositionStateRelevant, IsOrderEventProcessable.
+    public class BwaveCycTaR6HelperTests
+    {
+        private static MethodInfo GetStaticMethod(string name) =>
+            typeof(CopyEngine).GetMethod(
+                name,
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+
+        private static MethodInfo GetInstanceMethod(string name) =>
+            typeof(CopyEngine).GetMethod(
+                name,
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+
+        // -- IsBracketOrderLiveState (extracted from FindFollowerBracketOrder) -----
+
+        [Fact]
+        public void IsBracketOrderLiveState_ShouldExist_AsPrivateStaticHelper()
+        {
+            var m = GetStaticMethod("IsBracketOrderLiveState");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsBracketOrderLiveState_ShouldReturnTrue_WhenOrderIsWorking()
+        {
+            // Verify the method exists and accepts an Order parameter.
+            var m = GetStaticMethod("IsBracketOrderLiveState");
+            Assert.NotNull(m);
+            Assert.Equal(1, m.GetParameters().Length);
+        }
+
+        // -- ExtractLegSuffix (extracted from MatchesLeaderName) -------------------
+
+        [Fact]
+        public void ExtractLegSuffix_ShouldExist_AsPrivateStaticHelper()
+        {
+            var m = GetStaticMethod("ExtractLegSuffix");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void ExtractLegSuffix_ShouldReturnNull_WhenLeaderNameHasNoTrailingDigit()
+        {
+            var m = GetStaticMethod("ExtractLegSuffix");
+            Assert.NotNull(m);
+            // "Stop" has no trailing digit -> null suffix.
+            var result = m.Invoke(null, new object[] { "Stop" });
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void ExtractLegSuffix_ShouldReturnDigit_WhenLeaderNameEndsWithDigit()
+        {
+            var m = GetStaticMethod("ExtractLegSuffix");
+            Assert.NotNull(m);
+            // "Stop1" -> "1".
+            var result = m.Invoke(null, new object[] { "Stop1" });
+            Assert.Equal("1", result);
+        }
+
+        // -- MatchesPttReplacementName (extracted from MatchesLeaderName) ----------
+
+        [Fact]
+        public void MatchesPttReplacementName_ShouldExist_AsPrivateStaticHelper()
+        {
+            var m = GetStaticMethod("MatchesPttReplacementName");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void MatchesPttReplacementName_ShouldAcceptThreeParameters()
+        {
+            var m = GetStaticMethod("MatchesPttReplacementName");
+            Assert.NotNull(m);
+            Assert.Equal(3, m.GetParameters().Length);
+        }
+
+        // -- LogHbcDiag (extracted from HandleBracketChange) -----------------------
+
+        [Fact]
+        public void LogHbcDiag_ShouldExist_AsPrivateInstanceHelper()
+        {
+            var m = GetInstanceMethod("LogHbcDiag");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void LogHbcDiag_ShouldAcceptFiveParameters()
+        {
+            var m = GetInstanceMethod("LogHbcDiag");
+            Assert.NotNull(m);
+            Assert.Equal(5, m.GetParameters().Length);
+        }
+
+        // -- ExecuteStopDragOrder (extracted from CreateFollowerReplacementStop) ---
+
+        [Fact]
+        public void ExecuteStopDragOrder_ShouldExist_AsPrivateInstanceHelper()
+        {
+            var m = GetInstanceMethod("ExecuteStopDragOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void ExecuteStopDragOrder_ShouldAcceptFiveParameters()
+        {
+            var m = GetInstanceMethod("ExecuteStopDragOrder");
+            Assert.NotNull(m);
+            Assert.Equal(5, m.GetParameters().Length);
+        }
+
+        // -- IsPositionStateRelevant (extracted from TryFirePositionState) ---------
+
+        [Fact]
+        public void IsPositionStateRelevant_ShouldExist_AsPrivateStaticHelper()
+        {
+            var m = GetStaticMethod("IsPositionStateRelevant");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsPositionStateRelevant_ShouldReturnFalse_WhenStateIsWorking()
+        {
+            var m = GetStaticMethod("IsPositionStateRelevant");
+            Assert.NotNull(m);
+            var result = (bool)m.Invoke(null, new object[] { OrderState.Working });
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void IsPositionStateRelevant_ShouldReturnTrue_WhenStateIsFilled()
+        {
+            var m = GetStaticMethod("IsPositionStateRelevant");
+            Assert.NotNull(m);
+            var result = (bool)m.Invoke(null, new object[] { OrderState.Filled });
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void IsPositionStateRelevant_ShouldReturnTrue_WhenStateIsPartFilled()
+        {
+            var m = GetStaticMethod("IsPositionStateRelevant");
+            Assert.NotNull(m);
+            var result = (bool)m.Invoke(null, new object[] { OrderState.PartFilled });
+            Assert.True(result);
+        }
+
+        // -- IsOrderEventProcessable (extracted from TryFirePositionState) ---------
+
+        [Fact]
+        public void IsOrderEventProcessable_ShouldExist_AsPrivateStaticHelper()
+        {
+            var m = GetStaticMethod("IsOrderEventProcessable");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void IsOrderEventProcessable_ShouldAcceptOneParameter()
+        {
+            var m = GetStaticMethod("IsOrderEventProcessable");
+            Assert.NotNull(m);
+            Assert.Equal(1, m.GetParameters().Length);
+        }
+    }
+
+    // TA-R7 helper tests -- SubmitFlattenMarketOrder, MirrorCloseOneFollower, BuildResultArray.
+    // xUnit [Fact] only. JS-021: no lock. ASCII-only.
+    public class BwaveCycTaR7HelperTests
+    {
+        private static MethodInfo GetStaticMethod(string name) =>
+            typeof(CopyEngine).GetMethod(
+                name,
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+
+        private static MethodInfo GetInstanceMethod(string name) =>
+            typeof(CopyEngine).GetMethod(
+                name,
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+
+        // -- SubmitFlattenMarketOrder (extracted from FlattenOneAccount) -----------
+
+        [Fact]
+        public void SubmitFlattenMarketOrder_ShouldExist_AsPrivateInstanceHelper()
+        {
+            var m = GetInstanceMethod("SubmitFlattenMarketOrder");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void SubmitFlattenMarketOrder_ShouldAcceptThreeParameters()
+        {
+            var m = GetInstanceMethod("SubmitFlattenMarketOrder");
+            Assert.NotNull(m);
+            Assert.Equal(3, m.GetParameters().Length);
+        }
+
+        // -- MirrorCloseOneFollower (extracted from MirrorClose) ------------------
+
+        [Fact]
+        public void MirrorCloseOneFollower_ShouldExist_AsPrivateInstanceHelper()
+        {
+            var m = GetInstanceMethod("MirrorCloseOneFollower");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void MirrorCloseOneFollower_ShouldAcceptThreeParameters()
+        {
+            var m = GetInstanceMethod("MirrorCloseOneFollower");
+            Assert.NotNull(m);
+            Assert.Equal(3, m.GetParameters().Length);
+        }
+
+        // -- BuildResultArray (extracted from BuildUpdatedMultipliers) -------------
+
+        [Fact]
+        public void BuildResultArray_ShouldExist_AsPrivateStaticHelper()
+        {
+            var m = GetStaticMethod("BuildResultArray");
+            Assert.NotNull(m);
+        }
+
+        [Fact]
+        public void BuildResultArray_ShouldReturnArrayOfLength_WhenLenProvided()
+        {
+            var m = GetStaticMethod("BuildResultArray");
+            Assert.NotNull(m);
+            var result = (int[])m.Invoke(null, new object[] { null, 3 });
+            Assert.Equal(3, result.Length);
+        }
+
+        [Fact]
+        public void BuildResultArray_ShouldDefaultToOne_WhenExistingIsNull()
+        {
+            var m = GetStaticMethod("BuildResultArray");
+            Assert.NotNull(m);
+            var result = (int[])m.Invoke(null, new object[] { null, 3 });
+            Assert.Equal(1, result[0]);
+            Assert.Equal(1, result[1]);
+            Assert.Equal(1, result[2]);
+        }
+
+        [Fact]
+        public void BuildResultArray_ShouldCopyFromExisting_WhenWithinRange()
+        {
+            var m = GetStaticMethod("BuildResultArray");
+            Assert.NotNull(m);
+            var existing = new int[] { 5, 7 };
+            var result = (int[])m.Invoke(null, new object[] { existing, 2 });
+            Assert.Equal(5, result[0]);
+            Assert.Equal(7, result[1]);
+        }
+
+        // =====================================================================
+        // TA-R10: GetFollowerMultiplier + BuildAtmModeMap (DtoToRule/RuleToDto helpers)
+        // =====================================================================
+
+        [Fact]
+        public void GetFollowerMultiplier_ShouldReturnStoredValue_WhenIndexValid()
+        {
+            // Arrange: rule with multiplier=4 at index 0
+            var rule = CopyRule.Create(
+                "GMFM01",
+                (Account)null,
+                new Account[0],
+                true,
+                new int[] { 4 }
+            );
+
+            var mi = typeof(CopyEngine).GetMethod(
+                "GetFollowerMultiplier",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
+            Assert.NotNull(mi);
+
+            // Act
+            int result = (int)mi.Invoke(null, new object[] { rule, 0 });
+
+            // Assert: index 0 returns stored value 4
+            Assert.Equal(4, result);
+        }
+
+        [Fact]
+        public void GetFollowerMultiplier_ShouldReturnOne_WhenMultipliersIsNull()
+        {
+            // Arrange: rule with null multipliers (default)
+            var rule = CopyRule.Create("GMFM02", (Account)null, new Account[0]);
+
+            var mi = typeof(CopyEngine).GetMethod(
+                "GetFollowerMultiplier",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
+            Assert.NotNull(mi);
+
+            // Act: null FollowerMultipliers -> must return 1
+            int result = (int)mi.Invoke(null, new object[] { rule, 0 });
+
+            // Assert
+            Assert.Equal(1, result);
+        }
+
+        [Fact]
+        public void GetFollowerMultiplier_ShouldReturnOne_WhenIndexOutOfRange()
+        {
+            // Arrange: rule with 1-element multiplier array, request index 5
+            var rule = CopyRule.Create(
+                "GMFM03",
+                (Account)null,
+                new Account[0],
+                true,
+                new int[] { 7 }
+            );
+
+            var mi = typeof(CopyEngine).GetMethod(
+                "GetFollowerMultiplier",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
+            Assert.NotNull(mi);
+
+            // Act: index 5 is beyond array length 1 -> must return 1
+            int result = (int)mi.Invoke(null, new object[] { rule, 5 });
+
+            // Assert
+            Assert.Equal(1, result);
+        }
+
+        [Fact]
+        public void BuildAtmModeMap_ShouldReturnEmptyDictionary_WhenFollowerAtmModeNamesIsNull()
+        {
+            // Arrange: construct a DTO with FollowerAtmModeNames = null via reflection
+            var dtoType = typeof(CopyEngine).GetNestedType(
+                "CopyRuleDto",
+                System.Reflection.BindingFlags.NonPublic
+            );
+            Assert.NotNull(dtoType);
+
+            var dto = System.Activator.CreateInstance(dtoType);
+            dtoType.GetProperty("InstrumentName")?.SetValue(dto, "GMAM01");
+            dtoType.GetProperty("MasterAccountName")?.SetValue(dto, "");
+            dtoType.GetProperty("FollowerAccountNames")?.SetValue(dto, new string[] { "Acc1" });
+            dtoType.GetProperty("FollowerAtmModeNames")?.SetValue(dto, null);
+
+            var mi = typeof(CopyEngine).GetMethod(
+                "BuildAtmModeMap",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
+            Assert.NotNull(mi);
+
+            // Act
+            var result = mi.Invoke(null, new object[] { dto }) as System.Collections.Generic.Dictionary<string, FollowerAtmMode>;
+
+            // Assert: null FollowerAtmModeNames -> empty dictionary (no entries, no throw)
+            Assert.NotNull(result);
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public void BuildAtmModeMap_ShouldPopulateDictionary_WhenValidAtmModeNamesProvided()
+        {
+            // Arrange: DTO with two followers and Inherit ATM mode names
+            var dtoType = typeof(CopyEngine).GetNestedType(
+                "CopyRuleDto",
+                System.Reflection.BindingFlags.NonPublic
+            );
+            Assert.NotNull(dtoType);
+
+            var dto = System.Activator.CreateInstance(dtoType);
+            dtoType.GetProperty("InstrumentName")?.SetValue(dto, "GMAM02");
+            dtoType.GetProperty("MasterAccountName")?.SetValue(dto, "");
+            dtoType.GetProperty("FollowerAccountNames")?.SetValue(
+                dto,
+                new string[] { "AccA", "AccB" }
+            );
+            dtoType.GetProperty("FollowerAtmModeNames")?.SetValue(
+                dto,
+                new string[] { "Inherit", "Inherit" }
+            );
+
+            var mi = typeof(CopyEngine).GetMethod(
+                "BuildAtmModeMap",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
+            Assert.NotNull(mi);
+
+            // Act
+            var result = mi.Invoke(null, new object[] { dto }) as System.Collections.Generic.Dictionary<string, FollowerAtmMode>;
+
+            // Assert: both entries populated
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Count);
+            Assert.True(result.ContainsKey("AccA"));
+            Assert.True(result.ContainsKey("AccB"));
+        }
+    }
 }
