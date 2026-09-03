@@ -650,7 +650,8 @@ namespace PropTraderTools
             System.Windows.Media.Brush copyBg,
             System.Windows.Media.Brush posBg,
             System.Windows.Media.Brush entryBg,
-            System.Windows.Media.Brush trimBg)
+            System.Windows.Media.Brush trimBg
+        )
         {
             if (_copyToggleBtn2 != null)
                 _copyToggleBtn2.Background = copyBg;
@@ -742,11 +743,11 @@ namespace PropTraderTools
         private static readonly Dictionary<string, Func<TradeCopierPanel, bool>> _licenseMap =
             new Dictionary<string, Func<TradeCopierPanel, bool>>
             {
-                { "BE",     p => p.IsBeLicensed },
-                { "TRIM",   p => p.IsTrimLicensed },
-                { "FLAT",   p => p.IsFlattenLicensed },
+                { "BE", p => p.IsBeLicensed },
+                { "TRIM", p => p.IsTrimLicensed },
+                { "FLAT", p => p.IsFlattenLicensed },
                 { "CANCEL", p => p.IsCancelLicensed },
-                { "COPY",   p => p.IsCopierLicensed },
+                { "COPY", p => p.IsCopierLicensed },
             };
 
         // BWAVE-CYC T1b extraction. CCN=4.
@@ -776,10 +777,7 @@ namespace PropTraderTools
         {
             if (_instrument == null || _leaderAccount == null)
                 return;
-            var saved = _engine.GetSavedFollowerNames(
-                _instrument.FullName,
-                _leaderAccount.Name
-            );
+            var saved = _engine.GetSavedFollowerNames(_instrument.FullName, _leaderAccount.Name);
             if (saved.Count > 0)
             {
                 foreach (var item in _followerItems)
@@ -2097,9 +2095,7 @@ namespace PropTraderTools
             double tickSize
         )
         {
-            double rawDiff = isLong
-                ? t1Ord.LimitPrice - avgPrice
-                : avgPrice - t1Ord.LimitPrice; // (1) ternary
+            double rawDiff = isLong ? t1Ord.LimitPrice - avgPrice : avgPrice - t1Ord.LimitPrice; // (1) ternary
             double liveT1 = Math.Round(rawDiff / tickSize);
             if (liveT1 < 1)
                 liveT1 = 1; // (2) clamp
@@ -3035,7 +3031,8 @@ namespace PropTraderTools
         // JS-021: no lock. JS-002: returns empty dict (not null). JS-033: synchronous.
         private static Dictionary<string, FollowerAtmMode> BuildAtmMap(
             Account[] followers,
-            string[] atmNames)
+            string[] atmNames
+        )
         {
             var atmMap = new Dictionary<string, FollowerAtmMode>();
             for (int i = 0; i < followers.Length; i++)
@@ -3372,15 +3369,19 @@ namespace PropTraderTools
         // Only called from ApplyFeatureFlags (UI thread). JS-021: no lock.
         private void ApplyFeatureFlagTooltips(FeatureFlags f)
         {
-            SetButtonTooltip(_trimBtn2,      f.TrimFlatten, "Trim/Flatten requires Pro tier");
-            SetButtonTooltip(_flattenBtn2,   f.TrimFlatten, "Trim/Flatten requires Pro tier");
-            SetButtonTooltip(_cancelBtn2,    f.TrimFlatten, "Trim/Flatten requires Pro tier");
-            SetButtonTooltip(_beBtn2,        f.BreakEven,   "Break Even requires Pro tier");
-            SetButtonTooltip(_mirrorModeBtn, f.MirrorMode,  "Mirror mode requires Elite tier");
+            SetButtonTooltip(_trimBtn2, f.TrimFlatten, "Trim/Flatten requires Pro tier");
+            SetButtonTooltip(_flattenBtn2, f.TrimFlatten, "Trim/Flatten requires Pro tier");
+            SetButtonTooltip(_cancelBtn2, f.TrimFlatten, "Trim/Flatten requires Pro tier");
+            SetButtonTooltip(_beBtn2, f.BreakEven, "Break Even requires Pro tier");
+            SetButtonTooltip(_mirrorModeBtn, f.MirrorMode, "Mirror mode requires Elite tier");
         }
 
         // Sets ToolTip on a control: null when feature enabled, upgrade message otherwise. CYC=2.
-        private static void SetButtonTooltip(System.Windows.Controls.Control btn, bool featureEnabled, string upgradeMessage)
+        private static void SetButtonTooltip(
+            System.Windows.Controls.Control btn,
+            bool featureEnabled,
+            string upgradeMessage
+        )
         {
             if (btn != null)
                 btn.ToolTip = featureEnabled ? null : upgradeMessage;

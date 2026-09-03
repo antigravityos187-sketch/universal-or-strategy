@@ -100,6 +100,7 @@ namespace PropTraderTools.Tests
         }
     }
 }
+
 // TB-T2: TryRecordBeTargetFill and TryTriggerBeRecovery extraction tests.
 // Tests the guards of the two extracted helpers via null-seams and WouldXxx primitive seams.
 // Order can be constructed directly (new Order(); o.OrderState = ...; o.Name = ...) -- NT8 pattern.
@@ -138,7 +139,11 @@ namespace PropTraderTools.Tests
         {
             var engine = CopyEngine.Instance;
             int before = engine.GetFilledBeTargetCount("TEST-ACC-NOTFILLED");
-            bool result = engine.WouldRecordBeTargetFill(OrderState.Cancelled, "PTT-BE-Target-1", "TEST-ACC-NOTFILLED");
+            bool result = engine.WouldRecordBeTargetFill(
+                OrderState.Cancelled,
+                "PTT-BE-Target-1",
+                "TEST-ACC-NOTFILLED"
+            );
             Assert.False(result);
             Assert.Equal(before, engine.GetFilledBeTargetCount("TEST-ACC-NOTFILLED"));
         }
@@ -152,7 +157,11 @@ namespace PropTraderTools.Tests
         {
             var engine = CopyEngine.Instance;
             int before = engine.GetFilledBeTargetCount("TEST-ACC-WRONGNAME");
-            bool result = engine.WouldRecordBeTargetFill(OrderState.Filled, "PTT-BE-Stop-1", "TEST-ACC-WRONGNAME");
+            bool result = engine.WouldRecordBeTargetFill(
+                OrderState.Filled,
+                "PTT-BE-Stop-1",
+                "TEST-ACC-WRONGNAME"
+            );
             Assert.False(result);
             Assert.Equal(before, engine.GetFilledBeTargetCount("TEST-ACC-WRONGNAME"));
         }
@@ -308,6 +317,7 @@ namespace PropTraderTools.Tests
         }
     }
 }
+
 // TB-T4: DispatchCopy extraction tests.
 // Tests ShouldSkipFollowerDispatch and ShouldSkipForReversalGuard internal helpers.
 // ShouldSkipFollowerDispatch is internal -- no NT8 runtime needed for null-account path.
@@ -447,7 +457,10 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsBeSlotEvictable_ReturnsFalse_WhenSlotIsNull()
         {
-            bool result = CopyEngine.IsEvictTriggerStateTestable(OrderState.Cancelled, "PTT-BE-Stop");
+            bool result = CopyEngine.IsEvictTriggerStateTestable(
+                OrderState.Cancelled,
+                "PTT-BE-Stop"
+            );
             Assert.False(result);
         }
 
@@ -462,8 +475,8 @@ namespace PropTraderTools.Tests
             Assert.True(result);
         }
     }
-
 }
+
 // BwaveCycLaneBT6Tests -- TB-T6 extracted helpers.
 // Tests for: IsEntryDragEligible, IsAtmTargetSignalName, IsNonFlatDispatchName,
 //   IsNativeExitName, IsSyncAtmBracketEligible, IsPttDragOrphanCancellable.
@@ -483,7 +496,11 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsEntryDragEligible_ReturnsFalse_WhenOrderNameNotEntry()
         {
-            bool result = CopyEngine.IsEntryDragEligibleTestable(OrderType.Market, OrderState.Working, 0);
+            bool result = CopyEngine.IsEntryDragEligibleTestable(
+                OrderType.Market,
+                OrderState.Working,
+                0
+            );
             Assert.False(result);
         }
 
@@ -494,7 +511,11 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsEntryDragEligible_ReturnsFalse_WhenOrderStateNotWorking()
         {
-            bool result = CopyEngine.IsEntryDragEligibleTestable(OrderType.Limit, OrderState.Filled, 0);
+            bool result = CopyEngine.IsEntryDragEligibleTestable(
+                OrderType.Limit,
+                OrderState.Filled,
+                0
+            );
             Assert.False(result);
         }
 
@@ -540,7 +561,11 @@ namespace PropTraderTools.Tests
         public void IsSyncAtmBracketEligible_ReturnsFalse_WhenFollowerOrderNull()
         {
             bool result = CopyEngine.IsSyncAtmBracketEligibleTestable(
-                accIsNull: false, foIsNull: true, stopPrice: 100.0, newPrice: 101.0);
+                accIsNull: false,
+                foIsNull: true,
+                stopPrice: 100.0,
+                newPrice: 101.0
+            );
             Assert.False(result);
         }
 
@@ -552,7 +577,11 @@ namespace PropTraderTools.Tests
         public void IsSyncAtmBracketEligible_ReturnsFalse_WhenPriceUnchanged()
         {
             bool result = CopyEngine.IsSyncAtmBracketEligibleTestable(
-                accIsNull: false, foIsNull: false, stopPrice: 100.0, newPrice: 100.0);
+                accIsNull: false,
+                foIsNull: false,
+                stopPrice: 100.0,
+                newPrice: 100.0
+            );
             Assert.False(result);
         }
 
@@ -571,7 +600,8 @@ namespace PropTraderTools.Tests
                 orderState: OrderState.Working,
                 orderInstrFullName: "ES 12-24",
                 instrFullName: "NQ 12-24",
-                orderName: "PTT-TGT-Drag");
+                orderName: "PTT-TGT-Drag"
+            );
             Assert.False(result);
         }
 
@@ -586,7 +616,8 @@ namespace PropTraderTools.Tests
                 orderState: OrderState.Filled,
                 orderInstrFullName: "ES 12-24",
                 instrFullName: "ES 12-24",
-                orderName: "PTT-TGT-Drag");
+                orderName: "PTT-TGT-Drag"
+            );
             Assert.False(result);
         }
     }
@@ -661,7 +692,7 @@ namespace PropTraderTools.Tests
             var dto = new CopyEngine.CopyRuleDto
             {
                 FollowerAccountNames = new[] { "Acc1", "Acc2" },
-                FollowerMultipliers = new[] { 2 }
+                FollowerMultipliers = new[] { 2 },
             };
             int[] result = CopyEngine.ResolveMultipliers(dto);
             Assert.NotNull(result);
@@ -691,7 +722,11 @@ namespace PropTraderTools.Tests
         [Fact]
         public void SelectRefPriceByDirection_ReturnsBid_WhenLongAndBidPositive()
         {
-            double result = CopyEngine.SelectRefPriceByDirection(isLong: true, bid: 100.0, ask: 101.0);
+            double result = CopyEngine.SelectRefPriceByDirection(
+                isLong: true,
+                bid: 100.0,
+                ask: 101.0
+            );
             Assert.Equal(101.0, result);
         }
 
@@ -701,7 +736,11 @@ namespace PropTraderTools.Tests
         [Fact]
         public void SelectRefPriceByDirection_ReturnsLast_WhenLongAndBidZero()
         {
-            double result = CopyEngine.SelectRefPriceByDirection(isLong: true, bid: 0.0, ask: 101.0);
+            double result = CopyEngine.SelectRefPriceByDirection(
+                isLong: true,
+                bid: 0.0,
+                ask: 101.0
+            );
             Assert.Equal(0.0, result);
         }
 
@@ -712,7 +751,11 @@ namespace PropTraderTools.Tests
         [Fact]
         public void SelectRefPriceByDirection_ReturnsAsk_WhenShortAndAskPositive()
         {
-            double result = CopyEngine.SelectRefPriceByDirection(isLong: false, bid: 100.0, ask: 101.0);
+            double result = CopyEngine.SelectRefPriceByDirection(
+                isLong: false,
+                bid: 100.0,
+                ask: 101.0
+            );
             Assert.Equal(100.0, result);
         }
     }

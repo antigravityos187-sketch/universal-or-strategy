@@ -398,19 +398,19 @@ namespace PropTraderTools
         // JS-021: no lock. Called on UI thread only (from OnLoaded, OnActivateClick, OnFeatureFlagsChanged).
         private void ApplyFeatureFlags(FeatureFlags f)
         {
-            ApplyButtonGroupFlag(_trimBtns,    f.TrimFlatten, "Trim requires Pro tier");
+            ApplyButtonGroupFlag(_trimBtns, f.TrimFlatten, "Trim requires Pro tier");
             ApplyButtonGroupFlag(_flattenBtns, f.TrimFlatten, "Trim/Flatten requires Pro tier");
-            ApplyButtonGroupFlag(_cancelBtns,  f.TrimFlatten, "Cancel requires Pro tier");
-            ApplyButtonGroupFlag(_beBtns,      f.BreakEven,   "Break Even requires Pro tier");
-            if (_modeCb != null)                                                              // +1
+            ApplyButtonGroupFlag(_cancelBtns, f.TrimFlatten, "Cancel requires Pro tier");
+            ApplyButtonGroupFlag(_beBtns, f.BreakEven, "Break Even requires Pro tier");
+            if (_modeCb != null) // +1
             {
                 _modeCb.IsEnabled = f.MirrorMode;
-                _modeCb.ToolTip = f.MirrorMode ? null : "Mirror mode requires Elite tier";  // +1
+                _modeCb.ToolTip = f.MirrorMode ? null : "Mirror mode requires Elite tier"; // +1
             }
-            if (_addRuleBtn != null)                                                         // +1
+            if (_addRuleBtn != null) // +1
             {
                 _addRuleBtn.IsEnabled = f.MultiRule;
-                _addRuleBtn.ToolTip = f.MultiRule ? null : "Multi-rule requires Pro tier";  // +1
+                _addRuleBtn.ToolTip = f.MultiRule ? null : "Multi-rule requires Pro tier"; // +1
             }
         }
 
@@ -419,12 +419,13 @@ namespace PropTraderTools
         private static void ApplyButtonGroupFlag(
             System.Collections.Generic.IEnumerable<System.Windows.Controls.Button> btns,
             bool enabled,
-            string disabledMessage)
+            string disabledMessage
+        )
         {
-            foreach (var btn in btns)                                    // +1
+            foreach (var btn in btns) // +1
             {
                 btn.IsEnabled = enabled;
-                btn.ToolTip = enabled ? null : disabledMessage;         // +1
+                btn.ToolTip = enabled ? null : disabledMessage; // +1
             }
         }
 
@@ -1185,7 +1186,9 @@ namespace PropTraderTools
         )
         {
             var atmMap = new Dictionary<string, FollowerAtmMode>();
-            if (!(tag.Length > 3 && tag[3] is ComboBox atmCb && atmCb.SelectedItem is string atmSel))
+            if (
+                !(tag.Length > 3 && tag[3] is ComboBox atmCb && atmCb.SelectedItem is string atmSel)
+            )
                 return atmMap;
             string atmMode = atmSel;
             if (

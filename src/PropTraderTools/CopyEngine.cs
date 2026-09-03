@@ -1540,8 +1540,7 @@ namespace PropTraderTools
         // JS-021: static -- no instance state. ASCII-only.
         private static bool IsBeRetryStateWorking(Order o)
         {
-            return o.OrderState == OrderState.Working
-                || o.OrderState == OrderState.Accepted;
+            return o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted;
         }
 
         // TryEvictFollowerBeSlot: CYC=6. DW-B79-06 stale-slot cleanup.
@@ -1687,7 +1686,8 @@ namespace PropTraderTools
             OrderState orderState,
             string orderInstrFullName,
             string instrFullName,
-            string orderName)
+            string orderName
+        )
         {
             if (orderState != OrderState.Working)
                 return false;
@@ -1997,7 +1997,11 @@ namespace PropTraderTools
 
         // TB-T6: test seam for IsEntryDragEligible -- accepts primitives to avoid constructing NT8 Order in xUnit.
         // Mirrors IsEvictTriggerStateTestable pattern (L1636).
-        internal static bool IsEntryDragEligibleTestable(OrderType orderType, OrderState orderState, int filled)
+        internal static bool IsEntryDragEligibleTestable(
+            OrderType orderType,
+            OrderState orderState,
+            int filled
+        )
         {
             if (orderType != OrderType.Limit && orderType != OrderType.StopLimit)
                 return false;
@@ -2272,7 +2276,15 @@ namespace PropTraderTools
                     continue;
                 }
 
-                if (ShouldSkipForReversalGuard(acc, instr, currentAction, lastAction, hasLastDirection))
+                if (
+                    ShouldSkipForReversalGuard(
+                        acc,
+                        instr,
+                        currentAction,
+                        lastAction,
+                        hasLastDirection
+                    )
+                )
                 {
                     idx++;
                     continue;
@@ -2535,9 +2547,15 @@ namespace PropTraderTools
                 // Returns all-zeros on second+ drag (fo.Name=="PTT-STP-Drag-N") -- safe no-op below.
                 // Method call = 0 McCabe. CYC stays at 8.
                 double[] otherLegPrices = CaptureOtherLegTargetPrices(acc, fo, legSuffix);
-                SyncAtmFollowerBracket(acc, fo, newPrice, legSuffix, leaderOrder);   // DW-B142-QTY-DESYNC-01: thread leaderOrder for qty
-                if (capturedTargetPrice.HasValue)            // B141: +1 branch -> CYC 8 (at limit -- no further branching may be added)
-                    ResubmitTargetAfterCascade(acc, fo, capturedTargetPrice.Value, leaderOrder, legSuffix);
+                SyncAtmFollowerBracket(acc, fo, newPrice, legSuffix, leaderOrder); // DW-B142-QTY-DESYNC-01: thread leaderOrder for qty
+                if (capturedTargetPrice.HasValue) // B141: +1 branch -> CYC 8 (at limit -- no further branching may be added)
+                    ResubmitTargetAfterCascade(
+                        acc,
+                        fo,
+                        capturedTargetPrice.Value,
+                        leaderOrder,
+                        legSuffix
+                    );
                 ResubmitCollateralLegs(acc, fo, newPrice, otherLegPrices, legSuffix, leaderOrder); // DW-B142-QTY-DESYNC-01: thread leaderOrder for per-leg qty
                 return;
             }
@@ -2609,7 +2627,12 @@ namespace PropTraderTools
 
         // TB-T6: test seam for IsSyncAtmBracketEligible -- accepts primitives to avoid constructing NT8 Account/Order in xUnit.
         // Mirrors IsEvictTriggerStateTestable pattern (L1636). accIsNull + foIsNull flags replace NT8 object references.
-        internal static bool IsSyncAtmBracketEligibleTestable(bool accIsNull, bool foIsNull, double stopPrice, double newPrice)
+        internal static bool IsSyncAtmBracketEligibleTestable(
+            bool accIsNull,
+            bool foIsNull,
+            double stopPrice,
+            double newPrice
+        )
         {
             if (accIsNull)
                 return false;
@@ -2628,7 +2651,13 @@ namespace PropTraderTools
         // NT8: acc.CreateOrder + acc.Submit -- AddOnBase confirmed. "PTT-STP-Drag-" prefix preserved.
         // DW-B142-QTY-DESYNC-01: leaderOrder.Quantity used (not fo.Quantity).
         // JS-021: no lock. JS-001: try/catch in caller -- no throw here.
-        private void SubmitAtmStopReplacement(Account acc, Order fo, double newPrice, string suffix, Order leaderOrder)
+        private void SubmitAtmStopReplacement(
+            Account acc,
+            Order fo,
+            double newPrice,
+            string suffix,
+            Order leaderOrder
+        )
         {
             var newStop = acc.CreateOrder(
                 fo.Instrument,
@@ -2636,7 +2665,7 @@ namespace PropTraderTools
                 OrderType.StopMarket,
                 OrderEntry.Automated,
                 TimeInForce.Day,
-                leaderOrder.Quantity,   // DW-B142-QTY-DESYNC-01: use leader qty, not fo.Quantity
+                leaderOrder.Quantity, // DW-B142-QTY-DESYNC-01: use leader qty, not fo.Quantity
                 0,
                 newPrice,
                 "",
@@ -2653,7 +2682,13 @@ namespace PropTraderTools
             StatusUpdate?.Invoke(acc.Name + ": ATM STP resubmit -> " + newPrice);
         }
 
-        private void SyncAtmFollowerBracket(Account acc, Order fo, double newPrice, string suffix, Order leaderOrder = null)
+        private void SyncAtmFollowerBracket(
+            Account acc,
+            Order fo,
+            double newPrice,
+            string suffix,
+            Order leaderOrder = null
+        )
         {
             if (!IsSyncAtmBracketEligible(acc, fo, newPrice))
                 return;
@@ -2702,11 +2737,11 @@ namespace PropTraderTools
             string pttTgtName = "PTT-TGT-Drag-" + suffix;
             double? pttPrice = null;
             double? atmPrice = null;
-            foreach (var o in acc.Orders.ToList())                                     // (2) foreach
+            foreach (var o in acc.Orders.ToList()) // (2) foreach
             {
-                if (IsTargetOrderLive(o) && o.Name == pttTgtName)                     // (3) if -- PTT preferred
+                if (IsTargetOrderLive(o) && o.Name == pttTgtName) // (3) if -- PTT preferred
                     pttPrice = o.LimitPrice;
-                else if (IsTargetOrderLive(o) && o.Name == targetName)                // (4) if -- ATM fallback
+                else if (IsTargetOrderLive(o) && o.Name == targetName) // (4) if -- ATM fallback
                     atmPrice = o.LimitPrice;
             }
             if (pttPrice.HasValue) // (5) if
@@ -2731,19 +2766,22 @@ namespace PropTraderTools
         private double[] CaptureOtherLegTargetPrices(Account acc, Order fo, string excludeSuffix)
         {
             var prices = new double[3];
-            if (!fo.Name.StartsWith("Stop"))                                  // (1) if -- second+ drag guard
+            if (!fo.Name.StartsWith("Stop")) // (1) if -- second+ drag guard
                 return prices;
-            foreach (var o in acc.Orders.ToList())                            // (2) foreach
+            foreach (var o in acc.Orders.ToList()) // (2) foreach
             {
-                for (int i = 1; i <= 3; i++)                                  // (3) for
+                for (int i = 1; i <= 3; i++) // (3) for
                 {
                     string s = i.ToString();
-                    if (s == excludeSuffix)                                    // (4) if
+                    if (s == excludeSuffix) // (4) if
                         continue;
-                    if (IsTargetOrderLive(o) && o.Name == "PTT-TGT-Drag-" + s)  // (5) if -- PTT preferred: always overwrites
+                    if (IsTargetOrderLive(o) && o.Name == "PTT-TGT-Drag-" + s) // (5) if -- PTT preferred: always overwrites
                         prices[i - 1] = o.LimitPrice;
-                    else if (IsTargetOrderLive(o) && o.Name == "Target" + s      // (6) if -- ATM fallback: only fills zero slots
-                             && prices[i - 1] == 0)
+                    else if (
+                        IsTargetOrderLive(o)
+                        && o.Name == "Target" + s // (6) if -- ATM fallback: only fills zero slots
+                        && prices[i - 1] == 0
+                    )
                         prices[i - 1] = o.LimitPrice;
                 }
             }
@@ -2777,7 +2815,7 @@ namespace PropTraderTools
             if (leaderOrder?.Account?.Orders == null || string.IsNullOrEmpty(suffix)) // (1) if -- || NOT counted
                 return null;
             string stopName = "Stop" + suffix;
-            string tgtName  = "Target" + suffix;
+            string tgtName = "Target" + suffix;
             foreach (var o in leaderOrder.Account.Orders.ToList()) // (2) foreach
             {
                 if (o != null && (o.Name == stopName || o.Name == tgtName)) // (3) if -- || NOT counted
@@ -2785,8 +2823,6 @@ namespace PropTraderTools
             }
             return null;
         }
-
-
 
         // CYC=1: base(1). Static. Pure state predicate. No lock. No async.
         // B141: returns true if order is Working or Accepted -- both are live states.
@@ -2827,16 +2863,17 @@ namespace PropTraderTools
             Order stpOrder,
             double targetPrice,
             Order leaderOrder,
-            string suffix)
+            string suffix
+        )
         {
             // Block A-Prime: cancel any stale PTT-TGT-Drag-N for this instrument.
             // B142: sweep only the matching leg suffix -- Stop1 does not cancel Stop2's target.
             // Mirrors SyncAtmFollowerTarget Block A-Prime (L2473-2490).
             // JS-021: no lock -- acc.Orders iteration safe on NT8 dispatch thread.
             string tgtDragName = "PTT-TGT-Drag-" + suffix;
-            foreach (var o in acc.Orders.ToList())                                      // (1) foreach
+            foreach (var o in acc.Orders.ToList()) // (1) foreach
             {
-                if (                                                                     // (2) if -- all && NOT counted
+                if ( // (2) if -- all && NOT counted
                     o.OrderState == OrderState.Working
                     && o.Name == tgtDragName
                     && o.Instrument?.FullName == stpOrder.Instrument?.FullName
@@ -2846,9 +2883,11 @@ namespace PropTraderTools
                     {
                         acc.Cancel(new Order[] { o });
                     }
-                    catch (Exception ex)                                                 // catch = 0 (project convention)
+                    catch (Exception ex) // catch = 0 (project convention)
                     {
-                        StatusUpdate?.Invoke(acc.Name + ": TGT pre-cancel error (B141): " + ex.Message);
+                        StatusUpdate?.Invoke(
+                            acc.Name + ": TGT pre-cancel error (B141): " + ex.Message
+                        );
                     }
                 }
             }
@@ -2863,7 +2902,7 @@ namespace PropTraderTools
                     OrderType.Limit,
                     OrderEntry.Automated,
                     TimeInForce.Day,
-                    leaderOrder.Quantity,   // DW-B142-QTY-DESYNC-01: use leader qty, not stpOrder.Quantity
+                    leaderOrder.Quantity, // DW-B142-QTY-DESYNC-01: use leader qty, not stpOrder.Quantity
                     targetPrice,
                     0,
                     "",
@@ -2871,15 +2910,17 @@ namespace PropTraderTools
                     NinjaTrader.Core.Globals.MaxDate,
                     (NinjaTrader.Cbi.CustomOrder)null
                 );
-                if (newTarget == null)                                                   // (3) if
+                if (newTarget == null) // (3) if
                 {
                     StatusUpdate?.Invoke(acc.Name + ": B141 TGT CreateOrder returned null");
                     return;
                 }
                 acc.Submit(new[] { newTarget });
-                StatusUpdate?.Invoke(acc.Name + ": B141 TGT resubmit after cascade -> " + targetPrice);
+                StatusUpdate?.Invoke(
+                    acc.Name + ": B141 TGT resubmit after cascade -> " + targetPrice
+                );
             }
-            catch (Exception ex)                                                         // catch = 0 (project convention)
+            catch (Exception ex) // catch = 0 (project convention)
             {
                 StatusUpdate?.Invoke(acc.Name + ": B141 TGT create error: " + ex.Message);
             }
@@ -2902,14 +2943,15 @@ namespace PropTraderTools
             double newPrice,
             double[] otherLegPrices,
             string excludeSuffix,
-            Order leaderOrder)
+            Order leaderOrder
+        )
         {
-            for (int i = 1; i <= 3; i++)                                      // (1) for
+            for (int i = 1; i <= 3; i++) // (1) for
             {
                 string s = i.ToString();
-                if (s == excludeSuffix)                                        // (2) if
+                if (s == excludeSuffix) // (2) if
                     continue;
-                if (otherLegPrices[i - 1] <= 0)                              // (3) if
+                if (otherLegPrices[i - 1] <= 0) // (3) if
                     continue;
                 // DW-B142-QTY-DESYNC-01: look up the leader's per-leg bracket order for this suffix.
                 // leaderOrder.Name is e.g. "Stop2"; collateral leg s="1" or "3" -> look up "Stop1"/"Stop3".
@@ -2941,25 +2983,40 @@ namespace PropTraderTools
             double newPrice,
             double targetPrice,
             string suffix,
-            Order leaderLeg = null)
+            Order leaderLeg = null
+        )
         {
             // Block A-Prime-Stop: cancel any existing live PTT-STP-Drag-{suffix} before resubmitting.
             // Prevents accumulation when repeated stop drags call ResubmitCollateralLegs for the same leg.
             string stpDragName = "PTT-STP-Drag-" + suffix;
-            foreach (var o in acc.Orders.ToList())                              // (1) foreach
+            foreach (var o in acc.Orders.ToList()) // (1) foreach
             {
-                if (IsPttStpDragCancellable(o) && o.Name == stpDragName        // (2) if -- && NOT counted
-                    && o.Instrument?.FullName == fo.Instrument?.FullName)
-                    try { acc.Cancel(new Order[] { o }); } catch { }            // catch = 0 (project convention)
+                if (
+                    IsPttStpDragCancellable(o)
+                    && o.Name == stpDragName // (2) if -- && NOT counted
+                    && o.Instrument?.FullName == fo.Instrument?.FullName
+                )
+                    try
+                    {
+                        acc.Cancel(new Order[] { o });
+                    }
+                    catch { } // catch = 0 (project convention)
             }
 
             // Block A-Prime-Target: cancel any existing live PTT-TGT-Drag-{suffix} before resubmitting.
             string tgtDragName = "PTT-TGT-Drag-" + suffix;
-            foreach (var o in acc.Orders.ToList())                              // (3) foreach
+            foreach (var o in acc.Orders.ToList()) // (3) foreach
             {
-                if (IsTargetOrderLive(o) && o.Name == tgtDragName              // (4) if -- && NOT counted
-                    && o.Instrument?.FullName == fo.Instrument?.FullName)
-                    try { acc.Cancel(new Order[] { o }); } catch { }            // catch = 0 (project convention)
+                if (
+                    IsTargetOrderLive(o)
+                    && o.Name == tgtDragName // (4) if -- && NOT counted
+                    && o.Instrument?.FullName == fo.Instrument?.FullName
+                )
+                    try
+                    {
+                        acc.Cancel(new Order[] { o });
+                    }
+                    catch { } // catch = 0 (project convention)
             }
 
             try
@@ -2970,7 +3027,7 @@ namespace PropTraderTools
                     OrderType.StopMarket,
                     OrderEntry.Automated,
                     TimeInForce.Day,
-                    leaderLeg != null ? leaderLeg.Quantity : fo.Quantity,   // DW-B142-QTY-DESYNC-01: per-leg leader qty
+                    leaderLeg != null ? leaderLeg.Quantity : fo.Quantity, // DW-B142-QTY-DESYNC-01: per-leg leader qty
                     0,
                     newPrice,
                     "",
@@ -2978,17 +3035,21 @@ namespace PropTraderTools
                     NinjaTrader.Core.Globals.MaxDate,
                     (NinjaTrader.Cbi.CustomOrder)null
                 );
-                if (newStop == null)                                           // (1) if
+                if (newStop == null) // (1) if
                 {
                     StatusUpdate?.Invoke(acc.Name + ": B142-D6 STP CreateOrder null leg " + suffix);
                     return;
                 }
                 acc.Submit(new[] { newStop });
-                StatusUpdate?.Invoke(acc.Name + ": B142-D6 STP resubmit leg " + suffix + " -> " + newPrice);
+                StatusUpdate?.Invoke(
+                    acc.Name + ": B142-D6 STP resubmit leg " + suffix + " -> " + newPrice
+                );
             }
-            catch (Exception ex)                                               // catch = 0 (project convention)
+            catch (Exception ex) // catch = 0 (project convention)
             {
-                StatusUpdate?.Invoke(acc.Name + ": B142-D6 STP create error leg " + suffix + ": " + ex.Message);
+                StatusUpdate?.Invoke(
+                    acc.Name + ": B142-D6 STP create error leg " + suffix + ": " + ex.Message
+                );
             }
 
             try
@@ -2999,7 +3060,7 @@ namespace PropTraderTools
                     OrderType.Limit,
                     OrderEntry.Automated,
                     TimeInForce.Day,
-                    leaderLeg != null ? leaderLeg.Quantity : fo.Quantity,   // DW-B142-QTY-DESYNC-01: per-leg leader qty
+                    leaderLeg != null ? leaderLeg.Quantity : fo.Quantity, // DW-B142-QTY-DESYNC-01: per-leg leader qty
                     targetPrice,
                     0,
                     "",
@@ -3007,17 +3068,21 @@ namespace PropTraderTools
                     NinjaTrader.Core.Globals.MaxDate,
                     (NinjaTrader.Cbi.CustomOrder)null
                 );
-                if (newTarget == null)                                         // (2) if
+                if (newTarget == null) // (2) if
                 {
                     StatusUpdate?.Invoke(acc.Name + ": B142-D6 TGT CreateOrder null leg " + suffix);
                     return;
                 }
                 acc.Submit(new[] { newTarget });
-                StatusUpdate?.Invoke(acc.Name + ": B142-D6 TGT resubmit leg " + suffix + " -> " + targetPrice);
+                StatusUpdate?.Invoke(
+                    acc.Name + ": B142-D6 TGT resubmit leg " + suffix + " -> " + targetPrice
+                );
             }
-            catch (Exception ex)                                               // catch = 0 (project convention)
+            catch (Exception ex) // catch = 0 (project convention)
             {
-                StatusUpdate?.Invoke(acc.Name + ": B142-D6 TGT create error leg " + suffix + ": " + ex.Message);
+                StatusUpdate?.Invoke(
+                    acc.Name + ": B142-D6 TGT create error leg " + suffix + ": " + ex.Message
+                );
             }
         }
 
@@ -3038,8 +3103,7 @@ namespace PropTraderTools
 
         // CYC=1: pure delegation to IsPttStpDragCancellable.
         // Test seam for xUnit access. InternalsVisibleTo("PropTraderTools.Tests") granted at L46.
-        internal static bool IsPttStpDragCancellableTestable(Order o) =>
-            IsPttStpDragCancellable(o);
+        internal static bool IsPttStpDragCancellableTestable(Order o) => IsPttStpDragCancellable(o);
 
         // CYC=6: base(1) + foreach(1) + if(1) + &&Name(1) + &&Instrument(1) + ?.(1) = 6.
         // B139: DW-B152-B fix -- IsPttStpDragCancellable extracted to include CancelPending||CancelSubmitted.
@@ -3165,7 +3229,7 @@ namespace PropTraderTools
                     OrderType.Limit,
                     OrderEntry.Automated,
                     TimeInForce.Day,
-                    leaderOrder != null ? leaderOrder.Quantity : fo.Quantity,   // DW-B142-QTY-DESYNC-01: use leader qty when available
+                    leaderOrder != null ? leaderOrder.Quantity : fo.Quantity, // DW-B142-QTY-DESYNC-01: use leader qty when available
                     newPrice,
                     0,
                     "",
@@ -3747,25 +3811,27 @@ namespace PropTraderTools
         internal ConcurrentDictionary<string, OrderAction> TestOnly_LastLeaderDirection =>
             _lastLeaderDirection;
 
-
         // B143 test seam -- no logic, thin shims only.
         // InternalsVisibleTo("PropTraderTools.Tests") granted at L46.
         #region B143 test seam
 
-        internal bool IsLiveEntryBlocked_ForTest(string instrKey, string orderId, double limitPrice)
-            => IsLiveEntryBlocked(instrKey, orderId, limitPrice);
+        internal bool IsLiveEntryBlocked_ForTest(
+            string instrKey,
+            string orderId,
+            double limitPrice
+        ) => IsLiveEntryBlocked(instrKey, orderId, limitPrice);
 
-        internal void EvictDedup_ForTest(string orderId, NinjaTrader.Cbi.OrderState state)
-            => EvictDedup(orderId, state);
+        internal void EvictDedup_ForTest(string orderId, NinjaTrader.Cbi.OrderState state) =>
+            EvictDedup(orderId, state);
 
-        internal void ClearLiveEntryForInstrument_ForTest(string instrFullName)
-            => ClearLiveEntryForInstrument(instrFullName);
+        internal void ClearLiveEntryForInstrument_ForTest(string instrFullName) =>
+            ClearLiveEntryForInstrument(instrFullName);
 
-        internal bool LiveEntryInstrumentsContains_ForTest(string key)
-            => _liveEntryInstruments.ContainsKey(key);
+        internal bool LiveEntryInstrumentsContains_ForTest(string key) =>
+            _liveEntryInstruments.ContainsKey(key);
 
-        internal bool EntryInstrKeyByOrderIdContains_ForTest(string orderId)
-            => _entryInstrKeyByOrderId.ContainsKey(orderId);
+        internal bool EntryInstrKeyByOrderIdContains_ForTest(string orderId) =>
+            _entryInstrKeyByOrderId.ContainsKey(orderId);
 
         #endregion
 
@@ -5876,7 +5942,8 @@ namespace PropTraderTools
         internal bool IsPendingBeTriggerConditionMet(
             PendingBeSlot slot,
             NinjaTrader.Cbi.Position pos,
-            NinjaTrader.Cbi.Instrument instr)
+            NinjaTrader.Cbi.Instrument instr
+        )
         {
             if (instr == null)
                 return false;
@@ -5910,7 +5977,8 @@ namespace PropTraderTools
             NinjaTrader.Cbi.Position pos,
             NinjaTrader.Cbi.Instrument instr,
             double refPx,
-            bool isLong)
+            bool isLong
+        )
         {
             double tickSize = instr.MasterInstrument?.TickSize ?? 0.0;
             if (tickSize <= 0.0)
@@ -5937,12 +6005,10 @@ namespace PropTraderTools
         // NT8-003: fires on account background thread -- no UI calls. Event invoke is thread-safe.
         private void FirePendingBeFiredEvent(
             NinjaTrader.Cbi.Instrument instr,
-            NinjaTrader.Cbi.Account acc)
+            NinjaTrader.Cbi.Account acc
+        )
         {
-            PendingBeFired?.Invoke(
-                instr?.FullName ?? string.Empty,
-                acc?.Name ?? string.Empty
-            );
+            PendingBeFired?.Invoke(instr?.FullName ?? string.Empty, acc?.Name ?? string.Empty);
         }
 
         // BWAVE-CYC TB-T1: test seam -- IsPendingBeSlotActive with null-account (default struct).
