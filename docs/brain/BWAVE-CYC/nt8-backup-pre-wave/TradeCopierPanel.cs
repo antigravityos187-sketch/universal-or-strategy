@@ -587,7 +587,9 @@ namespace PropTraderTools
             _engine.GlobalBeBufferChanged -= OnGlobalBeBufferChanged; // HOTFIX-BEALL-BUFFER-SYNC-01
             _engine.GlobalQuickAllBufferChanged -= OnQuickAllBufferChanged; // HOTFIX-QUICKALL-SINGLETON-01
             _engine.GlobalBeAllDisarmed -= OnGlobalBeAllDisarmed; // HOTFIX-BEALL-DISARM-SYNC-01
-            UnsubscribeFollowerItems();
+            foreach (var item in _followerItems)
+                if (item.Account != null)
+                    item.Account.AccountItemUpdate -= OnAccountItemUpdate;
             _engine.DisarmPendingBe(_leaderAccount);
             // B32: DisarmTrailBe removed -- PTT no longer runs trail after BE (DW-B32-05).
             _engine.CopyEnabledChanged -= OnCopyEnabledChanged;
@@ -607,7 +609,9 @@ namespace PropTraderTools
 
             // B40: disarm all accounts on detach (BE ALL global cleanup). NT8-043: no null-conditional compound.
             // DW-B72-02: _globalBeState removed -- truth is IsPendingSlotsEmpty(). No local reset needed.
-            DisarmAllAccounts();
+            if (Account.All != null)
+                foreach (var acc in Account.All)
+                    CopyEngine.Instance.DisarmPendingBe(acc);
             // No visual update here -- panel is being destroyed.
 
             // B33 T7 -- Teardown all IPttModules (unsubscribes all PttBus events).
@@ -620,98 +624,50 @@ namespace PropTraderTools
             CopyEngine.Instance.FeatureFlagsChanged -= OnFeatureFlagsChanged;
         }
 
-        // R10: extracted from Detach() to eliminate Bumpy Road foreach-within-foreach pattern.
-        // MUST only be called from Detach() on UI thread (_followerItems is UI-thread-owned).
-        // JS-021: no lock. JS-002: no return null (void). ASCII-only. CYC=2.
-        private void UnsubscribeFollowerItems()
-        {
-            foreach (var item in _followerItems)
-                if (item.Account != null)
-                    item.Account.AccountItemUpdate -= OnAccountItemUpdate;
-        }
-
-        // R10: extracted from Detach() to eliminate Account.All foreach Bumpy Road pattern.
-        // MUST only be called from Detach() on UI thread (reads Account.All).
-        // JS-021: no lock. JS-002: no return null (void). ASCII-only. CYC=2.
-        private static void DisarmAllAccounts()
-        {
-            if (Account.All == null)
-                return;
-            foreach (var acc in Account.All)
-                CopyEngine.Instance.DisarmPendingBe(acc);
-        }
-
         // -- Layer 3 live state (V04) -- called on UI thread only -----------------
         // B12 T1: updated to use new _copyToggleBtn2, _flattenBtn2, _cancelBtn2, _trimBtn2, _beBtn2.
         // CYC=5: 5 ternary branches, no control flow.
         // HOTFIX-F3: when position goes flat, force BE FSM back to Idle regardless of prior state.
         // Previously Armed/Connected states were never cleared by PositionStateChanged -- button
         // stayed amber/blue after ATM or native Close flattened the position.
-        // BWAVE-CYC T1: extracted helpers for UpdateButtonColors.
-        // ApplyCopyToggleBackground: sets copy toggle button background. CCN=2.
-        private void ApplyCopyToggleBackground()
+        private void UpdateButtonColors(bool hasPosition, bool hasEntries)
         {
             if (_copyToggleBtn2 != null)
                 _copyToggleBtn2.Background = _copyEnabled ? BrushActive : BrushInactive;
-        }
-
-        // ApplyPositionButtons: sets flatten/cancel/trim backgrounds based on position/entries. CCN=5.
-        private void ApplyPositionButtons(bool hasPosition, bool hasEntries)
-        {
             if (_flattenBtn2 != null)
                 _flattenBtn2.Background = hasPosition ? BrushDanger : BrushInactive;
             if (_cancelBtn2 != null)
                 _cancelBtn2.Background = hasEntries ? BrushDanger : BrushInactive;
             if (_trimBtn2 != null)
                 _trimBtn2.Background = hasPosition ? BrushCaution : BrushInactive;
-        }
-
-        // ApplyButtonBackgrounds: sets Background on the 4 control buttons. CCN=3.
-        private void ApplyButtonBackgrounds(bool hasPosition, bool hasEntries)
-        {
-            ApplyCopyToggleBackground();
-            ApplyPositionButtons(hasPosition, hasEntries);
-        }
-
-        // HOTFIX-F3: reset per-chart BE state when position goes flat. CCN=3.
-        private void ResetBeStateOnFlat(bool hasPosition)
-        {
-            if (!hasPosition && _beState != BeState.Idle)
+            if (!hasPosition && _beState != BeState.Idle) // HOTFIX-F3: reset per-chart BE on flat
             {
                 _beState = BeState.Idle;
                 UpdateBeVisuals(BeState.Idle);
+                // HOTFIX-FLAT-DISARM: disarm pending BE slot when position closes while armed.
                 if (_leaderAccount != null)
                     CopyEngine.Instance.DisarmPendingBe(_leaderAccount);
             }
-        }
-
-        // HOTFIX-BEALL-FLAT-RESET: disarm BE ALL when position goes flat. CCN=3.
-        private void DisarmBeAllOnFlat(bool hasPosition)
-        {
+            // HOTFIX-BEALL-FLAT-RESET: BE ALL visual reset is INDEPENDENT of _beState.
+            // _beState tracks the per-chart BE button only. When user armed BE ALL but NOT the
+            // per-chart BE button, _beState == Idle -> HOTFIX-F3 gate is false -> BE ALL stays
+            // amber after flat. Fix: check IsPendingSlotsEmpty independently on every flat event.
+            // Safe because UpdateButtonColors(hasPos=false) only fires via TryFirePositionState
+            // (Filled/PartFilled only, post-Gate-2.5) -- NOT on ATM bracket cancel noise.
             if (!hasPosition && !CopyEngine.Instance.IsPendingSlotsEmpty())
             {
                 if (_leaderAccount != null)
                     CopyEngine.Instance.DisarmPendingBe(_leaderAccount);
-                CopyEngine.Instance.RaiseBeAllDisarmed();
+                CopyEngine.Instance.RaiseBeAllDisarmed(); // notify all panels unconditionally
             }
-        }
-
-        // HOTFIX-ORPHAN-STOP-CLEANUP: cancel orphan QX brackets when position goes flat. CCN=2.
-        private void CancelOrphanBracketsOnFlat(bool hasPosition)
-        {
+            // HOTFIX-ORPHAN-STOP-CLEANUP: cancel any PTT-BE-*/PTT-QX-* orders that survived
+            // a manual position close. NT8 does NOT auto-cancel AddOn orders when user clicks
+            // Chart Trader X or issues a Close order -- orphaned PTT-BE-Stop-N orders remain
+            // Working and can fill on the next trade. CancelQxBrackets covers PTT-BE-* and
+            // PTT-QX-* prefixes via IsQxCancelCandidate. Safe: CancelQxBrackets is a no-op
+            // when no such orders exist (stale.Count==0 early return in CopyEngine.cs line 517).
             if (!hasPosition && _leaderAccount != null && _instrument != null)
                 CopyEngine.Instance.CancelQxBrackets(_leaderAccount, _instrument);
-        }
-
-        // UpdateButtonColors after extraction. CCN=5: base(1) + 4 unconditional calls = 1; the
-        // original ApplyButtonBackgrounds has 4 null-guard branches counted here as callee.
-        // Actual parent CYC = 1 (all calls unconditional). Conservative target = 5.
-        private void UpdateButtonColors(bool hasPosition, bool hasEntries)
-        {
-            ApplyButtonBackgrounds(hasPosition, hasEntries);
-            ResetBeStateOnFlat(hasPosition);
-            DisarmBeAllOnFlat(hasPosition);
-            CancelOrphanBracketsOnFlat(hasPosition);
         }
 
         // CYC=1: single null+instrument filter guard.
@@ -736,12 +692,16 @@ namespace PropTraderTools
             );
         }
 
-        // BWAVE-CYC T1: extracted helpers for OnLoaded. CCN of each <= 7.
-
-        // PopulateFollowerItems: clears and repopulates _followerItems from Account.All. CCN=4.
-        // SAFE: called on UI thread from OnLoaded (Account.All available in Loaded handlers per NT8-021).
-        private void PopulateFollowerItems()
+        // -- private: deferred account population ---------------------------------
+        private void OnLoaded(object sender, RoutedEventArgs e)
         {
+            Loaded -= OnLoaded;
+            _engine.PositionStateChanged += OnPositionStateChanged;
+            _engine.PendingBeFired += OnPendingBeFiredDispatch;
+            _engine.PendingBeArmed += OnPendingBeArmedDispatch; // HOTFIX-BEALL-SYNC-01
+            _engine.GlobalBeBufferChanged += OnGlobalBeBufferChanged; // HOTFIX-BEALL-BUFFER-SYNC-01
+            _engine.GlobalQuickAllBufferChanged += OnQuickAllBufferChanged; // HOTFIX-QUICKALL-SINGLETON-01
+            _engine.GlobalBeAllDisarmed += OnGlobalBeAllDisarmed; // HOTFIX-BEALL-DISARM-SYNC-01
             _followerItems.Clear();
             if (Account.All == null)
                 return;
@@ -751,75 +711,42 @@ namespace PropTraderTools
                 acc.AccountItemUpdate += OnAccountItemUpdate;
             }
             if (_followersDropDown != null)
-                _followersDropDown.ItemsSource = _followerItems;
+                _followersDropDown.ItemsSource = _followerItems; // kept; harmless on non-visual ComboBox
             UpdateDropDownHeader();
-            LoadFollowers();
-            _engine.LoadRules();
-        }
+            LoadFollowers(); // B47 T1-B: populate inline ScrollViewer rows
+            _engine.LoadRules(); // DW-B98-C: restore rules + _isCopyEnabled from XML on panel path (Account.All populated above)
 
-        // RestoreSavedFollowers: restores IsSelected state from persisted follower names. CCN=5.
-        private void RestoreSavedFollowers()
-        {
-            if (_instrument == null || _leaderAccount == null)
-                return;
-            var saved = _engine.GetSavedFollowerNames(_instrument.FullName, _leaderAccount.Name);
-            if (saved.Count > 0)
+            // HOTFIX-B67-CHECKBOX-RESTORE: after LoadRules, engine _rules already contain the
+            // persisted follower list. Restore IsSelected on matching _followerItems so that
+            // the first TryAutoApply (checkbox toggle) does not wipe a valid restored rule.
+            // CYC cost: +0 (straight-line, no branch beyond the foreach).
+            // Must run AFTER LoadFollowers() (rows exist) and BEFORE TryAutoApply is triggered.
+            if (_instrument != null && _leaderAccount != null)
             {
-                foreach (var item in _followerItems)
-                    if (item.Account != null && saved.Contains(item.Account.Name))
-                        item.IsSelected = true;
-                SortFollowerRows();
-                TryAutoApply();
+                var saved = _engine.GetSavedFollowerNames(
+                    _instrument.FullName,
+                    _leaderAccount.Name
+                );
+                if (saved.Count > 0)
+                {
+                    foreach (var item in _followerItems)
+                        if (item.Account != null && saved.Contains(item.Account.Name))
+                            item.IsSelected = true;
+                    SortFollowerRows(); // re-sort so checked rows float to top
+                    TryAutoApply(); // re-register live rule with restored followers
+                }
             }
-        }
 
-        // ApplyModuleLicenses: sets enabled state on each module from license bools. CCN=3.
-        // BWAVE-CYC T1: dictionary approach replaces switch-over-5-cases (was CCN=7, now CCN=3).
-        // Func<TradeCopierPanel, bool> reads license bool from the panel instance. Safe on UI thread.
-        private static bool GetIsBeLicensed(TradeCopierPanel p) => p.IsBeLicensed;
-        private static bool GetIsTrimLicensed(TradeCopierPanel p) => p.IsTrimLicensed;
-        private static bool GetIsFlattenLicensed(TradeCopierPanel p) => p.IsFlattenLicensed;
-        private static bool GetIsCancelLicensed(TradeCopierPanel p) => p.IsCancelLicensed;
-        private static bool GetIsCopierLicensed(TradeCopierPanel p) => p.IsCopierLicensed;
-
-        private static readonly System.Collections.Generic.Dictionary<string, Func<TradeCopierPanel, bool>> _licenseMap =
-            new System.Collections.Generic.Dictionary<string, Func<TradeCopierPanel, bool>>
-            {
-                { "BE",     GetIsBeLicensed },
-                { "TRIM",   GetIsTrimLicensed },
-                { "FLAT",   GetIsFlattenLicensed },
-                { "CANCEL", GetIsCancelLicensed },
-                { "COPY",   GetIsCopierLicensed },
-            };
-
-        private void ApplyModuleLicenses()
-        {
-            foreach (IPttModule m in _modules)
-            {
-                if (_licenseMap.TryGetValue(m.ModuleId, out var fn))
-                    m.SetEnabled(fn(this));
-            }
-        }
-
-        // -- private: deferred account population ---------------------------------
-        // OnLoaded after extraction. CCN=7.
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            Loaded -= OnLoaded;
-            _engine.PositionStateChanged += OnPositionStateChanged;
-            _engine.PendingBeFired += OnPendingBeFiredDispatch;
-            _engine.PendingBeArmed += OnPendingBeArmedDispatch;
-            _engine.GlobalBeBufferChanged += OnGlobalBeBufferChanged;
-            _engine.GlobalQuickAllBufferChanged += OnQuickAllBufferChanged;
-            _engine.GlobalBeAllDisarmed += OnGlobalBeAllDisarmed;
-            PopulateFollowerItems();
-            RestoreSavedFollowers();
+            // B13 T2: push initial panel values to AtrSizingEngine at startup.
+            // CopyEngine.UpdateAtrFraction / UpdateMaxRisk are null-guarded;
+            // if _atrEngine is null (not yet attached) they are silent no-ops.
             NotifyRiskChanged();
             NotifyAtrFractionChanged();
             _engine.CopyEnabledChanged += OnCopyEnabledChanged;
-            ApplyCopyState(_engine.IsEnabled);
+            ApplyCopyState(_engine.IsEnabled); // B54: snap to current engine truth on surface create/F5
 
             // B33 T7 -- Build AllAccounts (leader + followers) for IPttHostContext.
+            // Must be done here (UI thread, after Account.All is available) per NT8-021.
             _allAccounts.Clear();
             if (_leaderAccount != null)
                 _allAccounts.Add(_leaderAccount);
@@ -837,8 +764,29 @@ namespace PropTraderTools
             foreach (IPttModule m in _modules)
                 m.Initialize(this);
 
-            ApplyModuleLicenses();
-            _engine.Subscribe();
+            // B33 T7 -- Wire license bools to module enabled state via IPttModule.SetEnabled().
+            foreach (IPttModule m in _modules)
+            {
+                switch (m.ModuleId)
+                {
+                    case "BE":
+                        m.SetEnabled(IsBeLicensed);
+                        break;
+                    case "TRIM":
+                        m.SetEnabled(IsTrimLicensed);
+                        break;
+                    case "FLAT":
+                        m.SetEnabled(IsFlattenLicensed);
+                        break;
+                    case "CANCEL":
+                        m.SetEnabled(IsCancelLicensed);
+                        break;
+                    case "COPY":
+                        m.SetEnabled(IsCopierLicensed);
+                        break;
+                }
+            }
+            _engine.Subscribe(); // B44: wire order stream to CopyEngine (panel path)
 
             // B41: Site 3 -- initial display sync after panel wires up.
             if (_leaderAccount != null)
@@ -875,14 +823,29 @@ namespace PropTraderTools
         // -- UI construction -------------------------------------------------------
         // B12 T1: restructured -- rows wrapped in _contentPanel; buffered buttons at [4.0];
         //         old 4-column actionGrid and dead toggle buttons removed.
-        // R3: Extracted from BuildUI to eliminate Large Method warning (77 LoC -> ~25 LoC).
-        // CYC=1 (straight-line construction, no branches).
         private void BuildUI()
         {
             var root = new StackPanel { Margin = new Thickness(2) };
 
-            // B47 T1-B: construct follower scroll section fields (no visual-tree insertion here).
-            BuildFollowerScrollSection();
+            // B47 T1-B: _followersDropDown kept as field (ItemsSource still set in OnLoaded for compat)
+            // but NOT added to visual tree (replaced by _followerScrollViewer inline panel).
+            _followersDropDown = new ComboBox { IsEditable = false, Text = "0 selected" };
+            _followersDropDown.ItemTemplate = BuildCheckItemTemplate();
+
+            // B47 T1-B: Inline ScrollViewer replacing ComboBox in visual tree.
+            _followerScrollViewerPanel = new StackPanel();
+            _followerScrollViewer = new ScrollViewer
+            {
+                MaxHeight = 66,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = _followerScrollViewerPanel,
+                Margin = new Thickness(0, 0, 0, 2),
+            };
+            // *** T1-B IMPLEMENTATION NOTE -- DO NOT ADD _followerScrollViewer TO root HERE ***
+            // _followerScrollViewer enters the visual tree ONLY via BuildCopierSection(root) in T6-B.
+            // Adding it here would cause WPF InvalidOperationException ("Element is already the child
+            // of another element") when T6-B subsequently calls BuildCopierSection which adds it again.
+            // T1-B scope: construct + populate only. Visual tree insertion: T6-B exclusively.
 
             // Apply button: HIDDEN (Visibility.Collapsed). Event handler OnApplyRule stays wired.
             var applyBtn = new Button
@@ -911,51 +874,10 @@ namespace PropTraderTools
             // B47 T6-B: do NOT add _statusText to _contentPanel here.
             // It is added to root after BuildCopierSection (see tail of BuildUI).
 
-            BuildClickTraderRow(_contentPanel); // B9 T2: Click Trader row
-            _contentPanel.Children.Add(BuildTightenRow()); // B10 T3: Tighten Stop cluster
-            BuildRiskAtrRow(_contentPanel); // B12 T3: Risk $ + ATR % spinner row
+            // B9 T2: Click Trader row
+            BuildClickTraderRow(_contentPanel);
 
-            // B49: Buttons first (BE/Quick rows), then Copier, then Position Tools.
-            root.Children.Add(_beRowPanel);
-            BuildInstrRow(); // B128: build instrument row before adding to root
-            root.Children.Add(_instrRowPanel);
-            root.Children.Add(_quickRowPanel);
-            BuildCopierSection(root); // B49: Copier second (Mode row now inside)
-            root.Children.Add(_statusText); // status below Copier
-            BuildCollapsibleHeader(root); // B49: Position Tools moved to bottom
-            root.Children.Add(_contentPanel); // B49: contentPanel follows its header
-            Content = root;
-
-            UpdateButtonColors(false, false); // V04: ensure consistent initial state
-        }
-
-        // R3 helper: constructs _followersDropDown, _followerScrollViewerPanel, _followerScrollViewer.
-        // *** DO NOT add _followerScrollViewer to any visual tree here. ***
-        // It enters the tree ONLY via BuildCopierSection(root) in T6-B. Adding it here would cause
-        // WPF InvalidOperationException ("Element is already the child of another element").
-        // CYC=1 (straight-line construction, no branches).
-        private void BuildFollowerScrollSection()
-        {
-            // B47 T1-B: _followersDropDown kept as field (ItemsSource set in OnLoaded for compat).
-            _followersDropDown = new ComboBox { IsEditable = false, Text = "0 selected" };
-            _followersDropDown.ItemTemplate = BuildCheckItemTemplate();
-
-            // B47 T1-B: Inline ScrollViewer replacing ComboBox in visual tree.
-            _followerScrollViewerPanel = new StackPanel();
-            _followerScrollViewer = new ScrollViewer
-            {
-                MaxHeight = 66,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Content = _followerScrollViewerPanel,
-                Margin = new Thickness(0, 0, 0, 2),
-            };
-        }
-
-        // R3 helper: constructs the Tighten Stop cluster (button + ticks TextBox + label).
-        // Returns the StackPanel with Visibility=Collapsed (B47 T5-B: hidden, not deleted).
-        // CYC=1 (straight-line construction, no branches).
-        private StackPanel BuildTightenRow()
-        {
+            // B10 T3: Tighten Stop cluster (button + ticks TextBox)
             var tightenRow = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -981,12 +903,32 @@ namespace PropTraderTools
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(2, 0, 0, 0),
             };
-            tightenLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
+            tightenLabel.SetResourceReference(
+                TextBlock.ForegroundProperty,
+                "NTBrushes.SubtleBrush"
+            );
             tightenRow.Children.Add(_tightenBtn);
             tightenRow.Children.Add(_tightenTicksBox);
             tightenRow.Children.Add(tightenLabel);
+            _contentPanel.Children.Add(tightenRow);
             tightenRow.Visibility = Visibility.Collapsed; // B47 T5-B: HIDE NOT DELETE
-            return tightenRow;
+
+            // B12 T3: Risk $ + ATR % spinner row (last row in _contentPanel)
+            BuildRiskAtrRow(_contentPanel);
+
+            // B49: Buttons first (BE/Quick rows), then Copier, then Position Tools.
+            root.Children.Add(_beRowPanel); // B49: moved from tail -- buttons first
+            BuildInstrRow(); // B128: build instrument row before adding to root
+            root.Children.Add(_instrRowPanel); // B128: instrument-scoped row above Quick row
+            root.Children.Add(_quickRowPanel); // B49: moved from tail -- buttons first
+            BuildCopierSection(root); // B49: Copier second (Mode row now inside)
+            root.Children.Add(_statusText); // status below Copier
+            BuildCollapsibleHeader(root); // B49: Position Tools moved to bottom
+            root.Children.Add(_contentPanel); // B49: contentPanel follows its header
+            Content = root;
+
+            // V04: ensure consistent initial state
+            UpdateButtonColors(false, false);
         }
 
         // B9 T2: Appends [Buy] [Sell] toggle pair and [Arm] button row to root StackPanel.
@@ -1133,49 +1075,261 @@ namespace PropTraderTools
         // _beRowPanel: UniformGrid 2-col [BE | BE ALL]. NOT added to root here (T6-B does that).
         // _quickRowPanel: UniformGrid 2-col [Quick | Quick ALL+spinner]. NOT added to root here.
         // _quickT3Row: kept Collapsed (B41 logic unchanged).
-        // R11: data-driven loop replaces 6 structurally-identical section-builder methods.
-        // Eliminates Code Duplication cluster (CodeScene L1212-L1282) and reduces function count by 6.
-        // CYC: base(1) + foreach(1) = 2.
+        // CYC=1 (no conditional branches in construction).
         private void BuildBufferedButtonsRow(StackPanel root)
         {
+            // Row 1: Trim | Flatten -- HIDDEN (Visibility.Collapsed). Event handlers preserved.
             var row1 = new UniformGrid
             {
                 Columns = 2,
                 Margin = new Thickness(0, 2, 0, 2),
                 Visibility = Visibility.Collapsed,
             };
+
+            // Col 0: Trim cluster
+            var trimCluster = new DockPanel { LastChildFill = true };
+            var trimArrows = new Grid();
+            trimArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            trimArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var trimUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var trimDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
+            trimUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            trimDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            trimUp.Click += OnTrimUp;
+            trimDn.Click += OnTrimDown;
+            Grid.SetRow(trimUp, 0);
+            Grid.SetRow(trimDn, 1);
+            trimArrows.Children.Add(trimUp);
+            trimArrows.Children.Add(trimDn);
+            DockPanel.SetDock(trimArrows, Dock.Right);
+            _trimBtn2 = new Button
+            {
+                Content = FormatBuffer("Trim", _trimBuffer),
+                Background = BrushInactive,
+            };
+            _trimBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _trimBtn2.Click += OnTrimClick;
+            trimCluster.Children.Add(trimArrows);
+            trimCluster.Children.Add(_trimBtn2);
+            row1.Children.Add(trimCluster);
+
+            // Col 1: Flatten cluster
+            var flatCluster = new DockPanel { LastChildFill = true };
+            var flatArrows = new Grid();
+            flatArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            flatArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var flatUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var flatDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
+            flatUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            flatDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            flatUp.Click += OnFlattenUp;
+            flatDn.Click += OnFlattenDown;
+            Grid.SetRow(flatUp, 0);
+            Grid.SetRow(flatDn, 1);
+            flatArrows.Children.Add(flatUp);
+            flatArrows.Children.Add(flatDn);
+            DockPanel.SetDock(flatArrows, Dock.Right);
+            _flattenBtn2 = new Button
+            {
+                Content = FormatBuffer("Flatten", _flattenBuffer),
+                Background = BrushInactive,
+            };
+            _flattenBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _flattenBtn2.Click += OnFlattenClick;
+            flatCluster.Children.Add(flatArrows);
+            flatCluster.Children.Add(_flattenBtn2);
+            row1.Children.Add(flatCluster);
+
+            root.Children.Add(row1); // in tree but collapsed
+
+            // _beRowPanel: 2-col [BE cluster | BE ALL cluster]
             _beRowPanel = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 2) };
+
+            // BE cluster
+            var beCluster = new DockPanel { LastChildFill = true };
+            var beArrows = new Grid();
+            beArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            beArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var beUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var beDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
+            beUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            beDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            beUp.Click += OnBeUp;
+            beDn.Click += OnBeDown;
+            Grid.SetRow(beUp, 0);
+            Grid.SetRow(beDn, 1);
+            beArrows.Children.Add(beUp);
+            beArrows.Children.Add(beDn);
+            DockPanel.SetDock(beArrows, Dock.Right);
+            _beBtn2 = new Button
+            {
+                Content = FormatBuffer("BE", _beBuffer),
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
+            };
+            _beBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _beBtn2.Click += OnBeClick;
+            beCluster.Children.Add(beArrows);
+            beCluster.Children.Add(_beBtn2);
+            _beRowPanel.Children.Add(beCluster);
+
+            // BE ALL cluster
+            var globalBeCluster = new DockPanel { LastChildFill = true };
+            var globalBeArrows = new Grid();
+            globalBeArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            globalBeArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var globalBeUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var globalBeDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
+            globalBeUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            globalBeDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            globalBeUp.Click += OnGlobalBeUp;
+            globalBeDn.Click += OnGlobalBeDown;
+            Grid.SetRow(globalBeUp, 0);
+            Grid.SetRow(globalBeDn, 1);
+            globalBeArrows.Children.Add(globalBeUp);
+            globalBeArrows.Children.Add(globalBeDn);
+            DockPanel.SetDock(globalBeArrows, Dock.Right);
+            _globalBeBtn2 = new Button
+            {
+                Content = FormatGlobalBeBuffer(
+                    "BE ALL",
+                    CopyEngine.Instance.GlobalBe.GlobalBeBuffer
+                ),
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
+            };
+            _globalBeBtn2.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _globalBeBtn2.Click += OnGlobalBeClick;
+            globalBeCluster.Children.Add(globalBeArrows);
+            globalBeCluster.Children.Add(_globalBeBtn2);
+            _beRowPanel.Children.Add(globalBeCluster);
             // NOTE: _beRowPanel is NOT added to root here. T6-B adds it to root after BuildCopierSection.
+
+            // _quickRowPanel: 2-col [Quick cluster | Quick ALL cluster]
             _quickRowPanel = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 2) };
+
+            // Quick cluster
+            var quickCluster = new DockPanel { LastChildFill = true };
+            var quickArrows = new Grid();
+            quickArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            quickArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var quickUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var quickDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
+            quickUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            quickDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            quickUp.Click += OnQuickUp;
+            quickDn.Click += OnQuickDown;
+            Grid.SetRow(quickUp, 0);
+            Grid.SetRow(quickDn, 1);
+            quickArrows.Children.Add(quickUp);
+            quickArrows.Children.Add(quickDn);
+            DockPanel.SetDock(quickArrows, Dock.Right);
+            _quickBtn = new Button
+            {
+                Content = FormatBuffer("Quick", _quickT1),
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
+            };
+            _quickBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _quickBtn.Click += OnQuickClick;
+            quickCluster.Children.Add(quickArrows);
+            quickCluster.Children.Add(_quickBtn);
+            _quickRowPanel.Children.Add(quickCluster);
+
+            // Quick ALL cluster (new: DockPanel with spinners; was full-width plain button)
+            var quickAllCluster = new DockPanel { LastChildFill = true };
+            var quickAllArrows = new Grid();
+            quickAllArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            quickAllArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var quickAllUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Width = 18,
+                Height = 12,
+            };
+            var quickAllDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Width = 18,
+                Height = 12,
+            };
+            quickAllUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            quickAllDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            quickAllUp.Click += OnQuickAllUp;
+            quickAllDn.Click += OnQuickAllDown;
+            Grid.SetRow(quickAllUp, 0);
+            Grid.SetRow(quickAllDn, 1);
+            quickAllArrows.Children.Add(quickAllUp);
+            quickAllArrows.Children.Add(quickAllDn);
+            DockPanel.SetDock(quickAllArrows, Dock.Right);
+            _quickAllBtn = new Button
+            {
+                Content = FormatBuffer("Quick ALL", CopyEngine.Instance.GlobalQuickAllT1),
+                BorderBrush = BrushTeal,
+                Foreground = BrushTeal,
+                BorderThickness = new Thickness(2),
+            };
+            _quickAllBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            _quickAllBtn.Click += OnQuickAllClick;
+            quickAllCluster.Children.Add(quickAllArrows);
+            quickAllCluster.Children.Add(_quickAllBtn);
+            _quickRowPanel.Children.Add(quickAllCluster);
             // NOTE: _quickRowPanel is NOT added to root here. T6-B adds it to root.
 
-            var specs = new (
-                string Content,
-                System.Windows.Media.Brush Bg,
-                bool Teal,
-                RoutedEventHandler Up,
-                RoutedEventHandler Dn,
-                RoutedEventHandler Main,
-                System.Action<Button> Store,
-                Panel Target
-            )[]
-            {
-                (FormatBuffer("Trim",    _trimBuffer),                                        BrushInactive, false, OnTrimUp,     OnTrimDown,     OnTrimClick,     b => _trimBtn2     = b, row1),
-                (FormatBuffer("Flatten", _flattenBuffer),                                     BrushInactive, false, OnFlattenUp,  OnFlattenDown,  OnFlattenClick,  b => _flattenBtn2  = b, row1),
-                (FormatBuffer("BE",      _beBuffer),                                          BrushInactive, true,  OnBeUp,       OnBeDown,       OnBeClick,       b => _beBtn2       = b, _beRowPanel),
-                (FormatGlobalBeBuffer("BE ALL", CopyEngine.Instance.GlobalBe.GlobalBeBuffer), BrushInactive, true,  OnGlobalBeUp, OnGlobalBeDown, OnGlobalBeClick, b => _globalBeBtn2 = b, _beRowPanel),
-                (FormatBuffer("Quick",   _quickT1),                                           BrushInactive, true,  OnQuickUp,    OnQuickDown,    OnQuickClick,    b => _quickBtn     = b, _quickRowPanel),
-                (FormatBuffer("Quick ALL", CopyEngine.Instance.GlobalQuickAllT1),             BrushInactive, true,  OnQuickAllUp, OnQuickAllDown, OnQuickAllClick, b => _quickAllBtn  = b, _quickRowPanel),
-            };
-            foreach (var s in specs)
-            {
-                var (cluster, btn) = BuildArrowCluster(s.Content, s.Bg, s.Teal, s.Up, s.Dn, s.Main);
-                s.Store(btn);
-                s.Target.Children.Add(cluster);
-            }
-
-            root.Children.Add(row1);
-
+            // _quickT3Row: kept hidden (B41 logic unchanged)
             _quickT3Row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -1191,57 +1345,6 @@ namespace PropTraderTools
             quickT3Lbl.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
             _quickT3Row.Children.Add(quickT3Lbl);
             root.Children.Add(_quickT3Row);
-        }
-
-        // R2: BuildArrowCluster -- shared DockPanel+Grid+arrows+mainButton factory.
-        // CYC=2: base(1) + useTealBorder(1).
-        // Static: no instance state. All params are primitives or delegate refs.
-        // JS-021: no lock. JS-033: no async. NT8: SetResourceReference is UI-thread-safe.
-        private static (DockPanel cluster, Button mainBtn) BuildArrowCluster(
-            string mainContent,
-            System.Windows.Media.Brush mainBackground,
-            bool useTealBorder,
-            RoutedEventHandler upClick,
-            RoutedEventHandler downClick,
-            RoutedEventHandler mainClick)
-        {
-            var cluster = new DockPanel { LastChildFill = true };
-            var arrows = new Grid();
-            arrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            arrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var up = new System.Windows.Controls.Primitives.RepeatButton
-            {
-                Content = "\u25B2",
-                Width = 18,
-                Height = 12,
-            };
-            var dn = new System.Windows.Controls.Primitives.RepeatButton
-            {
-                Content = "\u25BC",
-                Width = 18,
-                Height = 12,
-            };
-            up.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            dn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            up.Click += upClick;
-            dn.Click += downClick;
-            Grid.SetRow(up, 0);
-            Grid.SetRow(dn, 1);
-            arrows.Children.Add(up);
-            arrows.Children.Add(dn);
-            DockPanel.SetDock(arrows, Dock.Right);
-            var btn = new Button { Content = mainContent, Background = mainBackground };
-            if (useTealBorder)
-            {
-                btn.BorderBrush = BrushTeal;
-                btn.Foreground = BrushTeal;
-                btn.BorderThickness = new Thickness(2);
-            }
-            btn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            btn.Click += mainClick;
-            cluster.Children.Add(arrows);
-            cluster.Children.Add(btn);
-            return (cluster, btn);
         }
 
         // B129: BuildInstrRow -- 2-col UniformGrid: "Quick2t" (left) + "QAll2t" (right).
@@ -1372,30 +1475,21 @@ namespace PropTraderTools
                 _trimBtn2.Content = FormatBuffer("Trim", _trimBuffer);
         }
 
-        // R7 -- LogAndDispatchModule: shared guard+log+dispatch helper for Trim/Flatten/Cancel click handlers.
-        // CYC=2: (1) _instrument null guard, (2) ?? late-resolve expression.
-        // MUST only be called from UI-thread Click handlers (no Dispatcher needed -- already on UI thread).
-        // JS-021: no lock. JS-002: no return null. JS-033: not async void.
-        private void LogAndDispatchModule(string logTag, string moduleId)
+        // B33 T7 -- OnTrimClick: dispatches to PttTrim module. CYC=2.
+        // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
+        private void OnTrimClick(object sender, RoutedEventArgs e)
         {
             if (_instrument == null)
                 return; // (1)
-            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // (2)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B30-B
             NinjaTrader.Code.Output.Process(
-                logTag + " button: "
+                "[TRIM] button: "
                     + (_leaderAccount?.Name ?? "null")
                     + " "
                     + (_instrument?.FullName ?? "null"),
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1
             );
-            DispatchModule(moduleId);
-        }
-
-        // B33 T7 -- OnTrimClick: dispatches to PttTrim module. CYC=1 (R7 dedup).
-        // B30-B: leader resolved late via LogAndDispatchModule (DW-B30-03).
-        private void OnTrimClick(object sender, RoutedEventArgs e)
-        {
-            LogAndDispatchModule("[TRIM]", "TRIM");
+            DispatchModule("TRIM"); // (2)
         }
 
         // B12 T1 -- OnFlattenUp: increment _flattenBuffer, clamp, update label. CYC=1.
@@ -1414,11 +1508,21 @@ namespace PropTraderTools
                 _flattenBtn2.Content = FormatBuffer("Flatten", _flattenBuffer);
         }
 
-        // B33 T7 -- OnFlattenClick: dispatches to PttFlatten module. CYC=1 (R7 dedup).
-        // B30-B: leader resolved late via LogAndDispatchModule (DW-B30-03).
+        // B33 T7 -- OnFlattenClick: dispatches to PttFlatten module. CYC=2.
+        // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnFlattenClick(object sender, RoutedEventArgs e)
         {
-            LogAndDispatchModule("[FLAT]", "FLAT");
+            if (_instrument == null)
+                return; // (1)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B30-B
+            NinjaTrader.Code.Output.Process(
+                "[FLAT] button: "
+                    + (_leaderAccount?.Name ?? "null")
+                    + " "
+                    + (_instrument?.FullName ?? "null"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            DispatchModule("FLAT"); // (2)
         }
 
         // B12 T1 -- OnBeUp: increment _beBuffer, clamp. CYC=1.
@@ -1490,40 +1594,25 @@ namespace PropTraderTools
             }
         }
 
-        // BWAVE-CYC T4: extracted helpers for IsPriceAlreadyAtBe.
-
-        // ComputeBeTargetPrice: computes break-even target price. CCN=2.
-        private static double ComputeBeTargetPrice(
-            double avgPrice,
-            bool isLong,
-            int bufferTicks,
-            double tickSize
-        )
-        {
-            return avgPrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
-        }
-
-        // IsPriceAtOrPastTarget: compares ref price vs target for long/short. CCN=2.
-        private static bool IsPriceAtOrPastTarget(bool isLong, double refPx, double targetPx)
-        {
-            return isLong ? (refPx >= targetPx) : (refPx <= targetPx);
-        }
-
-        // IsPriceAlreadyAtBe after extraction. CCN=5.
+        // B32 -- IsPriceAlreadyAtBe: true if current market price has already crossed
+        // the BE target level so we fire immediately rather than arming a watcher.
+        // Long:  bid >= entry + buffer*tick
+        // Short: ask <= entry - buffer*tick
+        // CYC=4: pos null(1), tickSize guard(2), refPx guard(3), long/short compare(4).
         private bool IsPriceAlreadyAtBe(Account leader, Instrument instrument, int bufferTicks)
         {
             var pos = _engine.FindPositionPublic(leader, instrument);
             if (pos == null)
-                return false;
+                return false; // (1)
             double tickSize = instrument?.MasterInstrument?.TickSize ?? 0.0;
             if (tickSize <= 0.0)
-                return false;
+                return false; // (2)
             bool isLong = pos.MarketPosition == NinjaTrader.Cbi.MarketPosition.Long;
+            double target = pos.AveragePrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
             double refPx = isLong ? GetBid() : GetAsk();
             if (refPx <= 0.0)
-                return false;
-            double target = ComputeBeTargetPrice(pos.AveragePrice, isLong, bufferTicks, tickSize);
-            return IsPriceAtOrPastTarget(isLong, refPx, target);
+                return false; // (3)
+            return isLong ? (refPx >= target) : (refPx <= target); // (4)
         }
 
         // B12 T1 -- UpdateBeLabel: sets _beBtn2 label. CYC=1.
@@ -1633,11 +1722,21 @@ namespace PropTraderTools
             ApplyCopyState(enabled);
         }
 
-        // B33 T7 -- OnCancel2: dispatches to PttCancel module. CYC=1 (R7 dedup).
-        // B30-B: leader resolved late via LogAndDispatchModule (DW-B30-03).
+        // B33 T7 -- OnCancel2: dispatches to PttCancel module. CYC=2.
+        // B30-B: leader resolved late via _leaderAccount ?? TryResolveLeaderAccount() (DW-B30-03).
         private void OnCancel2(object sender, RoutedEventArgs e)
         {
-            LogAndDispatchModule("[CANCEL]", "CANCEL");
+            if (_instrument == null)
+                return; // (1)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B30-B
+            NinjaTrader.Code.Output.Process(
+                "[CANCEL] button: "
+                    + (_leaderAccount?.Name ?? "null")
+                    + " "
+                    + (_instrument?.FullName ?? "null"),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            DispatchModule("CANCEL"); // (2)
         }
 
         // B12 T2 -- BuildCollapsibleHeader: builds collapse header row. CYC=1.
@@ -1841,42 +1940,25 @@ namespace PropTraderTools
                 _quickBtn.Content = FormatBuffer("Quick", _quickT1); // (2)
         }
 
-        // R9: TryResolve2TargetContext -- shared guard + position-resolve helper for 2-target exit handlers.
-        // Eliminates code duplication between OnInstr2tClick and OnInstrQAll2tClick (CodeScene L1998/L2030).
-        // MUST only be called on UI thread (accesses Account.Positions).
-        // JS-002: out params always assigned; targets sentinel = empty list (never null).
-        // JS-021: no lock. ASCII-only.
-        // CYC=4: (1)_instrument null, (2)_leaderAccount null after re-resolve, (3)FirstOrDefault lambda, (4)?? coalesce.
-        private bool TryResolve2TargetContext(
-            out int qty,
-            out List<(double Price, int Qty)> targets
-        )
+        // B129: OnInstr2tClick -- fires 2-target bracket exit on _leaderAccount + _instrument only.
+        // Builds a 2-entry targets list (T1=ceiling, T2=floor). Calls PttQuickExit.Execute 7-arg
+        // with t1Ticks=4 (fixed) and the pre-built targets list (bypasses ResolveTargetCount).
+        // CYC=4: (1)_instrument null, (2)_leaderAccount null re-resolve, (3)null after resolve, (4)FirstOrDefault lambda.
+        // JS-021: no lock. JS-033: synchronous void event handler. ASCII-only labels.
+        private void OnInstr2tClick(object sender, RoutedEventArgs e)
         {
-            qty = 0;
-            targets = new List<(double Price, int Qty)>(); // empty sentinel, never null (JS-002)
             if (_instrument == null)
-                return false; // (1)
+                return; // (1)
             _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // (2)
             if (_leaderAccount == null)
-                return false; // (2 cont.)
+                return; // (3)
             var pos = _leaderAccount.Positions.FirstOrDefault(p =>
                 p.Instrument?.FullName == _instrument.FullName
-            ); // (3)
-            qty = pos?.Quantity ?? 1; // (4)
-            targets = Build2TargetList(qty);
-            return true;
-        }
-
-        // R12: LogQxTwoTarget -- shared log helper for 2-target exit handlers.
-        // Eliminates Code Duplication between OnInstr2tClick and OnInstrQAll2tClick (CodeScene L1921/L1944).
-        // Called from UI-thread Click handlers only (after TryResolve2TargetContext returns true).
-        // JS-021: no lock. JS-002: void, no return null. ASCII-only.
-        // CYC=1: straight-line, no branches.
-        private void LogQxTwoTarget(string prefix, int qty, List<(double Price, int Qty)> targets)
-        {
+            ); // (4)
+            int qty = pos?.Quantity ?? 1;
+            var targets = Build2TargetList(qty);
             NinjaTrader.Code.Output.Process(
-                prefix
-                    + " button: "
+                "[PTT-QX-2T] button: "
                     + _leaderAccount.Name
                     + " "
                     + _instrument.FullName
@@ -1888,28 +1970,39 @@ namespace PropTraderTools
                     + targets[1].Qty,
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1
             );
+            new PttQuickExit().Execute(_leaderAccount, _instrument, 4, targets);
         }
 
-        // B129/R9: OnInstr2tClick -- fires 2-target bracket exit on _leaderAccount + _instrument only.
-        // CYC=2: (1)TryResolve2TargetContext false-path, (2)Execute call.
-        // JS-021: no lock. JS-033: synchronous void event handler. ASCII-only labels.
-        private void OnInstr2tClick(object sender, RoutedEventArgs e)
-        {
-            if (!TryResolve2TargetContext(out int qty, out var targets))
-                return; // (1)
-            LogQxTwoTarget("[PTT-QX-2T]", qty, targets);
-            new PttQuickExit().Execute(_leaderAccount, _instrument, 4, targets); // (2)
-        }
-
-        // B123/R9: OnInstrQAll2tClick -- fires global 2-target quick exit on all followers.
-        // CYC=2: (1)TryResolve2TargetContext false-path, (2)Execute call.
-        // JS-021: no lock. ASCII-only.
+        // B123 DW-B133: updated to pass forced 2-target list instead of no-arg Execute().
+        // Build2TargetList(qty) splits position qty into exactly 2 tranches (T1 heavy, T2 residual).
+        // PttGlobalQuickExit.Execute(forcedTargets) skips SnapshotTargetOrders, fires exactly 2 brackets.
+        // CYC=3: instrument null(1), leader null(2), pos null-coalesce(3). JS-021: no lock. ASCII-only.
         private void OnInstrQAll2tClick(object sender, RoutedEventArgs e)
         {
-            if (!TryResolve2TargetContext(out int qty, out var targets))
+            if (_instrument == null)
                 return; // (1)
-            LogQxTwoTarget("[PTT-QX-2T-ALL]", qty, targets);
-            new PttGlobalQuickExit().Execute(targets); // (2)
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // (2)
+            if (_leaderAccount == null)
+                return;
+            var pos = _leaderAccount.Positions.FirstOrDefault(p =>
+                p.Instrument?.FullName == _instrument.FullName
+            ); // (3)
+            int qty = pos?.Quantity ?? 1;
+            var targets = Build2TargetList(qty);
+            NinjaTrader.Code.Output.Process(
+                "[PTT-QX-2T-ALL] button: "
+                    + _leaderAccount.Name
+                    + " "
+                    + _instrument.FullName
+                    + " qty="
+                    + qty
+                    + " T1="
+                    + targets[0].Qty
+                    + " T2="
+                    + targets[1].Qty,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
+            new PttGlobalQuickExit().Execute(targets);
         }
 
         // B47 T5-B: OnQuickAllUp -- increment singleton; label refresh via broadcast. CYC=1.
@@ -1928,36 +2021,27 @@ namespace PropTraderTools
 
         // B41: RefreshQuickDisplay -- Card A: back-calc actual T1 ticks from live PTT-QX-T1 order.
         // Updates display only -- does NOT call SetQuickTicks (no persistence).
-        // BWAVE-CYC T4: ComputeT1Ticks extracted from RefreshQuickDisplay. CCN=3.
-        private static int ComputeT1Ticks(
-            bool isLong,
-            Order t1Ord,
-            double avgPrice,
-            double tickSize
-        )
-        {
-            double rawDiff = isLong
-                ? t1Ord.LimitPrice - avgPrice
-                : avgPrice - t1Ord.LimitPrice;
-            int liveT1 = (int)Math.Round(rawDiff / tickSize);
-            if (liveT1 < 1)
-                liveT1 = 1;
-            return liveT1;
-        }
-
-        // B41: RefreshQuickDisplay after extraction. CCN=6.
+        // CYC=3: t1Ord null guard(1), pos null/qty guard(2), clamp liveT1<1(3).
+        // B41: RefreshQuickDisplay -- MUST be called on UI thread (touches UI + NT8 collections).
+        // Called via Dispatcher.InvokeAsync from OnLeaderOrderUpdate / OnLeaderPositionUpdate.
         private void RefreshQuickDisplay(Account acc, Instrument instr)
         {
             var t1Ord = FindWorkingOrder(acc, instr, "PTT-QX-T1");
             if (t1Ord == null)
-                return;
+                return; // (1)
             var pos = CopyEngine.Instance?.FindPositionPublic(acc, instr);
             if (pos == null || pos.Quantity == 0)
-                return;
+                return; // (2)
             double tick = instr.MasterInstrument?.TickSize ?? 0.25;
             bool isLong = pos.MarketPosition == MarketPosition.Long;
-            _quickT1 = ComputeT1Ticks(isLong, t1Ord, pos.AveragePrice, tick);
-            _quickT2 = _quickT1 * 2;
+            double rawDiff = isLong
+                ? t1Ord.LimitPrice - pos.AveragePrice
+                : pos.AveragePrice - t1Ord.LimitPrice;
+            int liveT1 = (int)Math.Round(rawDiff / tick);
+            if (liveT1 < 1)
+                liveT1 = 1; // (3)
+            _quickT1 = liveT1;
+            _quickT2 = liveT1 * 2;
             if (_quickBtn != null)
                 _quickBtn.Content = FormatBuffer("Quick", _quickT1);
         }
@@ -2006,29 +2090,15 @@ namespace PropTraderTools
         }
 
         // B41: OnLeaderPositionUpdate -- NT8 fires on background thread; dispatch to UI thread.
-        // BWAVE-CYC T4: IsRemoveEventForMyInstrument extracted from OnLeaderPositionUpdate. CCN=4.
-        // Returns true when all conditions confirm this is a Remove event for this panel's instrument.
-        private bool IsRemoveEventForMyInstrument(PositionEventArgs e)
-        {
-            if (e.Operation != Operation.Remove)
-                return false;
-            if (e.Position?.Instrument?.FullName == null)
-                return false;
-            if (_instrument == null)
-                return false;
-            if (e.Position.Instrument.FullName != _instrument.FullName)
-                return false;
-            return true;
-        }
-
-        // OnLeaderPositionUpdate after extraction. CCN=6.
-        // Both Dispatcher.InvokeAsync calls MUST stay here (NT8 UI thread contract).
+        // CYC=2: null guard(1), instrument guard(2).
+        // HOTFIX-FLAT-MANUAL-CLOSE-01: on Operation.Remove fire flat-cleanup directly; NT8 position
+        // state is fully updated at this event (unlike order-fill time where HasOpenPosition lags).
         private void OnLeaderPositionUpdate(object sender, PositionEventArgs e)
         {
             if (e == null || e.Position == null)
-                return;
+                return; // (1)
             if (e.Position.Instrument == null)
-                return;
+                return; // (2)
             var acc = e.Position.Account;
             var instr = e.Position.Instrument;
             Dispatcher.InvokeAsync(() =>
@@ -2036,9 +2106,19 @@ namespace PropTraderTools
                 RefreshQuickDisplay(acc, instr);
                 UpdateT3Visibility(acc, instr);
             });
-            if (!IsRemoveEventForMyInstrument(e))
-                return;
-            Dispatcher.InvokeAsync(() => UpdateButtonColors(false, false));
+            // HOTFIX-FLAT-MANUAL-CLOSE-01: fire flat signal from Position.Remove event.
+            // NT8 delivers PositionUpdate(Remove) AFTER position state is fully updated
+            // (unlike order Filled events where HasOpenPosition still reads the old qty).
+            // This is the correct place to trigger UpdateButtonColors(false) for manual closes.
+            if (e.Operation != Operation.Remove)
+                return; // (1)
+            if (e.Position?.Instrument?.FullName == null)
+                return; // (2)
+            if (_instrument == null)
+                return; // (3)
+            if (e.Position.Instrument.FullName != _instrument.FullName)
+                return; // (4)
+            Dispatcher.InvokeAsync(() => UpdateButtonColors(false, false)); // (5)
         }
 
         // B47 T1-B: LoadFollowers -- build inline follower rows into _followerScrollViewerPanel.
@@ -2263,27 +2343,26 @@ namespace PropTraderTools
                     "Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name;
         }
 
-        // R6: IsAccountInFollowers -- membership check extracted from BuildAtmMap(Account[]) Bumpy Road.
-        // CYC=2: foreach(+1) + if(+1). JS-021: no lock. JS-002: no return null. Private static.
-        private static bool IsAccountInFollowers(Account account, Account[] followers)
-        {
-            foreach (var f in followers)
-                if (f == account)
-                    return true;
-            return false;
-        }
-
         // B47 T2-B: BuildAtmMap -- build Dictionary<string, FollowerAtmMode> from selected followers.
         // Extracted from OnApplyRule inline code (same logic, same format).
-        // R6: nested foreach replaced with IsAccountInFollowers helper. CYC=4. JS-021: no lock. JS-002: no return null.
+        // CYC=1: foreach loop only. JS-021: no lock. JS-002: no return null.
         private Dictionary<string, FollowerAtmMode> BuildAtmMap(Account[] followers)
         {
             var map = new Dictionary<string, FollowerAtmMode>();
-            foreach (var item in _followerItems)                                                    // +1
+            foreach (var item in _followerItems)
             {
-                if (item.Account == null) continue;                                                 // +1
-                if (!IsAccountInFollowers(item.Account, followers)) continue;                       // +1
-                map[item.Account.Name] = ParseAtmModeNameLocal(item.AtmModeName ?? "Inherit");     // ?? = +1
+                if (item.Account == null)
+                    continue;
+                bool inFollowers = false;
+                foreach (var f in followers)
+                    if (f == item.Account)
+                    {
+                        inFollowers = true;
+                        break;
+                    }
+                if (!inFollowers)
+                    continue;
+                map[item.Account.Name] = ParseAtmModeNameLocal(item.AtmModeName ?? "Inherit");
             }
             return map;
         }
@@ -2555,62 +2634,47 @@ namespace PropTraderTools
         //   Class-name guard: if .Name == "AtmStrategy" (NT8 internal class, no template staged),
         //   fall through to Fallback-1 selector. Observed 2026-08-18 session.
         //   Fallback-1: FindVisualChild<AtmStrategySelector> (in case CT build differs).
-        // BWAVE-CYC T2: extracted helpers for GetLeaderAtmTemplateName. CCN of each <= 3.
-
-        // TryGetAtmNameFromStrategy: reads AtmStrategy.Name from ChartTrader. CCN=3.
-        private static string TryGetAtmNameFromStrategy(ChartTrader ct)
-        {
-            if (ct.AtmStrategy == null)
-                return string.Empty;
-            var n = ct.AtmStrategy.Name ?? string.Empty;
-            if (n.Length > 0 && n != "AtmStrategy")
-                return n;
-            return string.Empty;
-        }
-
-        // TryGetAtmNameFromSelector: finds AtmStrategySelector and reads SelectedItem. CCN=2.
-        private static string TryGetAtmNameFromSelector(ChartTrader ct)
-        {
-            var sel =
-                TradeCopierAddOn.FindVisualChild<
-                    NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector
-                >(ct);
-            if (sel == null)
-                return string.Empty;
-            return sel.SelectedItem as string ?? string.Empty;
-        }
-
-        // TryGetAtmNameFromComboBox: finds ComboBox at index 2 and reads SelectedItem. CCN=1.
-        private static string TryGetAtmNameFromComboBox(ChartTrader ct)
-        {
-            var atmCb = TradeCopierAddOn.FindVisualChildByIndex<ComboBox>(ct, 2);
-            return atmCb?.SelectedItem as string ?? string.Empty;
-        }
-
         //   Fallback-2: FindVisualChildByIndex<ComboBox>(ct, 2) (legacy, pre-B66).
         // Returns string.Empty on any null/exception -- NEVER throws, NEVER returns null.
-        // GetLeaderAtmTemplateName after extraction. CCN=5.
+        // CYC=7: (1) chart null, (2) ChartTrader null, (3) direct AtmStrategy path,
+        //        (4) class-name guard, (5) class-name guard branch,
+        //        (6) AtmStrategySelector fallback, (7) catch. ComboBox leg is a sub-branch of (6).
         internal static string GetLeaderAtmTemplateName(Chart currentChart)
         {
             if (currentChart == null)
-                return string.Empty;
+                return string.Empty; // branch 1 -- null guard
             try
             {
                 var ct = TradeCopierAddOn.FindVisualChild<ChartTrader>(currentChart);
                 if (ct == null)
-                    return string.Empty;
-                var name = TryGetAtmNameFromStrategy(ct);
-                if (name.Length > 0)
-                    return name;
-                name = TryGetAtmNameFromSelector(ct);
-                if (name.Length > 0)
-                    return name;
-                return TryGetAtmNameFromComboBox(ct);
+                    return string.Empty; // branch 2 -- null guard
+                // Primary: ChartTrader.AtmStrategy direct property (no child walk).
+                // null when user has "None" selected -- which is correct: return empty.
+                if (ct.AtmStrategy != null) // branch 3 -- primary path
+                {
+                    var n = ct.AtmStrategy.Name ?? string.Empty;
+                    // B76 HOTFIX-B76-ATM-TPL-CLASSNAME: "AtmStrategy" is the NT8 class name returned when
+                    // no template is staged on ChartTrader -- not a user template name.
+                    // Observed live 2026-08-18: [PTT-CLONE] SetCloneAtmCache: 'AtmStrategy' (empty=False).
+                    // Fall through to AtmStrategySelector fallback to get the real template name.
+                    if (n.Length > 0 && n != "AtmStrategy") // branch 4 -- class-name guard
+                        return n;
+                }
+                // Fallback-1: AtmStrategySelector by type (covers non-standard ChartTrader builds).
+                var sel =
+                    TradeCopierAddOn.FindVisualChild<NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector>(
+                        ct
+                    );
+                if (sel != null) // branch 6 -- fallback-1
+                    return sel.SelectedItem as string ?? string.Empty;
+                // Fallback-2: original index-2 ComboBox (pre-B66 legacy path).
+                var atmCb = TradeCopierAddOn.FindVisualChildByIndex<ComboBox>(ct, 2);
+                return atmCb?.SelectedItem as string ?? string.Empty;
             }
             catch
             {
                 return string.Empty;
-            }
+            } // branch 7 -- API exception
         }
 
         // B43 T1: Walks the visual tree UPWARD from child, returning the DataContext of the first
@@ -2678,38 +2742,28 @@ namespace PropTraderTools
 
         // CYC=6 -- five guards + ternary; try/catch does NOT add CYC.
         // B17 T2: FindPriceCanvasPanel selects price canvas (MaxValue>0, widest panel).
-        // BWAVE-CYC T4: ComputeTickAlignedPrice extracted from OnChartMouseDown. CCN=2.
-        // Returns 0.0 as sentinel if raw price is invalid (JS-002: no return null).
-        private double ComputeTickAlignedPrice(
-            ChartControl chartControl,
-            MouseButtonEventArgs e,
-            Instrument instr
-        )
-        {
-            Point mousePos = e.GetPosition(chartControl);
-            double rawPrice = GetPriceAtY(chartControl, mousePos.Y, instr);
-            if (rawPrice <= 0.0)
-                return 0.0;
-            double tickSize = instr.MasterInstrument.TickSize;
-            return Math.Round(rawPrice / tickSize) * tickSize;
-        }
-
-        // OnChartMouseDown after extraction. CCN=7.
-        // _leaderAccount.CreateOrder MUST stay here (NT8 Account API). Dispatcher.InvokeAsync stays.
+        // B17 Amendment: PreviewMouseDown wired in TradeCopierAddOn (tunnel phase -- NT8 suppresses MouseDown).
+        // F5 confirmed 2026-07-15: order placed at exact Y-pixel price (7491.00). GetPriceAtY correct.
+        // JS-023: _clickArmed / _clickBuy are volatile reads (no lock needed).
+        // NT8 constraint: "PTT-Click" signal name starts with "PTT-".
         internal void OnChartMouseDown(object sender, MouseButtonEventArgs e)
         {
             if (!_clickArmed)
-                return;
+                return; // guard (1)
             if (_leaderAccount == null)
-                return;
+                return; // guard (2)
             if (_instrument == null)
-                return;
+                return; // guard (3)
             var chartControl = sender as ChartControl;
             if (chartControl == null)
-                return;
-            double price = ComputeTickAlignedPrice(chartControl, e, _instrument);
-            if (price <= 0.0)
-                return;
+                return; // guard (4)
+
+            Point mousePos = e.GetPosition(chartControl);
+            double rawPrice = GetPriceAtY(chartControl, mousePos.Y, _instrument);
+            if (rawPrice <= 0.0)
+                return; // guard (5): no valid price
+            double tickSize = _instrument.MasterInstrument.TickSize;
+            double price = Math.Round(rawPrice / tickSize) * tickSize;
             bool isBuy = _clickBuy; // volatile read
             int qty = CopyEngine.Instance.GetSuggestedQty(_instrument);
             var action = isBuy ? OrderAction.Buy : OrderAction.SellShort;
@@ -2733,7 +2787,11 @@ namespace PropTraderTools
             }
             catch (Exception ex)
             {
-                Dispatcher.InvokeAsync(() => SetStatus("PTT-Click error: " + ex.Message));
+                Dispatcher.InvokeAsync(() =>
+                {
+                    if (_statusText != null)
+                        _statusText.Text = "PTT-Click error: " + ex.Message;
+                });
             }
         }
 
@@ -2780,11 +2838,32 @@ namespace PropTraderTools
             return list.ToArray();
         }
 
-        // BWAVE-CYC T2: extracted helpers for OnApplyRule.
-
-        // BuildFollowerMultipliers: collects per-follower multipliers and ATM names. CCN=3.
-        private (int[] multipliers, string[] atmNames) BuildFollowerMultipliers(Account[] followers)
+        // B8 T1+T2: OnApplyRule -- collects multipliers[] and ATM modes per follower; calls 5-arg AddRule.
+        // B45 T1: late-resolve added (same pattern as all other button handlers -- HOTFIX-B30-F1).
+        private void OnApplyRule(object sender, RoutedEventArgs e)
         {
+            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount(); // B45 T1: late-resolve (same as all other button handlers)
+            if (_leaderAccount == null)
+            {
+                if (_statusText != null)
+                    _statusText.Text = "No leader -- select account in ChartTrader.";
+                return;
+            }
+            if (_instrument == null)
+            {
+                if (_statusText != null)
+                    _statusText.Text = "No instrument -- open a chart first.";
+                return;
+            }
+            var followers = GetSelectedFollowers();
+            if (followers.Length == 0)
+            {
+                if (_statusText != null)
+                    _statusText.Text = "Select follower account(s).";
+                return;
+            }
+
+            // B8 T1+T2: collect per-follower multipliers and ATM mode names parallel to followers array
             var multipliers = new int[followers.Length];
             var atmNames = new string[followers.Length];
             for (int i = 0; i < followers.Length; i++)
@@ -2798,57 +2877,20 @@ namespace PropTraderTools
                     break;
                 }
             }
-            return (multipliers, atmNames);
-        }
 
-        // BuildAtmMap: builds FollowerAtmMode dictionary from collected ATM names. CCN=2.
-        private static Dictionary<string, FollowerAtmMode> BuildAtmMap(
-            Account[] followers,
-            string[] atmNames
-        )
-        {
+            // B8 T2: build Dictionary<string, FollowerAtmMode> from collected ATM names
             var atmMap = new Dictionary<string, FollowerAtmMode>();
             for (int i = 0; i < followers.Length; i++)
             {
                 if (followers[i] != null)
                     atmMap[followers[i].Name] = ParseAtmModeNameLocal(atmNames[i]);
             }
-            return atmMap;
-        }
 
-        // B8 T1+T2: OnApplyRule after extraction. CCN=8.
-        // SetStatus: sets status text if control is not null. CCN=1.
-        private void SetStatus(string text)
-        {
-            if (_statusText != null)
-                _statusText.Text = text;
-        }
-
-        // OnApplyRule after extraction. CCN=7 (using SetStatus collapses 4 statusText guards).
-        private void OnApplyRule(object sender, RoutedEventArgs e)
-        {
-            _leaderAccount = _leaderAccount ?? TryResolveLeaderAccount();
-            if (_leaderAccount == null)
-            {
-                SetStatus("No leader -- select account in ChartTrader.");
-                return;
-            }
-            if (_instrument == null)
-            {
-                SetStatus("No instrument -- open a chart first.");
-                return;
-            }
-            var followers = GetSelectedFollowers();
-            if (followers.Length == 0)
-            {
-                SetStatus("Select follower account(s).");
-                return;
-            }
-            var (multipliers, atmNames) = BuildFollowerMultipliers(followers);
-            var atmMap = BuildAtmMap(followers, atmNames);
             _engine.AddRule(_instrument.FullName, _leaderAccount, followers, multipliers, atmMap);
-            _engine.SaveRules();
-            SetStatus("Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name);
+            _engine.SaveRules(); // DW-B98-B: persist rule immediately from Apply button path
+            if (_statusText != null)
+                _statusText.Text =
+                    "Rule: " + _instrument.FullName + " leader=" + _leaderAccount.Name;
         }
 
         // B8 T2: ParseAtmModeNameLocal -- private static helper that mirrors CopyEngine.ParseAtmModeName.
@@ -2936,11 +2978,20 @@ namespace PropTraderTools
         }
 
         // B12 T3 -- BuildRiskAtrRow: builds Risk $ + ATR % spinner row. CYC=1: straight-line construction.
-        // R4 extraction: delegates spinner column construction to BuildSpinnerColumn and ATR display row to BuildAtrDisplayRow.
         // Called from BuildUI() at end of _contentPanel.
         private void BuildRiskAtrRow(StackPanel root)
         {
             _atrRow = new UniformGrid { Columns = 2, Margin = new Thickness(0, 4, 0, 0) };
+
+            // Col 0 -- Risk $ spinner
+            var col0 = new StackPanel { Orientation = Orientation.Horizontal };
+            var riskLabel = new TextBlock
+            {
+                Text = "Risk $",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 4, 0),
+            };
+            riskLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
             _riskDollarsBox = new TextBox
             {
                 Text = _maxRiskDollars.ToString("F0"),
@@ -2949,7 +3000,41 @@ namespace PropTraderTools
             };
             _riskDollarsBox.SetResourceReference(Control.StyleProperty, "NTTextBoxStyle");
             _riskDollarsBox.LostFocus += OnRiskTextLostFocus;
-            _atrRow.Children.Add(BuildSpinnerColumn("Risk $", _riskDollarsBox, OnRiskUp, OnRiskDown));
+            var riskArrows = new Grid();
+            riskArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            riskArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var riskUp = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25B2",
+                Height = 12,
+            };
+            var riskDn = new System.Windows.Controls.Primitives.RepeatButton
+            {
+                Content = "\u25BC",
+                Height = 12,
+            };
+            riskUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            riskDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            riskUp.Click += OnRiskUp;
+            riskDn.Click += OnRiskDown;
+            Grid.SetRow(riskUp, 0);
+            Grid.SetRow(riskDn, 1);
+            riskArrows.Children.Add(riskUp);
+            riskArrows.Children.Add(riskDn);
+            col0.Children.Add(riskLabel);
+            col0.Children.Add(_riskDollarsBox);
+            col0.Children.Add(riskArrows);
+            _atrRow.Children.Add(col0);
+
+            // Col 1 -- ATR % spinner
+            var col1 = new StackPanel { Orientation = Orientation.Horizontal };
+            var atrLabel = new TextBlock
+            {
+                Text = "ATR %",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 4, 0),
+            };
+            atrLabel.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
             _atrFractionBox = new TextBox
             {
                 Text = _atrFraction.ToString("F2"),
@@ -2958,58 +3043,34 @@ namespace PropTraderTools
             };
             _atrFractionBox.SetResourceReference(Control.StyleProperty, "NTTextBoxStyle");
             _atrFractionBox.LostFocus += OnAtrFractionTextLostFocus;
-            _atrRow.Children.Add(BuildSpinnerColumn("ATR %", _atrFractionBox, OnAtrFractionUp, OnAtrFractionDown));
-            root.Children.Add(_atrRow);
-            root.Children.Add(BuildAtrDisplayRow());
-        }
-
-        // R4 -- BuildSpinnerColumn: creates a horizontal StackPanel with a label, TextBox, and up/down arrow buttons.
-        // CYC=1: straight-line construction. No return null. Private instance.
-        private StackPanel BuildSpinnerColumn(
-            string labelText,
-            TextBox valueBox,
-            RoutedEventHandler upClick,
-            RoutedEventHandler downClick)
-        {
-            var col = new StackPanel { Orientation = Orientation.Horizontal };
-            var label = new TextBlock
-            {
-                Text = labelText,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 4, 0),
-            };
-            label.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
-            var arrows = new Grid();
-            arrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            arrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var upBtn = new System.Windows.Controls.Primitives.RepeatButton
+            var atrArrows = new Grid();
+            atrArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            atrArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+            var atrUp = new System.Windows.Controls.Primitives.RepeatButton
             {
                 Content = "\u25B2",
                 Height = 12,
             };
-            var dnBtn = new System.Windows.Controls.Primitives.RepeatButton
+            var atrDn = new System.Windows.Controls.Primitives.RepeatButton
             {
                 Content = "\u25BC",
                 Height = 12,
             };
-            upBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            dnBtn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            upBtn.Click += upClick;
-            dnBtn.Click += downClick;
-            Grid.SetRow(upBtn, 0);
-            Grid.SetRow(dnBtn, 1);
-            arrows.Children.Add(upBtn);
-            arrows.Children.Add(dnBtn);
-            col.Children.Add(label);
-            col.Children.Add(valueBox);
-            col.Children.Add(arrows);
-            return col;
-        }
+            atrUp.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            atrDn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+            atrUp.Click += OnAtrFractionUp;
+            atrDn.Click += OnAtrFractionDown;
+            Grid.SetRow(atrUp, 0);
+            Grid.SetRow(atrDn, 1);
+            atrArrows.Children.Add(atrUp);
+            atrArrows.Children.Add(atrDn);
+            col1.Children.Add(atrLabel);
+            col1.Children.Add(_atrFractionBox);
+            col1.Children.Add(atrArrows);
+            _atrRow.Children.Add(col1);
 
-        // R4 -- BuildAtrDisplayRow: creates the ATR display Border with _atrDisplayLabel TextBlock.
-        // CYC=1: straight-line construction. No return null. Private instance.
-        private Border BuildAtrDisplayRow()
-        {
+            root.Children.Add(_atrRow);
+
             var atrRow = new Border
             {
                 BorderThickness = new Thickness(1),
@@ -3019,7 +3080,7 @@ namespace PropTraderTools
             };
             _atrDisplayLabel = new TextBlock { Text = "ATR=-.-- pts -> stopTicks=-- -> qty=--" };
             atrRow.Child = _atrDisplayLabel;
-            return atrRow;
+            root.Children.Add(atrRow);
         }
 
         // B20-LANE-C T5 -- SetAtrText: updates ATR display label from UpdateAtrOverlay via Dispatcher.InvokeAsync.
@@ -3050,24 +3111,17 @@ namespace PropTraderTools
             NotifyRiskChanged();
         }
 
-        // R8: TryParseAndClamp -- shared parse+clamp helper. CCN=2.
-        private static bool TryParseAndClamp(string text, double min, double max, out double result)
-        {
-            if (!double.TryParse(text, out result))
-                return false; // (1) parse guard
-            result = Math.Max(Math.Min(result, max), min);
-            return true;
-        }
-
-        // B12 T3 / R8 -- OnRiskTextLostFocus: parse + clamp + push. CCN=2.
+        // B12 T3 -- OnRiskTextLostFocus: parse + clamp + push. CYC=3.
         private void OnRiskTextLostFocus(object sender, RoutedEventArgs e)
         {
-            if (!TryParseAndClamp(_riskDollarsBox?.Text, 10.0, 1000.0, out double v))
-                return; // (1)
+            double v;
+            if (!double.TryParse(_riskDollarsBox?.Text, out v))
+                return; // (1) parse guard
+            v = Math.Max(Math.Min(v, 1000.0), 10.0); // (2) clamp
             _maxRiskDollars = v;
             if (_riskDollarsBox != null)
-                _riskDollarsBox.Text = v.ToString("F0"); // (2) normalise display
-            NotifyRiskChanged();
+                _riskDollarsBox.Text = v.ToString("F0"); // normalise display
+            NotifyRiskChanged(); // (3) push
         }
 
         // B12 T3 -- OnAtrFractionUp: increment _atrFraction, clamp, push. CYC=1.
@@ -3088,15 +3142,17 @@ namespace PropTraderTools
             NotifyAtrFractionChanged();
         }
 
-        // B12 T3 / R8 -- OnAtrFractionTextLostFocus: parse + clamp + push. CCN=2.
+        // B12 T3 -- OnAtrFractionTextLostFocus: parse + clamp + push. CYC=3.
         private void OnAtrFractionTextLostFocus(object sender, RoutedEventArgs e)
         {
-            if (!TryParseAndClamp(_atrFractionBox?.Text, 0.25, 3.00, out double v))
-                return; // (1)
+            double v;
+            if (!double.TryParse(_atrFractionBox?.Text, out v))
+                return; // (1) parse guard
+            v = Math.Max(Math.Min(v, 3.00), 0.25); // (2) clamp
             _atrFraction = v;
             if (_atrFractionBox != null)
-                _atrFractionBox.Text = v.ToString("F2"); // (2) normalise display
-            NotifyAtrFractionChanged();
+                _atrFractionBox.Text = v.ToString("F2"); // normalise display
+            NotifyAtrFractionChanged(); // (3) push
         }
 
         // B12 T3 -- NotifyRiskChanged: delegates to CopyEngine.UpdateMaxRisk. CYC=2.
@@ -3115,72 +3171,50 @@ namespace PropTraderTools
             _engine.UpdateAtrFraction(_atrFraction); // (2)
         }
 
-        // BWAVE-CYC T3: extracted helpers for ApplyFeatureFlags / ApplyFeatureFlagTooltips.
-
-        // ApplyTrimFlattenFlags: sets IsEnabled on trim/flatten/cancel buttons. CCN=3.
-        private void ApplyTrimFlattenFlags(FeatureFlags f)
+        // BGTM-1: Enable/disable and show/hide panel controls per feature flags. CYC=1.
+        // Called on UI thread only (OnLoaded, OnFeatureFlagsChanged). JS-021: no lock.
+        internal void ApplyFeatureFlags(FeatureFlags f)
         {
+            // f.TrimFlatten gates
             if (_trimBtn2 != null)
                 _trimBtn2.IsEnabled = f.TrimFlatten;
             if (_flattenBtn2 != null)
                 _flattenBtn2.IsEnabled = f.TrimFlatten;
             if (_cancelBtn2 != null)
                 _cancelBtn2.IsEnabled = f.TrimFlatten;
-        }
-
-        // ApplyPositionControlFlags: sets IsEnabled on BE and mirror-mode buttons. CCN=2.
-        private void ApplyPositionControlFlags(FeatureFlags f)
-        {
+            // f.BreakEven gate
             if (_beBtn2 != null)
                 _beBtn2.IsEnabled = f.BreakEven;
+            // f.MirrorMode gate
             if (_mirrorModeBtn != null)
                 _mirrorModeBtn.IsEnabled = f.MirrorMode;
-        }
-
-        // ApplyRowVisibilityFlags: sets Visibility on click-trader and ATR rows. CCN=4.
-        private void ApplyRowVisibilityFlags(FeatureFlags f)
-        {
+            // f.ClickTrader visibility
             if (_clickTraderRow != null)
                 _clickTraderRow.Visibility = f.ClickTrader
                     ? System.Windows.Visibility.Visible
                     : System.Windows.Visibility.Collapsed;
+            // f.AtrSizing visibility
             if (_atrRow != null)
                 _atrRow.Visibility = f.AtrSizing
                     ? System.Windows.Visibility.Visible
                     : System.Windows.Visibility.Collapsed;
-        }
-
-        // SetButtonTooltip: sets or clears a button ToolTip based on feature enabled. CCN=2.
-        // JS-002: btn parameter null guard -- no throw. Returns void.
-        private static void SetButtonTooltip(
-            System.Windows.Controls.Control btn,
-            bool featureEnabled,
-            string upgradeMessage
-        )
-        {
-            if (btn != null)
-                btn.ToolTip = featureEnabled ? null : upgradeMessage;
-        }
-
-        // BGTM-1: Enable/disable and show/hide panel controls per feature flags.
-        // ApplyFeatureFlags after extraction. CCN=4.
-        internal void ApplyFeatureFlags(FeatureFlags f)
-        {
-            ApplyTrimFlattenFlags(f);
-            ApplyPositionControlFlags(f);
-            ApplyRowVisibilityFlags(f);
             ApplyFeatureFlagTooltips(f);
         }
 
-        // BGTM-1: Set ToolTip on disabled buttons to upgrade guidance.
-        // ApplyFeatureFlagTooltips after extraction. CCN=2.
+        // BGTM-1: Set ToolTip on disabled buttons to upgrade guidance. CYC=1.
+        // Only called from ApplyFeatureFlags (UI thread). JS-021: no lock.
         private void ApplyFeatureFlagTooltips(FeatureFlags f)
         {
-            SetButtonTooltip(_trimBtn2, f.TrimFlatten, "Trim/Flatten requires Pro tier");
-            SetButtonTooltip(_flattenBtn2, f.TrimFlatten, "Trim/Flatten requires Pro tier");
-            SetButtonTooltip(_cancelBtn2, f.TrimFlatten, "Trim/Flatten requires Pro tier");
-            SetButtonTooltip(_beBtn2, f.BreakEven, "Break Even requires Pro tier");
-            SetButtonTooltip(_mirrorModeBtn, f.MirrorMode, "Mirror mode requires Elite tier");
+            if (_trimBtn2 != null)
+                _trimBtn2.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
+            if (_flattenBtn2 != null)
+                _flattenBtn2.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
+            if (_cancelBtn2 != null)
+                _cancelBtn2.ToolTip = f.TrimFlatten ? null : "Trim/Flatten requires Pro tier";
+            if (_beBtn2 != null)
+                _beBtn2.ToolTip = f.BreakEven ? null : "Break Even requires Pro tier";
+            if (_mirrorModeBtn != null)
+                _mirrorModeBtn.ToolTip = f.MirrorMode ? null : "Mirror mode requires Elite tier";
         }
 
         // BGTM-1: Handle CopyEngine.FeatureFlagsChanged event. Fires on UI thread. CYC=1.
