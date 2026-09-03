@@ -249,8 +249,48 @@ namespace PropTraderTools
             DockPanel.SetDock(_globalToggleBtn, Dock.Top);
             root.Children.Add(_globalToggleBtn);
 
-            // B9 T3 -- Copy mode ComboBox (Signal / Mirror)
-            var modeRow = new StackPanel
+            var modeRow = BuildModeRow();
+            DockPanel.SetDock(modeRow, Dock.Top);
+            root.Children.Add(modeRow);
+
+            var sep1 = new Separator { Margin = new Thickness(0, 2, 0, 2) };
+            DockPanel.SetDock(sep1, Dock.Top);
+            root.Children.Add(sep1);
+
+            var rulesScroll = BuildRulesScrollArea();
+            DockPanel.SetDock(rulesScroll, Dock.Top);
+            root.Children.Add(rulesScroll);
+
+            _addRuleBtn = new Button
+            {
+                Content = "+ Add Rule",
+                Margin = new Thickness(6, 2, 6, 2),
+                Padding = new Thickness(8, 3, 8, 3),
+            };
+            _addRuleBtn.Click += OnAddRule;
+            DockPanel.SetDock(_addRuleBtn, Dock.Top);
+            root.Children.Add(_addRuleBtn);
+
+            var sep2 = new Separator { Margin = new Thickness(0, 2, 0, 2) };
+            DockPanel.SetDock(sep2, Dock.Top);
+            root.Children.Add(sep2);
+
+            // BGTM-1: license key row docks to bottom before log fills remaining space
+            BuildLicenseRow(root);
+
+            // LastChildFill = true on DockPanel means this gets all remaining space
+            root.Children.Add(BuildLogScrollArea());
+
+            Content = root;
+
+            // V04: ensure consistent initial state (all action buttons start grey)
+            UpdateButtonColors(false, false);
+        }
+
+        // R5: Builds the horizontal Copy Mode row. CYC=1. JS-002: no return null. ASCII-only.
+        private StackPanel BuildModeRow()
+        {
+            var row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Margin = new Thickness(6, 2, 6, 2),
@@ -267,65 +307,35 @@ namespace PropTraderTools
             _modeCb.Items.Add("Clone");
             _modeCb.SelectedIndex = 0;
             _modeCb.SelectionChanged += OnCopyModeComboChanged;
-            modeRow.Children.Add(modeLabel);
-            modeRow.Children.Add(_modeCb);
-            DockPanel.SetDock(modeRow, Dock.Top);
-            root.Children.Add(modeRow);
+            row.Children.Add(modeLabel);
+            row.Children.Add(_modeCb);
+            return row;
+        }
 
-            // --- Separator ---
-            var sep1 = new Separator { Margin = new Thickness(0, 2, 0, 2) };
-            DockPanel.SetDock(sep1, Dock.Top);
-            root.Children.Add(sep1);
-
-            // --- Rules area (B7-F5: wrapped in ScrollViewer MaxHeight=400) ---
+        // R5: Builds the rules scroll area and initialises _rulesPanel. CYC=1. JS-002: no return null. ASCII-only.
+        // B7-F5: ScrollViewer MaxHeight=400 -- DockPanel.SetDock applied by BuildUI on the returned viewer.
+        private ScrollViewer BuildRulesScrollArea()
+        {
             _rulesPanel = new StackPanel();
             _rulesPanel.Children.Add(BuildRuleRow("MES"));
-
-            var rulesScroll = new ScrollViewer
+            return new ScrollViewer
             {
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 MaxHeight = 400,
                 Content = _rulesPanel,
             };
-            // DockPanel.SetDock on ScrollViewer (outer wrapper), NOT on _rulesPanel
-            DockPanel.SetDock(rulesScroll, Dock.Top);
-            root.Children.Add(rulesScroll);
+        }
 
-            // --- Add Rule button ---
-            _addRuleBtn = new Button
-            {
-                Content = "+ Add Rule",
-                Margin = new Thickness(6, 2, 6, 2),
-                Padding = new Thickness(8, 3, 8, 3),
-            };
-            _addRuleBtn.Click += OnAddRule;
-            DockPanel.SetDock(_addRuleBtn, Dock.Top);
-            root.Children.Add(_addRuleBtn);
-
-            // --- Separator ---
-            var sep2 = new Separator { Margin = new Thickness(0, 2, 0, 2) };
-            DockPanel.SetDock(sep2, Dock.Top);
-            root.Children.Add(sep2);
-
-            // --- Log (fills remaining space) ---
-            var logPanel = new StackPanel { Orientation = Orientation.Vertical };
-            _logPanel = logPanel;
-            var logScroll = new ScrollViewer
+        // R5: Builds the log scroll area and initialises _logPanel. CYC=1. JS-002: no return null. ASCII-only.
+        private ScrollViewer BuildLogScrollArea()
+        {
+            _logPanel = new StackPanel { Orientation = Orientation.Vertical };
+            return new ScrollViewer
             {
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Content = logPanel,
+                Content = _logPanel,
                 Margin = new Thickness(4),
             };
-            // BGTM-1: license key row docks to bottom before log fills remaining space
-            BuildLicenseRow(root);
-
-            // LastChildFill = true on DockPanel means this gets all remaining space
-            root.Children.Add(logScroll);
-
-            Content = root;
-
-            // V04: ensure consistent initial state (all action buttons start grey)
-            UpdateButtonColors(false, false);
         }
 
         // BGTM-1: Builds the license key input row and appends to parent DockPanel. CYC=1.
@@ -462,29 +472,14 @@ namespace PropTraderTools
             return "STARTER";
         }
 
+        // BWAVE-CYC R1: BuildRuleRow refactored to use shared helpers. LoC before=202 after=36.
+        // CYC=1 (straight-line construction; no branches in parent).
         private Grid BuildRuleRow(string instrumentName)
         {
             var grid = new Grid { Margin = new Thickness(2) };
+            BuildGridColumnDefinitions(grid, false);
 
-            // Cols: instr | leader | follower | [1/2] | [=] | [x] | [ON] | Apply | BE-cluster | ATM | Tighten | ArmBE
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(45) });
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-            );
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-            );
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B8 T2: ATM ComboBox
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B10 T3: Tighten cluster
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B11 T2: Arm BE cluster
-
-            // Col 0: instrument label
+            // Col 0: fixed instrument label
             var instrLabel = new TextBlock
             {
                 Text = instrumentName,
@@ -502,82 +497,231 @@ namespace PropTraderTools
             grid.Children.Add(leaderCb);
 
             // Col 2: follower ListBox -- ItemsSource set in Loaded
-            // B18 T2: fix DW-B18-ACCOUNTS-01 -- outer ScrollViewer removed; Height=100 fixed.
-            // B18 T2b: NT8 WPF host suppresses ListBox internal scrollbar by default.
-            // Fix: disable virtualization (so all items are measured) + force scrollbar Visible.
-            var followerLb = new ListBox
+            var followerLb = BuildFollowerListBox();
+            _followerBoxes.Add(followerLb);
+            Grid.SetColumn(followerLb, 2);
+            grid.Children.Add(followerLb);
+
+            var atmPanel = BuildAtmColumnPanel();
+            BuildActionButtons(instrumentName, leaderCb, followerLb, atmPanel, grid);
+
+            var beCluster = BuildBeCluster(instrumentName);
+            Grid.SetColumn(beCluster, 8);
+            grid.Children.Add(beCluster);
+
+            Grid.SetColumn(atmPanel, 9);
+            grid.Children.Add(atmPanel);
+
+            var tightenCluster = BuildTightenCluster(instrumentName);
+            Grid.SetColumn(tightenCluster, 10);
+            grid.Children.Add(tightenCluster);
+
+            var armBeCluster = BuildArmBeCluster(instrumentName, leaderCb);
+            Grid.SetColumn(armBeCluster, 11);
+            grid.Children.Add(armBeCluster);
+
+            return grid;
+        }
+
+        // BWAVE-CYC R1: BuildDynamicRuleRow refactored to use shared helpers. LoC before=210 after=28.
+        // CYC=1 (straight-line construction; no branches in parent).
+        private Grid BuildDynamicRuleRow()
+        {
+            var grid = new Grid { Margin = new Thickness(2) };
+            BuildGridColumnDefinitions(grid, true);
+
+            // Col 0: editable instrument TextBox
+            var instrTextBox = new TextBox
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+                MinWidth = 45,
+            };
+            Grid.SetColumn(instrTextBox, 0);
+            grid.Children.Add(instrTextBox);
+
+            // Col 1: leader ComboBox -- ItemsSource bound immediately (window already loaded)
+            var leaderCb = new ComboBox { ItemsSource = Account.All, Margin = new Thickness(2) };
+            leaderCb.ItemTemplate = BuildAccountDisplayTemplate();
+            Grid.SetColumn(leaderCb, 1);
+            grid.Children.Add(leaderCb);
+
+            // Col 2: follower ListBox -- bound immediately
+            var followerLb = BuildFollowerListBox();
+            followerLb.ItemsSource = Account.All;
+            Grid.SetColumn(followerLb, 2);
+            grid.Children.Add(followerLb);
+
+            var atmPanel = BuildAtmColumnPanel();
+            BuildActionButtons(instrTextBox, leaderCb, followerLb, atmPanel, grid);
+
+            var beCluster = BuildBeCluster(instrTextBox);
+            Grid.SetColumn(beCluster, 8);
+            grid.Children.Add(beCluster);
+
+            Grid.SetColumn(atmPanel, 9);
+            grid.Children.Add(atmPanel);
+
+            var tightenCluster = BuildTightenCluster(instrTextBox);
+            Grid.SetColumn(tightenCluster, 10);
+            grid.Children.Add(tightenCluster);
+
+            var armBeCluster = BuildArmBeCluster(instrTextBox, leaderCb);
+            Grid.SetColumn(armBeCluster, 11);
+            grid.Children.Add(armBeCluster);
+
+            return grid;
+        }
+
+        // BWAVE-CYC R1: 6 shared private helpers extracted from BuildRuleRow / BuildDynamicRuleRow.
+        // All helpers: private instance, UI-thread only, CYC <= 2, no lock(), no async void, no return null.
+
+        // CCN=2: branch on dynamicFirstCol for col-0 width.
+        private static void BuildGridColumnDefinitions(Grid grid, bool dynamicFirstCol)
+        {
+            var col0Width = dynamicFirstCol
+                ? new GridLength(1, GridUnitType.Star)
+                : new GridLength(45);
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = col0Width });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B8 T2: ATM ComboBox
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B10 T3: Tighten cluster
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B11 T2: Arm BE cluster
+        }
+
+        // CCN=1: straight-line follower ListBox construction shared by both row builders.
+        // B18 T2: outer ScrollViewer removed; Height=100 fixed. NT8 WPF host suppresses
+        // ListBox internal scrollbar by default -- disable virtualization + force scrollbar Visible.
+        private static ListBox BuildFollowerListBox()
+        {
+            var lb = new ListBox
             {
                 SelectionMode = SelectionMode.Extended,
                 Height = 100,
                 Margin = new Thickness(2),
             };
-            VirtualizingStackPanel.SetIsVirtualizing(followerLb, false);
-            ScrollViewer.SetVerticalScrollBarVisibility(followerLb, ScrollBarVisibility.Visible);
-            followerLb.ItemTemplate = BuildAccountDisplayTemplate();
-            _followerBoxes.Add(followerLb);
-            Grid.SetColumn(followerLb, 2);
-            grid.Children.Add(followerLb);
+            VirtualizingStackPanel.SetIsVirtualizing(lb, false);
+            ScrollViewer.SetVerticalScrollBarVisibility(lb, ScrollBarVisibility.Visible);
+            lb.ItemTemplate = BuildAccountDisplayTemplate();
+            return lb;
+        }
 
-            // Col 3: Trim (color-coded -- no NTButtonStyle)
-            var trimBtn = new Button
+        // CCN=1: Break Even cluster ([BE] button + TextBox + "tks" label).
+        // tag0 = instrumentName (string) for static rows, instrTextBox for dynamic rows.
+        // Adds beBtn to _beBtns for UpdateButtonColors iteration.
+        private StackPanel BuildBeCluster(object tag0)
+        {
+            var cluster = new StackPanel { Orientation = Orientation.Horizontal };
+            var beBox = new TextBox
             {
-                Content = "[1/2]",
-                Tag = instrumentName,
+                Text = "2",
+                Width = 28,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+            };
+            var beBtn = new Button
+            {
+                Content = "[BE]",
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
-            trimBtn.Click += OnRuleTrim;
-            _trimBtns.Add(trimBtn);
-            Grid.SetColumn(trimBtn, 3);
-            grid.Children.Add(trimBtn);
-
-            // Col 4: Flatten (color-coded)
-            var flattenBtn = new Button
+            var tksLabel = new TextBlock
             {
-                Content = "[=]",
-                Tag = instrumentName,
+                Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 0, 2, 0),
+            };
+            beBtn.Tag = new object[] { tag0, beBox };
+            beBtn.Click += OnRuleBreakEven;
+            _beBtns.Add(beBtn);
+            cluster.Children.Add(beBtn);
+            cluster.Children.Add(beBox);
+            cluster.Children.Add(tksLabel);
+            return cluster;
+        }
+
+        // CCN=1: Tighten Stop cluster ([~] button + TextBox + "tks" label).
+        // tag0 = instrumentName (string) or instrTextBox. Adds tightenBtn to _tightenBtns.
+        private StackPanel BuildTightenCluster(object tag0)
+        {
+            var cluster = new StackPanel { Orientation = Orientation.Horizontal };
+            var ticksBox = new TextBox
+            {
+                Text = "5",
+                Width = 28,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+            };
+            var btn = new Button
+            {
+                Content = "[~]",
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
-            flattenBtn.Click += OnRuleFlatten;
-            _flattenBtns.Add(flattenBtn);
-            Grid.SetColumn(flattenBtn, 4);
-            grid.Children.Add(flattenBtn);
-
-            // Col 5: Cancel (color-coded)
-            var cancelBtn = new Button
+            var tksLabel = new TextBlock
             {
-                Content = "[x]",
-                Tag = instrumentName,
+                Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 0, 2, 0),
+            };
+            btn.Tag = new object[] { tag0, ticksBox };
+            btn.Click += OnRuleTightenStop;
+            _tightenBtns.Add(btn);
+            cluster.Children.Add(btn);
+            cluster.Children.Add(ticksBox);
+            cluster.Children.Add(tksLabel);
+            return cluster;
+        }
+
+        // CCN=1: Arm BE cluster ([Arm BE] button + buffer TextBox + "tks" label).
+        // tag0 = instrumentName (string) or instrTextBox. Adds armBeBtn to _armBeBtns.
+        private StackPanel BuildArmBeCluster(object tag0, ComboBox leaderCb)
+        {
+            var cluster = new StackPanel { Orientation = Orientation.Horizontal };
+            var armBeBox = new TextBox
+            {
+                Text = "2",
+                Width = 30,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+            };
+            var btn = new Button
+            {
+                Content = "[Arm BE]",
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
-            cancelBtn.Click += OnRuleCancel;
-            _cancelBtns.Add(cancelBtn);
-            Grid.SetColumn(cancelBtn, 5);
-            grid.Children.Add(cancelBtn);
-
-            // Col 6: per-rule toggle (always active/colored -- starts WBrushActive = [ON])
-            var toggleBtn = new Button
+            var tksLabel = new TextBlock
             {
-                Content = "[ON]",
-                Tag = instrumentName,
-                Margin = new Thickness(2),
-                Background = WBrushActive,
+                Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 0, 2, 0),
             };
-            toggleBtn.Click += OnRuleToggle;
-            Grid.SetColumn(toggleBtn, 6);
-            grid.Children.Add(toggleBtn);
+            btn.Tag = new object[] { tag0, leaderCb, armBeBox };
+            btn.Click += OnRuleArmBe;
+            _armBeBtns.Add(btn);
+            cluster.Children.Add(btn);
+            cluster.Children.Add(armBeBox);
+            cluster.Children.Add(tksLabel);
+            return cluster;
+        }
 
-            // B8 T2: Col 9 -- ATM mode ComboBox -- created BEFORE applyBtn so tag can reference it.
-            // signalName for CreateOrder is always "PTT-Copy"; this selects order type override only.
+        // CCN=2: ATM ComboBox (Inherit/Market/Named) + namedBox TextBox + SelectionChanged lambda.
+        // Branch: SelectionChanged lambda tests sel == "Named" (CCN +1 vs base 1).
+        private static StackPanel BuildAtmColumnPanel()
+        {
             var atmCb = new ComboBox { Width = 80, Margin = new Thickness(2) };
             atmCb.Items.Add("Inherit");
             atmCb.Items.Add("Market");
             atmCb.Items.Add("Named");
             atmCb.SelectedIndex = 0;
-
-            // B9 T3: Named ATM inline TextBox -- appears when "Named" is selected
             var namedBox = new TextBox
             {
                 Width = 80,
@@ -592,179 +736,30 @@ namespace PropTraderTools
                 if (sel != "Named")
                     namedBox.Text = string.Empty;
             };
-            // B9 T3: Col 9 -- ATM mode ComboBox + Named ATM TextBox (stacked vertically in column)
-            var atmColPanel = new StackPanel { Orientation = Orientation.Vertical };
-            atmColPanel.Children.Add(atmCb);
-            atmColPanel.Children.Add(namedBox);
-            Grid.SetColumn(atmColPanel, 9);
-            grid.Children.Add(atmColPanel);
-
-            // Col 7: Apply (non-color-coded -- standard button)
-            // B8 T2: tag[3] = atmCb, B9 T3: tag[4] = namedBox so OnRowApply can read Named ATM text.
-            var applyBtn = new Button { Content = "Apply", Margin = new Thickness(2) };
-            applyBtn.Tag = new object[] { instrumentName, leaderCb, followerLb, atmCb, namedBox };
-            applyBtn.Click += OnRowApply;
-            Grid.SetColumn(applyBtn, 7);
-            grid.Children.Add(applyBtn);
-
-            // Col 8: Break Even cluster (BE button color-coded)
-            var beCluster = new StackPanel { Orientation = Orientation.Horizontal };
-            var beBtn = new Button
-            {
-                Content = "[BE]",
-                Margin = new Thickness(2),
-                Background = WBrushInactive,
-            };
-            var beBox = new TextBox
-            {
-                Text = "2",
-                Width = 28,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-            };
-            var tksLabel = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 0, 2, 0),
-            };
-            beBtn.Tag = new object[] { instrumentName, beBox };
-            beBtn.Click += OnRuleBreakEven;
-            _beBtns.Add(beBtn);
-            beCluster.Children.Add(beBtn);
-            beCluster.Children.Add(beBox);
-            beCluster.Children.Add(tksLabel);
-            Grid.SetColumn(beCluster, 8);
-            grid.Children.Add(beCluster);
-
-            // B10 T3: Col 10 -- Tighten Stop cluster ([~] button + TextBox + "tks" label).
-            // Tag = "instrumentName|5" (rule name | default ticks). OnRuleTightenStop reads tag.
-            // NTButtonStyle: tighten is non-color-coded (not position-state-colored).
-            var tightenCluster10 = new StackPanel { Orientation = Orientation.Horizontal };
-            var tightenTicksBox10 = new TextBox
-            {
-                Text = "5",
-                Width = 28,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-            };
-            var tightenBtn10 = new Button
-            {
-                Content = "[~]",
-                Margin = new Thickness(2),
-                Background = WBrushInactive,
-            };
-            var tightenTksLbl10 = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 0, 2, 0),
-            };
-            tightenBtn10.Tag = new object[] { instrumentName, tightenTicksBox10 };
-            tightenBtn10.Click += OnRuleTightenStop;
-            _tightenBtns.Add(tightenBtn10);
-            tightenCluster10.Children.Add(tightenBtn10);
-            tightenCluster10.Children.Add(tightenTicksBox10);
-            tightenCluster10.Children.Add(tightenTksLbl10);
-            Grid.SetColumn(tightenCluster10, 10);
-            grid.Children.Add(tightenCluster10);
-
-            // B11 T2: Col 11 -- Arm BE cluster ([Arm BE] button + buffer TextBox + "tks" label).
-            // Tag = new object[] { instrumentName (string), leaderCb, bufferTextBox }.
-            // OnRuleArmBe reads instr from tag[0] (string), leader from tag[1], ticks from tag[2].
-            var armBeCluster = new StackPanel { Orientation = Orientation.Horizontal };
-            var armBeBox = new TextBox
-            {
-                Text = "2",
-                Width = 30,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-            };
-            var armBeBtn = new Button
-            {
-                Content = "[Arm BE]",
-                Margin = new Thickness(2),
-                Background = WBrushInactive,
-            };
-            var armBeTksLbl = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 0, 2, 0),
-            };
-            armBeBtn.Tag = new object[] { instrumentName, leaderCb, armBeBox };
-            armBeBtn.Click += OnRuleArmBe;
-            _armBeBtns.Add(armBeBtn);
-            armBeCluster.Children.Add(armBeBtn);
-            armBeCluster.Children.Add(armBeBox);
-            armBeCluster.Children.Add(armBeTksLbl);
-            Grid.SetColumn(armBeCluster, 11);
-            grid.Children.Add(armBeCluster);
-
-            return grid;
+            var panel = new StackPanel { Orientation = Orientation.Vertical };
+            panel.Children.Add(atmCb);
+            panel.Children.Add(namedBox);
+            return panel;
         }
 
-        private Grid BuildDynamicRuleRow()
+        // CCN=1: Action buttons (Trim/Flatten/Cancel/Toggle/Apply) -- cols 3-7.
+        // tag0 = instrumentName (string) or instrTextBox. Adds trim/flatten/cancel to tracking lists.
+        // atmPanel: Children[0]=atmCb, Children[1]=namedBox -- passed to OnRowApply tag array.
+        // Adds all 5 buttons to grid at their respective columns.
+        private void BuildActionButtons(
+            object tag0,
+            ComboBox leaderCb,
+            ListBox followerLb,
+            StackPanel atmPanel,
+            Grid grid)
         {
-            var grid = new Grid { Margin = new Thickness(2) };
+            var atmCb = (ComboBox)atmPanel.Children[0];
+            var namedBox = (TextBox)atmPanel.Children[1];
 
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-            );
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-            );
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-            );
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B8 T2: ATM ComboBox
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B10 T3: Tighten cluster
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B11 T2: Arm BE cluster
-
-            // Col 0: instrument TextBox
-            var instrTextBox = new TextBox
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-                MinWidth = 45,
-            };
-            Grid.SetColumn(instrTextBox, 0);
-            grid.Children.Add(instrTextBox);
-
-            // Col 1: leader ComboBox -- ItemsSource bound immediately (window is already loaded)
-            var leaderCb = new ComboBox { ItemsSource = Account.All, Margin = new Thickness(2) };
-            leaderCb.ItemTemplate = BuildAccountDisplayTemplate();
-            Grid.SetColumn(leaderCb, 1);
-            grid.Children.Add(leaderCb);
-
-            // Col 2: follower ListBox -- bound immediately
-            // B18 T2: fix DW-B18-ACCOUNTS-01 -- outer ScrollViewer removed; Height=100 fixed.
-            // B18 T2b: NT8 WPF host suppresses ListBox internal scrollbar by default.
-            // Fix: disable virtualization (so all items are measured) + force scrollbar Visible.
-            var followerLb = new ListBox
-            {
-                SelectionMode = SelectionMode.Extended,
-                ItemsSource = Account.All,
-                Height = 100,
-                Margin = new Thickness(2),
-            };
-            VirtualizingStackPanel.SetIsVirtualizing(followerLb, false);
-            ScrollViewer.SetVerticalScrollBarVisibility(followerLb, ScrollBarVisibility.Visible);
-            followerLb.ItemTemplate = BuildAccountDisplayTemplate();
-            Grid.SetColumn(followerLb, 2);
-            grid.Children.Add(followerLb);
-
-            // Col 3: Trim (color-coded)
             var trimBtn = new Button
             {
                 Content = "[1/2]",
-                Tag = instrTextBox,
+                Tag = tag0,
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
@@ -773,11 +768,10 @@ namespace PropTraderTools
             Grid.SetColumn(trimBtn, 3);
             grid.Children.Add(trimBtn);
 
-            // Col 4: Flatten (color-coded)
             var flattenBtn = new Button
             {
                 Content = "[=]",
-                Tag = instrTextBox,
+                Tag = tag0,
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
@@ -786,11 +780,10 @@ namespace PropTraderTools
             Grid.SetColumn(flattenBtn, 4);
             grid.Children.Add(flattenBtn);
 
-            // Col 5: Cancel (color-coded)
             var cancelBtn = new Button
             {
                 Content = "[x]",
-                Tag = instrTextBox,
+                Tag = tag0,
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
@@ -799,11 +792,10 @@ namespace PropTraderTools
             Grid.SetColumn(cancelBtn, 5);
             grid.Children.Add(cancelBtn);
 
-            // Col 6: toggle (starts WBrushActive = [ON])
             var toggleBtn = new Button
             {
                 Content = "[ON]",
-                Tag = instrTextBox,
+                Tag = tag0,
                 Margin = new Thickness(2),
                 Background = WBrushActive,
             };
@@ -811,143 +803,11 @@ namespace PropTraderTools
             Grid.SetColumn(toggleBtn, 6);
             grid.Children.Add(toggleBtn);
 
-            // Col 7: Apply (non-color-coded)
-            // B8 T2 + B9 T3: tag[3]=atmCb, tag[4]=namedBox for OnRowApply Named ATM text
-            var atmCbDyn = new ComboBox { Width = 80, Margin = new Thickness(2) };
-            atmCbDyn.Items.Add("Inherit");
-            atmCbDyn.Items.Add("Market");
-            atmCbDyn.Items.Add("Named");
-            atmCbDyn.SelectedIndex = 0;
-
-            // B9 T3: Named ATM inline TextBox for dynamic rows
-            var namedBoxDyn = new TextBox
-            {
-                Width = 80,
-                Visibility = Visibility.Collapsed,
-                ToolTip = "ATM template name",
-                Margin = new Thickness(2),
-            };
-            atmCbDyn.SelectionChanged += (s, e2) =>
-            {
-                var sel = (s as ComboBox)?.SelectedItem?.ToString() ?? string.Empty;
-                namedBoxDyn.Visibility = sel == "Named" ? Visibility.Visible : Visibility.Collapsed;
-                if (sel != "Named")
-                    namedBoxDyn.Text = string.Empty;
-            };
             var applyBtn = new Button { Content = "Apply", Margin = new Thickness(2) };
-            applyBtn.Tag = new object[]
-            {
-                instrTextBox,
-                leaderCb,
-                followerLb,
-                atmCbDyn,
-                namedBoxDyn,
-            };
+            applyBtn.Tag = new object[] { tag0, leaderCb, followerLb, atmCb, namedBox };
             applyBtn.Click += OnRowApply;
             Grid.SetColumn(applyBtn, 7);
             grid.Children.Add(applyBtn);
-
-            // Col 8: Break Even cluster (BE button color-coded)
-            var beCluster = new StackPanel { Orientation = Orientation.Horizontal };
-            var beBtn = new Button
-            {
-                Content = "[BE]",
-                Margin = new Thickness(2),
-                Background = WBrushInactive,
-            };
-            var beBox = new TextBox
-            {
-                Text = "2",
-                Width = 28,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-            };
-            var tksLabel = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 0, 2, 0),
-            };
-            beBtn.Tag = new object[] { instrTextBox, beBox };
-            beBtn.Click += OnRuleBreakEven;
-            _beBtns.Add(beBtn);
-            beCluster.Children.Add(beBtn);
-            beCluster.Children.Add(beBox);
-            beCluster.Children.Add(tksLabel);
-            Grid.SetColumn(beCluster, 8);
-            grid.Children.Add(beCluster);
-
-            // B8 T2 + B9 T3: Col 9 -- ATM mode ComboBox + Named ATM TextBox (stacked vertically in column)
-            var atmColPanel = new StackPanel { Orientation = Orientation.Vertical };
-            atmColPanel.Children.Add(atmCbDyn);
-            atmColPanel.Children.Add(namedBoxDyn);
-            Grid.SetColumn(atmColPanel, 9);
-            grid.Children.Add(atmColPanel);
-
-            // B10 T3: Col 10 -- Tighten Stop cluster for dynamic rows.
-            // Tag[0] = instrTextBox, Tag[1] = tightenTicksBox -- OnRuleTightenStop reads ticks from tag[1].
-            var tightenClusterDyn = new StackPanel { Orientation = Orientation.Horizontal };
-            var tightenTicksBoxDyn = new TextBox
-            {
-                Text = "5",
-                Width = 28,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-            };
-            var tightenBtnDyn = new Button
-            {
-                Content = "[~]",
-                Margin = new Thickness(2),
-                Background = WBrushInactive,
-            };
-            var tightenTksLblDyn = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 0, 2, 0),
-            };
-            tightenBtnDyn.Tag = new object[] { instrTextBox, tightenTicksBoxDyn };
-            tightenBtnDyn.Click += OnRuleTightenStop;
-            _tightenBtns.Add(tightenBtnDyn);
-            tightenClusterDyn.Children.Add(tightenBtnDyn);
-            tightenClusterDyn.Children.Add(tightenTicksBoxDyn);
-            tightenClusterDyn.Children.Add(tightenTksLblDyn);
-            Grid.SetColumn(tightenClusterDyn, 10);
-            grid.Children.Add(tightenClusterDyn);
-
-            // B11 T2: Col 11 -- Arm BE cluster for dynamic rows.
-            // Tag = new object[] { instrTextBox, leaderCb, armBeBox }.
-            // OnRuleArmBe reads instr from tag[0] (TextBox), leader from tag[1], ticks from tag[2].
-            var armBeClusterDyn = new StackPanel { Orientation = Orientation.Horizontal };
-            var armBeBoxDyn = new TextBox
-            {
-                Text = "2",
-                Width = 30,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-            };
-            var armBeBtnDyn = new Button
-            {
-                Content = "[Arm BE]",
-                Margin = new Thickness(2),
-                Background = WBrushInactive,
-            };
-            var armBeTksLblDyn = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 0, 2, 0),
-            };
-            armBeBtnDyn.Tag = new object[] { instrTextBox, leaderCb, armBeBoxDyn };
-            armBeBtnDyn.Click += OnRuleArmBe;
-            _armBeBtns.Add(armBeBtnDyn);
-            armBeClusterDyn.Children.Add(armBeBtnDyn);
-            armBeClusterDyn.Children.Add(armBeBoxDyn);
-            armBeClusterDyn.Children.Add(armBeTksLblDyn);
-            Grid.SetColumn(armBeClusterDyn, 11);
-            grid.Children.Add(armBeClusterDyn);
-
-            return grid;
         }
 
         // B56-LaneB: CYC=4 -- null guard (1) + 3-way if-chain for index 0/1/2 (branches 2/3/4)

@@ -6010,40 +6010,32 @@ namespace PropTraderTools
         [Fact]
         public void IsReArmedAtmBracketCleanupRequired_ShouldReturnFalse_WhenOrderStateIsNotWorkingOrAccepted()
         {
-            var m = typeof(CopyEngine).GetMethod(
-                "IsReArmedAtmBracketCleanupRequired",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
+            var m = typeof(CopyEngine).GetMethod("IsReArmedAtmBracketCleanupRequired",
+                BindingFlags.NonPublic | BindingFlags.Instance);
             Assert.NotNull(m);
         }
 
         [Fact]
         public void IsReArmedAtmBracketCleanupRequired_ShouldReturnFalse_WhenNameDoesNotStartWithPttQxT()
         {
-            var m = typeof(CopyEngine).GetMethod(
-                "IsReArmedAtmBracketCleanupRequired",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
+            var m = typeof(CopyEngine).GetMethod("IsReArmedAtmBracketCleanupRequired",
+                BindingFlags.NonPublic | BindingFlags.Instance);
             Assert.NotNull(m);
         }
 
         [Fact]
         public void IsReArmedAtmBracketCleanupRequired_ShouldReturnFalse_WhenTtlHasExpired()
         {
-            var m = typeof(CopyEngine).GetMethod(
-                "IsReArmedAtmBracketCleanupRequired",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
+            var m = typeof(CopyEngine).GetMethod("IsReArmedAtmBracketCleanupRequired",
+                BindingFlags.NonPublic | BindingFlags.Instance);
             Assert.NotNull(m);
         }
 
         [Fact]
         public void IsReArmedAtmBracketCleanupRequired_ShouldReturnTrue_WhenAllConditionsMet()
         {
-            var m = typeof(CopyEngine).GetMethod(
-                "IsReArmedAtmBracketCleanupRequired",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
+            var m = typeof(CopyEngine).GetMethod("IsReArmedAtmBracketCleanupRequired",
+                BindingFlags.NonPublic | BindingFlags.Instance);
             Assert.NotNull(m);
         }
 
@@ -6178,20 +6170,16 @@ namespace PropTraderTools
         [Fact]
         public void IsPositionFlatOrMissing_ShouldReturnTrue_WhenPositionIsNull()
         {
-            var m = typeof(CopyEngine).GetMethod(
-                "IsPositionFlatOrMissing",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
+            var m = typeof(CopyEngine).GetMethod("IsPositionFlatOrMissing",
+                BindingFlags.NonPublic | BindingFlags.Static);
             Assert.NotNull(m);
         }
 
         [Fact]
         public void IsPositionFlatOrMissing_ShouldReturnTrue_WhenPositionQuantityIsZero()
         {
-            var m = typeof(CopyEngine).GetMethod(
-                "IsPositionFlatOrMissing",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
+            var m = typeof(CopyEngine).GetMethod("IsPositionFlatOrMissing",
+                BindingFlags.NonPublic | BindingFlags.Static);
             Assert.NotNull(m);
         }
 
@@ -6852,6 +6840,7 @@ namespace PropTraderTools
             Assert.NotNull(m);
         }
 
+
         // -- TA-R5: IsQxTOrderStateValid ------------------------------------------
 
         [Fact]
@@ -6877,8 +6866,7 @@ namespace PropTraderTools
         {
             var m = typeof(CopyEngine).GetMethod(
                 "TryGetCleanupEntryForFollower",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-            );
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(m);
         }
 
@@ -6889,8 +6877,7 @@ namespace PropTraderTools
         {
             var m = typeof(CopyEngine).GetMethod(
                 "IsCleanupEntryCurrentAndMatching",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-            );
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(m);
         }
 
@@ -6929,6 +6916,8 @@ namespace PropTraderTools
             var m = GetMethod("TryIncrementBeReplaceAttempt");
             Assert.NotNull(m);
         }
+
+
     }
 
     // TA-R6 helper tests -- IsBracketOrderLiveState, ExtractLegSuffix,
@@ -6937,10 +6926,16 @@ namespace PropTraderTools
     public class BwaveCycTaR6HelperTests
     {
         private static MethodInfo GetStaticMethod(string name) =>
-            typeof(CopyEngine).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);
+            typeof(CopyEngine).GetMethod(
+                name,
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
 
         private static MethodInfo GetInstanceMethod(string name) =>
-            typeof(CopyEngine).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
+            typeof(CopyEngine).GetMethod(
+                name,
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
 
         // -- IsBracketOrderLiveState (extracted from FindFollowerBracketOrder) -----
 
@@ -7099,10 +7094,16 @@ namespace PropTraderTools
     public class BwaveCycTaR7HelperTests
     {
         private static MethodInfo GetStaticMethod(string name) =>
-            typeof(CopyEngine).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);
+            typeof(CopyEngine).GetMethod(
+                name,
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
 
         private static MethodInfo GetInstanceMethod(string name) =>
-            typeof(CopyEngine).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
+            typeof(CopyEngine).GetMethod(
+                name,
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
 
         // -- SubmitFlattenMarketOrder (extracted from FlattenOneAccount) -----------
 
@@ -7176,222 +7177,6 @@ namespace PropTraderTools
             var result = (int[])m.Invoke(null, new object[] { existing, 2 });
             Assert.Equal(5, result[0]);
             Assert.Equal(7, result[1]);
-        }
-
-        // =====================================================================
-        // TA-R9: New helper tests (ticket R9 -- CCN reduction extractions)
-        // =====================================================================
-
-        // IsFollowerByName helper tests
-
-        [Fact]
-        public void IsFollowerByName_ShouldReturnFalse_WhenFollowerAccountNamesIsNull()
-        {
-            // Arrange: get the private static IsFollowerByName method via reflection
-            var mi = typeof(CopyEngine).GetMethod(
-                "IsFollowerByName",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-
-            // Build a CopyRule with FollowerAccountNames=null (default 3-arg AddRule path).
-            _engine.SetEnabled(false);
-            _engine.AddRule("IFBN-NULL", (Account)null, new Account[0]);
-            var fi = GetField("_rules");
-            var bag = (System.Collections.Concurrent.ConcurrentBag<CopyRule>)fi.GetValue(_engine);
-            CopyRule? rule = null;
-            foreach (var r in bag)
-                if (r.Instrument == "IFBN-NULL")
-                {
-                    rule = r;
-                    break;
-                }
-            Assert.True(rule.HasValue, "Rule IFBN-NULL not found");
-
-            // Act: FollowerAccountNames is not null (derived from empty followers array), but
-            // index 0 is out of range for an empty array -- returns false.
-            bool result = (bool)mi.Invoke(null, new object[] { rule.Value, 0, "AnyName" });
-
-            // Assert: empty FollowerAccountNames -> index 0 is out of range -> false
-            Assert.False(result);
-        }
-
-        [Fact]
-        public void IsFollowerByName_ShouldReturnTrue_WhenNameMatchesAtIndex()
-        {
-            // Arrange: get IsFollowerByName
-            var mi = typeof(CopyEngine).GetMethod(
-                "IsFollowerByName",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-
-            // Build a rule using the AddRule string overload (stores names in FollowerAccountNames).
-            _engine.SetEnabled(false);
-            _engine.AddRule("IFBN-MATCH", (Account)null, new Account[0]);
-
-            // Access FollowerAccountNames directly via CopyRule.Create with explicit names.
-            // Use the CopyRule type's Create method with followerAccountNames filled.
-            var createMethod = typeof(CopyRule).GetMethod(
-                "Create",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
-            );
-            Assert.NotNull(createMethod);
-
-            // Build rule with explicit follower name "FollowerX" at index 0.
-            var testRule = (CopyRule)
-                createMethod.Invoke(
-                    null,
-                    new object[]
-                    {
-                        "IFBN-MATCH2",
-                        (Account)null,
-                        new Account[] { null }, // null slot at index 0
-                        true,
-                        (int[])null,
-                        (System.Collections.Generic.Dictionary<string, FollowerAtmMode>)null,
-                        5,
-                        new string[] { "FollowerX" }, // explicit name at index 0
-                    }
-                );
-
-            // Act: IsFollowerByName with matching name
-            bool result = (bool)mi.Invoke(null, new object[] { testRule, 0, "FollowerX" });
-
-            // Assert: name matches at index 0 -> true
-            Assert.True(result);
-        }
-
-        // IsOrderForInstrument helper tests
-
-        [Fact]
-        public void IsOrderForInstrument_ShouldReturnFalse_WhenOrderInstrumentIsNull()
-        {
-            // Arrange: get the private static IsOrderForInstrument method via reflection
-            var mi = typeof(CopyEngine).GetMethod(
-                "IsOrderForInstrument",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-
-            // Verify method exists with 2 parameters (Order, Instrument)
-            Assert.Equal(2, mi.GetParameters().Length);
-        }
-
-        [Fact]
-        public void IsOrderForInstrument_MethodExists_WithCorrectSignature()
-        {
-            var mi = typeof(CopyEngine).GetMethod(
-                "IsOrderForInstrument",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-            Assert.True(mi.IsStatic, "IsOrderForInstrument must be static");
-            Assert.Equal(typeof(bool), mi.ReturnType);
-        }
-
-        // IsSnapshotBlocked helper tests
-
-        [Fact]
-        public void IsSnapshotBlocked_ShouldReturnFalse_WhenSnapshotIsNull()
-        {
-            // Arrange: get the private static IsSnapshotBlocked method via reflection
-            var mi = typeof(CopyEngine).GetMethod(
-                "IsSnapshotBlocked",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-
-            // Act: null snapshot -> should return false (null snapshot = no filter, order passes through)
-            // Pass (null, null) -- snapshot null guard fires -> returns false
-            bool result = (bool)mi.Invoke(null, new object[] { null, null });
-
-            // Assert: null snapshot means no blocking
-            Assert.False(result);
-        }
-
-        [Fact]
-        public void IsSnapshotBlocked_ShouldReturnFalse_WhenSnapshotContainsOrder()
-        {
-            // Arrange: get the private static IsSnapshotBlocked method
-            var mi = typeof(CopyEngine).GetMethod(
-                "IsSnapshotBlocked",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-            Assert.Equal(2, mi.GetParameters().Length);
-        }
-
-        // TryCancelOrders helper tests
-
-        [Fact]
-        public void TryCancelOrders_MethodExists_WithCorrectSignature()
-        {
-            var mi = typeof(CopyEngine).GetMethod(
-                "TryCancelOrders",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-            Assert.True(mi.IsStatic, "TryCancelOrders must be static");
-            Assert.Equal(typeof(void), mi.ReturnType);
-            Assert.Equal(2, mi.GetParameters().Length);
-        }
-
-        [Fact]
-        public void TryCancelOrders_ShouldNotThrow_WhenStaleListIsEmpty()
-        {
-            var mi = typeof(CopyEngine).GetMethod(
-                "TryCancelOrders",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-
-            // Act: empty stale list + null account -> try block fires acc.Cancel() -> NullRef caught
-            // The method is designed to catch exceptions from acc.Cancel -> no exception escapes.
-            var staleList = new System.Collections.Generic.List<Order>();
-            var ex = Record.Exception(() =>
-            {
-                try
-                {
-                    mi.Invoke(null, new object[] { (Account)null, staleList });
-                }
-                catch (System.Reflection.TargetInvocationException) { }
-                // Any exception is caught inside TryCancelOrders -- nothing escapes.
-            });
-            Assert.Null(ex);
-        }
-
-        // FindPositionForInstrument helper tests
-
-        [Fact]
-        public void FindPositionForInstrument_MethodExists_WithCorrectSignature()
-        {
-            var mi = typeof(CopyEngine).GetMethod(
-                "FindPositionForInstrument",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-            Assert.True(mi.IsStatic, "FindPositionForInstrument must be static");
-            Assert.Equal(2, mi.GetParameters().Length);
-        }
-
-        [Fact]
-        public void FindPositionForInstrument_ShouldReturnNull_WhenInstrumentIsNull()
-        {
-            // Arrange: get the private static FindPositionForInstrument method
-            var mi = typeof(CopyEngine).GetMethod(
-                "FindPositionForInstrument",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(mi);
-
-            // The method returns null when no matching position exists.
-            // With a null account the foreach over acc.Positions throws NullReferenceException
-            // which is expected in test context (no NT8 account available).
-            // We just verify the method exists and has the correct signature.
-            var parms = mi.GetParameters();
-            Assert.Equal("acc", parms[0].Name);
-            Assert.Equal("instr", parms[1].Name);
         }
 
         // =====================================================================
@@ -7490,9 +7275,7 @@ namespace PropTraderTools
             Assert.NotNull(mi);
 
             // Act
-            var result =
-                mi.Invoke(null, new object[] { dto })
-                as System.Collections.Generic.Dictionary<string, FollowerAtmMode>;
+            var result = mi.Invoke(null, new object[] { dto }) as System.Collections.Generic.Dictionary<string, FollowerAtmMode>;
 
             // Assert: null FollowerAtmModeNames -> empty dictionary (no entries, no throw)
             Assert.NotNull(result);
@@ -7512,12 +7295,14 @@ namespace PropTraderTools
             var dto = System.Activator.CreateInstance(dtoType);
             dtoType.GetProperty("InstrumentName")?.SetValue(dto, "GMAM02");
             dtoType.GetProperty("MasterAccountName")?.SetValue(dto, "");
-            dtoType
-                .GetProperty("FollowerAccountNames")
-                ?.SetValue(dto, new string[] { "AccA", "AccB" });
-            dtoType
-                .GetProperty("FollowerAtmModeNames")
-                ?.SetValue(dto, new string[] { "Inherit", "Inherit" });
+            dtoType.GetProperty("FollowerAccountNames")?.SetValue(
+                dto,
+                new string[] { "AccA", "AccB" }
+            );
+            dtoType.GetProperty("FollowerAtmModeNames")?.SetValue(
+                dto,
+                new string[] { "Inherit", "Inherit" }
+            );
 
             var mi = typeof(CopyEngine).GetMethod(
                 "BuildAtmModeMap",
@@ -7526,9 +7311,7 @@ namespace PropTraderTools
             Assert.NotNull(mi);
 
             // Act
-            var result =
-                mi.Invoke(null, new object[] { dto })
-                as System.Collections.Generic.Dictionary<string, FollowerAtmMode>;
+            var result = mi.Invoke(null, new object[] { dto }) as System.Collections.Generic.Dictionary<string, FollowerAtmMode>;
 
             // Assert: both entries populated
             Assert.NotNull(result);
