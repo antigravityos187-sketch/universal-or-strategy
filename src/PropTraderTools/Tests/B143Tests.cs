@@ -22,7 +22,11 @@ namespace PropTraderTools.Tests
         public void T_B143_01_IsLiveEntryBlocked_FirstCall_ReturnsFalse_AllowsDispatch()
         {
             var engine = CopyEngine.Instance;
-            bool result = engine.IsLiveEntryBlocked_ForTest("TEST-B143-01|Sell", "ORD-B143-01", 2000.0);
+            bool result = engine.IsLiveEntryBlocked_ForTest(
+                "TEST-B143-01|Sell",
+                "ORD-B143-01",
+                2000.0
+            );
             Assert.False(result);
         }
 
@@ -33,8 +37,16 @@ namespace PropTraderTools.Tests
         public void T_B143_02_IsLiveEntryBlocked_SecondCall_SameInstrKey_ReturnsTrue_BlocksDuplicate()
         {
             var engine = CopyEngine.Instance;
-            bool firstResult = engine.IsLiveEntryBlocked_ForTest("TEST-B143-02|Sell", "ORD-B143-02A", 2000.0);
-            bool secondResult = engine.IsLiveEntryBlocked_ForTest("TEST-B143-02|Sell", "ORD-B143-02B", 2000.0);
+            bool firstResult = engine.IsLiveEntryBlocked_ForTest(
+                "TEST-B143-02|Sell",
+                "ORD-B143-02A",
+                2000.0
+            );
+            bool secondResult = engine.IsLiveEntryBlocked_ForTest(
+                "TEST-B143-02|Sell",
+                "ORD-B143-02B",
+                2000.0
+            );
             Assert.False(firstResult);
             Assert.True(secondResult);
         }
@@ -48,7 +60,11 @@ namespace PropTraderTools.Tests
             var engine = CopyEngine.Instance;
             engine.IsLiveEntryBlocked_ForTest("TEST-B143-03|Sell", "ORD-B143-03", 2000.0);
             engine.EvictDedup_ForTest("ORD-B143-03", OrderState.Cancelled);
-            bool afterCancel = engine.IsLiveEntryBlocked_ForTest("TEST-B143-03|Sell", "ORD-B143-03C", 2000.0);
+            bool afterCancel = engine.IsLiveEntryBlocked_ForTest(
+                "TEST-B143-03|Sell",
+                "ORD-B143-03C",
+                2000.0
+            );
             Assert.False(afterCancel);
             Assert.False(engine.EntryInstrKeyByOrderIdContains_ForTest("ORD-B143-03"));
         }
@@ -62,7 +78,11 @@ namespace PropTraderTools.Tests
             var engine = CopyEngine.Instance;
             engine.IsLiveEntryBlocked_ForTest("TEST-B143-04|Sell", "ORD-B143-04", 2000.0);
             engine.EvictDedup_ForTest("ORD-B143-04", OrderState.Filled);
-            bool afterFill = engine.IsLiveEntryBlocked_ForTest("TEST-B143-04|Sell", "ORD-B143-04F", 2000.0);
+            bool afterFill = engine.IsLiveEntryBlocked_ForTest(
+                "TEST-B143-04|Sell",
+                "ORD-B143-04F",
+                2000.0
+            );
             Assert.True(afterFill);
         }
 
@@ -76,8 +96,12 @@ namespace PropTraderTools.Tests
             engine.IsLiveEntryBlocked_ForTest("TEST-B143-05|Sell", "ORD-B143-05A", 2000.0);
             engine.IsLiveEntryBlocked_ForTest("TEST-B143-05|Buy", "ORD-B143-05B", 2000.0);
             engine.ClearLiveEntryForInstrument_ForTest("TEST-B143-05");
-            Assert.False(engine.IsLiveEntryBlocked_ForTest("TEST-B143-05|Sell", "ORD-B143-05C", 0.0));
-            Assert.False(engine.IsLiveEntryBlocked_ForTest("TEST-B143-05|Buy", "ORD-B143-05D", 0.0));
+            Assert.False(
+                engine.IsLiveEntryBlocked_ForTest("TEST-B143-05|Sell", "ORD-B143-05C", 0.0)
+            );
+            Assert.False(
+                engine.IsLiveEntryBlocked_ForTest("TEST-B143-05|Buy", "ORD-B143-05D", 0.0)
+            );
         }
 
         // T_B143_06 -- ClearLiveEntryForInstrument is no-op when no matching key.
@@ -89,7 +113,9 @@ namespace PropTraderTools.Tests
             var engine = CopyEngine.Instance;
             engine.IsLiveEntryBlocked_ForTest("UNRELATED-INSTR|Sell", "ORD-B143-06U", 0.0);
             engine.ClearLiveEntryForInstrument_ForTest("INSTRUMENT_NOT_PRESENT");
-            Assert.True(engine.IsLiveEntryBlocked_ForTest("UNRELATED-INSTR|Sell", "ORD-B143-06X", 0.0));
+            Assert.True(
+                engine.IsLiveEntryBlocked_ForTest("UNRELATED-INSTR|Sell", "ORD-B143-06X", 0.0)
+            );
         }
 
         // T_B143_07 -- EvictDedup(bracketOrderId, Cancelled) does NOT clear live entry guard.
@@ -103,7 +129,9 @@ namespace PropTraderTools.Tests
             engine.IsLiveEntryBlocked_ForTest("TEST-B143-07|Sell", "ORD-B143-07A", 2000.0);
             engine.EvictDedup_ForTest("BRACKET-ORD-B143-07", OrderState.Cancelled);
             Assert.True(engine.LiveEntryInstrumentsContains_ForTest("TEST-B143-07|Sell"));
-            Assert.True(engine.IsLiveEntryBlocked_ForTest("TEST-B143-07|Sell", "ORD-B143-07B", 2000.0));
+            Assert.True(
+                engine.IsLiveEntryBlocked_ForTest("TEST-B143-07|Sell", "ORD-B143-07B", 2000.0)
+            );
         }
     }
 }

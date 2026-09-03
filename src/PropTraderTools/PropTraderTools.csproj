@@ -175,5 +175,6 @@
     <Compile Include="TradeCopierPanelB77Tests.cs" />
     <Compile Include="Tests\BwaveCycLaneCTests.cs" />
     <Compile Include="Tests\BwaveCycLaneAR9Tests.cs" />
+    <Compile Include="Tests\BwaveCycLaneBTests.cs" />
   </ItemGroup>
 </Project>

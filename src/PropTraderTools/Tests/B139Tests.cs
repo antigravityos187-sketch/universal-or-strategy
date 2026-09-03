@@ -145,8 +145,12 @@ namespace PropTraderTools.Tests
             );
 
             // Predicate regression: Working and Accepted must return true from the cancellable predicate.
-            Assert.True(CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Working)));
-            Assert.True(CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Accepted)));
+            Assert.True(
+                CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Working))
+            );
+            Assert.True(
+                CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Accepted))
+            );
         }
 
         // ----------------------------------------------------------------
@@ -156,9 +160,15 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsPttStpDragCancellable_TerminalStates_ReturnFalse()
         {
-            Assert.False(CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Cancelled)));
-            Assert.False(CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Filled)));
-            Assert.False(CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Rejected)));
+            Assert.False(
+                CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Cancelled))
+            );
+            Assert.False(
+                CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Filled))
+            );
+            Assert.False(
+                CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Rejected))
+            );
         }
 
         // ----------------------------------------------------------------
@@ -168,7 +178,9 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsPttStpDragCancellable_Submitted_ReturnsTrue()
         {
-            Assert.True(CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Submitted)));
+            Assert.True(
+                CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Submitted))
+            );
         }
 
         // ----------------------------------------------------------------
@@ -178,7 +190,9 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsPttStpDragCancellable_Working_ReturnsTrue()
         {
-            Assert.True(CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Working)));
+            Assert.True(
+                CopyEngine.IsPttStpDragCancellableTestable(MakeFakeOrder(OrderState.Working))
+            );
         }
 
         // ----------------------------------------------------------------

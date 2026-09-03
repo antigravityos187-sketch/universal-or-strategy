@@ -12,8 +12,8 @@ namespace PropTraderTools
 {
     public sealed class B46Tests
     {
-        // T_B46_01 — Empty AtmTemplateName triggers the guard (IsNullOrWhiteSpace = true).
-        // Guard fires → AtmStrategyCreate is skipped → strategy stays alive.
+        // T_B46_01 -- Empty AtmTemplateName triggers the guard (IsNullOrWhiteSpace = true).
+        // Guard fires -> AtmStrategyCreate is skipped -> strategy stays alive.
         // Spec: DW-B46-ATM-EMPTY-GUARD-01
         [Fact]
         public void T_B46_01_EmptyAtmTemplateName_GuardFires()
@@ -32,8 +32,8 @@ namespace PropTraderTools
             Assert.True(string.IsNullOrWhiteSpace(args.AtmTemplateName));
         }
 
-        // T_B46_02 — Non-empty AtmTemplateName does NOT trigger the guard.
-        // Guard does not fire → AtmStrategyCreate is called with the template name.
+        // T_B46_02 -- Non-empty AtmTemplateName does NOT trigger the guard.
+        // Guard does not fire -> AtmStrategyCreate is called with the template name.
         // Spec: DW-B46-ATM-EMPTY-GUARD-01 (negative / pass-through case)
         [Fact]
         public void T_B46_02_NonEmptyAtmTemplateName_GuardDoesNotFire()
@@ -51,7 +51,7 @@ namespace PropTraderTools
             Assert.Equal("MES $200 SL5", args.AtmTemplateName);
         }
 
-        // T_B46_03 — "Named:MES $200 SL5" (written by auto-select) round-trips
+        // T_B46_03 -- "Named:MES $200 SL5" (written by auto-select) round-trips
         //            through CopyEngine.ParseAtmModeName to Named mode correctly.
         //            Validates the serialisation format is consistent end-to-end.
         // Spec: DW-B46-COMBO-AUTOSELECT-02
