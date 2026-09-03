@@ -168,6 +168,7 @@
     <Compile Include="Tests\B135Tests.cs" />
     <Compile Include="Tests\B136Tests.cs" />
     <Compile Include="Tests\B139Tests.cs" />
+    <Compile Include="Tests\B143Tests.cs" />
     <Compile Include="Tests\BgtmTests.cs" />
     <Compile Include="TradeCopierPanelB75Tests.cs" />
     <Compile Include="B76Tests.cs" />

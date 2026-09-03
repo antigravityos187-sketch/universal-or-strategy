@@ -3510,6 +3510,29 @@ namespace PropTraderTools
         internal ConcurrentDictionary<string, OrderAction> TestOnly_LastLeaderDirection =>
             _lastLeaderDirection;
 
+
+        // B143 test seam -- no logic, thin shims only.
+        // InternalsVisibleTo("PropTraderTools.Tests") granted at L46.
+        #region B143 test seam
+
+        internal bool IsLiveEntryBlocked_ForTest(string instrKey, string orderId, double limitPrice)
+            => IsLiveEntryBlocked(instrKey, orderId, limitPrice);
+
+        internal void EvictDedup_ForTest(string orderId, NinjaTrader.Cbi.OrderState state)
+            => EvictDedup(orderId, state);
+
+        internal void ClearLiveEntryForInstrument_ForTest(string instrFullName)
+            => ClearLiveEntryForInstrument(instrFullName);
+
+        internal bool LiveEntryInstrumentsContains_ForTest(string key)
+            => _liveEntryInstruments.ContainsKey(key);
+
+        internal bool EntryInstrKeyByOrderIdContains_ForTest(string orderId)
+            => _entryInstrKeyByOrderId.ContainsKey(orderId);
+
+        #endregion
+
+
         // HOTFIX-B66-COPY-REPLACE / HOTFIX-B66-NATIVE-ATM: re-places a cancelled follower entry order.
         // Called from pre-Gate-1 block when follower "PTT-Copy" or "Entry" is cancelled while leader is long.
         // Finds the copy rule where cancelledOrder.Account is a follower, verifies the leader
