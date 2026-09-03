@@ -20,10 +20,7 @@ namespace PropTraderTools
 
         private static object BuildCopyRule(string instrument, string[] followerNames)
         {
-            var createMethod = typeof(CopyEngine).GetNestedType(
-                "CopyRule",
-                BindingFlags.NonPublic
-            );
+            var createMethod = typeof(CopyEngine).GetNestedType("CopyRule", BindingFlags.NonPublic);
             if (createMethod == null)
                 return null;
             var create = createMethod.GetMethod(
@@ -34,7 +31,8 @@ namespace PropTraderTools
                 return null;
             return create.Invoke(
                 null,
-                new object[] {
+                new object[]
+                {
                     instrument,
                     (Account)null,
                     followerNames != null ? new Account[followerNames.Length] : new Account[0],
@@ -42,7 +40,7 @@ namespace PropTraderTools
                     (int[])null,
                     (Dictionary<string, FollowerAtmMode>)null,
                     5,
-                    followerNames
+                    followerNames,
                 }
             );
         }
@@ -147,7 +145,10 @@ namespace PropTraderTools
             var stale = new List<Order>();
             var ex = Record.Exception(() =>
             {
-                try { mi.Invoke(null, new object[] { (Account)null, stale }); }
+                try
+                {
+                    mi.Invoke(null, new object[] { (Account)null, stale });
+                }
                 catch (TargetInvocationException) { }
             });
             Assert.Null(ex);
