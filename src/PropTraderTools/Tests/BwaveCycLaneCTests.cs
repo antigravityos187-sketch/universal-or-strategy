@@ -1030,27 +1030,11 @@ namespace PropTraderTools
             Assert.Equal(0, m.GetParameters().Length);
             Assert.Equal(typeof(void), m.ReturnType);
         }
-
         [Fact]
-        public void DisarmAllAccounts_DoesNotThrow_WhenAccountAllIsNull()
+        public void DisarmAllAccounts_IsDeleted()
         {
-            // Verify DisarmAllAccounts is private static on TradeCopierPanel.
-            var m = GetDisarmAllAccountsMethod();
-            Assert.NotNull(m);
-            Assert.True(m.IsPrivate);
-            Assert.True(m.IsStatic);
-            Assert.False(m.IsPublic);
-        }
-
-        [Fact]
-        public void DisarmAllAccounts_CallsDisarmPendingBe_ForEachAccount()
-        {
-            // Verify method exists and is static with no parameters.
-            var m = GetDisarmAllAccountsMethod();
-            Assert.NotNull(m);
-            Assert.True(m.IsStatic);
-            Assert.Equal(0, m.GetParameters().Length);
-            Assert.Equal(typeof(void), m.ReturnType);
+            // DW-C38-03: DisarmAllAccounts was deleted. Confirm absence.
+            Assert.Null(GetDisarmAllAccountsMethod());
         }
     }
 
