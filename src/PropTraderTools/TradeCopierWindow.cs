@@ -170,6 +170,7 @@ namespace PropTraderTools
                 _rulesPanel.Children.Clear();
                 foreach (var instr in instruments) // CYC branch (2): iterate instruments
                     _rulesPanel.Children.Add(BuildRuleRow(instr));
+                ApplyFeatureFlags(CopyEngine.Instance.Flags); // DW-C39-05b: apply flags after rows are built
             });
         }
 
@@ -428,6 +429,8 @@ namespace PropTraderTools
             ApplyButtonGroupFlag(_flattenBtns, f.TrimFlatten, "Trim/Flatten requires Pro tier");
             ApplyButtonGroupFlag(_cancelBtns, f.TrimFlatten, "Cancel requires Pro tier");
             ApplyButtonGroupFlag(_beBtns, f.BreakEven, "Break Even requires Pro tier");
+            ApplyButtonGroupFlag(_armBeBtns, f.BreakEven, "Arm Break-Even not available on this plan");
+            ApplyButtonGroupFlag(_tightenBtns, f.BreakEven, "Tighten Stop not available on this plan");
             if (_modeCb != null)
             {
                 _modeCb.IsEnabled = f.MirrorMode;
@@ -895,9 +898,11 @@ namespace PropTraderTools
             return template;
         }
 
+        // DW-C39-05: re-gate new row buttons immediately after adding the row.
         private void OnAddRule(object sender, RoutedEventArgs e)
         {
             _rulesPanel.Children.Add(BuildDynamicRuleRow());
+            ApplyFeatureFlags(CopyEngine.Instance.Flags); // gate newly-added buttons
         }
 
         private void OnRuleTrim(object sender, RoutedEventArgs e)
