@@ -1161,7 +1161,43 @@ namespace PropTraderTools
             };
             foreach (var s in specs)
             {
-                var (cluster, btn) = BuildArrowCluster(s.Content, s.Bg, s.Teal, s.Up, s.Dn, s.Main);
+                var cluster = new DockPanel { LastChildFill = true };
+                var arrows = new Grid();
+                arrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+                arrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+                var up = new System.Windows.Controls.Primitives.RepeatButton
+                {
+                    Content = "^",
+                    Width = 18,
+                    Height = 12,
+                };
+                var dn = new System.Windows.Controls.Primitives.RepeatButton
+                {
+                    Content = "v",
+                    Width = 18,
+                    Height = 12,
+                };
+                up.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+                dn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+                up.Click += s.Up;
+                dn.Click += s.Dn;
+                Grid.SetRow(up, 0);
+                Grid.SetRow(dn, 1);
+                arrows.Children.Add(up);
+                arrows.Children.Add(dn);
+                DockPanel.SetDock(arrows, Dock.Right);
+                var btn = new Button { Content = s.Content };
+                if (s.Teal)
+                {
+                    btn.BorderBrush = BrushTeal;
+                    btn.Foreground = BrushTeal;
+                    btn.BorderThickness = new Thickness(2);
+                }
+                btn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
+                btn.Background = s.Bg; // AFTER style -- explicit brush wins (DW-LaneA-06 fix)
+                btn.Click += s.Main;
+                cluster.Children.Add(arrows);
+                cluster.Children.Add(btn);
                 s.Store(btn);
                 s.Target.Children.Add(cluster);
             }
@@ -1183,57 +1219,6 @@ namespace PropTraderTools
             quickT3Lbl.SetResourceReference(TextBlock.ForegroundProperty, "NTBrushes.SubtleBrush");
             _quickT3Row.Children.Add(quickT3Lbl);
             root.Children.Add(_quickT3Row);
-        }
-
-        // R2: BuildArrowCluster -- shared DockPanel+Grid+arrows+mainButton factory.
-        // CYC=2: base(1) + useTealBorder(1).
-        // Static: no instance state. All params are primitives or delegate refs.
-        // JS-021: no lock. JS-033: no async. NT8: SetResourceReference is UI-thread-safe.
-        private static (DockPanel cluster, Button mainBtn) BuildArrowCluster(
-            string mainContent,
-            System.Windows.Media.Brush mainBackground,
-            bool useTealBorder,
-            RoutedEventHandler upClick,
-            RoutedEventHandler downClick,
-            RoutedEventHandler mainClick)
-        {
-            var cluster = new DockPanel { LastChildFill = true };
-            var arrows = new Grid();
-            arrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            arrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-            var up = new System.Windows.Controls.Primitives.RepeatButton
-            {
-                Content = "^",
-                Width = 18,
-                Height = 12,
-            };
-            var dn = new System.Windows.Controls.Primitives.RepeatButton
-            {
-                Content = "v",
-                Width = 18,
-                Height = 12,
-            };
-            up.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            dn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            up.Click += upClick;
-            dn.Click += downClick;
-            Grid.SetRow(up, 0);
-            Grid.SetRow(dn, 1);
-            arrows.Children.Add(up);
-            arrows.Children.Add(dn);
-            DockPanel.SetDock(arrows, Dock.Right);
-            var btn = new Button { Content = mainContent, Background = mainBackground };
-            if (useTealBorder)
-            {
-                btn.BorderBrush = BrushTeal;
-                btn.Foreground = BrushTeal;
-                btn.BorderThickness = new Thickness(2);
-            }
-            btn.SetResourceReference(Control.StyleProperty, "NTButtonStyle");
-            btn.Click += mainClick;
-            cluster.Children.Add(arrows);
-            cluster.Children.Add(btn);
-            return (cluster, btn);
         }
 
         // B129: BuildInstrRow -- 2-col UniformGrid: "Quick2t" (left) + "QAll2t" (right).

@@ -367,6 +367,12 @@ namespace PropTraderTools
         private readonly ConcurrentDictionary<string, ConcurrentBag<FollowerBinding>> _orderMap =
             new ConcurrentDictionary<string, ConcurrentBag<FollowerBinding>>();
 
+        // DW-NEW-08 Option E: debounce dict for naked detection.
+        // Stores (long)Environment.TickCount at last naked-detect queue time per account name.
+        // ConcurrentDictionary: no lock. Key = acc.Name (NT8 platform account name).
+        private readonly ConcurrentDictionary<string, long> _nakedDetectLastQueuedTicks =
+            new ConcurrentDictionary<string, long>(StringComparer.Ordinal);
+
         // --- Status event ---
         internal event Action<string> StatusUpdate;
 
@@ -1391,6 +1397,9 @@ namespace PropTraderTools
             // HOTFIX-B66-COPY-REPLACE / HOTFIX-B66-NATIVE-ATM: re-place follower entry when NT8-ATM
             // cancel sweep wipes it during bracket arming. Predicate + action fused in helper (no branch here).
             TryReplaceOnAtmCancel(e.Order);
+
+            // DW-NEW-08 Option E: detect naked position within 50ms of terminal order event.
+            TryNakedDetect(e);
 
             // Gate 1: enabled check
             if (!_isCopyEnabled)
@@ -3418,6 +3427,28 @@ namespace PropTraderTools
             return order.Name == leaderName; // (3) ATM Name-based fallback
         }
 
+        // DW-NEW-09: ActiveOrders -- terminal-state filter for Account.Orders.
+        // Returns only orders in non-terminal states (Filled/Cancelled/Rejected excluded).
+        // CYC=1: expression body, single Where predicate, no branching.
+        // JS-021: no lock (LINQ Where is non-mutating). JS-002: IEnumerable<Order> (never null).
+        // JS-036: lazy Where -- no heap allocation beyond the enumerator.
+        // Fix point: callers that need active orders use this instead of .ToList().
+        // NT8: acc.Orders iteration is safe on order-update callback thread (same as existing ToList() pattern).
+        private static IEnumerable<Order> ActiveOrders(Account acc) =>
+            acc.Orders.Where(static o =>
+                o.OrderState != OrderState.Filled
+                && o.OrderState != OrderState.Cancelled
+                && o.OrderState != OrderState.Rejected);
+
+        // DW-NEW-09: test seam -- exposes ActiveOrders filter logic for xUnit without needing NT8 Account.
+        // Accepts any IEnumerable<Order> so tests can inject stub order lists directly.
+        // InternalsVisibleTo("PropTraderTools.Tests") granted at L46.
+        internal static IEnumerable<Order> ActiveOrdersTestable(IEnumerable<Order> orders) =>
+            orders.Where(static o =>
+                o.OrderState != OrderState.Filled
+                && o.OrderState != OrderState.Cancelled
+                && o.OrderState != OrderState.Rejected);
+
         // CYC=4. Returns first matching working bracket order for the follower.
         // V04 B131 DW-B138: leaderName param added -- ATM Name-based fallback when FromEntrySignal null/empty.
         // V03: return type is Order? (nullable) -- null contract explicit (JS-002 compliant).
@@ -3434,7 +3465,7 @@ namespace PropTraderTools
             string? leaderName = null
         ) =>
             FindFollowerBracketOrder(
-                follower.Orders.ToList(),
+                ActiveOrders(follower), // DW-NEW-09: terminal orders excluded
                 fromEntrySignalName,
                 isStop,
                 leaderName
@@ -3634,7 +3665,7 @@ namespace PropTraderTools
         // JS-002: returns null when not found -- callers must null-guard.
         private static Order? FindFollowerEntryOrder(Account follower, Instrument instrument)
         {
-            foreach (var order in follower.Orders.ToList()) // (1)
+            foreach (var order in ActiveOrders(follower)) // (1) DW-NEW-09: terminal orders excluded
             {
                 if (order.Instrument != instrument) // (2)
                     continue;
@@ -6034,6 +6065,13 @@ namespace PropTraderTools
         internal bool IsPendingBeSlotActiveNullAccountTestable() =>
             IsPendingBeSlotActive(default(PendingBeSlot));
 
+        // DW-DW-03 + DW-NEW-07 T3: test seam -- IsPendingBeSlotActive by account name string.
+        // _pendingBeSlots key = account.Name. ConcurrentDictionary.ContainsKey is lock-free.
+        // CYC=1: expression body, no branches.
+        // JS-021: no lock. JS-002: returns bool. JS-033: synchronous.
+        internal bool IsPendingBeSlotActive(string accountName) =>
+            _pendingBeSlots.ContainsKey(accountName);
+
         // BWAVE-CYC TB-T2: test seams for TryRecordBeTargetFill and TryTriggerBeRecovery.
         // Order is NT8 private -- cannot be instantiated in test code.
         // Null-guard seams call with null directly (CYC=1 each).
@@ -6365,5 +6403,95 @@ namespace PropTraderTools
                 // Swallow deserialization errors -- missing/corrupt file is non-fatal
             }
         }
+
+        // DW-NEW-08 Option E: thin dispatcher gate.
+        // CYC=3: (1) terminal-state check, (2) follower-account check, (3) NakedPositionDetector call.
+        // JS-021: no lock. JS-001: no throw. JS-033: synchronous void.
+        private void TryNakedDetect(OrderEventArgs e)
+        {
+            if (
+                e.Order.OrderState != OrderState.Filled
+                && e.Order.OrderState != OrderState.Cancelled
+                && e.Order.OrderState != OrderState.Rejected
+            )
+                return;
+            if (!IsFollowerAccount(e.Order.Account))
+                return;
+            NakedPositionDetector(e.Order.Account);
+        }
+
+        // DW-NEW-08 Option E: check and queue flatten if follower account is naked.
+        // CYC<=6: (1) acct null, (2) HasNakedPosition, (3) debounce check,
+        //         (4) AddOrUpdate atomic, (5) instrument null check.
+        // JS-021: no lock -- ConcurrentDictionary atomic ops only.
+        // JS-001: no throw. JS-033: synchronous void.
+        // NT8 bans: no Account.Change(), no AtmStrategyCreate(), no AtmStrategyChangeStopTarget().
+        // Note: Environment.TickCount is int (ms since boot, ~25d wrap). Cast to long for dict.
+        //       500ms grace window is far shorter than wrap period -- safe.
+        private void NakedPositionDetector(Account acct)
+        {
+            if (acct == null)
+                return;
+            if (!HasNakedPosition(acct))
+                return;
+
+            // debounce: skip if already queued within 500ms grace window
+            long now = (long)Environment.TickCount;
+            const long GraceMs = 500L;
+            long last = _nakedDetectLastQueuedTicks.GetOrAdd(acct.Name, 0L);
+            if (now - last < GraceMs)
+                return;
+
+            // atomic update: record dispatch time
+            _nakedDetectLastQueuedTicks.AddOrUpdate(acct.Name, now, (_, __) => now);
+
+            // marshal flatten to UI thread -- same pattern as other flatten paths
+            Instrument instr = FindOpenPositionInstrument(acct);
+            if (instr != null)
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    FlattenOneAccount(acct, instr));
+        }
+
+        // DW-NEW-08 Option E: naked position check.
+        // Returns true if acct has a non-flat position AND zero Working/Submitted Stop or Target.
+        // CYC<=8 (see analysis: 2 foreach loops + 5 decision points).
+        // JS-021: no lock. JS-002: returns bool. JS-001: no throw.
+        // NT8: OrderState.Submitted = pre-Working (Accepted / partially acknowledged).
+        private static bool HasNakedPosition(Account acct)
+        {
+            bool hasPosition = false;
+            foreach (Position p in acct.Positions)
+            {
+                if (p.Quantity > 0)
+                {
+                    hasPosition = true;
+                    break;
+                }
+            }
+            if (!hasPosition)
+                return false;
+
+            bool hasStop = false;
+            bool hasTarget = false;
+            foreach (Order o in acct.Orders)
+            {
+                if (
+                    o.OrderState != OrderState.Working
+                    && o.OrderState != OrderState.Submitted
+                )
+                    continue;
+                if (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
+                    hasStop = true;
+                else if (o.OrderType == OrderType.Limit)
+                    hasTarget = true;
+            }
+            return !hasStop && !hasTarget;
+        }
+
+        // DW-NEW-08 Option E: return instrument of first non-flat position, or null if all flat.
+        // CYC=1. JS-002 compliant: return type Instrument (nullable reference, no raw return null).
+        // Caller uses is not null guard (see NakedPositionDetector above).
+        private static Instrument FindOpenPositionInstrument(Account acct) =>
+            acct.Positions.FirstOrDefault(static p => p.Quantity > 0)?.Instrument;
     }
 }
