@@ -1,4 +1,4 @@
-﻿// B113Tests.cs -- DW-B117 cancel-after fix tests
+// B113Tests.cs -- DW-B117 cancel-after fix tests
 // Block: B113. Framework: xUnit [Fact] only. JS-021: no lock. JS-033: no async void.
 // Seam: [assembly: InternalsVisibleTo("PropTraderTools.Tests")] in CopyEngine.cs.
 // Tests use CopyEngine.Instance (production singleton). No NT8 host required for T1-T4.

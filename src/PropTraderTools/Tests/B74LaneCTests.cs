@@ -1,4 +1,4 @@
-﻿// PTT-COPIER-B74-LaneC -- B74LaneCTests.cs
+// PTT-COPIER-B74-LaneC -- B74LaneCTests.cs
 // xUnit tests for B74-LaneC hotfixes:
 //   B74-C-01: IncrementBuffer/DecrementBuffer relay fix (CS0070)
 //   B74-C-02: RaiseBeBufferChanged relay on CopyEngine
