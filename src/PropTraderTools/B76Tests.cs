@@ -41,7 +41,8 @@ namespace PropTraderTools
 
         // T_B76_02: FlattenOneAccount compiled body contains the string literal for the in-flight guard.
         // Verifies HOTFIX-B76-FLATTEN-GUARD-01 v2 is compiled into the method.
-        // Strategy: retrieve method IL bytes, locate string tokens via ldstr (0x72) opcode, resolve token.
+        // IL assertion: scans ldstr tokens within the same assembly module (same-module ResolveString is stable).
+        // Roslyn version dependency: valid for net8.0 target. Review on toolchain upgrade. See DW-C39-12.
         [Fact]
         public void T_B76_02_FlattenOneAccount_ContainsInFlightSkipString()
         {
@@ -57,6 +58,7 @@ namespace PropTraderTools
             Assert.NotNull(il);
             Assert.True(il.Length > 0, "FlattenOneAccount must have a non-empty IL body");
 
+            // IL assertion: scan for ldstr opcode anywhere in method body (not at a fixed offset). See DW-C39-12.
             bool found = false;
             var module = typeof(CopyEngine).Module;
             for (int i = 0; i < il.Length - 4; i++)
@@ -88,6 +90,8 @@ namespace PropTraderTools
 
         // T_B76_03: FlattenOneAccount compiled body contains the string literal for the race skip.
         // Verifies HOTFIX-B76-FLATTEN-RACE-01 is compiled into the method.
+        // IL assertion: scans ldstr tokens within the same assembly module (same-module ResolveString is stable).
+        // Roslyn version dependency: valid for net8.0 target. Review on toolchain upgrade. See DW-C39-12.
         [Fact]
         public void T_B76_03_FlattenOneAccount_ContainsRaceSkipString()
         {
@@ -102,6 +106,7 @@ namespace PropTraderTools
             var il = body.GetILAsByteArray();
             Assert.NotNull(il);
 
+            // IL assertion: scan for ldstr opcode anywhere in method body (not at a fixed offset). See DW-C39-12.
             bool found = false;
             var module = typeof(CopyEngine).Module;
             for (int i = 0; i < il.Length - 4; i++)
@@ -132,6 +137,8 @@ namespace PropTraderTools
         // T_B76_04: FlattenOneAccount IL contains at least 2 FindPosition call sites.
         // The first call is the initial position check; the second is the post-cancel re-read.
         // Proves the race guard (posAfterCancel) is compiled into the method.
+        // IL assertion: uses name+declaring-type resolution via helper (stable). See DW-C39-12.
+        // Assertion uses count >= 2 (not exact) to avoid fragility.
         [Fact]
         public void T_B76_04_FlattenOneAccount_HasAtLeastTwoFindPositionCallSites()
         {
@@ -141,30 +148,13 @@ namespace PropTraderTools
             );
             Assert.NotNull(mi);
 
-            var findPosMi = typeof(CopyEngine).GetMethod(
-                "FindPosition",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.NotNull(findPosMi);
-
-            int findPosToken = findPosMi.MetadataToken;
-
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
             var il = body.GetILAsByteArray();
             Assert.NotNull(il);
 
-            int callCount = 0;
-            for (int i = 0; i < il.Length - 4; i++)
-            {
-                if (il[i] == 0x28 || il[i] == 0x6F) // call or callvirt
-                {
-                    int token =
-                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
-                    if (token == findPosToken)
-                        callCount++;
-                }
-            }
+            var module = typeof(CopyEngine).Module;
+            int callCount = CollectCallSiteOffsets(il, module, "FindPosition").Count;
 
             Assert.True(
                 callCount >= 2,
@@ -172,8 +162,10 @@ namespace PropTraderTools
             );
         }
 
-        // T_B76_05: FlattenOneAccount IL: CancelAllAccountOrders call offset is BEFORE the second
-        // FindPosition call offset. Proves the cancel-then-re-read sequence is correct.
+        // T_B76_05: FlattenOneAccount IL: CancelAllAccountOrders call site appears before the second
+        // FindPosition call site. Proves the cancel-then-re-read sequence is correct.
+        // IL assertion: uses name+declaring-type resolution via helper (stable). See DW-C39-12.
+        // Offset ordering assertion verifies sequencing invariant, not exact byte offsets.
         [Fact]
         public void T_B76_05_FlattenOneAccount_CancelBeforeSecondFindPosition_InIL()
         {
@@ -183,41 +175,14 @@ namespace PropTraderTools
             );
             Assert.NotNull(mi);
 
-            var findPosMi = typeof(CopyEngine).GetMethod(
-                "FindPosition",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.NotNull(findPosMi);
-
-            var cancelMi = typeof(CopyEngine).GetMethod(
-                "CancelAllAccountOrders",
-                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public
-            );
-            Assert.NotNull(cancelMi);
-
-            int findPosToken = findPosMi.MetadataToken;
-            int cancelToken = cancelMi.MetadataToken;
-
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
             var il = body.GetILAsByteArray();
             Assert.NotNull(il);
 
-            var findPosOffsets = new System.Collections.Generic.List<int>();
-            int cancelOffset = -1;
-
-            for (int i = 0; i < il.Length - 4; i++)
-            {
-                if (il[i] == 0x28 || il[i] == 0x6F)
-                {
-                    int token =
-                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
-                    if (token == findPosToken)
-                        findPosOffsets.Add(i);
-                    else if (token == cancelToken && cancelOffset == -1)
-                        cancelOffset = i;
-                }
-            }
+            var module = typeof(CopyEngine).Module;
+            var findPosOffsets = CollectCallSiteOffsets(il, module, "FindPosition");
+            int cancelOffset = FindFirstCallSiteOffset(il, module, "CancelAllAccountOrders");
 
             Assert.True(
                 findPosOffsets.Count >= 2,
@@ -235,6 +200,8 @@ namespace PropTraderTools
         // T_B76_06: FlattenOneAccount IL has at least 5 local variables.
         // Expected locals: foreach loop var (o), pos, posAfterCancel, action, order.
         // Proves the full method body is compiled (not a stub).
+        // IL assertion: local count >= 5 (lower bound only, not exact). See DW-C39-12.
+        // Roslyn version dependency: valid for net8.0 target. Review on toolchain upgrade. See DW-C39-12.
         [Fact]
         public void T_B76_06_FlattenOneAccount_HasAtLeastFiveLocals()
         {
@@ -247,6 +214,7 @@ namespace PropTraderTools
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
 
+            // IL assertion: local count lower bound -- compiler may allocate more locals for temporaries. See DW-C39-12.
             int localCount = body.LocalVariables.Count;
             Assert.True(
                 localCount >= 5,
@@ -280,6 +248,10 @@ namespace PropTraderTools
 
         // T_B76_08: TryFirePositionState IL contains an Interlocked.Exchange call site.
         // Verifies the CAS dedup is compiled into TryFirePositionState.
+        // DW-C39-11: raw token comparison replaced with stable name+declaring-type check.
+        // Interlocked.Exchange is in mscorlib/System.Runtime (cross-assembly). The call site in
+        // CopyEngine emits a MemberRef token, not the MethodDef token from the declaring assembly,
+        // so token equality never holds across assembly boundaries. Use name+type resolution instead.
         [Fact]
         public void T_B76_08_TryFirePositionState_IL_ContainsInterlockedExchangeCallSite()
         {
@@ -289,20 +261,13 @@ namespace PropTraderTools
             );
             Assert.NotNull(mi);
 
-            var interlockedExchangeMi = typeof(System.Threading.Interlocked).GetMethod(
-                "Exchange",
-                new Type[] { typeof(int).MakeByRefType(), typeof(int) }
-            );
-            Assert.NotNull(interlockedExchangeMi);
-
-            int exchangeToken = interlockedExchangeMi.MetadataToken;
-
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
             var il = body.GetILAsByteArray();
             Assert.NotNull(il);
             Assert.True(il.Length > 0, "TryFirePositionState must have a non-empty IL body");
 
+            var module = typeof(CopyEngine).Module;
             bool foundExchange = false;
             for (int i = 0; i < il.Length - 4; i++)
             {
@@ -310,10 +275,23 @@ namespace PropTraderTools
                 {
                     int token =
                         il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
-                    if (token == exchangeToken)
+                    try
                     {
-                        foundExchange = true;
-                        break;
+                        // DW-C39-11: resolve by name + declaring type (stable across assembly boundaries).
+                        // Raw token comparison fails for cross-assembly MemberRef tokens.
+                        var mb = module.ResolveMethod(token) as MethodBase;
+                        if (
+                            mb != null
+                            && mb.Name == "Exchange"
+                            && mb.DeclaringType == typeof(System.Threading.Interlocked)
+                        )
+                        {
+                            foundExchange = true;
+                            break;
+                        }
+                    }
+                    catch
+                    { /* token resolves to a non-method or is not resolvable in this context -- skip */
                     }
                 }
             }
@@ -372,6 +350,9 @@ namespace PropTraderTools
         // T_B76_11: GetLeaderAtmTemplateName method body contains the string literal "AtmStrategy"
         // used as the class-name guard comparison.
         // Confirms HOTFIX-B76-ATM-TPL-CLASSNAME is compiled into the method.
+        // IL assertion: scans ldstr tokens anywhere in method body (not at a fixed offset).
+        // Same-assembly ResolveString is stable. Roslyn version dependency: valid for net8.0 target.
+        // Review on toolchain upgrade. See DW-C39-12.
         [Fact]
         public void T_B76_11_GetLeaderAtmTemplateName_IL_ContainsAtmStrategyClassNameGuardString()
         {
@@ -387,6 +368,7 @@ namespace PropTraderTools
             Assert.NotNull(il);
             Assert.True(il.Length > 0, "GetLeaderAtmTemplateName must have a non-empty IL body");
 
+            // IL assertion: scan for ldstr opcode anywhere in method body (not at a fixed offset). See DW-C39-12.
             bool found = false;
             var module = typeof(TradeCopierPanel).Module;
             for (int i = 0; i < il.Length - 4; i++)
@@ -439,6 +421,53 @@ namespace PropTraderTools
             var ps = mi.GetParameters();
             Assert.Single(ps);
             Assert.Equal("currentChart", ps[0].Name);
+        }
+
+        // CollectCallSiteOffsets: returns all IL byte offsets of call/callvirt instructions that
+        // resolve to a method named `methodName` on `CopyEngine`. DW-C39-12 helper.
+        // CYC: 1(base)+1(for)+1(if-opcode)+1(try-catch)+1(if-name-match) = 5
+        private static System.Collections.Generic.List<int> CollectCallSiteOffsets(
+            byte[] il,
+            Module module,
+            string methodName
+        )
+        {
+            var offsets = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < il.Length - 4; i++)
+            {
+                if (il[i] != 0x28 && il[i] != 0x6F)
+                    continue;
+                int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                try
+                {
+                    var mb = module.ResolveMethod(token) as MethodBase;
+                    if (mb != null && mb.Name == methodName && mb.DeclaringType == typeof(CopyEngine))
+                        offsets.Add(i);
+                }
+                catch { }
+            }
+            return offsets;
+        }
+
+        // FindFirstCallSiteOffset: returns the first IL byte offset of a call/callvirt that
+        // resolves to `methodName` on `CopyEngine`, or -1 if not found. DW-C39-12 helper.
+        // CYC: 1(base)+1(for)+1(if-opcode)+1(try-catch)+1(if-name-match) = 5
+        private static int FindFirstCallSiteOffset(byte[] il, Module module, string methodName)
+        {
+            for (int i = 0; i < il.Length - 4; i++)
+            {
+                if (il[i] != 0x28 && il[i] != 0x6F)
+                    continue;
+                int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                try
+                {
+                    var mb = module.ResolveMethod(token) as MethodBase;
+                    if (mb != null && mb.Name == methodName && mb.DeclaringType == typeof(CopyEngine))
+                        return i;
+                }
+                catch { }
+            }
+            return -1;
         }
     }
 }
