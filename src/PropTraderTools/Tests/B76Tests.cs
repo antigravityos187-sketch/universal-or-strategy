@@ -41,47 +41,17 @@ namespace PropTraderTools
 
         // T_B76_02: FlattenOneAccount compiled body contains the string literal for the in-flight guard.
         // Verifies HOTFIX-B76-FLATTEN-GUARD-01 v2 is compiled into the method.
-        // Strategy: retrieve method IL bytes, locate string tokens via ldstr (0x72) opcode, resolve token.
         [Fact]
         public void T_B76_02_FlattenOneAccount_ContainsInFlightSkipString()
         {
-            var mi = typeof(CopyEngine).GetMethod(
-                "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.NotNull(mi);
-
-            var body = mi.GetMethodBody();
-            Assert.NotNull(body);
-            var il = body.GetILAsByteArray();
-            Assert.NotNull(il);
-            Assert.True(il.Length > 0, "FlattenOneAccount must have a non-empty IL body");
-
-            bool found = false;
-            var module = typeof(CopyEngine).Module;
-            for (int i = 0; i < il.Length - 4; i++)
-            {
-                if (il[i] == 0x72) // ldstr
-                {
-                    int token =
-                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
-                    try
-                    {
-                        var s = module.ResolveString(token);
-                        if (s != null && s.Contains("flat-guard: in-flight skip"))
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-                    catch
-                    { /* token not a valid string reference -- skip */
-                    }
-                }
-            }
-
             Assert.True(
-                found,
+                IlContainsString(
+                    typeof(CopyEngine),
+                    "FlattenOneAccount",
+                    BindingFlags.NonPublic | BindingFlags.Instance,
+                    "flat-guard: in-flight skip",
+                    exactMatch: false
+                ),
                 "FlattenOneAccount must contain string literal 'flat-guard: in-flight skip' (HOTFIX-B76-FLATTEN-GUARD-01 v2)"
             );
         }
@@ -91,42 +61,52 @@ namespace PropTraderTools
         [Fact]
         public void T_B76_03_FlattenOneAccount_ContainsRaceSkipString()
         {
-            var mi = typeof(CopyEngine).GetMethod(
-                "FlattenOneAccount",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.NotNull(mi);
-
-            var body = mi.GetMethodBody();
-            Assert.NotNull(body);
-            var il = body.GetILAsByteArray();
-            Assert.NotNull(il);
-
-            bool found = false;
-            var module = typeof(CopyEngine).Module;
-            for (int i = 0; i < il.Length - 4; i++)
-            {
-                if (il[i] == 0x72) // ldstr
-                {
-                    int token =
-                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
-                    try
-                    {
-                        var s = module.ResolveString(token);
-                        if (s != null && s.Contains("flat-race skip"))
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-                    catch { }
-                }
-            }
-
             Assert.True(
-                found,
+                IlContainsString(
+                    typeof(CopyEngine),
+                    "FlattenOneAccount",
+                    BindingFlags.NonPublic | BindingFlags.Instance,
+                    "flat-race skip",
+                    exactMatch: false
+                ),
                 "FlattenOneAccount must contain string literal 'flat-race skip' (HOTFIX-B76-FLATTEN-RACE-01)"
             );
+        }
+
+        // Shared helper: walks ldstr opcodes in a method IL body and checks for a target string.
+        // exactMatch=false -> Contains semantics; exactMatch=true -> string equality.
+        private static bool IlContainsString(
+            Type declaringType,
+            string methodName,
+            BindingFlags flags,
+            string target,
+            bool exactMatch
+        )
+        {
+            var mi = declaringType.GetMethod(methodName, flags);
+            if (mi == null)
+                return false;
+            var body = mi.GetMethodBody();
+            if (body == null)
+                return false;
+            var il = body.GetILAsByteArray();
+            if (il == null || il.Length == 0)
+                return false;
+            var module = declaringType.Module;
+            for (int i = 0; i < il.Length - 4; i++)
+            {
+                if (il[i] != 0x72) // ldstr opcode
+                    continue;
+                int token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                try
+                {
+                    var s = module.ResolveString(token);
+                    if (s != null && (exactMatch ? s == target : s.Contains(target)))
+                        return true;
+                }
+                catch { /* token not a valid string reference -- skip */ }
+            }
+            return false;
         }
 
         // T_B76_04: FlattenOneAccount IL contains at least 2 FindPosition call sites.
@@ -375,41 +355,14 @@ namespace PropTraderTools
         [Fact]
         public void T_B76_11_GetLeaderAtmTemplateName_IL_ContainsAtmStrategyClassNameGuardString()
         {
-            var mi = typeof(TradeCopierPanel).GetMethod(
-                "GetLeaderAtmTemplateName",
-                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
-            );
-            Assert.NotNull(mi);
-
-            var body = mi.GetMethodBody();
-            Assert.NotNull(body);
-            var il = body.GetILAsByteArray();
-            Assert.NotNull(il);
-            Assert.True(il.Length > 0, "GetLeaderAtmTemplateName must have a non-empty IL body");
-
-            bool found = false;
-            var module = typeof(TradeCopierPanel).Module;
-            for (int i = 0; i < il.Length - 4; i++)
-            {
-                if (il[i] == 0x72) // ldstr
-                {
-                    int token =
-                        il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
-                    try
-                    {
-                        var s = module.ResolveString(token);
-                        if (s == "AtmStrategy")
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-                    catch { }
-                }
-            }
-
             Assert.True(
-                found,
+                IlContainsString(
+                    typeof(TradeCopierPanel),
+                    "GetLeaderAtmTemplateName",
+                    BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public,
+                    "AtmStrategy",
+                    exactMatch: true
+                ),
                 "GetLeaderAtmTemplateName must contain string literal \"AtmStrategy\" (HOTFIX-B76-ATM-TPL-CLASSNAME class-name guard)"
             );
         }
