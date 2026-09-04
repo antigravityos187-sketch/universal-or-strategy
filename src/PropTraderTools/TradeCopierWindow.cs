@@ -249,48 +249,8 @@ namespace PropTraderTools
             DockPanel.SetDock(_globalToggleBtn, Dock.Top);
             root.Children.Add(_globalToggleBtn);
 
-            var modeRow = BuildModeRow();
-            DockPanel.SetDock(modeRow, Dock.Top);
-            root.Children.Add(modeRow);
-
-            var sep1 = new Separator { Margin = new Thickness(0, 2, 0, 2) };
-            DockPanel.SetDock(sep1, Dock.Top);
-            root.Children.Add(sep1);
-
-            var rulesScroll = BuildRulesScrollArea();
-            DockPanel.SetDock(rulesScroll, Dock.Top);
-            root.Children.Add(rulesScroll);
-
-            _addRuleBtn = new Button
-            {
-                Content = "+ Add Rule",
-                Margin = new Thickness(6, 2, 6, 2),
-                Padding = new Thickness(8, 3, 8, 3),
-            };
-            _addRuleBtn.Click += OnAddRule;
-            DockPanel.SetDock(_addRuleBtn, Dock.Top);
-            root.Children.Add(_addRuleBtn);
-
-            var sep2 = new Separator { Margin = new Thickness(0, 2, 0, 2) };
-            DockPanel.SetDock(sep2, Dock.Top);
-            root.Children.Add(sep2);
-
-            // BGTM-1: license key row docks to bottom before log fills remaining space
-            BuildLicenseRow(root);
-
-            // LastChildFill = true on DockPanel means this gets all remaining space
-            root.Children.Add(BuildLogScrollArea());
-
-            Content = root;
-
-            // V04: ensure consistent initial state (all action buttons start grey)
-            UpdateButtonColors(false, false);
-        }
-
-        // R5: Builds the horizontal Copy Mode row. CYC=1. JS-002: no return null. ASCII-only.
-        private StackPanel BuildModeRow()
-        {
-            var row = new StackPanel
+            // B9 T3 -- Copy mode ComboBox (Signal / Mirror)
+            var modeRow = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Margin = new Thickness(6, 2, 6, 2),
@@ -307,35 +267,65 @@ namespace PropTraderTools
             _modeCb.Items.Add("Clone");
             _modeCb.SelectedIndex = 0;
             _modeCb.SelectionChanged += OnCopyModeComboChanged;
-            row.Children.Add(modeLabel);
-            row.Children.Add(_modeCb);
-            return row;
-        }
+            modeRow.Children.Add(modeLabel);
+            modeRow.Children.Add(_modeCb);
+            DockPanel.SetDock(modeRow, Dock.Top);
+            root.Children.Add(modeRow);
 
-        // R5: Builds the rules scroll area and initialises _rulesPanel. CYC=1. JS-002: no return null. ASCII-only.
-        // B7-F5: ScrollViewer MaxHeight=400 -- DockPanel.SetDock applied by BuildUI on the returned viewer.
-        private ScrollViewer BuildRulesScrollArea()
-        {
+            // --- Separator ---
+            var sep1 = new Separator { Margin = new Thickness(0, 2, 0, 2) };
+            DockPanel.SetDock(sep1, Dock.Top);
+            root.Children.Add(sep1);
+
+            // --- Rules area (B7-F5: wrapped in ScrollViewer MaxHeight=400) ---
             _rulesPanel = new StackPanel();
             _rulesPanel.Children.Add(BuildRuleRow("MES"));
-            return new ScrollViewer
+
+            var rulesScroll = new ScrollViewer
             {
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 MaxHeight = 400,
                 Content = _rulesPanel,
             };
-        }
+            // DockPanel.SetDock on ScrollViewer (outer wrapper), NOT on _rulesPanel
+            DockPanel.SetDock(rulesScroll, Dock.Top);
+            root.Children.Add(rulesScroll);
 
-        // R5: Builds the log scroll area and initialises _logPanel. CYC=1. JS-002: no return null. ASCII-only.
-        private ScrollViewer BuildLogScrollArea()
-        {
-            _logPanel = new StackPanel { Orientation = Orientation.Vertical };
-            return new ScrollViewer
+            // --- Add Rule button ---
+            _addRuleBtn = new Button
+            {
+                Content = "+ Add Rule",
+                Margin = new Thickness(6, 2, 6, 2),
+                Padding = new Thickness(8, 3, 8, 3),
+            };
+            _addRuleBtn.Click += OnAddRule;
+            DockPanel.SetDock(_addRuleBtn, Dock.Top);
+            root.Children.Add(_addRuleBtn);
+
+            // --- Separator ---
+            var sep2 = new Separator { Margin = new Thickness(0, 2, 0, 2) };
+            DockPanel.SetDock(sep2, Dock.Top);
+            root.Children.Add(sep2);
+
+            // --- Log (fills remaining space) ---
+            var logPanel = new StackPanel { Orientation = Orientation.Vertical };
+            _logPanel = logPanel;
+            var logScroll = new ScrollViewer
             {
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Content = _logPanel,
+                Content = logPanel,
                 Margin = new Thickness(4),
             };
+            // BGTM-1: license key row docks to bottom before log fills remaining space
+            BuildLicenseRow(root);
+
+            // LastChildFill = true on DockPanel means this gets all remaining space
+            root.Children.Add(logScroll);
+
+            Content = root;
+
+            // V04: ensure consistent initial state (all action buttons start grey)
+            UpdateButtonColors(false, false);
         }
 
         // BGTM-1: Builds the license key input row and appends to parent DockPanel. CYC=1.
@@ -404,39 +394,40 @@ namespace PropTraderTools
             _licenseStatusText.Text = GetStatusText(flags);
         }
 
-        // BWAVE-CYC T7: extracted helper for TradeCopierWindow::ApplyFeatureFlags.
-
-        // ApplyButtonGroupFlag: sets IsEnabled and ToolTip on a collection of buttons. CCN=2.
-        private static void ApplyButtonGroupFlag(
-            System.Collections.Generic.IEnumerable<System.Windows.Controls.Button> btns,
-            bool enabled,
-            string disabledMessage
-        )
-        {
-            foreach (var btn in btns)
-            {
-                btn.IsEnabled = enabled;
-                btn.ToolTip = enabled ? null : disabledMessage;
-            }
-        }
-
-        // BGTM-1: Apply feature flags to all gated UI elements.
-        // TradeCopierWindow::ApplyFeatureFlags after extraction. CCN=5.
+        // T7: Apply feature flags to all gated UI elements. CYC=5. Extracted button-group loop.
+        // JS-021: no lock. Called on UI thread only (from OnLoaded, OnActivateClick, OnFeatureFlagsChanged).
         private void ApplyFeatureFlags(FeatureFlags f)
         {
             ApplyButtonGroupFlag(_trimBtns, f.TrimFlatten, "Trim requires Pro tier");
             ApplyButtonGroupFlag(_flattenBtns, f.TrimFlatten, "Trim/Flatten requires Pro tier");
             ApplyButtonGroupFlag(_cancelBtns, f.TrimFlatten, "Cancel requires Pro tier");
             ApplyButtonGroupFlag(_beBtns, f.BreakEven, "Break Even requires Pro tier");
-            if (_modeCb != null)
+            ApplyButtonGroupFlag(_armBeBtns, f.BreakEven, "Arm Break-Even not available on this plan");
+            ApplyButtonGroupFlag(_tightenBtns, f.BreakEven, "Tighten Stop not available on this plan");
+            if (_modeCb != null) // +1
             {
                 _modeCb.IsEnabled = f.MirrorMode;
-                _modeCb.ToolTip = f.MirrorMode ? null : "Mirror mode requires Elite tier";
+                _modeCb.ToolTip = f.MirrorMode ? null : "Mirror mode requires Elite tier"; // +1
             }
-            if (_addRuleBtn != null)
+            if (_addRuleBtn != null) // +1
             {
                 _addRuleBtn.IsEnabled = f.MultiRule;
-                _addRuleBtn.ToolTip = f.MultiRule ? null : "Multi-rule requires Pro tier";
+                _addRuleBtn.ToolTip = f.MultiRule ? null : "Multi-rule requires Pro tier"; // +1
+            }
+        }
+
+        // T7: Apply enabled state and upgrade tooltip to every button in a group. CYC=2.
+        // JS-021: no lock. JS-002: void return type -- zero null returns.
+        private static void ApplyButtonGroupFlag(
+            System.Collections.Generic.IEnumerable<System.Windows.Controls.Button> btns,
+            bool enabled,
+            string disabledMessage
+        )
+        {
+            foreach (var btn in btns) // +1
+            {
+                btn.IsEnabled = enabled;
+                btn.ToolTip = enabled ? null : disabledMessage; // +1
             }
         }
 
@@ -473,14 +464,29 @@ namespace PropTraderTools
             return "STARTER";
         }
 
-        // BWAVE-CYC R1: BuildRuleRow refactored to use shared helpers. LoC before=202 after=36.
-        // CYC=1 (straight-line construction; no branches in parent).
         private Grid BuildRuleRow(string instrumentName)
         {
             var grid = new Grid { Margin = new Thickness(2) };
-            BuildGridColumnDefinitions(grid, false);
 
-            // Col 0: fixed instrument label
+            // Cols: instr | leader | follower | [1/2] | [=] | [x] | [ON] | Apply | BE-cluster | ATM | Tighten | ArmBE
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(45) });
+            grid.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+            grid.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B8 T2: ATM ComboBox
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B10 T3: Tighten cluster
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B11 T2: Arm BE cluster
+
+            // Col 0: instrument label
             var instrLabel = new TextBlock
             {
                 Text = instrumentName,
@@ -498,231 +504,82 @@ namespace PropTraderTools
             grid.Children.Add(leaderCb);
 
             // Col 2: follower ListBox -- ItemsSource set in Loaded
-            var followerLb = BuildFollowerListBox();
-            _followerBoxes.Add(followerLb);
-            Grid.SetColumn(followerLb, 2);
-            grid.Children.Add(followerLb);
-
-            var atmPanel = BuildAtmColumnPanel();
-            BuildActionButtons(instrumentName, leaderCb, followerLb, atmPanel, grid);
-
-            var beCluster = BuildBeCluster(instrumentName);
-            Grid.SetColumn(beCluster, 8);
-            grid.Children.Add(beCluster);
-
-            Grid.SetColumn(atmPanel, 9);
-            grid.Children.Add(atmPanel);
-
-            var tightenCluster = BuildTightenCluster(instrumentName);
-            Grid.SetColumn(tightenCluster, 10);
-            grid.Children.Add(tightenCluster);
-
-            var armBeCluster = BuildArmBeCluster(instrumentName, leaderCb);
-            Grid.SetColumn(armBeCluster, 11);
-            grid.Children.Add(armBeCluster);
-
-            return grid;
-        }
-
-        // BWAVE-CYC R1: BuildDynamicRuleRow refactored to use shared helpers. LoC before=210 after=28.
-        // CYC=1 (straight-line construction; no branches in parent).
-        private Grid BuildDynamicRuleRow()
-        {
-            var grid = new Grid { Margin = new Thickness(2) };
-            BuildGridColumnDefinitions(grid, true);
-
-            // Col 0: editable instrument TextBox
-            var instrTextBox = new TextBox
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-                MinWidth = 45,
-            };
-            Grid.SetColumn(instrTextBox, 0);
-            grid.Children.Add(instrTextBox);
-
-            // Col 1: leader ComboBox -- ItemsSource bound immediately (window already loaded)
-            var leaderCb = new ComboBox { ItemsSource = Account.All, Margin = new Thickness(2) };
-            leaderCb.ItemTemplate = BuildAccountDisplayTemplate();
-            Grid.SetColumn(leaderCb, 1);
-            grid.Children.Add(leaderCb);
-
-            // Col 2: follower ListBox -- bound immediately
-            var followerLb = BuildFollowerListBox();
-            followerLb.ItemsSource = Account.All;
-            Grid.SetColumn(followerLb, 2);
-            grid.Children.Add(followerLb);
-
-            var atmPanel = BuildAtmColumnPanel();
-            BuildActionButtons(instrTextBox, leaderCb, followerLb, atmPanel, grid);
-
-            var beCluster = BuildBeCluster(instrTextBox);
-            Grid.SetColumn(beCluster, 8);
-            grid.Children.Add(beCluster);
-
-            Grid.SetColumn(atmPanel, 9);
-            grid.Children.Add(atmPanel);
-
-            var tightenCluster = BuildTightenCluster(instrTextBox);
-            Grid.SetColumn(tightenCluster, 10);
-            grid.Children.Add(tightenCluster);
-
-            var armBeCluster = BuildArmBeCluster(instrTextBox, leaderCb);
-            Grid.SetColumn(armBeCluster, 11);
-            grid.Children.Add(armBeCluster);
-
-            return grid;
-        }
-
-        // BWAVE-CYC R1: 6 shared private helpers extracted from BuildRuleRow / BuildDynamicRuleRow.
-        // All helpers: private instance, UI-thread only, CYC <= 2, no lock(), no async void, no return null.
-
-        // CCN=2: branch on dynamicFirstCol for col-0 width.
-        private static void BuildGridColumnDefinitions(Grid grid, bool dynamicFirstCol)
-        {
-            var col0Width = dynamicFirstCol
-                ? new GridLength(1, GridUnitType.Star)
-                : new GridLength(45);
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = col0Width });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B8 T2: ATM ComboBox
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B10 T3: Tighten cluster
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B11 T2: Arm BE cluster
-        }
-
-        // CCN=1: straight-line follower ListBox construction shared by both row builders.
-        // B18 T2: outer ScrollViewer removed; Height=100 fixed. NT8 WPF host suppresses
-        // ListBox internal scrollbar by default -- disable virtualization + force scrollbar Visible.
-        private static ListBox BuildFollowerListBox()
-        {
-            var lb = new ListBox
+            // B18 T2: fix DW-B18-ACCOUNTS-01 -- outer ScrollViewer removed; Height=100 fixed.
+            // B18 T2b: NT8 WPF host suppresses ListBox internal scrollbar by default.
+            // Fix: disable virtualization (so all items are measured) + force scrollbar Visible.
+            var followerLb = new ListBox
             {
                 SelectionMode = SelectionMode.Extended,
                 Height = 100,
                 Margin = new Thickness(2),
             };
-            VirtualizingStackPanel.SetIsVirtualizing(lb, false);
-            ScrollViewer.SetVerticalScrollBarVisibility(lb, ScrollBarVisibility.Visible);
-            lb.ItemTemplate = BuildAccountDisplayTemplate();
-            return lb;
-        }
+            VirtualizingStackPanel.SetIsVirtualizing(followerLb, false);
+            ScrollViewer.SetVerticalScrollBarVisibility(followerLb, ScrollBarVisibility.Visible);
+            followerLb.ItemTemplate = BuildAccountDisplayTemplate();
+            _followerBoxes.Add(followerLb);
+            Grid.SetColumn(followerLb, 2);
+            grid.Children.Add(followerLb);
 
-        // CCN=1: Break Even cluster ([BE] button + TextBox + "tks" label).
-        // tag0 = instrumentName (string) for static rows, instrTextBox for dynamic rows.
-        // Adds beBtn to _beBtns for UpdateButtonColors iteration.
-        private StackPanel BuildBeCluster(object tag0)
-        {
-            var cluster = new StackPanel { Orientation = Orientation.Horizontal };
-            var beBox = new TextBox
+            // Col 3: Trim (color-coded -- no NTButtonStyle)
+            var trimBtn = new Button
             {
-                Text = "2",
-                Width = 28,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-            };
-            var beBtn = new Button
-            {
-                Content = "[BE]",
+                Content = "[1/2]",
+                Tag = instrumentName,
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
-            var tksLabel = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 0, 2, 0),
-            };
-            beBtn.Tag = new object[] { tag0, beBox };
-            beBtn.Click += OnRuleBreakEven;
-            _beBtns.Add(beBtn);
-            cluster.Children.Add(beBtn);
-            cluster.Children.Add(beBox);
-            cluster.Children.Add(tksLabel);
-            return cluster;
-        }
+            trimBtn.Click += OnRuleTrim;
+            _trimBtns.Add(trimBtn);
+            Grid.SetColumn(trimBtn, 3);
+            grid.Children.Add(trimBtn);
 
-        // CCN=1: Tighten Stop cluster ([~] button + TextBox + "tks" label).
-        // tag0 = instrumentName (string) or instrTextBox. Adds tightenBtn to _tightenBtns.
-        private StackPanel BuildTightenCluster(object tag0)
-        {
-            var cluster = new StackPanel { Orientation = Orientation.Horizontal };
-            var ticksBox = new TextBox
+            // Col 4: Flatten (color-coded)
+            var flattenBtn = new Button
             {
-                Text = "5",
-                Width = 28,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-            };
-            var btn = new Button
-            {
-                Content = "[~]",
+                Content = "[=]",
+                Tag = instrumentName,
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
-            var tksLabel = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 0, 2, 0),
-            };
-            btn.Tag = new object[] { tag0, ticksBox };
-            btn.Click += OnRuleTightenStop;
-            _tightenBtns.Add(btn);
-            cluster.Children.Add(btn);
-            cluster.Children.Add(ticksBox);
-            cluster.Children.Add(tksLabel);
-            return cluster;
-        }
+            flattenBtn.Click += OnRuleFlatten;
+            _flattenBtns.Add(flattenBtn);
+            Grid.SetColumn(flattenBtn, 4);
+            grid.Children.Add(flattenBtn);
 
-        // CCN=1: Arm BE cluster ([Arm BE] button + buffer TextBox + "tks" label).
-        // tag0 = instrumentName (string) or instrTextBox. Adds armBeBtn to _armBeBtns.
-        private StackPanel BuildArmBeCluster(object tag0, ComboBox leaderCb)
-        {
-            var cluster = new StackPanel { Orientation = Orientation.Horizontal };
-            var armBeBox = new TextBox
+            // Col 5: Cancel (color-coded)
+            var cancelBtn = new Button
             {
-                Text = "2",
-                Width = 30,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(2),
-            };
-            var btn = new Button
-            {
-                Content = "[Arm BE]",
+                Content = "[x]",
+                Tag = instrumentName,
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
-            var tksLabel = new TextBlock
-            {
-                Text = "tks",
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 0, 2, 0),
-            };
-            btn.Tag = new object[] { tag0, leaderCb, armBeBox };
-            btn.Click += OnRuleArmBe;
-            _armBeBtns.Add(btn);
-            cluster.Children.Add(btn);
-            cluster.Children.Add(armBeBox);
-            cluster.Children.Add(tksLabel);
-            return cluster;
-        }
+            cancelBtn.Click += OnRuleCancel;
+            _cancelBtns.Add(cancelBtn);
+            Grid.SetColumn(cancelBtn, 5);
+            grid.Children.Add(cancelBtn);
 
-        // CCN=2: ATM ComboBox (Inherit/Market/Named) + namedBox TextBox + SelectionChanged lambda.
-        // Branch: SelectionChanged lambda tests sel == "Named" (CCN +1 vs base 1).
-        private static StackPanel BuildAtmColumnPanel()
-        {
+            // Col 6: per-rule toggle (always active/colored -- starts WBrushActive = [ON])
+            var toggleBtn = new Button
+            {
+                Content = "[ON]",
+                Tag = instrumentName,
+                Margin = new Thickness(2),
+                Background = WBrushActive,
+            };
+            toggleBtn.Click += OnRuleToggle;
+            Grid.SetColumn(toggleBtn, 6);
+            grid.Children.Add(toggleBtn);
+
+            // B8 T2: Col 9 -- ATM mode ComboBox -- created BEFORE applyBtn so tag can reference it.
+            // signalName for CreateOrder is always "PTT-Copy"; this selects order type override only.
             var atmCb = new ComboBox { Width = 80, Margin = new Thickness(2) };
             atmCb.Items.Add("Inherit");
             atmCb.Items.Add("Market");
             atmCb.Items.Add("Named");
             atmCb.SelectedIndex = 0;
+
+            // B9 T3: Named ATM inline TextBox -- appears when "Named" is selected
             var namedBox = new TextBox
             {
                 Width = 80,
@@ -737,30 +594,179 @@ namespace PropTraderTools
                 if (sel != "Named")
                     namedBox.Text = string.Empty;
             };
-            var panel = new StackPanel { Orientation = Orientation.Vertical };
-            panel.Children.Add(atmCb);
-            panel.Children.Add(namedBox);
-            return panel;
+            // B9 T3: Col 9 -- ATM mode ComboBox + Named ATM TextBox (stacked vertically in column)
+            var atmColPanel = new StackPanel { Orientation = Orientation.Vertical };
+            atmColPanel.Children.Add(atmCb);
+            atmColPanel.Children.Add(namedBox);
+            Grid.SetColumn(atmColPanel, 9);
+            grid.Children.Add(atmColPanel);
+
+            // Col 7: Apply (non-color-coded -- standard button)
+            // B8 T2: tag[3] = atmCb, B9 T3: tag[4] = namedBox so OnRowApply can read Named ATM text.
+            var applyBtn = new Button { Content = "Apply", Margin = new Thickness(2) };
+            applyBtn.Tag = new object[] { instrumentName, leaderCb, followerLb, atmCb, namedBox };
+            applyBtn.Click += OnRowApply;
+            Grid.SetColumn(applyBtn, 7);
+            grid.Children.Add(applyBtn);
+
+            // Col 8: Break Even cluster (BE button color-coded)
+            var beCluster = new StackPanel { Orientation = Orientation.Horizontal };
+            var beBtn = new Button
+            {
+                Content = "[BE]",
+                Margin = new Thickness(2),
+                Background = WBrushInactive,
+            };
+            var beBox = new TextBox
+            {
+                Text = "2",
+                Width = 28,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+            };
+            var tksLabel = new TextBlock
+            {
+                Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 0, 2, 0),
+            };
+            beBtn.Tag = new object[] { instrumentName, beBox };
+            beBtn.Click += OnRuleBreakEven;
+            _beBtns.Add(beBtn);
+            beCluster.Children.Add(beBtn);
+            beCluster.Children.Add(beBox);
+            beCluster.Children.Add(tksLabel);
+            Grid.SetColumn(beCluster, 8);
+            grid.Children.Add(beCluster);
+
+            // B10 T3: Col 10 -- Tighten Stop cluster ([~] button + TextBox + "tks" label).
+            // Tag = "instrumentName|5" (rule name | default ticks). OnRuleTightenStop reads tag.
+            // NTButtonStyle: tighten is non-color-coded (not position-state-colored).
+            var tightenCluster10 = new StackPanel { Orientation = Orientation.Horizontal };
+            var tightenTicksBox10 = new TextBox
+            {
+                Text = "5",
+                Width = 28,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+            };
+            var tightenBtn10 = new Button
+            {
+                Content = "[~]",
+                Margin = new Thickness(2),
+                Background = WBrushInactive,
+            };
+            var tightenTksLbl10 = new TextBlock
+            {
+                Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 0, 2, 0),
+            };
+            tightenBtn10.Tag = new object[] { instrumentName, tightenTicksBox10 };
+            tightenBtn10.Click += OnRuleTightenStop;
+            _tightenBtns.Add(tightenBtn10);
+            tightenCluster10.Children.Add(tightenBtn10);
+            tightenCluster10.Children.Add(tightenTicksBox10);
+            tightenCluster10.Children.Add(tightenTksLbl10);
+            Grid.SetColumn(tightenCluster10, 10);
+            grid.Children.Add(tightenCluster10);
+
+            // B11 T2: Col 11 -- Arm BE cluster ([Arm BE] button + buffer TextBox + "tks" label).
+            // Tag = new object[] { instrumentName (string), leaderCb, bufferTextBox }.
+            // OnRuleArmBe reads instr from tag[0] (string), leader from tag[1], ticks from tag[2].
+            var armBeCluster = new StackPanel { Orientation = Orientation.Horizontal };
+            var armBeBox = new TextBox
+            {
+                Text = "2",
+                Width = 30,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+            };
+            var armBeBtn = new Button
+            {
+                Content = "[Arm BE]",
+                Margin = new Thickness(2),
+                Background = WBrushInactive,
+            };
+            var armBeTksLbl = new TextBlock
+            {
+                Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 0, 2, 0),
+            };
+            armBeBtn.Tag = new object[] { instrumentName, leaderCb, armBeBox };
+            armBeBtn.Click += OnRuleArmBe;
+            _armBeBtns.Add(armBeBtn);
+            armBeCluster.Children.Add(armBeBtn);
+            armBeCluster.Children.Add(armBeBox);
+            armBeCluster.Children.Add(armBeTksLbl);
+            Grid.SetColumn(armBeCluster, 11);
+            grid.Children.Add(armBeCluster);
+
+            return grid;
         }
 
-        // CCN=1: Action buttons (Trim/Flatten/Cancel/Toggle/Apply) -- cols 3-7.
-        // tag0 = instrumentName (string) or instrTextBox. Adds trim/flatten/cancel to tracking lists.
-        // atmPanel: Children[0]=atmCb, Children[1]=namedBox -- passed to OnRowApply tag array.
-        // Adds all 5 buttons to grid at their respective columns.
-        private void BuildActionButtons(
-            object tag0,
-            ComboBox leaderCb,
-            ListBox followerLb,
-            StackPanel atmPanel,
-            Grid grid)
+        private Grid BuildDynamicRuleRow()
         {
-            var atmCb = (ComboBox)atmPanel.Children[0];
-            var namedBox = (TextBox)atmPanel.Children[1];
+            var grid = new Grid { Margin = new Thickness(2) };
 
+            grid.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+            grid.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+            grid.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B8 T2: ATM ComboBox
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B10 T3: Tighten cluster
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // B11 T2: Arm BE cluster
+
+            // Col 0: instrument TextBox
+            var instrTextBox = new TextBox
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+                MinWidth = 45,
+            };
+            Grid.SetColumn(instrTextBox, 0);
+            grid.Children.Add(instrTextBox);
+
+            // Col 1: leader ComboBox -- ItemsSource bound immediately (window is already loaded)
+            var leaderCb = new ComboBox { ItemsSource = Account.All, Margin = new Thickness(2) };
+            leaderCb.ItemTemplate = BuildAccountDisplayTemplate();
+            Grid.SetColumn(leaderCb, 1);
+            grid.Children.Add(leaderCb);
+
+            // Col 2: follower ListBox -- bound immediately
+            // B18 T2: fix DW-B18-ACCOUNTS-01 -- outer ScrollViewer removed; Height=100 fixed.
+            // B18 T2b: NT8 WPF host suppresses ListBox internal scrollbar by default.
+            // Fix: disable virtualization (so all items are measured) + force scrollbar Visible.
+            var followerLb = new ListBox
+            {
+                SelectionMode = SelectionMode.Extended,
+                ItemsSource = Account.All,
+                Height = 100,
+                Margin = new Thickness(2),
+            };
+            VirtualizingStackPanel.SetIsVirtualizing(followerLb, false);
+            ScrollViewer.SetVerticalScrollBarVisibility(followerLb, ScrollBarVisibility.Visible);
+            followerLb.ItemTemplate = BuildAccountDisplayTemplate();
+            Grid.SetColumn(followerLb, 2);
+            grid.Children.Add(followerLb);
+
+            // Col 3: Trim (color-coded)
             var trimBtn = new Button
             {
                 Content = "[1/2]",
-                Tag = tag0,
+                Tag = instrTextBox,
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
@@ -769,10 +775,11 @@ namespace PropTraderTools
             Grid.SetColumn(trimBtn, 3);
             grid.Children.Add(trimBtn);
 
+            // Col 4: Flatten (color-coded)
             var flattenBtn = new Button
             {
                 Content = "[=]",
-                Tag = tag0,
+                Tag = instrTextBox,
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
@@ -781,10 +788,11 @@ namespace PropTraderTools
             Grid.SetColumn(flattenBtn, 4);
             grid.Children.Add(flattenBtn);
 
+            // Col 5: Cancel (color-coded)
             var cancelBtn = new Button
             {
                 Content = "[x]",
-                Tag = tag0,
+                Tag = instrTextBox,
                 Margin = new Thickness(2),
                 Background = WBrushInactive,
             };
@@ -793,10 +801,11 @@ namespace PropTraderTools
             Grid.SetColumn(cancelBtn, 5);
             grid.Children.Add(cancelBtn);
 
+            // Col 6: toggle (starts WBrushActive = [ON])
             var toggleBtn = new Button
             {
                 Content = "[ON]",
-                Tag = tag0,
+                Tag = instrTextBox,
                 Margin = new Thickness(2),
                 Background = WBrushActive,
             };
@@ -804,11 +813,143 @@ namespace PropTraderTools
             Grid.SetColumn(toggleBtn, 6);
             grid.Children.Add(toggleBtn);
 
+            // Col 7: Apply (non-color-coded)
+            // B8 T2 + B9 T3: tag[3]=atmCb, tag[4]=namedBox for OnRowApply Named ATM text
+            var atmCbDyn = new ComboBox { Width = 80, Margin = new Thickness(2) };
+            atmCbDyn.Items.Add("Inherit");
+            atmCbDyn.Items.Add("Market");
+            atmCbDyn.Items.Add("Named");
+            atmCbDyn.SelectedIndex = 0;
+
+            // B9 T3: Named ATM inline TextBox for dynamic rows
+            var namedBoxDyn = new TextBox
+            {
+                Width = 80,
+                Visibility = Visibility.Collapsed,
+                ToolTip = "ATM template name",
+                Margin = new Thickness(2),
+            };
+            atmCbDyn.SelectionChanged += (s, e2) =>
+            {
+                var sel = (s as ComboBox)?.SelectedItem?.ToString() ?? string.Empty;
+                namedBoxDyn.Visibility = sel == "Named" ? Visibility.Visible : Visibility.Collapsed;
+                if (sel != "Named")
+                    namedBoxDyn.Text = string.Empty;
+            };
             var applyBtn = new Button { Content = "Apply", Margin = new Thickness(2) };
-            applyBtn.Tag = new object[] { tag0, leaderCb, followerLb, atmCb, namedBox };
+            applyBtn.Tag = new object[]
+            {
+                instrTextBox,
+                leaderCb,
+                followerLb,
+                atmCbDyn,
+                namedBoxDyn,
+            };
             applyBtn.Click += OnRowApply;
             Grid.SetColumn(applyBtn, 7);
             grid.Children.Add(applyBtn);
+
+            // Col 8: Break Even cluster (BE button color-coded)
+            var beCluster = new StackPanel { Orientation = Orientation.Horizontal };
+            var beBtn = new Button
+            {
+                Content = "[BE]",
+                Margin = new Thickness(2),
+                Background = WBrushInactive,
+            };
+            var beBox = new TextBox
+            {
+                Text = "2",
+                Width = 28,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+            };
+            var tksLabel = new TextBlock
+            {
+                Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 0, 2, 0),
+            };
+            beBtn.Tag = new object[] { instrTextBox, beBox };
+            beBtn.Click += OnRuleBreakEven;
+            _beBtns.Add(beBtn);
+            beCluster.Children.Add(beBtn);
+            beCluster.Children.Add(beBox);
+            beCluster.Children.Add(tksLabel);
+            Grid.SetColumn(beCluster, 8);
+            grid.Children.Add(beCluster);
+
+            // B8 T2 + B9 T3: Col 9 -- ATM mode ComboBox + Named ATM TextBox (stacked vertically in column)
+            var atmColPanel = new StackPanel { Orientation = Orientation.Vertical };
+            atmColPanel.Children.Add(atmCbDyn);
+            atmColPanel.Children.Add(namedBoxDyn);
+            Grid.SetColumn(atmColPanel, 9);
+            grid.Children.Add(atmColPanel);
+
+            // B10 T3: Col 10 -- Tighten Stop cluster for dynamic rows.
+            // Tag[0] = instrTextBox, Tag[1] = tightenTicksBox -- OnRuleTightenStop reads ticks from tag[1].
+            var tightenClusterDyn = new StackPanel { Orientation = Orientation.Horizontal };
+            var tightenTicksBoxDyn = new TextBox
+            {
+                Text = "5",
+                Width = 28,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+            };
+            var tightenBtnDyn = new Button
+            {
+                Content = "[~]",
+                Margin = new Thickness(2),
+                Background = WBrushInactive,
+            };
+            var tightenTksLblDyn = new TextBlock
+            {
+                Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 0, 2, 0),
+            };
+            tightenBtnDyn.Tag = new object[] { instrTextBox, tightenTicksBoxDyn };
+            tightenBtnDyn.Click += OnRuleTightenStop;
+            _tightenBtns.Add(tightenBtnDyn);
+            tightenClusterDyn.Children.Add(tightenBtnDyn);
+            tightenClusterDyn.Children.Add(tightenTicksBoxDyn);
+            tightenClusterDyn.Children.Add(tightenTksLblDyn);
+            Grid.SetColumn(tightenClusterDyn, 10);
+            grid.Children.Add(tightenClusterDyn);
+
+            // B11 T2: Col 11 -- Arm BE cluster for dynamic rows.
+            // Tag = new object[] { instrTextBox, leaderCb, armBeBox }.
+            // OnRuleArmBe reads instr from tag[0] (TextBox), leader from tag[1], ticks from tag[2].
+            var armBeClusterDyn = new StackPanel { Orientation = Orientation.Horizontal };
+            var armBeBoxDyn = new TextBox
+            {
+                Text = "2",
+                Width = 30,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2),
+            };
+            var armBeBtnDyn = new Button
+            {
+                Content = "[Arm BE]",
+                Margin = new Thickness(2),
+                Background = WBrushInactive,
+            };
+            var armBeTksLblDyn = new TextBlock
+            {
+                Text = "tks",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 0, 2, 0),
+            };
+            armBeBtnDyn.Tag = new object[] { instrTextBox, leaderCb, armBeBoxDyn };
+            armBeBtnDyn.Click += OnRuleArmBe;
+            _armBeBtns.Add(armBeBtnDyn);
+            armBeClusterDyn.Children.Add(armBeBtnDyn);
+            armBeClusterDyn.Children.Add(armBeBoxDyn);
+            armBeClusterDyn.Children.Add(armBeTksLblDyn);
+            Grid.SetColumn(armBeClusterDyn, 11);
+            grid.Children.Add(armBeClusterDyn);
+
+            return grid;
         }
 
         // B56-LaneB: CYC=4 -- null guard (1) + 3-way if-chain for index 0/1/2 (branches 2/3/4)
@@ -939,19 +1080,8 @@ namespace PropTraderTools
             _engine.SetRuleEnabled(name, newState);
         }
 
-        // BWAVE-CYC T6: extracted helpers for OnRuleBreakEven, OnRuleArmBe, OnRuleTightenStop.
-
-        // TryParseBeTicksFromTag: parses BE ticks from tag[1] TextBox. Default=2. CCN=4.
-        private static int TryParseBeTicksFromTag(object[] tag)
-        {
-            int ticks = 2;
-            if (tag.Length > 1 && tag[1] is TextBox beBox)
-                if (int.TryParse(beBox.Text?.Trim(), out int parsed) && parsed >= 0)
-                    ticks = parsed;
-            return ticks;
-        }
-
-        // OnRuleBreakEven after extraction. CCN=5.
+        // BWAVE-CYC T6: OnRuleBreakEven after extraction. CCN=5.
+        // JS-021: no lock. JS-002: guard-return pattern only.
         private void OnRuleBreakEven(object sender, RoutedEventArgs e)
         {
             var tag = (sender as Button)?.Tag as object[];
@@ -966,25 +1096,8 @@ namespace PropTraderTools
                 _engine.BreakEven(instr, ticks);
         }
 
-        // TryParseArmBeBuffer: parses buffer ticks from tag[2] TextBox. Default=2. CCN=2.
-        private static int TryParseArmBeBuffer(object[] tag)
-        {
-            int buf = 2;
-            var bufBox = tag.Length > 2 ? tag[2] as TextBox : null;
-            if (bufBox != null)
-                int.TryParse(bufBox.Text, out buf);
-            return buf;
-        }
-
-        // OnRuleArmBe after extraction. CCN=5.
-        // TryGetLeaderFromTag: extracts leader Account from tag[1] ComboBox. CCN=2.
-        private static Account TryGetLeaderFromTag(object[] tag)
-        {
-            var leaderCb = tag.Length > 1 ? tag[1] as ComboBox : null;
-            return leaderCb?.SelectedItem as Account;
-        }
-
-        // OnRuleArmBe after extraction. CCN=7.
+        // BWAVE-CYC T6: OnRuleArmBe after extraction. CCN=7.
+        // JS-021: no lock. JS-002: guard-return pattern only.
         private void OnRuleArmBe(object sender, RoutedEventArgs e)
         {
             var tag = (sender as Button)?.Tag as object[];
@@ -996,24 +1109,18 @@ namespace PropTraderTools
             var instr = FindInstrument(name);
             if (instr == null)
                 return;
-            var leaderAcc = TryGetLeaderFromTag(tag);
+            var leaderCb = tag[1] as ComboBox;
+            if (leaderCb == null)
+                return;
+            var leaderAcc = leaderCb.SelectedItem as Account;
             if (leaderAcc == null)
                 return;
             int buf = TryParseArmBeBuffer(tag);
             _engine.ArmPendingBe(instr, leaderAcc, buf);
         }
 
-        // TryParseTightenTicksFromTag: parses ticks from tag[1] TextBox. Default=5, clamped 1-500. CCN=3.
-        private static int TryParseTightenTicksFromTag(object[] tag)
-        {
-            int ticks = 5;
-            if (tag.Length > 1 && tag[1] is TextBox ticksBox)
-                if (int.TryParse(ticksBox.Text?.Trim(), out int parsed))
-                    ticks = Math.Max(1, Math.Min(500, parsed));
-            return ticks;
-        }
-
-        // OnRuleTightenStop after extraction. CCN=5.
+        // BWAVE-CYC T6: OnRuleTightenStop after extraction. CCN=5.
+        // NT8-003: no Math.Clamp. Math.Max/Min clamp 1-500. JS-021: no lock.
         private void OnRuleTightenStop(object sender, RoutedEventArgs e)
         {
             var tag = (sender as Button)?.Tag as object[];
@@ -1029,63 +1136,10 @@ namespace PropTraderTools
             _engine.TightenStop(instr, ticks);
         }
 
-        // BWAVE-CYC T5: extracted helpers for OnRowApply.
-
-        // ExtractNameFromTag: gets rule name from tag[0] (TextBox or string). CCN=2.
-        private static string ExtractNameFromTag(object[] tag)
-        {
-            return tag[0] is TextBox tb ? tb.Text : tag[0] as string ?? string.Empty;
-        }
-
-        // CollectFollowersFromTag: collects selected Account items from tag[2] ListBox. CCN=3.
-        // Returns empty list (never null) when ListBox is null or has no Account items.
-        private static List<Account> CollectFollowersFromTag(object[] tag)
-        {
-            var followers = new List<Account>();
-            var followerLb = tag[2] as ListBox;
-            if (followerLb == null)
-                return followers;
-            foreach (var item in followerLb.SelectedItems)
-                if (item is Account acc)
-                    followers.Add(acc);
-            return followers;
-        }
-
-        // BuildAtmMapFromTag: reads ATM mode from tag[3] ComboBox and builds per-follower map. CCN=4.
-        // Returns empty dictionary when tag is too short or ATM selection is absent.
-        private static Dictionary<string, FollowerAtmMode> BuildAtmMapFromTag(
-            object[] tag,
-            List<Account> followers
-        )
-        {
-            var atmMap = new Dictionary<string, FollowerAtmMode>();
-            if (tag.Length > 3 && tag[3] is ComboBox atmCb && atmCb.SelectedItem is string atmSel)
-            {
-                string atmMode = atmSel;
-                if (
-                    atmMode == "Named"
-                    && tag.Length > 4
-                    && tag[4] is TextBox namedBox
-                    && namedBox.Text.Length > 0
-                )
-                    atmMode = "Named:" + namedBox.Text;
-                var mode = CopyEngine.ParseAtmModeName(atmMode);
-                foreach (var acc in followers)
-                    atmMap[acc.Name] = mode;
-            }
-            return atmMap;
-        }
-
-        // BuildDefaultMultipliers: returns int array of all-1s. CCN=1.
-        private static int[] BuildDefaultMultipliers(int count)
-        {
-            var m = new int[count];
-            for (int i = 0; i < count; i++)
-                m[i] = 1;
-            return m;
-        }
-
-        // OnRowApply after extraction. CCN=7. _engine.AddRule MUST stay here.
+        // B8 T2: OnRowApply -- reads ATM ComboBox selection (tag[3]) and builds ATM map.
+        // signalName for CreateOrder is always "PTT-Copy" -- ATM mode is applied by engine.
+        // CYC=7 (tag null +1, name empty +1, ?. leader +1, leader null || followers empty +2,
+        //        base +1 = 6 branches + base = 7).
         private void OnRowApply(object sender, RoutedEventArgs e)
         {
             var tag = (sender as Button)?.Tag as object[];
@@ -1102,6 +1156,97 @@ namespace PropTraderTools
             var atmMap = BuildAtmMapFromTag(tag, followers);
             var multipliers = BuildDefaultMultipliers(followers.Count);
             _engine.AddRule(name, leader, followers.ToArray(), multipliers, atmMap);
+        }
+
+        // BWAVE-CYC T5: ExtractNameFromTag -- reads tag[0] as TextBox or string.
+        // JS-002: returns string.Empty as absent-value sentinel -- never null. CYC=2.
+        private static string ExtractNameFromTag(object[] tag)
+        {
+            return tag[0] is TextBox tb ? tb.Text : tag[0] as string ?? string.Empty;
+        }
+
+        // BWAVE-CYC T5: CollectFollowersFromTag -- builds follower list from tag[2] ListBox.
+        // JS-002: returns empty list when ListBox null -- never null. CYC=3.
+        private static List<Account> CollectFollowersFromTag(object[] tag)
+        {
+            var followerLb = tag[2] as ListBox;
+            if (followerLb == null)
+                return new List<Account>();
+            var result = new List<Account>();
+            foreach (var item in followerLb.SelectedItems)
+                if (item is Account acc)
+                    result.Add(acc);
+            return result;
+        }
+
+        // BWAVE-CYC T5: BuildAtmMapFromTag -- reads ATM mode from tag[3] ComboBox.
+        // B9 T3: when Named, appends tag[4] namedBox text as "Named:templateName".
+        // JS-002: returns empty dict when tag too short -- never null. CYC=4.
+        private static Dictionary<string, FollowerAtmMode> BuildAtmMapFromTag(
+            object[] tag,
+            List<Account> followers
+        )
+        {
+            var atmMap = new Dictionary<string, FollowerAtmMode>();
+            if (
+                !(tag.Length > 3 && tag[3] is ComboBox atmCb && atmCb.SelectedItem is string atmSel)
+            )
+                return atmMap;
+            string atmMode = atmSel;
+            if (
+                atmMode == "Named"
+                && tag.Length > 4
+                && tag[4] is TextBox namedBox
+                && namedBox.Text.Length > 0
+            )
+                atmMode = "Named:" + namedBox.Text;
+            var mode = CopyEngine.ParseAtmModeName(atmMode);
+            foreach (var acc in followers)
+                atmMap[acc.Name] = mode;
+            return atmMap;
+        }
+
+        // BWAVE-CYC T5: BuildDefaultMultipliers -- all-ones multiplier array. CYC=1.
+        private static int[] BuildDefaultMultipliers(int count)
+        {
+            var m = new int[count];
+            for (int i = 0; i < count; i++)
+                m[i] = 1;
+            return m;
+        }
+
+        // BWAVE-CYC T6: TryParseBeTicksFromTag -- parses BE ticks from tag[1] TextBox.
+        // Default = 2. JS-002: returns int (never null). CCN=4.
+        private static int TryParseBeTicksFromTag(object[] tag)
+        {
+            int ticks = 2;
+            if (tag.Length > 1 && tag[1] is TextBox beBox)
+                if (int.TryParse(beBox.Text?.Trim(), out int parsed) && parsed >= 0)
+                    ticks = parsed;
+            return ticks;
+        }
+
+        // BWAVE-CYC T6: TryParseArmBeBuffer -- parses buffer ticks from tag[2] TextBox.
+        // Default = 2. JS-002: returns int (never null). CCN=3.
+        private static int TryParseArmBeBuffer(object[] tag)
+        {
+            int buf = 2;
+            var bufBox = tag.Length > 2 ? tag[2] as TextBox : null;
+            if (bufBox != null)
+                if (int.TryParse(bufBox.Text?.Trim(), out int parsed) && parsed >= 0)
+                    buf = parsed;
+            return buf;
+        }
+
+        // BWAVE-CYC T6: TryParseTightenTicksFromTag -- parses tighten ticks from tag[1] TextBox.
+        // Default = 5. Clamped 1-500 (no Math.Clamp -- .NET 4.8). CCN=3.
+        private static int TryParseTightenTicksFromTag(object[] tag)
+        {
+            int ticks = 5;
+            if (tag.Length > 1 && tag[1] is TextBox ticksBox)
+                if (int.TryParse(ticksBox.Text?.Trim(), out int parsed))
+                    ticks = Math.Max(1, Math.Min(500, parsed));
+            return ticks;
         }
 
         private void OnStatusUpdate(string line)
