@@ -1144,13 +1144,13 @@ namespace PropTraderTools
             trimArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             var trimUp = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25B2",
+                Content = "^",
                 Width = 18,
                 Height = 12,
             };
             var trimDn = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25BC",
+                Content = "v",
                 Width = 18,
                 Height = 12,
             };
@@ -1181,13 +1181,13 @@ namespace PropTraderTools
             flatArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             var flatUp = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25B2",
+                Content = "^",
                 Width = 18,
                 Height = 12,
             };
             var flatDn = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25BC",
+                Content = "v",
                 Width = 18,
                 Height = 12,
             };
@@ -1223,13 +1223,13 @@ namespace PropTraderTools
             beArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             var beUp = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25B2",
+                Content = "^",
                 Width = 18,
                 Height = 12,
             };
             var beDn = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25BC",
+                Content = "v",
                 Width = 18,
                 Height = 12,
             };
@@ -1262,13 +1262,13 @@ namespace PropTraderTools
             globalBeArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             var globalBeUp = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25B2",
+                Content = "^",
                 Width = 18,
                 Height = 12,
             };
             var globalBeDn = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25BC",
+                Content = "v",
                 Width = 18,
                 Height = 12,
             };
@@ -1308,13 +1308,13 @@ namespace PropTraderTools
             quickArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             var quickUp = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25B2",
+                Content = "^",
                 Width = 18,
                 Height = 12,
             };
             var quickDn = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25BC",
+                Content = "v",
                 Width = 18,
                 Height = 12,
             };
@@ -1347,13 +1347,13 @@ namespace PropTraderTools
             quickAllArrows.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
             var quickAllUp = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25B2",
+                Content = "^",
                 Width = 18,
                 Height = 12,
             };
             var quickAllDn = new System.Windows.Controls.Primitives.RepeatButton
             {
-                Content = "\u25BC",
+                Content = "v",
                 Width = 18,
                 Height = 12,
             };
