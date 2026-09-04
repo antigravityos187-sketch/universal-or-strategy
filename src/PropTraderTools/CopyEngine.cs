@@ -5763,6 +5763,21 @@ namespace PropTraderTools
         // JS-021: ConcurrentDictionary.IsEmpty is lock-free.
         internal bool IsPendingSlotsEmpty() => _pendingBeSlots.IsEmpty;
 
+        // DW-C39-20: Clear all pending BE slots when last panel closes.
+        // Unsubscribes AccountItemUpdate handlers first to prevent orphan event handlers.
+        // Called from TradeCopierPanel.Detach() when TradeCopierAddOn.IsPanelsEmpty() is true.
+        // JS-021: no lock -- ConcurrentDictionary enumeration and Clear() are thread-safe.
+        // CYC=3: base(1) + foreach(1) + null guard(1).
+        internal void ClearAllPendingBeSlots()
+        {
+            foreach (var kvp in _pendingBeSlots)
+            {
+                if (kvp.Value.Account != null)
+                    kvp.Value.Account.AccountItemUpdate -= OnPendingBeAccountUpdate;
+            }
+            _pendingBeSlots.Clear();
+        }
+
         // B27 -- ArmTrailBe: arms the continuous trail watcher using acc.AccountItemUpdate.
         // CYC=4: instr null(1), acc null(2), pos flat(3), slot upsert(4).
         // DW-B27-01: slot dicts replace five singleton fields -- per-account, no data races.

@@ -1,0 +1,2 @@
+New version (1.0.40) is available. Update using `cs update` for changes.
+Use `cs version --updates` to show pending updates.

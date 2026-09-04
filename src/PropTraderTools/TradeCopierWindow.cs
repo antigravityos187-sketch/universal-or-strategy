@@ -170,6 +170,7 @@ namespace PropTraderTools
                 _rulesPanel.Children.Clear();
                 foreach (var instr in instruments) // CYC branch (2): iterate instruments
                     _rulesPanel.Children.Add(BuildRuleRow(instr));
+                ApplyFeatureFlags(CopyEngine.Instance.Flags); // DW-C39-05b: apply flags after rows are built
             });
         }
 

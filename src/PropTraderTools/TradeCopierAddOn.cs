@@ -52,6 +52,10 @@ namespace PropTraderTools
         private static readonly ConcurrentDictionary<Chart, TradeCopierPanel> _keyHandlers =
             new ConcurrentDictionary<Chart, TradeCopierPanel>();
 
+        // DW-C39-20: Returns true when all panels have been detached (last-panel-close guard).
+        // Called by TradeCopierPanel.Detach(). CYC=1. JS-021: no lock.
+        internal static bool IsPanelsEmpty() => _panels.IsEmpty;
+
         // B11 T1 SIM101: logging-only diag handler stored as field so RemoveSim101() can unhook it.
         // Set in RunSim101(); nulled unconditionally by RemoveSim101().
         // Plan sec.2 V2 note. Review note: declare static to match _panels/_clickHandlers pattern.
