@@ -605,9 +605,8 @@ namespace PropTraderTools
             _instrument = null;
             _leaderAccount = null;
 
-            // B40: disarm all accounts on detach (BE ALL global cleanup). NT8-043: no null-conditional compound.
-            // DW-B72-02: _globalBeState removed -- truth is IsPendingSlotsEmpty(). No local reset needed.
-            DisarmAllAccounts();
+            // DW-C38-03: DisarmAllAccounts() call removed -- was disarming sibling panels' BE state (bug).
+            // Leader-account disarm already performed at line 591 (_engine.DisarmPendingBe(_leaderAccount)).
             // No visual update here -- panel is being destroyed.
 
             // B33 T7 -- Teardown all IPttModules (unsubscribes all PttBus events).
@@ -628,17 +627,6 @@ namespace PropTraderTools
             foreach (var item in _followerItems)
                 if (item.Account != null)
                     item.Account.AccountItemUpdate -= OnAccountItemUpdate;
-        }
-
-        // R10: extracted from Detach() to eliminate Account.All foreach Bumpy Road pattern.
-        // MUST only be called from Detach() on UI thread (reads Account.All).
-        // JS-021: no lock. JS-002: no return null (void). ASCII-only. CYC=2.
-        private static void DisarmAllAccounts()
-        {
-            if (Account.All == null)
-                return;
-            foreach (var acc in Account.All)
-                CopyEngine.Instance.DisarmPendingBe(acc);
         }
 
         // -- Layer 3 live state (V04) -- called on UI thread only -----------------
@@ -2782,21 +2770,21 @@ namespace PropTraderTools
 
         // BWAVE-CYC T2: extracted helpers for OnApplyRule.
 
-        // BuildFollowerMultipliers: collects per-follower multipliers and ATM names. CCN=3.
+        // BuildFollowerMultipliers: collects per-follower multipliers and ATM names. CCN=5.
+        // BWAVE-DW B-4: nested for+foreach replaced with inverted foreach + System.Array.IndexOf.
+        // First-match semantics preserved: multipliers[idx]!=0 guard skips duplicate _followerItems entries.
+        // JS-021: no lock. JS-002: no return null. JS-033: not async void.
         private (int[] multipliers, string[] atmNames) BuildFollowerMultipliers(Account[] followers)
         {
             var multipliers = new int[followers.Length];
             var atmNames = new string[followers.Length];
-            for (int i = 0; i < followers.Length; i++)
+            foreach (var item in _followerItems)
             {
-                foreach (var item in _followerItems)
-                {
-                    if (item.Account != followers[i])
-                        continue;
-                    multipliers[i] = item.Multiplier > 0 ? item.Multiplier : 1;
-                    atmNames[i] = item.AtmModeName ?? "Inherit";
-                    break;
-                }
+                if (item.Account == null) continue;
+                int idx = System.Array.IndexOf(followers, item.Account);
+                if (idx < 0 || multipliers[idx] != 0) continue;
+                multipliers[idx] = item.Multiplier > 0 ? item.Multiplier : 1;
+                atmNames[idx] = item.AtmModeName ?? "Inherit";
             }
             return (multipliers, atmNames);
         }
