@@ -589,6 +589,10 @@ namespace PropTraderTools
             _engine.GlobalBeAllDisarmed -= OnGlobalBeAllDisarmed; // HOTFIX-BEALL-DISARM-SYNC-01
             UnsubscribeFollowerItems();
             _engine.DisarmPendingBe(_leaderAccount);
+            // DW-C39-20: last-panel-close guard -- clear remaining global pending BE slots.
+            // TradeCopierAddOn.TryRemove ran before Detach(), so _panels is already empty if last panel.
+            if (TradeCopierAddOn.IsPanelsEmpty())
+                _engine.ClearAllPendingBeSlots();
             // B32: DisarmTrailBe removed -- PTT no longer runs trail after BE (DW-B32-05).
             _engine.CopyEnabledChanged -= OnCopyEnabledChanged;
             // B41: unsubscribe leader order/position update handlers (memory-leak prevention).
