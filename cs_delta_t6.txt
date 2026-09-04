@@ -1,0 +1,647 @@
+Performing delta analysis on uncommitted changes.
+Both staged and non-staged changed are included.
+
+----------------------------------------------------
+
+src/PropTraderTools/CopyEngine.cs 
+Code Health: (2.47 -> 1.50)
+
+  [!] Degraded issue: Lines of Code in a Single File
+      Status: The lines of code increases from 3966 to 3979, improve code
+              health by reducing it to 1000
+
+  [X] Improved issue: Number of Functions in a Single Module
+      Status: The number of functions decreases from 303 to 260, threshold =
+              75
+
+  [!] Degraded issue: Low Cohesion
+      Status: The number of different responsibilities increases from 4 to 5,
+              threshold = 3
+
+  [!] Degraded issue: Code Duplication
+      Function: IsPttBeRetryTriggerOrder
+      Status: introduced similar code in:
+              IsPttBeRetryTriggerOrder,IsPttBeRetryTriggerOrderTestable
+
+  [X] Improved issue: Code Duplication
+      Function: CancelStaleCascadeTgtDrag
+      Status: reduced similar code in:
+              CancelStaleCascadeTgtDrag,CancelStaleTgtDragOrders,CreateAndSubmitReplacementTarget,SubmitReplacementStopLeg
+              and 1 more functions
+
+  [!] Degraded issue: Complex Method
+      Function: SnapshotBeTargets at line 5239
+      Status: SnapshotBeTargets increases in cyclomatic complexity from 12 to
+              28, threshold = 9
+
+  [!] Degraded issue: Complex Method
+      Function: CancelQxBrackets at line 967
+      Status: CancelQxBrackets increases in cyclomatic complexity from 12 to
+              19, threshold = 9
+
+  [!] Degraded issue: Complex Method
+      Function: CancelQxBrackets at line 887
+      Status: CancelQxBrackets increases in cyclomatic complexity from 10 to
+              16, threshold = 9
+
+  [!] Degraded issue: Complex Method
+      Function: FindFollowerBracketOrder at line 3388
+      Status: FindFollowerBracketOrder increases in cyclomatic complexity from
+              11 to 14, threshold = 9
+
+  [!] Degraded issue: Complex Method
+      Function: CancelAllAccountOrders at line 1025
+      Status: CancelAllAccountOrders increases in cyclomatic complexity from
+              10 to 14, threshold = 9
+
+  [!] Degraded issue: Complex Method
+      Function: BuildQxSnapshot at line 928
+      Status: BuildQxSnapshot increases in cyclomatic complexity from 10 to
+              14, threshold = 9
+
+  [!] Degraded issue: Complex Method
+      Function: CaptureOtherLegTargetPrices at line 2731
+      Status: CaptureOtherLegTargetPrices increases in cyclomatic complexity
+              from 9 to 11, threshold = 9
+
+  [X] Improved issue: Complex Method
+      Function: DispatchCopy at line 2222
+      Status: DispatchCopy decreases in cyclomatic complexity from 16 to 10,
+              threshold = 9
+
+  [X] Fixed issue: Complex Method
+      Function: OnOrderUpdate
+      Status: OnOrderUpdate is no longer above the threshold for cyclomatic
+              complexity
+
+  [X] Fixed issue: Complex Method
+      Function: IsExitSignalName
+      Status: IsExitSignalName is no longer above the threshold for cyclomatic
+              complexity
+
+  [X] Fixed issue: Complex Method
+      Function: HasInFlightFlattenOrder
+      Status: HasInFlightFlattenOrder is no longer above the threshold for
+              cyclomatic complexity
+
+  [X] Fixed issue: Complex Method
+      Function: TryHandleEntryDrag
+      Status: TryHandleEntryDrag is no longer above the threshold for
+              cyclomatic complexity
+
+  [!] New issue: Complex Method
+      Function: TryCleanupReArmedAtmBracket at line 4028
+      Status: TryCleanupReArmedAtmBracket has a cyclomatic complexity of 20,
+              threshold = 9
+
+  [!] New issue: Complex Method
+      Function: ArmPendingBe at line 5609
+      Status: ArmPendingBe has a cyclomatic complexity of 17, threshold = 9
+
+  [!] New issue: Complex Method
+      Function: CountLeaderTargets at line 5205
+      Status: CountLeaderTargets has a cyclomatic complexity of 16, threshold
+              = 9
+
+  [!] New issue: Complex Method
+      Function: FlattenOneAccount at line 4604
+      Status: FlattenOneAccount has a cyclomatic complexity of 16, threshold =
+              9
+
+  [!] New issue: Complex Method
+      Function: ReplaceFollowerCopyOnAtmCancel at line 3785
+      Status: ReplaceFollowerCopyOnAtmCancel has a cyclomatic complexity of
+              16, threshold = 9
+
+  [!] New issue: Complex Method
+      Function: SyncFollowerBracket at line 2481
+      Status: SyncFollowerBracket has a cyclomatic complexity of 16, threshold
+              = 9
+
+  [!] New issue: Complex Method
+      Function: HandleEntryChange at line 3603
+      Status: HandleEntryChange has a cyclomatic complexity of 15, threshold =
+              9
+
+  [!] New issue: Complex Method
+      Function: SyncAtmFollowerTarget at line 3106
+      Status: SyncAtmFollowerTarget has a cyclomatic complexity of 15,
+              threshold = 9
+
+  [!] New issue: Complex Method
+      Function: ResubmitOneCollateralLeg at line 2938
+      Status: ResubmitOneCollateralLeg has a cyclomatic complexity of 15,
+              threshold = 9
+
+  [!] New issue: Complex Method
+      Function: MoveStopToBreakEven at line 5294
+      Status: MoveStopToBreakEven has a cyclomatic complexity of 14, threshold
+              = 9
+
+  [!] New issue: Complex Method
+      Function: AllAccounts at line 5006
+      Status: AllAccounts has a cyclomatic complexity of 13, threshold = 9
+
+  [!] New issue: Complex Method
+      Function: DtoToRule at line 6093
+      Status: DtoToRule has a cyclomatic complexity of 12, threshold = 9
+
+  [!] New issue: Complex Method
+      Function: TryReplacePttBeBrackets at line 3945
+      Status: TryReplacePttBeBrackets has a cyclomatic complexity of 12,
+              threshold = 9
+
+  [!] New issue: Complex Method
+      Function: MatchesLeaderName at line 3443
+      Status: MatchesLeaderName has a cyclomatic complexity of 11, threshold =
+              9
+
+  [!] New issue: Complex Method
+      Function: TryFirePositionState at line 3688
+      Status: TryFirePositionState has a cyclomatic complexity of 10,
+              threshold = 9
+
+  [!] New issue: Complex Method
+      Function: HandleBracketChange at line 3304
+      Status: HandleBracketChange has a cyclomatic complexity of 10, threshold
+              = 9
+
+  [!] New issue: Complex Method
+      Function: MirrorClose at line 2069
+      Status: MirrorClose has a cyclomatic complexity of 10, threshold = 9
+
+  [!] New issue: Complex Method
+      Function: IsFollowerAccount at line 760
+      Status: IsFollowerAccount has a cyclomatic complexity of 10, threshold =
+              9
+
+  [!] New issue: Complex Method
+      Function: RuleToDto at line 6055
+      Status: RuleToDto has a cyclomatic complexity of 9, threshold = 9
+
+  [!] New issue: Complex Method
+      Function: BuildUpdatedMultipliers at line 1324
+      Status: BuildUpdatedMultipliers has a cyclomatic complexity of 9,
+              threshold = 9
+
+  [X] Fixed issue: Complex Conditional
+      Function: OnOrderUpdate
+      Status: OnOrderUpdate no longer has a complex conditional
+
+  [X] Fixed issue: Complex Conditional
+      Function: IsExitSignalName
+      Status: IsExitSignalName no longer has a complex conditional
+
+  [X] Fixed issue: Complex Conditional
+      Function: CancelStaleCascadeTgtDrag
+      Status: CancelStaleCascadeTgtDrag no longer has a complex conditional
+
+  [X] Fixed issue: Complex Conditional
+      Function: CancelStaleTgtDragOrders
+      Status: CancelStaleTgtDragOrders no longer has a complex conditional
+
+  [X] Fixed issue: Complex Conditional
+      Function: FindMatchingNativeAtmBracket
+      Status: FindMatchingNativeAtmBracket no longer has a complex conditional
+
+  [X] Fixed issue: Complex Conditional
+      Function: HasInFlightFlattenOrder
+      Status: HasInFlightFlattenOrder no longer has a complex conditional
+
+  [X] Fixed issue: Complex Conditional
+      Function: RegisterPartialTargetBeRetry
+      Status: RegisterPartialTargetBeRetry no longer has a complex conditional
+
+  [!] New issue: Complex Conditional
+      Function: IsFollowerAccount at line 770
+      Status: IsFollowerAccount has 1 complex conditionals with 3 branches,
+              threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: CaptureOtherLegTargetPrices at line 2745
+      Status: CaptureOtherLegTargetPrices has 1 complex conditionals with 2
+              branches, threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: ResubmitTargetAfterCascade at line 2839
+      Status: ResubmitTargetAfterCascade has 1 complex conditionals with 2
+              branches, threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: SyncAtmFollowerTarget at line 3132
+      Status: SyncAtmFollowerTarget has 1 complex conditionals with 2
+              branches, threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: FindFollowerBracketOrder at line 3399
+      Status: FindFollowerBracketOrder has 1 complex conditionals with 3
+              branches, threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: MatchesLeaderName at line 3455
+      Status: MatchesLeaderName has 2 complex conditionals with 4 branches,
+              threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: TryReplacePttBeBrackets at line 3964
+      Status: TryReplacePttBeBrackets has 1 complex conditionals with 3
+              branches, threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: TryCleanupReArmedAtmBracket at line 4038
+      Status: TryCleanupReArmedAtmBracket has 2 complex conditionals with 13
+              branches, threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: FlattenOneAccount at line 4620
+      Status: FlattenOneAccount has 1 complex conditionals with 2 branches,
+              threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: CountLeaderTargets at line 5220
+      Status: CountLeaderTargets has 1 complex conditionals with 2 branches,
+              threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: SnapshotBeTargets at line 5261
+      Status: SnapshotBeTargets has 1 complex conditionals with 2 branches,
+              threshold = 2
+
+  [!] New issue: Complex Conditional
+      Function: MoveStopToBreakEven at line 5375
+      Status: MoveStopToBreakEven has 1 complex conditionals with 2 branches,
+              threshold = 2
+
+  [!] Degraded issue: Bumpy Road Ahead
+      Function: DtoToRule at line 6093
+      Status: DtoToRule increases from 2 to 3 logical blocks with deeply
+              nested code, threshold is 2 blocks per function
+
+  [!] New issue: Bumpy Road Ahead
+      Function: MoveStopToBreakEven at line 5294
+      Status: MoveStopToBreakEven has 3 blocks with nested conditional logic.
+              Any nesting of 2 or deeper is considered. Threshold is 2 blocks
+              per function
+
+  [!] New issue: Bumpy Road Ahead
+      Function: ReplaceFollowerCopyOnAtmCancel at line 3785
+      Status: ReplaceFollowerCopyOnAtmCancel has 2 blocks with nested
+              conditional logic. Any nesting of 2 or deeper is considered.
+              Threshold is 2 blocks per function
+
+  [!] New issue: Overall Code Complexity
+      Status: This module has a mean cyclomatic complexity of 4.72 across 260
+              functions. The mean complexity threshold is 4
+
+  [!] Degraded issue: Primitive Obsession
+      Status: The ratio of primitive types in function arguments increases
+              from 39.34% to 41.62%, threshold = 30.0%
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: TrySyncAtmBrackets
+      Status: TrySyncAtmBrackets is no longer above the threshold for number
+              of arguments
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: SyncAtmFollowerStopBracket
+      Status: SyncAtmFollowerStopBracket is no longer above the threshold for
+              number of arguments
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: SubmitReplacementStopLeg
+      Status: SubmitReplacementStopLeg is no longer above the threshold for
+              number of arguments
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: SubmitReplacementTargetLeg
+      Status: SubmitReplacementTargetLeg is no longer above the threshold for
+              number of arguments
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: CreateAndSubmitReplacementTarget
+      Status: CreateAndSubmitReplacementTarget is no longer above the
+              threshold for number of arguments
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: ExecuteStopDragOrder
+      Status: ExecuteStopDragOrder is no longer above the threshold for number
+              of arguments
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: LogHbcDiag
+      Status: LogHbcDiag is no longer above the threshold for number of
+              arguments
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: RegisterBeRetryIfNoTargets
+      Status: RegisterBeRetryIfNoTargets is no longer above the threshold for
+              number of arguments
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: RegisterPartialTargetBeRetry
+      Status: RegisterPartialTargetBeRetry is no longer above the threshold
+              for number of arguments
+
+  [!] New issue: Excess Number of Function Arguments
+      Function: SubmitBeStopOrder at line 1140
+      Status: SubmitBeStopOrder has 5 arguments, max arguments = 4
+
+  [!] New issue: Excess Number of Function Arguments
+      Function: ShouldSkipForReversalGuard at line 2334
+      Status: ShouldSkipForReversalGuard has 5 arguments, max arguments = 4
+
+  [!] New issue: Excess Number of Function Arguments
+      Function: DispatchToFollower at line 2362
+      Status: DispatchToFollower has 6 arguments, max arguments = 4
+
+  [!] New issue: Excess Number of Function Arguments
+      Function: SubmitAtmStopReplacement at line 2631
+      Status: SubmitAtmStopReplacement has 5 arguments, max arguments = 4
+
+  [!] New issue: Excess Number of Function Arguments
+      Function: IsPendingBePriceTriggered at line 5898
+      Status: IsPendingBePriceTriggered has 5 arguments, max arguments = 4
+
+----------------------------------------------------
+
+src/PropTraderTools/TradeCopierPanel.cs 
+Code Health: (7.55 -> 4.84)
+
+  [!] Degraded issue: Lines of Code in a Single File
+      Status: The lines of code increases from 2093 to 2267, improve code
+              health by reducing it to 1000
+
+  [X] Improved issue: Number of Functions in a Single Module
+      Status: The number of functions decreases from 169 to 150, threshold =
+              75
+
+  [!] New issue: Code Duplication
+      Function: OnTrimClick at line 1533
+      Status: The module contains 10 functions with similar structure:
+              GetAsk,GetBid,OnAtrFractionTextLostFocus,OnCancel2 and 6 more
+              functions
+
+  [!] New issue: Complex Method
+      Function: Detach at line 577
+      Status: Detach has a cyclomatic complexity of 10, threshold = 9
+
+  [!] New issue: Complex Method
+      Function: BuildAtmMap at line 2440
+      Status: BuildAtmMap has a cyclomatic complexity of 9, threshold = 9
+
+  [!] New issue: Large Method
+      Function: BuildBufferedButtonsRow at line 1132
+      Status: BuildBufferedButtonsRow has 248 lines, threshold = 70
+
+  [!] New issue: Large Method
+      Function: BuildRiskAtrRow at line 3136
+      Status: BuildRiskAtrRow has 97 lines, threshold = 70
+
+  [!] New issue: Large Method
+      Function: BuildUI at line 879
+      Status: BuildUI has 77 lines, threshold = 70
+
+  [!] New issue: Bumpy Road Ahead
+      Function: Detach at line 577
+      Status: Detach has 2 blocks with nested conditional logic. Any nesting
+              of 2 or deeper is considered. Threshold is 2 blocks per function
+
+  [!] New issue: Bumpy Road Ahead
+      Function: BuildAtmMap at line 2440
+      Status: BuildAtmMap has 2 blocks with nested conditional logic. Any
+              nesting of 2 or deeper is considered. Threshold is 2 blocks per
+              function
+
+  [X] Improved issue: Primitive Obsession
+      Status: The ratio of primitive types in function arguments decreases
+              from 52.02% to 51.36%, threshold = 30.0%
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: BuildArrowCluster
+      Status: BuildArrowCluster is no longer above the threshold for number of
+              arguments
+
+----------------------------------------------------
+
+src/PropTraderTools/Tests/BwaveCycLaneCTests.cs 
+Code Health: (5.60 -> 4.35)
+
+  [!] New issue: Lines of Code in a Single File
+      Status: This module has 1204 lines of code, improve code health by
+              reducing it to 1000
+
+  [!] New issue: Number of Functions in a Single Module
+      Status: This module has 202 functions, threshold = 75
+
+  [!] Degraded issue: Code Duplication
+      Function: ResetBeStateOnFlat_SetsIdleAndDisarms_WhenPositionGoneAndBeArmed
+      Status: introduced similar code in:
+              ApplyButtonGroupFlag_SetsUpgradeTooltip_WhenNotLicensed,CancelOrphanBracketsOnFlat_CallsCancelQxBrackets_WhenPositionGone,ComputeT1Ticks_ClampsToOne_WhenRawDiffLessThanOneTick,ComputeT1Ticks_ComputesCorrectTicks_WhenLong
+              and 10 more functions
+
+  [!] Degraded issue: Large Assertion Blocks
+      Function: BuildArrowCluster_SetsMainBackground_WhenProvided at line 327
+      Status: The number of large assertion blocks increases from 17 to 42,
+              threshold = 4
+
+  [!] Degraded issue: Duplicated Assertion Blocks
+      Function: BuildArrowCluster_SetsMainBackground_WhenProvided at line 327
+      Status: The number of functions with duplicated assertion blocks
+              increases from 7 to 23 (introduced in
+              ApplyButtonGroupFlag_DisablesAllButtons_WhenFeatureFlagFalse,ApplyModuleLicenses_SetsEnabled_FromLicenseBool_ForEachModule,ApplyPositionControlFlags_SetsBeEnabled_PerBreakEvenFlag,ApplyRowVisibilityFlags_SetsCollapsed_WhenClickTraderFlagFalse
+              and 18 more functions), threshold = 2
+
+----------------------------------------------------
+
+src/PropTraderTools/TradeCopierWindow.cs 
+Code Health: (7.43 -> 6.61)
+
+  [X] Fixed issue: Code Duplication
+      Function: BuildBeCluster
+      Status: The module no longer contains too many functions with similar
+              structure
+
+  [!] New issue: Large Method
+      Function: BuildDynamicRuleRow at line 706
+      Status: BuildDynamicRuleRow has 210 lines, threshold = 70
+
+  [!] New issue: Large Method
+      Function: BuildRuleRow at line 464
+      Status: BuildRuleRow has 202 lines, threshold = 70
+
+  [!] New issue: Large Method
+      Function: BuildUI at line 226
+      Status: BuildUI has 80 lines, threshold = 70
+
+  [!] Degraded issue: Primitive Obsession
+      Status: The ratio of primitive types in function arguments increases
+              from 57.33% to 58.73%, threshold = 30.0%
+
+  [X] Fixed issue: Excess Number of Function Arguments
+      Function: BuildActionButtons
+      Status: BuildActionButtons is no longer above the threshold for number
+              of arguments
+
+----------------------------------------------------
+
+src/PropTraderTools/TradeCopierAddOn.cs 
+Code Health: (10.00 -> 7.91)
+
+  [!] New issue: Code Duplication
+      Function: FindVisualChild at line 528
+      Status: The module contains 3 functions with similar structure:
+              FindAccountComboBox,FindVisualChild,FindVisualChildByName
+
+  [!] New issue: Complex Method
+      Function: DoInject at line 384
+      Status: DoInject has a cyclomatic complexity of 15, threshold = 9
+
+  [!] New issue: Complex Method
+      Function: WireControlCenterMenu at line 114
+      Status: WireControlCenterMenu has a cyclomatic complexity of 12,
+              threshold = 9
+
+  [!] New issue: Bumpy Road Ahead
+      Function: WireControlCenterMenu at line 114
+      Status: WireControlCenterMenu has 2 blocks with nested conditional
+              logic. Any nesting of 2 or deeper is considered. Threshold is 2
+              blocks per function
+
+  [!] New issue: Bumpy Road Ahead
+      Function: DoInject at line 384
+      Status: DoInject has 2 blocks with nested conditional logic. Any nesting
+              of 2 or deeper is considered. Threshold is 2 blocks per function
+
+  [!] New issue: Overall Code Complexity
+      Status: This module has a mean cyclomatic complexity of 4.52 across 25
+              functions. The mean complexity threshold is 4
+
+----------------------------------------------------
+
+Explanation of issues
+
+Lines of Code in a Single File
+
+The file has grown to a large number of lines of code. Avoid large files with
+many lines of code as they make it hard to get an overview of their content.
+
+Number of Functions in a Single Module
+
+This file contains too many functions. Beyond a certain threshold, more
+functions lower the code health.
+
+Modules with too many functions are generally harder to understand. Such
+modules should likely be split into smaller and more cohesive units, e.g.
+Extract Class.
+
+Low Cohesion
+
+Cohesion is calculated using the LCOM4 metric. Low cohesion means that the
+module/class has multiple unrelated responsibilities, doing too many things
+and breaking the Single Responsibility Principle.
+
+A module with multiple responsibilities is harder to understand and more risky
+to change since there's a risk for unexpected feature interactions. Refactor
+low cohesion files by splitting them into cohesive units, one unit per
+responsibility.
+
+Code Duplication
+
+Avoid duplicated, aka copy-pasted, code inside the module. More duplication
+lowers the code health.
+
+Duplicated code might lead to code that's harder to maintain as the same
+logical change has to be done in multiple places. Look to extract a shared
+representation which can be re-used across functions.
+
+Complex Method
+
+This function has many conditional statements (e.g. if, for, while), leading
+to lower code health. Avoid adding more conditionals and code to it without
+refactoring.
+
+Complex Methods are detected by the Cyclomatic Complexity metric, which counts
+the number of conditional statements. Cyclomatic Complexity indicates the
+minimum number of unit tests you would need for a the function. The more tests
+you need, the more complicated the method.
+
+Complex Conditional
+
+A complex conditional is an expression inside a branch (e.g. if, for, while)
+which consists of multiple, logical operators such as AND/OR. The more logical
+operators in an expression, the more severe the code smell.
+
+Complex conditionals make code hard to read, and contribute to the Complex
+Method code smell. Simplify complex conditionals by encapsulaing them in
+functions with names capturing the business rule.
+
+Bumpy Road Ahead
+
+The Bumpy Road code smell is a function that contains multiple chunks of
+nested conditional logic. The deeper the nesting and the more bumps, the lower
+the code health.
+
+A bumpy code road represents a lack of encapsulation which becomes an obstacle
+to comprehension.
+
+Overall Code Complexity
+
+This file has many conditional statements (e.g. if, for, while) across its
+implementation, leading to lower code health. Avoid adding more conditionals.
+
+Code complexity is detected by the Cyclomatic Complexity metric, which counts
+the number of conditional statements. Cyclomatic Complexity indicates the
+minimum number of unit tests you would need for the implementation in this
+file. The more tests you need, the more complicated the method. This code
+smell indicates that the whole implementation would benefit from being
+simplified.
+
+Primitive Obsession
+
+The functions in this file have too many primitive types (e.g. int, double,
+float) in their function argument lists. Using many primitive types lead to
+the code smell Primitive Obsession. Avoid adding more primitive arguments.
+
+Primitive Obsession indicates a missing domain language, leading to a number
+of issues. First, primitive types typically require separate validation logic
+in the application code. Second, primitive types can lead to fragile code as
+they don't constrain the value range in the way a domain type could.
+Introducing domain specific types simplifies the code and improves its
+robustness.
+
+Excess Number of Function Arguments
+
+This function has too many arguments, indicating a lack of encapsulation.
+Avoid adding more arguments.
+
+A function with many arguments can be simplified either by a) splitting the
+function if it has too many responsibilities, or b) by introducing an
+abstraction (class, record, struct, etc.) which encapsulates the arguments.
+
+Large Method
+
+Large functions with many lines of code are generally harder to understand and
+lower the code health. Avoid adding more lines to this function.
+
+A function which grows too large should be split into smaller and more
+cohesive functions. Consider Extract Method.
+
+Large Assertion Blocks
+
+This test file has several blocks of large, consecutive assert statements.
+Avoid adding more.
+
+Large blocks with consecutive assertions indicate a missing abstraction.
+Often, large assert blocks lead to duplicated test criteria too. Consider
+extracting and encapsulating custom assertions that communicate the test
+criteria in the language of your domain.
+
+Duplicated Assertion Blocks
+
+This test file has several blocks of duplicated assertion statements. Avoid
+adding more.
+
+Just like duplicated logic in application code is problematic, duplicated test
+criteria lead to code that's hard to maintain. Duplicated assertion blocks
+usually indicate a missing abstraction, either a supporting test function or a
+specific test is missing.

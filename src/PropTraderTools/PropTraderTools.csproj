@@ -170,9 +170,9 @@
     <Compile Include="Tests\B139Tests.cs" />
     <Compile Include="Tests\B143Tests.cs" />
     <Compile Include="Tests\BgtmTests.cs" />
-    <Compile Include="TradeCopierPanelB75Tests.cs" />
-    <Compile Include="B76Tests.cs" />
-    <Compile Include="TradeCopierPanelB77Tests.cs" />
+    <Compile Include="Tests\TradeCopierPanelB75Tests.cs" />
+    <Compile Include="Tests\B76Tests.cs" />
+    <Compile Include="Tests\TradeCopierPanelB77Tests.cs" />
     <Compile Include="Tests\BwaveCycLaneCTests.cs" />
     <Compile Include="Tests\BwaveCycLaneAR9Tests.cs" />
     <Compile Include="Tests\BwaveCycLaneBTests.cs" />

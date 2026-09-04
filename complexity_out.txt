@@ -1,0 +1,8 @@
+﻿python : C:\Users\Mohammed Khalid\AppData\Local\Programs\Python\Python312\python.exe: can't open file 
+'C:\\WSGTA\\universal-or-strategy\\scripts\\complexity_audit.py': [Errno 2] No such file or directory
+At line:1 char:1
++ python scripts/complexity_audit.py 2>&1 | Out-File -FilePath complexi ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\Mohamm...le or directory:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

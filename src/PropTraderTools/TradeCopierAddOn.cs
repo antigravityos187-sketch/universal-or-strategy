@@ -109,7 +109,7 @@ namespace PropTraderTools
             UnregisterClickTrader(chart); // B9 T2: clean up click handler
             UnhookKeyShortcut(chart); // B11 T1: leak guard
             TradeCopierPanel panel;
-            if (_panels.TryRemove(chart, out panel))
+            if (_panels.TryRemove(chart, out panel) && panel != null)
                 panel.Detach();
         }
 
@@ -425,6 +425,12 @@ namespace PropTraderTools
             if (grid == null)
                 return;
             var stale = CollectStalePanelChildren(grid);
+            // C-2: remove in descending row order to prevent index shift.
+            stale.Sort((a, b) =>
+                System.Windows.Controls.Grid.GetRow(b).CompareTo(
+                    System.Windows.Controls.Grid.GetRow(a)
+                )
+            );
             foreach (var old in stale)
                 RemoveStalePanelChild(grid, old);
         }
@@ -489,9 +495,17 @@ namespace PropTraderTools
                 var instr = TrySetPanelInstrument(chartTrader, panel);
                 StartAtrEngine(chart, instr);
                 panel.SetChart(chart);
+
+                // Wire leader account from ChartTrader account ComboBox.
                 WireLeaderAccount(chartTrader, panel);
+
+                // B11 T1 SIM101 Phase A: wire logging-only handler BEFORE production layer.
                 _sim101KeyDiag = new KeyEventHandler(OnChartKeyDiag);
                 chart.PreviewKeyDown += _sim101KeyDiag;
+
+                // B11 T1 Phase B: production keyboard shortcut layer.
+                // RemoveSim101 FIRST (SIM101 must be removed before HookKeyShortcut).
+                // We assume SIM101 PASS per the BUILD-TIME contract in the ticket preamble.
                 RemoveSim101(chart);
                 HookKeyShortcut(chart, panel);
 

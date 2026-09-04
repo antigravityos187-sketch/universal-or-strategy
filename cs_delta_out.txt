@@ -1,0 +1,176 @@
+﻿cs : New version (1.0.39) is available. Update using `cs update` for changes.
+At line:1 char:104
++ ... WEU4ZUdvcHJDTnNXWUdaM2FFbmtVUzJ6UjV4QSJ9"; cs delta HEAD 2>&1 | Out-F ...
++                                                ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (New version (1....e` for changes.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Use `cs version --updates` to show pending updates.
+Performing delta analysis between HEAD and main.
+Any uncommitted changes are also included.
+
+----------------------------------------------------
+
+src/PropTraderTools/CopyEngine.cs 
+Code Health: (1.61 -> 1.69)
+
+  [!] Degraded issue: Lines of Code in a Single File
+      Status: The lines of code increases from 3787 to 3822, improve code
+              health by reducing it to 1000
+
+  [!] Degraded issue: Number of Functions in a Single Module
+      Status: The number of functions increases from 243 to 256, threshold =
+              75
+
+  [X] Fixed issue: Complex Method
+      Function: OnPendingBeAccountUpdate
+      Status: OnPendingBeAccountUpdate is no longer above the threshold for
+              cyclomatic complexity
+
+  [X] Fixed issue: Complex Method
+      Function: TryFireImmediateBeIfAlreadyAtLevel
+      Status: TryFireImmediateBeIfAlreadyAtLevel is no longer above the
+              threshold for cyclomatic complexity
+
+  [X] Fixed issue: Complex Method
+      Function: IsPendingBeTriggerMet
+      Status: IsPendingBeTriggerMet is no longer above the threshold for
+              cyclomatic complexity
+
+  [X] Fixed issue: Complex Method
+      Function: ArmPendingBe
+      Status: ArmPendingBe is no longer above the threshold for cyclomatic
+              complexity
+
+  [X] Improved issue: Overall Code Complexity
+      Status: The mean cyclomatic complexity decreases from 4.79 to 4.58,
+              threshold = 4
+
+  [!] Degraded issue: Primitive Obsession
+      Status: The ratio of primitive types in function arguments increases
+              from 40.42% to 40.66%, threshold = 30.0%
+
+----------------------------------------------------
+
+src/PropTraderTools/CopyEngineTests.cs 
+Code Health: (4.93 -> 4.93)
+
+  [!] Degraded issue: Lines of Code in a Single File
+      Status: The lines of code increases from 4474 to 4644, improve code
+              health by reducing it to 1000
+
+  [!] Degraded issue: Number of Functions in a Single Module
+      Status: The number of functions increases from 387 to 413, threshold =
+              75
+
+  [!] Degraded issue: Primitive Obsession
+      Status: The ratio of primitive types in function arguments increases
+              from 70.97% to 71.88%, threshold = 30.0%
+
+----------------------------------------------------
+
+src/PropTraderTools/TradeCopierWindow.cs 
+Code Health: (6.61 -> 7.11)
+
+  [!] New issue: Code Duplication
+      Function: BuildRuleRow at line 468
+      Status: The module contains 7 functions with similar structure:
+              BuildArmBeCluster,BuildBeCluster,BuildDynamicRuleRow,BuildRuleRow
+              and 3 more functions
+
+  [X] Fixed issue: Large Method
+      Function: BuildDynamicRuleRow
+      Status: BuildDynamicRuleRow is no longer above the threshold for lines
+              of code
+
+  [X] Fixed issue: Large Method
+      Function: BuildRuleRow
+      Status: BuildRuleRow is no longer above the threshold for lines of code
+
+  [X] Improved issue: Primitive Obsession
+      Status: The ratio of primitive types in function arguments decreases
+              from 59.38% to 56.58%, threshold = 30.0%
+
+  [!] New issue: Excess Number of Function Arguments
+      Function: BuildActionButtons at line 743
+      Status: BuildActionButtons has 6 arguments, max arguments = 4
+
+----------------------------------------------------
+
+Explanation of issues
+
+Lines of Code in a Single File
+
+The file has grown to a large number of lines of code. Avoid large files with
+many lines of code as they make it hard to get an overview of their content.
+
+Number of Functions in a Single Module
+
+This file contains too many functions. Beyond a certain threshold, more
+functions lower the code health.
+
+Modules with too many functions are generally harder to understand. Such
+modules should likely be split into smaller and more cohesive units, e.g.
+Extract Class.
+
+Complex Method
+
+This function has many conditional statements (e.g. if, for, while), leading
+to lower code health. Avoid adding more conditionals and code to it without
+refactoring.
+
+Complex Methods are detected by the Cyclomatic Complexity metric, which counts
+the number of conditional statements. Cyclomatic Complexity indicates the
+minimum number of unit tests you would need for a the function. The more tests
+you need, the more complicated the method.
+
+Overall Code Complexity
+
+This file has many conditional statements (e.g. if, for, while) across its
+implementation, leading to lower code health. Avoid adding more conditionals.
+
+Code complexity is detected by the Cyclomatic Complexity metric, which counts
+the number of conditional statements. Cyclomatic Complexity indicates the
+minimum number of unit tests you would need for the implementation in this
+file. The more tests you need, the more complicated the method. This code
+smell indicates that the whole implementation would benefit from being
+simplified.
+
+Primitive Obsession
+
+The functions in this file have too many primitive types (e.g. int, double,
+float) in their function argument lists. Using many primitive types lead to
+the code smell Primitive Obsession. Avoid adding more primitive arguments.
+
+Primitive Obsession indicates a missing domain language, leading to a number
+of issues. First, primitive types typically require separate validation logic
+in the application code. Second, primitive types can lead to fragile code as
+they don't constrain the value range in the way a domain type could.
+Introducing domain specific types simplifies the code and improves its
+robustness.
+
+Code Duplication
+
+Avoid duplicated, aka copy-pasted, code inside the module. More duplication
+lowers the code health.
+
+Duplicated code might lead to code that's harder to maintain as the same
+logical change has to be done in multiple places. Look to extract a shared
+representation which can be re-used across functions.
+
+Large Method
+
+Large functions with many lines of code are generally harder to understand and
+lower the code health. Avoid adding more lines to this function.
+
+A function which grows too large should be split into smaller and more
+cohesive functions. Consider Extract Method.
+
+Excess Number of Function Arguments
+
+This function has too many arguments, indicating a lack of encapsulation.
+Avoid adding more arguments.
+
+A function with many arguments can be simplified either by a) splitting the
+function if it has too many responsibilities, or b) by introducing an
+abstraction (class, record, struct, etc.) which encapsulates the arguments.

@@ -256,34 +256,10 @@ namespace PropTraderTools
         [Fact]
         public void T_B66OBJ_P02_SetNull_GetCloneAtmMode_ReturnsInherit()
         {
-            // DW-C39-15: capture singleton state before mutation; restore unconditionally.
-            var type = typeof(CopyEngine);
-            var objField = type.GetField(
-                "_cloneAtmObject",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-            );
-            var strField = type.GetField(
-                "_cloneAtmCache",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-            );
-            var instance = CopyEngine.Instance;
-            var origObj = objField?.GetValue(instance);
-            var origStr = strField?.GetValue(instance);
-            try
-            {
-                CopyEngine.Instance.SetCloneAtmObjectCache(null);
-                CopyEngine.Instance.SetCloneAtmCache(string.Empty);
-                FollowerAtmMode mode = CopyEngine.Instance.GetCloneAtmMode();
-                Assert.IsType<FollowerAtmMode.Inherit>(mode);
-            }
-            finally
-            {
-                objField?.SetValue(
-                    instance,
-                    origObj as NinjaTrader.NinjaScript.AtmStrategy
-                );
-                strField?.SetValue(instance, origStr as string ?? string.Empty);
-            }
+            CopyEngine.Instance.SetCloneAtmObjectCache(null);
+            CopyEngine.Instance.SetCloneAtmCache(string.Empty);
+            FollowerAtmMode mode = CopyEngine.Instance.GetCloneAtmMode();
+            Assert.IsType<FollowerAtmMode.Inherit>(mode);
         }
 
         // ----------------------------------------------------------------

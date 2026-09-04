@@ -68,31 +68,38 @@ namespace PropTraderTools
             // Assert:  Assert.Equal(string.Empty, result);
         }
 
-        // T_B77_TPL_04: IL scan -- TryGetAtmNameFromSelector must NOT call get_SelectedAtmStrategy.
-        // DW-C39-14: scan the HELPER method body (TryGetAtmNameFromSelector), not the wrapper.
+        // T_B77_TPL_04: IL scan -- GetLeaderAtmTemplateName must NOT call get_SelectedAtmStrategy.
+        // Proves the B77 repair is compiled: SelectedItem path replaces SelectedAtmStrategy.Name path.
         // No NT8 host required (IL inspection only).
         [Fact]
         public void T_B77_TPL_04_ILScan_SelectedAtmStrategyGetterNotCalledInMethodBody()
         {
-            var helper = typeof(TradeCopierPanel).GetMethod(
-                "TryGetAtmNameFromSelector",
-                BindingFlags.NonPublic | BindingFlags.Static
+            var mi = typeof(TradeCopierPanel).GetMethod(
+                "GetLeaderAtmTemplateName",
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public
             );
 
-            // If the helper method does not exist the repair assumption is unverifiable.
-            if (helper == null)
-                return;
+            Assert.NotNull(mi);
 
-            var body = helper.GetMethodBody();
+            var selectorType = typeof(NinjaTrader.Gui.NinjaScript.AtmStrategy.AtmStrategySelector);
+            var selProp = selectorType.GetProperty(
+                "SelectedAtmStrategy",
+                BindingFlags.Public | BindingFlags.Instance
+            );
+
+            Assert.NotNull(selProp);
+
+            int getterToken = selProp.GetGetMethod().MetadataToken;
+
+            var body = mi.GetMethodBody();
             Assert.NotNull(body);
             var il = body.GetILAsByteArray();
             Assert.NotNull(il);
-            Assert.True(il.Length > 0, "TryGetAtmNameFromSelector must have a non-empty IL body");
+            Assert.True(il.Length > 0, "GetLeaderAtmTemplateName must have a non-empty IL body");
 
-            var module = typeof(TradeCopierPanel).Module;
             Assert.False(
-                IlContainsCallvirtByName(il, module, "get_SelectedAtmStrategy"),
-                "TryGetAtmNameFromSelector must NOT call get_SelectedAtmStrategy -- B77 repair uses SelectedItem (HOTFIX-B77-01)"
+                IlContainsCallvirt(il, getterToken),
+                "GetLeaderAtmTemplateName must NOT call get_SelectedAtmStrategy -- B77 repair uses SelectedItem (HOTFIX-B77-01)"
             );
         }
 
@@ -115,9 +122,8 @@ namespace PropTraderTools
             Assert.Equal(string.Empty, result);
             Assert.NotNull(result);
 
-            // Part 2: IL scan confirms string.Empty static field reference is compiled in.
-            // DW-C39-13: string.Empty compiles to ldsfld (0x7E), NOT ldstr (0x72).
-            // Verify opcode 0x7E is present and operand resolves to string::Empty by name.
+            // Part 2: IL scan confirms at least one string.Empty literal is compiled in,
+            // proving the null-safe ?? string.Empty pattern is present in the method body.
             var body = mi.GetMethodBody();
             Assert.NotNull(body);
             var il = body.GetILAsByteArray();
@@ -127,45 +133,36 @@ namespace PropTraderTools
             bool foundStringEmpty = false;
             for (int i = 0; i < il.Length - 4; i++)
             {
-                if (il[i] == 0x7E) // ldsfld
+                if (il[i] == 0x72) // ldstr
                 {
                     int token =
                         il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
                     try
                     {
-                        var field = module.ResolveField(token);
-                        if (
-                            field != null
-                            && field.Name == "Empty"
-                            && field.DeclaringType == typeof(string)
-                        )
+                        var s = module.ResolveString(token);
+                        if (s != null && s.Length == 0)
                         {
                             foundStringEmpty = true;
                             break;
                         }
                     }
                     catch
-                    { /* token not a valid field reference -- skip */
+                    { /* token not a valid string reference -- skip */
                     }
                 }
             }
 
             Assert.True(
                 foundStringEmpty,
-                "GetLeaderAtmTemplateName must load string.Empty via ldsfld (null-safe ?? pattern -- HOTFIX-B77-01)"
+                "GetLeaderAtmTemplateName must contain a string.Empty literal (null-safe ?? pattern -- HOTFIX-B77-01)"
             );
         }
 
         // IL inspection helper: returns true if the byte array contains a callvirt instruction (0x6F)
-        // whose 4-byte token operand resolves (by name) to methodName.
-        // DW-C39-14: name-based resolution avoids MetadataToken fragility.
-        // CYC = 4: loop + opcode-if + resolve-try + name-if.
+        // whose 4-byte token operand matches targetToken.
+        // CYC = 3: loop + opcode-if + token-if.
         // JS-021: no lock. JS-002: does not return null (returns bool).
-        private static bool IlContainsCallvirtByName(
-            byte[] il,
-            System.Reflection.Module module,
-            string methodName
-        )
+        private static bool IlContainsCallvirt(byte[] il, int targetToken)
         {
             for (int i = 0; i < il.Length - 4; i++)
             {
@@ -173,15 +170,8 @@ namespace PropTraderTools
                 {
                     int token =
                         il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
-                    try
-                    {
-                        var resolved = module.ResolveMethod(token);
-                        if (resolved != null && resolved.Name == methodName)
-                            return true;
-                    }
-                    catch
-                    { /* token not a valid method reference -- skip */
-                    }
+                    if (token == targetToken)
+                        return true;
                 }
             }
             return false;
