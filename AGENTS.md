@@ -665,18 +665,7 @@ The repository uses `.codacy.yml` to enforce V12 architectural standards:
 
 ### Complexity Threshold Rationale
 
-**Why 8?** (Jane Street Strict Standard)
-- Jane Street's HFT systems prioritize **cognitive simplicity** over clever abstractions
-- Functions with cyclomatic complexity >8 are harder to:
-  - Reason about under microsecond latency constraints
-  - Test exhaustively (exponential path growth)
-  - Audit for race conditions in lock-free code
-- V12 DNA mandates: "Make illegal states unrepresentable" - this requires simple, verifiable logic
-
-**Enforcement**:
-- Codacy flags functions exceeding threshold 8
-- Refactor into smaller, single-purpose functions
-- Use the Actor/FSM pattern to decompose complex state machines
+> See §3.5 for the full CYC ≤ 8 rationale. Codacy enforces threshold 8 — refactor to smaller single-purpose functions using the Actor/FSM pattern.
 
 ### Validating Configuration
 
@@ -805,36 +794,6 @@ dotnet tool install -g csharpier
 3. **Before push**: Pre-push validation runs all checks
 4. **In PR**: Codacy + CodeRabbit review changes
 
-## graphify
-
-This project has a graphify knowledge graph at `.graphify/`.
-
-Rules:
-- **START of every task**: run `graphify update . --no-cluster --no-description` then read `.graphify/GRAPH_REPORT.md`
-- **END of every task**: run `graphify update . --no-cluster --no-description` after any file modifications
-- For focused questions, run `graphify query "<question>"` instead of reading GRAPH_REPORT.md in full
-- If `.graphify/wiki/index.md` exists, navigate it instead of reading raw files
-- NEVER reference `graphify-out/` — that path is legacy and no longer valid
-
-## Mode Selection Rules (V12.18+)
-
-Current default modes: `plan`, `agent`, `ask`. (`advanced` and `code` are REMOVED.)
-
-When delegating code modification tasks:
-- ✅ ALWAYS use `agent` mode for non-src code work (replaces `advanced`)
-- ✅ ALWAYS use `v12-engineer` (Bob CLI) for src/ work
-- ❌ NEVER use `code` mode (REMOVED)
-- ❌ NEVER use `advanced` mode (REMOVED)
-
-**Routing Decision Tree**:
-```
-Is task modifying code?
-├─ YES → Is task in src/?
-│  ├─ YES → Use Bob CLI (`v12-engineer`)
-│  └─ NO → Use Agent mode (`agent`)
-└─ NO → Use Ask mode (`ask`) or Plan mode (`plan`)
-```
-
 
 ## 11. No Scope Creep Protocol (V12.23 - MANDATORY)
 
@@ -910,13 +869,7 @@ If scope creep detected:
 
 ### Autonomous Execution Goals
 
-**Primary Goal**: Achieve CodeScene complexity score ≤8 (Jane Street strict standard)
-
-**Why ≤8?**
-- CodeScene uses stricter thresholds than Codacy (15)
-- Jane Street HFT systems require cognitive simplicity
-- Functions >8 are harder to reason about under microsecond latency
-- V12 DNA: "Make illegal states unrepresentable" requires simple logic
+**Primary Goal**: Achieve CodeScene complexity score ≤8 (Jane Street strict standard). See §3.5 Complexity Threshold Rationale for the full explanation.
 
 **Current Status**:
 - Target: All methods ≤8

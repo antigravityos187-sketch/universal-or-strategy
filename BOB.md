@@ -8,47 +8,12 @@
 
 ## Bob Mode Routing
 
-| Task Type | Bob Mode |
-|-----------|----------|
-| Code changes outside `src/` | `agent` (built-in) |
-| Surgical refactoring in `src/` | `v12-engineer` (custom) |
-| Architecture planning, markdown docs | `plan` (built-in) |
-| Analysis, Q&A, no edits | `ask` (built-in) |
-| Wave execution — top-level coordinator | `autonomous-refactor` (custom) |
-| Wave execution — Tier 2 phase orchestrators | `wave-orch-phase*` (custom, via `start_subtask`) |
-| Wave execution — Tier 3 per-epic workers | see table below |
-| Ad-hoc interactive epic planning | `v12-epic-planner` (custom) |
-| Concurrency / Phase 7 tasks | `v12-phase7-lead` (custom) |
-
-### Wave Tier 3 Worker Modes
-
-| Phase | Slug | Spawned via |
-|-------|------|-------------|
-| Phase 0 — Hotspot Analysis | `v12-phase0-hotspot` | `spawn_subagent` |
-| Phase 1 — Scope Definition | `v12-phase1-scope` | `spawn_subagent` |
-| Phase 1.5 — Boundary Validation | `v12-phase1-5-boundary` | `spawn_subagent` |
-| Phase 2 — Architecture Planning | `v12-phase2-architecture` | `start_subtask` (needs MCP) |
-| Phase 3 — DNA Audit | `v12-phase3-audit` | `start_subtask` (needs MCP) |
-| Phase 4 — Ticket Generation | `v12-phase4-tickets` | `spawn_subagent` |
-| Phase 4.5 — Ticket Review | `v12-phase4-5-review` | `start_subtask` (needs MCP) |
-| Phase 5 — Ticket Execution | `v12-engineer` | `spawn_subagent` |
-| Phase 5.V — Verification | `v12-phase5-v-verify` | `spawn_subagent` |
-| Phase 6 — Final Review | `v12-phase6-review` | `spawn_subagent` |
+> **Source of truth**: `AGENTS.md` §1 (loaded at every session start via Bob's AGENTS.md auto-load).
+> Modes are also enforced by `.bob/rules/01-mode-enforcement.md`.
 
 Bob CLI binary: `bob` (alias or path).
 Custom mode config: `.bob/custom_modes.yaml`.
 Custom rules: `.bob/rules-{mode-slug}/` (directory, alphabetical load order).
-
----
-
-
-## V12.20: Documentation & Output Hardening (MANDATORY)
-... (existing content) ...
-
-## V12.21: Internal Sentinel Protocol (MANDATORY)
-- **Role Separation**: Spawned sub-agents (via `start_subtask`) serve as Internal Sentinels for Phase 2.3 (Planning Scan) and Phase 5 (Implementation Verification).
-- **Sovereign Loop**: Verification tasks must be handled internally by spawned agents. Never delegate verification to external CLI instances.
-- **PHS Authority**: Only the spawned Internal Sentinel can award a 100/100 PHS.
 
 ---
 
@@ -247,6 +212,10 @@ Disable with `"bob-code.useAgentRules": false` in settings.
   00-pr-hygiene.md             # PR rebase mandate + hygiene script
   01-mode-enforcement.md       # agent/plan/ask only (code+advanced+orchestrator banned)
   02-vm-context-awareness.md   # GCP VM context — no scp/ssh
+  03-graphify-protocol.md      # Graphify startup/shutdown mandate, query commands
+  04-okf-knowledge-protocol.md # Jane Street OKF wiki + Rules Catalog mandatory reading
+  05-utf8-encoding.md          # UTF-8 no-BOM mandate for all files
+  06-rules-catalog-gate.md     # P0 hard gate — JS-001..JS-110 compliance before any work
   99-powershell-syntax.md      # PowerShell cwd parameter mandate
 
 .bob/rules-v12-epic-planner/
