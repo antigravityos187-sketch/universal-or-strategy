@@ -379,6 +379,12 @@ namespace PropTraderTools
         private readonly ConcurrentDictionary<string, PendingDispatchDrain> _pendingDispatchDrains =
             new ConcurrentDictionary<string, PendingDispatchDrain>(StringComparer.Ordinal);
 
+        // DW-NEW-08 Option D: track cancel order IDs owned by DrainThenDispatch.
+        // Prevents TryReplaceOnAtmCancel from firing a competing replacement on drain-owned cancels (F3).
+        // Key = orderId (string per NT8 Order.OrderId), value = 0 (unused placeholder). No lock (JS-021).
+        private readonly ConcurrentDictionary<string, byte> _drainOwnedOrderIds =
+            new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+
         // --- Status event ---
         internal event Action<string> StatusUpdate;
 
@@ -857,14 +863,20 @@ namespace PropTraderTools
             return order.LimitPrice > 0 && order.Instrument?.FullName != null;
         }
 
-        // TryReplaceOnAtmCancel: CYC=2. Fuses IsPttEntryOrderCancelTrigger predicate with action.
+        // TryReplaceOnAtmCancel: CYC=4. Fuses IsPttEntryOrderCancelTrigger predicate with action.
         // Eliminates a branch from OnOrderUpdate parent CCN budget.
+        // F3-repair: drain-owned guard added as first check (JS-021: no lock, ConcurrentDictionary).
+        // R2-V1-repair: drain-active account guard prevents spurious re-placement during active drain.
         // JS-001: no throw. JS-002: void. JS-021: no lock. ASCII-only.
         private void TryReplaceOnAtmCancel(Order order)
         {
+            if (_drainOwnedOrderIds.ContainsKey(order.OrderId))
+                return; // drain-owned cancel -- skip replacement (1)
+            if (order.Account != null && _pendingDispatchDrains.ContainsKey(order.Account.Name))
+                return; // drain active for this account -- skip replacement (2)
             if (!IsPttEntryOrderCancelTrigger(order))
-                return; // (1)
-            ReplaceFollowerCopyOnAtmCancel(order); // (2 - no branch)
+                return; // (3)
+            ReplaceFollowerCopyOnAtmCancel(order); // (4 - no branch)
         }
 
         // IsQxCancelCandidate: returns true if order should be cancelled by CancelQxBrackets.
@@ -1408,12 +1420,19 @@ namespace PropTraderTools
             TryNakedDetect(e);
 
             // DW-NEW-08 Option D: route cancel-ack to drain handler if account is in drain state.
-            // Terminal states: Cancelled, Rejected, Filled. CYC +1 (branch 7).
-            if ((e.Order.OrderState == OrderState.Cancelled
-                 || e.Order.OrderState == OrderState.Rejected
-                 || e.Order.OrderState == OrderState.Filled)
-                && _pendingDispatchDrains.ContainsKey(e.Order.Account.Name))
-                OnDrainCancelAck(e.Order.Account.Name);
+            // F1-repair: Filled no longer routes to OnDrainCancelAck -- position is open, abort drain.
+            // CYC +1 (branch 7) for Cancelled/Rejected; +1 (branch 8) for Filled else-if.
+            if (e.Order.OrderState == OrderState.Cancelled
+                || e.Order.OrderState == OrderState.Rejected)
+            {
+                if (_pendingDispatchDrains.ContainsKey(e.Order.Account.Name))
+                    OnDrainCancelAck(e.Order.Account.Name);
+            }
+            else if (e.Order.OrderState == OrderState.Filled)
+            {
+                // Drain-tracked entry filled -- abort replacement, position is open.
+                AbortDrainOnFill(e.Order.Account.Name); // R2-F1: clean _drainOwnedOrderIds on fill-abort
+            }
 
             // DW-NEW-08 Option D: cheap piggybacked watchdog for stuck drains (>2s).
             // Unconditional -- fires even when copy is disabled. CYC delta=0.
@@ -6490,7 +6509,8 @@ namespace PropTraderTools
 
         // DW-NEW-08 Option D: cancel all Working/Accepted entry orders for follower+instrument before dispatching new entry.
         // Parks the dispatch intent in _pendingDispatchDrains until all cancel acks arrive.
-        // CYC=4: (1) null guard, (2) no-entry fast path, (3) foreach cancel loop, (4) cancelCount==0 edge guard.
+        // CYC=3: (1) null guard, (2) no-entry fast path, (3) foreach cancel loop.
+        // F5-repair: dead (4) cancelCount==0 branch removed. entryCandidates always non-empty here.
         // JS-021: no lock(). ConcurrentDictionary + Interlocked only.
         // NT8: Account.Cancel(Order[]) is AddOnBase available. Confirmed NT8_FULL_REFERENCE.md.
         private void DrainThenDispatch(
@@ -6504,10 +6524,15 @@ namespace PropTraderTools
             if (follower == null || instrument == null) // (1)
                 return;
 
+            // F2-repair: restrict to PTT-Copy Limit/StopLimit entries only.
+            // Stop brackets (StopMarket) and non-PTT-Copy orders are excluded.
             var entryCandidates = ActiveOrders(follower)
                 .Where(o =>
                     o.Instrument == instrument
-                    && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted))
+                    && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
+                    && (o.OrderType == OrderType.Limit || o.OrderType == OrderType.StopLimit)
+                    && (o.Name.StartsWith("PTT-Copy", StringComparison.Ordinal)
+                        || o.Name == "Entry")) // R2-F2: include Clone mode Entry orders (FindFollowerEntryOrder line 3717)
                 .ToList();
 
             if (!entryCandidates.Any()) // (2)
@@ -6518,6 +6543,10 @@ namespace PropTraderTools
 
             string acctKey = follower.Name;
             long now = (long)(int)Environment.TickCount;
+            // F3: build drainedIds list before inserting into dict.
+            var drainedIds = entryCandidates.Select(e => e.OrderId).ToList();
+            // F4-repair: PendingCancelCount set to entryCandidates.Count BEFORE dict insert.
+            // Prevents TOCTOU race where cancel ack arrives before Interlocked.Exchange.
             var payload = new PendingDispatchDrain(
                 acctKey,
                 instrument,
@@ -6525,27 +6554,20 @@ namespace PropTraderTools
                 price,
                 action,
                 orderType,
+                drainedIds,
                 follower,
-                pendingCancelCount: 0,
+                pendingCancelCount: entryCandidates.Count,
                 now);
-            _pendingDispatchDrains[acctKey] = payload;
+            if (!_pendingDispatchDrains.TryAdd(acctKey, payload)) return;
 
-            int cancelCount = 0;
             foreach (var e in entryCandidates) // (3)
             {
+                _drainOwnedOrderIds.TryAdd(e.OrderId, 0); // F3: track drain-owned
                 follower.Cancel(new Order[] { e });
-                cancelCount++;
             }
-            Interlocked.Exchange(ref payload.PendingCancelCount, cancelCount);
+            // No Interlocked.Exchange -- count was set correctly at construction (F4).
 
-            if (cancelCount == 0) // (4)
-            {
-                _pendingDispatchDrains.TryRemove(acctKey, out _);
-                SubmitEntryDirect(follower, instrument, qty, price, action, orderType);
-                return;
-            }
-
-            NinjaTrader.Code.Output.Process("[DRAIN] acct=" + acctKey + " cancel-sent=" + cancelCount, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            NinjaTrader.Code.Output.Process("[DRAIN] acct=" + acctKey + " cancel-sent=" + entryCandidates.Count, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
         }
 
         // DW-NEW-08 Option D: direct submit when no drain needed.
@@ -6603,7 +6625,9 @@ namespace PropTraderTools
         }
 
         // DW-NEW-08 Option D: submit the parked entry after all drain cancels acknowledged.
-        // CYC=3: (1) TryRemove fails early return, (2) FollowerAccount null early return, (3) delegated to SubmitEntryDirect.
+        // CYC=4: (1) TryRemove fails early return, (2) FollowerAccount null early return,
+        //        (3) delegated to SubmitEntryDirect, (4) F3 cleanup foreach (after submit).
+        // R3-F2: cleanup moved after SubmitEntryDirect -- drain IDs preserved until submit completes.
         // NT8: Account.CreateOrder + Submit via SubmitEntryDirect. NO Account.Change().
         private void SubmitDrainedEntry(string acctKey)
         {
@@ -6614,17 +6638,31 @@ namespace PropTraderTools
             if (follower == null) // (2)
                 return;
 
-            SubmitEntryDirect( // (3) delegated
+            SubmitEntryDirect( // (3) submit first -- drain IDs still in dict here
                 follower,
                 payload.Instrument,
                 payload.Qty,
                 payload.Price,
                 payload.Action,
                 payload.OrderType);
+
+            // R3-F2: clear drain-owned IDs AFTER submit so IDs are preserved on submit failure.
+            foreach (var id in payload.DrainedOrderIds) // (4)
+                _drainOwnedOrderIds.TryRemove(id, out _);
+        }
+
+        // R2-F1: clean _drainOwnedOrderIds for fill-aborted drain payloads.
+        // Called from OnOrderUpdate Filled branch to prevent permanent ID leak.
+        // CYC=3: base(1) + TryRemove guard(1) + foreach(1). JS-021: no lock().
+        private void AbortDrainOnFill(string acctKey)
+        {
+            if (_pendingDispatchDrains.TryRemove(acctKey, out var payload))
+                foreach (var id in payload.DrainedOrderIds)
+                    _drainOwnedOrderIds.TryRemove(id, out _);
         }
 
         // DW-NEW-08 Option D: watchdog for stuck drains. Piggybacked in OnOrderUpdate. No System.Threading.Timer.
-        // CYC=3: (1) IsEmpty fast-path, (2) foreach loop, (3) timestamp comparison.
+        // CYC=4: (1) IsEmpty fast-path, (2) foreach loop, (3) timestamp comparison, (4) F3 cleanup foreach.
         // JS-021: no lock(). ConcurrentDictionary enumeration is thread-safe.
         private void TryDrainWatchdog()
         {
@@ -6636,6 +6674,9 @@ namespace PropTraderTools
             {
                 if (now - kv.Value.TimestampTicks > 2000L) // (3)
                 {
+                    // F3-repair: clear drain-owned IDs before removing timed-out drain.
+                    foreach (var id in kv.Value.DrainedOrderIds) // (4)
+                        _drainOwnedOrderIds.TryRemove(id, out _);
                     _pendingDispatchDrains.TryRemove(kv.Key, out _);
                     NinjaTrader.Code.Output.Process("[DRAIN-TIMEOUT] acct=" + kv.Key, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
                 }
@@ -6655,6 +6696,9 @@ namespace PropTraderTools
             internal double Price              { get; private set; }
             internal OrderAction Action        { get; private set; }
             internal OrderType OrderType       { get; private set; }
+            // F3-repair: track order IDs owned by this drain for cleanup in SubmitDrainedEntry/TryDrainWatchdog.
+            // NT8 Order.OrderId is string (NT8_FULL_REFERENCE.md line 864).
+            internal IReadOnlyList<string> DrainedOrderIds { get; private set; }
             internal Account FollowerAccount   { get; private set; }
             internal int PendingCancelCount;   // mutable -- Interlocked.Decrement/Increment
             internal long TimestampTicks       { get; private set; }
@@ -6666,6 +6710,7 @@ namespace PropTraderTools
                 double price,
                 OrderAction action,
                 OrderType orderType,
+                IReadOnlyList<string> drainedOrderIds,
                 Account followerAccount,
                 int pendingCancelCount,
                 long timestampTicks)
@@ -6676,6 +6721,7 @@ namespace PropTraderTools
                 Price              = price;
                 Action             = action;
                 OrderType          = orderType;
+                DrainedOrderIds    = drainedOrderIds;
                 FollowerAccount    = followerAccount;
                 PendingCancelCount = pendingCancelCount;
                 TimestampTicks     = timestampTicks;
