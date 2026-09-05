@@ -1030,6 +1030,7 @@ namespace PropTraderTools
             Assert.Equal(0, m.GetParameters().Length);
             Assert.Equal(typeof(void), m.ReturnType);
         }
+
         [Fact]
         public void DisarmAllAccounts_IsDeleted()
         {

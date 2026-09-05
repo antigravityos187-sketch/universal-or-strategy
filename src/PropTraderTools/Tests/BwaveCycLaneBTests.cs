@@ -147,6 +147,25 @@ namespace PropTraderTools.Tests
             Assert.False(result);
             Assert.Equal(before, engine.GetFilledBeTargetCount("TEST-ACC-NOTFILLED"));
         }
+        /// <summary>
+        /// Structural: WouldRecordBeTargetFill seam exists with expected parameter signature.
+        /// Guards Order-based path: state, name, accountName parameters exercised via seam.
+        /// </summary>
+        [Fact]
+        public void TryRecordBeTargetFill_SeamExists_WouldRecordBeTargetFill()
+        {
+            var m = typeof(CopyEngine).GetMethod(
+                "WouldRecordBeTargetFill",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
+            Assert.NotNull(m);
+            var parms = m!.GetParameters();
+            Assert.Equal(3, parms.Length);
+            Assert.Equal(typeof(OrderState), parms[0].ParameterType);
+            Assert.Equal(typeof(string), parms[1].ParameterType);
+            Assert.Equal(typeof(string), parms[2].ParameterType);
+        }
+
 
         /// <summary>
         /// When name does not start with PTT-BE-Target-, WouldRecordBeTargetFill returns false.
@@ -441,10 +460,27 @@ namespace PropTraderTools.Tests
         /// Verifies the ATM Target path triggers BE retry.
         /// </summary>
         [Fact(Skip = "NT8-HOST-REQUIRED: TryFireFollowerBeRetry requires live Order/Account context. The retry execution branch cannot be invoked in a unit test without NT8 runtime. Deferred per DW-B37-03.")]
-        public void ExecuteBeRetryAndRearm_CallsBreakEven()
+        public void IsBeRetryEligible_VerifiesPredicate_NotExecution()
         {
             bool result = CopyEngine.IsPttBeRetryTriggerOrderTestable("Target1");
             Assert.True(result);
+        }
+
+        /// <summary>
+        /// Structural: TryFireFollowerBeRetry exists with OrderEventArgs parameter.
+        /// Confirms retry execution entry point is present; execution requires NT8 runtime.
+        /// </summary>
+        [Fact]
+        public void TryFireFollowerBeRetry_Exists_WithOrderEventArgsParam()
+        {
+            var m = typeof(CopyEngine).GetMethod(
+                "TryFireFollowerBeRetry",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
+            Assert.NotNull(m);
+            var parms = m!.GetParameters();
+            Assert.Equal(1, parms.Length);
+            Assert.Equal(typeof(OrderEventArgs), parms[0].ParameterType);
         }
 
         // -----------------------------------------------------------------------
