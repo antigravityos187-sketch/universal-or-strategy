@@ -169,7 +169,9 @@ namespace PropTraderTools.Tests
         public void FindFollowerEntryOrder_AcceptsEntryName_ForCloneMode()
         {
             // Structural: FindFollowerEntryOrder method exists on CopyEngine.
-            var method = EngineType.GetMethod("FindFollowerEntryOrder", Priv);
+            var method = EngineType.GetMethod(
+                "FindFollowerEntryOrder",
+                BindingFlags.NonPublic | BindingFlags.Static);
             Assert.NotNull(method);
             // Structural: method accepts an Account and Instrument parameter.
             var parms = method.GetParameters();
