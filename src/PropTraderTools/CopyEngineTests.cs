@@ -4088,6 +4088,31 @@ namespace PropTraderTools
             var exception = Record.Exception(() => engine.CancelAllAccountOrders(null, null));
             Assert.Null(exception);
         }
+
+        // =====================================================================
+        // BWAVE-NEXT LaneBRepair-R4 T1: R4-F1 STALE regression guard
+        // R4-F1 investigated and found STALE: R3-F2 already ordered cleanup AFTER submit.
+        // This test guards against future edits that move cleanup before submit.
+        // =====================================================================
+
+        [Fact]
+        public void SubmitDrainedEntry_SourceOrdering_SubmitBeforeCleanup_StaleR4F1()
+        {
+            // Regression guard: R4-F1 was investigated and found STALE.
+            // This test confirms the R3-F2 ordering comment still exists in source,
+            // guarding against any future edit that moves cleanup before submit.
+            // If this comment disappears, the ordering may have been changed and
+            // R4-F1 should be re-evaluated.
+            var sourceText = System.IO.File.ReadAllText(
+                System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(
+                        typeof(CopyEngine).Assembly.Location),
+                    "..", "..", "..", "src", "PropTraderTools", "CopyEngine.cs"));
+            Assert.Contains(
+                "R3-F2: clear drain-owned IDs AFTER submit",
+                sourceText,
+                System.StringComparison.Ordinal);
+        }
     }
 
     // B75-LaneA: 60 xUnit tests covering TryDispatchLeaderFlat gates, IsAtmBracketName,
