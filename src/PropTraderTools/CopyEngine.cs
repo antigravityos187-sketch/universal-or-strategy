@@ -6626,7 +6626,8 @@ namespace PropTraderTools
 
         // DW-NEW-08 Option D: submit the parked entry after all drain cancels acknowledged.
         // CYC=4: (1) TryRemove fails early return, (2) FollowerAccount null early return,
-        //        (3) F3 cleanup foreach, (4) delegated to SubmitEntryDirect.
+        //        (3) delegated to SubmitEntryDirect, (4) F3 cleanup foreach (after submit).
+        // R3-F2: cleanup moved after SubmitEntryDirect -- drain IDs preserved until submit completes.
         // NT8: Account.CreateOrder + Submit via SubmitEntryDirect. NO Account.Change().
         private void SubmitDrainedEntry(string acctKey)
         {
@@ -6637,17 +6638,17 @@ namespace PropTraderTools
             if (follower == null) // (2)
                 return;
 
-            // F3-repair: clear drain-owned IDs now that drain is complete.
-            foreach (var id in payload.DrainedOrderIds) // (3)
-                _drainOwnedOrderIds.TryRemove(id, out _);
-
-            SubmitEntryDirect( // (4) delegated
+            SubmitEntryDirect( // (3) submit first -- drain IDs still in dict here
                 follower,
                 payload.Instrument,
                 payload.Qty,
                 payload.Price,
                 payload.Action,
                 payload.OrderType);
+
+            // R3-F2: clear drain-owned IDs AFTER submit so IDs are preserved on submit failure.
+            foreach (var id in payload.DrainedOrderIds) // (4)
+                _drainOwnedOrderIds.TryRemove(id, out _);
         }
 
         // R2-F1: clean _drainOwnedOrderIds for fill-aborted drain payloads.
