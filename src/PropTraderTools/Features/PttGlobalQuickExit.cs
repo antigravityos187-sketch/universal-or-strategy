@@ -79,25 +79,7 @@ namespace PropTraderTools
                     );
                     // DW-B115-DIAG: log leader per-target qty split for comparison against followers.
                     // Remove when DW-B115 root cause confirmed and fix applied.
-                    {
-                        var _sb = new System.Text.StringBuilder("[DW-B115-DIAG] leader targets: ");
-                        _sb.Append(acc.Name);
-                        _sb.Append(" count=");
-                        _sb.Append(targets.Count);
-                        _sb.Append(" posQty=");
-                        _sb.Append(pos.Quantity);
-                        for (int _i = 0; _i < targets.Count; _i++) // (5)
-                        {
-                            _sb.Append(" T");
-                            _sb.Append(_i + 1);
-                            _sb.Append("=");
-                            _sb.Append(targets[_i].Qty);
-                        }
-                        NinjaTrader.Code.Output.Process(
-                            _sb.ToString(),
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
-                        );
-                    }
+                    LogLeaderDiag(acc, targets, pos.Quantity);
                     // B120 DW-B129: flatten guard -- when B118 cancelled BE orders AND
                     // snapshot is empty AND leader has open position, flatten at market.
                     if (NeedsLeaderFallbackFlatten(_beCancelCount, targets.Count, pos.Quantity)) // (6)
@@ -441,56 +423,125 @@ namespace PropTraderTools
             var nativeTargets = new System.Collections.Generic.List<(double Price, int Qty)>();
             var pttTargets = new System.Collections.Generic.List<(double Price, int Qty)>();
             if (acc == null || instr == null)
-                return nativeTargets; // (1) JS-002: empty list, never null
-            foreach (NinjaTrader.Cbi.Order o in acc.Orders) // (2)
+                return nativeTargets; // JS-002: empty list, never null
+            foreach (NinjaTrader.Cbi.Order o in acc.Orders)
             {
                 if (o == null)
                     continue;
-                bool stateOk =
-                    o.OrderState == NinjaTrader.Cbi.OrderState.Working
-                    || o.OrderState == NinjaTrader.Cbi.OrderState.Accepted; // (3)
-                bool instrOk = o.Instrument != null && o.Instrument.FullName == instr.FullName;
-                if (!stateOk || !instrOk || o.OrderType != NinjaTrader.Cbi.OrderType.Limit)
-                    continue;
-                if (string.IsNullOrEmpty(o.Name))
+                if (!IsTargetOrder(o, instr))
                     continue;
                 bool isNative =
                     o.Name.StartsWith("Target", StringComparison.Ordinal)
                     && o.Name.Length > 6
-                    && char.IsDigit(o.Name[6]); // (4)
+                    && char.IsDigit(o.Name[6]);
                 bool isPtt =
                     (
                         o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
                         && o.Name.Length > 8
                         && char.IsDigit(o.Name[8])
-                    ) || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal); // (5)
+                    ) || o.Name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal);
                 if (isNative)
                     nativeTargets.Add((o.LimitPrice, o.Quantity));
                 else if (isPtt)
                     pttTargets.Add((o.LimitPrice, o.Quantity));
             }
             // DW-B106: if ANY native ATM targets exist, use only those for the count.
-            // PTT-QX-T* / PTT-BE-Target-* are only used when no native ATM targets are present
-            // (post-QX or post-BE state). This prevents stale partial-fill residue from
-            // inflating targetCount when a new ATM entry is active.
             if (nativeTargets.Count == 0)
                 return pttTargets;
             // DW-B123: deduplicate nativeTargets by limit price -- keep highest qty per price.
-            // NT8 DAY-entry partial fills create new bracket order objects per fill stage;
-            // stale gen-1 Target1(qty=1) stays Working alongside valid gen-3 Target1(qty=3).
-            // Two entries at the same LimitPrice -> keep the one with the higher Quantity. (5)
+            return DeduplicateByPrice(nativeTargets);
+        }
+
+        /// <summary>
+        /// Determine if an order is a valid target for the given instrument.
+        /// Extracted from SnapshotTargetOrders inner filter block (lines 449-470).
+        /// CYC=3: (1) stateOk (||), (2) instrOk, (3) name non-empty + Limit type check.
+        /// JS-002: returns bool. JS-021: no lock. ASCII-only.
+        /// </summary>
+        private static bool IsTargetOrder(
+            NinjaTrader.Cbi.Order o,
+            NinjaTrader.Cbi.Instrument instr
+        )
+        {
+            bool stateOk =
+                o.OrderState == NinjaTrader.Cbi.OrderState.Working
+                || o.OrderState == NinjaTrader.Cbi.OrderState.Accepted;
+            if (!stateOk)
+                return false;
+            bool instrOk = o.Instrument != null && o.Instrument.FullName == instr.FullName;
+            if (!instrOk || o.OrderType != NinjaTrader.Cbi.OrderType.Limit)
+                return false;
+            return !string.IsNullOrEmpty(o.Name);
+        }
+
+        /// <summary>
+        /// Deduplicate (Price, Qty) list by Price, keeping highest Qty per price level.
+        /// Extracted from SnapshotTargetOrders dedup dictionary loop (lines 482-493).
+        /// CYC=2: (1) foreach, (2) TryGetValue branch.
+        /// JS-002: returns non-null List. JS-021: no lock. NT8-006: no LINQ. ASCII-only.
+        /// </summary>
+        private static System.Collections.Generic.List<(double Price, int Qty)> DeduplicateByPrice(
+            System.Collections.Generic.List<(double Price, int Qty)> targets
+        )
+        {
             var deduped = new System.Collections.Generic.Dictionary<double, int>();
-            foreach (var t in nativeTargets) // (5)
+            foreach (var t in targets)
             {
                 if (!deduped.TryGetValue(t.Price, out int existing) || t.Qty > existing)
                     deduped[t.Price] = t.Qty;
             }
-            var result = new System.Collections.Generic.List<(double Price, int Qty)>(
-                deduped.Count
-            );
+            var result = new System.Collections.Generic.List<(double Price, int Qty)>(deduped.Count);
             foreach (var kv in deduped)
                 result.Add((kv.Key, kv.Value));
             return result;
+        }
+
+        /// <summary>
+        /// Build and append DW-B115-DIAG log string for leader targets.
+        /// Extracted from PttGlobalQuickExit.Execute DIAG block (lines 83-100).
+        /// CYC=2: (1) for-loop, (2) always-execute append (no branch inside loop body).
+        /// JS-002: void. JS-021: no lock. ASCII-only.
+        /// </summary>
+        private static void LogLeaderDiag(
+            NinjaTrader.Cbi.Account acc,
+            System.Collections.Generic.List<(double Price, int Qty)> targets,
+            int posQty
+        )
+        {
+            var _sb = new System.Text.StringBuilder("[DW-B115-DIAG] leader targets: ");
+            _sb.Append(acc.Name);
+            _sb.Append(" count=");
+            _sb.Append(targets.Count);
+            _sb.Append(" posQty=");
+            _sb.Append(posQty);
+            for (int _i = 0; _i < targets.Count; _i++)
+            {
+                _sb.Append(" T");
+                _sb.Append(_i + 1);
+                _sb.Append("=");
+                _sb.Append(targets[_i].Qty);
+            }
+            NinjaTrader.Code.Output.Process(_sb.ToString(), NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+        }
+
+        /// <summary>
+        /// Returns true if order o is a non-terminal PTT-BE order for the given instrument.
+        /// Used by both WaitForPttBeCancelled (collect count) and CancelPttBeOrders (filter).
+        /// CYC=4: (1) o null check, (2) instrOk, (3) IsPttBeOrder, (4) IsNonTerminalPttBeState.
+        /// JS-002: returns bool. JS-021: no lock. ASCII-only.
+        /// </summary>
+        private static bool IsNonTerminalForInstr(
+            NinjaTrader.Cbi.Order o,
+            NinjaTrader.Cbi.Instrument instr
+        )
+        {
+            if (o == null)
+                return false;
+            if (o.Instrument == null || o.Instrument.FullName != instr.FullName)
+                return false;
+            if (!IsPttBeOrder(o.Name))
+                return false;
+            return IsNonTerminalPttBeState(o.OrderState);
         }
 
         /// <summary>
@@ -577,16 +628,10 @@ namespace PropTraderTools
             if (acc == null || instr == null)
                 return 0;
             var toCancel = new System.Collections.Generic.List<NinjaTrader.Cbi.Order>();
-            foreach (NinjaTrader.Cbi.Order o in acc.Orders.ToList()) // (3)
+            foreach (NinjaTrader.Cbi.Order o in acc.Orders.ToList())
             {
-                if (o == null)
-                    continue; // (4)
-                if (o.Instrument == null || o.Instrument.FullName != instr.FullName)
-                    continue; // (5)
-                if (!IsPttBeOrder(o.Name))
-                    continue; // (6)
-                if (!IsNonTerminalPttBeState(o.OrderState))
-                    continue; // (7)
+                if (!IsNonTerminalForInstr(o, instr))
+                    continue;
                 toCancel.Add(o);
             }
             if (toCancel.Count == 0)
@@ -631,19 +676,13 @@ namespace PropTraderTools
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1
             );
             var deadline = DateTime.UtcNow.AddMilliseconds(maxWaitMs);
-            while (DateTime.UtcNow < deadline) // (2)
+            while (DateTime.UtcNow < deadline)
             {
                 int nonTerminal = 0;
-                foreach (NinjaTrader.Cbi.Order o in acc.Orders.ToList()) // (3)
+                foreach (NinjaTrader.Cbi.Order o in acc.Orders.ToList())
                 {
-                    if (o == null)
-                        continue; // (4)
-                    if (o.Instrument == null || o.Instrument.FullName != instr.FullName)
-                        continue; // (5)
-                    if (!IsPttBeOrder(o.Name))
-                        continue; // (6)
-                    if (IsNonTerminalPttBeState(o.OrderState))
-                        nonTerminal++; // (7)
+                    if (IsNonTerminalForInstr(o, instr))
+                        nonTerminal++;
                 }
                 if (nonTerminal == 0)
                 {

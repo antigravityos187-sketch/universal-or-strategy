@@ -59,7 +59,8 @@ namespace PropTraderTools
         /// Cancel all Working/Initialized orders for given account + instrument.
         /// NT8-006: NO LINQ -- explicit foreach to build cancel list.
         /// NT8-031: only Working + Initialized states (no PendingSubmit).
-        /// CYC=3: (1) null guard, (2) foreach+conditions, (3) Count==0 early return.
+        /// CYC=6: (1)(||) null guard, (2) foreach, (3) IsWorkingEntryOrder, (4) Count==0 return,
+        ///         (5) try/catch.
         /// JS-021: no lock.
         /// </summary>
         private static void CancelWorkingEntriesLocal(Account acc, Instrument instr)
@@ -72,15 +73,12 @@ namespace PropTraderTools
             {
                 if (o == null)
                     continue;
-                bool stateOk =
-                    o.OrderState == OrderState.Working || o.OrderState == OrderState.Initialized;
-                bool instrOk = o.Instrument != null && o.Instrument.FullName == instr.FullName;
-                if (stateOk && instrOk)
+                if (IsWorkingEntryOrder(o, instr)) // (3)
                     toCancel.Add(o);
             }
             if (toCancel.Count == 0)
-                return; // (3)
-            try
+                return; // (4)
+            try // (5)
             {
                 acc.Cancel(toCancel.ToArray());
                 NinjaTrader.Code.Output.Process(
@@ -91,6 +89,24 @@ namespace PropTraderTools
             catch
             { /* cancel on already-filled orders is non-fatal */
             }
+        }
+
+        /// <summary>
+        /// Returns true if order o should be added to the cancel list: non-null, correct instrument,
+        /// and in Working or Initialized state.
+        /// Extracted from CancelWorkingEntriesLocal compound filter.
+        /// CYC=4: (1) o null check, (2) stateOk: Working||Initialized (||),
+        ///         (3) instrOk: o.Instrument!=null, (4) instrOk: FullName comparison.
+        /// JS-002: returns bool. JS-021: no lock. ASCII-only.
+        /// </summary>
+        private static bool IsWorkingEntryOrder(Order o, Instrument instr)
+        {
+            if (o == null)
+                return false; // (1)
+            bool stateOk =
+                o.OrderState == OrderState.Working || o.OrderState == OrderState.Initialized; // (2)
+            bool instrOk = o.Instrument != null && o.Instrument.FullName == instr.FullName; // (3)(4)
+            return stateOk && instrOk;
         }
     }
 }
