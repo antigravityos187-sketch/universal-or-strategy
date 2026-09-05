@@ -1,0 +1,15 @@
+{
+  "epic": "BWAVE-REFACTOR-LaneB",
+  "branch": "bwave-refactor-lane-b",
+  "created": "2026-09-06",
+  "scope": "CopyEngine.cs god method extraction — all CCN>15 methods to CCN<=8, plus adjacent CCN 9-15 band methods",
+  "phases": {
+    "phase1": { "status": "pending", "artifact": "docs/brain/BWAVE-REFACTOR/LaneB/02-architecture-plan.md" },
+    "phase2": { "status": "pending", "artifact": "docs/brain/BWAVE-REFACTOR/LaneB/02-plan-review.md" },
+    "phase3": { "status": "pending", "artifact": "docs/brain/BWAVE-REFACTOR/LaneB/04-tickets.md" },
+    "phase3_5": { "status": "pending", "artifact": "docs/brain/BWAVE-REFACTOR/LaneB/04-ticket-review.md" },
+    "phase4_tickets": [],
+    "phase5": { "status": "pending", "artifact": "docs/brain/BWAVE-REFACTOR/LaneB/05-final-review.md" }
+  },
+  "deferred_backlog": "docs/brain/BWAVE-REFACTOR/LaneB/06-deferred-backlog.md"
+}
