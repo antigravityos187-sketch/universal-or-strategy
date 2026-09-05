@@ -1431,7 +1431,7 @@ namespace PropTraderTools
             else if (e.Order.OrderState == OrderState.Filled)
             {
                 // Drain-tracked entry filled -- abort replacement, position is open.
-                _pendingDispatchDrains.TryRemove(e.Order.Account.Name, out _);
+                AbortDrainOnFill(e.Order.Account.Name); // R2-F1: clean _drainOwnedOrderIds on fill-abort
             }
 
             // DW-NEW-08 Option D: cheap piggybacked watchdog for stuck drains (>2s).
@@ -6531,7 +6531,8 @@ namespace PropTraderTools
                     o.Instrument == instrument
                     && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
                     && (o.OrderType == OrderType.Limit || o.OrderType == OrderType.StopLimit)
-                    && o.Name.StartsWith("PTT-Copy", StringComparison.Ordinal))
+                    && (o.Name.StartsWith("PTT-Copy", StringComparison.Ordinal)
+                        || o.Name == "Entry")) // R2-F2: include Clone mode Entry orders (FindFollowerEntryOrder line 3717)
                 .ToList();
 
             if (!entryCandidates.Any()) // (2)
@@ -6647,6 +6648,16 @@ namespace PropTraderTools
                 payload.Price,
                 payload.Action,
                 payload.OrderType);
+        }
+
+        // R2-F1: clean _drainOwnedOrderIds for fill-aborted drain payloads.
+        // Called from OnOrderUpdate Filled branch to prevent permanent ID leak.
+        // CYC=3: base(1) + TryRemove guard(1) + foreach(1). JS-021: no lock().
+        private void AbortDrainOnFill(string acctKey)
+        {
+            if (_pendingDispatchDrains.TryRemove(acctKey, out var payload))
+                foreach (var id in payload.DrainedOrderIds)
+                    _drainOwnedOrderIds.TryRemove(id, out _);
         }
 
         // DW-NEW-08 Option D: watchdog for stuck drains. Piggybacked in OnOrderUpdate. No System.Threading.Timer.
