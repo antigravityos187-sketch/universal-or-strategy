@@ -3438,7 +3438,7 @@ namespace PropTraderTools
             acc.Orders.Where(static o =>
                 o.OrderState != OrderState.Filled
                 && o.OrderState != OrderState.Cancelled
-                && o.OrderState != OrderState.Rejected);
+                && o.OrderState != OrderState.Rejected).ToList();
 
         // DW-NEW-09: test seam -- exposes ActiveOrders filter logic for xUnit without needing NT8 Account.
         // Accepts any IEnumerable<Order> so tests can inject stub order lists directly.
@@ -6436,7 +6436,7 @@ namespace PropTraderTools
                 return;
 
             // debounce: skip if already queued within 500ms grace window
-            long now = (long)Environment.TickCount;
+            long now = (long)(int)Environment.TickCount;
             const long GraceMs = 500L;
             long last = _nakedDetectLastQueuedTicks.GetOrAdd(acct.Name, 0L);
             if (now - last < GraceMs)

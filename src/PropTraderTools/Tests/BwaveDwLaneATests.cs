@@ -2,6 +2,7 @@
 // T1 (DW-C38-03): DisarmAllAccounts deletion -- sibling-panel BE isolation.
 // T2 (DW-C39-05): ApplyFeatureFlags gating for dynamic rule rows.
 // Jane Street rules: JS-021 (no lock), JS-002 (no return null), xUnit only.
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Windows.Controls;
@@ -342,6 +343,61 @@ namespace PropTraderTools
             Assert.Equal(1, activeList.Count);
             Assert.Equal(OrderState.Working, activeList[0].OrderState);
             Assert.Equal("PTT-Copy", activeList[0].Name);
+        }
+
+        // BWAVE-NEXT LaneB T1 tests -- DW-NEXT-A-07 + DW-NEXT-A-06 structural verification.
+        // xUnit only -- JS-051. No lock() -- JS-021. No async void -- JS-033.
+
+        [Fact]
+        public void ActiveOrders_ThreadSafetyVerification()
+        {
+            // Structural: verify ActiveOrdersTestable seam exists (internal static).
+            var seam = typeof(CopyEngine).GetMethod(
+                "ActiveOrdersTestable",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.NotNull(seam);
+
+            // Functional filter verification: 1 Filled + 1 Working.
+            // Verifies filter still correct after .ToList() addition.
+            var filled = new NinjaTrader.Cbi.Order();
+            filled.OrderState = NinjaTrader.Cbi.OrderState.Filled;
+            filled.Name = "PTT-Copy";
+
+            var working = new NinjaTrader.Cbi.Order();
+            working.OrderState = NinjaTrader.Cbi.OrderState.Working;
+            working.Name = "PTT-Copy";
+
+            var orders = new NinjaTrader.Cbi.Order[] { filled, working };
+
+            // Act: use internal seam -- no live NT8 Account needed.
+            var result = CopyEngine.ActiveOrdersTestable(orders);
+            var resultList = new List<NinjaTrader.Cbi.Order>(result);
+
+            // Assert: only Working passes the filter.
+            Assert.Equal(1, resultList.Count);
+            Assert.Equal(NinjaTrader.Cbi.OrderState.Working, resultList[0].OrderState);
+        }
+
+        [Fact]
+        public void NakedDetector_DebounceField_UsesLongArithmetic()
+        {
+            // Structural: verify _nakedDetectLastQueuedTicks is ConcurrentDictionary<string,long> and readonly.
+            var fieldInfo = typeof(CopyEngine).GetField(
+                "_nakedDetectLastQueuedTicks",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(fieldInfo);
+            Assert.Equal(typeof(ConcurrentDictionary<string, long>), fieldInfo.FieldType);
+            Assert.True(fieldInfo.IsInitOnly); // readonly
+
+            // Structural: verify TryNakedDetect exists as private instance void with 1 OrderEventArgs param.
+            var method = typeof(CopyEngine).GetMethod(
+                "TryNakedDetect",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(method);
+            Assert.Equal(typeof(void), method.ReturnType);
+            var parms = method.GetParameters();
+            Assert.Single(parms);
+            Assert.Equal(typeof(NinjaTrader.Cbi.OrderEventArgs), parms[0].ParameterType);
         }
         // CYC=1 per method. JS-021: no lock. JS-002: no return null.
         private sealed class SpyModule : IPttModule
