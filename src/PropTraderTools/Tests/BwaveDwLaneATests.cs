@@ -349,7 +349,7 @@ namespace PropTraderTools
         // xUnit only -- JS-051. No lock() -- JS-021. No async void -- JS-033.
 
         [Fact]
-        public void ActiveOrders_ThreadSafetyVerification()
+        public void ActiveOrders_FilterBehavior_AfterToListAddition()
         {
             // Structural: verify ActiveOrdersTestable seam exists (internal static).
             var seam = typeof(CopyEngine).GetMethod(
@@ -379,7 +379,7 @@ namespace PropTraderTools
         }
 
         [Fact]
-        public void NakedDetector_DebounceField_UsesLongArithmetic()
+        public void NakedDetector_DebounceState_FieldTypeIsLong()
         {
             // Structural: verify _nakedDetectLastQueuedTicks is ConcurrentDictionary<string,long> and readonly.
             var fieldInfo = typeof(CopyEngine).GetField(

@@ -15,7 +15,7 @@ namespace PropTraderTools.Tests
         private const BindingFlags Priv = BindingFlags.NonPublic | BindingFlags.Instance;
 
         [Fact]
-        public void DrainThenDispatch_CancelsExistingEntryBeforeSubmit()
+        public void DrainThenDispatch_MethodExists_WithExpectedSignature()
         {
             // Structural: verify DrainThenDispatch method exists with correct signature (6 params)
             var method = EngineType.GetMethod("DrainThenDispatch", Priv);
@@ -52,7 +52,7 @@ namespace PropTraderTools.Tests
         }
 
         [Fact]
-        public void OnDrainCancelAck_SubmitsDrainedEntry_WhenPendingCountReachesZero()
+        public void OnDrainCancelAck_MethodExists_WithExpectedSignature()
         {
             // Structural: verify OnDrainCancelAck exists as private void (string acctKey)
             var ackMethod = EngineType.GetMethod("OnDrainCancelAck", Priv);
@@ -78,7 +78,7 @@ namespace PropTraderTools.Tests
         }
 
         [Fact]
-        public void DrainWatchdog_ClearsStuckDrain_AfterTimeout()
+        public void DrainWatchdog_MethodExists_WithExpectedSignature()
         {
             // Structural: verify PendingDispatchDrain.TimestampTicks property exists and is long
             var drainType = EngineType.GetNestedType("PendingDispatchDrain", BindingFlags.NonPublic);
