@@ -179,5 +179,6 @@
     <Compile Include="Tests\BwaveDwLaneATests.cs" />
     <Compile Include="Tests\BwaveNextLaneATests.cs" />
     <Compile Include="Tests\BwaveDwLaneBTests.cs" />
+    <Compile Include="Tests\BwaveNextLaneBTests.cs" />
   </ItemGroup>
 </Project>

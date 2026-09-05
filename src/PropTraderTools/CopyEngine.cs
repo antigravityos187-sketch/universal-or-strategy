@@ -373,6 +373,12 @@ namespace PropTraderTools
         private readonly ConcurrentDictionary<string, long> _nakedDetectLastQueuedTicks =
             new ConcurrentDictionary<string, long>(StringComparer.Ordinal);
 
+        // DW-NEW-08 Option D: cancel-before-dispatch drain state.
+        // Key = follower account name. ConcurrentDictionary: no lock (JS-021).
+        // StringComparer.Ordinal: deterministic key comparison.
+        private readonly ConcurrentDictionary<string, PendingDispatchDrain> _pendingDispatchDrains =
+            new ConcurrentDictionary<string, PendingDispatchDrain>(StringComparer.Ordinal);
+
         // --- Status event ---
         internal event Action<string> StatusUpdate;
 
@@ -1400,6 +1406,18 @@ namespace PropTraderTools
 
             // DW-NEW-08 Option E: detect naked position within 50ms of terminal order event.
             TryNakedDetect(e);
+
+            // DW-NEW-08 Option D: route cancel-ack to drain handler if account is in drain state.
+            // Terminal states: Cancelled, Rejected, Filled. CYC +1 (branch 7).
+            if ((e.Order.OrderState == OrderState.Cancelled
+                 || e.Order.OrderState == OrderState.Rejected
+                 || e.Order.OrderState == OrderState.Filled)
+                && _pendingDispatchDrains.ContainsKey(e.Order.Account.Name))
+                OnDrainCancelAck(e.Order.Account.Name);
+
+            // DW-NEW-08 Option D: cheap piggybacked watchdog for stuck drains (>2s).
+            // Unconditional -- fires even when copy is disabled. CYC delta=0.
+            TryDrainWatchdog();
 
             // Gate 1: enabled check
             if (!_isCopyEnabled)
@@ -3692,8 +3710,9 @@ namespace PropTraderTools
         //   limitPx = fo.OrderType == StopLimit ? 0 : newPrice
         //   stopPx  = fo.OrderType == StopLimit ? newPrice : 0
         // Triggered by Gate C when leader's entry orderId is already in dedup cache but price changed.
-        // CYC=7: instr null(1) + tickSize ternary(2) + foreach acc(3) + acc null(4)
-        //   + fo null(5) + price delta guard(6) + order null guard in CreateOrder(7).
+        // CYC=6: instr null(1) + tickSize ternary(2) + foreach acc(3) + acc null(4)
+        //   + fo null(5) + price delta guard(6).
+        // DW-NEW-08-D: order null guard removed -- DrainThenDispatch handles null internally.
         // JS-001: no throw in hot path. JS-021: no lock. JS-002: void.
         private void HandleEntryChange(Order leaderOrder, CopyRule rule)
         {
@@ -3725,35 +3744,10 @@ namespace PropTraderTools
                 if (tickSize > 0 && Math.Abs(newPrice - currentPrice) < tickSize) // (6)
                     continue;
 
-                // B67-LaneB DW-B67-02: Cancel+CreateOrder+Submit (acc.Change() is Apex/Rithmic no-op).
-                // NT8_FULL_REFERENCE.md lines 898-899: StopLimit price in StopPrice not LimitPrice.
-                double limitPx = fo.OrderType == OrderType.StopLimit ? 0.0 : newPrice; // (7a)
-                double stopPx = fo.OrderType == OrderType.StopLimit ? newPrice : 0.0; // (7b)
-                acc.Cancel(new Order[] { fo });
-                var order = acc.CreateOrder(
-                    instrument,
-                    fo.OrderAction,
-                    fo.OrderType,
-                    OrderEntry.Manual,
-                    fo.TimeInForce,
-                    fo.Quantity,
-                    limitPx,
-                    stopPx,
-                    null,
-                    fo.Name,
-                    DateTime.MaxValue,
-                    null
-                );
-                if (order != null) // (7)
-                {
-                    acc.Submit(new[] { order });
-                    // B69 DW-B69-03: preload new orderId into _dedupCache at newPrice.
-                    // Prevents the new order's Accepted event from re-entering DispatchCopy
-                    // (same-account double-copy guard, lightweight FSM-in-flight equivalent).
-                    // Ref: @2Custom PropagateFollowerEntryReplace Build 947 -- PendingCancel absorb.
-                    _dedupCache[order.OrderId.ToString()] = newPrice;
-                }
-                StatusUpdate?.Invoke(acc.Name + ": entry dragged -> " + newPrice);
+                // DW-NEW-08 Option D: cancel-before-dispatch drain instead of direct cancel+submit.
+                // DrainThenDispatch cancels all Working/Accepted entries, parks intent in
+                // _pendingDispatchDrains, submits via SubmitDrainedEntry when all cancels confirmed.
+                DrainThenDispatch(acc, instrument, fo.Quantity, newPrice, fo.OrderAction, fo.OrderType);
             }
         }
 
@@ -6493,5 +6487,199 @@ namespace PropTraderTools
         // Caller uses is not null guard (see NakedPositionDetector above).
         private static Instrument FindOpenPositionInstrument(Account acct) =>
             acct.Positions.FirstOrDefault(static p => p.Quantity > 0)?.Instrument;
+
+        // DW-NEW-08 Option D: cancel all Working/Accepted entry orders for follower+instrument before dispatching new entry.
+        // Parks the dispatch intent in _pendingDispatchDrains until all cancel acks arrive.
+        // CYC=4: (1) null guard, (2) no-entry fast path, (3) foreach cancel loop, (4) cancelCount==0 edge guard.
+        // JS-021: no lock(). ConcurrentDictionary + Interlocked only.
+        // NT8: Account.Cancel(Order[]) is AddOnBase available. Confirmed NT8_FULL_REFERENCE.md.
+        private void DrainThenDispatch(
+            Account follower,
+            Instrument instrument,
+            int qty,
+            double price,
+            OrderAction action,
+            OrderType orderType)
+        {
+            if (follower == null || instrument == null) // (1)
+                return;
+
+            var entryCandidates = ActiveOrders(follower)
+                .Where(o =>
+                    o.Instrument == instrument
+                    && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted))
+                .ToList();
+
+            if (!entryCandidates.Any()) // (2)
+            {
+                SubmitEntryDirect(follower, instrument, qty, price, action, orderType);
+                return;
+            }
+
+            string acctKey = follower.Name;
+            long now = (long)(int)Environment.TickCount;
+            var payload = new PendingDispatchDrain(
+                acctKey,
+                instrument,
+                qty,
+                price,
+                action,
+                orderType,
+                follower,
+                pendingCancelCount: 0,
+                now);
+            _pendingDispatchDrains[acctKey] = payload;
+
+            int cancelCount = 0;
+            foreach (var e in entryCandidates) // (3)
+            {
+                follower.Cancel(new Order[] { e });
+                cancelCount++;
+            }
+            Interlocked.Exchange(ref payload.PendingCancelCount, cancelCount);
+
+            if (cancelCount == 0) // (4)
+            {
+                _pendingDispatchDrains.TryRemove(acctKey, out _);
+                SubmitEntryDirect(follower, instrument, qty, price, action, orderType);
+                return;
+            }
+
+            NinjaTrader.Code.Output.Process("[DRAIN] acct=" + acctKey + " cancel-sent=" + cancelCount, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+        }
+
+        // DW-NEW-08 Option D: direct submit when no drain needed.
+        // CYC=2: (1) null guard on created order, (2) orderType ternary for limitPx/stopPx.
+        // NT8: Account.CreateOrder + Account.Submit confirmed AddOnBase available.
+        // NO Account.Change(). NO AtmStrategyCreate(). NO AtmStrategyChangeStopTarget().
+        private void SubmitEntryDirect(
+            Account follower,
+            Instrument instrument,
+            int qty,
+            double price,
+            OrderAction action,
+            OrderType orderType)
+        {
+            double limitPx = orderType == OrderType.StopLimit ? 0.0 : price; // (2)
+            double stopPx = orderType == OrderType.StopLimit ? price : 0.0;
+            var order = follower.CreateOrder(
+                instrument,
+                action,
+                orderType,
+                OrderEntry.Manual,
+                TimeInForce.Day,
+                qty,
+                limitPx,
+                stopPx,
+                null,
+                "PTT-Copy",
+                DateTime.MaxValue,
+                null);
+            if (order == null) // (1)
+                return;
+
+            follower.Submit(new[] { order });
+            NinjaTrader.Code.Output.Process("[DRAIN-SUBMIT] acct=" + follower.Name + " instr=" + instrument.FullName + " price=" + price, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+        }
+
+        // DW-NEW-08 Option D: handle cancel acknowledgment for drain-pending accounts.
+        // Called directly from OnOrderUpdate -- NOT an event handler. Synchronous void. NOT async void (JS-033).
+        // CYC=3: (1) drain not found early return, (2) underflow guard, (3) remaining==0 fire.
+        // JS-021: no lock(). Interlocked.Decrement is atomic.
+        private void OnDrainCancelAck(string acctKey)
+        {
+            if (!_pendingDispatchDrains.TryGetValue(acctKey, out var payload)) // (1)
+                return;
+
+            int remaining = Interlocked.Decrement(ref payload.PendingCancelCount);
+            if (remaining < 0) // (2)
+            {
+                NinjaTrader.Code.Output.Process("[DRAIN-UNDERFLOW] acct=" + acctKey, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                return;
+            }
+
+            if (remaining == 0) // (3)
+                SubmitDrainedEntry(acctKey);
+        }
+
+        // DW-NEW-08 Option D: submit the parked entry after all drain cancels acknowledged.
+        // CYC=3: (1) TryRemove fails early return, (2) FollowerAccount null early return, (3) delegated to SubmitEntryDirect.
+        // NT8: Account.CreateOrder + Submit via SubmitEntryDirect. NO Account.Change().
+        private void SubmitDrainedEntry(string acctKey)
+        {
+            if (!_pendingDispatchDrains.TryRemove(acctKey, out var payload)) // (1)
+                return;
+
+            var follower = payload.FollowerAccount;
+            if (follower == null) // (2)
+                return;
+
+            SubmitEntryDirect( // (3) delegated
+                follower,
+                payload.Instrument,
+                payload.Qty,
+                payload.Price,
+                payload.Action,
+                payload.OrderType);
+        }
+
+        // DW-NEW-08 Option D: watchdog for stuck drains. Piggybacked in OnOrderUpdate. No System.Threading.Timer.
+        // CYC=3: (1) IsEmpty fast-path, (2) foreach loop, (3) timestamp comparison.
+        // JS-021: no lock(). ConcurrentDictionary enumeration is thread-safe.
+        private void TryDrainWatchdog()
+        {
+            if (_pendingDispatchDrains.IsEmpty) // (1)
+                return;
+
+            long now = (long)(int)Environment.TickCount;
+            foreach (var kv in _pendingDispatchDrains) // (2)
+            {
+                if (now - kv.Value.TimestampTicks > 2000L) // (3)
+                {
+                    _pendingDispatchDrains.TryRemove(kv.Key, out _);
+                    NinjaTrader.Code.Output.Process("[DRAIN-TIMEOUT] acct=" + kv.Key, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                }
+            }
+        }
+
+        // DW-NEW-08 Option D: payload for cancel-before-dispatch drain.
+        // Stores the dispatch intent while cancels are in-flight.
+        // CYC=0 (data class -- no logic methods).
+        // PendingCancelCount is a plain int field (not property) because
+        // Interlocked.Decrement requires ref int; properties cannot be passed by ref.
+        private sealed class PendingDispatchDrain
+        {
+            internal string FollowerAcctKey    { get; private set; }
+            internal Instrument Instrument     { get; private set; }
+            internal int Qty                   { get; private set; }
+            internal double Price              { get; private set; }
+            internal OrderAction Action        { get; private set; }
+            internal OrderType OrderType       { get; private set; }
+            internal Account FollowerAccount   { get; private set; }
+            internal int PendingCancelCount;   // mutable -- Interlocked.Decrement/Increment
+            internal long TimestampTicks       { get; private set; }
+
+            internal PendingDispatchDrain(
+                string followerAcctKey,
+                Instrument instrument,
+                int qty,
+                double price,
+                OrderAction action,
+                OrderType orderType,
+                Account followerAccount,
+                int pendingCancelCount,
+                long timestampTicks)
+            {
+                FollowerAcctKey    = followerAcctKey;
+                Instrument         = instrument;
+                Qty                = qty;
+                Price              = price;
+                Action             = action;
+                OrderType          = orderType;
+                FollowerAccount    = followerAccount;
+                PendingCancelCount = pendingCancelCount;
+                TimestampTicks     = timestampTicks;
+            }
+        }
     }
 }
