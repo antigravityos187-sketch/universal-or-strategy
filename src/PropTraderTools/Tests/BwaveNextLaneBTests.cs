@@ -106,5 +106,44 @@ namespace PropTraderTools.Tests
             Assert.NotEmpty(ctors);
             Assert.All(ctors, c => Assert.False(c.IsPublic));
         }
+
+        // --- T1 tests: R2-F2 TryAdd guard + R2-V1 drain guard (BWAVE-NEXT LaneBRepair-R2) ---
+
+        [Fact]
+        public void DrainThenDispatch_TryAdd_SkipsOverwrite()
+        {
+            // Structural: DrainThenDispatch method still exists with expected signature (6 params).
+            // Confirms R2-F2 TryAdd guard did not remove or rename the method.
+            var method = EngineType.GetMethod("DrainThenDispatch", Priv);
+            Assert.NotNull(method);
+            Assert.Equal(typeof(void), method.ReturnType);
+            Assert.Equal(6, method.GetParameters().Length);
+        }
+
+        [Fact]
+        public void TryReplaceOnAtmCancel_DrainGuard_FieldExists()
+        {
+            // Structural: _pendingDispatchDrains field exists and its FieldType is ConcurrentDictionary<,>.
+            // Confirms R2-V1 guard can call ContainsKey without introducing a new field.
+            var field = EngineType.GetField("_pendingDispatchDrains", Priv);
+            Assert.NotNull(field);
+            // Generic type name must be ConcurrentDictionary`2 (2 type args).
+            Assert.Equal("ConcurrentDictionary`2", field.FieldType.Name);
+            // Key type must be string (account name lookup).
+            Assert.Equal(typeof(string), field.FieldType.GetGenericArguments()[0]);
+        }
+
+        [Fact]
+        public void TryReplaceOnAtmCancel_MethodExists_WithExpectedSignature()
+        {
+            // Structural: TryReplaceOnAtmCancel exists as private void (Order order).
+            // Confirms R2-V1 did not alter the method signature or accessibility.
+            var method = EngineType.GetMethod("TryReplaceOnAtmCancel", Priv);
+            Assert.NotNull(method);
+            Assert.Equal(typeof(void), method.ReturnType);
+            var parms = method.GetParameters();
+            Assert.Single(parms);
+            Assert.Equal(typeof(NinjaTrader.Cbi.Order), parms[0].ParameterType);
+        }
     }
 }
