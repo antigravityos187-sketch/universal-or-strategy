@@ -863,17 +863,20 @@ namespace PropTraderTools
             return order.LimitPrice > 0 && order.Instrument?.FullName != null;
         }
 
-        // TryReplaceOnAtmCancel: CYC=3. Fuses IsPttEntryOrderCancelTrigger predicate with action.
+        // TryReplaceOnAtmCancel: CYC=4. Fuses IsPttEntryOrderCancelTrigger predicate with action.
         // Eliminates a branch from OnOrderUpdate parent CCN budget.
         // F3-repair: drain-owned guard added as first check (JS-021: no lock, ConcurrentDictionary).
+        // R2-V1-repair: drain-active account guard prevents spurious re-placement during active drain.
         // JS-001: no throw. JS-002: void. JS-021: no lock. ASCII-only.
         private void TryReplaceOnAtmCancel(Order order)
         {
             if (_drainOwnedOrderIds.ContainsKey(order.OrderId))
                 return; // drain-owned cancel -- skip replacement (1)
+            if (order.Account != null && _pendingDispatchDrains.ContainsKey(order.Account.Name))
+                return; // drain active for this account -- skip replacement (2)
             if (!IsPttEntryOrderCancelTrigger(order))
-                return; // (2)
-            ReplaceFollowerCopyOnAtmCancel(order); // (3 - no branch)
+                return; // (3)
+            ReplaceFollowerCopyOnAtmCancel(order); // (4 - no branch)
         }
 
         // IsQxCancelCandidate: returns true if order should be cancelled by CancelQxBrackets.
@@ -6540,7 +6543,7 @@ namespace PropTraderTools
             string acctKey = follower.Name;
             long now = (long)(int)Environment.TickCount;
             // F3: build drainedIds list before inserting into dict.
-            var drainedIds = entryCandidates.Select(static e => e.OrderId).ToList();
+            var drainedIds = entryCandidates.Select(e => e.OrderId).ToList();
             // F4-repair: PendingCancelCount set to entryCandidates.Count BEFORE dict insert.
             // Prevents TOCTOU race where cancel ack arrives before Interlocked.Exchange.
             var payload = new PendingDispatchDrain(
@@ -6554,7 +6557,7 @@ namespace PropTraderTools
                 follower,
                 pendingCancelCount: entryCandidates.Count,
                 now);
-            _pendingDispatchDrains[acctKey] = payload;
+            if (!_pendingDispatchDrains.TryAdd(acctKey, payload)) return;
 
             foreach (var e in entryCandidates) // (3)
             {
