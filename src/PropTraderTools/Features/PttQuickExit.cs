@@ -95,6 +95,7 @@ namespace PropTraderTools
                 NinjaTrader.NinjaScript.PrintTo.OutputTab1
             );
             CopyEngine.Instance?.CancelQxBrackets(leader, instr, snapshot);
+
             // Step 4: compute direction and tick
             bool isLong = pos.MarketPosition == MarketPosition.Long;
             double entryPx = pos.AveragePrice;
@@ -108,96 +109,21 @@ namespace PropTraderTools
             // tN = t1 * N ticks from entry (T1=t1, T2=t1*2, T3=t1*3 ... TN=t1*N).
             // Each pair gets its own OCO ID so T1 fill only cancels Stop1, not Stop2/Stop3.
             string firstOcoId = string.Empty;
-            for (int i = 0; i < targetCount; i++) // (6)
-            {
-                int tNTicks = t1Ticks * (i + 1);
-                double rawTN = isLong ? entryPx + tNTicks * tick : entryPx - tNTicks * tick;
-                double tNPrice = Math.Round(rawTN / tick) * tick;
-
-                int tNQty =
-                    (targets != null && i < targets.Count)
-                        ? targets[i].Qty
-                        : CalcTNQty(pos.Quantity, targetCount, i);
-
-                if (tNQty <= 0)
-                    continue; // B129: skip T2 when pos.Quantity==1 and t2Qty==0
-
-                string ocoId_i =
-                    CopyEngine.Instance?.NextQxOcoId()
-                    ?? ("PTT-QX-" + Guid.NewGuid().ToString("N").Substring(0, 8));
-                if (i == 0)
-                    firstOcoId = ocoId_i;
-
-                string stopName = i == 0 ? "PTT-QX-Stop" : "PTT-QX-Stop" + (i + 1);
-                string targetName = "PTT-QX-T" + (i + 1);
-
-                if (snapshotStop > 0)
-                {
-                    try
-                    {
-                        var stopOrd = leader.CreateOrder(
-                            instr,
-                            isLong ? OrderAction.Sell : OrderAction.BuyToCover,
-                            OrderType.StopMarket,
-                            OrderEntry.Manual,
-                            TimeInForce.Gtc,
-                            tNQty,
-                            0,
-                            snapshotStop,
-                            ocoId_i,
-                            stopName,
-                            DateTime.MaxValue,
-                            (CustomOrder)null
-                        );
-                        if (stopOrd != null) // (7)
-                            leader.Submit(new[] { stopOrd });
-                        else
-                            NinjaTrader.Code.Output.Process(
-                                "PTT-QX: " + stopName + " null",
-                                NinjaTrader.NinjaScript.PrintTo.OutputTab1
-                            );
-                    }
-                    catch (Exception ex)
-                    {
-                        NinjaTrader.Code.Output.Process(
-                            "PTT-QX: " + stopName + " ex -- " + ex.Message,
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
-                        );
-                    }
-                }
-
-                try
-                {
-                    var tNOrd = leader.CreateOrder(
-                        instr,
-                        isLong ? OrderAction.Sell : OrderAction.BuyToCover,
-                        OrderType.Limit,
-                        OrderEntry.Manual,
-                        TimeInForce.Gtc,
-                        tNQty,
-                        tNPrice,
-                        0,
-                        ocoId_i,
-                        targetName,
-                        DateTime.MaxValue,
-                        (CustomOrder)null
-                    );
-                    if (tNOrd != null) // (8)
-                        leader.Submit(new[] { tNOrd });
-                    else
-                        NinjaTrader.Code.Output.Process(
-                            "PTT-QX: " + targetName + " null",
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
-                        );
-                }
-                catch (Exception ex)
-                {
-                    NinjaTrader.Code.Output.Process(
-                        "PTT-QX: " + targetName + " ex -- " + ex.Message,
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
-                    );
-                }
-            }
+            for (int i = 0; i < targetCount; i++)
+                SubmitQxOcoPair(
+                    leader,
+                    instr,
+                    isLong,
+                    entryPx,
+                    snapshotStop,
+                    tick,
+                    t1Ticks,
+                    i,
+                    targetCount,
+                    targets,
+                    pos.Quantity,
+                    ref firstOcoId
+                );
 
             // Step 7: raise PttBus.QuickExitFired (Card B: back-calc using T1 and T2 prices)
             double t1Price = isLong ? entryPx + t1Ticks * tick : entryPx - t1Ticks * tick;
@@ -206,6 +132,157 @@ namespace PropTraderTools
                 this,
                 new QuickExitEventArgs(instr, entryPx, t1Price, t2Price, isLong, firstOcoId, tick)
             );
+        }
+
+        /// <summary>
+        /// Compute per-iteration OCO pair params and dispatch SubmitStopOrder + SubmitTargetOrder.
+        /// Extracted from PttQuickExit.Execute for-loop body (lines 111-199, minus headers).
+        /// CYC=6: base(1) + tNQty ternary (targets!=null &amp;&amp; i&lt;targets.Count)=2 + tNQty&lt;=0=1 + if(i==0)firstOcoId=1 + SubmitStopOrder(0) + SubmitTargetOrder(0).
+        /// JS-002: void -- ref firstOcoId carries result out. JS-001: no throw. JS-021: no lock. ASCII-only.
+        /// </summary>
+        private void SubmitQxOcoPair(
+            Account acc,
+            Instrument instr,
+            bool isLong,
+            double entryPx,
+            double snapshotStop,
+            double tick,
+            int t1Ticks,
+            int i,
+            int targetCount,
+            System.Collections.Generic.List<(double Price, int Qty)> targets,
+            int posQty,
+            ref string firstOcoId
+        )
+        {
+            int tNTicks = t1Ticks * (i + 1);
+            double rawTN = isLong ? entryPx + tNTicks * tick : entryPx - tNTicks * tick;
+            double tNPrice = Math.Round(rawTN / tick) * tick;
+
+            int tNQty =
+                (targets != null && i < targets.Count)
+                    ? targets[i].Qty
+                    : CalcTNQty(posQty, targetCount, i);
+
+            if (tNQty <= 0)
+                return; // B129: skip T2 when posQty==1 and t2Qty==0
+
+            string ocoId_i =
+                CopyEngine.Instance?.NextQxOcoId()
+                ?? ("PTT-QX-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+
+            if (i == 0)
+                firstOcoId = ocoId_i;
+
+            string stopName = i == 0 ? "PTT-QX-Stop" : "PTT-QX-Stop" + (i + 1);
+            string targetName = "PTT-QX-T" + (i + 1);
+
+            SubmitStopOrder(acc, instr, isLong, tNQty, snapshotStop, ocoId_i, stopName);
+            SubmitTargetOrder(acc, instr, isLong, tNQty, tNPrice, ocoId_i, targetName);
+        }
+
+        /// <summary>
+        /// Submit StopMarket order for one OCO pair.
+        /// Extracted from PttQuickExit.Execute loop body (lines 134-167).
+        /// CYC=2: (1) snapshotStop&gt;0 guard, (2) stopOrd null check.
+        /// JS-001: no throw -- catch logs. JS-002: void. JS-021: no lock. ASCII-only.
+        /// NT8-049: StopMarket arg6=0, arg7=snapshotStop (NEVER swap).
+        /// NT8-007: arg11=(CustomOrder)null. NT8-013: DateTime.MaxValue. NT8-014: stopName starts PTT-.
+        /// </summary>
+        private void SubmitStopOrder(
+            Account acc,
+            Instrument instr,
+            bool isLong,
+            int qty,
+            double snapshotStop,
+            string ocoId,
+            string stopName
+        )
+        {
+            if (snapshotStop <= 0)
+                return;
+            try
+            {
+                var stopOrd = acc.CreateOrder(
+                    instr,
+                    isLong ? OrderAction.Sell : OrderAction.BuyToCover,
+                    OrderType.StopMarket,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    qty,
+                    0,
+                    snapshotStop,
+                    ocoId,
+                    stopName,
+                    DateTime.MaxValue,
+                    (CustomOrder)null
+                );
+                if (stopOrd != null)
+                    acc.Submit(new[] { stopOrd });
+                else
+                    NinjaTrader.Code.Output.Process(
+                        "PTT-QX: " + stopName + " null",
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
+            }
+            catch (Exception ex)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "PTT-QX: " + stopName + " ex -- " + ex.Message,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
+            }
+        }
+
+        /// <summary>
+        /// Submit Limit target order for one OCO pair.
+        /// Extracted from PttQuickExit.Execute loop body (lines 168-199).
+        /// CYC=2: (1) try/catch, (2) tNOrd null check.
+        /// JS-001: no throw -- catch logs. JS-002: void. JS-021: no lock. ASCII-only.
+        /// NT8-049: Limit arg6=tNPrice, arg7=0 (NEVER swap).
+        /// NT8-007: arg11=(CustomOrder)null. NT8-013: DateTime.MaxValue. NT8-014: targetName starts PTT-.
+        /// </summary>
+        private void SubmitTargetOrder(
+            Account acc,
+            Instrument instr,
+            bool isLong,
+            int qty,
+            double tNPrice,
+            string ocoId,
+            string targetName
+        )
+        {
+            try
+            {
+                var tNOrd = acc.CreateOrder(
+                    instr,
+                    isLong ? OrderAction.Sell : OrderAction.BuyToCover,
+                    OrderType.Limit,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    qty,
+                    tNPrice,
+                    0,
+                    ocoId,
+                    targetName,
+                    DateTime.MaxValue,
+                    (CustomOrder)null
+                );
+                if (tNOrd != null)
+                    acc.Submit(new[] { tNOrd });
+                else
+                    NinjaTrader.Code.Output.Process(
+                        "PTT-QX: " + targetName + " null",
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
+            }
+            catch (Exception ex)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "PTT-QX: " + targetName + " ex -- " + ex.Message,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
+            }
         }
 
         /// <summary>

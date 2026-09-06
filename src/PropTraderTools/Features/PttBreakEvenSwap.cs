@@ -76,45 +76,7 @@ namespace PropTraderTools
             // (5) 0-targets path: submit one bare PTT-BE-Stop, no OCO
             if (targets == null || targets.Count == 0) // (4)
             {
-                if (IsStopPriceSubmittable(instr, isLong, newStop)) // (5)
-                {
-                    try
-                    {
-                        var bareStop = acc.CreateOrder(
-                            instr,
-                            stopDir,
-                            OrderType.StopMarket,
-                            OrderEntry.Manual,
-                            TimeInForce.Gtc,
-                            pos.Quantity,
-                            0, // arg6: limitPrice=0  (NT8-049)
-                            newStop, // arg7: stopPrice     (NT8-049)
-                            string.Empty, // arg8: no OCO
-                            "PTT-BE-Stop", // arg9: signal name   (NT8-014)
-                            DateTime.MaxValue, // arg10: GTC          (NT8-013)
-                            (NinjaTrader.Cbi.CustomOrder)null
-                        ); // arg11: cast         (NT8-007)
-                        acc.Submit(new[] { bareStop });
-                    }
-                    catch (Exception ex)
-                    {
-                        NinjaTrader.Code.Output.Process(
-                            "[BE-ERR] " + acc.Name + " submit failed: " + ex.Message,
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
-                        );
-                    }
-                }
-                else
-                {
-                    NinjaTrader.Code.Output.Process(
-                        "[BE-ERR] "
-                            + acc.Name
-                            + " PTT-BE-Stop stop below market @ "
-                            + newStop
-                            + " -- skipping bare stop",
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
-                    );
-                }
+                SubmitBareStopSwap(acc, instr, isLong, stopDir, newStop, pos.Quantity);
                 return;
             }
 
@@ -130,69 +92,47 @@ namespace PropTraderTools
                     + seq.ToString("D7")
                     + "-"
                     + i; // DW-B89-01: D5->D7
+                SubmitSwapPair(acc, instr, isLong, stopDir, newStop, ocoId_i, i, t);
+            }
+        }
 
-                // Submit PTT-BE-Stop-{i+1}: StopMarket for this tranche qty.
-                if (IsStopPriceSubmittable(instr, isLong, newStop)) // (7)
+        /// <summary>
+        /// Submit bare PTT-BE-Stop StopMarket for 0-targets path.
+        /// Extracted from PttBreakEvenSwap.Execute 0-targets block (lines 78-119).
+        /// CYC=4: (1) IsStopPriceSubmittable check, (2) try/catch, (3) bareStop null guard in submit, (4) else-log.
+        /// JS-001: no throw -- try/catch. JS-002: void. JS-021: no lock. ASCII-only.
+        /// NT8-049: arg6=0, arg7=newStop. NT8-007: (CustomOrder)null. NT8-013: DateTime.MaxValue.
+        /// NT8-014: "PTT-BE-Stop" starts with PTT-.
+        /// </summary>
+        private static void SubmitBareStopSwap(
+            Account acc,
+            Instrument instr,
+            bool isLong,
+            OrderAction stopDir,
+            double newStop,
+            int posQty
+        )
+        {
+            if (IsStopPriceSubmittable(instr, isLong, newStop)) // (1)
+            {
+                try // (2)
                 {
-                    try
-                    {
-                        var sOrd = acc.CreateOrder(
-                            instr,
-                            stopDir,
-                            OrderType.StopMarket,
-                            OrderEntry.Manual,
-                            TimeInForce.Gtc,
-                            t.Qty,
-                            0, // arg6: limitPrice=0  (NT8-049)
-                            newStop, // arg7: stopPrice     (NT8-049)
-                            ocoId_i, // arg8: OCO pair i
-                            "PTT-BE-Stop-" + (i + 1), // arg9: signal name   (NT8-014)
-                            DateTime.MaxValue, // arg10: GTC          (NT8-013)
-                            (NinjaTrader.Cbi.CustomOrder)null
-                        ); // arg11: cast         (NT8-007)
-                        acc.Submit(new[] { sOrd });
-                    }
-                    catch (Exception ex)
-                    {
-                        NinjaTrader.Code.Output.Process(
-                            "[BE-ERR] " + acc.Name + " submit failed: " + ex.Message,
-                            NinjaTrader.NinjaScript.PrintTo.OutputTab1
-                        );
-                    }
-                }
-                else
-                {
-                    NinjaTrader.Code.Output.Process(
-                        "[BE-ERR] "
-                            + acc.Name
-                            + " PTT-BE-Stop-"
-                            + (i + 1)
-                            + " stop below market @ "
-                            + newStop
-                            + " -- skipping tranche",
-                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
-                    );
-                }
-
-                // Submit PTT-BE-Target-{i+1}: Limit order for this tranche.   (8) absorbed
-                try
-                {
-                    var tOrd = acc.CreateOrder(
+                    var bareStop = acc.CreateOrder(
                         instr,
-                        t.Action,
-                        OrderType.Limit,
+                        stopDir,
+                        OrderType.StopMarket,
                         OrderEntry.Manual,
                         TimeInForce.Gtc,
-                        t.Qty,
-                        t.Price, // arg6: limitPrice    (NT8-049)
-                        0, // arg7: stopPrice=0   (NT8-049)
-                        ocoId_i, // arg8: OCO pair i
-                        "PTT-BE-Target-" + (i + 1), // arg9: signal name   (NT8-014)
+                        posQty,
+                        0, // arg6: limitPrice=0  (NT8-049)
+                        newStop, // arg7: stopPrice     (NT8-049)
+                        string.Empty, // arg8: no OCO
+                        "PTT-BE-Stop", // arg9: signal name   (NT8-014)
                         DateTime.MaxValue, // arg10: GTC          (NT8-013)
                         (NinjaTrader.Cbi.CustomOrder)null
                     ); // arg11: cast         (NT8-007)
-                    if (tOrd != null)
-                        acc.Submit(new[] { tOrd });
+                    if (bareStop != null) // (3)
+                        acc.Submit(new[] { bareStop });
                 }
                 catch (Exception ex)
                 {
@@ -201,6 +141,108 @@ namespace PropTraderTools
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1
                     );
                 }
+            }
+            else // (4)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "[BE-ERR] "
+                        + acc.Name
+                        + " PTT-BE-Stop stop below market @ "
+                        + newStop
+                        + " -- skipping bare stop",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
+            }
+        }
+
+        /// <summary>
+        /// Submit one OCO stop+target pair for with-targets path.
+        /// Extracted from PttBreakEvenSwap.Execute for-loop body (lines 122-204).
+        /// CYC=4: (1) IsStopPriceSubmittable check, (2) stop try/catch, (3) else-log, (4) target try/catch.
+        /// JS-001: no throw -- try/catch per order. JS-002: void. JS-021: no lock. ASCII-only.
+        /// NT8-049: stop arg6=0, arg7=newStop; target arg6=t.Price, arg7=0.
+        /// NT8-007: (NinjaTrader.Cbi.CustomOrder)null. NT8-013: DateTime.MaxValue. NT8-014: PTT-BE- prefix.
+        /// </summary>
+        private static void SubmitSwapPair(
+            Account acc,
+            Instrument instr,
+            bool isLong,
+            OrderAction stopDir,
+            double newStop,
+            string ocoId_i,
+            int i,
+            (double Price, int Qty, OrderAction Action) t
+        )
+        {
+            // Submit PTT-BE-Stop-{i+1}: StopMarket for this tranche qty.
+            if (IsStopPriceSubmittable(instr, isLong, newStop)) // (1)
+            {
+                try // (2)
+                {
+                    var sOrd = acc.CreateOrder(
+                        instr,
+                        stopDir,
+                        OrderType.StopMarket,
+                        OrderEntry.Manual,
+                        TimeInForce.Gtc,
+                        t.Qty,
+                        0, // arg6: limitPrice=0  (NT8-049)
+                        newStop, // arg7: stopPrice     (NT8-049)
+                        ocoId_i, // arg8: OCO pair i
+                        "PTT-BE-Stop-" + (i + 1), // arg9: signal name   (NT8-014)
+                        DateTime.MaxValue, // arg10: GTC          (NT8-013)
+                        (NinjaTrader.Cbi.CustomOrder)null
+                    ); // arg11: cast         (NT8-007)
+                    acc.Submit(new[] { sOrd });
+                }
+                catch (Exception ex)
+                {
+                    NinjaTrader.Code.Output.Process(
+                        "[BE-ERR] " + acc.Name + " submit failed: " + ex.Message,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
+                }
+            }
+            else // (3)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "[BE-ERR] "
+                        + acc.Name
+                        + " PTT-BE-Stop-"
+                        + (i + 1)
+                        + " stop below market @ "
+                        + newStop
+                        + " -- skipping tranche",
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
+            }
+
+            // Submit PTT-BE-Target-{i+1}: Limit order for this tranche.
+            try // (4)
+            {
+                var tOrd = acc.CreateOrder(
+                    instr,
+                    t.Action,
+                    OrderType.Limit,
+                    OrderEntry.Manual,
+                    TimeInForce.Gtc,
+                    t.Qty,
+                    t.Price, // arg6: limitPrice    (NT8-049)
+                    0, // arg7: stopPrice=0   (NT8-049)
+                    ocoId_i, // arg8: OCO pair i
+                    "PTT-BE-Target-" + (i + 1), // arg9: signal name   (NT8-014)
+                    DateTime.MaxValue, // arg10: GTC          (NT8-013)
+                    (NinjaTrader.Cbi.CustomOrder)null
+                ); // arg11: cast         (NT8-007)
+                if (tOrd != null)
+                    acc.Submit(new[] { tOrd });
+            }
+            catch (Exception ex)
+            {
+                NinjaTrader.Code.Output.Process(
+                    "[BE-ERR] " + acc.Name + " submit failed: " + ex.Message,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
             }
         }
     }

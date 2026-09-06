@@ -1,0 +1,21 @@
+{
+  "epic": "BWAVE-REFACTOR",
+  "lane": "A",
+  "branch": "bwave-refactor-lane-a",
+  "brain_dir": "docs/brain/BWAVE-REFACTOR/LaneA/",
+  "tickets": ["A-2", "A-3"],
+  "notes": "A-1 (custom_modes.yaml lizard) already merged to main — skipped in this run",
+  "phases": {
+    "phase1": { "status": "complete", "artifact": "02-architecture-plan.md" },
+    "phase2": { "status": "complete", "artifact": "02-plan-review.md" },
+    "phase3": { "status": "complete", "artifact": "04-tickets.md" },
+    "phase3_5": { "status": "complete", "artifact": "04-ticket-review.md" },
+    "phase4a_t2": { "status": "complete", "artifact": "ticket-2-completion.md" },
+    "phase4b_t2": { "status": "complete", "artifact": "ticket-2-verification.md" },
+    "phase4a_t3": { "status": "complete", "artifact": "ticket-3-completion.md" },
+    "phase4b_t3": { "status": "complete", "artifact": "ticket-3-verification.md" },
+    "phase5": { "status": "complete", "artifact": "05-final-review.md" }
+  },
+  "pipeline_status": "PIPELINE_COMPLETE",
+  "final_result": "FINAL_PASS"
+}
