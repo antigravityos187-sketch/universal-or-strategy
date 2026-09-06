@@ -1,7 +1,11 @@
 # BWAVE-REFACTOR LaneB -- Ticket 4 Verification
+
 # Phase 4b Output
+
 # Author: ptt-verifier
+
 # Ticket: BWAVE-REFACTOR-LaneB-T4
+
 # Date: 2025-01-28
 
 ---
@@ -13,6 +17,7 @@ Prerequisite: T3 passed (20 tests passing before T4 was executed).
 Source: docs/brain/BWAVE-REFACTOR/LaneB/04-tickets.md lines 894-1167.
 
 Target methods verified:
+
 - OnOrderUpdate (was CCN 12)
 - CancelAllAccountOrders (was CCN 12)
 - BuildQxSnapshot (was CCN 11)
@@ -25,6 +30,7 @@ Target methods verified:
 ## SCAN 1 Result -- CCN
 
 Command run independently:
+
 ```powershell
 $files = Get-ChildItem src/PropTraderTools/ -Filter "*.cs" -Recurse |
   Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\bin\\' }
@@ -33,6 +39,7 @@ lizard $files --csv 2>&1 | ConvertFrom-Csv -Header @("NLOC","CCN","Tokens","Para
   Where-Object { $_.MethodLongName -match "OnOrderUpdate|CancelAllAccountOrders|BuildQxSnapshot|DrainThenDispatch|FindFollowerBracketOrder|MatchesLeaderName|HandleDrainTerminalState|IsCancelAllStateOk|IsQxSnapshotStateOk|IssueDrainCancels|MatchesBracketType|ExtractLegSuffix" } |
   Format-Table -AutoSize
 ```
+
 Output: (no rows -- command completed with no output)
 RESULT: PASS
 
@@ -41,10 +48,12 @@ RESULT: PASS
 ## SCAN 2 Result -- lock()
 
 Command run independently:
+
 ```powershell
 Select-String -Path "src/PropTraderTools/CopyEngine.cs" -Pattern "lock\s*\("
 ```
-Output: 40 comment-only hits (text "no lock", "no lock()", "no lock ("). 
+
+Output: 40 comment-only hits (text "no lock", "no lock()", "no lock (").
 Zero actual lock() calls in code. All hits are within comment lines confirming
 JS-021 compliance ("JS-021: no lock()", "No lock()", etc.).
 RESULT: PASS
@@ -54,23 +63,28 @@ RESULT: PASS
 ## SCAN 3 Result -- async void
 
 Command run independently:
+
 ```powershell
 Select-String -Path "src/PropTraderTools/CopyEngine.cs" -Pattern "async\s+void"
 ```
+
 Output: 2 comment-only hits:
-  - L1861: "JS-033: Tick is not async void."
-  - L7039: "Synchronous void. NOT async void (JS-033)."
-Zero actual async void declarations.
-RESULT: PASS
+
+- L1861: "JS-033: Tick is not async void."
+- L7039: "Synchronous void. NOT async void (JS-033)."
+  Zero actual async void declarations.
+  RESULT: PASS
 
 ---
 
 ## SCAN 4 Result -- return null
 
 Command run independently:
+
 ```powershell
 Select-String -Path "src/PropTraderTools/CopyEngine.cs" -Pattern "return null"
 ```
+
 Output: 15 hits. All are pre-existing in parent methods (FindFollowerBracketOrder L3707,
 FindRule L1236, L1929, various L2858/2939/2947, L5430/5436/5515, L6720/6735, etc.).
 Zero "return null" in any T4 new helper.
@@ -83,14 +97,16 @@ RESULT: PASS
 ## SCAN 5 Result -- build
 
 Command run independently:
+
 ```powershell
 dotnet build "src/PropTraderTools/PropTraderTools.csproj" --no-incremental 2>&1
 ```
+
 Output:
-  Build succeeded.
-  1 Warning(s) -- B131Tests.cs(165,13): warning xUnit2004 (pre-existing, not T4)
-  0 Error(s)
-  Time Elapsed 00:00:01.70
+Build succeeded.
+1 Warning(s) -- B131Tests.cs(165,13): warning xUnit2004 (pre-existing, not T4)
+0 Error(s)
+Time Elapsed 00:00:01.70
 RESULT: PASS
 
 ---
@@ -98,10 +114,12 @@ RESULT: PASS
 ## SCAN 6 Result -- ASCII
 
 Command run independently:
+
 ```powershell
 $bytes = [System.IO.File]::ReadAllBytes("src/PropTraderTools/CopyEngine.cs")
 ($bytes | Where-Object { $_ -gt 127 } | Measure-Object).Count
 ```
+
 Output: 0
 RESULT: PASS
 
@@ -110,40 +128,44 @@ RESULT: PASS
 ## SCAN 7 Result -- tests
 
 Command run independently:
+
 ```powershell
 dotnet test "tests/PropTraderTools.Tests/PropTraderTools.Tests.csproj" --filter "FullyQualifiedName~BwaveRefactorLaneB" 2>&1
 ```
+
 Output:
-  Passed!  - Failed: 0, Passed: 20, Skipped: 0, Total: 20, Duration: 141 ms
+Passed! - Failed: 0, Passed: 20, Skipped: 0, Total: 20, Duration: 141 ms
 RESULT: PASS
 
 Test breakdown:
-  T1 (5): IsBeTargetStateOk x3, IsImmediateBeEligible x2
-  T2 (3): IsQxCancelEligible3 x2, IsAccountFlattenable x1
-  T3 (4): IsPositionStateTriggerState x2, IsNativeLeaderTarget x1, IsQxCancelEligible2 x1
-  T4 (8): IsCancelAllStateOk x2, IsQxSnapshotStateOk x2, MatchesBracketType x2, ExtractLegSuffix x2
+T1 (5): IsBeTargetStateOk x3, IsImmediateBeEligible x2
+T2 (3): IsQxCancelEligible3 x2, IsAccountFlattenable x1
+T3 (4): IsPositionStateTriggerState x2, IsNativeLeaderTarget x1, IsQxCancelEligible2 x1
+T4 (8): IsCancelAllStateOk x2, IsQxSnapshotStateOk x2, MatchesBracketType x2, ExtractLegSuffix x2
 
 ---
 
 ## Structural Checks
 
 ### SC-1: Helpers Exist with Correct Visibility
+
 All 10 T4 helpers confirmed present in CopyEngine.cs:
 
-| Helper | Visibility | File Line | Status |
-|--------|-----------|-----------|--------|
-| IsQxSnapshotStateOk(OrderState) | private static | L977 | PASS |
-| IsQxSnapshotStateOkTestable(OrderState) | internal static | L1015 | PASS |
-| IsCancelAllStateOk(OrderState) | private static | L1121 | PASS |
-| IsCancelAllStateOkTestable(OrderState) | internal static | L1161 | PASS |
-| HandleDrainTerminalState(Order) | private | L7024 | PASS |
-| MatchesBracketType(Order, bool) | private static | L3677 | PASS |
-| MatchesBracketTypeTestable(bool, OrderType, bool) | internal static | L3714 | PASS |
-| ExtractLegSuffix(string) | private static | L3736 | PASS |
-| ExtractLegSuffixTestable(string) | internal static | L3764 | PASS |
-| IssueDrainCancels(Account, List<Order>) | private | L6911 | PASS |
+| Helper                                            | Visibility      | File Line | Status |
+| ------------------------------------------------- | --------------- | --------- | ------ |
+| IsQxSnapshotStateOk(OrderState)                   | private static  | L977      | PASS   |
+| IsQxSnapshotStateOkTestable(OrderState)           | internal static | L1015     | PASS   |
+| IsCancelAllStateOk(OrderState)                    | private static  | L1121     | PASS   |
+| IsCancelAllStateOkTestable(OrderState)            | internal static | L1161     | PASS   |
+| HandleDrainTerminalState(Order)                   | private         | L7024     | PASS   |
+| MatchesBracketType(Order, bool)                   | private static  | L3677     | PASS   |
+| MatchesBracketTypeTestable(bool, OrderType, bool) | internal static | L3714     | PASS   |
+| ExtractLegSuffix(string)                          | private static  | L3736     | PASS   |
+| ExtractLegSuffixTestable(string)                  | internal static | L3764     | PASS   |
+| IssueDrainCancels(Account, List<Order>)           | private         | L6911     | PASS   |
 
 ### SC-2: No Logic Deleted -- All 6 Parent Methods Still Exist and Call Helpers
+
 - OnOrderUpdate (L1461): calls HandleDrainTerminalState at L1507. PASS.
 - CancelAllAccountOrders (L1131): calls IsCancelAllStateOk at L1138. PASS.
 - BuildQxSnapshot (L988): calls IsQxSnapshotStateOk at L998. PASS.
@@ -152,6 +174,7 @@ All 10 T4 helpers confirmed present in CopyEngine.cs:
 - MatchesLeaderName (L3745): calls ExtractLegSuffix at L3753. PASS.
 
 ### SC-3: Public/Internal Signatures Unchanged
+
 - private void OnOrderUpdate(object sender, OrderEventArgs e) -- L1461. PASS.
 - internal void CancelAllAccountOrders(Account acc, NinjaTrader.Cbi.Instrument instr) -- L1131. PASS.
 - internal static HashSet<Order> BuildQxSnapshot(Account acc, Instrument instr) -- L988. PASS (remains internal static).
@@ -160,6 +183,7 @@ All 10 T4 helpers confirmed present in CopyEngine.cs:
 - private static bool MatchesLeaderName(Order, string?, bool) -- L3745. PASS.
 
 ### SC-4: Test Seams Present as internal static
+
 - IsCancelAllStateOkTestable(OrderState s) => IsCancelAllStateOk(s) -- L1161. PASS.
 - IsQxSnapshotStateOkTestable(OrderState s) => IsQxSnapshotStateOk(s) -- L1015. PASS.
 - MatchesBracketTypeTestable(bool isStop, OrderType orderType, bool isOrderStopLeg) -- L3714. PASS.
@@ -167,12 +191,14 @@ All 10 T4 helpers confirmed present in CopyEngine.cs:
 - ExtractLegSuffixTestable(string n) => ExtractLegSuffix(n) -- L3764. PASS.
 
 ### SC-5: NT8 Constraints
+
 - HandleDrainTerminalState: signature is `private void` (not async void). Confirmed at L7024. PASS.
 - IssueDrainCancels: uses `acc.Cancel(new Order[] { e })` at L6923. NOT acc.Change(). AddOnBase-valid pattern. PASS.
 - BuildQxSnapshot: remains `internal static` at L988. PASS.
 - IsQxSnapshotStateOk: `private static` at L977. PASS.
 
 ### SC-6: ExtractLegSuffix Sentinel
+
 Engineer chose: string.Empty (NOT null).
 Confirmed at CopyEngine.cs L3740: `return string.Empty; // sentinel: no trailing digit`
 Caller MatchesLeaderName updated: `legSuffix != string.Empty` at L3754 and L3756.
@@ -185,15 +211,15 @@ Assessment: string.Empty sentinel is FULLY JS-002 compliant. Advisory requiremen
 
 Comparing engineer self-report (Layer 2) against independent verification (Layer 3):
 
-| Scan | L2 Report | L3 Independent | Discrepancy? |
-|------|-----------|----------------|-------------|
-| SCAN 1 CCN | no rows | no rows | NONE |
-| SCAN 2 lock() | comments only (0 real) | comments only (0 real) | NONE |
-| SCAN 3 async void | comments only (0 real) | comments only (0 real) | NONE |
-| SCAN 4 return null | 0 in T4 helpers; ExtractLegSuffix = string.Empty | 0 in T4 helpers; L3740 = string.Empty | NONE |
-| SCAN 5 build | 0 errors, 1 warning (B131Tests xUnit2004) | 0 errors, 1 warning (B131Tests xUnit2004) | NONE |
-| SCAN 6 ASCII | 0 | 0 | NONE |
-| SCAN 7 tests | Failed:0, Passed:20 | Failed:0, Passed:20 | NONE |
+| Scan               | L2 Report                                        | L3 Independent                            | Discrepancy? |
+| ------------------ | ------------------------------------------------ | ----------------------------------------- | ------------ |
+| SCAN 1 CCN         | no rows                                          | no rows                                   | NONE         |
+| SCAN 2 lock()      | comments only (0 real)                           | comments only (0 real)                    | NONE         |
+| SCAN 3 async void  | comments only (0 real)                           | comments only (0 real)                    | NONE         |
+| SCAN 4 return null | 0 in T4 helpers; ExtractLegSuffix = string.Empty | 0 in T4 helpers; L3740 = string.Empty     | NONE         |
+| SCAN 5 build       | 0 errors, 1 warning (B131Tests xUnit2004)        | 0 errors, 1 warning (B131Tests xUnit2004) | NONE         |
+| SCAN 6 ASCII       | 0                                                | 0                                         | NONE         |
+| SCAN 7 tests       | Failed:0, Passed:20                              | Failed:0, Passed:20                       | NONE         |
 
 Layer 2 report is accurate and consistent with Layer 3 independent verification.
 

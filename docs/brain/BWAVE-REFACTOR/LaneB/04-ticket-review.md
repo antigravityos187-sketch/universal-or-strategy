@@ -1,8 +1,13 @@
 # BWAVE-REFACTOR Lane B -- Ticket Review
+
 # Phase 3.5 Output
+
 # Author: ptt-ticket-reviewer
+
 # Source tickets: docs/brain/BWAVE-REFACTOR/LaneB/04-tickets.md
-# Source plan:    docs/brain/BWAVE-REFACTOR/LaneB/02-architecture-plan.md
+
+# Source plan: docs/brain/BWAVE-REFACTOR/LaneB/02-architecture-plan.md
+
 # Written: 2026-09-06
 
 ---
@@ -17,15 +22,15 @@ until the prior ticket passes all 7 scans).
 
 ## Check Matrix Summary
 
-| Check | T1 | T2 | T3 | T4 | T5 |
-|-------|----|----|----|----|-----|
-| 1. Traceability | PASS | PASS | PASS | PASS | PASS |
-| 2. 7-Scan Checklist | PASS | PASS | PASS | PASS | PASS |
-| 3. JS Pre-Check | PASS | PASS | PASS | PASS | PASS* |
-| 4. CYC Pre-Check | PASS | PASS | PASS | PASS | PASS |
-| 5. NT8 Constraints | PASS | PASS | PASS | PASS | PASS |
-| 6. Completeness | PASS | PASS | PASS | PASS | PASS |
-| 7. Test Coverage | PASS | PASS | PASS | PASS | PASS |
+| Check               | T1   | T2   | T3   | T4   | T5    |
+| ------------------- | ---- | ---- | ---- | ---- | ----- |
+| 1. Traceability     | PASS | PASS | PASS | PASS | PASS  |
+| 2. 7-Scan Checklist | PASS | PASS | PASS | PASS | PASS  |
+| 3. JS Pre-Check     | PASS | PASS | PASS | PASS | PASS* |
+| 4. CYC Pre-Check    | PASS | PASS | PASS | PASS | PASS  |
+| 5. NT8 Constraints  | PASS | PASS | PASS | PASS | PASS  |
+| 6. Completeness     | PASS | PASS | PASS | PASS | PASS  |
+| 7. Test Coverage    | PASS | PASS | PASS | PASS | PASS  |
 
 *T5 JS-002 note: two helpers return null for reference types (`ResolveNullFollowerSlot`,
 `ExtractLegSuffix`). Both are explicitly grandfathered by the ticket with documented rationale
@@ -50,6 +55,7 @@ PASS.
 ### Check 2: 7-Scan Checklist
 
 PASS. All 7 scans present with exact pass conditions:
+
 - SCAN-01 (lizard CCN): present, scoped to 6 T1 methods + all new helpers. PASS condition correct.
 - SCAN-02 (grep lock): present, exact pattern `lock\s*\(`, PASS=zero matches.
 - SCAN-03 (grep async void): present, exact pattern `async\s+void`, PASS=zero matches.
@@ -79,6 +85,7 @@ PASS.
 PASS.
 
 Parent residual CCN values after extraction:
+
 - ArmPendingBe: CCN<=7 (ticket §1 parent residual formula verified against plan §5.1).
 - ResubmitOneCollateralLeg: CCN<=4. PASS.
 - SnapshotBeTargets: CCN<=7. PASS.
@@ -95,7 +102,7 @@ PASS.
 
 - No new public/internal method signatures added. Test seams (`IsImmediateBeEligibleTestable`,
   `IsBeTargetStateOkTestable`) are `internal static` -- these are test-seam wrappers, not API.
-  The restriction is on public/internal *parent* signatures, which are frozen. PASS.
+  The restriction is on public/internal _parent_ signatures, which are frozen. PASS.
 - No AtmStrategyCreate, no AtmStrategyChangeStopTarget. PASS.
 - CreateOrder calls preserve `NinjaTrader.Core.Globals.MaxDate` and `(NinjaTrader.Cbi.CustomOrder)null`
   explicitly noted in NT8 Constraints section. PASS.
@@ -109,6 +116,7 @@ PASS.
 PASS.
 
 Each of the 6 methods has:
+
 - [x] Spec requirement IDs: BWAVE-REFACTOR-LaneB-T1
 - [x] Target method signatures with line numbers
 - [x] Extraction instructions with absorb descriptions and expected CCN
@@ -125,6 +133,7 @@ Each of the 6 methods has:
 PASS.
 
 5 [Fact] tests provided:
+
 - IsBeTargetStateOk_Working_ReturnsTrue (static seam)
 - IsBeTargetStateOk_CancelSubmitted_ReturnsTrue
 - IsBeTargetStateOk_Filled_ReturnsFalse
@@ -160,6 +169,7 @@ PASS.
 ### Check 2: 7-Scan Checklist
 
 PASS. All 7 scans present:
+
 - SCAN-01: scoped to 4 T2 methods + new helpers.
 - SCAN-02 through SCAN-07: all present with correct pass conditions.
 - SCAN-07 specifies: all 3 new T2 tests pass PLUS all T1 tests continue to pass. PASS.
@@ -210,6 +220,7 @@ NT8 constraints, acceptance criteria.
 PASS.
 
 3 [Fact] tests provided:
+
 - IsQxCancelEligible3_NullSnapshot_PassesThrough (reflection/seam structural)
 - IsQxCancelEligible3_OrderNotInSnapshot_ReturnsFalse
 - IsAccountFlattenable_NullAccount_ReturnsFalse (structural existence)
@@ -237,6 +248,7 @@ PASS.
 ### Check 2: 7-Scan Checklist
 
 PASS. All 7 scans present:
+
 - SCAN-01: scoped to 5 T3 methods + new helpers.
 - SCAN-04: `return null` in new helpers only -- zero matches required.
 - SCAN-07: T1+T2+T3 tests pass. PASS.
@@ -282,6 +294,7 @@ PASS. All required sections present.
 PASS.
 
 4 [Fact] tests provided:
+
 - IsPositionStateTriggerState_Filled_ReturnsFalse (via seam)
 - IsPositionStateTriggerState_Cancelled_ReturnsTrue
 - IsNativeLeaderTarget_NullOrder_ReturnsFalse (via seam)
@@ -316,6 +329,7 @@ PASS.
 ### Check 2: 7-Scan Checklist
 
 PASS. All 7 scans present:
+
 - SCAN-01: scoped to 6 T4 methods + new helpers.
 - SCAN-04: ExtractLegSuffix returning null for nullable string explicitly permitted.
 - SCAN-07: T1+T2+T3+T4 tests pass. PASS.
@@ -358,7 +372,7 @@ PASS.
 
 - IssueDrainCancels: `follower.Cancel(new Order[]{e})` correct AddOnBase cancel pattern. PASS.
 - BuildQxSnapshot remains `internal static` after extraction. `IsQxSnapshotStateOk` is `private
-  static`. Visibility model correct. PASS.
+static`. Visibility model correct. PASS.
 - OnOrderUpdate is NT8 event handler; HandleDrainTerminalState must NOT be async -- explicitly
   required. PASS.
 - No AtmStrategyCreate, no AtmStrategyChangeStopTarget. PASS.
@@ -372,6 +386,7 @@ PASS. All required sections present with 8 [Fact] tests listed.
 PASS.
 
 8 [Fact] tests provided:
+
 - IsCancelAllStateOk_Working_ReturnsTrue
 - IsCancelAllStateOk_Filled_ReturnsFalse
 - IsQxSnapshotStateOk_TriggerPending_ReturnsTrue
@@ -403,6 +418,7 @@ PASS.
 - All 11 new helpers trace to plan §5.5 extraction designs.
 
 One plan discrepancy noted (ADVISORY, not blocking):
+
 - Plan §5.5 RuleToDto names the helper `ExtractAtmTemplateMap` returning `Dictionary<string,string>`.
   Ticket T5 names it `BuildAtmModeNames` returning `string[]` and provides explicit rationale
   ("actual code at L6213-6219 builds a string[] array, not a Dictionary"). This is a deliberate
@@ -429,6 +445,7 @@ One plan discrepancy noted (ADVISORY, not blocking):
 ### Check 2: 7-Scan Checklist
 
 PASS. All 7 scans present:
+
 - SCAN-01: scope is ENTIRE CopyEngine.cs (final ticket -- all 32 original methods + all new helpers
   must be at CCN<=8). PASS condition: zero output from lizard for the full file.
 - SCAN-04: `ResolveNullFollowerSlot` returning null for reference type permitted; explicit grandfathering.
@@ -440,22 +457,23 @@ PASS with annotations.
 
 - JS-021: all helpers listed. PASS.
 - JS-002 (nullable reference returns -- advisory P1):
-  * `ResolveNullFollowerSlot` returns `Account` (reference type) and may return null. Ticket
+  - `ResolveNullFollowerSlot` returns `Account` (reference type) and may return null. Ticket
     grandfathers this as "existing NT8 pattern" consistent with FindBePosition etc. This is a
     P1 advisory, not a P0 block. The pattern is consistent with pre-existing grandfathered nulls
     in the codebase. PASS (with annotation: engineer must add `// NT8 pattern: null=not found`
     comment inline per project convention).
-  * `ExtractAtmTemplateMap` -> `BuildAtmModeNames` returns `string[]` (reference type). If the
+  - `ExtractAtmTemplateMap` -> `BuildAtmModeNames` returns `string[]` (reference type). If the
     array can never be null (it is always constructed with `new string[...]`), JS-002 is satisfied.
     Ticket does not describe a null return path for this helper. PASS.
-  * `PickBestTargetPrice` returns `double?` (nullable value type). Not a JS-002 violation.
+  - `PickBestTargetPrice` returns `double?` (nullable value type). Not a JS-002 violation.
 - JS-001: SubmitReplacementStopOrder absorbs existing try/catch only. PASS.
 - JS-033: no async. PASS.
 - ASCII-only: all new helper names are ASCII. PASS.
 
 ADVISORY (not blocking): Engineer should prefer non-null returns wherever possible:
-  - `ResolveNullFollowerSlot`: add comment `// NT8 pattern: null = slot could not be resolved`.
-  - `ExtractLegSuffix` (T4): prefer `string.Empty` over `null` if sentinel semantics allow.
+
+- `ResolveNullFollowerSlot`: add comment `// NT8 pattern: null = slot could not be resolved`.
+- `ExtractLegSuffix` (T4): prefer `string.Empty` over `null` if sentinel semantics allow.
 
 ### Check 4: CYC Pre-Check
 
@@ -499,6 +517,7 @@ PASS. All required sections present. 8 [Fact] tests listed. Post-T5 verification
 PASS.
 
 8 [Fact] tests provided:
+
 - ResolveMultiplierLength_CountZeroNullExisting_ReturnsZero (seam)
 - ResolveMultiplierLength_CountPositive_ReturnsCount
 - IsPriceDeltaSignificant_ZeroTickSize_ReturnsFalse (seam)
@@ -522,14 +541,14 @@ Consistent with established project pattern. PASS.
 
 ### 32-Method CCN Coverage (from plan baseline table)
 
-| Tier | CCN | Methods | Ticket | Covered |
-|------|-----|---------|--------|---------|
-| A | 20-27 | 6 | T1 | YES |
-| B | 16-19 | 4 | T2 | YES |
-| C | 13-15 | 5 | T3 | YES |
-| D | 10-12 | 6 | T4 | YES |
-| E | 9 | 11 | T5 | YES |
-| **Total** | | **32** | | **32/32 = 100%** |
+| Tier      | CCN   | Methods | Ticket | Covered          |
+| --------- | ----- | ------- | ------ | ---------------- |
+| A         | 20-27 | 6       | T1     | YES              |
+| B         | 16-19 | 4       | T2     | YES              |
+| C         | 13-15 | 5       | T3     | YES              |
+| D         | 10-12 | 6       | T4     | YES              |
+| E         | 9     | 11      | T5     | YES              |
+| **Total** |       | **32**  |        | **32/32 = 100%** |
 
 All 32 methods from the plan baseline are covered by exactly one ticket each. No duplicates.
 No gaps. PASS.
@@ -558,6 +577,7 @@ All 5 tickets pass all 7 checks. The engineer is cleared to begin T1.
 before the next begins).
 
 **Pre-work verification** (engineer runs before starting T1):
+
 1. Confirm `git status --short src/PropTraderTools/` is clean.
 2. Run `dotnet build --no-incremental` to confirm clean baseline.
 3. Run `Select-String -Path src/PropTraderTools/CopyEngine.cs -Pattern "lock\s*\("` -> zero matches.

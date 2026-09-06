@@ -1,7 +1,11 @@
 # BWAVE-REFACTOR LaneB -- Ticket 1 Completion
+
 # Phase 4a Output
+
 # Author: ptt-engineer
+
 # Ticket: BWAVE-REFACTOR-LaneB-T1
+
 # Written: 2026-09-06
 
 ---
@@ -11,6 +15,7 @@
 TICKET 1 ONLY. No Ticket 2-5 methods touched.
 
 Target methods (CCN >= 20, 6 methods):
+
 - ArmPendingBe (CCN 27 -> <=8)
 - ResubmitOneCollateralLeg (CCN 25 -> <=8)
 - SnapshotBeTargets (CCN 24 -> <=8)
@@ -19,6 +24,7 @@ Target methods (CCN >= 20, 6 methods):
 - SyncFollowerBracket (CCN 20 -> <=8)
 
 Files modified:
+
 - src/PropTraderTools/CopyEngine.cs
 - src/PropTraderTools/Tests/BwaveRefactorLaneBTests.cs (created -- T1 owns creation)
 - tests/PropTraderTools.Tests/BwaveRefactorLaneBTests.cs (created -- standalone test project)
@@ -29,52 +35,52 @@ Files modified:
 
 ### From SyncFollowerBracket
 
-| Helper | Visibility | Parent |
-|--------|-----------|--------|
-| HandleAtmStopSync | private | SyncFollowerBracket |
-| HandleAtmTargetSync | private | SyncFollowerBracket |
-| HandleNonAtmSync | private | SyncFollowerBracket |
+| Helper              | Visibility | Parent              |
+| ------------------- | ---------- | ------------------- |
+| HandleAtmStopSync   | private    | SyncFollowerBracket |
+| HandleAtmTargetSync | private    | SyncFollowerBracket |
+| HandleNonAtmSync    | private    | SyncFollowerBracket |
 
 ### From ResubmitOneCollateralLeg
 
-| Helper | Visibility | Parent |
-|--------|-----------|--------|
-| CancelLiveCollateralStop | private | ResubmitOneCollateralLeg |
-| CancelLiveCollateralTarget | private | ResubmitOneCollateralLeg |
-| CreateAndSubmitCollateralStop | private | ResubmitOneCollateralLeg |
-| CreateAndSubmitCollateralTarget | private | ResubmitOneCollateralLeg |
+| Helper                          | Visibility | Parent                   |
+| ------------------------------- | ---------- | ------------------------ |
+| CancelLiveCollateralStop        | private    | ResubmitOneCollateralLeg |
+| CancelLiveCollateralTarget      | private    | ResubmitOneCollateralLeg |
+| CreateAndSubmitCollateralStop   | private    | ResubmitOneCollateralLeg |
+| CreateAndSubmitCollateralTarget | private    | ResubmitOneCollateralLeg |
 
 ### From SyncAtmFollowerTarget
 
-| Helper | Visibility | Parent |
-|--------|-----------|--------|
-| IsAtmTargetSyncEligible | private | SyncAtmFollowerTarget |
-| CancelBlockAAtmTarget | private | SyncAtmFollowerTarget |
-| BlockBCreateAtmTarget | private | SyncAtmFollowerTarget |
+| Helper                  | Visibility | Parent                |
+| ----------------------- | ---------- | --------------------- |
+| IsAtmTargetSyncEligible | private    | SyncAtmFollowerTarget |
+| CancelBlockAAtmTarget   | private    | SyncAtmFollowerTarget |
+| BlockBCreateAtmTarget   | private    | SyncAtmFollowerTarget |
 
 ### From TryCleanupReArmedAtmBracket
 
-| Helper | Visibility | Parent |
-|--------|-----------|--------|
-| IsCleanupAtmEligible | private | TryCleanupReArmedAtmBracket |
-| TryCancelNativeAtmTarget | private | TryCleanupReArmedAtmBracket |
-| EvaluateCleanupRemoval | private | TryCleanupReArmedAtmBracket |
+| Helper                   | Visibility | Parent                      |
+| ------------------------ | ---------- | --------------------------- |
+| IsCleanupAtmEligible     | private    | TryCleanupReArmedAtmBracket |
+| TryCancelNativeAtmTarget | private    | TryCleanupReArmedAtmBracket |
+| EvaluateCleanupRemoval   | private    | TryCleanupReArmedAtmBracket |
 
 ### From SnapshotBeTargets
 
-| Helper | Visibility | Parent |
-|--------|-----------|--------|
-| IsBeTargetStateOk | private static | SnapshotBeTargets |
+| Helper                    | Visibility             | Parent            |
+| ------------------------- | ---------------------- | ----------------- |
+| IsBeTargetStateOk         | private static         | SnapshotBeTargets |
 | IsBeTargetStateOkTestable | internal static (seam) | SnapshotBeTargets |
-| ClassifyBeTarget | private static | SnapshotBeTargets |
+| ClassifyBeTarget          | private static         | SnapshotBeTargets |
 
 ### From ArmPendingBe
 
-| Helper | Visibility | Parent |
-|--------|-----------|--------|
-| IsImmediateBeEligible | private static | ArmPendingBe |
+| Helper                        | Visibility             | Parent       |
+| ----------------------------- | ---------------------- | ------------ |
+| IsImmediateBeEligible         | private static         | ArmPendingBe |
 | IsImmediateBeEligibleTestable | internal static (seam) | ArmPendingBe |
-| FireImmediateBe | private | ArmPendingBe |
+| FireImmediateBe               | private                | ArmPendingBe |
 
 **Total new helpers: 17** (matches plan §5.1)
 
@@ -82,14 +88,14 @@ Files modified:
 
 ## CCN Reduction (verified by lizard)
 
-| Method | Before | After |
-|--------|--------|-------|
-| ArmPendingBe | 27 | <=8 |
-| ResubmitOneCollateralLeg | 25 | <=8 |
-| SnapshotBeTargets | 24 | <=8 |
-| TryCleanupReArmedAtmBracket | 23 | <=8 |
-| SyncAtmFollowerTarget | 21 | <=8 |
-| SyncFollowerBracket | 20 | <=8 |
+| Method                      | Before | After |
+| --------------------------- | ------ | ----- |
+| ArmPendingBe                | 27     | <=8   |
+| ResubmitOneCollateralLeg    | 25     | <=8   |
+| SnapshotBeTargets           | 24     | <=8   |
+| TryCleanupReArmedAtmBracket | 23     | <=8   |
+| SyncAtmFollowerTarget       | 21     | <=8   |
+| SyncFollowerBracket         | 20     | <=8   |
 
 All new helpers also CCN<=8 (verified by lizard filter -- zero output for all 17 new helpers).
 
@@ -157,6 +163,7 @@ dotnet build "src/PropTraderTools/PropTraderTools.csproj" 2>&1
 ```
 
 OUTPUT:
+
 ```
 Build succeeded.
 1 Warning(s) -- pre-existing xUnit2004 in B131Tests.cs (not T1)
@@ -189,6 +196,7 @@ dotnet test "tests/PropTraderTools.Tests/PropTraderTools.Tests.csproj"
 ```
 
 OUTPUT:
+
 ```
 Passed! - Failed: 0, Passed: 5, Skipped: 0, Total: 5, Duration: 8 ms
 ```
@@ -201,13 +209,13 @@ RESULT: PASS -- all 5 [Fact] tests pass
 
 Tests in `tests/PropTraderTools.Tests/BwaveRefactorLaneBTests.cs`:
 
-| [Fact] Name | Covers |
-|------------|--------|
-| IsBeTargetStateOk_Working_ReturnsTrue | IsBeTargetStateOk mirror -- Working is valid |
-| IsBeTargetStateOk_CancelSubmitted_ReturnsTrue | CancelSubmitted is valid (REPAIR-09 DW-B79-05) |
-| IsBeTargetStateOk_Filled_ReturnsFalse | Filled is NOT valid |
-| IsImmediateBeEligible_NullPosition_ReturnsFalse | tickSize=0 early-return (pos=null guard path) |
-| IsImmediateBeEligible_ZeroTickSize_ReturnsFalse | tickSize=0 -> arm normally, do not fire |
+| [Fact] Name                                     | Covers                                         |
+| ----------------------------------------------- | ---------------------------------------------- |
+| IsBeTargetStateOk_Working_ReturnsTrue           | IsBeTargetStateOk mirror -- Working is valid   |
+| IsBeTargetStateOk_CancelSubmitted_ReturnsTrue   | CancelSubmitted is valid (REPAIR-09 DW-B79-05) |
+| IsBeTargetStateOk_Filled_ReturnsFalse           | Filled is NOT valid                            |
+| IsImmediateBeEligible_NullPosition_ReturnsFalse | tickSize=0 early-return (pos=null guard path)  |
+| IsImmediateBeEligible_ZeroTickSize_ReturnsFalse | tickSize=0 -> arm normally, do not fire        |
 
 Note: Tests use inline mirror pattern (not direct ProjectReference) because PropTraderTools
 targets net48 (NT8) and PropTraderTools.Tests targets net8.0 -- cross-TFM project reference

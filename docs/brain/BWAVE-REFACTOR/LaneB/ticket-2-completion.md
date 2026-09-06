@@ -1,7 +1,11 @@
 # BWAVE-REFACTOR LaneB -- Ticket 2 Completion
+
 # Phase 4a Output
+
 # Author: ptt-engineer
+
 # Ticket: BWAVE-REFACTOR-LaneB-T2
+
 # Date: 2026-09-06
 
 ---
@@ -15,17 +19,17 @@ No other tickets referenced, read, or modified in this session.
 
 ## New Helpers Added
 
-| Helper | Visibility | Parent |
-|--------|-----------|--------|
-| `IsAccountFlattenable` | `private` | `FlattenOneAccount` |
-| `SubmitMarketFlattenOrder` | `private` | `FlattenOneAccount` |
-| `LogDiagOrderCount` | `private` | `MoveStopToBreakEven` |
-| `RegisterBeRetrySlotIfNeeded` | `private` | `MoveStopToBreakEven` |
-| `FindFollowerRuleForOrder` | `private` | `ReplaceFollowerCopyOnAtmCancel` |
-| `IsReplaceDispatchEligible` | `private` | `ReplaceFollowerCopyOnAtmCancel` |
-| `IsQxCancelEligible3` | `private static` | `CancelQxBrackets` (3-param) |
-| `IsQxCancelEligible3Testable` | `internal static` | test seam for `IsQxCancelEligible3` |
-| `CommitStaleCancelBatch` | `private` | `CancelQxBrackets` (both overloads -- consolidated) |
+| Helper                        | Visibility        | Parent                                              |
+| ----------------------------- | ----------------- | --------------------------------------------------- |
+| `IsAccountFlattenable`        | `private`         | `FlattenOneAccount`                                 |
+| `SubmitMarketFlattenOrder`    | `private`         | `FlattenOneAccount`                                 |
+| `LogDiagOrderCount`           | `private`         | `MoveStopToBreakEven`                               |
+| `RegisterBeRetrySlotIfNeeded` | `private`         | `MoveStopToBreakEven`                               |
+| `FindFollowerRuleForOrder`    | `private`         | `ReplaceFollowerCopyOnAtmCancel`                    |
+| `IsReplaceDispatchEligible`   | `private`         | `ReplaceFollowerCopyOnAtmCancel`                    |
+| `IsQxCancelEligible3`         | `private static`  | `CancelQxBrackets` (3-param)                        |
+| `IsQxCancelEligible3Testable` | `internal static` | test seam for `IsQxCancelEligible3`                 |
+| `CommitStaleCancelBatch`      | `private`         | `CancelQxBrackets` (both overloads -- consolidated) |
 
 **Consolidation note**: `CommitStaleCancelBatch` body was identical to the 2-param
 `CancelQxBrackets` cancel commit pattern. Both overloads now call the single helper.
@@ -36,20 +40,20 @@ the 2-param overload in T3).
 
 ## CCN Reduction
 
-| Method | Before | After (target) |
-|--------|--------|----------------|
-| `FlattenOneAccount` | 19 | <=2 |
-| `IsAccountFlattenable` (new) | -- | <=4 |
-| `SubmitMarketFlattenOrder` (new) | -- | <=3 |
-| `MoveStopToBreakEven` | 18 | <=4 |
-| `LogDiagOrderCount` (new) | -- | <=2 |
-| `RegisterBeRetrySlotIfNeeded` (new) | -- | <=6 |
-| `ReplaceFollowerCopyOnAtmCancel` | 18 | <=4 |
-| `FindFollowerRuleForOrder` (new) | -- | <=5 |
-| `IsReplaceDispatchEligible` (new) | -- | <=4 |
-| `CancelQxBrackets` 3-param | 16 | <=5 |
-| `IsQxCancelEligible3` (new) | -- | <=4 (Lizard: 1 base + 3 branches) |
-| `CommitStaleCancelBatch` (new) | -- | <=2 |
+| Method                              | Before | After (target)                    |
+| ----------------------------------- | ------ | --------------------------------- |
+| `FlattenOneAccount`                 | 19     | <=2                               |
+| `IsAccountFlattenable` (new)        | --     | <=4                               |
+| `SubmitMarketFlattenOrder` (new)    | --     | <=3                               |
+| `MoveStopToBreakEven`               | 18     | <=4                               |
+| `LogDiagOrderCount` (new)           | --     | <=2                               |
+| `RegisterBeRetrySlotIfNeeded` (new) | --     | <=6                               |
+| `ReplaceFollowerCopyOnAtmCancel`    | 18     | <=4                               |
+| `FindFollowerRuleForOrder` (new)    | --     | <=5                               |
+| `IsReplaceDispatchEligible` (new)   | --     | <=4                               |
+| `CancelQxBrackets` 3-param          | 16     | <=5                               |
+| `IsQxCancelEligible3` (new)         | --     | <=4 (Lizard: 1 base + 3 branches) |
+| `CommitStaleCancelBatch` (new)      | --     | <=2                               |
 
 Lizard SCAN-01 confirms zero rows above CCN=8 for all T2 method names.
 
@@ -60,6 +64,7 @@ Lizard SCAN-01 confirms zero rows above CCN=8 for all T2 method names.
 ### SCAN 1 -- lizard CCN (T2 target methods + new helpers)
 
 **Command**:
+
 ```powershell
 $files = Get-ChildItem src/PropTraderTools/ -Filter "*.cs" -Recurse |
   Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\bin\\' }
@@ -111,6 +116,7 @@ All T2 helpers return `bool`, `void`, or `CopyRule?` (nullable struct -- JS-002 
 **Command**: `dotnet build "src/PropTraderTools/PropTraderTools.csproj" --no-incremental 2>&1`
 
 **Output**:
+
 ```
 Build succeeded.
     1 Warning(s)   [pre-existing xUnit2004 in B131Tests.cs -- not introduced by T2]
@@ -136,6 +142,7 @@ Build succeeded.
 **Command**: `dotnet test "tests/PropTraderTools.Tests/PropTraderTools.Tests.csproj" --filter "FullyQualifiedName~BwaveRefactorLaneB"`
 
 **Output**:
+
 ```
 Passed!  - Failed: 0, Passed: 8, Skipped: 0, Total: 8, Duration: 655 ms
 ```
@@ -148,16 +155,16 @@ Passed!  - Failed: 0, Passed: 8, Skipped: 0, Total: 8, Duration: 655 ms
 
 ## Test List
 
-| [Fact] Name | Covers |
-|-------------|--------|
-| `IsBeTargetStateOk_Working_ReturnsTrue` | T1 IsBeTargetStateOk helper |
-| `IsBeTargetStateOk_CancelSubmitted_ReturnsTrue` | T1 IsBeTargetStateOk helper |
-| `IsBeTargetStateOk_Filled_ReturnsFalse` | T1 IsBeTargetStateOk helper |
-| `IsImmediateBeEligible_NullPosition_ReturnsFalse` | T1 IsImmediateBeEligible arithmetic |
-| `IsImmediateBeEligible_ZeroTickSize_ReturnsFalse` | T1 IsImmediateBeEligible arithmetic |
-| `IsQxCancelEligible3_NullSnapshot_PassesThrough` | T2: seam exists (structural) |
-| `IsQxCancelEligible3_OrderNotInSnapshot_ReturnsFalse` | T2: seam has 3 params (structural) |
-| `IsAccountFlattenable_NullAccount_ReturnsFalse` | T2: private instance method exists (structural) |
+| [Fact] Name                                           | Covers                                          |
+| ----------------------------------------------------- | ----------------------------------------------- |
+| `IsBeTargetStateOk_Working_ReturnsTrue`               | T1 IsBeTargetStateOk helper                     |
+| `IsBeTargetStateOk_CancelSubmitted_ReturnsTrue`       | T1 IsBeTargetStateOk helper                     |
+| `IsBeTargetStateOk_Filled_ReturnsFalse`               | T1 IsBeTargetStateOk helper                     |
+| `IsImmediateBeEligible_NullPosition_ReturnsFalse`     | T1 IsImmediateBeEligible arithmetic             |
+| `IsImmediateBeEligible_ZeroTickSize_ReturnsFalse`     | T1 IsImmediateBeEligible arithmetic             |
+| `IsQxCancelEligible3_NullSnapshot_PassesThrough`      | T2: seam exists (structural)                    |
+| `IsQxCancelEligible3_OrderNotInSnapshot_ReturnsFalse` | T2: seam has 3 params (structural)              |
+| `IsAccountFlattenable_NullAccount_ReturnsFalse`       | T2: private instance method exists (structural) |
 
 Test approach: T2 helpers involve NT8 types (Order, Instrument, Account) which cannot be
 constructed without NT8 runtime. Tests use name-scan reflection (avoids NT8 signature

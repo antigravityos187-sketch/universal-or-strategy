@@ -1,7 +1,11 @@
 # BWAVE-REFACTOR LaneB -- Ticket 5 Verification
+
 # Phase 4b Output
+
 # Author: ptt-verifier
+
 # Ticket: BWAVE-REFACTOR-LaneB-T5
+
 # Date: 2025-01-30
 
 ---
@@ -18,6 +22,7 @@ Final gate: SCAN 1 must produce ZERO output for the ENTIRE CopyEngine.cs (all 36
 ## SCAN 1 Result -- CCN (ENTIRE FILE)
 
 Command (Layer 3 -- independently run):
+
 ```powershell
 $files = Get-ChildItem src/PropTraderTools/ -Filter "*.cs" -Recurse |
   Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\bin\\' }
@@ -31,9 +36,9 @@ PASS -- Zero rows. No method anywhere in scanned files exceeds CCN 8.
 This is the final-ticket PASS condition. All 366 methods in CopyEngine.cs are CCN <= 8.
 
 Post-T5 gate corroboration (lizard --CCN 8 on CopyEngine.cs directly):
-  Warning cnt: 0
-  Fun Cnt: 366
-  AvgCCN: 4.0
+Warning cnt: 0
+Fun Cnt: 366
+AvgCCN: 4.0
 
 **SCAN 1: PASS**
 
@@ -42,6 +47,7 @@ Post-T5 gate corroboration (lizard --CCN 8 on CopyEngine.cs directly):
 ## SCAN 2 Result -- lock()
 
 Command (Layer 3 -- independently run):
+
 ```powershell
 Select-String -Path "src/PropTraderTools/CopyEngine.cs" -Pattern "lock\s*\("
 ```
@@ -57,13 +63,14 @@ Zero executable lock() calls found.
 ## SCAN 3 Result -- async void
 
 Command (Layer 3 -- independently run):
+
 ```powershell
 Select-String -Path "src/PropTraderTools/CopyEngine.cs" -Pattern "async\s+void"
 ```
 
 Output: Two matches, both in comment lines only.
-  Line 1896: "// JS-021: no lock. JS-001: no throw. JS-033: Tick is not async void. ASCII-only."
-  Line 7339: "// Called directly from OnOrderUpdate -- NOT an event handler. Synchronous void. NOT async void..."
+Line 1896: "// JS-021: no lock. JS-001: no throw. JS-033: Tick is not async void. ASCII-only."
+Line 7339: "// Called directly from OnOrderUpdate -- NOT an event handler. Synchronous void. NOT async void..."
 Zero async void method declarations found.
 
 **SCAN 3: PASS -- zero actual async void**
@@ -73,34 +80,37 @@ Zero async void method declarations found.
 ## SCAN 4 Result -- return null
 
 Command (Layer 3 -- independently run):
+
 ```powershell
 Select-String -Path "src/PropTraderTools/CopyEngine.cs" -Pattern "return null"
 ```
 
 Output: 15 executable return null lines found at:
-  L1256, L1964, L2922, L3026, L3034, L3834, L4029, L4295 -- all pre-existing (outside T5 helpers)
-  L5607, L5629 -- inside ResolveNullFollowerSlot (PERMITTED, annotated)
-  L5642, L5648, L5727 -- pre-existing (outside T5 helpers)
-  L6996, L7011 -- pre-existing (outside T5 helpers)
+L1256, L1964, L2922, L3026, L3034, L3834, L4029, L4295 -- all pre-existing (outside T5 helpers)
+L5607, L5629 -- inside ResolveNullFollowerSlot (PERMITTED, annotated)
+L5642, L5648, L5727 -- pre-existing (outside T5 helpers)
+L6996, L7011 -- pre-existing (outside T5 helpers)
 
 T5 new helpers verified:
-  - IsNakedConditionMet (L7166): returns bool. No null returns.
-  - BuildAtmModeNames (L6892): returns string[] (never null per annotation). No null returns.
-  - MatchesFollowerSlot (L795): returns bool. No null returns.
-  - ResolveNullFollowerSlot (L5602): returns Account. Lines 5607+5629 annotated "NT8 pattern: null = slot could not be resolved". PERMITTED per spec.
-  - PickBestTargetPrice (L2941): returns double?. No null returns.
-  - MirrorCloseOneAccount (L2244): returns void. No null returns.
-  - ResolveMultiplierLength (L1475): returns int. No null returns.
-  - UpdateLegTargetPrice (L2986): returns void. No null returns.
-  - IsPriceDeltaSignificant (L4090): returns bool. No null returns.
-  - RoundToTick (L3730): returns double. No null returns.
-  - SubmitReplacementStopOrder (L3627): returns void. No null returns.
+
+- IsNakedConditionMet (L7166): returns bool. No null returns.
+- BuildAtmModeNames (L6892): returns string[] (never null per annotation). No null returns.
+- MatchesFollowerSlot (L795): returns bool. No null returns.
+- ResolveNullFollowerSlot (L5602): returns Account. Lines 5607+5629 annotated "NT8 pattern: null = slot could not be resolved". PERMITTED per spec.
+- PickBestTargetPrice (L2941): returns double?. No null returns.
+- MirrorCloseOneAccount (L2244): returns void. No null returns.
+- ResolveMultiplierLength (L1475): returns int. No null returns.
+- UpdateLegTargetPrice (L2986): returns void. No null returns.
+- IsPriceDeltaSignificant (L4090): returns bool. No null returns.
+- RoundToTick (L3730): returns double. No null returns.
+- SubmitReplacementStopOrder (L3627): returns void. No null returns.
 
 Additional fix helpers:
-  - RegisterPendingBeSlot (L6354): returns void. No null returns.
-  - ComputeBeTarget (L6400): returns double. No null returns.
-  - GetBeRefPrice (L6406): returns double. No null returns.
-  - IsEntryCandidateOrder (L7275): returns bool. No null returns.
+
+- RegisterPendingBeSlot (L6354): returns void. No null returns.
+- ComputeBeTarget (L6400): returns double. No null returns.
+- GetBeRefPrice (L6406): returns double. No null returns.
+- IsEntryCandidateOrder (L7275): returns bool. No null returns.
 
 **SCAN 4: PASS -- return null only in ResolveNullFollowerSlot (annotated, permitted by spec)**
 
@@ -109,14 +119,15 @@ Additional fix helpers:
 ## SCAN 5 Result -- build
 
 Command (Layer 3 -- independently run):
+
 ```powershell
 dotnet build "src/PropTraderTools/PropTraderTools.csproj" --no-incremental 2>&1
 ```
 
 Output:
-  1 Warning(s) -- pre-existing xUnit2004 in B131Tests.cs (not a T5 artifact)
-  0 Error(s)
-  Build succeeded.
+1 Warning(s) -- pre-existing xUnit2004 in B131Tests.cs (not a T5 artifact)
+0 Error(s)
+Build succeeded.
 
 **SCAN 5: PASS -- 0 errors**
 
@@ -125,6 +136,7 @@ Output:
 ## SCAN 6 Result -- ASCII
 
 Command (Layer 3 -- independently run):
+
 ```powershell
 $bytes = [System.IO.File]::ReadAllBytes("src/PropTraderTools/CopyEngine.cs")
 ($bytes | Where-Object { $_ -gt 127 } | Measure-Object).Count
@@ -139,29 +151,30 @@ Output: 0
 ## SCAN 7 Result -- tests
 
 Command (Layer 3 -- independently run):
+
 ```powershell
 dotnet test "tests/PropTraderTools.Tests/PropTraderTools.Tests.csproj" --filter "FullyQualifiedName~BwaveRefactorLaneB" 2>&1
 ```
 
-Output: Passed!  - Failed: 0, Passed: 28, Skipped: 0, Total: 28
+Output: Passed! - Failed: 0, Passed: 28, Skipped: 0, Total: 28
 
 Breakdown confirmed by [Fact] attribute inspection:
-  T1: 5 tests (IsBeTargetStateOk x3, IsImmediateBeEligible x2)
-  T2: 3 tests (IsQxCancelEligible3 x2, IsAccountFlattenable x1)
-  T3: 4 tests (IsPositionStateTriggerState x2, IsNativeLeaderTarget x1, IsQxCancelEligible2 x1)
-  T4: 8 tests (IsCancelAllStateOk x2, IsQxSnapshotStateOk x2, MatchesBracketType x2, ExtractLegSuffix x2)
-  T5: 8 tests (ResolveMultiplierLength x2, IsPriceDeltaSignificant x2, RoundToTick x2, PickBestTargetPrice x2)
+T1: 5 tests (IsBeTargetStateOk x3, IsImmediateBeEligible x2)
+T2: 3 tests (IsQxCancelEligible3 x2, IsAccountFlattenable x1)
+T3: 4 tests (IsPositionStateTriggerState x2, IsNativeLeaderTarget x1, IsQxCancelEligible2 x1)
+T4: 8 tests (IsCancelAllStateOk x2, IsQxSnapshotStateOk x2, MatchesBracketType x2, ExtractLegSuffix x2)
+T5: 8 tests (ResolveMultiplierLength x2, IsPriceDeltaSignificant x2, RoundToTick x2, PickBestTargetPrice x2)
 Total: 28 [Fact] attributes (line 352 is a comment, not a real [Fact]; actual [Fact] count = 28).
 
 T5 test list confirmed:
-  [x] ResolveMultiplierLength_CountZeroNullExisting_ReturnsZero (L432)
-  [x] ResolveMultiplierLength_CountPositive_ReturnsCount (L442)
-  [x] IsPriceDeltaSignificant_ZeroTickSize_ReturnsFalse (L452)
-  [x] IsPriceDeltaSignificant_SmallDelta_ReturnsTrue (L462)
-  [x] RoundToTick_ZeroTickSize_ReturnsRawPrice (L472)
-  [x] RoundToTick_PositiveTickSize_ReturnsRoundedPrice (L482)
-  [x] PickBestTargetPrice_PttHasValue_ReturnsPtt (L493)
-  [x] PickBestTargetPrice_PttNull_ReturnsAtm (L503)
+[x] ResolveMultiplierLength_CountZeroNullExisting_ReturnsZero (L432)
+[x] ResolveMultiplierLength_CountPositive_ReturnsCount (L442)
+[x] IsPriceDeltaSignificant_ZeroTickSize_ReturnsFalse (L452)
+[x] IsPriceDeltaSignificant_SmallDelta_ReturnsTrue (L462)
+[x] RoundToTick_ZeroTickSize_ReturnsRawPrice (L472)
+[x] RoundToTick_PositiveTickSize_ReturnsRoundedPrice (L482)
+[x] PickBestTargetPrice_PttHasValue_ReturnsPtt (L493)
+[x] PickBestTargetPrice_PttNull_ReturnsAtm (L503)
 
 **SCAN 7: PASS -- Failed: 0, Passed: 28 (meets >=28 requirement)**
 
@@ -171,69 +184,69 @@ T5 test list confirmed:
 
 ### T5 Spec Helpers (11 required)
 
-| Helper | Line | Visibility | Status |
-|--------|------|-----------|--------|
-| IsNakedConditionMet(Account acct) | 7166 | private static bool | PRESENT |
-| BuildAtmModeNames(CopyRule rule) | 6892 | private static string[] | PRESENT |
-| MatchesFollowerSlot(CopyRule rule, Account acc) | 795 | private static bool | PRESENT |
-| ResolveNullFollowerSlot(CopyRule rule, int i) | 5602 | private Account | PRESENT |
-| PickBestTargetPrice(double? pttPrice, double? atmPrice) | 2941 | private static double? | PRESENT |
-| MirrorCloseOneAccount(Account acc, Instrument instr) | 2244 | private void | PRESENT |
-| ResolveMultiplierLength(int[] existing, int count) | 1475 | private static int | PRESENT |
-| UpdateLegTargetPrice(double[] prices, int i, Order o, string excludeSuffix) | 2986 | private void | PRESENT |
-| IsPriceDeltaSignificant(double newPrice, double currentPrice, double tickSize) | 4090 | private static bool | PRESENT |
-| RoundToTick(double rawPrice, double tickSize) | 3730 | private static double | PRESENT |
-| SubmitReplacementStopOrder(Account followerAcc, Instrument instr, int qty, OrderAction stopAction, double stopPrice) | 3627 | private void | PRESENT |
+| Helper                                                                                                               | Line | Visibility              | Status  |
+| -------------------------------------------------------------------------------------------------------------------- | ---- | ----------------------- | ------- |
+| IsNakedConditionMet(Account acct)                                                                                    | 7166 | private static bool     | PRESENT |
+| BuildAtmModeNames(CopyRule rule)                                                                                     | 6892 | private static string[] | PRESENT |
+| MatchesFollowerSlot(CopyRule rule, Account acc)                                                                      | 795  | private static bool     | PRESENT |
+| ResolveNullFollowerSlot(CopyRule rule, int i)                                                                        | 5602 | private Account         | PRESENT |
+| PickBestTargetPrice(double? pttPrice, double? atmPrice)                                                              | 2941 | private static double?  | PRESENT |
+| MirrorCloseOneAccount(Account acc, Instrument instr)                                                                 | 2244 | private void            | PRESENT |
+| ResolveMultiplierLength(int[] existing, int count)                                                                   | 1475 | private static int      | PRESENT |
+| UpdateLegTargetPrice(double[] prices, int i, Order o, string excludeSuffix)                                          | 2986 | private void            | PRESENT |
+| IsPriceDeltaSignificant(double newPrice, double currentPrice, double tickSize)                                       | 4090 | private static bool     | PRESENT |
+| RoundToTick(double rawPrice, double tickSize)                                                                        | 3730 | private static double   | PRESENT |
+| SubmitReplacementStopOrder(Account followerAcc, Instrument instr, int qty, OrderAction stopAction, double stopPrice) | 3627 | private void            | PRESENT |
 
 All 11 spec helpers: PRESENT
 
 ### Additional Fix Helpers (4 required)
 
-| Helper | Line | Visibility | Status |
-|--------|------|-----------|--------|
-| RegisterPendingBeSlot(Account, Instrument, int) | 6354 | private void | PRESENT |
-| ComputeBeTarget(double, bool, int, double) | 6400 | private static double | PRESENT |
-| GetBeRefPrice(Instrument, bool) | 6406 | private static double | PRESENT |
-| IsEntryCandidateOrder(Order, Instrument) | 7275 | private static bool | PRESENT |
+| Helper                                          | Line | Visibility            | Status  |
+| ----------------------------------------------- | ---- | --------------------- | ------- |
+| RegisterPendingBeSlot(Account, Instrument, int) | 6354 | private void          | PRESENT |
+| ComputeBeTarget(double, bool, int, double)      | 6400 | private static double | PRESENT |
+| GetBeRefPrice(Instrument, bool)                 | 6406 | private static double | PRESENT |
+| IsEntryCandidateOrder(Order, Instrument)        | 7275 | private static bool   | PRESENT |
 
 All 4 additional fix helpers: PRESENT
 
 ### Test Seams (4 required)
 
-| Seam | Line | Status |
-|------|------|--------|
-| ResolveMultiplierLengthTestable(int[] e, int c) | 1481 | PRESENT -- internal static |
-| IsPriceDeltaSignificantTestable(double n, double c, double t) | 4096 | PRESENT -- internal static |
-| RoundToTickTestable(double raw, double tick) | 3736 | PRESENT -- internal static |
-| PickBestTargetPriceTestable(double? p, double? a) | 2949 | PRESENT -- internal static double? |
+| Seam                                                          | Line | Status                             |
+| ------------------------------------------------------------- | ---- | ---------------------------------- |
+| ResolveMultiplierLengthTestable(int[] e, int c)               | 1481 | PRESENT -- internal static         |
+| IsPriceDeltaSignificantTestable(double n, double c, double t) | 4096 | PRESENT -- internal static         |
+| RoundToTickTestable(double raw, double tick)                  | 3736 | PRESENT -- internal static         |
+| PickBestTargetPriceTestable(double? p, double? a)             | 2949 | PRESENT -- internal static double? |
 
 All 4 test seams: PRESENT
 
 ### Parent Methods Exist (no logic deleted)
 
 All 11 T5 parent methods confirmed present and calling helpers:
-  HasNakedPosition (L7146) -- calls IsNakedConditionMet
-  RuleToDto (L6858) -- calls BuildAtmModeNames (L6873 confirmed)
-  IsFollowerAccount (L781) -- calls MatchesFollowerSlot
-  AllAccounts (L5574) -- calls ResolveNullFollowerSlot
-  CaptureLinkedTargetPrice (L2919) -- calls PickBestTargetPrice
-  MirrorClose (L2229) -- calls MirrorCloseOneAccount
-  BuildUpdatedMultipliers (L1453) -- calls ResolveMultiplierLength
-  CaptureOtherLegTargetPrices (L2968) -- calls UpdateLegTargetPrice
-  HandleEntryChange (L4047) -- calls IsPriceDeltaSignificant
-  HandleBracketChange (L3691) -- calls RoundToTick
-  CreateFollowerReplacementStop (L3606) -- calls SubmitReplacementStopOrder
+HasNakedPosition (L7146) -- calls IsNakedConditionMet
+RuleToDto (L6858) -- calls BuildAtmModeNames (L6873 confirmed)
+IsFollowerAccount (L781) -- calls MatchesFollowerSlot
+AllAccounts (L5574) -- calls ResolveNullFollowerSlot
+CaptureLinkedTargetPrice (L2919) -- calls PickBestTargetPrice
+MirrorClose (L2229) -- calls MirrorCloseOneAccount
+BuildUpdatedMultipliers (L1453) -- calls ResolveMultiplierLength
+CaptureOtherLegTargetPrices (L2968) -- calls UpdateLegTargetPrice
+HandleEntryChange (L4047) -- calls IsPriceDeltaSignificant
+HandleBracketChange (L3691) -- calls RoundToTick
+CreateFollowerReplacementStop (L3606) -- calls SubmitReplacementStopOrder
 
 Additional residual methods present:
-  ArmPendingBe (L6323) -- calls RegisterPendingBeSlot
-  IsImmediateBeEligible (L6380) -- calls ComputeBeTarget + GetBeRefPrice
-  DrainThenDispatch (L7221) -- calls IsEntryCandidateOrder
+ArmPendingBe (L6323) -- calls RegisterPendingBeSlot
+IsImmediateBeEligible (L6380) -- calls ComputeBeTarget + GetBeRefPrice
+DrainThenDispatch (L7221) -- calls IsEntryCandidateOrder
 
 ### Public/Internal Signatures Unchanged
 
-  IsFollowerAccount: internal bool (confirmed L781)
-  AllAccounts: internal IEnumerable<Account> (confirmed L5574)
-  All other T5 parents: private (no internal/public changes)
+IsFollowerAccount: internal bool (confirmed L781)
+AllAccounts: internal IEnumerable<Account> (confirmed L5574)
+All other T5 parents: private (no internal/public changes)
 
 ### NT8 Constraints
 
@@ -265,11 +278,11 @@ All NT8 constraints: PASS
 ### Gate 1: Full CCN gate (lizard --CCN 8 on CopyEngine.cs)
 
 Command run independently:
-  lizard src/PropTraderTools/CopyEngine.cs --CCN 8
+lizard src/PropTraderTools/CopyEngine.cs --CCN 8
 
 Output:
-  No thresholds exceeded (cyclomatic_complexity > 8 or length > 1000 or nloc > 1000000 or parameter_count > 100)
-  Fun Cnt: 366   Warning cnt: 0   AvgCCN: 4.0
+No thresholds exceeded (cyclomatic_complexity > 8 or length > 1000 or nloc > 1000000 or parameter_count > 100)
+Fun Cnt: 366 Warning cnt: 0 AvgCCN: 4.0
 
 PASS -- Warning cnt = 0. All 366 functions CCN <= 8.
 
@@ -282,10 +295,10 @@ F5 NinjaTrader 8 compilation still required (engineer responsibility).
 ### Gate 3: Full test run
 
 Command run independently:
-  dotnet test "tests/PropTraderTools.Tests/PropTraderTools.Tests.csproj" --no-build
+dotnet test "tests/PropTraderTools.Tests/PropTraderTools.Tests.csproj" --no-build
 
-Output: Passed!  - Failed: 0, Passed: 63, Skipped: 3, Total: 66
-  3 skipped = pre-existing NT8-dependent tests requiring NinjaTrader runtime
+Output: Passed! - Failed: 0, Passed: 63, Skipped: 3, Total: 66
+3 skipped = pre-existing NT8-dependent tests requiring NinjaTrader runtime
 
 PASS
 
@@ -302,20 +315,20 @@ PASS
 
 Comparing engineer's self-reported scan results (Layer 2) against independently run Layer 3:
 
-| Scan | Layer 2 Report | Layer 3 Independent | Match? |
-|------|---------------|--------------------|----|
-| SCAN 1 (CCN) | "no output" | ZERO ROWS | MATCH |
-| SCAN 2 (lock) | "only comment lines, zero executable" | Only comment lines (53 matches, all comments) | MATCH |
-| SCAN 3 (async void) | "only comment lines" | Only comment lines (2 matches, both comments) | MATCH |
+| Scan                 | Layer 2 Report                                                    | Layer 3 Independent                                                                                                                          | Match?                                                                                 |
+| -------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| SCAN 1 (CCN)         | "no output"                                                       | ZERO ROWS                                                                                                                                    | MATCH                                                                                  |
+| SCAN 2 (lock)        | "only comment lines, zero executable"                             | Only comment lines (53 matches, all comments)                                                                                                | MATCH                                                                                  |
+| SCAN 3 (async void)  | "only comment lines"                                              | Only comment lines (2 matches, both comments)                                                                                                | MATCH                                                                                  |
 | SCAN 4 (return null) | "Lines 5607, 5629 inside ResolveNullFollowerSlot only, annotated" | L5607, L5629 in ResolveNullFollowerSlot; pre-existing nulls at L1256,L1964,L2922,L3026,L3034,L3834,L4029,L4295,L5642,L5648,L5727,L6996,L7011 | MATCH -- note: Layer 2 only mentioned T5 helpers; pre-existing nulls are outside scope |
-| SCAN 5 (build) | "1 Warning(s) (pre-existing xUnit2004), 0 Error(s)" | 1 Warning (B131Tests.cs xUnit2004), 0 Errors | MATCH |
-| SCAN 6 (ASCII) | "0" | 0 | MATCH |
-| SCAN 7 (tests) | "Failed: 0, Passed: 28, Skipped: 0, Total: 28" | Failed: 0, Passed: 28, Skipped: 0, Total: 28 | MATCH |
+| SCAN 5 (build)       | "1 Warning(s) (pre-existing xUnit2004), 0 Error(s)"               | 1 Warning (B131Tests.cs xUnit2004), 0 Errors                                                                                                 | MATCH                                                                                  |
+| SCAN 6 (ASCII)       | "0"                                                               | 0                                                                                                                                            | MATCH                                                                                  |
+| SCAN 7 (tests)       | "Failed: 0, Passed: 28, Skipped: 0, Total: 28"                    | Failed: 0, Passed: 28, Skipped: 0, Total: 28                                                                                                 | MATCH                                                                                  |
 
 Post-T5 gate:
-  Gate 1: Engineer "Warning cnt: 0" / Layer 3: "Warning cnt: 0, Fun Cnt: 366" | MATCH
-  Gate 3: Engineer "Failed: 0, Passed: 63, Skipped: 3" / Layer 3: identical | MATCH
-  Gate 4: Engineer "0 Error(s)" / Layer 3: "0 Error(s)" | MATCH
+Gate 1: Engineer "Warning cnt: 0" / Layer 3: "Warning cnt: 0, Fun Cnt: 366" | MATCH
+Gate 3: Engineer "Failed: 0, Passed: 63, Skipped: 3" / Layer 3: identical | MATCH
+Gate 4: Engineer "0 Error(s)" / Layer 3: "0 Error(s)" | MATCH
 
 Layer 2 to Layer 3 discrepancies: NONE
 
@@ -343,17 +356,17 @@ Layer 2 to Layer 3 discrepancies: NONE
 
 ## DNA Rule Verification
 
-| Rule | Status | Evidence |
-|------|--------|---------|
-| JS-021: no lock() | PASS | SCAN 2: zero executable lock() calls |
-| JS-001: no throw in helpers | PASS | SubmitReplacementStopOrder absorbs existing try/catch; no new throw |
-| JS-002: no return null in new helpers | PASS | Only ResolveNullFollowerSlot returns null (annotated, grandfathered per spec) |
-| JS-033: no async void | PASS | SCAN 3: zero async void declarations |
-| ASCII-only | PASS | SCAN 6: Count = 0 bytes > 127 |
-| CYC<=8 | PASS | SCAN 1: ZERO rows, lizard Warning cnt: 0 |
-| NT8 PTT- prefix (CreateOrder names) | PASS | "PTT-Mirror-Close" and "PTT-STP-Drag" confirmed |
-| ConcurrentDictionary (lock-free) | PASS | _resolvedFollowers uses TryGetValue/TryAdd |
-| xUnit [Fact] tests | PASS | 8 T5 tests, all pass |
+| Rule                                  | Status | Evidence                                                                      |
+| ------------------------------------- | ------ | ----------------------------------------------------------------------------- |
+| JS-021: no lock()                     | PASS   | SCAN 2: zero executable lock() calls                                          |
+| JS-001: no throw in helpers           | PASS   | SubmitReplacementStopOrder absorbs existing try/catch; no new throw           |
+| JS-002: no return null in new helpers | PASS   | Only ResolveNullFollowerSlot returns null (annotated, grandfathered per spec) |
+| JS-033: no async void                 | PASS   | SCAN 3: zero async void declarations                                          |
+| ASCII-only                            | PASS   | SCAN 6: Count = 0 bytes > 127                                                 |
+| CYC<=8                                | PASS   | SCAN 1: ZERO rows, lizard Warning cnt: 0                                      |
+| NT8 PTT- prefix (CreateOrder names)   | PASS   | "PTT-Mirror-Close" and "PTT-STP-Drag" confirmed                               |
+| ConcurrentDictionary (lock-free)      | PASS   | _resolvedFollowers uses TryGetValue/TryAdd                                    |
+| xUnit [Fact] tests                    | PASS   | 8 T5 tests, all pass                                                          |
 
 ---
 
