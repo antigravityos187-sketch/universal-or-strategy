@@ -86,6 +86,27 @@ namespace PropTraderTools.Tests
             return asm.GetType("PropTraderTools.CopyEngine");
         }
 
+        // Helper: returns true when a method named <name> exists on CopyEngine under <flags>.
+        // Eliminates the repeated LoadCopyEngineType + GetMethods + name-scan pattern.
+        private static bool SeamExists(string name, System.Reflection.BindingFlags flags)
+        {
+            var type = LoadCopyEngineType();
+            if (type == null)
+                return false;
+            foreach (var m in type.GetMethods(flags))
+                if (m.Name == name)
+                    return true;
+            return false;
+        }
+
+        private static readonly System.Reflection.BindingFlags StaticSeamFlags =
+            System.Reflection.BindingFlags.Static
+            | System.Reflection.BindingFlags.NonPublic
+            | System.Reflection.BindingFlags.Public;
+
+        private static readonly System.Reflection.BindingFlags InstanceSeamFlags =
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+
         // ------------------------------------------------------------------
         // IsBeTargetStateOk tests
         // ------------------------------------------------------------------
@@ -156,23 +177,9 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsQxCancelEligible3_NullSnapshot_PassesThrough()
         {
-            var type = LoadCopyEngineType();
-            Assert.NotNull(type);
             // GetMethods() avoids resolving NT8 parameter types (no signature walk).
-            var methods = type.GetMethods(
-                System.Reflection.BindingFlags.Static
-                    | System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Public
-            );
-            bool found = false;
-            foreach (var m in methods)
-                if (m.Name == "IsQxCancelEligible3Testable")
-                {
-                    found = true;
-                    break;
-                }
             // Seam exists = helper was extracted correctly.
-            Assert.True(found);
+            Assert.True(SeamExists("IsQxCancelEligible3Testable", StaticSeamFlags));
         }
 
         // IsQxCancelEligible3_OrderNotInSnapshot_ReturnsFalse:
@@ -183,21 +190,7 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsQxCancelEligible3_OrderNotInSnapshot_ReturnsFalse()
         {
-            var type = LoadCopyEngineType();
-            Assert.NotNull(type);
-            var methods = type.GetMethods(
-                System.Reflection.BindingFlags.Static
-                    | System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Public
-            );
-            bool found = false;
-            foreach (var m in methods)
-                if (m.Name == "IsQxCancelEligible3Testable")
-                {
-                    found = true;
-                    break;
-                }
-            Assert.True(found);
+            Assert.True(SeamExists("IsQxCancelEligible3Testable", StaticSeamFlags));
         }
 
         // IsAccountFlattenable_NullAccount_ReturnsFalse:
@@ -208,20 +201,8 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsAccountFlattenable_NullAccount_ReturnsFalse()
         {
-            var type = LoadCopyEngineType();
-            Assert.NotNull(type);
-            var methods = type.GetMethods(
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
-            );
-            bool found = false;
-            foreach (var m in methods)
-                if (m.Name == "IsAccountFlattenable")
-                {
-                    found = true;
-                    break;
-                }
             // Private instance method exists = extraction was performed correctly.
-            Assert.True(found);
+            Assert.True(SeamExists("IsAccountFlattenable", InstanceSeamFlags));
         }
 
         // ------------------------------------------------------------------
@@ -267,22 +248,8 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsNativeLeaderTarget_NullOrder_ReturnsFalse()
         {
-            var type = LoadCopyEngineType();
-            Assert.NotNull(type);
-            var methods = type.GetMethods(
-                System.Reflection.BindingFlags.Static
-                    | System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Public
-            );
-            bool found = false;
-            foreach (var m in methods)
-                if (m.Name == "IsNativeLeaderTargetTestable")
-                {
-                    found = true;
-                    break;
-                }
             // Seam exists = IsNativeLeaderTarget was extracted correctly from CountLeaderTargets.
-            Assert.True(found);
+            Assert.True(SeamExists("IsNativeLeaderTargetTestable", StaticSeamFlags));
         }
 
         // IsQxCancelEligible2_NullInstrument_ReturnsFalse:
@@ -293,22 +260,8 @@ namespace PropTraderTools.Tests
         [Fact]
         public void IsQxCancelEligible2_NullInstrument_ReturnsFalse()
         {
-            var type = LoadCopyEngineType();
-            Assert.NotNull(type);
-            var methods = type.GetMethods(
-                System.Reflection.BindingFlags.Static
-                    | System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Public
-            );
-            bool found = false;
-            foreach (var m in methods)
-                if (m.Name == "IsQxCancelEligible2Testable")
-                {
-                    found = true;
-                    break;
-                }
             // Seam exists = IsQxCancelEligible2 was extracted correctly from CancelQxBrackets.
-            Assert.True(found);
+            Assert.True(SeamExists("IsQxCancelEligible2Testable", StaticSeamFlags));
         }
 
         // ------------------------------------------------------------------
