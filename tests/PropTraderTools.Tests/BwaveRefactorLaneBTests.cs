@@ -519,8 +519,7 @@ namespace PropTraderTools.Tests
         public void PickBestTargetPrice_PttHasValue_ReturnsPtt()
         {
             var m = GetSeamMethod("PickBestTargetPriceTestable");
-            double? result = (double?)
-                m.Invoke(null, new object[] { (double?)100.0, (double?)99.0 });
+            double? result = (double?)m.Invoke(null, new object[] { (double?)100.0, (double?)99.0 });
             Assert.Equal(100.0, result);
         }
 
