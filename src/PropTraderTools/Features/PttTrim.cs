@@ -88,8 +88,8 @@ namespace PropTraderTools
         /// NT8-007: arg11 = (NinjaTrader.Cbi.CustomOrder)null.
         /// NT8-013: DateTime.MaxValue.
         /// NT8-014: signal "PTT-Trim".
-        /// CYC=5: (1) null guard, (2) useLimitOrder bool, (3) if(useLimitOrder) branch,
-        ///         (4) MarketPosition ternary for limitPrice, (5) try/catch.
+        /// CYC=6: (1)(||) acc null, (2)(||) instr null, (3)(||) qty<=0, (4) direction ternary,
+        ///         (5) try/catch, (6) order null check.
         /// </summary>
         private static void TrimPositionLocal(
             Account acc,
@@ -103,37 +103,20 @@ namespace PropTraderTools
         )
         {
             if (acc == null || instr == null || qty <= 0)
-                return; // (1)
+                return; // (1)(2)(3)
 
             OrderAction direction =
                 pos.MarketPosition == MarketPosition.Long
                     ? OrderAction.Sell
-                    : OrderAction.BuyToCover;
+                    : OrderAction.BuyToCover; // (4)
 
-            bool useLimitOrder =
-                tickSize > 0.0 // (2)
-                && (pos.MarketPosition == MarketPosition.Long ? ask > 0.0 : bid > 0.0);
-
-            OrderType orderType;
-            double limitPrice;
-            double stopPrice;
-            if (useLimitOrder) // (3)
-            {
-                orderType = OrderType.Limit;
-                // Long sell limit: ask - buffer*tick (aggressive taker). Short buy-to-cover: bid + buffer*tick.
-                // NT8-049: arg6=limitPrice, arg7=0 for Limit orders.
-                limitPrice =
-                    pos.MarketPosition == MarketPosition.Long // (4)
-                        ? ask - buffer * tickSize
-                        : bid + buffer * tickSize;
-                stopPrice = 0;
-            }
-            else
-            {
-                orderType = OrderType.Market;
-                limitPrice = 0;
-                stopPrice = 0;
-            }
+            var (orderType, limitPrice, stopPrice) = ResolveOrderParams(
+                pos,
+                buffer,
+                ask,
+                bid,
+                tickSize
+            );
 
             try // (5)
             {
@@ -151,7 +134,7 @@ namespace PropTraderTools
                     DateTime.MaxValue, // arg10: gtd (NT8-013)
                     (NinjaTrader.Cbi.CustomOrder)null
                 ); // arg11 (NT8-007)
-                if (order != null)
+                if (order != null) // (6)
                 {
                     acc.Submit(new[] { order });
                     NinjaTrader.Code.Output.Process(
@@ -162,7 +145,7 @@ namespace PropTraderTools
                             + " "
                             + qty
                             + " @ "
-                            + (useLimitOrder ? limitPrice.ToString("F2") : "mkt")
+                            + (orderType == OrderType.Limit ? limitPrice.ToString("F2") : "mkt")
                             + " on "
                             + acc.Name,
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1
@@ -179,6 +162,37 @@ namespace PropTraderTools
                     NinjaTrader.NinjaScript.PrintTo.OutputTab1
                 );
             }
+        }
+
+        /// <summary>
+        /// Compute order type, limit price, and stop price for trim close order.
+        /// Extracted from TrimPositionLocal useLimitOrder block (lines 113-136).
+        /// CYC=5: (1) tickSize>0, (2) && (Long?ask:bid)>0, (3) isLong ternary in useLimitOrder,
+        ///         (4) if(useLimitOrder) branch, (5) MarketPosition ternary for limitPrice.
+        /// JS-002: returns value tuple (never null). JS-001: no throw. JS-021: no lock. ASCII-only.
+        /// NT8-049: Limit orderType uses limitPrice in arg6, stopPrice=0 in arg7 (preserved in caller).
+        /// </summary>
+        private static (
+            OrderType orderType,
+            double limitPrice,
+            double stopPrice
+        ) ResolveOrderParams(Position pos, int buffer, double ask, double bid, double tickSize)
+        {
+            bool useLimitOrder =
+                tickSize > 0.0 // (1)
+                && (pos.MarketPosition == MarketPosition.Long ? ask > 0.0 : bid > 0.0); // (2)(3)
+
+            if (useLimitOrder) // (4)
+            {
+                // Long sell limit: ask - buffer*tick (aggressive taker). Short buy-to-cover: bid + buffer*tick.
+                // NT8-049: arg6=limitPrice, arg7=0 for Limit orders.
+                double lp =
+                    pos.MarketPosition == MarketPosition.Long // (5)
+                        ? ask - buffer * tickSize
+                        : bid + buffer * tickSize;
+                return (OrderType.Limit, lp, 0);
+            }
+            return (OrderType.Market, 0, 0);
         }
 
         /// <summary>NT8-050: foreach-based position lookup, never acc.Positions[instr]. CYC=2.</summary>
