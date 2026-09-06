@@ -4105,13 +4105,20 @@ namespace PropTraderTools
             // R4-F1 should be re-evaluated.
             var sourceText = System.IO.File.ReadAllText(
                 System.IO.Path.Combine(
-                    System.IO.Path.GetDirectoryName(
-                        typeof(CopyEngine).Assembly.Location),
-                    "..", "..", "..", "src", "PropTraderTools", "CopyEngine.cs"));
+                    System.IO.Path.GetDirectoryName(typeof(CopyEngine).Assembly.Location),
+                    "..",
+                    "..",
+                    "..",
+                    "src",
+                    "PropTraderTools",
+                    "CopyEngine.cs"
+                )
+            );
             Assert.Contains(
                 "R3-F2: clear drain-owned IDs AFTER submit",
                 sourceText,
-                System.StringComparison.Ordinal);
+                System.StringComparison.Ordinal
+            );
         }
     }
 
