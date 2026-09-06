@@ -440,7 +440,7 @@ namespace PropTraderTools
             Instrument instr,
             OrderAction stopDirection,
             double bePrice,
-            string ocoId_i,
+            string ocoIdI,
             int i,
             (double Price, int Qty, OrderAction Action) t
         )
@@ -457,7 +457,7 @@ namespace PropTraderTools
                     t.Qty,
                     0, // arg6: limitPrice=0 (NT8-049)
                     bePrice, // arg7: stopPrice (NT8-049)
-                    ocoId_i, // arg8: OCO pair i
+                    ocoIdI, // arg8: OCO pair i
                     "PTT-BE-Stop-" + (i + 1), // arg9: signal name (NT8-014)
                     DateTime.MaxValue, // arg10: GTC (NT8-013)
                     (NinjaTrader.Cbi.CustomOrder)null
@@ -475,7 +475,7 @@ namespace PropTraderTools
                             + " @ "
                             + bePrice.ToString("F2")
                             + " ocoId="
-                            + ocoId_i,
+                            + ocoIdI,
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1
                     );
                 }
@@ -505,7 +505,7 @@ namespace PropTraderTools
                     t.Qty,
                     t.Price, // arg6: limitPrice (NT8-049)
                     0, // arg7: stopPrice=0 (NT8-049)
-                    ocoId_i, // arg8: OCO pair i
+                    ocoIdI, // arg8: OCO pair i
                     "PTT-BE-Target-" + (i + 1), // arg9: signal name (NT8-014)
                     DateTime.MaxValue, // arg10: GTC (NT8-013)
                     (NinjaTrader.Cbi.CustomOrder)null
@@ -523,7 +523,7 @@ namespace PropTraderTools
                             + " @ "
                             + t.Price.ToString("F2")
                             + " ocoId="
-                            + ocoId_i,
+                            + ocoIdI,
                         NinjaTrader.NinjaScript.PrintTo.OutputTab1
                     );
                 }
@@ -697,12 +697,12 @@ namespace PropTraderTools
                 return;
             }
 
-            // Per-pair loop: each target[i] paired with its own stop[i] in ocoId_i
+            // Per-pair loop: each target[i] paired with its own stop[i] in ocoIdI
             for (int i = 0; i < targets.Count; i++)
             {
                 var t = targets[i];
-                string ocoId_i = BuildBeOcoId(acc.Name, seq, i); // DW-B40-OCO-02: seq-based, never reused
-                SubmitBePair(acc, instr, stopDirection, bePrice, ocoId_i, i, t);
+                string ocoIdI = BuildBeOcoId(acc.Name, seq, i); // DW-B40-OCO-02: seq-based, never reused
+                SubmitBePair(acc, instr, stopDirection, bePrice, ocoIdI, i, t);
             }
             NinjaTrader.Code.Output.Process(
                 "[BE] SubmitBeTargetsLocal: " + targets.Count + " OCO pairs for " + acc.Name,
