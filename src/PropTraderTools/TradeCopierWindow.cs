@@ -903,6 +903,7 @@ namespace PropTraderTools
         {
             _rulesPanel.Children.Add(BuildDynamicRuleRow());
             ApplyFeatureFlags(CopyEngine.Instance.Flags); // gate newly-added buttons
+            CopyEngine.Instance.SaveRules();              // DW-C39-09: persist immediately
         }
 
         private void OnRuleTrim(object sender, RoutedEventArgs e)
