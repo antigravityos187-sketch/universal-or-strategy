@@ -23,15 +23,15 @@ namespace PropTraderTools.Tests
         // ------------------------------------------------------------------
 
         // Inline OrderState enum constants mirroring NinjaTrader.Cbi.OrderState.
-        private const int OsWorking = 7;          // OrderState.Working
-        private const int OsAccepted = 1;         // OrderState.Accepted
-        private const int OsSubmitted = 6;        // OrderState.Submitted
-        private const int OsInitialized = 3;      // OrderState.Initialized
-        private const int OsTriggerPending = 10;  // OrderState.TriggerPending
-        private const int OsChangeSubmitted = 2;  // OrderState.ChangeSubmitted
-        private const int OsCancelSubmitted = 0;  // OrderState.CancelSubmitted
-        private const int OsFilled = 9;           // OrderState.Filled
-        private const int OsCancelled = 8;        // OrderState.Cancelled
+        private const int OsWorking = 7; // OrderState.Working
+        private const int OsAccepted = 1; // OrderState.Accepted
+        private const int OsSubmitted = 6; // OrderState.Submitted
+        private const int OsInitialized = 3; // OrderState.Initialized
+        private const int OsTriggerPending = 10; // OrderState.TriggerPending
+        private const int OsChangeSubmitted = 2; // OrderState.ChangeSubmitted
+        private const int OsCancelSubmitted = 0; // OrderState.CancelSubmitted
+        private const int OsFilled = 9; // OrderState.Filled
+        private const int OsCancelled = 8; // OrderState.Cancelled
 
         // Inline mirror of CopyEngine.IsBeTargetStateOk.
         private static bool IsBeTargetStateOk(int s)
@@ -166,7 +166,11 @@ namespace PropTraderTools.Tests
             );
             bool found = false;
             foreach (var m in methods)
-                if (m.Name == "IsQxCancelEligible3Testable") { found = true; break; }
+                if (m.Name == "IsQxCancelEligible3Testable")
+                {
+                    found = true;
+                    break;
+                }
             // Seam exists = helper was extracted correctly.
             Assert.True(found);
         }
@@ -188,7 +192,11 @@ namespace PropTraderTools.Tests
             );
             bool found = false;
             foreach (var m in methods)
-                if (m.Name == "IsQxCancelEligible3Testable") { found = true; break; }
+                if (m.Name == "IsQxCancelEligible3Testable")
+                {
+                    found = true;
+                    break;
+                }
             Assert.True(found);
         }
 
@@ -203,15 +211,19 @@ namespace PropTraderTools.Tests
             var type = LoadCopyEngineType();
             Assert.NotNull(type);
             var methods = type.GetMethods(
-                System.Reflection.BindingFlags.Instance
-                    | System.Reflection.BindingFlags.NonPublic
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
             );
             bool found = false;
             foreach (var m in methods)
-                if (m.Name == "IsAccountFlattenable") { found = true; break; }
+                if (m.Name == "IsAccountFlattenable")
+                {
+                    found = true;
+                    break;
+                }
             // Private instance method exists = extraction was performed correctly.
             Assert.True(found);
         }
+
         // ------------------------------------------------------------------
         // BWAVE-REFACTOR-LaneB-T3 tests
         // ------------------------------------------------------------------
@@ -227,7 +239,7 @@ namespace PropTraderTools.Tests
             return s != 9 && s != 5;
         }
 
-        private const int OsPartFilled = 5;  // OrderState.PartFilled
+        private const int OsPartFilled = 5; // OrderState.PartFilled
 
         // IsPositionStateTriggerState_Filled_ReturnsFalse:
         // Filled (int=9) IS a trigger state -> helper returns false -> parent fires.
@@ -264,7 +276,11 @@ namespace PropTraderTools.Tests
             );
             bool found = false;
             foreach (var m in methods)
-                if (m.Name == "IsNativeLeaderTargetTestable") { found = true; break; }
+                if (m.Name == "IsNativeLeaderTargetTestable")
+                {
+                    found = true;
+                    break;
+                }
             // Seam exists = IsNativeLeaderTarget was extracted correctly from CountLeaderTargets.
             Assert.True(found);
         }
@@ -286,7 +302,11 @@ namespace PropTraderTools.Tests
             );
             bool found = false;
             foreach (var m in methods)
-                if (m.Name == "IsQxCancelEligible2Testable") { found = true; break; }
+                if (m.Name == "IsQxCancelEligible2Testable")
+                {
+                    found = true;
+                    break;
+                }
             // Seam exists = IsQxCancelEligible2 was extracted correctly from CancelQxBrackets.
             Assert.True(found);
         }
@@ -301,31 +321,31 @@ namespace PropTraderTools.Tests
         // NT8 OrderState integer constants (stable across NT8 versions)
         // Working=7, Initialized=3, Submitted=6, Accepted=1, TriggerPending=10
         // Filled=9, Cancelled=8, Rejected=4
-        private const int OsRejected = 4;          // OrderState.Rejected
+        private const int OsRejected = 4; // OrderState.Rejected
 
         // NT8 OrderType integer constants
         // Market=3, Limit=2, StopMarket=4, StopLimit=5
-        private const int OtLimit = 2;             // OrderType.Limit
-        private const int OtStopMarket = 4;        // OrderType.StopMarket
+        private const int OtLimit = 2; // OrderType.Limit
+        private const int OtStopMarket = 4; // OrderType.StopMarket
 
         // Inline mirror of CopyEngine.IsCancelAllStateOk(OrderState s).
         // Extracted from CancelAllAccountOrders 4-term OR (BWAVE-REFACTOR-LaneB-T4).
         private static bool IsCancelAllStateOk(int s)
         {
-            return s == OsWorking      // 7
-                || s == OsInitialized  // 3
-                || s == OsSubmitted    // 6
-                || s == OsAccepted;    // 1
+            return s == OsWorking // 7
+                || s == OsInitialized // 3
+                || s == OsSubmitted // 6
+                || s == OsAccepted; // 1
         }
 
         // Inline mirror of CopyEngine.IsQxSnapshotStateOk(OrderState s).
         // Extracted from BuildQxSnapshot 5-term OR (BWAVE-REFACTOR-LaneB-T4).
         private static bool IsQxSnapshotStateOk(int s)
         {
-            return s == OsWorking         // 7
-                || s == OsInitialized     // 3
-                || s == OsAccepted        // 1
-                || s == OsSubmitted       // 6
+            return s == OsWorking // 7
+                || s == OsInitialized // 3
+                || s == OsAccepted // 1
+                || s == OsSubmitted // 6
                 || s == OsTriggerPending; // 10
         }
 
@@ -408,6 +428,7 @@ namespace PropTraderTools.Tests
         {
             Assert.Equal(string.Empty, ExtractLegSuffix("PTT-Copy"));
         }
+
         // ------------------------------------------------------------------
         // BWAVE-REFACTOR-LaneB-T5 tests
         // Static helpers via inline mirrors + reflection seams.
@@ -421,7 +442,12 @@ namespace PropTraderTools.Tests
         private static System.Reflection.MethodInfo GetSeamMethod(string name)
         {
             var type = LoadCopyEngineType();
-            var m = type?.GetMethod(name, System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+            var m = type?.GetMethod(
+                name,
+                System.Reflection.BindingFlags.Static
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Public
+            );
             Assert.NotNull(m);
             return m;
         }
@@ -493,7 +519,8 @@ namespace PropTraderTools.Tests
         public void PickBestTargetPrice_PttHasValue_ReturnsPtt()
         {
             var m = GetSeamMethod("PickBestTargetPriceTestable");
-            double? result = (double?)m.Invoke(null, new object[] { (double?)100.0, (double?)99.0 });
+            double? result = (double?)
+                m.Invoke(null, new object[] { (double?)100.0, (double?)99.0 });
             Assert.Equal(100.0, result);
         }
 

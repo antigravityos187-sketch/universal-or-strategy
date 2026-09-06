@@ -1049,8 +1049,11 @@ namespace PropTraderTools
             int raceSkipped = 0;
             foreach (Order o in acc.Orders) // (2)
             {
-                if (snapshot != null && !snapshot.Contains(o)
-                    && IsQxCancelEligible3(o, instr, null))
+                if (
+                    snapshot != null
+                    && !snapshot.Contains(o)
+                    && IsQxCancelEligible3(o, instr, null)
+                )
                     raceSkipped++;
                 if (!IsQxCancelEligible3(o, instr, snapshot)) // (3)
                     continue;
@@ -1478,7 +1481,8 @@ namespace PropTraderTools
         }
 
         // Test seam: exposes ResolveMultiplierLength for xUnit without NT8 runtime.
-        internal static int ResolveMultiplierLengthTestable(int[] e, int c) => ResolveMultiplierLength(e, c);
+        internal static int ResolveMultiplierLengthTestable(int[] e, int c) =>
+            ResolveMultiplierLength(e, c);
 
         internal void Subscribe()
         {
@@ -2724,13 +2728,7 @@ namespace PropTraderTools
             double[] otherLegPrices = CaptureOtherLegTargetPrices(acc, fo, legSuffix);
             SyncAtmFollowerBracket(acc, fo, newPrice, legSuffix, leaderOrder); // DW-B142-QTY-DESYNC-01
             if (capturedTargetPrice.HasValue) // B141
-                ResubmitTargetAfterCascade(
-                    acc,
-                    fo,
-                    capturedTargetPrice.Value,
-                    leaderOrder,
-                    legSuffix
-                );
+                ResubmitTargetAfterCascade(acc, fo, capturedTargetPrice.Value, leaderOrder, legSuffix);
             ResubmitCollateralLegs(acc, fo, newPrice, otherLegPrices, legSuffix, leaderOrder); // DW-B142-QTY-DESYNC-01
         }
 
@@ -2757,9 +2755,7 @@ namespace PropTraderTools
             {
                 ApplyBracketPrice(fo, isStop, newPrice);
                 acc.Change(new Order[] { fo });
-                StatusUpdate?.Invoke(
-                    acc.Name + ": bracket synced -> " + newPrice
-                );
+                StatusUpdate?.Invoke(acc.Name + ": bracket synced -> " + newPrice);
             }
             catch (Exception ex)
             {
@@ -2946,7 +2942,8 @@ namespace PropTraderTools
         }
 
         // Test seam: exposes PickBestTargetPrice for xUnit without NT8 runtime.
-        internal static double? PickBestTargetPriceTestable(double? p, double? a) => PickBestTargetPrice(p, a);
+        internal static double? PickBestTargetPriceTestable(double? p, double? a) =>
+            PickBestTargetPrice(p, a);
 
         // CYC=6: base(1)+if(1)+foreach(1)+for(1)+if(1)+if(1). No lock. No async. ASCII-only.
         // B142-DIRECT-6: captures LimitPrice of all ATM target orders for legs OTHER than excludeSuffix.
@@ -3733,7 +3730,8 @@ namespace PropTraderTools
         }
 
         // Test seam: exposes RoundToTick for xUnit without NT8 runtime.
-        internal static double RoundToTickTestable(double raw, double tick) => RoundToTick(raw, tick);
+        internal static double RoundToTickTestable(double raw, double tick) =>
+            RoundToTick(raw, tick);
 
         // B131 DW-B138: predicate encapsulating signal-first / name-fallback match logic.
         // B133 DW-B142: null-guard added to branch (1) -- prevents null==null false-positive (ATM drag cancel-all bug).
@@ -3761,10 +3759,13 @@ namespace PropTraderTools
         // Fix point: callers that need active orders use this instead of .ToList().
         // NT8: acc.Orders iteration is safe on order-update callback thread (same as existing ToList() pattern).
         private static IEnumerable<Order> ActiveOrders(Account acc) =>
-            acc.Orders.Where(static o =>
-                o.OrderState != OrderState.Filled
-                && o.OrderState != OrderState.Cancelled
-                && o.OrderState != OrderState.Rejected).ToList();
+            acc
+                .Orders.Where(static o =>
+                    o.OrderState != OrderState.Filled
+                    && o.OrderState != OrderState.Cancelled
+                    && o.OrderState != OrderState.Rejected
+                )
+                .ToList();
 
         // DW-NEW-09: test seam -- exposes ActiveOrders filter logic for xUnit without needing NT8 Account.
         // Accepts any IEnumerable<Order> so tests can inject stub order lists directly.
@@ -3773,7 +3774,8 @@ namespace PropTraderTools
             orders.Where(static o =>
                 o.OrderState != OrderState.Filled
                 && o.OrderState != OrderState.Cancelled
-                && o.OrderState != OrderState.Rejected);
+                && o.OrderState != OrderState.Rejected
+            );
 
         // CYC=4. Returns first matching working bracket order for the follower.
         // V04 B131 DW-B138: leaderName param added -- ATM Name-based fallback when FromEntrySignal null/empty.
@@ -3804,7 +3806,8 @@ namespace PropTraderTools
         private static bool MatchesBracketType(Order order, bool isStop)
         {
             if (isStop)
-                return order.OrderType == OrderType.StopMarket || order.OrderType == OrderType.StopLimit;
+                return order.OrderType == OrderType.StopMarket
+                    || order.OrderType == OrderType.StopLimit;
             return order.OrderType == OrderType.Limit && !IsStopLeg(order);
         }
 
@@ -3838,7 +3841,11 @@ namespace PropTraderTools
         // Order cannot be constructed without NT8 runtime; primitives used for test isolation.
         // CCN=3: base(1) + isStop(1) + StopMarket||StopLimit(1) = 3 branches. ASCII-only.
         // InternalsVisibleTo("PropTraderTools.Tests") granted at top of file.
-        internal static bool MatchesBracketTypeTestable(bool isStop, OrderType orderType, bool isOrderStopLeg)
+        internal static bool MatchesBracketTypeTestable(
+            bool isStop,
+            OrderType orderType,
+            bool isOrderStopLeg
+        )
         {
             if (isStop)
                 return orderType == OrderType.StopMarket || orderType == OrderType.StopLimit;
@@ -4077,7 +4084,14 @@ namespace PropTraderTools
                 // DW-NEW-08 Option D: cancel-before-dispatch drain instead of direct cancel+submit.
                 // DrainThenDispatch cancels all Working/Accepted entries, parks intent in
                 // _pendingDispatchDrains, submits via SubmitDrainedEntry when all cancels confirmed.
-                DrainThenDispatch(acc, instrument, fo.Quantity, newPrice, fo.OrderAction, fo.OrderType);
+                DrainThenDispatch(
+                    acc,
+                    instrument,
+                    fo.Quantity,
+                    newPrice,
+                    fo.OrderAction,
+                    fo.OrderType
+                );
             }
         }
 
@@ -4087,13 +4101,18 @@ namespace PropTraderTools
         // Returns false if significant (caller should proceed with dispatch).
         // CCN<=2: base(1)+tickSize>0(1)=CCN<=2.
         // JS-021: no lock (static, pure computation). JS-001: no throw. JS-002: returns bool.
-        private static bool IsPriceDeltaSignificant(double newPrice, double currentPrice, double tickSize)
+        private static bool IsPriceDeltaSignificant(
+            double newPrice,
+            double currentPrice,
+            double tickSize
+        )
         {
             return tickSize > 0 && Math.Abs(newPrice - currentPrice) < tickSize;
         }
 
         // Test seam: exposes IsPriceDeltaSignificant for xUnit without NT8 runtime.
-        internal static bool IsPriceDeltaSignificantTestable(double n, double c, double t) => IsPriceDeltaSignificant(n, c, t);
+        internal static bool IsPriceDeltaSignificantTestable(double n, double c, double t) =>
+            IsPriceDeltaSignificant(n, c, t);
 
         // CYC=2. Records (signal, follower) association in _orderMap for future bracket lookups.
         // JS-025: ConcurrentDictionary.GetOrAdd is atomic -- no lock needed.
@@ -4155,8 +4174,8 @@ namespace PropTraderTools
 
         // BWAVE-REFACTOR-LaneB-T3: test seam for IsPositionStateTriggerState (no logic, thin shim).
         // InternalsVisibleTo("PropTraderTools.Tests") declared at CopyEngine.cs L46.
-        internal static bool IsPositionStateTriggerStateTestable(OrderState s)
-            => IsPositionStateTriggerState(s);
+        internal static bool IsPositionStateTriggerStateTestable(OrderState s) =>
+            IsPositionStateTriggerState(s);
 
         // BWAVE-REFACTOR-LaneB-T3: returns true when state does NOT trigger position state (parent early-returns).
         // Convention: Filled and PartFilled are the ONLY trigger states (return false = should fire).
@@ -4314,7 +4333,11 @@ namespace PropTraderTools
         // CYC<=5: leader null(1) + !HasOpenPosition(leader)(2) + HasOpenPosition(follower)(3)
         //         + HasWorkingPttCopy(4). Returns false on any early-exit. ASCII-only.
         // JS-021: no lock. JS-001: no throw. JS-002: returns bool.
-        private bool IsReplaceDispatchEligible(CopyRule rule, int followerIndex, Order cancelledOrder)
+        private bool IsReplaceDispatchEligible(
+            CopyRule rule,
+            int followerIndex,
+            Order cancelledOrder
+        )
         {
             var leader = rule.MasterAccount;
             if (leader == null)
@@ -4497,11 +4520,13 @@ namespace PropTraderTools
         // JS-021: no lock. JS-001: no throw. JS-002: returns bool (not null). ASCII-only.
         private bool HasActiveQxOrders(Account acc, NinjaTrader.Cbi.Instrument instr)
         {
-            bool found = acc.Orders.ToList().Any(o =>
-                o.Name.StartsWith("PTT-QX-", StringComparison.Ordinal) // (1)
-                && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Submitted) // (2)
-                && o.Instrument?.FullName == instr.FullName // (3)
-            );
+            bool found = acc
+                .Orders.ToList()
+                .Any(o =>
+                    o.Name.StartsWith("PTT-QX-", StringComparison.Ordinal) // (1)
+                    && (o.OrderState == OrderState.Working || o.OrderState == OrderState.Submitted) // (2)
+                    && o.Instrument?.FullName == instr.FullName // (3)
+                );
             if (found)
             {
                 NinjaTrader.Code.Output.Process(
@@ -5802,8 +5827,8 @@ namespace PropTraderTools
 
         // BWAVE-REFACTOR-LaneB-T3: test seam for IsNativeLeaderTarget (no logic, thin shim).
         // InternalsVisibleTo("PropTraderTools.Tests") declared at CopyEngine.cs L46.
-        internal static bool IsNativeLeaderTargetTestable(Order o, string instrFullName)
-            => IsNativeLeaderTarget(o, instrFullName);
+        internal static bool IsNativeLeaderTargetTestable(Order o, string instrFullName) =>
+            IsNativeLeaderTarget(o, instrFullName);
 
         // BWAVE-REFACTOR-LaneB-T3: pure predicate for CountLeaderTargets inner check.
         // Returns true only if o is a Working Limit order for instrFullName with a native Target[1-9] name.
@@ -5930,10 +5955,11 @@ namespace PropTraderTools
         // CCN<=3: base(1)+StartsWith-QX&&(1)+||StartsWith-BE(1)=CCN<=3.
         // JS-021: no lock (static). JS-001: no throw. JS-002: returns bool.
         private static bool IsPttBeTarget(string name) =>
-            (name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-             && name.Length > 8
-             && char.IsDigit(name[8]))
-            || name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal);
+            (
+                name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
+                && name.Length > 8
+                && char.IsDigit(name[8])
+            ) || name.StartsWith("PTT-BE-Target-", StringComparison.Ordinal);
 
         // First call: isRetry=false (default). On targets=0 OR partial targets, one retry queued.
         // Retry call: isRetry=true. No further retry regardless of result.
@@ -6338,9 +6364,7 @@ namespace PropTraderTools
             if (IsImmediateBeEligible(pos, instr, bufferTicks)) // (4)
             {
                 StatusUpdate?.Invoke(
-                    "PTT-BE: price already at BE for "
-                        + masterAcc.Name
-                        + " -- firing immediately"
+                    "PTT-BE: price already at BE for " + masterAcc.Name + " -- firing immediately"
                 ); // (4a) ?.
                 FireImmediateBe(masterAcc, instr, bufferTicks);
                 return;
@@ -6397,8 +6421,12 @@ namespace PropTraderTools
         }
 
         // CYC<=2: (1) isLong ternary. JS-021: no lock (static). ASCII-only.
-        private static double ComputeBeTarget(double avgPrice, bool isLong, int bufferTicks, double tickSize) =>
-            avgPrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize; // (1) isLong ternary
+        private static double ComputeBeTarget(
+            double avgPrice,
+            bool isLong,
+            int bufferTicks,
+            double tickSize
+        ) => avgPrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize; // (1) isLong ternary
 
         // CYC<=8: (1) MarketData?.Bid +1; (2) .Bid?.Price +1; (3) ??0 +1;
         //         (4) MarketData?.Ask +1; (5) .Ask?.Price +1; (6) ??0 +1; (7) isLong ternary +1. base=1 => 8.
@@ -6436,10 +6464,7 @@ namespace PropTraderTools
         private void FireImmediateBe(Account masterAcc, Instrument instr, int bufferTicks)
         {
             BreakEven(masterAcc, instr, bufferTicks);
-            PendingBeFired?.Invoke(
-                instr.FullName ?? string.Empty,
-                masterAcc.Name ?? string.Empty
-            );
+            PendingBeFired?.Invoke(instr.FullName ?? string.Empty, masterAcc.Name ?? string.Empty);
         }
 
         // B27 -- DisarmPendingBe: disarms the pending BE watcher atomically.
@@ -7132,7 +7157,8 @@ namespace PropTraderTools
             Instrument instr = FindOpenPositionInstrument(acct);
             if (instr != null)
                 System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    FlattenOneAccount(acct, instr));
+                    FlattenOneAccount(acct, instr)
+                );
         }
 
         // DW-NEW-08 Option E: naked position check.
@@ -7169,10 +7195,7 @@ namespace PropTraderTools
             bool hasTarget = false;
             foreach (Order o in acct.Orders)
             {
-                if (
-                    o.OrderState != OrderState.Working
-                    && o.OrderState != OrderState.Submitted
-                )
+                if (o.OrderState != OrderState.Working && o.OrderState != OrderState.Submitted)
                     continue;
                 if (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit)
                     hasStop = true;
@@ -7197,7 +7220,8 @@ namespace PropTraderTools
         // NT8: follower.Cancel(new Order[]{e}) is AddOnBase cancel pattern. Confirmed NT8_FULL_REFERENCE.md.
         private int IssueDrainCancels(
             Account acc,
-            System.Collections.Generic.List<Order> entryCandidates)
+            System.Collections.Generic.List<Order> entryCandidates
+        )
         {
             if (!entryCandidates.Any()) // (1)
             {
@@ -7211,7 +7235,8 @@ namespace PropTraderTools
             }
             NinjaTrader.Code.Output.Process(
                 "[DRAIN] acct=" + acc.Name + " cancel-sent=" + entryCandidates.Count,
-                NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
             return entryCandidates.Count;
         }
 
@@ -7224,7 +7249,8 @@ namespace PropTraderTools
             int qty,
             double price,
             OrderAction action,
-            OrderType orderType)
+            OrderType orderType
+        )
         {
             if (follower == null || instrument == null) // (1)
                 return;
@@ -7258,7 +7284,8 @@ namespace PropTraderTools
                 drainedIds,
                 follower,
                 pendingCancelCount: entryCandidates.Count,
-                now);
+                now
+            );
             if (!_pendingDispatchDrains.TryAdd(acctKey, payload)) // (3)
                 return;
 
@@ -7293,7 +7320,8 @@ namespace PropTraderTools
             int qty,
             double price,
             OrderAction action,
-            OrderType orderType)
+            OrderType orderType
+        )
         {
             double limitPx = orderType == OrderType.StopLimit ? 0.0 : price; // (2)
             double stopPx = orderType == OrderType.StopLimit ? price : 0.0;
@@ -7309,12 +7337,21 @@ namespace PropTraderTools
                 null,
                 "PTT-Copy",
                 DateTime.MaxValue,
-                null);
+                null
+            );
             if (order == null) // (1)
                 return;
 
             follower.Submit(new[] { order });
-            NinjaTrader.Code.Output.Process("[DRAIN-SUBMIT] acct=" + follower.Name + " instr=" + instrument.FullName + " price=" + price, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            NinjaTrader.Code.Output.Process(
+                "[DRAIN-SUBMIT] acct="
+                    + follower.Name
+                    + " instr="
+                    + instrument.FullName
+                    + " price="
+                    + price,
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
         }
 
         // BWAVE-REFACTOR-LaneB-T4: extracted from OnOrderUpdate drain terminal-state block (L1484-1496 pre-T4).
@@ -7347,7 +7384,10 @@ namespace PropTraderTools
             int remaining = Interlocked.Decrement(ref payload.PendingCancelCount);
             if (remaining < 0) // (2)
             {
-                NinjaTrader.Code.Output.Process("[DRAIN-UNDERFLOW] acct=" + acctKey, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                NinjaTrader.Code.Output.Process(
+                    "[DRAIN-UNDERFLOW] acct=" + acctKey,
+                    NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                );
                 return;
             }
 
@@ -7375,7 +7415,8 @@ namespace PropTraderTools
                 payload.Qty,
                 payload.Price,
                 payload.Action,
-                payload.OrderType);
+                payload.OrderType
+            );
 
             // R3-F2: clear drain-owned IDs AFTER submit so IDs are preserved on submit failure.
             foreach (var id in payload.DrainedOrderIds) // (4)
@@ -7409,7 +7450,10 @@ namespace PropTraderTools
                     foreach (var id in kv.Value.DrainedOrderIds) // (4)
                         _drainOwnedOrderIds.TryRemove(id, out _);
                     _pendingDispatchDrains.TryRemove(kv.Key, out _);
-                    NinjaTrader.Code.Output.Process("[DRAIN-TIMEOUT] acct=" + kv.Key, NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+                    NinjaTrader.Code.Output.Process(
+                        "[DRAIN-TIMEOUT] acct=" + kv.Key,
+                        NinjaTrader.NinjaScript.PrintTo.OutputTab1
+                    );
                 }
             }
         }
@@ -7421,18 +7465,19 @@ namespace PropTraderTools
         // Interlocked.Decrement requires ref int; properties cannot be passed by ref.
         private sealed class PendingDispatchDrain
         {
-            internal string FollowerAcctKey    { get; private set; }
-            internal Instrument Instrument     { get; private set; }
-            internal int Qty                   { get; private set; }
-            internal double Price              { get; private set; }
-            internal OrderAction Action        { get; private set; }
-            internal OrderType OrderType       { get; private set; }
+            internal string FollowerAcctKey { get; private set; }
+            internal Instrument Instrument { get; private set; }
+            internal int Qty { get; private set; }
+            internal double Price { get; private set; }
+            internal OrderAction Action { get; private set; }
+            internal OrderType OrderType { get; private set; }
+
             // F3-repair: track order IDs owned by this drain for cleanup in SubmitDrainedEntry/TryDrainWatchdog.
             // NT8 Order.OrderId is string (NT8_FULL_REFERENCE.md line 864).
             internal IReadOnlyList<string> DrainedOrderIds { get; private set; }
-            internal Account FollowerAccount   { get; private set; }
-            internal int PendingCancelCount;   // mutable -- Interlocked.Decrement/Increment
-            internal long TimestampTicks       { get; private set; }
+            internal Account FollowerAccount { get; private set; }
+            internal int PendingCancelCount; // mutable -- Interlocked.Decrement/Increment
+            internal long TimestampTicks { get; private set; }
 
             internal PendingDispatchDrain(
                 string followerAcctKey,
@@ -7444,18 +7489,19 @@ namespace PropTraderTools
                 IReadOnlyList<string> drainedOrderIds,
                 Account followerAccount,
                 int pendingCancelCount,
-                long timestampTicks)
+                long timestampTicks
+            )
             {
-                FollowerAcctKey    = followerAcctKey;
-                Instrument         = instrument;
-                Qty                = qty;
-                Price              = price;
-                Action             = action;
-                OrderType          = orderType;
-                DrainedOrderIds    = drainedOrderIds;
-                FollowerAccount    = followerAccount;
+                FollowerAcctKey = followerAcctKey;
+                Instrument = instrument;
+                Qty = qty;
+                Price = price;
+                Action = action;
+                OrderType = orderType;
+                DrainedOrderIds = drainedOrderIds;
+                FollowerAccount = followerAccount;
                 PendingCancelCount = pendingCancelCount;
-                TimestampTicks     = timestampTicks;
+                TimestampTicks = timestampTicks;
             }
         }
     }
