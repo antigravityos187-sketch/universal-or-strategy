@@ -1,543 +1,777 @@
-# BWAVE-REFACTOR LaneB — Architecture Plan (Phase 1)
+# BWAVE-REFACTOR Lane B -- Architecture Plan
 
-**Epic**: BWAVE-REFACTOR LaneB  
-**File**: `src/PropTraderTools/CopyEngine.cs`  
-**Date**: 2026-09-06  
-**Status**: PLAN_COMPLETE  
-**Author**: ptt-architect (Phase 1)
+# Phase 2 Output
 
----
+# Status: PLAN_COMPLETE (awaiting reviewer)
 
-## Section 0: Lane-Split Gate Result (MANDATORY FIRST)
+# Written: 2026-09-05
 
-```
-LANE-SPLIT GATE RESULT: SINGLE-PIPELINE
-  Q1 (proximity):        NO  — violations span different methods across ~5000 lines
-  Q2 (design dep):       NO  — each method extraction is independently specifiable
-  Q3 (standalone value): YES — each ticket delivers independent CCN reduction
-  Q4 (SIM independence): YES — each method has an independent SIM verification path
-
-Decision: SINGLE-PIPELINE chosen.
-Gate formula yields LANES-APPROVED (Q1=NO, Q2=NO, Q3=YES, Q4=YES), BUT:
-All work modifies a SINGLE file (CopyEngine.cs). Parallel lane workers on the same
-file would cause merge conflicts. Protocol default is single pipeline. The 5 tickets
-execute SEQUENTIALLY on one file. No parallel execution.
-```
+# Origin: DW-NEXT-B-04
 
 ---
 
-## Section 1: Scope and Approach
+## 1. Executive Summary
 
-### 1a. Target File
-`src/PropTraderTools/CopyEngine.cs` — single-file extraction only.  
-All extracted helpers are `private` or `private static` within `CopyEngine`.  
-No new source files. No API surface changes.
+**Goal**: Reduce all methods in src/PropTraderTools/CopyEngine.cs with CCN > 8 to CCN <= 8
+via extraction of private/private static helpers. Zero behavior change. Zero signature change on
+public/internal methods.
 
-### 1b. Measurement Tool
-**Lizard** (lizard CCN) is the authoritative measurement tool.  
-Lizard counts `||` and `&&` as decision points (+1 each).  
-Project McCabe comments in the file use a different convention (do not count `||`/`&&`).  
-The discrepancy between code comments ("CYC=7") and Lizard ("CCN=20") is explained entirely by compound boolean operators.
+**Scope**: Single file (CopyEngine.cs). 32 methods exceed CCN=8 per lizard baseline (2026-09-06).
+Tests in new file src/PropTraderTools/Tests/BwaveRefactorLaneBTests.cs.
 
-**Primary extraction technique**: Extract compound `||`/`&&` boolean expressions into named private static predicate methods. Example:
+**Method**: Extract guard clauses and loop bodies to named private helpers immediately below the
+parent method. Parent CCN drops; helpers stay <= 8. No new public/internal APIs. No lock(). No
+async void. No return null in new code. ASCII-only identifiers. No DateTime.Now.
 
-```csharp
-// Before — 5 || operators = 4 extra Lizard branches in parent method:
-bool stateOk = o.OrderState == OrderState.Working
-    || o.OrderState == OrderState.Initialized
-    || o.OrderState == OrderState.Accepted
-    || o.OrderState == OrderState.Submitted
-    || o.OrderState == OrderState.TriggerPending;
-
-// After — parent gains 0 branches, predicate has CCN=5:
-bool stateOk = IsQxCancellableState(o);
-```
-
-### 1c. Out-of-Scope (DISMISSED)
-- `src/PropTraderTools/Features/*.cs` — Lane C
-- `src/PropTraderTools/TradeCopierPanel.cs` — Lane A
-- `src/PropTraderTools/TradeCopierWindow.cs` — Lane A
-- `TickCount64` cast `(long)(int)` — .NET 4.8 correct, dismissed per spec
-- `ActiveOrders .ToList()` — stays per DW-NEXT-A-07
-- `_drainOwnedOrderIds` — ConcurrentDictionary<string,byte>, unchanged
+**Deferred**: All items from BWAVE-NEXT LaneBRepair backlog that are NOT CCN violations in
+CopyEngine.cs. Features/*.cs is Lane C scope only.
 
 ---
 
-## Section 2: Component List and Extraction Map
+## 2. LANE-SPLIT GATE RESULT
 
-### Ticket T1: QX Order State Predicate Extraction
-**Methods touched**: `CancelQxBrackets` (2-param, CCN=16), `CancelQxBrackets` (3-param, CCN=16), `CancelAllAccountOrders` (CCN=12), `BuildQxSnapshot` (CCN=11)
+**LANE-SPLIT GATE RESULT: SINGLE-PIPELINE**
 
-**Root cause**: The 5-state `stateOk` compound (`Working || Initialized || Accepted || Submitted || TriggerPending`) appears in 3 of 4 methods. Each `||` = +1 Lizard branch. 4 operators x 3 methods = 12 extra Lizard branches.
+Gate evaluation:
 
-**Extracted helpers:**
+- Q1. Same method or within 50 lines? **YES** -- all 32 methods are in a single 6500-line file
+  (CopyEngine.cs). Helpers are co-located with their parents.
+- Q2. Fix B design depends on Fix A final design? **YES** -- extracted helpers share the same
+  CopyEngine instance fields. Helper names must be unique across tickets to avoid collisions.
+  Ticket 2 helpers must not reuse names introduced by Ticket 1.
 
-| Helper Name | Visibility | Signature | Concern |
-|---|---|---|---|
-| `IsQxCancellableState` | `private static` | `bool IsQxCancellableState(Order o)` | 5-state compound for QX/BE cancel eligibility |
-| `IsInstrumentMatch` | `private static` | `bool IsInstrumentMatch(Order o, Instrument instr)` | Null-safe instrument FullName equality |
-| `IsQxCancellableStateTestable` | `internal static` | `bool IsQxCancellableStateTestable(OrderState s)` | Test seam |
-
-**Post-extraction target CCN:**
-- `CancelQxBrackets` (2-param): 16 → ≤8
-- `CancelQxBrackets` (3-param): 16 → ≤8
-- `CancelAllAccountOrders`: 12 → ≤8
-- `BuildQxSnapshot`: 11 → ≤8
-
-**`IsQxCancellableState` body** (CCN=5):
-```csharp
-private static bool IsQxCancellableState(Order o) =>
-    o.OrderState == OrderState.Working
-    || o.OrderState == OrderState.Initialized
-    || o.OrderState == OrderState.Accepted
-    || o.OrderState == OrderState.Submitted
-    || o.OrderState == OrderState.TriggerPending;
-```
-Note: `CancelAllAccountOrders` uses a 4-state variant (no TriggerPending). It uses `IsQxCancellableState` minus TriggerPending OR a separate predicate `IsCancelAllEligibleState`. Use separate `IsCancelAllEligibleState` to avoid behavior change.
-
-**`IsInstrumentMatch` body** (CCN=2):
-```csharp
-private static bool IsInstrumentMatch(Order o, Instrument instr) =>
-    o.Instrument != null && o.Instrument.FullName == instr.FullName;
-```
+Q1=YES, Q2=YES => SINGLE-PIPELINE. Sequential tickets required.
 
 ---
 
-### Ticket T2: ATM Bracket Snapshot and Drag Sync Extraction
-**Methods touched**: `ResubmitOneCollateralLeg` (CCN=25), `SnapshotBeTargets` (CCN=24), `SyncFollowerBracket` (CCN=20), `FindFollowerBracketOrder` (IEnumerable overload, CCN=11), `MatchesLeaderName` (CCN=11)
+## 3. CCN Baseline Table (lizard, 2026-09-06)
 
-**Root cause**:
-- `ResubmitOneCollateralLeg`: 2 foreach+if blocks with compound `&&` conditions + 2 CreateOrder/submit blocks with null checks
-- `SnapshotBeTargets`: 7-state `stateOk` compound (`||` x6) + `instrOk` compound + name predicates
-- `SyncFollowerBracket`: each `&&` in the `isStop && IsAtmSTPOrder(fo)` branches adds +1 Lizard
-- `FindFollowerBracketOrder`: 4-state filter compound (`&&` between state options) + type-match `||`
-
-**Extracted helpers:**
-
-| Helper Name | Visibility | Signature | Concern |
-|---|---|---|---|
-| `IsBeTargetStateOk` | `private static` | `bool IsBeTargetStateOk(Order o)` | 7-state compound for SnapshotBeTargets |
-| `IsNativeBeTarget` | `private static` | `bool IsNativeBeTarget(Order o, Instrument instr)` | Native Target1..9 check with instrument match |
-| `IsPttBeTarget` | `private static` | `bool IsPttBeTarget(Order o, Instrument instr)` | PTT-QX-T* or PTT-BE-Target-* check |
-| `IsFoAtmStopBranch` | `private static` | `bool IsFoAtmStopBranch(Order fo, bool isStop)` | Fuses `isStop && IsAtmSTPOrder(fo)` for SyncFollowerBracket |
-| `IsFoAtmTargetBranch` | `private static` | `bool IsFoAtmTargetBranch(Order fo, bool isStop)` | Fuses `!isStop && IsAtmSTPOrder(fo)` for SyncFollowerBracket |
-| `CancelMatchingStpDrag` | `private` | `void CancelMatchingStpDrag(Account acc, Order fo, string stpDragName)` | Block A-Prime-Stop sweep for ResubmitOneCollateralLeg |
-| `CancelMatchingTgtDrag` | `private` | `void CancelMatchingTgtDrag(Account acc, Order fo, string tgtDragName)` | Block A-Prime-Target sweep for ResubmitOneCollateralLeg |
-| `SubmitCollateralStop` | `private` | `void SubmitCollateralStop(Account acc, Order fo, double newPrice, string suffix, Order leaderLeg)` | Block B stop submit for ResubmitOneCollateralLeg |
-| `SubmitCollateralTarget` | `private` | `void SubmitCollateralTarget(Account acc, Order fo, double targetPrice, string suffix, Order leaderLeg)` | Block C target submit for ResubmitOneCollateralLeg |
-| `IsFoBracketState` | `private static` | `bool IsFoBracketState(Order fo)` | 4-state filter for FindFollowerBracketOrder (Working/Accepted/Submitted/ChangeSubmitted) |
-| `IsBeTargetStateOkTestable` | `internal static` | `bool IsBeTargetStateOkTestable(OrderState s)` | Test seam |
-
-**Post-extraction target CCN:**
-- `ResubmitOneCollateralLeg`: 25 → ≤8
-- `SnapshotBeTargets`: 24 → ≤8
-- `SyncFollowerBracket`: 20 → ≤8
-- `FindFollowerBracketOrder` (IEnumerable): 11 → ≤8
-- `MatchesLeaderName`: 11 → ≤8 (extract `BuildLegSuffix(string leaderName) : string` to absorb the ternary `legSuffix =` assignment)
+`
+CCN Method Location
 
 ---
 
-### Ticket T3: ATM Cleanup and Copy Replacement Extraction
-**Methods touched**: `TryCleanupReArmedAtmBracket` (CCN=23), `SyncAtmFollowerTarget` (CCN=21), `ReplaceFollowerCopyOnAtmCancel` (CCN=18)
+27 ArmPendingBe L5729-5785
+25 ResubmitOneCollateralLeg L3026-3133
+24 SnapshotBeTargets L5349-5392
+23 TryCleanupReArmedAtmBracket L4138-4204
+21 SyncAtmFollowerTarget L3216-3300
+20 SyncFollowerBracket L2539-2639
+19 FlattenOneAccount L4714-4783
+18 MoveStopToBreakEven L5404-5544
+18 ReplaceFollowerCopyOnAtmCancel L3895-3948
+16 CancelQxBrackets (3-param) L991-1040
+14 TryReplacePttBeBrackets L4055-4126
+14 CancelQxBrackets (2-param) L911-941
+13 TryFirePositionState L3796-3844
+13 CountLeaderTargets L5315-5342
+13 ResubmitTargetAfterCascade L2907-2973
+12 OnOrderUpdate L1379-1486
+12 CancelAllAccountOrders L1049-1079
+11 BuildQxSnapshot L952-980
+11 DrainThenDispatch L6516-6571
+11 FindFollowerBracketOrder (IEnumerable) L3520-3553
+11 MatchesLeaderName L3575-3592
+9 HasNakedPosition L6473-6502
+9 RuleToDto L6197-6232
+9 IsFollowerAccount L778-797
+9 AllAccounts L5116-5163
+9 CaptureLinkedTargetPrice L2778-2796
+9 MirrorClose L2119-2158
+9 BuildUpdatedMultipliers L1348-1364
+9 CaptureOtherLegTargetPrices L2812-2835
+9 HandleEntryChange L3736-3771
+9 HandleBracketChange L3414-3447
+9 CreateFollowerReplacementStop L3348-3393
+`
 
-**Root cause**:
-- `TryCleanupReArmedAtmBracket`: Compound guard at (1) has 10+ `||` operators in a single `if` condition — Lizard counts each as +1 branch
-- `SyncAtmFollowerTarget`: `fo.LimitPrice <= 0 || IsNoPriceChange(...)` compound; foreach A-Prime has compound `&&` conditions
-- `ReplaceFollowerCopyOnAtmCancel`: Nested `foreach rules` + `for followers` with `||` in loop guards; `mode is FollowerAtmMode.Named namedAtm` is a branch
-
-**Extracted helpers:**
-
-| Helper Name | Visibility | Signature | Concern |
-|---|---|---|---|
-| `IsQxCleanupTriggerOrder` | `private static` | `bool IsQxCleanupTriggerOrder(Order o)` | Absorbs name+length+digit compound from TryCleanupReArmedAtmBracket guard (1) |
-| `IsQxCleanupAccountEligible` | `private` | `bool IsQxCleanupAccountEligible(Order o, out (Instrument Instr, DateTime Expiry) entry)` | Absorbs follower+TryGetValue+expiry+instrument compound from guard (1) |
-| `IsAtmTargetEligible` | `private static` | `bool IsAtmTargetEligible(Account acc, Order fo, double newPrice)` | Absorbs acc null + fo null + LimitPrice<=0 + IsNoPriceChange compounds for SyncAtmFollowerTarget |
-| `FindFollowerRuleAndIndex` | `private` | `bool FindFollowerRuleAndIndex(Order cancelledOrder, out CopyRule? rule, out int idx)` | Absorbs the nested foreach+for lookup loop from ReplaceFollowerCopyOnAtmCancel |
-| `IsReplaceFollowerEligible` | `private` | `bool IsReplaceFollowerEligible(Account leader, Order cancelledOrder)` | Fuses HasOpenPosition leader(5) + follower NoPosition(5b) + HasWorkingPttCopy(6) guards |
-| `IsQxCleanupTriggerOrderTestable` | `internal static` | `bool IsQxCleanupTriggerOrderTestable(OrderState s, string name)` | Test seam |
-
-**`IsQxCleanupTriggerOrder` body** (CCN=4 — absorbs from guard):
-```csharp
-private static bool IsQxCleanupTriggerOrder(Order o) =>
-    (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)
-    && o.Name != null
-    && o.Name.StartsWith("PTT-QX-T", StringComparison.Ordinal)
-    && o.Name.Length >= 9
-    && char.IsDigit(o.Name[8]);
-```
-
-**Post-extraction target CCN:**
-- `TryCleanupReArmedAtmBracket`: 23 → ≤8
-- `SyncAtmFollowerTarget`: 21 → ≤8
-- `ReplaceFollowerCopyOnAtmCancel`: 18 → ≤8
-
----
-
-### Ticket T4: BE and Flatten Extraction
-**Methods touched**: `ArmPendingBe` (CCN=27), `MoveStopToBreakEven` (CCN=18), `FlattenOneAccount` (CCN=19), `TryFirePositionState` (CCN=13)
-
-**Root cause**:
-- `ArmPendingBe`: The `if (tickSize > 0.0)` block contains nested ternaries: `isLong ? refBid : refAsk`, `refPx > 0.0 && (isLong ? ...)` — each `?:` = +1 Lizard, each `&&` = +1 Lizard
-- `FlattenOneAccount`: Inner foreach with 3-state `||` (`Submitted || Accepted || Working`) = 2 extra Lizard branches
-- `MoveStopToBreakEven`: `!isRetry && !IsFlat(...)` chain, `!isRetry && IsFollowerAccount(acc)` chain, nested `&&` inside if body
-- `TryFirePositionState`: `foreach _rules` with `e.Order.Account.Name == r.MasterAccount?.Name` compound check; Interlocked.Exchange pattern
-
-**Extracted helpers:**
-
-| Helper Name | Visibility | Signature | Concern |
-|---|---|---|---|
-| `TryFireBeImmediate` | `private` | `bool TryFireBeImmediate(Account masterAcc, Instrument instr, Position pos, int bufferTicks)` | Absorbs the `if (tickSize > 0.0)` block from ArmPendingBe — returns true if fired immediately |
-| `IsFlattenOrderInFlight` | `private static` | `bool IsFlattenOrderInFlight(Order o, Instrument instr)` | Absorbs `name==PTT-Flatten && instr match && 3-state` compound from FlattenOneAccount foreach |
-| `HasActiveFlattenInFlight` | `private` | `bool HasActiveFlattenInFlight(Account acc, Instrument instr)` | Wraps the foreach+guard loop from FlattenOneAccount into one call |
-| `ShouldRegisterZeroTargetRetry` | `private static` | `bool ShouldRegisterZeroTargetRetry(bool isRetry, bool isFlat)` | Absorbs `!isRetry && !IsFlat(...)` from MoveStopToBreakEven targets==0 branch |
-| `ShouldRegisterPartialRetry` | `private` | `bool ShouldRegisterPartialRetry(bool isRetry, Account acc, Instrument instr, int leaderCount, int targetCount)` | Absorbs DW-B79-07 partial-target check |
-| `IsLeaderAccountName` | `private` | `bool IsLeaderAccountName(string accName)` | Absorbs the foreach _rules leader-name check in TryFirePositionState |
-| `TryFireBeImmediateTestable` | `internal` | `bool TryFireBeImmediateTestable(Account a, Instrument i, Position p, int buf)` | Test seam |
-
-**`TryFireBeImmediate` body** (CCN=6, extracted from ArmPendingBe):
-```csharp
-private bool TryFireBeImmediate(Account masterAcc, Instrument instr, Position pos, int bufferTicks)
-{
-    double tickSize = instr.MasterInstrument?.TickSize ?? 0.0;
-    if (tickSize <= 0.0)
-        return false;
-    bool isLong = pos.MarketPosition == NinjaTrader.Cbi.MarketPosition.Long;
-    double target = pos.AveragePrice + (isLong ? 1.0 : -1.0) * bufferTicks * tickSize;
-    double refBid = instr.MarketData?.Bid?.Price ?? 0.0;
-    double refAsk = instr.MarketData?.Ask?.Price ?? 0.0;
-    double refPx = isLong ? refBid : refAsk;
-    bool alreadyAtBe = refPx > 0.0 && (isLong ? (refPx >= target) : (refPx <= target));
-    if (!alreadyAtBe)
-        return false;
-    StatusUpdate?.Invoke("PTT-BE: price already at BE for " + masterAcc.Name + " -- firing immediately");
-    BreakEven(masterAcc, instr, bufferTicks);
-    PendingBeFired?.Invoke(instr.FullName ?? string.Empty, masterAcc.Name ?? string.Empty);
-    return true;
-}
-```
-Note: The ternaries inside are counted separately in the extracted method (CCN=6). ArmPendingBe caller becomes: `if (TryFireBeImmediate(...)) return;` — one branch instead of the entire block.
-
-**Post-extraction target CCN:**
-- `ArmPendingBe`: 27 → ≤8
-- `FlattenOneAccount`: 19 → ≤8
-- `MoveStopToBreakEven`: 18 → ≤8
-- `TryFirePositionState`: 13 → ≤8
+**Total**: 32 methods with CCN > 8. All must reach CCN <= 8 for VERIFY_PASS.
 
 ---
 
-### Ticket T5: Adjacent Band Methods
-**Methods touched**: `OnOrderUpdate` (CCN=12), `CountLeaderTargets` (CCN=13), `DrainThenDispatch` (CCN=11)
+## 4. Ticket Plan
 
-**Root cause**:
-- `OnOrderUpdate`: The drain routing block at lines 1425-1435 uses `|| e.Order.OrderState == OrderState.Rejected` compound and the `else if` chain
-- `CountLeaderTargets`: The `bool isTarget =` compound expression uses multiple `&&` and method calls — the assignment itself counts as branches in Lizard
-- `DrainThenDispatch`: The LINQ `Where` predicate has multiple `&&` and `||` operators counted by Lizard
+### Ticket 1 -- Tier A (CCN >= 20): 6 methods
 
-**Extracted helpers:**
+**Methods**: ArmPendingBe(27), ResubmitOneCollateralLeg(25), SnapshotBeTargets(24),
+TryCleanupReArmedAtmBracket(23), SyncAtmFollowerTarget(21), SyncFollowerBracket(20)
 
-| Helper Name | Visibility | Signature | Concern |
-|---|---|---|---|
-| `IsDrainCancelOrReject` | `private static` | `bool IsDrainCancelOrReject(OrderState s)` | Absorbs `Cancelled || Rejected` compound from OnOrderUpdate drain block |
-| `IsCountableLeaderTarget` | `private static` | `bool IsCountableLeaderTarget(Order o, Instrument instr)` | Absorbs the stateOk + instrOk + type + isTarget compound from CountLeaderTargets |
-| `IsEntryDrainCandidate` | `private static` | `bool IsEntryDrainCandidate(Order o, Instrument instr)` | Absorbs the LINQ Where predicate compound from DrainThenDispatch |
-| `IsCountableLeaderTargetTestable` | `internal static` | `bool IsCountableLeaderTargetTestable(OrderState s, string instrFN, OrderType t, string name, string instrFN2)` | Test seam |
+**File**: src/PropTraderTools/CopyEngine.cs
+**Tests**: src/PropTraderTools/Tests/BwaveRefactorLaneBTests.cs
 
-**Post-extraction target CCN:**
-- `OnOrderUpdate`: 12 → ≤8
-- `CountLeaderTargets`: 13 → ≤8
-- `DrainThenDispatch`: 11 → ≤8
+### Ticket 2 -- Tier B (CCN 16-19): 4 methods
 
----
+**Methods**: FlattenOneAccount(19), MoveStopToBreakEven(18), ReplaceFollowerCopyOnAtmCancel(18),
+CancelQxBrackets 3-param(16)
 
-## Section 3: Ticket Grouping Summary
+**File**: src/PropTraderTools/CopyEngine.cs
+**Tests**: src/PropTraderTools/Tests/BwaveRefactorLaneBTests.cs
 
-| Ticket | Methods (god + adjacent) | New Helpers | Est. LOC change |
-|---|---|---|---|
-| T1 | CancelQxBrackets (x2), CancelAllAccountOrders, BuildQxSnapshot | IsQxCancellableState, IsCancelAllEligibleState, IsInstrumentMatch (+seam) | +35 lines |
-| T2 | ResubmitOneCollateralLeg, SnapshotBeTargets, SyncFollowerBracket, FindFollowerBracketOrder, MatchesLeaderName | IsBeTargetStateOk, IsNativeBeTarget, IsPttBeTarget, IsFoAtmStopBranch, IsFoAtmTargetBranch, CancelMatchingStpDrag, CancelMatchingTgtDrag, SubmitCollateralStop, SubmitCollateralTarget, IsFoBracketState (+seam) | +120 lines |
-| T3 | TryCleanupReArmedAtmBracket, SyncAtmFollowerTarget, ReplaceFollowerCopyOnAtmCancel | IsQxCleanupTriggerOrder, IsQxCleanupAccountEligible, IsAtmTargetEligible, FindFollowerRuleAndIndex, IsReplaceFollowerEligible (+seam) | +80 lines |
-| T4 | ArmPendingBe, MoveStopToBreakEven, FlattenOneAccount, TryFirePositionState | TryFireBeImmediate, IsFlattenOrderInFlight, HasActiveFlattenInFlight, ShouldRegisterZeroTargetRetry, ShouldRegisterPartialRetry, IsLeaderAccountName (+seam) | +100 lines |
-| T5 | OnOrderUpdate, CountLeaderTargets, DrainThenDispatch | IsDrainCancelOrReject, IsCountableLeaderTarget, IsEntryDrainCandidate (+seam) | +40 lines |
+### Ticket 3 -- Tier C (CCN 13-15): 5 methods
 
----
+**Methods**: TryReplacePttBeBrackets(14), CancelQxBrackets 2-param(14),
+TryFirePositionState(13), CountLeaderTargets(13), ResubmitTargetAfterCascade(13)
 
-## Section 4: Method Signatures (All Extracted Helpers)
+**File**: src/PropTraderTools/CopyEngine.cs
+**Tests**: src/PropTraderTools/Tests/BwaveRefactorLaneBTests.cs
 
-### 4a. T1 Helpers
-```csharp
-// CYC=5. Absorbs 5-state QX cancel eligibility compound.
-private static bool IsQxCancellableState(Order o);
+### Ticket 4 -- Tier D (CCN 10-12): 6 methods
 
-// CYC=4. Absorbs 4-state cancel eligibility for CancelAllAccountOrders.
-private static bool IsCancelAllEligibleState(Order o);
+**Methods**: OnOrderUpdate(12), CancelAllAccountOrders(12), BuildQxSnapshot(11),
+DrainThenDispatch(11), FindFollowerBracketOrder IEnumerable overload(11), MatchesLeaderName(11)
 
-// CYC=2. Absorbs o.Instrument != null && FullName == check.
-private static bool IsInstrumentMatch(Order o, Instrument instr);
+**File**: src/PropTraderTools/CopyEngine.cs
+**Tests**: src/PropTraderTools/Tests/BwaveRefactorLaneBTests.cs
 
-// Test seam.
-internal static bool IsQxCancellableStateTestable(OrderState s);
-internal static bool IsCancelAllEligibleStateTestable(OrderState s);
-```
+### Ticket 5 -- Tier E (CCN = 9): 11 methods
 
-### 4b. T2 Helpers
-```csharp
-// CYC=7. Absorbs 7-state SnapshotBeTargets stateOk compound.
-private static bool IsBeTargetStateOk(Order o);
+**Methods**: HasNakedPosition(9), RuleToDto(9), IsFollowerAccount(9), AllAccounts(9),
+CaptureLinkedTargetPrice(9), MirrorClose(9), BuildUpdatedMultipliers(9),
+CaptureOtherLegTargetPrices(9), HandleEntryChange(9), HandleBracketChange(9),
+CreateFollowerReplacementStop(9)
 
-// CYC=4. Absorbs native Target1-9 check + instrument + state + name pattern.
-private static bool IsNativeBeTarget(Order o, Instrument instr);
-
-// CYC=4. Absorbs PTT-QX-T* or PTT-BE-Target-* check + instrument.
-private static bool IsPttBeTarget(Order o, Instrument instr);
-
-// CYC=2. Fuses isStop && IsAtmSTPOrder for SyncFollowerBracket branch (3).
-private static bool IsFoAtmStopBranch(Order fo, bool isStop);
-
-// CYC=2. Fuses !isStop && IsAtmSTPOrder for SyncFollowerBracket branch (3b).
-private static bool IsFoAtmTargetBranch(Order fo, bool isStop);
-
-// CYC=3. Cancels matching PTT-STP-Drag-N orders for one collateral leg.
-private void CancelMatchingStpDrag(Account acc, Order fo, string stpDragName);
-
-// CYC=3. Cancels matching PTT-TGT-Drag-N orders for one collateral leg.
-private void CancelMatchingTgtDrag(Account acc, Order fo, string tgtDragName);
-
-// CYC=4. Submit Block B stop for ResubmitOneCollateralLeg. Uses acc.CreateOrder+Submit.
-private void SubmitCollateralStop(Account acc, Order fo, double newPrice, string suffix, Order leaderLeg);
-
-// CYC=4. Submit Block C target for ResubmitOneCollateralLeg. Uses acc.CreateOrder+Submit.
-private void SubmitCollateralTarget(Account acc, Order fo, double targetPrice, string suffix, Order leaderLeg);
-
-// CYC=4. Absorbs 4-state filter compound for FindFollowerBracketOrder (IEnumerable).
-private static bool IsFoBracketState(Order fo);
-
-// CYC=4. Absorbs legSuffix ternary assignment from MatchesLeaderName.
-private static string BuildLegSuffix(string leaderName);
-
-// Test seams.
-internal static bool IsBeTargetStateOkTestable(OrderState s);
-internal static bool IsFoBracketStateTestable(OrderState s);
-```
-
-### 4c. T3 Helpers
-```csharp
-// CYC=4. Absorbs name/length/digit compound from TryCleanupReArmedAtmBracket guard (1a).
-private static bool IsQxCleanupTriggerOrder(Order o);
-
-// CYC=5. Absorbs follower+TryGetValue+expiry+instrument compound from guard (1d-1f).
-// out param: the matching cleanup entry (valid only when returns true).
-private bool IsQxCleanupAccountEligible(Order o, out (Instrument Instr, DateTime Expiry) entry);
-
-// CYC=3. Absorbs acc null + fo null + LimitPrice<=0 + IsNoPriceChange compounds.
-private static bool IsAtmTargetEligible(Account acc, Order fo, double newPrice);
-
-// CYC=5. Absorbs nested foreach+for lookup from ReplaceFollowerCopyOnAtmCancel.
-// Returns true+sets out params when a matching follower rule+index is found.
-private bool FindFollowerRuleAndIndex(Order cancelledOrder, out CopyRule? rule, out int idx);
-
-// CYC=4. Fuses leader-has-position(5) + follower-no-position(5b) + no-in-flight-copy(6).
-private bool IsReplaceFollowerEligible(Account leader, Order cancelledOrder);
-
-// Test seams.
-internal static bool IsQxCleanupTriggerOrderTestable(OrderState s, string name);
-internal static bool IsAtmTargetEligibleTestable(bool accIsNull, bool foIsNull, double foLimitPrice, double newPrice);
-```
-
-### 4d. T4 Helpers
-```csharp
-// CYC=6. Absorbs the immediate-fire block from ArmPendingBe.
-// Returns true if BE was fired immediately (caller returns after this call).
-private bool TryFireBeImmediate(Account masterAcc, Instrument instr, Position pos, int bufferTicks);
-
-// CYC=3. Absorbs name==PTT-Flatten && instr && 3-state compound from FlattenOneAccount.
-private static bool IsFlattenOrderInFlight(Order o, Instrument instr);
-
-// CYC=2. Wraps the foreach+guard loop in FlattenOneAccount.
-private bool HasActiveFlattenInFlight(Account acc, Instrument instr);
-
-// CYC=2. Absorbs !isRetry && !IsFlat from MoveStopToBreakEven targets==0 branch.
-private static bool ShouldRegisterZeroTargetRetry(bool isRetry, bool isFlat);
-
-// CYC=4. Absorbs DW-B79-07 partial-target retry condition.
-private bool ShouldRegisterPartialRetry(bool isRetry, Account acc, Instrument instr, int leaderCount, int targetCount);
-
-// CYC=3. Absorbs foreach _rules leader-check loop from TryFirePositionState.
-private bool IsLeaderAccountName(string accName);
-
-// Test seams.
-internal bool TryFireBeImmediateTestable(Account a, Instrument i, Position p, int buf);
-internal static bool IsFlattenOrderInFlightTestable(OrderState s, string orderName, string instrFN, string checkFN);
-```
-
-### 4e. T5 Helpers
-```csharp
-// CYC=2. Absorbs Cancelled || Rejected compound from OnOrderUpdate drain routing.
-private static bool IsDrainCancelOrReject(OrderState s);
-
-// CYC=6. Absorbs stateOk + instrOk + type + isTarget compound from CountLeaderTargets.
-private static bool IsCountableLeaderTarget(Order o, Instrument instr);
-
-// CYC=5. Absorbs the LINQ Where predicate compound from DrainThenDispatch.
-private static bool IsEntryDrainCandidate(Order o, Instrument instr);
-
-// Test seams.
-internal static bool IsDrainCancelOrRejectTestable(OrderState s);
-internal static bool IsCountableLeaderTargetTestable(OrderState s, string instrFN, OrderType t, string name, string checkFN);
-```
+**File**: src/PropTraderTools/CopyEngine.cs
+**Tests**: src/PropTraderTools/Tests/BwaveRefactorLaneBTests.cs
 
 ---
 
-## Section 5: NinjaTrader 8 API Usage
+## 5. Extraction Strategy Per Method Group
 
-All extracted helpers use existing NT8 API patterns only:
+All helpers placed immediately below their parent method in the file.
+No file moves. No new namespaces. All helpers are private or private static.
 
-| API Call | Usage | NT8 Context |
-|---|---|---|
-| `acc.Cancel(Order[])` | CancelMatchingStpDrag, CancelMatchingTgtDrag | AddOnBase available |
-| `acc.CreateOrder(...)` | SubmitCollateralStop, SubmitCollateralTarget | AddOnBase available; 12-arg form; arg12=(CustomOrder)null |
-| `acc.Submit(Order[])` | SubmitCollateralStop, SubmitCollateralTarget | AddOnBase available; after CreateOrder |
-| `acc.Orders.ToList()` | CancelMatchingStpDrag, CancelMatchingTgtDrag | Thread-safe snapshot |
-| `DateTime.UtcNow` | IsQxCleanupAccountEligible expiry check | NOT DateTime.Now |
-| `DateTime.MaxValue` | All CreateOrder calls | NT8-013 pattern |
+### 5.1 Ticket 1 Extractions
 
-**Banned NT8 API (confirmed NOT used):**
-- `AtmStrategyCreate()` — StrategyBase only, NOT AddOnBase. Not used.
-- `AtmStrategyChangeStopTarget()` — StrategyBase only, NOT AddOnBase. Not used.
-- `Account.Change()` on ATM brackets — not introduced in new helpers.
+#### ArmPendingBe (CCN=27 -> target <=8)
+
+Parent at L5729-5785. Lizard counts ?., ??, ternary ?:, and compound booleans as branches.
+
+Extract:
+
+- IsImmediateBeEligible(Position pos, Instrument instr, int bufferTicks) -> bool (private static)
+  Absorbs: tickSize guard, isLong calc, target calc, refBid/refAsk reads, refPx, alreadyAtBe compound. CCN<=6.
+- FireImmediateBe(Account masterAcc, Instrument instr, int bufferTicks) -> void (private)
+  Absorbs: BreakEven() call + PendingBeFired?.Invoke(). CCN<=2.
+
+Parent residual: null guard(1) + null guard(2) + IsFlat(3) + IsImmediateBeEligible(4)
+
+- tickSize guard(5) + slot upsert + subscribe = CCN<=7. PASS.
+
+Test seam: internal bool IsImmediateBeEligibleTestable(Position p, Instrument i, int buf)
+-- accepts Position/Instrument stubs; delegates to IsImmediateBeEligible.
+
+#### ResubmitOneCollateralLeg (CCN=25 -> target <=8)
+
+Parent at L3026-3133. Two Block A-Prime foreach loops + two CreateOrder/Submit try blocks.
+
+Extract:
+
+- CancelLiveCollateralStop(Account acc, Order fo, string stpDragName) -> void (private)
+  Absorbs: Block A-Prime-Stop foreach + if + try/catch. CCN<=4.
+- CancelLiveCollateralTarget(Account acc, Order fo, string tgtDragName) -> void (private)
+  Absorbs: Block A-Prime-Target foreach + if + try/catch. CCN<=4.
+- CreateAndSubmitCollateralStop(Account acc, Order fo, double newPrice, string suffix, Order leaderLeg) -> void (private)
+  Absorbs: CreateOrder(StopMarket) + null guard + Submit + StatusUpdate + catch. CCN<=4.
+- CreateAndSubmitCollateralTarget(Account acc, Order fo, double targetPrice, string suffix, Order leaderLeg) -> void (private)
+  Absorbs: CreateOrder(Limit) + null guard + Submit + StatusUpdate + catch. CCN<=4.
+
+Parent residual: CancelLiveCollateralStop(0) + CancelLiveCollateralTarget(0)
+
+- leaderLeg null check(1) + CreateAndSubmitCollateralStop(0)
+- leaderLeg null check(1) + CreateAndSubmitCollateralTarget(0) = CCN<=4. PASS.
+
+#### SnapshotBeTargets (CCN=24 -> target <=8)
+
+Parent at L5349-5392. Multi-state stateOk compound OR counted as multiple branches by Lizard.
+
+Extract:
+
+- IsBeTargetStateOk(OrderState s) -> bool (private static)
+  Absorbs: 7-state OR (Working, Accepted, Submitted, Initialized, TriggerPending,
+  ChangeSubmitted, CancelSubmitted). CCN<=7.
+- ClassifyBeTarget(Order o, string instrFullName, out bool isNative, out bool isPtt) -> void (private static)
+  Absorbs: instrOk compound, type check, isNative compound, isPtt compound. CCN<=6.
+
+Parent residual: null guard(1) + foreach(1) + o null continue(1) + IsBeTargetStateOk(1)
+
+- ClassifyBeTarget(0) + isNative branch(1) + isPtt branch(1) = CCN<=7. PASS.
+
+Test seam: internal static bool IsBeTargetStateOkTestable(OrderState s) => IsBeTargetStateOk(s);
+
+#### TryCleanupReArmedAtmBracket (CCN=23 -> target <=8)
+
+Parent at L4138-4204. Massive 10-condition compound guard at entry.
+
+Extract:
+
+- IsCleanupAtmEligible(OrderEventArgs e, out (Instrument Instr, DateTime Expiry) entry) -> bool (private)
+  Absorbs: all 10 compound conditions (state checks, name checks, account null guard,
+  IsFollowerAccount, TryGetValue, expiry check, instrument match). CCN<=8.
+- TryCancelNativeAtmTarget(Account acc, Instrument instr, char tChar) -> void (private)
+  Absorbs: nativeName construction + foreach + inner if + acc.Cancel(). CCN<=4.
+- EvaluateCleanupRemoval(Account acc, char tChar, DateTime expiry) -> void (private)
+  Absorbs: shouldRemove ternary + TryRemove call. CCN<=2.
+
+Parent residual: IsCleanupAtmEligible(1) + tChar extraction(0)
+
+- TryCancelNativeAtmTarget(0) + EvaluateCleanupRemoval(0) = CCN<=2. PASS.
+
+NOTE: Caller pattern: if (!IsCleanupAtmEligible(e, out var entry)) return;
+char tChar = e.Order.Name[8];
+TryCancelNativeAtmTarget(e.Order.Account, entry.Instr, tChar);
+EvaluateCleanupRemoval(e.Order.Account, tChar, entry.Expiry);
+
+#### SyncAtmFollowerTarget (CCN=21 -> target <=8)
+
+Parent at L3216-3300. Null guards + Block A-Prime foreach + Block A cancel + Block B create.
+
+Extract:
+
+- IsAtmTargetSyncEligible(Account acc, Order fo, double newPrice) -> bool (private)
+  NOTE: IsSyncAtmBracketEligible (L2663) covers the stop path.
+  This new method covers the target path with fo.LimitPrice<=0 guard (B142-DIRECT-5).
+  Absorbs: acc null(1), fo null(2), fo.LimitPrice<=0(3), IsNoPriceChange(4). CCN<=4.
+- CancelBlockAAtmTarget(Account acc, Order fo, string tgtDragName) -> void (private)
+  Absorbs: Block A-Prime foreach + if(Working && Name && Instrument) + try/catch. CCN<=5.
+- BlockBCreateAtmTarget(Account acc, Order fo, double newPrice, string tgtDragName, Order leaderOrder) -> void (private)
+  Absorbs: Block B CreateOrder + null guard + Submit + StatusUpdate + catch. CCN<=4.
+
+Parent residual: IsAtmTargetSyncEligible(1) + DeriveLeaderBracketIndex(0) + tgtDragName(0)
+
+- Block A cancel try(1) + Block A cancel catch(0) + CancelBlockAAtmTarget(0)
+- BlockBCreateAtmTarget(0) + ExecutePhaseCStopReplacement(0) = CCN<=3. PASS.
+
+#### SyncFollowerBracket (CCN=20 -> target <=8)
+
+Parent at L2539-2639. ATM-STP path, ATM-TGT path, trailing-stop skip, acc.Change path.
+
+Extract:
+
+- HandleAtmStopSync(Account acc, Order fo, double newPrice, double tickSize, string legSuffix, Order leaderOrder) -> void (private)
+  Absorbs: B142-DIRECT-2 stopPrice guard + CancelExistingPttStpDrag + SyncAtmFollowerBracket
+  - capturedTargetPrice + ResubmitTargetAfterCascade + CaptureOtherLegTargetPrices
+  - ResubmitCollateralLegs. CCN<=6.
+- HandleAtmTargetSync(Account acc, Order fo, double newPrice, Order leaderOrder) -> void (private)
+  Absorbs: SyncAtmFollowerTarget call. CCN<=1.
+- HandleNonAtmSync(Account acc, Order fo, bool isStop, double newPrice) -> void (private)
+  Absorbs: IsTrailingStop skip + try { price = newPrice; acc.Change } + catch. CCN<=4.
+
+Parent residual: fo null(1) + priceDelta(2) + isStop && IsAtmSTPOrder(3)
+
+- !isStop && IsAtmSTPOrder(4) + else HandleNonAtmSync = CCN<=5. PASS.
+
+### 5.2 Ticket 2 Extractions
+
+#### FlattenOneAccount (CCN=19 -> target <=8)
+
+Parent at L4714-4783.
+
+Extract:
+
+- IsAccountFlattenable(Account acc, Instrument instr) -> bool (private)
+  Absorbs: acc null guard, instr null guard, position null/quantity guard. CCN<=4.
+- SubmitMarketFlattenOrder(Account acc, Instrument instr, Position pos) -> void (private)
+  Absorbs: OrderAction from MarketPosition + CreateOrder(Market) try + null guard + Submit + catch. CCN<=4.
+
+Parent residual: IsAccountFlattenable(1) + CancelAllAccountOrders(0)
+
+- SubmitMarketFlattenOrder(0) = CCN<=2. PASS.
+
+#### MoveStopToBreakEven (CCN=18 -> target <=8)
+
+Parent at L5404-5544. Already delegates to SnapshotBeTargets and PttBreakEvenSwap.Execute.
+
+Extract:
+
+- LogDiagOrderCount(Account acc, Instrument instrument) -> void (private)
+  Absorbs: diagTotal foreach + NinjaTrader.Code.Output.Process call. CCN<=2.
+- RegisterBeRetrySlotIfNeeded(Account acc, Instrument instrument, int bufferTicks, bool isRetry, int targetsCount, int leaderCount) -> void (private)
+  Absorbs: targets==0 slot block (slot + QueueBeRetryFallback 500ms)
+  - partial-targets block (!isRetry && IsFollowerAccount && leaderCount>0 && targets<leaderCount
+  - slot + QueueBeRetryFallback 200ms). CCN<=6.
+
+Parent residual: IsFlat(1) + calc(0) + LogDiagOrderCount(0) + SnapshotBeTargets(0)
+
+- while-cap(1) + PttBreakEvenSwap.Execute(0) + targets==0 early return(1)
+- RegisterBeRetrySlotIfNeeded(0) = CCN<=5. PASS.
+
+#### ReplaceFollowerCopyOnAtmCancel (CCN=18 -> target <=8)
+
+Parent at L3895-3948.
+
+Extract:
+
+- FindFollowerRuleForOrder(Order cancelledOrder, out int followerIndex) -> CopyRule? (private)
+  Absorbs: foreach rules + instrument match + for-i + name match + break. CCN<=5.
+- IsReplaceDispatchEligible(CopyRule rule, int followerIndex, Order cancelledOrder) -> bool (private)
+  Absorbs: !matchedRule.HasValue(1) + followerIndex<0(2) + leader null(3)
+  - HasOpenPosition leader(4) + HasOpenPosition follower(5) + HasWorkingPttCopy(6). CCN<=6.
+
+Parent residual: !_isCopyEnabled(1) + FindFollowerRuleForOrder(0)
+
+- IsReplaceDispatchEligible(1) + signal(0) + ResolveAtmMode(0) + Named branch(1) = CCN<=4. PASS.
+
+#### CancelQxBrackets 3-param (CCN=16 -> target <=8)
+
+Parent at L991-1040.
+
+Extract:
+
+- IsQxCancelEligible3(Order o, Instrument instr, System.Collections.Generic.HashSet<NinjaTrader.Cbi.Order> snapshot) -> bool (private static)
+  Absorbs: stateOk 5-term OR + instrument null+FullName + snapshot null+Contains. CCN<=7.
+- CommitStaleCancelBatch(Account acc, System.Collections.Generic.List<Order> stale) -> void (private)
+  Absorbs: RemoveAll terminal-state race guard + acc.Cancel try/catch. CCN<=2.
+
+Parent residual: null guard(1) + foreach(1) + IsQxCancelEligible3(1)
+
+- stale.Count==0(1) + CommitStaleCancelBatch(0) = CCN<=5. PASS.
+
+### 5.3 Ticket 3 Extractions
+
+#### TryReplacePttBeBrackets (CCN=14 -> target <=8)
+
+Parent at L4055-4126.
+
+Extract:
+
+- IsBeBracketRecoveryEligible(Order cancelledStop) -> bool (private)
+  Absorbs: cancelledStop null(1) + instr null(1) + IsFollowerAccount(1)
+  - IsFlat(1) + _qxCancelInProgress.ContainsKey(1). CCN<=5.
+- HasActiveQxOrders(Account acc, Instrument instr) -> bool (private)
+  Absorbs: acc.Orders.ToList().Any with PTT-QX prefix + Working/Submitted + instr match. CCN<=4.
+
+Parent residual: IsBeBracketRecoveryEligible(1) + HasActiveQxOrders(1)
+
+- prevAttempts>=5(1) + counter increment(0) + TryAdd(1) + QueueBeRetryFallback(0) = CCN<=5. PASS.
+
+#### CancelQxBrackets 2-param (CCN=14 -> target <=8)
+
+Parent at L911-941.
+
+Extract:
+
+- IsQxCancelEligible2(Order o, Instrument instr) -> bool (private static)
+  Absorbs: stateOk 5-term OR + instrument null+FullName + IsQxCancelCandidate. CCN<=7.
+- CommitQxCancelBatch(Account acc, System.Collections.Generic.List<Order> stale) -> void (private)
+  Absorbs: RemoveAll race guard + acc.Cancel try/catch. CCN<=2.
+  NOTE: Engineer may consolidate CommitQxCancelBatch and CommitStaleCancelBatch (T2)
+  into CommitCancelBatch(Account, List<Order>) if bodies are identical.
+
+Parent residual: null guard(1) + foreach(1) + IsQxCancelEligible2(1)
+
+- stale.Count==0(1) + CommitQxCancelBatch(0) = CCN<=4. PASS.
+
+#### TryFirePositionState (CCN=13 -> target <=8)
+
+Parent at L3796-3844.
+
+Extract:
+
+- IsPositionStateTriggerState(OrderState s) -> bool (private static)
+  Absorbs: state != Filled && state != PartFilled. CCN<=2.
+- TryClearLeaderDirectionOnFlat(Account acc, string instrFullName) -> void (private)
+  Absorbs: !hasPos block: foreach rules + isLeaderAcct loop + if(isLeaderAcct) TryRemove
+  - ClearLiveEntryForInstrument. CCN<=4.
+
+Parent residual: IsPositionStateTriggerState(1) + instrument null(1)
+
+- Interlocked CAS(1) + prior==newVal early return(1)
+- TryClearLeaderDirectionOnFlat(0) + event invoke(0) = CCN<=5. PASS.
+
+Test seam: internal static bool IsPositionStateTriggerStateTestable(OrderState s)
+=> IsPositionStateTriggerState(s);
+
+#### CountLeaderTargets (CCN=13 -> target <=8)
+
+Parent at L5315-5342.
+
+Extract:
+
+- IsNativeLeaderTarget(Order o, string instrFullName) -> bool (private static)
+  Absorbs: stateOk(1) + instrOk compound(1) + type check(1) + isTarget 4-part compound(4). CCN<=7.
+
+Parent residual: rule null(1) + leader null(1) + foreach(1) + o null continue(1)
+
+- IsNativeLeaderTarget(1) = CCN<=5. PASS.
+
+Test seam: internal static bool IsNativeLeaderTargetTestable(OrderState s, string oInstrFN,
+OrderType t, string name, string checkInstrFN).
+
+#### ResubmitTargetAfterCascade (CCN=13 -> target <=8)
+
+Parent at L2907-2973. Block A-Prime + Block B.
+
+Extract:
+
+- CancelStaleTargetDrag(Account acc, Order stpOrder, string tgtDragName) -> void (private)
+  Absorbs: Block A-Prime foreach + if(Working && Name && Instrument) + try/catch. CCN<=4.
+- CreateAndSubmitCascadeTarget(Account acc, Order stpOrder, double targetPrice, string tgtDragName, Order leaderOrder) -> void (private)
+  Absorbs: Block B CreateOrder + null guard(1) + Submit + StatusUpdate + catch. CCN<=3.
+
+Parent residual: TryParseStopSuffix(1) + tgtDragName(0)
+
+- CancelStaleTargetDrag(0) + CreateAndSubmitCascadeTarget(0) = CCN<=2. PASS.
+
+### 5.4 Ticket 4 Extractions
+
+#### OnOrderUpdate (CCN=12 -> target <=8)
+
+Parent at L1379-1486. Already highly extracted. Residual branches from drain handling block.
+
+Extract:
+
+- HandleDrainTerminalState(Order order) -> void (private)
+  Absorbs: Cancelled/Rejected drain-ack branch (ContainsKey + OnDrainCancelAck call)
+  - Filled abort-drain branch (AbortDrainOnFill call). CCN<=4.
+
+Parent residual: all existing pre-gate helper calls(0) + HandleDrainTerminalState(1)
+
+- TryDrainWatchdog(0) + !_isCopyEnabled(1) + FindMatchingRule(1) + null check(1)
+- !Enabled(1) + TryFirePositionState(0) + TryMirrorOrderUpdate(0)
+- TryCancelFollowerEntries(1) + TryDispatchLeaderFlat(1) + TryHandleDrag(1)
+- DispatchCopy(0) = CCN<=8. PASS.
+
+#### CancelAllAccountOrders (CCN=12 -> target <=8)
+
+Parent at L1049-1079.
+
+Extract:
+
+- IsCancelAllStateOk(OrderState s) -> bool (private static)
+  Absorbs: Working || Initialized || Submitted || Accepted 4-term OR. CCN<=4.
+
+Parent residual: null guard(1) + foreach(1) + IsCancelAllStateOk(1) + instrument filter(1)
+
+- RemoveAll terminal race guard(1) = CCN<=5. PASS.
+
+Test seam: internal static bool IsCancelAllStateOkTestable(OrderState s)
+=> IsCancelAllStateOk(s);
+
+#### BuildQxSnapshot (CCN=11 -> target <=8)
+
+Parent at L952-980.
+
+Extract:
+
+- IsQxSnapshotStateOk(OrderState s) -> bool (private static)
+  Absorbs: Working || Initialized || Accepted || Submitted || TriggerPending 5-term OR. CCN<=5.
+
+Parent residual: null guard(1) + foreach(1) + IsQxSnapshotStateOk(1) + instrument filter(1)
+
+- IsQxCancelCandidate(1) = CCN<=5. PASS.
+
+Test seam: internal static bool IsQxSnapshotStateOkTestable(OrderState s)
+=> IsQxSnapshotStateOk(s);
+
+#### DrainThenDispatch (CCN=11 -> target <=8)
+
+Parent at L6516-6571.
+
+Extract:
+
+- IssueDrainCancels(Account acc, Instrument instrument) -> int (private)
+  Absorbs: foreach acc.Orders + stateOk filter + instrument filter
+  - cancel issue + _drainOwnedOrderIds TryAdd. Returns cancel count. CCN<=5.
+
+Parent residual: _pendingDispatchDrains upsert(0) + IssueDrainCancels(1)
+
+- cancelCount==0 immediate-dispatch check(1) = CCN<=4. PASS.
+
+#### FindFollowerBracketOrder IEnumerable overload (CCN=11 -> target <=8)
+
+Parent at L3520-3553.
+
+Extract:
+
+- MatchesBracketType(Order order, bool isStop) -> bool (private static)
+  Absorbs: isStop(1) + StopMarket||StopLimit(1) + else Limit+!IsStopLeg(1). CCN<=3.
+
+Parent residual: foreach(1) + OrderPassesBracketGate(1) + 4-state filter(4)
+
+- MatchesBracketType(1) = CCN<=7. PASS.
+
+Test seam: internal static bool MatchesBracketTypeTestable(OrderType t, OrderState s,
+bool isStop, string name) -- uses primitives.
+
+#### MatchesLeaderName (CCN=11 -> target <=8)
+
+Parent at L3575-3592.
+
+Extract:
+
+- ExtractLegSuffix(string leaderName) -> string (private static)
+  Absorbs: leaderName.Length > 0 && char.IsDigit(...) ternary assignment. CCN<=2.
+
+Parent residual: leaderName null(1) + exact name(1) + ExtractLegSuffix(0)
+
+- !isStop && legSuffix != null && TGT name(1) + isStop && legSuffix != null && STP name(1)
+  = CCN<=4. PASS.
+
+### 5.5 Ticket 5 Extractions
+
+All Ticket 5 methods are CCN=9 -- one branch over the limit. One small extraction each.
+
+#### HasNakedPosition (CCN=9 -> target <=8)
+
+Parent at L6473-6502.
+
+Extract:
+
+- IsNakedConditionMet(Account acc, Instrument instr) -> bool (private)
+  Absorbs: 1 compound boolean cluster. CCN<=4.
+
+#### RuleToDto (CCN=9 -> target <=8)
+
+Parent at L6197-6232.
+
+Extract:
+
+- ExtractAtmTemplateMap(CopyRule rule) -> Dictionary<string, string> (private static)
+  Absorbs: foreach FollowerAtmTemplates + conditional value extraction. CCN<=4.
+
+#### IsFollowerAccount (CCN=9 -> target <=8)
+
+Parent at L778-797.
+
+Extract:
+
+- MatchesFollowerSlot(CopyRule rule, Account acc) -> bool (private static)
+  Absorbs: for-i + null-slot check + name comparison + FollowerAccountNames fallback. CCN<=5.
+
+#### AllAccounts (CCN=9 -> target <=8)
+
+Parent at L5116-5163.
+
+Extract:
+
+- IsFollowerForInstrument(Account acc, CopyRule rule) -> bool (private static)
+  Absorbs: inner follower-account array iteration + null guard. CCN<=3.
+
+#### CaptureLinkedTargetPrice (CCN=9 -> target <=8)
+
+Parent at L2778-2796.
+
+Extract:
+
+- PickBestTargetPrice(double? pttPrice, double? atmPrice) -> double? (private static)
+  Absorbs: pttPrice.HasValue ternary + return. CCN<=2.
+
+#### MirrorClose (CCN=9 -> target <=8)
+
+Parent at L2119-2158.
+
+Extract:
+
+- MirrorCloseOneAccount(Account acc, Instrument instr) -> void (private)
+  Absorbs: acc null + FindPosition + null/qty guard + direction + CreateOrder try/catch. CCN<=5.
+
+#### BuildUpdatedMultipliers (CCN=9 -> target <=8)
+
+Parent at L1348-1364.
+
+Extract:
+
+- ResolveMultiplierLength(int[] existing, int count) -> int (private static)
+  Absorbs: len = count > 0 ? count : (existing != null ? existing.Length : 0). CCN<=3.
+
+#### CaptureOtherLegTargetPrices (CCN=9 -> target <=8)
+
+Parent at L2812-2835.
+
+Extract:
+
+- UpdateLegTargetPrice(double[] prices, int i, Order o, string excludeSuffix) -> void (private static)
+  Absorbs: inner for-i body with exclude check + PTT preferred + ATM fallback. CCN<=4.
+
+#### HandleEntryChange (CCN=9 -> target <=8)
+
+Parent at L3736-3771.
+
+Extract:
+
+- IsPriceDeltaSignificant(double newPrice, double currentPrice, double tickSize) -> bool (private static)
+  Absorbs: tickSize > 0 && Math.Abs compound. CCN<=2.
+
+#### HandleBracketChange (CCN=9 -> target <=8)
+
+Parent at L3414-3447.
+
+Extract:
+
+- RoundToTick(double rawPrice, double tickSize) -> double (private static)
+  Absorbs: tickSize > 0 ternary Math.Round. CCN<=2.
+
+#### CreateFollowerReplacementStop (CCN=9 -> target <=8)
+
+Parent at L3348-3393.
+
+Extract:
+
+- SubmitReplacementStopOrder(Account followerAcc, Instrument instr, int qty, OrderAction stopAction, double stopPrice) -> void (private)
+  Absorbs: CreateOrder + null guard + Submit + StatusUpdate + catch. CCN<=4.
 
 ---
 
-## Section 6: Threading Model
+## 6. Test Strategy
 
-| Path | Thread | Helpers Called | Safety |
-|---|---|---|---|
-| `OnOrderUpdate` hot path | NT8 account bg thread | T1+T5 helpers (pure predicates) | All lock-free ConcurrentDictionary ops |
-| `TryCleanupReArmedAtmBracket` | NT8 account bg thread | T3 helpers | ConcurrentDictionary.TryGetValue only |
-| `FlattenOneAccount` | WPF UI thread (via Dispatcher.InvokeAsync) | T4 helpers | WPF-thread-only acc.Orders scan |
-| `ArmPendingBe` | WPF UI thread (button click) | T4 TryFireBeImmediate | instr.MarketData reads OK on UI thread |
-| `CancelQxBrackets` | NT8 dispatch thread | T1 helpers | lock-free predicates + acc.Cancel |
+**Test file**: src/PropTraderTools/Tests/BwaveRefactorLaneBTests.cs
+**Framework**: xUnit [Fact] ONLY. No NUnit. No MSTest.
+**Access**: InternalsVisibleTo granted at CopyEngine.cs L46.
 
-**Rule**: All extracted helpers are pure predicates or delegates to existing methods. Zero new thread-unsafe constructs.
+One structural [Fact] per extracted helper method.
+For static helpers: pass primitive values directly (existing pattern at L1665-1686).
+For instance helpers: test via internal stub seam (pattern: IsPttStpDragCancellableTestable L3152).
 
----
+Naming: [HelperName]_[Scenario]_[Expected]
+Example: IsBeTargetStateOk_Working_ReturnsTrue
 
-## Section 7: 7-Scan Checklist (Per Ticket)
-
-Each ticket MUST pass all 7 scans before merge:
-
-| Scan | Command | Pass Condition |
-|---|---|---|
-| SCAN-01 | `dotnet build src/PropTraderTools/ --no-incremental` | 0 errors, 0 warnings |
-| SCAN-02 | `grep -r "lock(" src/PropTraderTools/ --include="*.cs"` | 0 results |
-| SCAN-03 | `grep -rn "async void " src/PropTraderTools/ --include="*.cs"` | 0 new results (existing event handlers exempt) |
-| SCAN-04 | `lizard src/PropTraderTools/CopyEngine.cs -C 8 --languages csharp` | 0 methods > 8 in CopyEngine.cs |
-| SCAN-05 | `grep -rn "return null;" src/PropTraderTools/CopyEngine.cs` | 0 new occurrences in modified methods |
-| SCAN-06 | Codepage check on modified .cs files | 0 non-ASCII characters in identifiers or string literals |
-| SCAN-07 | `dotnet test tests/PropTraderTools.Tests/ --no-build` | All pass |
+Test seam: internal static T {HelperName}Testable(primitive params) => {HelperName}(args);
 
 ---
 
-## Section 8: Test Strategy
+## 7. Scan Checklist (7 Scans -- Engineer Contract)
 
-**Test file**: `tests/PropTraderTools.Tests/BwaveRefactorLaneBTests.cs` (NEW)
+Each ticket engineer MUST run ALL 7 scans before committing.
 
-Each ticket writes structural `[Fact]` tests confirming:
-1. The extracted private helper exists and is callable via `internal` test seam
-2. The method returns the expected value for a simple canary input
+### SCAN-01: Lizard CCN -- Zero methods >8 in CopyEngine.cs
 
-**Test format** (one per extracted helper that has a seam):
+Run the exact lizard command from Section 3 of this plan. PASS = zero rows output.
 
-```csharp
-[Fact]
-public void IsQxCancellableState_Working_ReturnsTrue()
-{
-    var result = CopyEngine.IsQxCancellableStateTestable(OrderState.Working);
-    Assert.True(result);
-}
+### SCAN-02: No lock() in CopyEngine.cs
 
-[Fact]
-public void IsQxCancellableState_Filled_ReturnsFalse()
-{
-    var result = CopyEngine.IsQxCancellableStateTestable(OrderState.Filled);
-    Assert.False(result);
-}
-```
+Select-String for lock pattern. PASS: Zero matches.
 
-No behavioral tests required. Structural existence + canary value only.
+### SCAN-03: No async void
 
-**Test file header:**
-```csharp
-// BwaveRefactorLaneBTests.cs
-// Structural [Fact] tests for BWAVE-REFACTOR LaneB extracted helpers.
-// xUnit only. No NUnit. No MSTest. JS-051.
-using Xunit;
-using PropTraderTools;
-namespace PropTraderTools.Tests;
-```
+Select-String for async void pattern. PASS: Zero matches.
+
+### SCAN-04: No return null in NEW extracted helpers
+
+Verify no extracted helper introduces a new return null statement.
+Pre-existing return null in FindBePosition and FindFollowerBracketOrder etc. are grandfathered.
+
+### SCAN-05: dotnet build -- Zero errors
+
+dotnet build --no-incremental. PASS: Zero errors, zero warnings.
+
+### SCAN-06: ASCII-only -- Zero non-ASCII in CopyEngine.cs
+
+Read all bytes; count those > 127. PASS: Count = 0.
+
+### SCAN-07: dotnet test -- All tests pass
+
+dotnet test --no-build. PASS: All tests pass, zero failures.
 
 ---
 
-## Section 9: NT8 Sync + F5 Gate
+## 8. NT8 Constraints
 
-After every ticket:
-1. Run `powershell -File scripts\ptt-sync-and-verify.ps1`
-2. Verify 0 MISMATCH lines in output
-3. Press **F5** in NinjaTrader 8 to recompile
-4. Verify green (no compile errors in NT8 Output window)
-5. DO NOT merge ticket PR until F5 is green
+### 8.1 Origin
 
----
+DW-NEXT-B-04: CopyEngine.cs god method complexity accumulated across blocks B7..B142.
+This epic closes DW-NEXT-B-04 by driving all CopyEngine methods to CCN <= 8.
 
-## Section 10: Risk Notes / DW Items
+### 8.2 Signature Preservation (ABSOLUTE)
 
-| Risk | Classification | Resolution |
-|---|---|---|
-| `SubmitCollateralStop`/`SubmitCollateralTarget` extract changes call order inside `ResubmitOneCollateralLeg` | LOW | Helpers are identical to inline code — no behavior change. SCAN-04 confirms CCN. |
-| `FindFollowerRuleAndIndex` extracts the nested loop from `ReplaceFollowerCopyOnAtmCancel` | LOW | `out` params preserve return values. No new failure modes. |
-| `TryFireBeImmediate` fires `BreakEven()` directly — same as inline | LOW | Same call, same parameters. No behavior change. |
-| `IsQxCleanupAccountEligible` uses `out` tuple param — test seam complexity | LOW | Test seam uses testable overload with primitive args, avoids NT8 tuple. |
-| Lizard CCN may still exceed 8 on edge cases with nested lambda `&&`/`||` | MEDIUM | After extraction, re-run `lizard` before declaring scan pass. |
+Zero changes to ANY public or internal method signatures.
 
-**DW Deferred:**
-- DW-NEXT-A-07: `ActiveOrders .ToList()` stays unchanged — not touched in this plan.
-- All previously deferred items remain deferred.
+Methods that MUST NOT change signature:
 
----
+- ArmPendingBe(Instrument instr, Account masterAcc, int bufferTicks) -- internal
+- TryCleanupReArmedAtmBracket(OrderEventArgs e) -- internal (test seam caller)
+- FindFollowerBracketOrder overloads -- private (test seam overloads exist)
+- SnapshotBeTargets(Account acc, Instrument instrument) -- private
+- CountLeaderTargets(Instrument instrument) -- private
+- MoveStopToBreakEven(Account acc, Instrument instrument, int bufferTicks, bool isRetry) -- private
 
-## Section 11: Data Flow Summary
+### 8.3 Thread Safety
 
-```
-OrderEvent
-    ↓
-OnOrderUpdate [T5: CCN 12→≤8 via IsDrainCancelOrReject]
-    ↓
-... pre-gate helpers (unchanged) ...
-    ↓
-TryCancelFollowerEntries → CancelQxBrackets [T1: CCN 16→≤8 via IsQxCancellableState]
-    ↓
-TryDispatchLeaderFlat → FlattenOneAccount [T4: CCN 19→≤8 via HasActiveFlattenInFlight]
-    ↓
-TryHandleDrag → HandleBracketChange → SyncFollowerBracket [T2: CCN 20→≤8]
-                                      ↓
-                              SyncAtmFollowerBracket (unchanged - already ≤8)
-                              SyncAtmFollowerTarget [T3: CCN 21→≤8]
-                              ResubmitOneCollateralLeg [T2: CCN 25→≤8]
-                              ↓
-                              SnapshotBeTargets [T2: CCN 24→≤8]
-    ↓
-TryCleanupReArmedAtmBracket [T3: CCN 23→≤8 via IsQxCleanupTriggerOrder]
-TryReplaceOnAtmCancel → ReplaceFollowerCopyOnAtmCancel [T3: CCN 18→≤8 via FindFollowerRuleAndIndex]
+All extracted helpers inherit the thread-safety model of their parent:
 
-Button press (UI thread)
-    ↓
-ArmPendingBe [T4: CCN 27→≤8 via TryFireBeImmediate]
-    ↓
-MoveStopToBreakEven [T4: CCN 18→≤8 via ShouldRegisterZeroTargetRetry]
-    ↓
-SnapshotBeTargets [T2: already handled above]
-CountLeaderTargets [T5: CCN 13→≤8 via IsCountableLeaderTarget]
-```
+- Helpers from OnOrderUpdate path: NT8 account bg thread. No UI access.
+- Helpers from ArmPendingBe: UI thread (Panel/Window context).
+- Helpers from MoveStopToBreakEven: both bg and UI paths.
+- Zero new lock() calls. Zero new Dispatcher.InvokeAsync in extracted helpers.
+
+### 8.4 .NET 4.8 Compatibility
+
+- No record types
+- No System.Collections.Immutable
+- No init-only properties
+- NT8 CreateOrder 12-arg form preserved; arg12=(NinjaTrader.Cbi.CustomOrder)null
+- NinjaTrader.Core.Globals.MaxDate for GTC expiry
+
+### 8.5 Dismissed Items (Do Not Touch)
+
+- (long)(int)Environment.TickCount -- .NET 4.8 correct. Leave as-is.
+- ActiveOrders .ToList() -- DW-NEXT-A-07. Leave as-is.
+- _drainOwnedOrderIds ConcurrentDictionary<string, byte> -- NT8 OrderId is string. Leave as-is.
+- Features/*.cs -- Lane C scope only. Do not modify.
 
 ---
 
-**Return: PLAN_COMPLETE**
+## 9. Risk Register
+
+### R-01: Helper Name Collision Across Tickets
+
+Risk: Two tickets introduce a helper with the same name.
+Mitigation: All helper names in this plan are unique (verified in sequential thinking).
+Engineer must verify before adding each helper:
+Select-String on CopyEngine.cs for the new method name.
+
+### R-02: Lizard vs Code Comment Discrepancy
+
+Risk: Code comments say CYC=6 but Lizard says CCN=27 (e.g. ArmPendingBe).
+Cause: Lizard counts ?., ??, ternary ?:, and each || and && as +1 branch.
+Mitigation: Lizard is the authoritative tool. SCAN-01 uses Lizard. All CCN targets
+in Section 5 are calibrated against Lizard counting, not hand-counted McCabe.
+
+### R-03: IsCleanupAtmEligible out-param type
+
+Risk: The out-param type (Instrument Instr, DateTime Expiry) must exactly match
+the _qxPendingFollowerCleanup value type.
+Mitigation: Use exactly:
+private bool IsCleanupAtmEligible(OrderEventArgs e,
+out (Instrument Instr, DateTime Expiry) entry)
+Caller: if (!IsCleanupAtmEligible(e, out var entry)) return;
+
+### R-04: CommitStaleCancelBatch / CommitQxCancelBatch consolidation
+
+Risk: Engineer consolidates T2 and T3 cancel-batch helpers incorrectly.
+Mitigation: Plan permits consolidation as CommitCancelBatch(Account, List<Order>).
+Both callers must be updated if consolidated.
+
+### R-05: SyncAtmFollowerTarget Block A/B separation
+
+Risk: After extracting CancelBlockAAtmTarget, the Block A cancel try/catch stays in parent.
+The parent still has 2 branches from the Block A try/catch.
+Mitigation: Parent residual CCN calculation accounts for these 2 branches (CYC<=4). PASS.
+
+---
+
+## 10. Deferred Items
+
+The following items are explicitly NOT in scope for BWAVE-REFACTOR LaneB:
+
+- DW-NEXT-A-07: ActiveOrders .ToList() -- deferred. Leave as-is.
+- DW-NEXT-A-07: (long)(int)Environment.TickCount -- .NET 4.8 correct. Dismissed.
+- _drainOwnedOrderIds type -- ConcurrentDictionary<string, byte> correct. Dismissed.
+- Features/*.cs CCN violations -- Lane C scope only. Do not touch.
+- BWAVE-NEXT LaneBRepair backlog items unrelated to CCN in CopyEngine.cs -- deferred.
+
+---
+
+## Component Summary
+
+| Component               | Type     | File                                                 | Purpose                        |
+| ----------------------- | -------- | ---------------------------------------------------- | ------------------------------ |
+| CopyEngine              | Modified | src/PropTraderTools/CopyEngine.cs                    | 32 methods extracted to CCN<=8 |
+| BwaveRefactorLaneBTests | New      | src/PropTraderTools/Tests/BwaveRefactorLaneBTests.cs | xUnit structural tests         |
+
+VERIFY_PASS requirement: Zero CopyEngine.cs methods with CCN > 8 in Lizard output.
+NT8 SYNC: powershell -File scripts\ptt-sync-and-verify.ps1 must show 18/18 OK.
+F5: NinjaTrader 8 F5 compilation required before FINAL_PASS.
+
+---
+
+Architecture plan written by ptt-architect. Status: PLAN_COMPLETE.
