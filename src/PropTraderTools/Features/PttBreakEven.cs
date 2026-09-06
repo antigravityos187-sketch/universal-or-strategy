@@ -304,10 +304,7 @@ namespace PropTraderTools
             catch (Exception ex)
             {
                 NinjaTrader.Code.Output.Process(
-                    "[BE] SubmitBeStopLocal EXCEPTION on "
-                        + SafeName(acc)
-                        + ": "
-                        + ex.Message,
+                    "[BE] SubmitBeStopLocal EXCEPTION on " + SafeName(acc) + ": " + ex.Message,
                     NinjaTrader.NinjaScript.PrintTo.OutputTab1
                 );
             }

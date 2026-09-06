@@ -110,7 +110,20 @@ namespace PropTraderTools
             // Each pair gets its own OCO ID so T1 fill only cancels Stop1, not Stop2/Stop3.
             string firstOcoId = string.Empty;
             for (int i = 0; i < targetCount; i++)
-                SubmitQxOcoPair(leader, instr, isLong, entryPx, snapshotStop, tick, t1Ticks, i, targetCount, targets, pos.Quantity, ref firstOcoId);
+                SubmitQxOcoPair(
+                    leader,
+                    instr,
+                    isLong,
+                    entryPx,
+                    snapshotStop,
+                    tick,
+                    t1Ticks,
+                    i,
+                    targetCount,
+                    targets,
+                    pos.Quantity,
+                    ref firstOcoId
+                );
 
             // Step 7: raise PttBus.QuickExitFired (Card B: back-calc using T1 and T2 prices)
             double t1Price = isLong ? entryPx + t1Ticks * tick : entryPx - t1Ticks * tick;

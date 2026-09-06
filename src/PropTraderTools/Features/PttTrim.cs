@@ -110,7 +110,13 @@ namespace PropTraderTools
                     ? OrderAction.Sell
                     : OrderAction.BuyToCover; // (4)
 
-            var (orderType, limitPrice, stopPrice) = ResolveOrderParams(pos, buffer, ask, bid, tickSize);
+            var (orderType, limitPrice, stopPrice) = ResolveOrderParams(
+                pos,
+                buffer,
+                ask,
+                bid,
+                tickSize
+            );
 
             try // (5)
             {
@@ -166,13 +172,11 @@ namespace PropTraderTools
         /// JS-002: returns value tuple (never null). JS-001: no throw. JS-021: no lock. ASCII-only.
         /// NT8-049: Limit orderType uses limitPrice in arg6, stopPrice=0 in arg7 (preserved in caller).
         /// </summary>
-        private static (OrderType orderType, double limitPrice, double stopPrice) ResolveOrderParams(
-            Position pos,
-            int buffer,
-            double ask,
-            double bid,
-            double tickSize
-        )
+        private static (
+            OrderType orderType,
+            double limitPrice,
+            double stopPrice
+        ) ResolveOrderParams(Position pos, int buffer, double ask, double bid, double tickSize)
         {
             bool useLimitOrder =
                 tickSize > 0.0 // (1)

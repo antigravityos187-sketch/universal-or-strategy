@@ -458,10 +458,7 @@ namespace PropTraderTools
         /// CYC=3: (1) stateOk (||), (2) instrOk, (3) name non-empty + Limit type check.
         /// JS-002: returns bool. JS-021: no lock. ASCII-only.
         /// </summary>
-        private static bool IsTargetOrder(
-            NinjaTrader.Cbi.Order o,
-            NinjaTrader.Cbi.Instrument instr
-        )
+        private static bool IsTargetOrder(NinjaTrader.Cbi.Order o, NinjaTrader.Cbi.Instrument instr)
         {
             bool stateOk =
                 o.OrderState == NinjaTrader.Cbi.OrderState.Working
@@ -490,7 +487,9 @@ namespace PropTraderTools
                 if (!deduped.TryGetValue(t.Price, out int existing) || t.Qty > existing)
                     deduped[t.Price] = t.Qty;
             }
-            var result = new System.Collections.Generic.List<(double Price, int Qty)>(deduped.Count);
+            var result = new System.Collections.Generic.List<(double Price, int Qty)>(
+                deduped.Count
+            );
             foreach (var kv in deduped)
                 result.Add((kv.Key, kv.Value));
             return result;
@@ -521,7 +520,10 @@ namespace PropTraderTools
                 _sb.Append("=");
                 _sb.Append(targets[_i].Qty);
             }
-            NinjaTrader.Code.Output.Process(_sb.ToString(), NinjaTrader.NinjaScript.PrintTo.OutputTab1);
+            NinjaTrader.Code.Output.Process(
+                _sb.ToString(),
+                NinjaTrader.NinjaScript.PrintTo.OutputTab1
+            );
         }
 
         /// <summary>
