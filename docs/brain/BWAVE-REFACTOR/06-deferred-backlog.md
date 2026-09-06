@@ -55,3 +55,26 @@ was present at all stages T1-T5 and should be addressed in a test-quality housek
 None. This is the first entry in the BWAVE-REFACTOR deferred-backlog file.
 Prior LaneBRepair backlog items that remain open (DW-NEXT-A-07 etc.) are tracked in
 docs/brain/BWAVE-REFACTOR/LaneB/02-architecture-plan.md §10 and in the BWAVE-NEXT roadmap.
+
+---
+
+## Block: BWAVE-REFACTOR Lane B -- Post-Merge Review Findings
+
+Date: 2026-09-06
+Source: amazon-q-developer, greptile (Sentinel), codeant -- PR #47 review comments
+
+### Deferred Items (Post-Merge)
+
+| ID          | Item | Priority | Target Block | Status |
+| ----------- | ---- | -------- | ------------ | ------ |
+| DW-LB-AQ-01 | tests/PropTraderTools.Tests/BwaveRefactorLaneBTests.cs:86 -- Missing File.Exists check before Assembly.LoadFrom. If DLL path is wrong or project is unbuilt, test crashes with unhandled exception. Add guard + throw FileNotFoundException with descriptive message. | P2 | B-future | OPEN |
+| DW-LB-AQ-02 | tests/PropTraderTools.Tests/BwaveRefactorLaneBTests.cs:383 -- Test named ExtractLegSuffix_NoDigit_ReturnsNull but asserts string.Empty (not null). Misleading name. Rename to ExtractLegSuffix_NoDigit_ReturnsEmpty. Consolidates DW-LB-05. | P3 | B-future | OPEN |
+| DW-LB-AQ-03 | tests/PropTraderTools.Tests/BwaveRefactorLaneBTests.cs:406 -- GetSeamMethod() has no null guard on MethodInfo return. If seam method is renamed, test throws NullReferenceException instead of a descriptive failure. Add null check + throw TargetException. | P2 | B-future | OPEN |
+| DW-LB-AQ-04 | tests/PropTraderTools.Tests/BwaveRefactorLaneBTests.cs:166 -- IsImmediateBeEligible_ZeroTickSize_ReturnsFalse duplicates IsImmediateBeEligible_NullPosition_ReturnsFalse (same tickSize=0.0 early-return path). Replace with a real behavioral test (e.g. long position beyond buffer ticks returns true). | P3 | B-future | OPEN |
+| DW-LB-GR-01 | src/PropTraderTools/CopyEngine.cs -- RegisterBeRetrySlotIfNeeded: uses leaderCount==0 where targetsCount==0 was intended (JS-100 / Sentinel P1). CountLeaderTargets returns 0 for followers with visible PTT/transitional targets, causing spurious BE retry that cancels existing BE/OCO protection. Fix: gate retry on targetsCount==0. | P1 | B-future | OPEN |
+| DW-LB-CA-01 | tests/PropTraderTools.Tests/BwaveRefactorLaneBTests.cs:85 -- Hard-coded bin\Debug path for DLL. Breaks Release builds and CI. Use AppDomain.CurrentDomain.BaseDirectory or MSBuild output path instead. Related to DW-LB-AQ-01. | P2 | B-future | OPEN |
+
+### Note
+
+DW-LB-GR-01 is the only production-code finding (CopyEngine.cs logic bug). All others are test-file quality issues.
+CodeRabbit findings on docs/brain/LaneB/*.md are documentation drift -- no .cs impact -- deferred as low-priority cleanup.
